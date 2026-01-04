@@ -20,8 +20,11 @@ function toggleLoading(show) {
     }
 }
 
-let currentRecords = [];
+let allRecords = []; // 取得した全データ
+let filteredRecords = []; // フィルター適用後のデータ
 let sortConfig = { key: 'event_datetime', direction: 'desc' };
+let searchQuery = '';
+
 
 // 記録一覧の取得
 async function fetchRecords() {
@@ -32,10 +35,8 @@ async function fetchRecords() {
 
         if (error) throw error;
 
-        currentRecords = records;
-        // 初期ソート（日時降順）
-        applySort();
-        displayRecords(currentRecords);
+        allRecords = records;
+        applyFiltersAndSort();
     } catch (err) {
         console.error('記録取得エラー:', err.message);
         if (err.message.includes('relation "tournament_records" does not exist')) {
@@ -45,13 +46,20 @@ async function fetchRecords() {
     }
 }
 
+
+// 検索入力時の処理
+function handleSearch(event) {
+    searchQuery = event.target.value.toLowerCase();
+    applyFiltersAndSort();
+}
+
 // ソート関数
 function sortRecords(key) {
     if (sortConfig.key === key) {
         sortConfig.direction = (sortConfig.direction === 'asc' ? 'desc' : 'asc');
     } else {
         sortConfig.key = key;
-        sortConfig.direction = 'desc'; // デフォルトは降順（新しい順、スコア高い順など）
+        sortConfig.direction = 'desc'; // デフォルトは降順
     }
 
     // UIのクラス更新
@@ -61,18 +69,28 @@ function sortRecords(key) {
     const th = document.getElementById(`th-${key}`);
     if (th) th.classList.add(sortConfig.direction);
 
-    applySort();
-    displayRecords(currentRecords);
+    applyFiltersAndSort();
 }
 
-// データの並び替え適用
-function applySort() {
+// フィルターとソートを統合して適用
+function applyFiltersAndSort() {
+    // 1. フィルタリング
+    filteredRecords = allRecords.filter(record => {
+        const targetString = `
+            ${record.discord_account} 
+            ${record.tournament_type || ''} 
+            ${record.mahjong_mode || ''} 
+            ${record.match_mode || ''}
+        `.toLowerCase();
+        return targetString.includes(searchQuery);
+    });
+
+    // 2. ソート
     const { key, direction } = sortConfig;
-    currentRecords.sort((a, b) => {
+    filteredRecords.sort((a, b) => {
         let valA = a[key];
         let valB = b[key];
 
-        // NULL値の処理
         if (valA === null || valA === undefined) return 1;
         if (valB === null || valB === undefined) return -1;
 
@@ -85,7 +103,10 @@ function applySort() {
         if (valA > valB) return direction === 'asc' ? 1 : -1;
         return 0;
     });
+
+    displayRecords(filteredRecords);
 }
+
 
 // 記録の表示
 function displayRecords(records) {
