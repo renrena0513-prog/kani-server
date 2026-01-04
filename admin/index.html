@@ -72,26 +72,56 @@
             background: #f8f9fa;
             border-radius: 12px;
             padding: 20px;
-            margin-bottom: 15px;
+            margin-bottom: 25px;
             border-left: 4px solid var(--gold);
         }
 
-        .access-denied {
-            text-align: center;
-            padding: 60px 20px;
+        .event-list-item {
+            background: white;
+            border: 1px solid #eee;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
 
-        .access-denied-icon {
-            font-size: 5rem;
+        .event-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .event-thumb {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 8px;
+            background: #f0f0f0;
+        }
+
+        .csv-actions {
+            display: flex;
+            gap: 10px;
             margin-bottom: 20px;
         }
 
-        .loading {
-            text-align: center;
-            padding: 60px 20px;
-            color: var(--cream);
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            visibility: hidden;
         }
     </style>
+
 </head>
 
 <body>
@@ -138,25 +168,49 @@
 
         <!-- 管理コンテンツ -->
         <div id="admin-content" class="row justify-content-center" style="display: none;">
-            <div class="col-12 col-lg-8">
+            <div class="col-12 col-lg-10">
                 <div class="content-card">
-                    <h2 class="mb-4 text-center" style="font-family: var(--font-title); color: var(--deep-gray);">
-                        管理メニュー
-                    </h2>
-
-                    <div class="admin-section">
-                        <h5>🀄 麻雀大会管理</h5>
-                        <p class="text-muted mb-0">大会の作成・編集・参加者管理</p>
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2 class="mb-0" style="font-family: var(--font-title); color: var(--deep-gray);">管理メニュー</h2>
+                        <div class="csv-actions">
+                            <button onclick="document.getElementById('csv-import-input').click()"
+                                class="btn btn-outline-primary btn-sm">
+                                📥 CSV配布
+                            </button>
+                            <input type="file" id="csv-import-input" style="display: none;" accept=".csv"
+                                onchange="handleCSVImport(event)">
+                            <button onclick="exportToCSV()" class="btn btn-outline-secondary btn-sm">
+                                📤 CSV出力
+                            </button>
+                        </div>
                     </div>
 
+                    <!-- 麻雀大会管理 -->
                     <div class="admin-section">
-                        <h5>🃏 ポーカー大会管理</h5>
-                        <p class="text-muted mb-0">大会の作成・編集・参加者管理</p>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0">🀄 麻雀大会管理</h5>
+                            <button onclick="openEventModal('mahjong')" class="btn btn-primary btn-sm">新規追加</button>
+                        </div>
+                        <div id="mahjong-events-list">
+                            <p class="text-muted text-center py-3">読み込み中...</p>
+                        </div>
                     </div>
 
+                    <!-- ポーカー大会管理 -->
                     <div class="admin-section">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0">🃏 ポーカー大会管理</h5>
+                            <button onclick="openEventModal('poker')" class="btn btn-primary btn-sm">新規追加</button>
+                        </div>
+                        <div id="poker-events-list">
+                            <p class="text-muted text-center py-3">読み込み中...</p>
+                        </div>
+                    </div>
+
+                    <!-- ユーザー管理（今後の拡張用） -->
+                    <div class="admin-section opacity-50">
                         <h5>👥 ユーザー管理</h5>
-                        <p class="text-muted mb-0">ユーザーの登録・編集・権限管理</p>
+                        <p class="text-muted mb-0">近日実装予定</p>
                     </div>
 
                     <div class="text-center mt-4 p-3 rounded" style="background: #f8f9fa;">
@@ -167,12 +221,63 @@
         </div>
     </div>
 
+    <!-- イベント編集モーダル -->
+    <div class="modal fade" id="eventModal" tabindex="-1" aria-labelledby="eventModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="eventModalLabel">イベント編集</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="event-form">
+                        <input type="hidden" id="event-id">
+                        <input type="hidden" id="event-type">
+                        <div class="mb-3">
+                            <label for="event-title" class="form-label">タイトル</label>
+                            <input type="text" class="form-control" id="event-title" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="event-date" class="form-label">開催日時</label>
+                                <input type="datetime-local" class="form-control" id="event-date" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="event-image-url" class="form-label">画像URL</label>
+                                <input type="url" class="form-control" id="event-image-url" placeholder="https://...">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="event-description" class="form-label">詳細説明</label>
+                            <textarea class="form-control" id="event-description" rows="4"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                    <button type="button" class="btn btn-primary" onclick="saveEventFromForm()">保存する</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ローディングオーバーレイ -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="spinner-border text-light" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Supabase設定 -->
     <script src="../js/supabase-config.js"></script>
+    <!-- 管理ロジック -->
+    <script src="../js/admin.js"></script>
+
 
     <script>
         // admin/index.html 内の ADMIN_DISCORD_IDS 定義は削除 (supabase-config.js を使用)
