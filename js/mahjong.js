@@ -110,21 +110,23 @@ function setupPlayerInputs(count) {
     const container = document.getElementById('players-container');
     container.innerHTML = '';
 
-    // アカウントの選択肢
-    const optionsHtml = allAccounts.map(acc => `<option value="${acc}">${acc}</option>`).join('');
-
     for (let i = 1; i <= count; i++) {
         container.innerHTML += `
-            <div class="player-entry">
-                <div class="row g-2">
+            <div class="player-entry" id="player-row-${i}">
+                <div class="row g-2 align-items-end">
                     <div class="col-md-2">
                         <label class="small text-muted">チーム名</label>
                         <input type="text" class="form-control form-control-sm player-team" placeholder="チーム名">
                     </div>
                     <div class="col-md-3">
                         <label class="small text-muted">アカウント名</label>
-                        <input list="accounts-list" class="form-control form-control-sm player-account" placeholder="選択または入力">
-                        <datalist id="accounts-list">${optionsHtml}</datalist>
+                        <div class="custom-dropdown-container">
+                            <input type="text" class="form-control form-control-sm player-account" 
+                                   placeholder="選択または入力" onfocus="showDropdown(${i})" oninput="filterDropdown(${i})">
+                            <div class="custom-dropdown-list" id="dropdown-list-${i}">
+                                <!-- JSで動的に生成 -->
+                            </div>
+                        </div>
                     </div>
                     <div class="col-md-2">
                         <label class="small text-muted">得点</label>
@@ -143,6 +145,52 @@ function setupPlayerInputs(count) {
         `;
     }
 }
+
+// ドロップダウン制御
+function showDropdown(idx) {
+    const list = document.getElementById(`dropdown-list-${idx}`);
+    renderDropdownItems(idx, allProfiles);
+    list.style.display = 'block';
+
+    // 別クリックで閉じる
+    setTimeout(() => {
+        const h = (e) => {
+            if (!list.contains(e.target)) {
+                list.style.display = 'none';
+                document.removeEventListener('mousedown', h);
+            }
+        };
+        document.addEventListener('mousedown', h);
+    }, 10);
+}
+
+function filterDropdown(idx) {
+    const input = document.querySelector(`#player-row-${idx} .player-account`);
+    const val = input.value.toLowerCase();
+    const filtered = allProfiles.filter(p => p.discord_account.toLowerCase().includes(val));
+    renderDropdownItems(idx, filtered);
+}
+
+function renderDropdownItems(idx, profiles) {
+    const list = document.getElementById(`dropdown-list-${idx}`);
+    if (profiles.length === 0) {
+        list.innerHTML = '<div class="p-2 small text-muted">該当なし</div>';
+        return;
+    }
+    list.innerHTML = profiles.map(p => `
+        <div class="dropdown-item-flex" onclick="selectPlayer(${idx}, '${p.discord_account}')">
+            <img src="${p.avatar_url}" class="dropdown-avatar" onerror="this.src='https://via.placeholder.com/24'">
+            <span class="small">${p.discord_account}</span>
+        </div>
+    `).join('');
+}
+
+function selectPlayer(idx, name) {
+    const input = document.querySelector(`#player-row-${idx} .player-account`);
+    input.value = name;
+    document.getElementById(`dropdown-list-${idx}`).style.display = 'none';
+}
+
 
 // 送信処理
 async function submitScores() {
