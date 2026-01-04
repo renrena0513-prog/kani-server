@@ -68,21 +68,28 @@
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
         }
 
-        .test-badge {
-            background: linear-gradient(135deg, #ff6b6b, #ee5a5a);
-            color: white;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-        }
-
         .admin-section {
             background: #f8f9fa;
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 15px;
             border-left: 4px solid var(--gold);
+        }
+
+        .access-denied {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .access-denied-icon {
+            font-size: 5rem;
+            margin-bottom: 20px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--cream);
         }
     </style>
 </head>
@@ -99,11 +106,38 @@
         <!-- ヘッダー -->
         <header class="text-center mb-5">
             <h1 class="page-header display-4 fw-bold mb-3">⚙️ 管理画面</h1>
-            <span class="test-badge">テストページ</span>
         </header>
 
-        <!-- コンテンツ -->
-        <div class="row justify-content-center">
+        <!-- ローディング -->
+        <div id="loading" class="loading">
+            <div class="spinner-border text-light" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3">認証を確認中...</p>
+        </div>
+
+        <!-- アクセス拒否 -->
+        <div id="access-denied" class="content-card access-denied" style="display: none;">
+            <div class="access-denied-icon">🚫</div>
+            <h2 style="font-family: var(--font-title); color: var(--deep-gray);">アクセス権限がありません</h2>
+            <p class="text-muted mt-3">このページは管理者のみアクセス可能です。</p>
+            <a href="../home/index.html" class="btn btn-primary mt-3">ホームに戻る</a>
+        </div>
+
+        <!-- 未ログイン -->
+        <div id="login-prompt" class="content-card access-denied" style="display: none;">
+            <div class="access-denied-icon">🔐</div>
+            <h2 style="font-family: var(--font-title); color: var(--deep-gray);">ログインが必要です</h2>
+            <p class="text-muted mt-3">管理画面にアクセスするにはログインしてください。</p>
+            <button onclick="loginWithDiscord()" class="btn btn-primary mt-3">
+                <img src="https://assets-global.website-files.com/6257adef93867e50d84d30e2/636e0a69f118df70ad7828d4_icon_clyde_blurple_RGB.svg"
+                    alt="Discord" style="width: 20px; margin-right: 8px;">
+                Discordでログイン
+            </button>
+        </div>
+
+        <!-- 管理コンテンツ -->
+        <div id="admin-content" class="row justify-content-center" style="display: none;">
             <div class="col-12 col-lg-8">
                 <div class="content-card">
                     <h2 class="mb-4 text-center" style="font-family: var(--font-title); color: var(--deep-gray);">
@@ -135,6 +169,46 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Supabase設定 -->
+    <script src="../js/supabase-config.js"></script>
+
+    <script>
+        // admin/index.html 内の ADMIN_DISCORD_IDS 定義は削除 (supabase-config.js を使用)
+
+
+        // 管理者チェック
+        async function checkAdminAccess() {
+            const loading = document.getElementById('loading');
+            const accessDenied = document.getElementById('access-denied');
+            const loginPrompt = document.getElementById('login-prompt');
+            const adminContent = document.getElementById('admin-content');
+
+            const user = await getCurrentUser();
+
+            if (!user) {
+                // 未ログイン
+                loading.style.display = 'none';
+                loginPrompt.style.display = 'block';
+                return;
+            }
+
+            const discordId = user.user_metadata.provider_id;
+            console.log('Discord ID:', discordId); // デバッグ用
+
+            // 管理者リストが空の場合は全員アクセス可能（初期設定用）
+            if (ADMIN_DISCORD_IDS.length === 0 || ADMIN_DISCORD_IDS.includes(discordId)) {
+                loading.style.display = 'none';
+                adminContent.style.display = 'flex';
+            } else {
+                loading.style.display = 'none';
+                accessDenied.style.display = 'block';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', checkAdminAccess);
+    </script>
 </body>
 
 </html>

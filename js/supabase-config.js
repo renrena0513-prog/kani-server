@@ -2,6 +2,11 @@
 const SUPABASE_URL = 'https://hbkacwpvnyqzsdzqphmy.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_938ml0_pzLebwIZ2eZckTw_bzu1eu4A';
 
+// ===== 管理者設定 =====
+const ADMIN_DISCORD_IDS = [
+    '666909228300107797' // nameless
+];
+
 // Supabase クライアント初期化
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -42,9 +47,22 @@ async function displayUserInfo() {
     const loginButton = document.getElementById('login-button');
     const logoutButton = document.getElementById('logout-button');
 
+    const adminButton = document.querySelector('.admin-button');
+
     if (user) {
         // ログイン済み
         const discordUser = user.user_metadata;
+        const discordId = discordUser.provider_id;
+
+        // 管理者ボタンの表示制御
+        if (adminButton) {
+            if (ADMIN_DISCORD_IDS.includes(discordId)) {
+                adminButton.style.display = 'block';
+            } else {
+                adminButton.style.display = 'none';
+            }
+        }
+
         if (userInfoElement) {
             // Supabaseが提供するavatar_urlを直接使用
             const avatarUrl = discordUser.avatar_url || discordUser.picture || '';
@@ -69,6 +87,7 @@ async function displayUserInfo() {
         if (mypageLink) mypageLink.style.display = 'none';
     } else {
         // 未ログイン
+        if (adminButton) adminButton.style.display = 'none';
         if (userInfoElement) userInfoElement.style.display = 'none';
         if (loginButton) loginButton.style.display = 'inline-block';
         if (logoutButton) logoutButton.style.display = 'none';
