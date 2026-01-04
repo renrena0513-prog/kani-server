@@ -64,11 +64,19 @@ async function displayUserInfo() {
         }
 
         if (userInfoElement) {
+            // パスの調整：ルート(index.html)から呼ぶ場合は mypage/...、サブフォルダ(admin/等)からの場合は ../mypage/...
+            const isRoot = !window.location.pathname.includes('/admin/') &&
+                !window.location.pathname.includes('/mahjong/') &&
+                !window.location.pathname.includes('/poker/') &&
+                !window.location.pathname.includes('/mypage/');
+            const mypagePath = isRoot ? 'mypage/index.html' : '../mypage/index.html';
+
             // Supabaseが提供するavatar_urlを直接使用
             const avatarUrl = discordUser.avatar_url || discordUser.picture || '';
             // アイコンとユーザー名をマイページリンクにする
             userInfoElement.innerHTML = `
-                <a href="../mypage/index.html" style="display: flex; align-items: center; text-decoration: none; color: inherit;">
+                <a href="${mypagePath}" style="display: flex; align-items: center; text-decoration: none; color: inherit;">
+
                     <img src="${avatarUrl}" 
                          alt="アバター" 
                          style="width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; cursor: pointer;"
