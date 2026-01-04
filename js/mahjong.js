@@ -100,9 +100,10 @@ function renderRanking(records, groupKey) {
         if (groupKey === 'discord_account') {
             const profile = allProfiles.find(p => p.discord_account === s.name);
             if (profile && profile.nickname) {
-                displayName = `${profile.nickname} <small class="text-muted" style="font-size:0.7em;">(${s.name})</small>`;
+                displayName = profile.nickname;
             }
         }
+
 
         return `
             <tr>
@@ -199,7 +200,7 @@ function renderDropdownItems(idx, profiles) {
         return;
     }
     list.innerHTML = profiles.map(p => {
-        const display = p.nickname ? `${p.nickname} <span class="text-muted" style="font-size:0.8em;">(${p.discord_account})</span>` : p.discord_account;
+        const display = p.nickname || p.discord_account;
         return `
             <div class="dropdown-item-flex" onclick="selectPlayer(${idx}, '${p.discord_account}')">
                 <img src="${p.avatar_url}" class="dropdown-avatar" onerror="this.src='https://via.placeholder.com/24'">
@@ -207,6 +208,7 @@ function renderDropdownItems(idx, profiles) {
             </div>
         `;
     }).join('');
+
 }
 
 
