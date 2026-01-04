@@ -107,6 +107,36 @@
             margin-bottom: 20px;
         }
 
+        th.sortable {
+            cursor: pointer;
+            position: relative;
+            user-select: none;
+            transition: background 0.2s;
+        }
+
+        th.sortable:hover {
+            background-color: #f0f0f0 !important;
+        }
+
+        th.sortable::after {
+            content: '↕';
+            position: absolute;
+            right: 8px;
+            color: #ccc;
+            font-size: 0.8em;
+        }
+
+        th.sortable.asc::after {
+            content: '↑';
+            color: var(--gold);
+        }
+
+        th.sortable.desc::after {
+            content: '↓';
+            color: var(--gold);
+        }
+
+
         .loading-overlay {
             position: fixed;
             top: 0;
@@ -195,15 +225,21 @@
                             <table class="table table-hover align-middle">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>日時</th>
-                                        <th>Discordアカウント</th>
-                                        <th>大会/モード</th>
-                                        <th>スコア</th>
-                                        <th>局数</th>
-                                        <th>放銃/和了</th>
+                                        <th onclick="sortRecords('event_datetime')" class="sortable"
+                                            id="th-event_datetime">日時</th>
+                                        <th onclick="sortRecords('discord_account')" class="sortable"
+                                            id="th-discord_account">Discordアカウント</th>
+                                        <th onclick="sortRecords('tournament_type')" class="sortable"
+                                            id="th-tournament_type">大会/モード</th>
+                                        <th onclick="sortRecords('score')" class="sortable" id="th-score">スコア</th>
+                                        <th onclick="sortRecords('hand_count')" class="sortable" id="th-hand_count">局数
+                                        </th>
+                                        <th onclick="sortRecords('deal_in_count')" class="sortable"
+                                            id="th-deal_in_count">放銃/和了</th>
                                         <th>操作</th>
                                     </tr>
                                 </thead>
+
                                 <tbody id="records-list-body">
                                     <tr>
                                         <td colspan="7" class="text-center text-muted py-4">読み込み中...</td>

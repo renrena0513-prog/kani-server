@@ -20,17 +20,22 @@ function toggleLoading(show) {
     }
 }
 
+let currentRecords = [];
+let sortConfig = { key: 'event_datetime', direction: 'desc' };
+
 // 記録一覧の取得
 async function fetchRecords() {
     try {
         const { data: records, error } = await supabaseClient
             .from('tournament_records')
-            .select('*')
-            .order('event_datetime', { ascending: false });
+            .select('*');
 
         if (error) throw error;
 
-        displayRecords(records);
+        currentRecords = records;
+        // 初期ソート（日時降順）
+        applySort();
+        displayRecords(currentRecords);
     } catch (err) {
         console.error('記録取得エラー:', err.message);
         if (err.message.includes('relation "tournament_records" does not exist')) {
@@ -38,6 +43,48 @@ async function fetchRecords() {
             if (listBody) listBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">テーブル "tournament_records" が見つかりません。Supabaseでテーブルを作成してください。</td></tr>';
         }
     }
+}
+
+// ソート関数
+function sortRecords(key) {
+    if (sortConfig.key === key) {
+        sortConfig.direction = (sortConfig.direction === 'asc' ? 'desc' : 'asc');
+    } else {
+        sortConfig.key = key;
+        sortConfig.direction = 'desc'; // デフォルトは降順（新しい順、スコア高い順など）
+    }
+
+    // UIのクラス更新
+    document.querySelectorAll('th.sortable').forEach(th => {
+        th.classList.remove('asc', 'desc');
+    });
+    const th = document.getElementById(`th-${key}`);
+    if (th) th.classList.add(sortConfig.direction);
+
+    applySort();
+    displayRecords(currentRecords);
+}
+
+// データの並び替え適用
+function applySort() {
+    const { key, direction } = sortConfig;
+    currentRecords.sort((a, b) => {
+        let valA = a[key];
+        let valB = b[key];
+
+        // NULL値の処理
+        if (valA === null || valA === undefined) return 1;
+        if (valB === null || valB === undefined) return -1;
+
+        if (typeof valA === 'string') {
+            valA = valA.toLowerCase();
+            valB = valB.toLowerCase();
+        }
+
+        if (valA < valB) return direction === 'asc' ? -1 : 1;
+        if (valA > valB) return direction === 'asc' ? 1 : -1;
+        return 0;
+    });
 }
 
 // 記録の表示
@@ -175,10 +222,7 @@ async function deleteRecord(id) {
 // CSVエクスポート
 async function exportToCSV() {
     try {
-        const { data: records, error } = await supabaseClient.from('tournament_records').select('*');
-        if (error) throw error;
-
-        if (records.length === 0) {
+        if (currentRecords.length === 0) {
             alert('データがありません');
             return;
         }
@@ -190,13 +234,15 @@ async function exportToCSV() {
         ];
         const csvRows = [headers.join(',')];
 
-        records.forEach(row => {
+        // 現在表示されている順序 (currentRecords) で出力
+        currentRecords.forEach(row => {
             const values = headers.map(header => {
                 const val = row[header] || '';
                 return `"${String(val).replace(/"/g, '""')}"`;
             });
             csvRows.push(values.join(','));
         });
+
 
         const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
