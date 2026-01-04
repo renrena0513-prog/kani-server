@@ -23,7 +23,14 @@ function toggleLoading(show) {
 let allRecords = []; // 取得した全データ
 let filteredRecords = []; // フィルター適用後のデータ
 let sortConfig = { key: 'event_datetime', direction: 'desc' };
-let searchQuery = '';
+
+// 現在のフィルター選択状態
+let filterState = {
+    accounts: [],
+    tournaments: [],
+    modes: []
+};
+
 
 
 // 記録一覧の取得
@@ -36,6 +43,7 @@ async function fetchRecords() {
         if (error) throw error;
 
         allRecords = records;
+        updateFilterOptions(); // フィルターの選択肢を更新
         applyFiltersAndSort();
     } catch (err) {
         console.error('記録取得エラー:', err.message);
@@ -47,11 +55,70 @@ async function fetchRecords() {
 }
 
 
-// 検索入力時の処理
-function handleSearch(event) {
-    searchQuery = event.target.value.toLowerCase();
+
+// フィルターパネルの開閉
+function toggleFilterPanel() {
+    const panel = document.getElementById('filter-panel');
+    if (panel) {
+        const isVisible = panel.style.display === 'block';
+        panel.style.display = isVisible ? 'none' : 'block';
+    }
+}
+
+// フィルター選択肢の動的生成
+function updateFilterOptions() {
+    const accountSet = new Set();
+    const tournamentSet = new Set();
+    const modeSet = new Set();
+
+    allRecords.forEach(r => {
+        if (r.discord_account) accountSet.add(r.discord_account);
+        if (r.tournament_type) tournamentSet.add(r.tournament_type);
+        if (r.mahjong_mode) modeSet.add(r.mahjong_mode);
+        if (r.match_mode) modeSet.add(r.match_mode);
+    });
+
+    renderCheckboxes('filter-accounts', Array.from(accountSet), 'accounts');
+    renderCheckboxes('filter-tournaments', Array.from(tournamentSet), 'tournaments');
+    renderCheckboxes('filter-modes', Array.from(modeSet), 'modes');
+}
+
+function renderCheckboxes(containerId, options, category) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    if (options.length === 0) {
+        container.innerHTML = '<span class="text-muted small">データなし</span>';
+        return;
+    }
+
+    container.innerHTML = options.map(opt => `
+        <div class="form-check p-0">
+            <input type="checkbox" id="chk-${category}-${opt}" class="btn-check" 
+                   value="${opt}" onchange="handleFilterChange('${category}', this)">
+            <label class="filter-checkbox-label" for="chk-${category}-${opt}">${opt}</label>
+        </div>
+    `).join('');
+}
+
+// フィルター変更時の処理
+function handleFilterChange(category, checkbox) {
+    const val = checkbox.value;
+    if (checkbox.checked) {
+        filterState[category].push(val);
+    } else {
+        filterState[category] = filterState[category].filter(v => v !== val);
+    }
     applyFiltersAndSort();
 }
+
+// フィルターのリセット
+function clearFilters() {
+    filterState = { accounts: [], tournaments: [], modes: [] };
+    document.querySelectorAll('#filter-panel input[type="checkbox"]').forEach(chk => chk.checked = false);
+    applyFiltersAndSort();
+}
+
 
 // ソート関数
 function sortRecords(key) {
@@ -74,15 +141,15 @@ function sortRecords(key) {
 
 // フィルターとソートを統合して適用
 function applyFiltersAndSort() {
-    // 1. フィルタリング
+    // 1. フィルタリング (マルチセレクト)
     filteredRecords = allRecords.filter(record => {
-        const targetString = `
-            ${record.discord_account} 
-            ${record.tournament_type || ''} 
-            ${record.mahjong_mode || ''} 
-            ${record.match_mode || ''}
-        `.toLowerCase();
-        return targetString.includes(searchQuery);
+        const matchAccount = filterState.accounts.length === 0 || filterState.accounts.includes(record.discord_account);
+        const matchTournament = filterState.tournaments.length === 0 || filterState.tournaments.includes(record.tournament_type);
+        const matchMode = filterState.modes.length === 0 ||
+            filterState.modes.includes(record.mahjong_mode) ||
+            filterState.modes.includes(record.match_mode);
+
+        return matchAccount && matchTournament && matchMode;
     });
 
     // 2. ソート
@@ -106,6 +173,7 @@ function applyFiltersAndSort() {
 
     displayRecords(filteredRecords);
 }
+
 
 
 // 記録の表示
