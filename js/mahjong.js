@@ -140,8 +140,17 @@ function setupPlayerInputs(count) {
                     <div class="col-md-3">
                         <label class="small text-muted">アカウント名</label>
                         <div class="custom-dropdown-container">
+                            <!-- 入力用 -->
                             <input type="text" class="form-control form-control-sm player-account" 
                                    placeholder="選択または入力" onfocus="showDropdown(${i})" oninput="filterDropdown(${i})">
+                            
+                            <!-- 選択済み表示用 -->
+                            <div class="selected-player-badge" id="selected-badge-${i}" style="display: none;">
+                                <img src="" class="badge-avatar">
+                                <span class="name"></span>
+                                <span class="btn-clear" onclick="clearPlayer(${i})">×</span>
+                            </div>
+
                             <div class="custom-dropdown-list" id="dropdown-list-${i}">
                                 <!-- JSで動的に生成 -->
                             </div>
@@ -212,10 +221,32 @@ function renderDropdownItems(idx, profiles) {
 }
 
 
-function selectPlayer(idx, name) {
+function selectPlayer(idx, account) {
+    const profile = allProfiles.find(p => p.discord_account === account);
     const input = document.querySelector(`#player-row-${idx} .player-account`);
-    input.value = name;
-    document.getElementById(`dropdown-list-${idx}`).style.display = 'none';
+    const badge = document.getElementById(`selected-badge-${idx}`);
+
+    // 値を保持（送信時に使用。入力欄は非表示にする）
+    input.value = account;
+    input.style.display = 'none';
+
+    // バッジの表示
+    badge.querySelector('img').src = (profile && profile.avatar_url) ? profile.avatar_url : 'https://via.placeholder.com/24';
+    badge.querySelector('.name').textContent = (profile && profile.nickname) ? profile.nickname : account;
+    badge.style.display = 'flex';
+
+    const list = document.getElementById(`dropdown-list-${idx}`);
+    if (list) list.style.display = 'none';
+}
+
+function clearPlayer(idx) {
+    const input = document.querySelector(`#player-row-${idx} .player-account`);
+    const badge = document.getElementById(`selected-badge-${idx}`);
+
+    input.value = '';
+    input.style.display = 'block';
+    badge.style.display = 'none';
+    input.focus();
 }
 
 
