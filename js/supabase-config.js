@@ -48,21 +48,24 @@ async function displayUserInfo() {
         if (userInfoElement) {
             // Supabaseが提供するavatar_urlを直接使用
             const avatarUrl = discordUser.avatar_url || discordUser.picture || '';
+            // アイコンとユーザー名をマイページリンクにする
             userInfoElement.innerHTML = `
-                <img src="${avatarUrl}" 
-                     alt="アバター" 
-                     style="width: 40px; height: 40px; border-radius: 50%; margin-right: 10px;"
-                     onerror="this.style.display='none'">
-                <span>${discordUser.full_name || discordUser.name || 'ユーザー'}</span>
+                <a href="../mypage/index.html" style="display: flex; align-items: center; text-decoration: none; color: inherit;">
+                    <img src="${avatarUrl}" 
+                         alt="アバター" 
+                         style="width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; cursor: pointer;"
+                         onerror="this.style.display='none'">
+                    <span>${discordUser.full_name || discordUser.name || 'ユーザー'}</span>
+                </a>
             `;
             userInfoElement.style.display = 'flex';
         }
         if (loginButton) loginButton.style.display = 'none';
         if (logoutButton) logoutButton.style.display = 'inline-block';
 
-        // マイページリンク表示
+        // マイページボタンは非表示（アイコンで代替）
         const mypageLink = document.getElementById('mypage-link');
-        if (mypageLink) mypageLink.style.display = 'inline-flex';
+        if (mypageLink) mypageLink.style.display = 'none';
     } else {
         // 未ログイン
         if (userInfoElement) userInfoElement.style.display = 'none';

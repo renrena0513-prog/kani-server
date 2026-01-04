@@ -200,15 +200,16 @@ body::before {
     background: linear-gradient(135deg, var(--cream) 0%, #f5efe0 100%);
     box-shadow: 0 8px 25px var(--shadow), 0 4px 10px rgba(0, 0, 0, 0.15);
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    height: 280px;
+    /* 高さを自動にして画像のアスペクト比を保持 */
 }
 
 .event-card-frame img {
     width: 100%;
-    height: 100%;
+    height: auto;
     display: block;
     border-radius: 10px;
-    object-fit: cover;
+    /* contain に変更して見切れを防止 */
+    object-fit: contain;
     object-position: center;
     transition: transform 0.4s ease, filter 0.3s ease;
 }
@@ -222,18 +223,6 @@ body::before {
 .event-card-frame:hover img {
     transform: scale(1.05);
     filter: brightness(1.05) saturate(1.1);
-}
-
-@media (min-width: 768px) {
-    .event-card-frame {
-        height: 320px;
-    }
-}
-
-@media (min-width: 992px) {
-    .event-card-frame {
-        height: 380px;
-    }
 }
 
 /* ========================================
@@ -288,6 +277,33 @@ body::before {
     display: flex;
     align-items: center;
     gap: 10px;
+}
+
+/* モバイル用認証UI */
+@media (max-width: 576px) {
+    .auth-container {
+        top: 10px;
+        right: 10px;
+        gap: 5px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        max-width: 200px;
+    }
+
+    .auth-button {
+        padding: 6px 10px;
+        font-size: 0.75rem;
+    }
+
+    #user-info {
+        padding: 5px 10px;
+        font-size: 0.75rem;
+    }
+
+    #user-info img {
+        width: 28px !important;
+        height: 28px !important;
+    }
 }
 
 .auth-button {
