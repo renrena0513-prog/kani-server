@@ -61,7 +61,8 @@ async function displayUserInfo() {
             userInfoElement.style.display = 'flex';
         }
         if (loginButton) loginButton.style.display = 'none';
-        if (logoutButton) logoutButton.style.display = 'inline-block';
+        // ホームではログアウトボタンを非表示
+        if (logoutButton) logoutButton.style.display = 'none';
 
         // マイページボタンは非表示（アイコンで代替）
         const mypageLink = document.getElementById('mypage-link');
