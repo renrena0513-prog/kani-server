@@ -222,8 +222,8 @@ async function deleteRecord(id) {
 // CSVエクスポート
 async function exportToCSV() {
     try {
-        if (currentRecords.length === 0) {
-            alert('データがありません');
+        if (filteredRecords.length === 0) {
+            alert('データがありません（またはフィルターで全データが除外されています）');
             return;
         }
 
@@ -234,14 +234,15 @@ async function exportToCSV() {
         ];
         const csvRows = [headers.join(',')];
 
-        // 現在表示されている順序 (currentRecords) で出力
-        currentRecords.forEach(row => {
+        // 現在表示されている順序・内容 (filteredRecords) で出力
+        filteredRecords.forEach(row => {
             const values = headers.map(header => {
                 const val = row[header] || '';
                 return `"${String(val).replace(/"/g, '""')}"`;
             });
             csvRows.push(values.join(','));
         });
+
 
 
         const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });

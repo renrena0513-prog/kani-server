@@ -217,11 +217,17 @@
 
                     <!-- 大会記録一覧 -->
                     <div class="admin-section">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
                             <h5 class="mb-0">📋 最近の記録</h5>
-                            <button onclick="openRecordModal()" class="btn btn-primary btn-sm">記録を追加</button>
+                            <div class="d-flex gap-2 mt-2 mt-md-0">
+                                <input type="text" id="record-search" class="form-control form-control-sm"
+                                    placeholder="アカウントや大会名で検索..." oninput="handleSearch(event)"
+                                    style="max-width: 250px;">
+                                <button onclick="openRecordModal()" class="btn btn-primary btn-sm">記録を追加</button>
+                            </div>
                         </div>
                         <div class="table-responsive">
+
                             <table class="table table-hover align-middle">
                                 <thead class="table-light">
                                     <tr>
