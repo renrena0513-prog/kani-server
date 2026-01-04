@@ -319,20 +319,22 @@ body::before {
     font-size: 0.9rem;
     padding: 10px 20px;
     border-radius: 10px;
-    border: none;
-    background: rgba(88, 101, 242, 0.9);
-    color: white;
+    border: 2px solid var(--gold);
+    background: rgba(255, 255, 255, 0.95);
+    color: #333;
     cursor: pointer;
     display: flex;
     align-items: center;
     transition: all 0.3s ease;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    font-weight: 500;
 }
 
 .auth-button:hover {
-    background: rgba(88, 101, 242, 1);
+    background: white;
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    border-color: var(--bright-gold);
 }
 
 .auth-button.logout {
