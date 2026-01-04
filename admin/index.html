@@ -168,10 +168,10 @@
 
         <!-- 管理コンテンツ -->
         <div id="admin-content" class="row justify-content-center" style="display: none;">
-            <div class="col-12 col-lg-10">
+            <div class="col-12 col-lg-12">
                 <div class="content-card">
                     <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h2 class="mb-0" style="font-family: var(--font-title); color: var(--deep-gray);">管理メニュー</h2>
+                        <h2 class="mb-0" style="font-family: var(--font-title); color: var(--deep-gray);">🏆 大会記録管理</h2>
                         <div class="csv-actions">
                             <button onclick="document.getElementById('csv-import-input').click()"
                                 class="btn btn-outline-primary btn-sm">
@@ -185,32 +185,32 @@
                         </div>
                     </div>
 
-                    <!-- 麻雀大会管理 -->
+                    <!-- 大会記録一覧 -->
                     <div class="admin-section">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5 class="mb-0">🀄 麻雀大会管理</h5>
-                            <button onclick="openEventModal('mahjong')" class="btn btn-primary btn-sm">新規追加</button>
+                            <h5 class="mb-0">📋 最近の記録</h5>
+                            <button onclick="openRecordModal()" class="btn btn-primary btn-sm">記録を追加</button>
                         </div>
-                        <div id="mahjong-events-list">
-                            <p class="text-muted text-center py-3">読み込み中...</p>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>日時</th>
+                                        <th>Discordアカウント</th>
+                                        <th>大会/モード</th>
+                                        <th>スコア</th>
+                                        <th>局数</th>
+                                        <th>放銃/和了</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="records-list-body">
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted py-4">読み込み中...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
-
-                    <!-- ポーカー大会管理 -->
-                    <div class="admin-section">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5 class="mb-0">🃏 ポーカー大会管理</h5>
-                            <button onclick="openEventModal('poker')" class="btn btn-primary btn-sm">新規追加</button>
-                        </div>
-                        <div id="poker-events-list">
-                            <p class="text-muted text-center py-3">読み込み中...</p>
-                        </div>
-                    </div>
-
-                    <!-- ユーザー管理（今後の拡張用） -->
-                    <div class="admin-section opacity-50">
-                        <h5>👥 ユーザー管理</h5>
-                        <p class="text-muted mb-0">近日実装予定</p>
                     </div>
 
                     <div class="text-center mt-4 p-3 rounded" style="background: #f8f9fa;">
@@ -221,45 +221,93 @@
         </div>
     </div>
 
-    <!-- イベント編集モーダル -->
-    <div class="modal fade" id="eventModal" tabindex="-1" aria-labelledby="eventModalLabel" aria-hidden="true">
+    <!-- 記録編集モーダル -->
+    <div class="modal fade" id="recordModal" tabindex="-1" aria-labelledby="recordModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="eventModalLabel">イベント編集</h5>
+                    <h5 class="modal-title" id="recordModalLabel">大会記録編集</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="event-form">
-                        <input type="hidden" id="event-id">
-                        <input type="hidden" id="event-type">
-                        <div class="mb-3">
-                            <label for="event-title" class="form-label">タイトル</label>
-                            <input type="text" class="form-control" id="event-title" required>
-                        </div>
+                    <form id="record-form">
+                        <input type="hidden" id="record-id">
+
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="event-date" class="form-label">開催日時</label>
-                                <input type="datetime-local" class="form-control" id="event-date" required>
+                                <label for="event_datetime" class="form-label">日時</label>
+                                <input type="datetime-local" class="form-control" id="event_datetime" required>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="event-image-url" class="form-label">画像URL</label>
-                                <input type="url" class="form-control" id="event-image-url" placeholder="https://...">
+                                <label for="discord_account" class="form-label">Discordアカウント</label>
+                                <input type="text" class="form-control" id="discord_account" placeholder="milkru#1234"
+                                    required>
                             </div>
                         </div>
-                        <div class="mb-3">
-                            <label for="event-description" class="form-label">詳細説明</label>
-                            <textarea class="form-control" id="event-description" rows="4"></textarea>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="tournament_type" class="form-label">大会名 (第一回など)</label>
+                                <input type="text" class="form-control" id="tournament_type">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="mahjong_mode" class="form-label">麻雀/モード (四麻/三麻)</label>
+                                <input type="text" class="form-control" id="mahjong_mode">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="match_mode" class="form-label">試合方式 (チーム/個人)</label>
+                                <input type="text" class="form-control" id="match_mode">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <label for="score" class="form-label">スコア</label>
+                                <input type="number" step="0.1" class="form-control" id="score">
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="hand_count" class="form-label">局数</label>
+                                <input type="number" class="form-control" id="hand_count">
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="deal_in_count" class="form-label">放銃数</label>
+                                <input type="number" class="form-control" id="deal_in_count">
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="win_count" class="form-label">和了数</label>
+                                <input type="number" class="form-control" id="win_count">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col mb-3">
+                                <label class="form-label text-muted small">自由項目 (オプション)</label>
+                                <div class="input-group mb-2">
+                                    <span class="input-group-text">opt1</span>
+                                    <input type="text" class="form-control" id="opt1">
+                                    <span class="input-group-text">opt2</span>
+                                    <input type="text" class="form-control" id="opt2">
+                                </div>
+                                <div class="input-group">
+                                    <span class="input-group-text">opt3</span>
+                                    <input type="text" class="form-control" id="opt3">
+                                    <span class="input-group-text">opt4</span>
+                                    <input type="text" class="form-control" id="opt4">
+                                    <span class="input-group-text">opt5</span>
+                                    <input type="text" class="form-control" id="opt5">
+                                </div>
+                            </div>
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
-                    <button type="button" class="btn btn-primary" onclick="saveEventFromForm()">保存する</button>
+                    <button type="button" class="btn btn-primary" onclick="saveRecordFromForm()">保存する</button>
                 </div>
             </div>
         </div>
     </div>
+
 
     <!-- ローディングオーバーレイ -->
     <div id="loading-overlay" class="loading-overlay">
