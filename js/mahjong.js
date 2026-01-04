@@ -94,22 +94,34 @@ function renderRanking(records, groupKey) {
     const sorted = Object.values(summary).sort((a, b) => b.score - a.score);
 
     const body = document.getElementById('ranking-body');
-    body.innerHTML = sorted.map((s, idx) => `
-        <tr>
-            <td>${idx + 1}</td>
-            <td class="text-start ps-4">${s.name}</td>
-            <td class="fw-bold ${s.score > 0 ? 'text-success' : (s.score < 0 ? 'text-danger' : '')}">
-                ${(s.score > 0 ? '+' : '') + s.score.toFixed(1)}
-            </td>
-            <td>${s.count}</td>
-            <td><small class="text-success">${s.win}和</small> / <small class="text-danger">${s.deal}放</small></td>
-        </tr>
-    `).join('');
+    body.innerHTML = sorted.map((s, idx) => {
+        // ニックネーム解決
+        let displayName = s.name;
+        if (groupKey === 'discord_account') {
+            const profile = allProfiles.find(p => p.discord_account === s.name);
+            if (profile && profile.nickname) {
+                displayName = `${profile.nickname} <small class="text-muted" style="font-size:0.7em;">(${s.name})</small>`;
+            }
+        }
+
+        return `
+            <tr>
+                <td>${idx + 1}</td>
+                <td class="text-start ps-4">${displayName}</td>
+                <td class="fw-bold ${s.score > 0 ? 'text-success' : (s.score < 0 ? 'text-danger' : '')}">
+                    ${(s.score > 0 ? '+' : '') + s.score.toFixed(1)}
+                </td>
+                <td>${s.count}</td>
+                <td><small class="text-success">${s.win}和</small> / <small class="text-danger">${s.deal}放</small></td>
+            </tr>
+        `;
+    }).join('');
 
     if (sorted.length === 0) {
         body.innerHTML = '<tr><td colspan="5" class="text-muted py-4">該当するデータがありません</td></tr>';
     }
 }
+
 
 // フォーム生成
 function setupPlayerInputs(count) {
@@ -173,7 +185,10 @@ function showDropdown(idx) {
 function filterDropdown(idx) {
     const input = document.querySelector(`#player-row-${idx} .player-account`);
     const val = input.value.toLowerCase();
-    const filtered = allProfiles.filter(p => p.discord_account.toLowerCase().includes(val));
+    const filtered = allProfiles.filter(p =>
+        p.discord_account.toLowerCase().includes(val) ||
+        (p.nickname && p.nickname.toLowerCase().includes(val))
+    );
     renderDropdownItems(idx, filtered);
 }
 
@@ -183,13 +198,17 @@ function renderDropdownItems(idx, profiles) {
         list.innerHTML = '<div class="p-2 small text-muted">該当なし</div>';
         return;
     }
-    list.innerHTML = profiles.map(p => `
-        <div class="dropdown-item-flex" onclick="selectPlayer(${idx}, '${p.discord_account}')">
-            <img src="${p.avatar_url}" class="dropdown-avatar" onerror="this.src='https://via.placeholder.com/24'">
-            <span class="small">${p.discord_account}</span>
-        </div>
-    `).join('');
+    list.innerHTML = profiles.map(p => {
+        const display = p.nickname ? `${p.nickname} <span class="text-muted" style="font-size:0.8em;">(${p.discord_account})</span>` : p.discord_account;
+        return `
+            <div class="dropdown-item-flex" onclick="selectPlayer(${idx}, '${p.discord_account}')">
+                <img src="${p.avatar_url}" class="dropdown-avatar" onerror="this.src='https://via.placeholder.com/24'">
+                <span class="small">${display}</span>
+            </div>
+        `;
+    }).join('');
 }
+
 
 function selectPlayer(idx, name) {
     const input = document.querySelector(`#player-row-${idx} .player-account`);

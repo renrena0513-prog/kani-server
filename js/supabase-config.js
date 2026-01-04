@@ -58,12 +58,22 @@ async function displayUserInfo() {
         const syncProfile = async () => {
             const avatarUrl = discordUser.avatar_url || discordUser.picture || '';
             const fullName = discordUser.full_name || discordUser.name || 'ユーザー';
+
+            // 既存のプロフィールを確認
+            const { data: existing } = await supabaseClient
+                .from('profiles')
+                .select('nickname')
+                .eq('discord_account', fullName)
+                .single();
+
+            // ニックネームが未設定の場合のみ初期値を入れる（upsertで上書きされないように制御）
             await supabaseClient.from('profiles').upsert({
                 discord_account: fullName,
                 avatar_url: avatarUrl,
                 updated_at: new Date().toISOString()
             });
         };
+
 
         syncProfile();
 

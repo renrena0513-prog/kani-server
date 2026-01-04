@@ -23,9 +23,21 @@
             --deep-purple: #4a3f6b;
             --cream: #faf5e8;
             --gold: #d4a853;
+            --btn-gold: #c29544;
             --font-title: 'Noto Serif JP', serif;
             --font-body: 'M PLUS Rounded 1c', sans-serif;
         }
+
+        .btn-gold {
+            background-color: var(--gold);
+            border: none;
+        }
+
+        .btn-gold:hover {
+            background-color: var(--btn-gold);
+            color: white;
+        }
+
 
         body {
             font-family: var(--font-body);
@@ -200,7 +212,17 @@
                                         alt="Discord" style="width: 16px;">
                                     Discord連携済み
                                 </span>
+                                <div class="mt-3">
+                                    <label class="small text-muted mb-1">ニックネーム (ランキング等で表示)</label>
+                                    <div class="input-group">
+                                        <input type="text" id="user-nickname" class="form-control" placeholder="未設定">
+                                        <button onclick="saveNickname()"
+                                            class="btn btn-gold text-white fw-bold">保存</button>
+                                    </div>
+                                    <div id="save-msg" class="small mt-1" style="display:none;"></div>
+                                </div>
                             </div>
+
                             <div class="col-auto">
                                 <button onclick="logout()" class="logout-btn">ログアウト</button>
                             </div>
@@ -280,14 +302,53 @@
                 document.getElementById('user-name').textContent =
                     discordUser.full_name || discordUser.name || 'ユーザー';
 
+                // ニックネーム取得
+                const { data: profile } = await supabaseClient
+                    .from('profiles')
+                    .select('nickname')
+                    .eq('discord_account', discordUser.full_name || discordUser.name)
+                    .single();
+                if (profile && profile.nickname) {
+                    document.getElementById('user-nickname').value = profile.nickname;
+                }
+
             } else {
+
                 // 未ログイン
                 loginPrompt.style.display = 'block';
                 profileContent.style.display = 'none';
             }
         }
 
+        async function saveNickname() {
+            const user = await getCurrentUser();
+            if (!user) return;
+
+            const nickname = document.getElementById('user-nickname').value;
+            const discordAccount = user.user_metadata.full_name || user.user_metadata.name;
+            const msg = document.getElementById('save-msg');
+
+            msg.style.display = 'block';
+            msg.textContent = '保存中...';
+            msg.className = 'small mt-1 text-muted';
+
+            const { error } = await supabaseClient
+                .from('profiles')
+                .update({ nickname: nickname, updated_at: new Date().toISOString() })
+                .eq('discord_account', discordAccount);
+
+            if (error) {
+                msg.textContent = 'エラー: ' + error.message;
+                msg.className = 'small mt-1 text-danger';
+            } else {
+                msg.textContent = '保存しました！';
+                msg.className = 'small mt-1 text-success';
+                setTimeout(() => { msg.style.display = 'none'; }, 2000);
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', displayMyPage);
+
     </script>
 </body>
 
