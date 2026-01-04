@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="かにサーバーイベント - 麻雀大会・ポーカー大会のポータルサイト">
+    <title>かにサーバーイベント | project by Nameless</title>
+
+    <!-- Google Fonts (和フォント) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;500;600;700&family=M+PLUS+Rounded+1c:wght@400;500;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Bootswatch Lux (Bootstrap 5.3.3) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
+
+    <!-- カスタムCSS -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <!-- パーティクル背景（バッジ画像） -->
+    <div class="particles" id="particles">
+        <img class="particle" src="../images/badges/badge_001.png" alt="">
+        <img class="particle" src="../images/badges/badge_002.png" alt="">
+        <img class="particle" src="../images/badges/badge_003.png" alt="">
+        <img class="particle" src="../images/badges/badge_004.png" alt="">
+        <img class="particle" src="../images/badges/badge_005.png" alt="">
+        <img class="particle" src="../images/badges/badge_006.png" alt="">
+        <img class="particle" src="../images/badges/badge_007.png" alt="">
+        <img class="particle" src="../images/badges/badge_008.png" alt="">
+        <img class="particle" src="../images/badges/badge_009.png" alt="">
+        <img class="particle" src="../images/badges/badge_010.png" alt="">
+        <img class="particle" src="../images/badges/badge_011.png" alt="">
+        <img class="particle" src="../images/badges/badge_012.png" alt="">
+        <img class="particle" src="../images/badges/badge_013.png" alt="">
+        <img class="particle" src="../images/badges/badge_014.png" alt="">
+        <img class="particle" src="../images/badges/badge_015.png" alt="">
+        <img class="particle" src="../images/badges/badge_016.png" alt="">
+        <img class="particle" src="../images/badges/badge_017.png" alt="">
+        <img class="particle" src="../images/badges/badge_018.png" alt="">
+        <img class="particle" src="../images/badges/badge_020.png" alt="">
+        <img class="particle" src="../images/badges/badge_021.png" alt="">
+        <img class="particle" src="../images/badges/badge_022.png" alt="">
+        <img class="particle" src="../images/badges/badge_023.png" alt="">
+        <img class="particle" src="../images/badges/badge_024.png" alt="">
+        <img class="particle" src="../images/badges/badge_025.png" alt="">
+        <img class="particle" src="../images/badges/badge_026.png" alt="">
+        <img class="particle" src="../images/badges/badge_027.png" alt="">
+        <img class="particle" src="../images/badges/badge_028.png" alt="">
+        <img class="particle" src="../images/badges/badge_029.png" alt="">
+        <img class="particle" src="../images/badges/badge_030.png" alt="">
+        <img class="particle" src="../images/badges/badge_031.png" alt="">
+        <img class="particle" src="../images/badges/badge_032.png" alt="">
+        <img class="particle" src="../images/badges/badge_033.png" alt="">
+        <!-- チームロゴ -->
+        <img class="particle" src="../images/poker_team_logos/team1.png" alt="">
+        <img class="particle" src="../images/poker_team_logos/team2.png" alt="">
+        <img class="particle" src="../images/poker_team_logos/team3.png" alt="">
+        <img class="particle" src="../images/poker_team_logos/team4.png" alt="">
+        <img class="particle" src="../images/poker_team_logos/team5.png" alt="">
+        <img class="particle" src="../images/poker_team_logos/team6.png" alt="">
+        <img class="particle" src="../images/poker_team_logos/team7.png" alt="">
+        <img class="particle" src="../images/poker_team_logos/team8.png" alt="">
+    </div>
+
+    <!-- メインコンテナ -->
+    <div class="container py-4 py-md-5">
+
+        <!-- ヘッダー -->
+        <header class="text-center mb-4 mb-md-5">
+            <div class="title-image-wrapper">
+                <img src="../images/start_screen/title_logo.png" alt="かにサーバーイベント - project by Nameless"
+                    class="title-image">
+            </div>
+        </header>
+
+        <!-- イベントカード -->
+        <div class="row g-4 mb-4">
+            <!-- 麻雀大会 -->
+            <div class="col-12 col-md-6">
+                <a href="../mahjong/index.html" class="event-card-frame">
+                    <img src="../images/start_screen/mahjong_button.png" alt="麻雀大会">
+                </a>
+            </div>
+            <!-- ポーカー大会 -->
+            <div class="col-12 col-md-6">
+                <a href="../poker/index.html" class="event-card-frame">
+                    <img src="../images/start_screen/poker_button.png" alt="ポーカー大会">
+                </a>
+            </div>
+        </div>
+
+        <!-- 管理画面ボタン -->
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-8 col-lg-6">
+                <a href="../admin/index.html" class="btn btn-outline-light btn-lg w-100 admin-button">
+                    <span class="me-2">⚙️</span>
+                    <span>管理画面</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- フッター -->
+        <footer class="text-center mt-5 pt-4">
+            <div class="wave-pattern"></div>
+        </footer>
+    </div>
+
+    <!-- ユーザー認証UI（右上に固定） -->
+    <div class="auth-container">
+        <a id="mypage-link" href="../mypage/index.html" class="auth-button"
+            style="display: none; text-decoration: none;">
+            👤 マイページ
+        </a>
+        <div id="user-info" style="display: none; align-items: center;"></div>
+        <button id="login-button" onclick="loginWithDiscord()" class="auth-button">
+            <img src="https://assets-global.website-files.com/6257adef93867e50d84d30e2/636e0a69f118df70ad7828d4_icon_clyde_blurple_RGB.svg"
+                alt="Discord" style="width: 20px; margin-right: 8px;">
+            Discordでログイン
+        </button>
+        <button id="logout-button" onclick="logout()" class="auth-button logout" style="display: none;">
+            ログアウト
+        </button>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Supabase設定 -->
+    <script src="../js/supabase-config.js"></script>
+    <!-- パーティクルランダム化 -->
+    <script src="script.js"></script>
+</body>
+
+</html>

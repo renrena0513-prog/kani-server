@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="かにサーバー - マイページ">
+    <title>マイページ | かにサーバーイベント</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;500;600;700&family=M+PLUS+Rounded+1c:wght@400;500;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Bootswatch Lux (Bootstrap 5.3.3) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary-purple: #6b5b95;
+            --deep-purple: #4a3f6b;
+            --cream: #faf5e8;
+            --gold: #d4a853;
+            --font-title: 'Noto Serif JP', serif;
+            --font-body: 'M PLUS Rounded 1c', sans-serif;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: linear-gradient(180deg, #6b5b95 0%, #5a4d80 50%, #4a3f6b 100%);
+            min-height: 100vh;
+            background-attachment: fixed;
+        }
+
+        .page-header {
+            font-family: var(--font-title);
+            color: var(--cream);
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .back-button {
+            font-family: var(--font-body);
+            font-size: 1rem;
+            padding: 10px 25px;
+            border-radius: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(8px);
+            color: white;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: #fff;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .profile-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .avatar-large {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 4px solid var(--gold);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .discord-badge {
+            background: linear-gradient(135deg, #5865F2, #4752c4);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            border-left: 4px solid var(--gold);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--deep-purple);
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .login-prompt {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .login-prompt-btn {
+            background: linear-gradient(135deg, #5865F2, #4752c4);
+            color: white;
+            padding: 15px 40px;
+            border-radius: 12px;
+            border: none;
+            font-size: 1.1rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .login-prompt-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(88, 101, 242, 0.4);
+        }
+
+        .logout-btn {
+            background: rgba(220, 53, 69, 0.1);
+            color: #dc3545;
+            border: 2px solid #dc3545;
+            padding: 10px 25px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            background: #dc3545;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container py-5">
+        <!-- 戻るボタン -->
+        <div class="mb-4">
+            <a href="../home/index.html" class="back-button">
+                ← ホームに戻る
+            </a>
+        </div>
+
+        <!-- ヘッダー -->
+        <header class="text-center mb-5">
+            <h1 class="page-header display-4 fw-bold mb-3">👤 マイページ</h1>
+        </header>
+
+        <!-- コンテンツ -->
+        <div class="row justify-content-center">
+            <div class="col-12 col-lg-8">
+
+                <!-- 未ログイン時 -->
+                <div id="login-prompt" class="profile-card login-prompt" style="display: none;">
+                    <h3 class="mb-4" style="font-family: var(--font-title); color: var(--deep-purple);">
+                        ログインしてください
+                    </h3>
+                    <p class="text-muted mb-4">
+                        マイページを表示するにはDiscordでログインが必要です。
+                    </p>
+                    <button onclick="loginWithDiscord()" class="login-prompt-btn">
+                        <img src="https://assets-global.website-files.com/6257adef93867e50d84d30e2/636e0a69f118df70ad7828d4_icon_clyde_blurple_RGB.svg"
+                            alt="Discord" style="width: 24px;">
+                        Discordでログイン
+                    </button>
+                </div>
+
+                <!-- ログイン済み -->
+                <div id="profile-content" style="display: none;">
+                    <div class="profile-card mb-4">
+                        <div class="row align-items-center">
+                            <div class="col-auto">
+                                <img id="user-avatar" src="" alt="アバター" class="avatar-large">
+                            </div>
+                            <div class="col">
+                                <h2 id="user-name" class="mb-2"
+                                    style="font-family: var(--font-title); color: var(--deep-purple);">
+                                    ユーザー名
+                                </h2>
+                                <span class="discord-badge">
+                                    <img src="https://assets-global.website-files.com/6257adef93867e50d84d30e2/636e0a69f118df70ad7828d4_icon_clyde_blurple_RGB.svg"
+                                        alt="Discord" style="width: 16px;">
+                                    Discord連携済み
+                                </span>
+                            </div>
+                            <div class="col-auto">
+                                <button onclick="logout()" class="logout-btn">ログアウト</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 統計 -->
+                    <div class="row g-4 mb-4">
+                        <div class="col-6 col-md-3">
+                            <div class="stat-card">
+                                <div class="stat-value">0</div>
+                                <div class="stat-label">🀄 麻雀参加</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="stat-card">
+                                <div class="stat-value">0</div>
+                                <div class="stat-label">🃏 ポーカー参加</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="stat-card">
+                                <div class="stat-value">0</div>
+                                <div class="stat-label">🏆 優勝回数</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="stat-card">
+                                <div class="stat-value">-</div>
+                                <div class="stat-label">📊 ランキング</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 最近の成績 -->
+                    <div class="profile-card">
+                        <h4 class="mb-3" style="font-family: var(--font-title); color: var(--deep-purple);">
+                            📋 最近の成績
+                        </h4>
+                        <p class="text-muted text-center py-4">
+                            まだ大会に参加していません
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Supabase設定 -->
+    <script src="../js/supabase-config.js"></script>
+
+    <script>
+        // マイページ用の表示処理
+        async function displayMyPage() {
+            const user = await getCurrentUser();
+            const loginPrompt = document.getElementById('login-prompt');
+            const profileContent = document.getElementById('profile-content');
+
+            if (user) {
+                // ログイン済み
+                loginPrompt.style.display = 'none';
+                profileContent.style.display = 'block';
+
+                const discordUser = user.user_metadata;
+
+                // アバター
+                const avatarUrl = discordUser.avatar_url ||
+                    `https://cdn.discordapp.com/avatars/${discordUser.provider_id}/${discordUser.avatar}`;
+                document.getElementById('user-avatar').src = avatarUrl;
+
+                // ユーザー名
+                document.getElementById('user-name').textContent =
+                    discordUser.full_name || discordUser.name || 'ユーザー';
+
+            } else {
+                // 未ログイン
+                loginPrompt.style.display = 'block';
+                profileContent.style.display = 'none';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', displayMyPage);
+    </script>
+</body>
+
+</html>
