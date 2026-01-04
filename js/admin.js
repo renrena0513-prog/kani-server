@@ -240,10 +240,11 @@ function editRecord(record) {
 
     // フィールド埋め
     const fields = [
-        'event_datetime', 'discord_account', 'tournament_type',
+        'event_datetime', 'discord_account', 'tournament_type', 'team_name',
         'mahjong_mode', 'match_mode', 'score', 'hand_count',
         'deal_in_count', 'win_count', 'opt1', 'opt2', 'opt3', 'opt4', 'opt5'
     ];
+
 
     fields.forEach(field => {
         let val = record[field] || '';
@@ -323,10 +324,11 @@ async function exportToCSV() {
         }
 
         const headers = [
-            'id', 'event_datetime', 'discord_account', 'tournament_type',
+            'id', 'event_datetime', 'discord_account', 'tournament_type', 'team_name',
             'mahjong_mode', 'match_mode', 'score', 'hand_count',
             'deal_in_count', 'win_count', 'opt1', 'opt2', 'opt3', 'opt4', 'opt5'
         ];
+
         const csvRows = [headers.join(',')];
 
         // 現在表示されている順序・内容 (filteredRecords) で出力

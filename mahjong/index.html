@@ -4,19 +4,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="かにサーバー - 麻雀大会">
-    <title>麻雀大会 | かにサーバーイベント</title>
-
+    <title>第二回麻雀大会 | かにサーバー</title>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;500;600;700&family=M+PLUS+Rounded+1c:wght@400;500;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;700&display=swap"
         rel="stylesheet">
-
-    <!-- Bootswatch Lux (Bootstrap 5.3.3) -->
+    <!-- Bootswatch Lux -->
     <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
-
     <style>
         :root {
             --primary-green: #2d8a5e;
@@ -32,90 +28,178 @@
             background: linear-gradient(180deg, #2d8a5e 0%, #256b4a 50%, #1e5538 100%);
             min-height: 100vh;
             background-attachment: fixed;
+            color: #333;
         }
 
         .page-header {
             font-family: var(--font-title);
             color: var(--cream);
             text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
-        }
-
-        .back-button {
-            font-family: var(--font-body);
-            font-size: 1rem;
-            padding: 10px 25px;
-            border-radius: 12px;
-            border: 2px solid rgba(255, 255, 255, 0.6);
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(8px);
-            color: white;
-            text-decoration: none;
-            transition: all 0.3s ease;
-        }
-
-        .back-button:hover {
-            background: rgba(255, 255, 255, 0.2);
-            border-color: #fff;
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            margin-bottom: 2rem;
         }
 
         .content-card {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
-            padding: 40px;
+            padding: 30px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
         }
 
-        .test-badge {
-            background: linear-gradient(135deg, #ff6b6b, #ee5a5a);
-            color: white;
-            padding: 5px 15px;
+        .ranking-nav .btn {
             border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
+            margin: 5px;
+            padding: 8px 20px;
+            font-weight: bold;
+        }
+
+        .ranking-table thead th {
+            background-color: var(--deep-green);
+            color: white;
+            border: none;
+        }
+
+        .ranking-table tbody tr:first-child {
+            background-color: rgba(212, 168, 83, 0.15);
+            font-weight: bold;
+        }
+
+        .submit-section {
+            background: var(--cream);
+            border-radius: 15px;
+            padding: 25px;
+            border-left: 5px solid var(--gold);
+        }
+
+        .player-entry {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+        }
+
+        .back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            text-decoration: none;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 5px 15px;
+            border-radius: 15px;
+            backdrop-filter: blur(5px);
+        }
+
+        .back-button:hover {
+            color: var(--gold);
         }
     </style>
 </head>
 
 <body>
-    <div class="container py-5">
-        <!-- 戻るボタン -->
-        <div class="mb-4">
-            <a href="../index.html" class="back-button">
-                ← ホームに戻る
-            </a>
-        </div>
+    <a href="../index.html" class="back-button">← ホームに戻る</a>
 
-
-        <!-- ヘッダー -->
-        <header class="text-center mb-5">
-            <h1 class="page-header display-4 fw-bold mb-3">🀄 麻雀大会</h1>
-            <span class="test-badge">テストページ</span>
+    <div class="container py-5 mt-4">
+        <header class="text-center">
+            <h1 class="page-header display-4 fw-bold">🀄 第二回麻雀大会</h1>
         </header>
 
-        <!-- コンテンツ -->
-        <div class="row justify-content-center">
-            <div class="col-12 col-lg-8">
-                <div class="content-card text-center">
-                    <h2 class="mb-4" style="font-family: var(--font-title); color: var(--deep-green);">
-                        麻雀大会ページ
-                    </h2>
-                    <p class="text-muted mb-4">
-                        このページは麻雀大会用のテストページです。<br>
-                        今後、ここにイベント情報や参加者リストなどが表示されます。
-                    </p>
-                    <div class="p-4 rounded" style="background: #f8f9fa;">
-                        <p class="mb-0">📍 ページのパス: <code>/mahjong/index.html</code></p>
+        <!-- ランキングセクション -->
+        <div class="content-card">
+            <h3 class="mb-4 d-flex align-items-center">
+                📊 <span id="ranking-title" class="ms-2">総合個人ランキング</span>
+            </h3>
+
+            <div class="ranking-nav text-center mb-4">
+                <button onclick="switchRanking('team')" class="btn btn-outline-success">チームランキング</button>
+                <button onclick="switchRanking('all')" class="btn btn-success">総合個人</button>
+                <button onclick="switchRanking('ma4')" class="btn btn-outline-success">個人(四麻)</button>
+                <button onclick="switchRanking('ma3')" class="btn btn-outline-success">個人(三麻)</button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table ranking-table align-middle text-center">
+                    <thead>
+                        <tr>
+                            <th style="width: 80px;">順位</th>
+                            <th id="name-header">アカウント</th>
+                            <th>得点合計</th>
+                            <th>対局数</th>
+                            <th>和了/放銃</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ranking-body">
+                        <!-- JSで生成 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- スコア送信セクション -->
+        <div class="content-card">
+            <h3 class="mb-4">📝 スコア送信</h3>
+            <div class="submit-section">
+                <form id="score-form">
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-3">
+                            <label class="form-label small">大会名</label>
+                            <input type="text" class="form-control" value="第二回麻雀大会" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">試合種別</label>
+                            <select id="form-mode" class="form-select">
+                                <option value="四麻">四麻</option>
+                                <option value="三麻">三麻</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">試合形式</label>
+                            <select id="form-match" class="form-select">
+                                <option value="個人戦">個人戦</option>
+                                <option value="チーム戦">チーム戦</option>
+                                <option value="その他">その他</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">対局数（半荘数等）</label>
+                            <input type="number" id="form-hands" class="form-control" value="1">
+                        </div>
                     </div>
-                </div>
+
+                    <div id="players-container">
+                        <!-- プレイヤー入力欄 (3or4人分) -->
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-4">
+                        <div class="btn-group">
+                            <button type="button" onclick="setupPlayerInputs(3)"
+                                class="btn btn-outline-secondary btn-sm">3人戦設定</button>
+                            <button type="button" onclick="setupPlayerInputs(4)"
+                                class="btn btn-outline-secondary btn-sm">4人戦設定</button>
+                        </div>
+                        <button type="button" onclick="submitScores()"
+                            class="btn btn-primary px-5 py-2 fw-bold">スコアを送信する</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 
-    <!-- Bootstrap JS -->
+    <!-- Loading Overlay -->
+    <div id="loading-overlay"
+        style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:none; justify-content:center; align-items:center; z-index:9999; color:white;">
+        <div class="text-center">
+            <div class="spinner-border text-light mb-2"></div>
+            <div>送信中...</div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabase-config.js"></script>
+    <script src="../js/mahjong.js"></script>
 </body>
 
 </html>
