@@ -184,7 +184,7 @@ async function exportToCSV() {
         }
 
         const headers = [
-            'event_datetime', 'discord_account', 'tournament_type',
+            'id', 'event_datetime', 'discord_account', 'tournament_type',
             'mahjong_mode', 'match_mode', 'score', 'hand_count',
             'deal_in_count', 'win_count', 'opt1', 'opt2', 'opt3', 'opt4', 'opt5'
         ];
@@ -231,10 +231,15 @@ async function handleCSVImport(event) {
             headers.forEach((h, idx) => {
                 let val = values[idx];
                 if (['score', 'hand_count', 'deal_in_count', 'win_count'].includes(h)) {
-                    val = val !== '' ? Number(val) : null;
+                    val = (val !== '' && val !== undefined) ? Number(val) : null;
                 }
-                obj[h] = val;
+                if (val !== undefined) obj[h] = val;
             });
+
+            // IDが空、または "null" 文字列の場合は削除して自動生成を促す
+            if (!obj.id || obj.id === '' || obj.id === 'null') {
+                delete obj.id;
+            }
 
             if (obj.event_datetime && obj.discord_account) {
                 dataToInsert.push(obj);
@@ -246,10 +251,10 @@ async function handleCSVImport(event) {
             return;
         }
 
-        if (confirm(`${dataToInsert.length}件の記録をインポートしますか？`)) {
+        if (confirm(`${dataToInsert.length}件の記録をインポート（同一IDは上書き）しますか？`)) {
             toggleLoading(true);
             try {
-                const { error } = await supabaseClient.from('tournament_records').insert(dataToInsert);
+                const { error } = await supabaseClient.from('tournament_records').upsert(dataToInsert);
                 if (error) throw error;
                 alert('インポート完了');
                 fetchRecords();
@@ -259,6 +264,7 @@ async function handleCSVImport(event) {
                 toggleLoading(false);
             }
         }
+
         event.target.value = '';
     };
     reader.readAsText(file);
