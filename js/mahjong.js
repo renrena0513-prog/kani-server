@@ -21,9 +21,15 @@ async function fetchData() {
         const { data: profiles, error: pError } = await supabaseClient
             .from('profiles')
             .select('*');
-        if (!pError) {
+        if (!pError && profiles.length > 0) {
             allProfiles = profiles;
+        } else {
+            // 背景：profilesが空（まだ誰もログインして同期してない）場合
+            // tournament_records から過去の名前を拾って仮のリストを作る
+            const names = Array.from(new Set(allRecords.map(r => r.discord_account)));
+            allProfiles = names.map(n => ({ discord_account: n, avatar_url: '' }));
         }
+
 
         switchRanking('all');
     } catch (err) {

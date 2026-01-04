@@ -59,12 +59,12 @@ async function displayUserInfo() {
             const avatarUrl = discordUser.avatar_url || discordUser.picture || '';
             const fullName = discordUser.full_name || discordUser.name || 'ユーザー';
             await supabaseClient.from('profiles').upsert({
-                id: user.id, // user.id を追加
                 discord_account: fullName,
                 avatar_url: avatarUrl,
                 updated_at: new Date().toISOString()
             });
         };
+
         syncProfile();
 
         // 管理者ボタンの表示制御
