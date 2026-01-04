@@ -46,11 +46,14 @@ async function displayUserInfo() {
         // ログイン済み
         const discordUser = user.user_metadata;
         if (userInfoElement) {
+            // Supabaseが提供するavatar_urlを直接使用
+            const avatarUrl = discordUser.avatar_url || discordUser.picture || '';
             userInfoElement.innerHTML = `
-                <img src="https://cdn.discordapp.com/avatars/${discordUser.provider_id}/${discordUser.avatar_url}" 
+                <img src="${avatarUrl}" 
                      alt="アバター" 
-                     style="width: 40px; height: 40px; border-radius: 50%; margin-right: 10px;">
-                <span>${discordUser.full_name || discordUser.name}</span>
+                     style="width: 40px; height: 40px; border-radius: 50%; margin-right: 10px;"
+                     onerror="this.style.display='none'">
+                <span>${discordUser.full_name || discordUser.name || 'ユーザー'}</span>
             `;
             userInfoElement.style.display = 'flex';
         }
