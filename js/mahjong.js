@@ -4,8 +4,15 @@ let allProfiles = []; // プロフィール情報（アイコン付き）
 
 document.addEventListener('DOMContentLoaded', () => {
     fetchData();
-    setupPlayerInputs(4); // デフォルト4人
+    changePlayerCount(); // プルダウンの状態に合わせて初期化
 });
+
+function changePlayerCount() {
+    const mode = document.getElementById('form-mode').value;
+    const count = mode === '三麻' ? 3 : 4;
+    setupPlayerInputs(count);
+}
+
 
 async function fetchData() {
     try {
