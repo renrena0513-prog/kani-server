@@ -347,12 +347,14 @@ body::before {
 }
 
 #user-info {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid var(--gold);
     backdrop-filter: blur(8px);
     padding: 8px 15px;
     border-radius: 25px;
-    color: white;
+    color: #333;
     font-size: 0.9rem;
+    font-weight: 500;
 }
 
 #user-info img {
