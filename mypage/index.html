@@ -216,6 +216,10 @@
                                     <label class="small text-muted mb-1">ニックネーム (ランキング等で表示)</label>
                                     <div class="input-group">
                                         <input type="text" id="user-nickname" class="form-control" placeholder="未設定">
+                                        <button onclick="useDiscordName()" class="btn btn-outline-secondary btn-sm"
+                                            title="Discordの表示名を入れる">
+                                            <small>Discord名を使用</small>
+                                        </button>
                                         <button onclick="saveNickname()"
                                             class="btn btn-gold text-white fw-bold">保存</button>
                                     </div>
@@ -320,7 +324,17 @@
             }
         }
 
+        async function useDiscordName() {
+            const user = await getCurrentUser();
+            if (!user) return;
+            const discordUser = user.user_metadata;
+            // 表示名を取得 (global_name -> full_name -> name)
+            const discordDisplayName = discordUser.custom_claims?.global_name || discordUser.full_name || discordUser.name;
+            document.getElementById('user-nickname').value = discordDisplayName;
+        }
+
         async function saveNickname() {
+
             const user = await getCurrentUser();
             if (!user) return;
 

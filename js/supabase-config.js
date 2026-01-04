@@ -59,6 +59,9 @@ async function displayUserInfo() {
             const avatarUrl = discordUser.avatar_url || discordUser.picture || '';
             const fullName = discordUser.full_name || discordUser.name || 'ユーザー';
 
+            // Discordの表示名 (Global Name) を優先取得、なければ full_name
+            const discordDisplayName = discordUser.custom_claims?.global_name || discordUser.full_name || discordUser.name;
+
             // 既存のプロフィールを確認
             const { data: existing } = await supabaseClient
                 .from('profiles')
@@ -66,10 +69,11 @@ async function displayUserInfo() {
                 .eq('discord_account', fullName)
                 .single();
 
-            // ニックネームが未設定の場合のみ初期値を入れる（upsertで上書きされないように制御）
+            // ニックネームが未設定の場合のみ、Discordの表示名を初期値として入れる
             await supabaseClient.from('profiles').upsert({
                 discord_account: fullName,
                 avatar_url: avatarUrl,
+                nickname: (existing && existing.nickname) ? existing.nickname : discordDisplayName,
                 updated_at: new Date().toISOString()
             });
         };
