@@ -48,15 +48,15 @@ function setupPlayerInputs(count) {
         container.innerHTML += `
             <div class="player-entry" id="player-row-${i}">
                 <div class="row g-2 align-items-end">
-                    <div class="col-md-2 team-col" style="display: ${match === 'チーム戦' ? 'block' : 'none'}">
+                    <div class="col-md-3 team-col" style="display: ${match === 'チーム戦' ? 'block' : 'none'}">
                         <label class="small text-muted">チーム名</label>
                         <input type="text" class="form-control form-control-sm player-team" placeholder="チーム名">
                     </div>
-                    <div class="${match === 'チーム戦' ? 'col-md-3' : 'col-md-5'}">
+                    <div class="${match === 'チーム戦' ? 'col-md-3' : 'col-md-4'}">
                         <label class="small text-muted">アカウント名</label>
                         <div class="custom-dropdown-container">
                             <input type="text" class="form-control form-control-sm player-account" 
-                                   placeholder="選択または入力" onfocus="showDropdown(${i})" oninput="filterDropdown(${i})">
+                                   placeholder="選択してください" readonly onfocus="showDropdown(${i})" style="cursor: pointer; background: white;">
                             <div class="selected-player-badge" id="selected-badge-${i}" style="display: none;">
                                 <img src="" class="badge-avatar">
                                 <span class="name"></span>
@@ -73,7 +73,7 @@ function setupPlayerInputs(count) {
                         <label class="small text-muted">和了数</label>
                         <input type="number" class="form-control form-control-sm player-win" value="0">
                     </div>
-                    <div class="col-md-1">
+                    <div class="col-md-2">
                         <label class="small text-muted">放銃</label>
                         <input type="number" class="form-control form-control-sm player-deal" value="0">
                     </div>
@@ -83,30 +83,27 @@ function setupPlayerInputs(count) {
     }
 }
 
-// ドロップダウン関連 (mahjong.jsから移植)
+// ドロップダウン関連
 function showDropdown(idx) {
+    // 他の開いているドロップダウンを全て閉じる
+    document.querySelectorAll('.custom-dropdown-list').forEach(list => {
+        list.style.display = 'none';
+    });
+
     const list = document.getElementById(`dropdown-list-${idx}`);
     renderDropdownItems(idx, allProfiles);
     list.style.display = 'block';
+
+    // 別クリックで閉じる
     setTimeout(() => {
         const h = (e) => {
-            if (!list.contains(e.target)) {
+            if (!list.contains(e.target) && !e.target.classList.contains('player-account')) {
                 list.style.display = 'none';
                 document.removeEventListener('mousedown', h);
             }
         };
         document.addEventListener('mousedown', h);
     }, 10);
-}
-
-function filterDropdown(idx) {
-    const input = document.querySelector(`#player-row-${idx} .player-account`);
-    const val = input.value.toLowerCase();
-    const filtered = allProfiles.filter(p =>
-        p.discord_account.toLowerCase().includes(val) ||
-        (p.nickname && p.nickname.toLowerCase().includes(val))
-    );
-    renderDropdownItems(idx, filtered);
 }
 
 function renderDropdownItems(idx, profiles) {
