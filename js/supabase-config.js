@@ -54,6 +54,19 @@ async function displayUserInfo() {
         const discordUser = user.user_metadata;
         const discordId = discordUser.provider_id;
 
+        // プロフィール情報の同期（非同期で実行）
+        const syncProfile = async () => {
+            const avatarUrl = discordUser.avatar_url || discordUser.picture || '';
+            const fullName = discordUser.full_name || discordUser.name || 'ユーザー';
+            await supabaseClient.from('profiles').upsert({
+                id: user.id, // user.id を追加
+                discord_account: fullName,
+                avatar_url: avatarUrl,
+                updated_at: new Date().toISOString()
+            });
+        };
+        syncProfile();
+
         // 管理者ボタンの表示制御
         if (adminButton) {
             if (ADMIN_DISCORD_IDS.includes(discordId)) {

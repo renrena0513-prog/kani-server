@@ -1,6 +1,6 @@
 // 麻雀ページ用ロジック
 let allRecords = [];
-let allAccounts = [];
+let allProfiles = []; // プロフィール情報（アイコン付き）
 
 document.addEventListener('DOMContentLoaded', () => {
     fetchData();
@@ -9,20 +9,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function fetchData() {
     try {
+        // 記録取得
         const { data, error } = await supabaseClient
             .from('tournament_records')
             .select('*')
             .eq('tournament_type', '第二回麻雀大会');
-
         if (error) throw error;
         allRecords = data;
 
-        // 全アカウントリストの抽出（プルダウン用）
-        const { data: accounts, error: accError } = await supabaseClient
-            .from('tournament_records')
-            .select('discord_account');
-        if (!accError) {
-            allAccounts = Array.from(new Set(accounts.map(a => a.discord_account))).sort();
+        // 全プロフィール取得（アイコン用）
+        const { data: profiles, error: pError } = await supabaseClient
+            .from('profiles')
+            .select('*');
+        if (!pError) {
+            allProfiles = profiles;
         }
 
         switchRanking('all');
