@@ -260,10 +260,11 @@ async function saveRecordFromForm() {
     const id = document.getElementById('record-id').value;
 
     const fields = [
-        'event_datetime', 'discord_account', 'tournament_type',
+        'event_datetime', 'discord_account', 'tournament_type', 'team_name',
         'mahjong_mode', 'match_mode', 'score', 'hand_count',
         'deal_in_count', 'win_count', 'opt1', 'opt2', 'opt3', 'opt4', 'opt5'
     ];
+
 
     const data = {};
     fields.forEach(field => {
