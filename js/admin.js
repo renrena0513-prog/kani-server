@@ -28,8 +28,10 @@ let sortConfig = { key: 'event_datetime', direction: 'desc' };
 let filterState = {
     accounts: [],
     tournaments: [],
-    modes: []
+    modes: [],
+    match_modes: []
 };
+
 
 
 
@@ -70,18 +72,21 @@ function updateFilterOptions() {
     const accountSet = new Set();
     const tournamentSet = new Set();
     const modeSet = new Set();
+    const matchModeSet = new Set();
 
     allRecords.forEach(r => {
         if (r.discord_account) accountSet.add(r.discord_account);
         if (r.tournament_type) tournamentSet.add(r.tournament_type);
         if (r.mahjong_mode) modeSet.add(r.mahjong_mode);
-        if (r.match_mode) modeSet.add(r.match_mode);
+        if (r.match_mode) matchModeSet.add(r.match_mode);
     });
 
     renderCheckboxes('filter-accounts', Array.from(accountSet), 'accounts');
     renderCheckboxes('filter-tournaments', Array.from(tournamentSet), 'tournaments');
     renderCheckboxes('filter-modes', Array.from(modeSet), 'modes');
+    renderCheckboxes('filter-match-modes', Array.from(matchModeSet), 'match_modes');
 }
+
 
 function renderCheckboxes(containerId, options, category) {
     const container = document.getElementById(containerId);
@@ -114,10 +119,11 @@ function handleFilterChange(category, checkbox) {
 
 // フィルターのリセット
 function clearFilters() {
-    filterState = { accounts: [], tournaments: [], modes: [] };
+    filterState = { accounts: [], tournaments: [], modes: [], match_modes: [] };
     document.querySelectorAll('#filter-panel input[type="checkbox"]').forEach(chk => chk.checked = false);
     applyFiltersAndSort();
 }
+
 
 
 // ソート関数
@@ -141,16 +147,16 @@ function sortRecords(key) {
 
 // フィルターとソートを統合して適用
 function applyFiltersAndSort() {
-    // 1. フィルタリング (マルチセレクト)
+    // 1. フィルタリング (マルチセレクト - アカウント、大会名、モード、試合方法)
     filteredRecords = allRecords.filter(record => {
         const matchAccount = filterState.accounts.length === 0 || filterState.accounts.includes(record.discord_account);
         const matchTournament = filterState.tournaments.length === 0 || filterState.tournaments.includes(record.tournament_type);
-        const matchMode = filterState.modes.length === 0 ||
-            filterState.modes.includes(record.mahjong_mode) ||
-            filterState.modes.includes(record.match_mode);
+        const matchMode = filterState.modes.length === 0 || filterState.modes.includes(record.mahjong_mode);
+        const matchMethod = filterState.match_modes.length === 0 || filterState.match_modes.includes(record.match_mode);
 
-        return matchAccount && matchTournament && matchMode;
+        return matchAccount && matchTournament && matchMode && matchMethod;
     });
+
 
     // 2. ソート
     const { key, direction } = sortConfig;
