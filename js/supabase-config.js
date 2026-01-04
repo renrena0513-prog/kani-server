@@ -67,15 +67,20 @@ async function displayUserInfo() {
                 .from('profiles')
                 .select('nickname')
                 .eq('discord_account', fullName)
-                .single();
+                .maybeSingle();
 
-            // ニックネームが未設定の場合のみ、Discordの表示名を初期値として入れる
-            await supabaseClient.from('profiles').upsert({
+            const profileData = {
                 discord_account: fullName,
                 avatar_url: avatarUrl,
-                nickname: (existing && existing.nickname) ? existing.nickname : discordDisplayName,
                 updated_at: new Date().toISOString()
-            });
+            };
+
+            // 【初回のみ】DBにまだデータがない場合だけ、Discordの表示名をニックネームとして設定
+            if (!existing) {
+                profileData.nickname = discordDisplayName;
+            }
+
+            await supabaseClient.from('profiles').upsert(profileData);
         };
 
 
