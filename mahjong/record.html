@@ -28,56 +28,91 @@
             background: linear-gradient(180deg, #2d8a5e 0%, #256b4a 50%, #1e5538 100%);
             min-height: 100vh;
             background-attachment: fixed;
-            color: #333;
+            color: #fff;
         }
 
         .page-header {
             font-family: var(--font-title);
             color: var(--cream);
-            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
-            margin-bottom: 2rem;
-        }
-
-        .content-card {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-            margin-bottom: 30px;
-        }
-
-        .submit-section {
-            background: var(--cream);
-            border-radius: 15px;
-            padding: 25px;
-            border-left: 5px solid var(--gold);
-        }
-
-        .player-entry {
-            background: white;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 15px;
-            border: 1px solid #ddd;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.5);
+            margin-bottom: 3rem;
+            font-size: 2.5rem;
         }
 
         .back-button {
-            position: absolute;
+            position: fixed;
             top: 20px;
             left: 20px;
             color: white;
             text-decoration: none;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 5px 15px;
-            border-radius: 15px;
-            backdrop-filter: blur(5px);
+            background: rgba(255, 255, 255, 0.15);
+            padding: 8px 20px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            font-size: 0.9rem;
         }
 
         .back-button:hover {
+            background: rgba(255, 255, 255, 0.25);
             color: var(--gold);
+            transform: translateX(-3px);
         }
 
-        /* カスタムドロップダウンのスタイル */
+        /* フォームセクション */
+        .form-header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px 30px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .form-header label {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.85rem;
+            margin-bottom: 5px;
+        }
+
+        .form-header .form-control,
+        .form-header .form-select {
+            background: rgba(255, 255, 255, 0.95);
+            border: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        /* プレイヤー入力欄 */
+        .player-entry {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: all 0.3s;
+        }
+
+        .player-entry:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .player-entry label {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .player-entry .form-control {
+            background: rgba(255, 255, 255, 0.95);
+            border: none;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        /* カスタムドロップダウン */
         .custom-dropdown-container {
             position: relative;
         }
@@ -88,69 +123,91 @@
             left: 0;
             right: 0;
             background: white;
-            border: 1px solid #ddd;
+            border: none;
             border-radius: 8px;
             max-height: 200px;
             overflow-y: auto;
             z-index: 1000;
             display: none;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            margin-top: 5px;
         }
 
         .dropdown-item-flex {
             display: flex;
             align-items: center;
-            padding: 8px 12px;
+            padding: 10px 15px;
             cursor: pointer;
             transition: background 0.2s;
         }
 
         .dropdown-item-flex:hover {
-            background: #f0f0f0;
+            background: #f8f9fa;
         }
 
         .dropdown-avatar {
-            width: 24px;
-            height: 24px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
-            margin-right: 10px;
+            margin-right: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         /* 選択済みプレイヤーの表示 */
         .selected-player-badge {
             display: none;
             align-items: center;
-            background: #fff;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
-            padding: 2px 8px;
-            height: 31px;
+            background: rgba(255, 255, 255, 0.95);
+            border: none;
+            border-radius: 6px;
+            padding: 4px 12px;
+            height: 38px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
         }
 
         .selected-player-badge img {
-            width: 20px;
-            height: 20px;
+            width: 24px;
+            height: 24px;
             border-radius: 50%;
-            margin-right: 8px;
+            margin-right: 10px;
         }
 
         .selected-player-badge .name {
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             flex-grow: 1;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            color: #333;
         }
 
         .btn-clear {
-            padding: 0 4px;
+            padding: 0 6px;
             cursor: pointer;
             color: #999;
             line-height: 1;
+            font-size: 1.2rem;
         }
 
         .btn-clear:hover {
-            color: #d11;
+            color: #dc3545;
+        }
+
+        /* 送信ボタン */
+        .btn-submit {
+            background: linear-gradient(135deg, var(--gold) 0%, #c9982e 100%);
+            border: none;
+            padding: 15px 50px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 30px;
+            box-shadow: 0 6px 20px rgba(212, 168, 83, 0.4);
+            transition: all 0.3s;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(212, 168, 83, 0.5);
         }
 
         /* チーム名はデフォルト非表示 */
@@ -163,51 +220,52 @@
 <body>
     <a href="./index.html" class="back-button">← ランキングに戻る</a>
 
-    <div class="container py-5 mt-4">
+    <div class="container py-5 mt-5">
         <header class="text-center">
-            <h1 class="page-header display-4 fw-bold">📝 スコア記録</h1>
+            <h1 class="page-header fw-bold">📝 スコア記録</h1>
         </header>
 
-        <div class="content-card">
-            <div class="submit-section">
-                <form id="score-form">
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-3">
-                            <label class="form-label small">大会名</label>
-                            <input type="text" class="form-control" value="第二回麻雀大会" readonly>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label small">試合種別</label>
-                            <select id="form-mode" class="form-select" onchange="changePlayerCount()">
-                                <option value="四麻">四麻</option>
-                                <option value="三麻" selected>三麻</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label small">試合形式</label>
-                            <select id="form-match" class="form-select" onchange="changeMatchMode()">
-                                <option value="個人戦">個人戦</option>
-                                <option value="チーム戦">チーム戦</option>
-                                <option value="その他">その他</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label small">対局数（半荘数等）</label>
-                            <input type="number" id="form-hands" class="form-control" value="1">
-                        </div>
-                    </div>
-
-                    <div id="players-container">
-                        <!-- プレイヤー入力欄 (JSで生成) -->
-                    </div>
-
-                    <div class="d-flex justify-content-end align-items-center mt-4">
-                        <button type="button" onclick="submitScores()"
-                            class="btn btn-primary px-5 py-2 fw-bold">スコアを送信する</button>
-                    </div>
-                </form>
+        <!-- フォームヘッダー -->
+        <div class="form-header">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label small">大会名</label>
+                    <input type="text" class="form-control" value="第二回麻雀大会" readonly>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">試合種別</label>
+                    <select id="form-mode" class="form-select" onchange="changePlayerCount()">
+                        <option value="四麻">四麻</option>
+                        <option value="三麻" selected>三麻</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">試合形式</label>
+                    <select id="form-match" class="form-select" onchange="changeMatchMode()">
+                        <option value="個人戦">個人戦</option>
+                        <option value="チーム戦">チーム戦</option>
+                        <option value="その他">その他</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">対局数（半荘数等）</label>
+                    <input type="number" id="form-hands" class="form-control" value="1">
+                </div>
             </div>
         </div>
+
+        <!-- プレイヤー入力 -->
+        <form id="score-form">
+            <div id="players-container">
+                <!-- プレイヤー入力欄 (JSで生成) -->
+            </div>
+
+            <div class="d-flex justify-content-center align-items-center mt-5">
+                <button type="button" onclick="submitScores()" class="btn btn-submit">
+                    スコアを送信する
+                </button>
+            </div>
+        </form>
     </div>
 
     <!-- Loading Overlay -->
