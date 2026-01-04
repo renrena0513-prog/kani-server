@@ -28,12 +28,10 @@ let sortConfig = { key: 'event_datetime', direction: 'desc' };
 let filterState = {
     accounts: [],
     tournaments: [],
+    teams: [],
     modes: [],
     match_modes: []
 };
-
-
-
 
 // 記録一覧の取得
 async function fetchRecords() {
@@ -56,8 +54,6 @@ async function fetchRecords() {
     }
 }
 
-
-
 // フィルターパネルの開閉
 function toggleFilterPanel() {
     const panel = document.getElementById('filter-panel');
@@ -71,22 +67,24 @@ function toggleFilterPanel() {
 function updateFilterOptions() {
     const accountSet = new Set();
     const tournamentSet = new Set();
+    const teamSet = new Set();
     const modeSet = new Set();
     const matchModeSet = new Set();
 
     allRecords.forEach(r => {
         if (r.discord_account) accountSet.add(r.discord_account);
         if (r.tournament_type) tournamentSet.add(r.tournament_type);
+        if (r.team_name) teamSet.add(r.team_name);
         if (r.mahjong_mode) modeSet.add(r.mahjong_mode);
         if (r.match_mode) matchModeSet.add(r.match_mode);
     });
 
     renderCheckboxes('filter-accounts', Array.from(accountSet), 'accounts');
     renderCheckboxes('filter-tournaments', Array.from(tournamentSet), 'tournaments');
+    renderCheckboxes('filter-teams', Array.from(teamSet), 'teams');
     renderCheckboxes('filter-modes', Array.from(modeSet), 'modes');
     renderCheckboxes('filter-match-modes', Array.from(matchModeSet), 'match_modes');
 }
-
 
 function renderCheckboxes(containerId, options, category) {
     const container = document.getElementById(containerId);
@@ -97,7 +95,7 @@ function renderCheckboxes(containerId, options, category) {
         return;
     }
 
-    container.innerHTML = options.map(opt => `
+    container.innerHTML = options.sort().map(opt => `
         <div class="form-check p-0">
             <input type="checkbox" id="chk-${category}-${opt}" class="btn-check" 
                    value="${opt}" onchange="handleFilterChange('${category}', this)">
@@ -119,12 +117,10 @@ function handleFilterChange(category, checkbox) {
 
 // フィルターのリセット
 function clearFilters() {
-    filterState = { accounts: [], tournaments: [], modes: [], match_modes: [] };
+    filterState = { accounts: [], tournaments: [], teams: [], modes: [], match_modes: [] };
     document.querySelectorAll('#filter-panel input[type="checkbox"]').forEach(chk => chk.checked = false);
     applyFiltersAndSort();
 }
-
-
 
 // ソート関数
 function sortRecords(key) {
@@ -147,15 +143,17 @@ function sortRecords(key) {
 
 // フィルターとソートを統合して適用
 function applyFiltersAndSort() {
-    // 1. フィルタリング (マルチセレクト - アカウント、大会名、モード、試合方法)
+    // 1. フィルタリング (マルチセレクト)
     filteredRecords = allRecords.filter(record => {
         const matchAccount = filterState.accounts.length === 0 || filterState.accounts.includes(record.discord_account);
         const matchTournament = filterState.tournaments.length === 0 || filterState.tournaments.includes(record.tournament_type);
+        const matchTeam = filterState.teams.length === 0 || filterState.teams.includes(record.team_name);
         const matchMode = filterState.modes.length === 0 || filterState.modes.includes(record.mahjong_mode);
         const matchMethod = filterState.match_modes.length === 0 || filterState.match_modes.includes(record.match_mode);
 
-        return matchAccount && matchTournament && matchMode && matchMethod;
+        return matchAccount && matchTournament && matchTeam && matchMode && matchMethod;
     });
+
 
 
     // 2. ソート
