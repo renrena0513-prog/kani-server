@@ -161,6 +161,14 @@ body::before {
     max-height: 200px;
     filter: drop-shadow(0 4px 15px rgba(0, 0, 0, 0.3));
     animation: titleFloat 4s ease-in-out infinite;
+    margin-top: 60px;
+    /* 認証UIと重ならないように */
+}
+
+@media (max-width: 576px) {
+    .title-image {
+        margin-top: 70px;
+    }
 }
 
 @keyframes titleFloat {
@@ -346,5 +354,21 @@ body::before {
 }
 
 #user-info img {
-    border: 2px solid rgba(255, 255, 255, 0.5);
+    border: 3px solid var(--gold);
+    box-shadow: 0 0 15px rgba(212, 168, 83, 0.6);
+    transition: all 0.3s ease;
+}
+
+#user-info:hover img {
+    border-color: var(--bright-gold);
+    box-shadow: 0 0 25px rgba(255, 215, 0, 0.8);
+    transform: scale(1.1);
+}
+
+#user-info a {
+    transition: all 0.3s ease;
+}
+
+#user-info:hover {
+    background: rgba(255, 255, 255, 0.25);
 }

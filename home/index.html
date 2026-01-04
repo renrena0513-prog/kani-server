@@ -112,19 +112,15 @@
 
     <!-- ユーザー認証UI（右上に固定） -->
     <div class="auth-container">
-        <a id="mypage-link" href="../mypage/index.html" class="auth-button"
-            style="display: none; text-decoration: none;">
-            👤 マイページ
-        </a>
         <div id="user-info" style="display: none; align-items: center;"></div>
         <button id="login-button" onclick="loginWithDiscord()" class="auth-button">
             <img src="https://assets-global.website-files.com/6257adef93867e50d84d30e2/636e0a69f118df70ad7828d4_icon_clyde_blurple_RGB.svg"
                 alt="Discord" style="width: 20px; margin-right: 8px;">
             Discordでログイン
         </button>
-        <button id="logout-button" onclick="logout()" class="auth-button logout" style="display: none;">
-            ログアウト
-        </button>
+        <!-- ログアウトボタンは非表示（マイページでのみ表示） -->
+        <button id="logout-button" style="display: none !important;"></button>
+        <a id="mypage-link" style="display: none;"></a>
     </div>
 
     <!-- Bootstrap JS -->
