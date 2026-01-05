@@ -129,6 +129,57 @@
             border-bottom: none;
         }
 
+        /* プレイヤー行のレイアウト */
+        .player-row {
+            flex-wrap: nowrap;
+        }
+
+        .team-col {
+            flex: 0 0 20%;
+            max-width: 20%;
+        }
+
+        .account-col {
+            flex: 1 1 auto;
+            min-width: 150px;
+        }
+
+        .score-col {
+            flex: 0 0 18%;
+            max-width: 18%;
+        }
+
+        .win-col,
+        .deal-col {
+            flex: 0 0 10%;
+            max-width: 10%;
+        }
+
+        /* モバイル対応 */
+        @media (max-width: 768px) {
+            .player-row {
+                flex-wrap: wrap;
+            }
+
+            .team-col,
+            .account-col {
+                flex: 0 0 100%;
+                max-width: 100%;
+                margin-bottom: 10px;
+            }
+
+            .score-col {
+                flex: 0 0 40%;
+                max-width: 40%;
+            }
+
+            .win-col,
+            .deal-col {
+                flex: 0 0 28%;
+                max-width: 28%;
+            }
+        }
+
         .player-entry label {
             color: #666;
             font-size: 0.8rem;

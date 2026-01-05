@@ -45,12 +45,12 @@ function setupPlayerInputs(count) {
     for (let i = 1; i <= count; i++) {
         container.innerHTML += `
             <div class="player-entry" id="player-row-${i}">
-                <div class="row g-2 align-items-end flex-nowrap">
-                    <div class="col team-col" style="display: ${match === 'チーム戦' ? 'block' : 'none'}; flex: 0 0 19%; max-width: 19%;">
+                <div class="row g-2 align-items-end player-row">
+                    <div class="col team-col" style="display: ${match === 'チーム戦' ? 'block' : 'none'};">
                         <label class="small text-muted">チーム名</label>
                         <input type="text" class="form-control form-control-sm player-team" placeholder="チーム名">
                     </div>
-                    <div class="col" style="flex: 0 0 ${match === 'チーム戦' ? '19%' : '38%'}; max-width: ${match === 'チーム戦' ? '19%' : '38%'};">
+                    <div class="col account-col">
                         <label class="small text-muted">アカウント名</label>
                         <div class="custom-dropdown-container">
                             <input type="text" class="form-control form-control-sm player-account" 
@@ -63,15 +63,15 @@ function setupPlayerInputs(count) {
                             <div class="custom-dropdown-list" id="dropdown-list-${i}"></div>
                         </div>
                     </div>
-                    <div class="col" style="flex: 0 0 20%; max-width: 20%;">
+                    <div class="col score-col">
                         <label class="small text-muted">得点</label>
                         <input type="number" class="form-control form-control-sm player-score" placeholder="25000">
                     </div>
-                    <div class="col" style="flex: 0 0 12%; max-width: 12%;">
+                    <div class="col win-col">
                         <label class="small text-muted">和了数</label>
                         <input type="number" class="form-control form-control-sm player-win" value="0">
                     </div>
-                    <div class="col" style="flex: 0 0 12%; max-width: 12%;">
+                    <div class="col deal-col">
                         <label class="small text-muted">放銃</label>
                         <input type="number" class="form-control form-control-sm player-deal" value="0">
                     </div>
