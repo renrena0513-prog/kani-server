@@ -47,9 +47,13 @@ async function fetchRecords() {
         applyFiltersAndSort();
     } catch (err) {
         console.error('記録取得エラー:', err.message);
-        if (err.message.includes('relation "match_results" does not exist')) {
-            const listBody = document.getElementById('records-list-body');
-            if (listBody) listBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">テーブル "match_results" が見つかりません。Supabaseでテーブルを作成してください。</td></tr>';
+        const listBody = document.getElementById('records-list-body');
+        if (listBody) {
+            if (err.message.includes('relation "match_results" does not exist')) {
+                listBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">テーブル "match_results" が見つかりません。</td></tr>';
+            } else {
+                listBody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">エラー: ${err.message}</td></tr>`;
+            }
         }
     }
 }
@@ -78,7 +82,6 @@ function updateFilterOptions() {
         if (r.mahjong_mode) modeSet.add(r.mahjong_mode);
         if (r.match_mode) matchModeSet.add(r.match_mode);
     });
-
 
     renderCheckboxes('filter-accounts', Array.from(accountSet), 'accounts');
     renderCheckboxes('filter-tournaments', Array.from(tournamentSet), 'tournaments');
@@ -129,10 +132,9 @@ function sortRecords(key) {
         sortConfig.direction = (sortConfig.direction === 'asc' ? 'desc' : 'asc');
     } else {
         sortConfig.key = key;
-        sortConfig.direction = 'desc'; // デフォルトは降順
+        sortConfig.direction = 'desc';
     }
 
-    // UIのクラス更新
     document.querySelectorAll('th.sortable').forEach(th => {
         th.classList.remove('asc', 'desc');
     });
@@ -144,34 +146,25 @@ function sortRecords(key) {
 
 // フィルターとソートを統合して適用
 function applyFiltersAndSort() {
-    // 1. フィルタリング (マルチセレクト)
     filteredRecords = allRecords.filter(record => {
         const matchAccount = filterState.accounts.length === 0 || filterState.accounts.includes(record.account_name);
-
         const matchTournament = filterState.tournaments.length === 0 || filterState.tournaments.includes(record.tournament_type);
         const matchTeam = filterState.teams.length === 0 || filterState.teams.includes(record.team_name);
         const matchMode = filterState.modes.length === 0 || filterState.modes.includes(record.mahjong_mode);
         const matchMethod = filterState.match_modes.length === 0 || filterState.match_modes.includes(record.match_mode);
-
         return matchAccount && matchTournament && matchTeam && matchMode && matchMethod;
     });
 
-
-
-    // 2. ソート
     const { key, direction } = sortConfig;
     filteredRecords.sort((a, b) => {
         let valA = a[key];
         let valB = b[key];
-
         if (valA === null || valA === undefined) return 1;
         if (valB === null || valB === undefined) return -1;
-
         if (typeof valA === 'string') {
             valA = valA.toLowerCase();
             valB = valB.toLowerCase();
         }
-
         if (valA < valB) return direction === 'asc' ? -1 : 1;
         if (valA > valB) return direction === 'asc' ? 1 : -1;
         return 0;
@@ -180,15 +173,12 @@ function applyFiltersAndSort() {
     displayRecords(filteredRecords);
 }
 
-
-
 // 記録の表示
 function displayRecords(records) {
     const listBody = document.getElementById('records-list-body');
     if (!listBody) return;
 
     listBody.innerHTML = '';
-
     if (records.length === 0) {
         listBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">登録されている記録はありません</td></tr>';
         return;
@@ -196,290 +186,9 @@ function displayRecords(records) {
 
     records.forEach(record => {
         const tr = document.createElement('tr');
-
         const dateStr = new Date(record.event_datetime).toLocaleString('ja-JP', {
             year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
         });
-
-        const scoreColor = (record.raw_points > 0) ? 'text-success' : (record.raw_points < 0 ? 'text-danger' : '');
-
-        tr.innerHTML = `
-            <td>${dateStr}</td>
-            <td><span class="badge bg-light text-dark">${record.account_name}</span></td>
-            <td>
-                <div class="small fw-bold">${record.tournament_type || '-'}</div>
-                <div class="small text-muted">${record.mahjong_mode || ''} / ${record.match_mode || ''}</div>
-            </td>
-            <td class="fw-bold ${scoreColor}">${record.raw_points !== null ? (record.raw_points > 0 ? '+' : '') + record.raw_points : '-'}</td>
-
-            <td>${record.hand_count || '-'}</td>
-            <td>
-                <span class="badge bg-danger bg-opacity-10 text-danger">${record.deal_in_count || 0} 放</span>
-                <span class="badge bg-success bg-opacity-10 text-success">${record.win_count || 0} 和</span>
-            </td>
-            <td>
-                <button onclick="editRecord(${JSON.stringify(record).replace(/"/g, '&quot;')})" class="btn btn-sm btn-outline-primary">編集</button>
-                <button onclick="deleteRecord('${record.id}')" class="btn btn-sm btn-outline-danger">削除</button>
-            </td>
-        `;
-        listBody.appendChild(tr);
-    });
-}
-
-// モーダルを開く（新規）
-function openRecordModal() {
-    document.getElementById('recordModalLabel').textContent = '大会記録 追加';
-    document.getElementById('record-form').reset();
-    document.getElementById('record-id').value = '';
-    recordModal.show();
-}
-
-// 編集画面を開く
-function editRecord(record) {
-    document.getElementById('recordModalLabel').textContent = '大会記録 編集';
-    document.getElementById('record-id').value = record.id;
-
-    // フィールド埋め
-    const fields = [
-        'event_datetime', 'account_name', 'tournament_type', 'team_name',
-        'mahjong_mode', 'match_mode', 'final_score', 'rank',
-        'matches_played', 'win_count', 'deal_in_count', 'discord_user_id'
-    ];
-
-
-    fields.forEach(field => {
-        let val = record[field] || '';
-        if (field === 'event_datetime' && val) val = val.slice(0, 16);
-        const el = document.getElementById(field);
-        if (el) el.value = val;
-    });
-
-    recordModal.show();
-}
-
-// 保存処理
-async function saveRecordFromForm() {
-    const id = document.getElementById('record-id').value;
-
-    const fields = [
-        'event_datetime', 'account_name', 'tournament_type', 'team_name',
-        'mahjong_mode', 'match_mode', 'final_score', 'rank',
-        'matches_played', 'win_count', 'deal_in_count', 'discord_user_id'
-    ];
-
-
-    const data = {};
-    fields.forEach(field => {
-        const el = document.getElementById(field);
-        if (!el) return;
-        let val = el.value;
-        if (['final_score', 'rank', 'matches_played', 'win_count', 'deal_in_count'].includes(field)) {
-            val = val !== '' ? Number(val) : null;
-        }
-        data[field] = val;
-    });
-
-    if (!data.event_datetime || !data.account_name) {
-        alert('日時とDiscordアカウントは必須です');
-        return;
-    }
-
-    toggleLoading(true);
-    try {
-        let result;
-        if (id) {
-            result = await supabaseClient.from('match_results').update(data).eq('id', id);
-        } else {
-            result = await supabaseClient.from('match_results').insert([data]);
-        }
-
-        if (result.error) throw result.error;
-
-        recordModal.hide();
-        fetchRecords();
-    } catch (err) {
-        alert('保存エラー: ' + err.message);
-    } finally {
-        toggleLoading(false);
-    }
-}
-
-// 削除処理
-async function deleteRecord(id) {
-    if (!confirm('この記録を削除してもよろしいですか？')) return;
-
-    toggleLoading(true);
-    try {
-        const { error } = await supabaseClient.from('match_results').delete().eq('id', id);
-        if (error) throw error;
-        fetchRecords();
-    } catch (err) {
-        alert('削除エラー: ' + err.message);
-    } finally {
-        toggleLoading(false);
-    }
-}
-
-// CSVエクスポート
-async function exportToCSV() {
-    try {
-        if (filteredRecords.length === 0) {
-            alert('データがありません（またはフィルターで全データが除外されています）');
-            return;
-        }
-
-        const headers = [
-            'id', 'event_datetime', 'account_name', 'tournament_type', 'team_name',
-            'mahjong_mode', 'match_mode', 'raw_points', 'hand_count',
-
-            'deal_in_count', 'win_count', 'opt1', 'opt2', 'opt3', 'opt4', 'opt5'
-        ];
-
-        const csvRows = [headers.join(',')];
-
-        // 現在表示されている順序・内容 (filteredRecords) で出力
-        filteredRecords.forEach(row => {
-            const values = headers.map(header => {
-                const val = row[header] || '';
-                return `"${String(val).replace(/"/g, '""')}"`;
-            });
-            csvRows.push(values.join(','));
-        });
-
-
-
-        const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', `match_results_${new Date().toISOString().slice(0, 10)}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    } catch (err) {
-        alert('CSV出力エラー: ' + err.message);
-    }
-}
-
-// CSVインポート
-async function handleCSVImport(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-        const text = e.target.result;
-        const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
-        if (rows.length < 2) return;
-
-        const headers = rows[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-
-        const dataToInsert = [];
-        for (let i = 1; i < rows.length; i++) {
-            const values = rows[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
-            const obj = {};
-            headers.forEach((h, idx) => {
-                let val = values[idx];
-                if (['final_score', 'rank', 'matches_played', 'win_count', 'deal_in_count'].includes(h)) {
-                    val = (val !== '' && val !== undefined) ? Number(val) : null;
-                }
-                if (val !== undefined) obj[h] = val;
-            });
-
-            // IDが空、または "null" 文字列の場合は削除して自動生成を促す
-            if (!obj.id || obj.id === '' || obj.id === 'null') {
-                delete obj.id;
-            }
-
-            if (obj.event_datetime && obj.account_name) {
-                dataToInsert.push(obj);
-            }
-        }
-
-        if (dataToInsert.length === 0) {
-            alert('有効なデータが見つかりませんでした。ヘッダー（カラム名）が合っているか確認してください。');
-            return;
-        }
-
-        if (confirm(`${dataToInsert.length}件の記録をインポート（同一IDは上書き）しますか？`)) {
-            toggleLoading(true);
-            try {
-                const { error } = await supabaseClient.from('match_results').upsert(dataToInsert);
-                if (error) throw error;
-                alert('インポート完了');
-                fetchRecords();
-            } catch (err) {
-                alert('インポートエラー: ' + err.message);
-            } finally {
-                toggleLoading(false);
-            }
-        }
-
-        event.target.value = '';
-    };
-    reader.readAsText(file);
-}
-
-// ユーザー一覧の取得
-async function fetchUsers() {
-    const listBody = document.getElementById('users-list-body');
-    if (!listBody) return;
-
-    try {
-        const { data: users, error } = await supabaseClient
-            .from('profiles')
-            .select('*')
-            .order('updated_at', { ascending: false });
-
-        if (error) throw error;
-
-        listBody.innerHTML = '';
-        if (users.length === 0) {
-            listBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">登録されているユーザーはいません</td></tr>';
-            return;
-        }
-
-        users.forEach(user => {
-            const tr = document.createElement('tr');
-            const dateStr = user.updated_at ? new Date(user.updated_at).toLocaleString('ja-JP') : '-';
-            const avatarHtml = user.avatar_url ? `<img src="${user.avatar_url}" width="32" height="32" class="rounded-circle shadow-sm">` : '<div class="bg-secondary rounded-circle" style="width:32px;height:32px;"></div>';
-
-            tr.innerHTML = `
-                <td>${avatarHtml}</td>
-                <td>
-                    <div class="fw-bold">${user.account_name || '名称未設定'}</div>
-                    <div class="small text-muted">${user.discord_account || ''}</div>
-                </td>
-                <td><code>${user.discord_user_id || '-'}</code></td>
-                <td class="small text-muted">${dateStr}</td>
-            `;
-            listBody.appendChild(tr);
-        });
-    } catch (err) {
-        console.error('ユーザー取得エラー:', err.message);
-        listBody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">エラー: ${err.message}</td></tr>`;
-    }
-}
-
-// 記録の表示（レコード形式に合わせて微調整）
-function displayRecords(records) {
-    const listBody = document.getElementById('records-list-body');
-    if (!listBody) return;
-
-    listBody.innerHTML = '';
-
-    if (records.length === 0) {
-        listBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">登録されている記録はありません</td></tr>';
-        return;
-    }
-
-    records.forEach(record => {
-        const tr = document.createElement('tr');
-
-        const dateStr = new Date(record.event_datetime).toLocaleString('ja-JP', {
-            year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
-        });
-
         const scoreColor = (record.final_score > 0) ? 'text-success' : (record.final_score < 0 ? 'text-danger' : '');
 
         tr.innerHTML = `
@@ -499,4 +208,199 @@ function displayRecords(records) {
         `;
         listBody.appendChild(tr);
     });
+}
+
+// モーダル制御
+function openRecordModal() {
+    document.getElementById('recordModalLabel').textContent = '大会記録 追加';
+    document.getElementById('record-form').reset();
+    document.getElementById('record-id').value = '';
+    recordModal.show();
+}
+
+function editRecord(record) {
+    document.getElementById('recordModalLabel').textContent = '大会記録 編集';
+    document.getElementById('record-id').value = record.id;
+    const fields = [
+        'event_datetime', 'account_name', 'tournament_type', 'team_name',
+        'mahjong_mode', 'match_mode', 'final_score', 'rank',
+        'matches_played', 'win_count', 'deal_in_count', 'discord_user_id'
+    ];
+    fields.forEach(field => {
+        let val = record[field] || '';
+        if (field === 'event_datetime' && val) val = val.slice(0, 16);
+        const el = document.getElementById(field);
+        if (el) el.value = val;
+    });
+    recordModal.show();
+}
+
+async function saveRecordFromForm() {
+    const id = document.getElementById('record-id').value;
+    const fields = [
+        'event_datetime', 'account_name', 'tournament_type', 'team_name',
+        'mahjong_mode', 'match_mode', 'final_score', 'rank',
+        'matches_played', 'win_count', 'deal_in_count', 'discord_user_id'
+    ];
+    const data = {};
+    fields.forEach(field => {
+        const el = document.getElementById(field);
+        if (!el) return;
+        let val = el.value;
+        if (['final_score', 'rank', 'matches_played', 'win_count', 'deal_in_count'].includes(field)) {
+            val = val !== '' ? Number(val) : null;
+        }
+        data[field] = val;
+    });
+
+    if (!data.event_datetime || !data.account_name) {
+        alert('日時とアカウント名は必須です');
+        return;
+    }
+
+    toggleLoading(true);
+    try {
+        let error;
+        if (id) {
+            ({ error } = await supabaseClient.from('match_results').update(data).eq('id', id));
+        } else {
+            ({ error } = await supabaseClient.from('match_results').insert([data]));
+        }
+        if (error) throw error;
+        recordModal.hide();
+        fetchRecords();
+    } catch (err) {
+        alert('保存エラー: ' + err.message);
+    } finally {
+        toggleLoading(false);
+    }
+}
+
+async function deleteRecord(id) {
+    if (!confirm('この記録を削除してもよろしいですか？')) return;
+    toggleLoading(true);
+    try {
+        const { error } = await supabaseClient.from('match_results').delete().eq('id', id);
+        if (error) throw error;
+        fetchRecords();
+    } catch (err) {
+        alert('削除エラー: ' + err.message);
+    } finally {
+        toggleLoading(false);
+    }
+}
+
+// ユーザー一覧取得
+async function fetchUsers() {
+    const listBody = document.getElementById('users-list-body');
+    if (!listBody) return;
+
+    try {
+        const { data: users, error } = await supabaseClient
+            .from('profiles')
+            .select('*')
+            .order('updated_at', { ascending: false });
+
+        if (error) throw error;
+        listBody.innerHTML = '';
+        if (users.length === 0) {
+            listBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">登録されているユーザーはいません</td></tr>';
+            return;
+        }
+
+        users.forEach(user => {
+            const tr = document.createElement('tr');
+            const dateStr = user.updated_at ? new Date(user.updated_at).toLocaleString('ja-JP') : '-';
+            const avatarHtml = user.avatar_url ? `<img src="${user.avatar_url}" width="32" height="32" class="rounded-circle shadow-sm">` : '<div class="bg-secondary rounded-circle" style="width:32px;height:32px;"></div>';
+            tr.innerHTML = `
+                <td>${avatarHtml}</td>
+                <td>
+                    <div class="fw-bold">${user.account_name || '名称未設定'}</div>
+                    <div class="small text-muted">${user.discord_account || ''}</div>
+                </td>
+                <td><code>${user.discord_user_id || '-'}</code></td>
+                <td class="small text-muted">${dateStr}</td>
+            `;
+            listBody.appendChild(tr);
+        });
+    } catch (err) {
+        console.error('ユーザー取得エラー:', err.message);
+        listBody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">エラー: ${err.message}</td></tr>`;
+    }
+}
+
+// CSV処理
+async function exportToCSV() {
+    try {
+        if (filteredRecords.length === 0) {
+            alert('データがありません');
+            return;
+        }
+        const headers = [
+            'id', 'event_datetime', 'account_name', 'tournament_type', 'team_name',
+            'mahjong_mode', 'match_mode', 'final_score', 'rank', 'matches_played',
+            'win_count', 'deal_in_count', 'discord_user_id'
+        ];
+        const csvRows = [headers.join(',')];
+        filteredRecords.forEach(row => {
+            const values = headers.map(header => {
+                const val = row[header] ?? '';
+                return `"${String(val).replace(/"/g, '""')}"`;
+            });
+            csvRows.push(values.join(','));
+        });
+        const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `match_results_${new Date().toISOString().slice(0, 10)}.csv`;
+        link.click();
+    } catch (err) {
+        alert('CSV出力エラー: ' + err.message);
+    }
+}
+
+async function handleCSVImport(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        const text = e.target.result;
+        const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
+        if (rows.length < 2) return;
+        const headers = rows[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+        const dataToInsert = [];
+        for (let i = 1; i < rows.length; i++) {
+            const values = rows[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
+            const obj = {};
+            headers.forEach((h, idx) => {
+                let val = values[idx];
+                if (['final_score', 'rank', 'matches_played', 'win_count', 'deal_in_count'].includes(h)) {
+                    val = (val !== '' && val !== undefined) ? Number(val) : null;
+                }
+                if (val !== undefined) obj[h] = val;
+            });
+            if (!obj.id || obj.id === '' || obj.id === 'null') delete obj.id;
+            if (obj.event_datetime && obj.account_name) dataToInsert.push(obj);
+        }
+        if (dataToInsert.length === 0) {
+            alert('有効なデータが見つかりませんでした');
+            return;
+        }
+        if (confirm(`${dataToInsert.length}件をインポートしますか？`)) {
+            toggleLoading(true);
+            try {
+                const { error } = await supabaseClient.from('match_results').upsert(dataToInsert);
+                if (error) throw error;
+                alert('インポート完了');
+                fetchRecords();
+            } catch (err) {
+                alert('インポートエラー: ' + err.message);
+            } finally {
+                toggleLoading(false);
+            }
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
 }
