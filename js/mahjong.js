@@ -322,19 +322,19 @@ function renderRanking(records, groupKey, type = 'all') {
         // 特殊表示用のバッジ
         let statsBadge = '';
         if (type === 'win') {
-            statsBadge = `<span class="badge-inline text-success ms-2">和了 ${s.avg_win.toFixed(2)} / 試合</span>`;
+            statsBadge = `<span class="ms-3 text-success fw-normal" style="font-size: 0.95rem;">和了 ${s.avg_win.toFixed(2)} / 試合</span>`;
         } else if (type === 'deal') {
-            statsBadge = `<span class="badge-inline text-danger ms-2">放銃 ${s.avg_deal.toFixed(2)} / 試合</span>`;
+            statsBadge = `<span class="ms-3 text-danger fw-normal" style="font-size: 0.95rem;">放銃 ${s.avg_deal.toFixed(2)} / 試合</span>`;
         } else if (type === 'top') {
-            statsBadge = `<span class="badge-inline text-primary ms-2">トップ率 ${s.top_rate.toFixed(1)}%</span>`;
+            statsBadge = `<span class="ms-3 text-primary fw-normal" style="font-size: 0.95rem;">トップ率 ${s.top_rate.toFixed(1)}%</span>`;
         } else if (type === 'avoid') {
-            statsBadge = `<span class="badge-inline text-info ms-2">ラス回避 ${s.avoid_rate.toFixed(1)}%</span>`;
+            statsBadge = `<span class="ms-3 text-info fw-normal" style="font-size: 0.95rem;">ラス回避 ${s.avoid_rate.toFixed(1)}%</span>`;
         } else if (type === 'avg_rank') {
-            statsBadge = `<span class="badge-inline text-secondary ms-2">平均順位 ${s.avg_rank.toFixed(2)}</span>`;
+            statsBadge = `<span class="ms-3 text-secondary fw-normal" style="font-size: 0.95rem;">平均順位 ${s.avg_rank.toFixed(2)}</span>`;
         } else if (type === 'max_score') {
-            statsBadge = `<span class="badge-inline text-warning ms-2">最大スコア ${(s.max_score > 0 ? '+' : '') + s.max_score.toFixed(1)}</span>`;
+            statsBadge = `<span class="ms-3 text-warning fw-normal" style="font-size: 0.95rem;">最大スコア ${(s.max_score > 0 ? '+' : '') + s.max_score.toFixed(1)}</span>`;
         } else if (type === 'avg_score') {
-            statsBadge = `<span class="badge-inline text-muted ms-2">平均スコア ${(s.avg_score > 0 ? '+' : '') + s.avg_score.toFixed(1)}</span>`;
+            statsBadge = `<span class="ms-3 text-muted fw-normal" style="font-size: 0.95rem;">平均スコア ${(s.avg_score > 0 ? '+' : '') + s.avg_score.toFixed(1)}</span>`;
         }
 
         return `
@@ -345,7 +345,7 @@ function renderRanking(records, groupKey, type = 'all') {
                        class="text-decoration-none d-flex align-items-center gap-2 ${linkClass}">
                         ${avatarHtml}
                         <div class="d-flex align-items-center flex-wrap flex-grow-1">
-                            <span class="${canLink ? 'hover-underline' : ''} fw-bold" style="min-width: 120px; display: inline-block;">${displayName}</span>
+                            <span class="${canLink ? 'hover-underline' : ''} fw-bold" style="min-width: 140px; display: inline-block;">${displayName}</span>
                             ${statsBadge}
                         </div>
                     </a>
