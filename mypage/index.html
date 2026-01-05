@@ -202,9 +202,9 @@
                             <div class="col-auto">
                                 <div class="text-center">
                                     <img id="user-avatar" src="" alt="アバター" class="avatar-large">
-                                    <button onclick="updateAvatar()" class="btn btn-sm btn-outline-secondary mt-2 w-100"
-                                        title="Discordから最新のアバター画像を取得">
-                                        🔄 アイコン更新
+                                    <button onclick="updateAvatar()" class="btn btn-outline-secondary mt-2"
+                                        style="font-size: 0.7rem; padding: 4px 8px;" title="Discordから最新のアバター画像を取得">
+                                        🔄 更新
                                     </button>
                                 </div>
                             </div>
@@ -215,14 +215,14 @@
                                 </h2>
                                 <div class="mt-3">
                                     <label class="small text-muted mb-1">ニックネーム (ランキング等で表示)</label>
-                                    <div class="input-group">
-                                        <input type="text" id="user-nickname" class="form-control" placeholder="未設定">
+                                    <input type="text" id="user-nickname" class="form-control mb-2" placeholder="未設定">
+                                    <div class="d-flex gap-2">
                                         <button onclick="useDiscordName()" class="btn btn-outline-secondary btn-sm"
                                             title="Discordの表示名を入れる">
                                             <small>Discord名を使用</small>
                                         </button>
                                         <button onclick="saveNickname()"
-                                            class="btn btn-gold text-white fw-bold">保存</button>
+                                            class="btn btn-gold text-white fw-bold btn-sm">保存</button>
                                     </div>
                                     <div id="save-msg" class="small mt-1" style="display:none;"></div>
                                 </div>
