@@ -16,11 +16,10 @@ function changePlayerCount() {
 
 async function fetchData() {
     try {
-        // 記録取得
+        // 記録取得（全シーズン）
         const { data, error } = await supabaseClient
             .from('match_results')
-            .select('*')
-            .eq('tournament_type', '第二回麻雀大会');
+            .select('*');
         if (error) throw error;
         allRecords = data;
 
@@ -38,14 +37,43 @@ async function fetchData() {
         }
 
 
-        switchRanking('all');
+        showRanking('all'); // 初期表示は総合個人ランキング
     } catch (err) {
         console.error('データ取得エラー:', err);
     }
 }
 
+// シーズン切り替え
+function toggleSeason(season) {
+    currentSeason = season;
+
+    // ボタンのスタイル更新
+    const seasonButtons = document.querySelectorAll('.btn-group .btn');
+    seasonButtons.forEach(btn => {
+        if (season === 'current' && btn.textContent === '今シーズン') {
+            btn.classList.replace('btn-outline-primary', 'btn-primary');
+        } else if (season === 'all' && btn.textContent === '全シーズン') {
+            btn.classList.replace('btn-outline-primary', 'btn-primary');
+        } else {
+            btn.classList.replace('btn-primary', 'btn-outline-primary');
+        }
+    });
+
+    // 現在表示中のランキングタイプを保持して再表示
+    const activeBtn = document.querySelector('.ranking-nav .btn-success');
+    let currentType = 'all';
+    if (activeBtn) {
+        const text = activeBtn.textContent;
+        if (text === 'チーム') currentType = 'team';
+        else if (text === '総合') currentType = 'all';
+        else if (text === '三麻') currentType = 'sanma';
+        else if (text === '四麻') currentType = 'yonma';
+    }
+    showRanking(currentType);
+}
+
 // ランキング切り替え
-function switchRanking(type) {
+function showRanking(type) {
     const title = document.getElementById('ranking-title');
     const nameHeader = document.getElementById('name-header');
     const buttons = document.querySelectorAll('.ranking-nav .btn');
@@ -53,31 +81,37 @@ function switchRanking(type) {
     // ボタンのスタイル更新
     buttons.forEach(btn => btn.classList.replace('btn-success', 'btn-outline-success'));
 
+    // シーズンフィルタリング
+    let seasonFiltered = allRecords;
+    if (currentSeason === 'current') {
+        seasonFiltered = allRecords.filter(r => r.tournament_type === '第二回麻雀大会');
+    }
+    // currentSeason === 'all' の場合は全データを使用
+
     let filtered = [];
     let groupKey = 'account_name';
-
 
     if (type === 'team') {
         title.textContent = 'チームランキング';
         nameHeader.textContent = 'チーム名';
         // 個人戦以外のデータを抽出し、チーム名があるものを対象にする
-        filtered = allRecords.filter(r => r.match_mode !== '個人戦' && r.team_name);
+        filtered = seasonFiltered.filter(r => r.match_mode !== '個人戦' && r.team_name);
         groupKey = 'team_name';
         buttons[0].classList.replace('btn-outline-success', 'btn-success');
     } else if (type === 'all') {
         title.textContent = '総合個人ランキング';
         nameHeader.textContent = 'アカウント';
-        filtered = allRecords; // 全集計
+        filtered = seasonFiltered; // 全集計
         buttons[1].classList.replace('btn-outline-success', 'btn-success');
-    } else if (type === 'ma4') {
+    } else if (type === 'yonma') {
         title.textContent = '個人ランキング (四麻)';
         nameHeader.textContent = 'アカウント';
-        filtered = allRecords.filter(r => r.mahjong_mode === '四麻');
+        filtered = seasonFiltered.filter(r => r.mahjong_mode === '四麻');
         buttons[2].classList.replace('btn-outline-success', 'btn-success');
-    } else if (type === 'ma3') {
+    } else if (type === 'sanma') {
         title.textContent = '個人ランキング (三麻)';
         nameHeader.textContent = 'アカウント';
-        filtered = allRecords.filter(r => r.mahjong_mode === '三麻');
+        filtered = seasonFiltered.filter(r => r.mahjong_mode === '三麻');
         buttons[3].classList.replace('btn-outline-success', 'btn-success');
     }
 

@@ -207,48 +207,61 @@
     <div class="container py-5 mt-4">
         <header class="text-center">
             <h1 class="page-header display-4 fw-bold">🀄 第二回麻雀大会</h1>
-        </header>
+            <!-- ヘッダー -->
+            <header class="text-center mb-4">
+                <h1 class="page-header display-4 fw-bold mb-4">🀄 麻雀ランキング</h1>
 
-        <!-- ランキングセクション -->
-        <div class="content-card">
-            <h3 class="mb-4 d-flex align-items-center">
-                📊 <span id="ranking-title" class="ms-2">総合個人ランキング</span>
-            </h3>
+                <!-- シーズン切り替え -->
+                <div class="mb-3">
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-primary" onclick="toggleSeason('current')">今シーズン</button>
+                        <button type="button" class="btn btn-outline-primary"
+                            onclick="toggleSeason('all')">全シーズン</button>
+                    </div>
+                </div>
 
-            <div class="ranking-nav text-center mb-4">
-                <button onclick="switchRanking('team')" class="btn btn-outline-success">チームランキング</button>
-                <button onclick="switchRanking('all')" class="btn btn-success">総合個人</button>
-                <button onclick="switchRanking('ma4')" class="btn btn-outline-success">個人(四麻)</button>
-                <button onclick="switchRanking('ma3')" class="btn btn-outline-success">個人(三麻)</button>
+                <!-- ランキング種別切り替え -->
+                <div class="ranking-nav">
+                    <button class="btn btn-outline-success" onclick="showRanking('team')">チーム</button>
+                    <button class="btn btn-success" onclick="showRanking('all')">総合</button>
+                    <button class="btn btn-outline-success" onclick="showRanking('sanma')">三麻</button>
+                    <button class="btn btn-outline-success" onclick="showRanking('yonma')">四麻</button>
+                </div>
+            </header>
+
+            <!-- ランキングセクション -->
+            <div class="content-card">
+                <h3 class="mb-4 d-flex align-items-center">
+                    📊 <span id="ranking-title" class="ms-2">総合個人ランキング</span>
+                </h3>
+
+                <div class="table-responsive">
+                    <table class="table ranking-table align-middle text-center">
+                        <thead>
+                            <tr>
+                                <th style="width: 80px;">順位</th>
+                                <th id="name-header">アカウント</th>
+                                <th>得点合計</th>
+                                <th>対局数</th>
+                                <th>和了/放銃</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ranking-body">
+                            <!-- JSで生成 -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
-            <div class="table-responsive">
-                <table class="table ranking-table align-middle text-center">
-                    <thead>
-                        <tr>
-                            <th style="width: 80px;">順位</th>
-                            <th id="name-header">アカウント</th>
-                            <th>得点合計</th>
-                            <th>対局数</th>
-                            <th>和了/放銃</th>
-                        </tr>
-                    </thead>
-                    <tbody id="ranking-body">
-                        <!-- JSで生成 -->
-                    </tbody>
-                </table>
+            <!-- スコア記録への誘導 -->
+            <div class="content-card text-center py-5">
+                <h3 class="mb-4">📝 スコアを記録する</h3>
+                <p class="text-muted mb-4 small">対局の結果（スコア、和了数、放銃数など）をこちらから記録できます。</p>
+                <a href="./record.html" class="btn btn-primary px-5 py-3 fw-bold shadow-lg"
+                    style="border-radius: 30px; font-size: 1.2rem; background-color: var(--gold); border: none;">
+                    🗂️ スコアを記録しに行く
+                </a>
             </div>
-        </div>
-
-        <!-- スコア記録への誘導 -->
-        <div class="content-card text-center py-5">
-            <h3 class="mb-4">📝 スコアを記録する</h3>
-            <p class="text-muted mb-4 small">対局の結果（スコア、和了数、放銃数など）をこちらから記録できます。</p>
-            <a href="./record.html" class="btn btn-primary px-5 py-3 fw-bold shadow-lg"
-                style="border-radius: 30px; font-size: 1.2rem; background-color: var(--gold); border: none;">
-                🗂️ スコアを記録しに行く
-            </a>
-        </div>
 
     </div>
 
