@@ -1,6 +1,7 @@
 // 麻雀ページ用ロジック
 let allRecords = [];
 let allProfiles = []; // プロフィール情報（アイコン付き）
+let currentSeason = 'current'; // 'current' or 'all'
 
 document.addEventListener('DOMContentLoaded', () => {
     fetchData();
