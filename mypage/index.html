@@ -691,7 +691,8 @@
             // シーズンフィルタ
             let records = allMahjongRecords;
             if (mySeasonMode === 'current') {
-                records = records.filter(r => r.tournament_name === '第二回麻雀大会' || !r.tournament_name);
+                // ランキング画面と同じく tournament_type でフィルタリング
+                records = records.filter(r => r.tournament_type === '第二回麻雀大会');
             }
 
             // 全プレイヤーの統計計算
@@ -770,7 +771,7 @@
                 }
 
                 const p = players[id];
-                const mode = r.mode || '';
+                const mode = r.mahjong_mode || r.mode || ''; // ランキング画面に合わせて mahjong_mode を優先
 
                 // 第一回大会と第二回大会で異なるカラム名を処理
                 if (r.tournament_type === '第一回麻雀大会') {
@@ -792,10 +793,10 @@
                     p.max_score = Math.max(p.max_score, Number(r.final_score || 0));
                 }
 
-                p.win += (r.win_count || 0);
-                p.deal += (r.deal_in_count || 0);
+                p.win += Number(r.win_count || r.wins || 0);
+                p.deal += Number(r.deal_in_count || r.deals || 0);
 
-                // モード別スコア
+                // モード別スコア（三麻スコア・四麻スコア表示用）
                 if (mode === '三麻') p.sanma += Number(r.final_score || r.score_total || 0);
                 if (mode === '四麻') p.yonma += Number(r.final_score || r.score_total || 0);
             });
