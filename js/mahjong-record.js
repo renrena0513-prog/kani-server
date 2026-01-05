@@ -113,10 +113,10 @@ function renderDropdownItems(idx, profiles) {
         return;
     }
     list.innerHTML = profiles.map(p => {
-        const display = p.account_name || p.discord_user_id;
+        const display = p.account_name || p.discord_account;
         const avatarUrl = p.avatar_url || 'https://via.placeholder.com/24';
         return `
-            <div class="dropdown-item-flex" onclick="selectPlayer(${idx}, '${p.discord_user_id}', '${(p.account_name || '').replace(/'/g, "\\'")}')">
+            <div class="dropdown-item-flex" onclick="selectPlayer(${idx}, '${p.discord_account}', '${(p.account_name || '').replace(/'/g, "\\'")}')">
                 <img src="${avatarUrl}" class="dropdown-avatar" onerror="this.src='https://via.placeholder.com/24'">
                 <span class="small">${display}</span>
             </div>
@@ -124,19 +124,19 @@ function renderDropdownItems(idx, profiles) {
     }).join('');
 }
 
-function selectPlayer(idx, discordUserId, accountName) {
-    const profile = allProfiles.find(p => p.discord_user_id === discordUserId);
+function selectPlayer(idx, discordAccount, accountName) {
+    const profile = allProfiles.find(p => p.discord_account === discordAccount);
     const input = document.querySelector(`#player-row-${idx} .player-account`);
     const badge = document.getElementById(`selected-badge-${idx}`);
 
-    // discord_user_idとaccount_nameの両方を保存（data属性に）
-    input.value = accountName || discordUserId;
-    input.dataset.discordUserId = discordUserId;
+    // discord_accountとaccount_nameの両方を保存（data属性に）
+    input.value = accountName || discordAccount;
+    input.dataset.discordAccount = discordAccount;
     input.dataset.accountName = accountName;
     input.style.display = 'none';
 
     badge.querySelector('img').src = (profile && profile.avatar_url) ? profile.avatar_url : 'https://via.placeholder.com/24';
-    badge.querySelector('.name').textContent = accountName || discordUserId;
+    badge.querySelector('.name').textContent = accountName || discordAccount;
     badge.style.display = 'flex';
     document.getElementById(`dropdown-list-${idx}`).style.display = 'none';
 }
@@ -167,7 +167,7 @@ async function submitScores() {
     let filledCount = 0;
     for (const entry of entries) {
         const input = entry.querySelector('.player-account');
-        const discordUserId = input.dataset.discordUserId || '';
+        const discordAccount = input.dataset.discordAccount || '';
         const accountName = input.dataset.accountName || input.value;
         const rawPoints = Number(entry.querySelector('.player-score').value);
 
@@ -181,7 +181,7 @@ async function submitScores() {
 
             filledCount++;
             tempData.push({
-                discord_user_id: discordUserId || null,
+                discord_account: discordAccount || null,
                 account_name: accountName,
                 raw_points: rawPoints,
                 team_name: (match === 'チーム戦') ? (entry.querySelector('.player-team').value || null) : null,
@@ -234,7 +234,7 @@ async function submitScores() {
     const dataToInsert = tempData.map(player => ({
         match_id: matchId,
         event_datetime: now,
-        discord_user_id: player.discord_user_id,
+        discord_account: player.discord_account,
         account_name: player.account_name,
         tournament_type: '第二回麻雀大会',
         mahjong_mode: mode,
@@ -246,7 +246,7 @@ async function submitScores() {
         hand_count: hands,
         win_count: player.win_count,
         deal_in_count: player.deal_in_count,
-        submitted_by_discord_user_id: submittedBy
+        submitted_by_discord_account: submittedBy
     }));
 
     // Step 6: データベースに挿入
