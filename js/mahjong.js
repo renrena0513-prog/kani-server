@@ -125,6 +125,10 @@ function showRanking(type) {
     let filtered = [];
     let groupKey = 'account_name';
 
+    // ヘッダーを左寄せに設定
+    nameHeader.style.textAlign = 'left';
+    nameHeader.style.paddingLeft = '3rem'; // アイコン分を考慮して調整
+
     if (type === 'team') {
         title.textContent = 'チームランキング';
         nameHeader.textContent = 'チーム名';
@@ -134,52 +138,52 @@ function showRanking(type) {
         buttons[0].classList.replace('btn-outline-success', 'btn-success');
     } else if (type === 'all') {
         title.textContent = '総合個人ランキング';
-        nameHeader.textContent = 'アカウント';
+        nameHeader.textContent = '名前 / 戦績';
         filtered = seasonFiltered; // 全集計
         buttons[1].classList.replace('btn-outline-success', 'btn-success');
     } else if (type === 'sanma') {
         title.textContent = '個人ランキング (三麻)';
-        nameHeader.textContent = 'アカウント';
+        nameHeader.textContent = '名前 / 三麻戦績';
         filtered = seasonFiltered.filter(r => r.mahjong_mode === '三麻');
         buttons[2].classList.replace('btn-outline-success', 'btn-success');
     } else if (type === 'yonma') {
         title.textContent = '個人ランキング (四麻)';
-        nameHeader.textContent = 'アカウント';
+        nameHeader.textContent = '名前 / 四麻戦績';
         filtered = seasonFiltered.filter(r => r.mahjong_mode === '四麻');
         buttons[3].classList.replace('btn-outline-success', 'btn-success');
     } else if (type === 'avg_score') {
         title.textContent = '平均スコアランキング';
-        nameHeader.textContent = 'アカウント';
+        nameHeader.textContent = '名前 / 平均スコア';
         filtered = seasonFiltered;
         buttons[4].classList.replace('btn-outline-success', 'btn-success');
     } else if (type === 'max_score') {
         title.textContent = '最大スコアランキング (最高得点)';
-        nameHeader.textContent = 'アカウント';
+        nameHeader.textContent = '名前 / 最大スコア';
         filtered = seasonFiltered;
         buttons[5].classList.replace('btn-outline-success', 'btn-success');
     } else if (type === 'deal') {
         title.textContent = '放銃率ランキング (平均放銃)';
-        nameHeader.textContent = 'アカウント';
+        nameHeader.textContent = '名前 / 放銃率';
         filtered = seasonFiltered;
         buttons[6].classList.replace('btn-outline-success', 'btn-success');
     } else if (type === 'win') {
         title.textContent = '和了率ランキング (平均和了)';
-        nameHeader.textContent = 'アカウント';
+        nameHeader.textContent = '名前 / 和了率';
         filtered = seasonFiltered;
         buttons[7].classList.replace('btn-outline-success', 'btn-success');
     } else if (type === 'avg_rank') {
         title.textContent = '平均順位ランキング';
-        nameHeader.textContent = 'アカウント';
+        nameHeader.textContent = '名前 / 平均順位';
         filtered = seasonFiltered;
         buttons[8].classList.replace('btn-outline-success', 'btn-success');
     } else if (type === 'top') {
         title.textContent = 'トップ率ランキング (1位率)';
-        nameHeader.textContent = 'アカウント';
+        nameHeader.textContent = '名前 / トップ率';
         filtered = seasonFiltered;
         buttons[9].classList.replace('btn-outline-success', 'btn-success');
     } else if (type === 'avoid') {
         title.textContent = 'ラス回避率ランキング';
-        nameHeader.textContent = 'アカウント';
+        nameHeader.textContent = '名前 / ラス回避率';
         filtered = seasonFiltered;
         buttons[10].classList.replace('btn-outline-success', 'btn-success');
     }
