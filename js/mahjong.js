@@ -361,9 +361,9 @@ function renderRanking(records, groupKey, type = 'all') {
         return `
             <tr>
                 <td>${idx + 1}</td>
-                <td>
+                <td class="ps-4 text-start">
                     <a href="${linkUrl}" 
-                       class="text-decoration-none d-flex align-items-center justify-content-center gap-2 ${linkClass}">
+                       class="text-decoration-none d-flex align-items-center justify-content-start gap-2 ${linkClass}">
                         ${avatarHtml}
                         <span class="${canLink ? 'hover-underline' : ''} fw-bold">${displayName}</span>
                     </a>
