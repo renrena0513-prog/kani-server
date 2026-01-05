@@ -745,55 +745,80 @@
             const players = {};
 
             records.forEach(r => {
-                // discord_user_idをキーとして使用
-                const id = r.discord_user_id || r.account_name;
+                // discord_user_idをキーとして使用（ランキングと同じロジック）
+                let id = r.discord_user_id;
+                if (!id || id === 'null') {
+                    id = r.nickname || r.account_name || 'Unknown';
+                }
                 if (!id) return;
 
                 if (!players[id]) {
                     players[id] = {
                         name: id,
-                        total: 0, sanma: 0, yonma: 0,
-                        scores: [], wins: 0, deals: 0, games: 0,
-                        ranks: [], tops: 0, lasts: 0
+                        score: 0, sanma: 0, yonma: 0,
+                        count: 0, win: 0, deal: 0,
+                        r1: 0, r2: 0, r3: 0, r4: 0,
+                        max_score: -Infinity
                     };
                 }
 
                 const p = players[id];
-                const score = r.score || 0;
                 const mode = r.mode || '';
-                const rank = r.rank || 0;
 
-                p.total += score;
-                p.scores.push(score);
-                p.games += (r.hands || 1);
-                p.wins += (r.wins || 0);
-                p.deals += (r.deals || 0);
-
-                if (mode === '三麻') p.sanma += score;
-                if (mode === '四麻') p.yonma += score;
-
-                if (rank > 0) {
-                    p.ranks.push(rank);
-                    if (rank === 1) p.tops++;
-                    const lastRank = mode === '三麻' ? 3 : 4;
-                    if (rank === lastRank) p.lasts++;
+                // 第一回大会と第二回大会で異なるカラム名を処理
+                if (r.tournament_type === '第一回麻雀大会') {
+                    p.score += Number(r.score_total || 0);
+                    p.count += Number(r.matches_played || 0);
+                    p.r1 += Number(r.rank1_count || 0);
+                    p.r2 += Number(r.rank2_count || 0);
+                    p.r3 += Number(r.rank3_count || 0);
+                    p.r4 += Number(r.rank4_count || 0);
+                    p.max_score = Math.max(p.max_score, Number(r.score_max || 0));
+                } else {
+                    p.score += Number(r.final_score || 0);
+                    p.count += 1;
+                    const rk = Number(r.rank);
+                    if (rk === 1) p.r1++;
+                    else if (rk === 2) p.r2++;
+                    else if (rk === 3) p.r3++;
+                    else if (rk === 4) p.r4++;
+                    p.max_score = Math.max(p.max_score, Number(r.final_score || 0));
                 }
+
+                p.win += (r.win_count || 0);
+                p.deal += (r.deal_in_count || 0);
+
+                // モード別スコア
+                if (mode === '三麻') p.sanma += Number(r.final_score || r.score_total || 0);
+                if (mode === '四麻') p.yonma += Number(r.final_score || r.score_total || 0);
             });
 
-            return Object.values(players).map(p => ({
-                name: p.name,
-                total: p.total,
-                sanma: p.sanma,
-                yonma: p.yonma,
-                avgScore: p.games > 0 ? p.total / p.games : 0,
-                maxScore: p.scores.length > 0 ? Math.max(...p.scores) : 0,
-                winRate: p.games > 0 ? (p.wins / p.games) * 100 : 0,
-                dealRate: p.games > 0 ? (p.deals / p.games) * 100 : 0,
-                avgRank: p.ranks.length > 0 ? p.ranks.reduce((a, b) => a + b, 0) / p.ranks.length : 0,
-                topRate: p.ranks.length > 0 ? (p.tops / p.ranks.length) * 100 : 0,
-                avoidRate: p.ranks.length > 0 ? ((p.ranks.length - p.lasts) / p.ranks.length) * 100 : 0,
-                games: p.games
-            }));
+            // 統計値を計算
+            return Object.values(players).map(p => {
+                const avgWin = p.count > 0 ? (p.win / p.count) : 0;
+                const avgDeal = p.count > 0 ? (p.deal / p.count) : 0;
+                const topRate = p.count > 0 ? (p.r1 / p.count) * 100 : 0;
+                let lastCount = p.r4;
+                if (p.r4 === 0 && p.r3 > 0) lastCount = p.r3;
+                const avoidRate = p.count > 0 ? (1 - (lastCount / p.count)) * 100 : 0;
+                const avgRank = p.count > 0 ? (1 * p.r1 + 2 * p.r2 + 3 * p.r3 + 4 * p.r4) / p.count : 0;
+                const avgScore = p.count > 0 ? p.score / p.count : 0;
+
+                return {
+                    name: p.name,
+                    total: p.score,
+                    sanma: p.sanma,
+                    yonma: p.yonma,
+                    avgScore: avgScore,
+                    maxScore: p.max_score === -Infinity ? 0 : p.max_score,
+                    winRate: avgWin * 100,
+                    dealRate: avgDeal * 100,
+                    avgRank: avgRank,
+                    topRate: topRate,
+                    avoidRate: avoidRate,
+                    games: p.count
+                };
+            });
         }
 
 
