@@ -47,12 +47,12 @@ function setupPlayerInputs(count) {
     for (let i = 1; i <= count; i++) {
         container.innerHTML += `
             <div class="player-entry" id="player-row-${i}">
-                <div class="row g-2 align-items-end">
-                    <div class="col team-col" style="display: ${match === 'チーム戦' ? 'block' : 'none'}; flex: 0 0 18%; max-width: 18%;">
+                <div class="row g-2 align-items-end flex-nowrap">
+                    <div class="col team-col" style="display: ${match === 'チーム戦' ? 'block' : 'none'}; flex: 0 0 14%; max-width: 14%;">
                         <label class="small text-muted">チーム名</label>
                         <input type="text" class="form-control form-control-sm player-team" placeholder="チーム名">
                     </div>
-                    <div class="col" style="flex: 0 0 ${match === 'チーム戦' ? '30%' : '40%'}; max-width: ${match === 'チーム戦' ? '30%' : '40%'};">
+                    <div class="col" style="flex: 0 0 ${match === 'チーム戦' ? '26%' : '35%'}; max-width: ${match === 'チーム戦' ? '26%' : '35%'};">
                         <label class="small text-muted">アカウント名</label>
                         <div class="custom-dropdown-container">
                             <input type="text" class="form-control form-control-sm player-account" 
@@ -65,15 +65,15 @@ function setupPlayerInputs(count) {
                             <div class="custom-dropdown-list" id="dropdown-list-${i}"></div>
                         </div>
                     </div>
-                    <div class="col" style="flex: 0 0 ${match === 'チーム戦' ? '22%' : '24%'}; max-width: ${match === 'チーム戦' ? '22%' : '24%'};">
+                    <div class="col" style="flex: 0 0 ${match === 'チーム戦' ? '18%' : '21%'}; max-width: ${match === 'チーム戦' ? '18%' : '21%'};">
                         <label class="small text-muted">得点</label>
                         <input type="number" class="form-control form-control-sm player-score" placeholder="25000">
                     </div>
-                    <div class="col" style="flex: 0 0 15%; max-width: 15%;">
+                    <div class="col" style="flex: 0 0 ${match === 'チーム戦' ? '12%' : '14%'}; max-width: ${match === 'チーム戦' ? '12%' : '14%'};">
                         <label class="small text-muted">和了数</label>
                         <input type="number" class="form-control form-control-sm player-win" value="0">
                     </div>
-                    <div class="col" style="flex: 0 0 15%; max-width: 15%;">
+                    <div class="col" style="flex: 0 0 ${match === 'チーム戦' ? '12%' : '14%'}; max-width: ${match === 'チーム戦' ? '12%' : '14%'};">
                         <label class="small text-muted">放銃</label>
                         <input type="number" class="form-control form-control-sm player-deal" value="0">
                     </div>
