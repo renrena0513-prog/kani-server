@@ -84,49 +84,36 @@ function switchRanking(type) {
     renderRanking(filtered, groupKey);
 }
 
-function renderRanking(records, groupKey) {
-    const summary = {};
+function renderRanking(records, groupKey)    // ランキング集計
+const summary = {};
+records.forEach(r => {
+    // discord_user_idでグループ化（ニックネーム変更に対応）
+    const key = r.discord_user_id;
+    if (!key) return;
+    if (!summary[key]) {
+        summary[key] = {
+            discord_user_id: key,
+            score: 0,
+            count: 0,
+            win: 0,
+            deal: 0
+        };
+    }
+    summary[key].score += Number(r.final_score || 0);
+    summary[key].count += 1;
+    summary[key].win += (r.win_count || 0);
+    summary[key].deal += (r.deal_in_count || 0);
+});
 
-    records.forEach(r => {
-        const key = r[groupKey];
-        if (!key) return;
-        if (!summary[key]) {
-            summary[key] = { name: key, score: 0, count: 0, win: 0, deal: 0 };
-        }
-        summary[key].score += Number(r.final_score || 0);
-        summary[key].count += 1;
-        summary[key].win += (r.win_count || 0);
-        summary[key].deal += (r.deal_in_count || 0);
-    });
+const sorted = Object.values(summary).sort((a, b) => b.score - a.score);
 
-    const sorted = Object.values(summary).sort((a, b) => b.score - a.score);
+const body = document.getElementById('ranking-body');
+body.innerHTML = sorted.map((s, idx) => {
+    // プロフィールから最新のaccount_nameを取得
+    const profile = allProfiles.find(p => p.discord_user_id === s.discord_user_id);
+    let displayName = profile?.account_name || s.discord_user_id || 'Unknown';
 
-    const body = document.getElementById('ranking-body');
-    body.innerHTML = sorted.map((s, idx) => {
-        let displayName = s.name;
-
-        // account_nameでグループ化されている場合、プロフィール情報を取得
-        if (groupKey === 'account_name') {
-            // プロフィールテーブルからニックネームを検索
-            const profile = allProfiles.find(p => p.account_name === s.name);
-            if (profile) {
-                displayName = profile.account_name || s.name;
-            }
-
-            // それでも表示名が無い場合は、discord_user_idを参照
-            if (!displayName || displayName === '' || displayName === 'null') {
-                // レコードからdiscord_user_idを取得
-                const record = allRecords.find(r => r.account_name === s.name);
-                if (record && record.discord_user_id) {
-                    const profileById = allProfiles.find(p => p.discord_user_id === record.discord_user_id);
-                    displayName = profileById?.account_name || record.discord_user_id || 'Unknown';
-                } else {
-                    displayName = 'Unknown';
-                }
-            }
-        }
-
-        return `
+    return `
             <tr>
                 <td>${idx + 1}</td>
                 <td class="text-start ps-4">${displayName}</td>
@@ -137,11 +124,11 @@ function renderRanking(records, groupKey) {
                 <td><small class="text-success">${s.win}和</small> / <small class="text-danger">${s.deal}放</small></td>
             </tr>
         `;
-    }).join('');
+}).join('');
 
-    if (sorted.length === 0) {
-        body.innerHTML = '<tr><td colspan="5" class="text-muted py-4">該当するデータがありません</td></tr>';
-    }
+if (sorted.length === 0) {
+    body.innerHTML = '<tr><td colspan="5" class="text-muted py-4">該当するデータがありません</td></tr>';
+}
 }
 
 
