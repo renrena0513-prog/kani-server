@@ -618,12 +618,19 @@
 
         async function loadMahjongStats() {
             try {
-                const user = await getCurrentUser();
-                if (!user) return;
+                // URLパラメータから特定ユーザーIDを取得（管理者用）
+                const urlParams = new URLSearchParams(window.location.search);
+                const targetUserId = urlParams.get('user');
 
-                // 自分のdiscord_user_idを取得
-                const discordUserId = user.user_metadata.provider_id;
-                myAccountName = discordUserId; // discord_user_idで照合する
+                if (targetUserId) {
+                    // 特定ユーザーの統計を表示
+                    myAccountName = targetUserId;
+                } else {
+                    // 自分の統計を表示
+                    const user = await getCurrentUser();
+                    if (!user) return;
+                    myAccountName = user.user_metadata.provider_id;
+                }
 
                 // 第二回麻雀大会データ
                 const { data: currentData, error: currentError } = await supabaseClient

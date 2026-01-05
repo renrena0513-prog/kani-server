@@ -320,6 +320,11 @@ async function fetchUsers() {
                 </td>
                 <td><code>${user.discord_user_id || '-'}</code></td>
                 <td class="small text-muted">${dateStr}</td>
+                <td>
+                    <a href="../mypage/index.html?user=${user.discord_user_id}" class="btn btn-sm btn-outline-primary" target="_blank">
+                        📊 統計
+                    </a>
+                </td>
             `;
             listBody.appendChild(tr);
         });
