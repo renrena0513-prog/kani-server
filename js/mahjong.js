@@ -323,22 +323,30 @@ function renderRanking(records, groupKey, type = 'all') {
                           style="width: 32px; height: 32px; object-fit: cover;">` : ''}
             </div>`;
 
-        // 特殊表示用のバッジ
-        let statsBadge = '';
+        // 別列に表示するための数値
+        let statValue = '';
+        let statColorClass = 'text-primary';
+
         if (type === 'win') {
-            statsBadge = `<span class="ms-3 text-success fw-normal" style="font-size: 0.95rem;">和了 ${s.avg_win.toFixed(2)} / 試合</span>`;
+            statValue = `${s.avg_win.toFixed(2)} / 試合`;
+            statColorClass = 'text-success';
         } else if (type === 'deal') {
-            statsBadge = `<span class="ms-3 text-danger fw-normal" style="font-size: 0.95rem;">放銃 ${s.avg_deal.toFixed(2)} / 試合</span>`;
+            statValue = `${s.avg_deal.toFixed(2)} / 試合`;
+            statColorClass = 'text-danger';
         } else if (type === 'top') {
-            statsBadge = `<span class="ms-3 text-primary fw-normal" style="font-size: 0.95rem;">トップ率 ${s.top_rate.toFixed(1)}%</span>`;
+            statValue = `${s.top_rate.toFixed(1)}%`;
         } else if (type === 'avoid') {
-            statsBadge = `<span class="ms-3 text-info fw-normal" style="font-size: 0.95rem;">ラス回避 ${s.avoid_rate.toFixed(1)}%</span>`;
+            statValue = `${s.avoid_rate.toFixed(1)}%`;
+            statColorClass = 'text-info';
         } else if (type === 'avg_rank') {
-            statsBadge = `<span class="ms-3 text-secondary fw-normal" style="font-size: 0.95rem;">平均順位 ${s.avg_rank.toFixed(2)}</span>`;
+            statValue = `${s.avg_rank.toFixed(2)}`;
+            statColorClass = 'text-secondary';
         } else if (type === 'max_score') {
-            statsBadge = `<span class="ms-3 text-warning fw-normal" style="font-size: 0.95rem;">最大スコア ${(s.max_score > 0 ? '+' : '') + s.max_score.toFixed(1)}</span>`;
-        } else if (type === 'avg_score') {
-            statsBadge = `<span class="ms-3 text-muted fw-normal" style="font-size: 0.95rem;">平均スコア ${(s.avg_score > 0 ? '+' : '') + s.avg_score.toFixed(1)}</span>`;
+            statValue = `${(s.max_score > 0 ? '+' : '') + s.max_score.toFixed(1)}`;
+            statColorClass = 'text-warning';
+        } else if (type === 'avg_score' || type === 'all' || type === 'sanma' || type === 'yonma') {
+            statValue = `${(s.avg_score > 0 ? '+' : '') + s.avg_score.toFixed(1)}`;
+            statColorClass = 'text-muted';
         }
 
         return `
@@ -350,9 +358,11 @@ function renderRanking(records, groupKey, type = 'all') {
                         ${avatarHtml}
                         <div class="d-flex align-items-center flex-wrap flex-grow-1">
                             <span class="${canLink ? 'hover-underline' : ''} fw-bold" style="min-width: 140px; display: inline-block;">${displayName}</span>
-                            ${statsBadge}
                         </div>
                     </a>
+                </td>
+                <td class="fw-bold ${statColorClass}" style="font-size: 1.1rem;">
+                    ${statValue}
                 </td>
                 <td class="fw-bold ${s.score > 0 ? 'text-success' : (s.score < 0 ? 'text-danger' : '')}">
                     ${(s.score > 0 ? '+' : '') + s.score.toFixed(1)}
