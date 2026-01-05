@@ -110,14 +110,24 @@ function renderRanking(records, groupKey) {
 
     const body = document.getElementById('ranking-body');
     body.innerHTML = sorted.map((s, idx) => {
-        // プロフィールから最新のaccount_nameを取得
+        // プロフィールから最新のaccount_nameとavatar_urlを取得
         const profile = allProfiles.find(p => p.discord_user_id === s.discord_user_id);
         let displayName = profile?.account_name || s.discord_user_id || 'Unknown';
+        let avatarUrl = profile?.avatar_url || 'https://via.placeholder.com/32';
 
         return `
             <tr>
                 <td>${idx + 1}</td>
-                <td class="text-start ps-4">${displayName}</td>
+                <td class="text-start ps-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <img src="${avatarUrl}" 
+                             alt="${displayName}" 
+                             class="rounded-circle" 
+                             style="width: 32px; height: 32px; object-fit: cover;"
+                             onerror="this.src='https://via.placeholder.com/32'">
+                        <span>${displayName}</span>
+                    </div>
+                </td>
                 <td class="fw-bold ${s.score > 0 ? 'text-success' : (s.score < 0 ? 'text-danger' : '')}">
                     ${(s.score > 0 ? '+' : '') + s.score.toFixed(1)}
                 </td>
