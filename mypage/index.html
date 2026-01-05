@@ -280,25 +280,28 @@
                     </button>
                 </div>
 
-                <!-- ログイン済み -->
+                <!-- ログイン済み（または閲覧モード） -->
                 <div id="profile-content" style="display: none;">
                     <div class="profile-card mb-4">
                         <div class="row align-items-center">
                             <div class="col-auto">
                                 <div class="text-center">
                                     <img id="user-avatar" src="" alt="アバター" class="avatar-large">
-                                    <button onclick="updateAvatar()" class="btn-avatar-update mt-2"
+                                    <button id="sync-btn" onclick="updateAvatar()" class="btn-avatar-update mt-2"
                                         title="Discordから最新のアバター画像を取得">
                                         🔄 同期
                                     </button>
                                 </div>
                             </div>
                             <div class="col">
+                                <h2 id="page-title-label" class="small text-muted mb-1" style="display:none;">プレイヤー</h2>
                                 <h2 id="user-name" class="mb-2"
                                     style="font-family: var(--font-title); color: var(--deep-purple);">
                                     ユーザー名
                                 </h2>
-                                <div class="mt-3">
+
+                                <!-- 自分の場合のみ表示する編集エリア -->
+                                <div id="edit-area" class="mt-3">
                                     <label class="small text-muted mb-2">ニックネーム (ランキング等で表示)</label>
                                     <input type="text" id="user-nickname" class="form-control nickname-input mb-2"
                                         placeholder="タップして入力...">
@@ -311,6 +314,13 @@
                                             class="btn btn-gold text-white fw-bold btn-sm">保存</button>
                                     </div>
                                     <div id="save-msg" class="small mt-1" style="display:none;"></div>
+                                </div>
+
+                                <!-- 他人の場合のみ表示する表示エリア -->
+                                <div id="view-area" class="mt-2" style="display:none;">
+                                    <div class="discord-badge">
+                                        🀄 麻雀プレイヤー
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -450,117 +460,156 @@
     <script src="../js/auth-guard.js"></script>
 
     <script>
-        // マイページ用の表示処理
-        async function displayMyPage() {
+        let isViewMode = false;
+        let targetId = null;
+
+        /**
+         * ページ初期化
+         */
+        async function initPage() {
+            const urlParams = new URLSearchParams(window.location.search);
+            targetId = urlParams.get('user');
+
             const user = await getCurrentUser();
+            const myId = user?.user_metadata?.provider_id;
+
+            // 閲覧モード判定: パラメータがあり、かつ自分ではない場合
+            if (targetId && targetId !== myId) {
+                isViewMode = true;
+            } else {
+                isViewMode = false;
+                // パラメータがない場合は自分のIDをセット
+                if (!targetId) targetId = myId;
+            }
+
+            // UIの基本表示切り替え
+            setupUI();
+
+            // データの読み込み
+            if (isViewMode) {
+                await loadTargetUserInfo();
+            } else {
+                if (user) {
+                    await displayMyInfo(user);
+                } else {
+                    showLoginPrompt();
+                    return;
+                }
+            }
+
+            // 麻雀統計の読み込み（共有ロジック）
+            await loadMahjongStats();
+        }
+
+        function setupUI() {
             const loginPrompt = document.getElementById('login-prompt');
             const profileContent = document.getElementById('profile-content');
+            const editArea = document.getElementById('edit-area');
+            const viewArea = document.getElementById('view-area');
+            const syncBtn = document.getElementById('sync-btn');
+            const pageTitleLabel = document.getElementById('page-title-label');
+            const pageHeader = document.querySelector('.page-header');
 
-            if (user) {
-                // ログイン済み
-                loginPrompt.style.display = 'none';
-                profileContent.style.display = 'block';
+            profileContent.style.display = 'block';
+            loginPrompt.style.display = 'none';
 
-                const discordUser = user.user_metadata;
-
-                // アバター
-                const avatarUrl = discordUser.avatar_url ||
-                    `https://cdn.discordapp.com/avatars/${discordUser.provider_id}/${discordUser.avatar}`;
-                document.getElementById('user-avatar').src = avatarUrl;
-
-                // ユーザー名
-                document.getElementById('user-name').textContent =
-                    discordUser.full_name || discordUser.name || 'ユーザー';
-
-                // ニックネーム取得
-                const { data: profile, error: profileError } = await supabaseClient
-                    .from('profiles')
-                    .select('account_name')
-                    .eq('discord_user_id', discordUser.provider_id)
-                    .maybeSingle();
-                if (!profileError && profile && profile.account_name) {
-                    document.getElementById('user-nickname').value = profile.account_name;
-                }
-
+            if (isViewMode) {
+                // 閲覧モード設定
+                editArea.style.display = 'none';
+                viewArea.style.display = 'block';
+                syncBtn.style.display = 'none';
+                pageTitleLabel.style.display = 'block';
+                pageHeader.textContent = '👤 プレイヤープロフィール';
             } else {
-
-                // 未ログイン
-                loginPrompt.style.display = 'block';
-                profileContent.style.display = 'none';
+                // マイページ設
+                editArea.style.display = 'block';
+                viewArea.style.display = 'none';
+                syncBtn.style.display = 'inline-block';
+                pageTitleLabel.style.display = 'none';
+                pageHeader.textContent = '👤 マイページ';
             }
         }
 
-        async function displayUserInfo() {
-            const user = await getCurrentUser();
-            if (!user) {
-                window.location.href = '../index.html';
-                return;
-            }
+        function showLoginPrompt() {
+            document.getElementById('login-prompt').style.display = 'block';
+            document.getElementById('profile-content').style.display = 'none';
+        }
 
+        /**
+         * 自分の情報を表示
+         */
+        async function displayMyInfo(user) {
             const discordUser = user.user_metadata;
-            const discordUserId = discordUser.provider_id;
 
-            // アバター画像とDiscord IDを表示
+            // アバター
             document.getElementById('user-avatar').src = discordUser.avatar_url || 'https://via.placeholder.com/150';
-            // Note: There is no element with id 'discord-id' in the provided HTML.
-            // document.getElementById('discord-id').textContent = discordUserId;
 
-            // profilesテーブルからaccount_nameを取得
+            // ユーザー名（DBから取得を優先）
             const { data: profile } = await supabaseClient
                 .from('profiles')
-                .select('account_name')
-                .eq('discord_user_id', discordUserId)
+                .select('account_name, avatar_url')
+                .eq('discord_user_id', targetId)
                 .maybeSingle();
 
-            const currentNickname = profile?.account_name || discordUser.full_name || '';
-            document.getElementById('user-nickname').value = currentNickname; // Changed from nickname-input to user-nickname
+            document.getElementById('user-name').textContent =
+                profile?.account_name || discordUser.full_name || discordUser.name || 'ユーザー';
+
+            if (profile?.account_name) {
+                document.getElementById('user-nickname').value = profile.account_name;
+            }
         }
 
-        displayUserInfo();
+        /**
+         * 他人の情報を取得して表示
+         */
+        async function loadTargetUserInfo() {
+            const { data: profile, error } = await supabaseClient
+                .from('profiles')
+                .select('*')
+                .eq('discord_user_id', targetId)
+                .maybeSingle();
 
+            if (profile) {
+                document.getElementById('user-avatar').src = profile.avatar_url || 'https://via.placeholder.com/150';
+                document.getElementById('user-name').textContent = profile.account_name || '名称未設定';
+            } else {
+                document.getElementById('user-name').textContent = 'Unknown Player';
+            }
+        }
 
         async function useDiscordName() {
             const user = await getCurrentUser();
             if (!user) return;
             const discordUser = user.user_metadata;
-            // 表示名を取得 (global_name -> full_name -> name)
             const discordDisplayName = discordUser.custom_claims?.global_name || discordUser.full_name || discordUser.name;
             document.getElementById('user-nickname').value = discordDisplayName;
         }
 
         async function updateAvatar() {
             const user = await getCurrentUser();
-            if (!user) return;
+            if (!user || isViewMode) return;
 
-            const btn = document.querySelector('button[onclick="updateAvatar()"]');
-            if (!btn) return;
-
+            const btn = document.getElementById('sync-btn');
             btn.disabled = true;
             const originalText = btn.textContent;
             btn.textContent = '更新中...';
 
             try {
                 const discordUser = user.user_metadata;
-                const discordUserId = discordUser.provider_id;
                 const avatarUrl = discordUser.avatar_url || discordUser.picture || '';
 
-                // profilesテーブルのavatar_urlを更新
                 const { error } = await supabaseClient
                     .from('profiles')
                     .update({
                         avatar_url: avatarUrl,
                         updated_at: new Date().toISOString()
                     })
-                    .eq('discord_user_id', discordUserId);
+                    .eq('discord_user_id', targetId);
 
-                if (error) {
-                    console.error('Error updating avatar:', error);
-                    alert('エラー: ' + error.message);
-                } else {
-                    alert('アバター画像を更新しました！');
-                    // アバター画像を再読み込み
-                    document.getElementById('user-avatar').src = avatarUrl;
-                }
+                if (error) throw error;
+
+                alert('アバター画像を更新しました！');
+                document.getElementById('user-avatar').src = avatarUrl;
             } catch (err) {
                 console.error('Error:', err);
                 alert('エラーが発生しました');
@@ -570,46 +619,45 @@
             }
         }
 
-        // ニックネーム保存
-        document.getElementById('profile-content').addEventListener('click', async (event) => {
-            if (event.target.closest('.btn-gold')) { // Check if the clicked element or its parent is the save button
-                const user = await getCurrentUser();
-                if (!user) return;
+        async function saveNickname() {
+            if (isViewMode) return;
 
-                const newNickname = document.getElementById('user-nickname').value.trim(); // Changed from nickname-input to user-nickname
-                const msg = document.getElementById('save-msg');
+            const newNickname = document.getElementById('user-nickname').value.trim();
+            const msg = document.getElementById('save-msg');
 
-                if (!newNickname) {
-                    msg.textContent = 'ニックネームを入力してください';
-                    msg.className = 'small mt-1 text-danger';
-                    msg.style.display = 'block';
-                    setTimeout(() => { msg.style.display = 'none'; }, 3000);
-                    return;
-                }
-
-                const discordUserId = user.user_metadata.provider_id;
-
+            if (!newNickname) {
+                msg.textContent = 'ニックネームを入力してください';
+                msg.className = 'small mt-1 text-danger flex-grow-1';
                 msg.style.display = 'block';
-                msg.textContent = '保存中...';
-                msg.className = 'small mt-1 text-muted';
+                setTimeout(() => { msg.style.display = 'none'; }, 3000);
+                return;
+            }
 
+            msg.style.display = 'block';
+            msg.textContent = '保存中...';
+            msg.className = 'small mt-1 text-muted flex-grow-1';
+
+            try {
                 const { error } = await supabaseClient
                     .from('profiles')
-                    .update({ account_name: newNickname, updated_at: new Date().toISOString() })
-                    .eq('discord_user_id', discordUserId);
+                    .update({
+                        account_name: newNickname,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('discord_user_id', targetId);
 
-                if (error) {
-                    console.error('Error updating nickname:', error);
-                    msg.textContent = 'エラー: ' + error.message;
-                    msg.className = 'small mt-1 text-danger';
-                } else {
-                    msg.textContent = '保存しました！';
-                    msg.className = 'small mt-1 text-success';
-                    displayUserInfo(); // Refresh info after saving
-                    setTimeout(() => { msg.style.display = 'none'; }, 2000);
-                }
+                if (error) throw error;
+
+                msg.textContent = '保存しました！';
+                msg.className = 'small mt-1 text-success flex-grow-1';
+                document.getElementById('user-name').textContent = newNickname;
+                setTimeout(() => { msg.style.display = 'none'; }, 2000);
+            } catch (err) {
+                console.error('Error updating nickname:', err);
+                msg.textContent = 'エラーが発生しました';
+                msg.className = 'small mt-1 text-danger flex-grow-1';
             }
-        });
+        }
 
         // ============ 麻雀統計機能 ============
         let allMahjongRecords = [];
@@ -830,10 +878,7 @@
         }
 
 
-        document.addEventListener('DOMContentLoaded', () => {
-            displayMyPage();
-            loadMahjongStats();
-        });
+        document.addEventListener('DOMContentLoaded', initPage);
 
     </script>
 </body>

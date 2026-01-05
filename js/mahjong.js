@@ -320,7 +320,7 @@ function renderRanking(records, groupKey, type = 'all') {
             }
         }
 
-        const linkUrl = canLink ? `../player/index.html?id=${s.discord_user_id}` : '#';
+        const linkUrl = canLink ? `../mypage/index.html?user=${s.discord_user_id}` : '#';
         const linkClass = canLink ? '' : 'pe-none text-dark';
 
         const avatarHtml = `
