@@ -23,6 +23,10 @@ async function fetchData() {
         if (error) throw error;
         allRecords = data;
 
+        console.log('📊 取得したレコード数:', allRecords.length);
+        console.log('第一回:', allRecords.filter(r => r.tournament_type === '第一回麻雀大会').length);
+        console.log('第二回:', allRecords.filter(r => r.tournament_type === '第二回麻雀大会').length);
+
         // 全プロフィール取得（アイコン用）
         const { data: profiles, error: pError } = await supabaseClient
             .from('profiles')
@@ -113,6 +117,12 @@ function showRanking(type) {
         nameHeader.textContent = 'アカウント';
         filtered = seasonFiltered.filter(r => r.mahjong_mode === '三麻');
         buttons[3].classList.replace('btn-outline-success', 'btn-success');
+    }
+
+    console.log(`🎯 ランキングタイプ: ${type}, シーズン: ${currentSeason}`);
+    console.log(`フィルター後のレコード数: ${filtered.length}`);
+    if (filtered.length > 0) {
+        console.log('サンプルレコード:', filtered[0]);
     }
 
     renderRanking(filtered, groupKey);
