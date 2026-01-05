@@ -325,6 +325,34 @@
             }
         }
 
+        async function displayUserInfo() {
+            const user = await getCurrentUser();
+            if (!user) {
+                window.location.href = '../index.html';
+                return;
+            }
+
+            const discordUser = user.user_metadata;
+            const discordUserId = discordUser.provider_id;
+
+            // アバター画像とDiscord IDを表示
+            document.getElementById('user-avatar').src = discordUser.avatar_url || 'https://via.placeholder.com/150';
+            // Note: There is no element with id 'discord-id' in the provided HTML.
+            // document.getElementById('discord-id').textContent = discordUserId;
+
+            // profilesテーブルからaccount_nameを取得
+            const { data: profile } = await supabaseClient
+                .from('profiles')
+                .select('account_name')
+                .eq('discord_user_id', discordUserId)
+                .maybeSingle();
+
+            const currentNickname = profile?.account_name || discordUser.full_name || '';
+            document.getElementById('user-nickname').value = currentNickname; // Changed from nickname-input to user-nickname
+        }
+
+        displayUserInfo();
+
         async function useDiscordName() {
             const user = await getCurrentUser();
             if (!user) return;
@@ -334,33 +362,47 @@
             document.getElementById('user-nickname').value = discordDisplayName;
         }
 
-        async function saveNickname() {
+        // ニックネーム保存
+        document.getElementById('profile-content').addEventListener('click', async (event) => {
+            if (event.target.closest('.btn-gold')) { // Check if the clicked element or its parent is the save button
+                const user = await getCurrentUser();
+                if (!user) return;
 
-            const user = await getCurrentUser();
-            if (!user) return;
+                const newNickname = document.getElementById('user-nickname').value.trim(); // Changed from nickname-input to user-nickname
+                const msg = document.getElementById('save-msg');
 
-            const nickname = document.getElementById('user-nickname').value;
-            const discordAccount = user.user_metadata.full_name || user.user_metadata.name;
-            const msg = document.getElementById('save-msg');
+                if (!newNickname) {
+                    msg.textContent = 'ニックネームを入力してください';
+                    msg.className = 'small mt-1 text-danger';
+                    msg.style.display = 'block';
+                    setTimeout(() => { msg.style.display = 'none'; }, 3000);
+                    return;
+                }
 
-            msg.style.display = 'block';
-            msg.textContent = '保存中...';
-            msg.className = 'small mt-1 text-muted';
+                const discordUserId = user.user_metadata.provider_id;
 
-            const { error } = await supabaseClient
-                .from('profiles')
-                .update({ nickname: nickname, updated_at: new Date().toISOString() })
-                .eq('discord_account', discordAccount);
+                msg.style.display = 'block';
+                msg.textContent = '保存中...';
+                msg.className = 'small mt-1 text-muted';
 
-            if (error) {
-                msg.textContent = 'エラー: ' + error.message;
-                msg.className = 'small mt-1 text-danger';
-            } else {
-                msg.textContent = '保存しました！';
-                msg.className = 'small mt-1 text-success';
-                setTimeout(() => { msg.style.display = 'none'; }, 2000);
+                const { error } = await supabaseClient
+                    .from('profiles')
+                    .update({ account_name: newNickname, updated_at: new Date().toISOString() })
+                    .eq('discord_user_id', discordUserId);
+
+                if (error) {
+                    console.error('Error updating nickname:', error);
+                    msg.textContent = 'エラー: ' + error.message;
+                    msg.className = 'small mt-1 text-danger';
+                } else {
+                    msg.textContent = '保存しました！';
+                    msg.className = 'small mt-1 text-success';
+                    displayUserInfo(); // Refresh info after saving
+                    setTimeout(() => { msg.style.display = 'none'; }, 2000);
+                }
             }
-        }
+        });
+
 
         document.addEventListener('DOMContentLoaded', displayMyPage);
 
