@@ -721,8 +721,8 @@
             updateStatCard('yonma', myStats.yonma, playerStats, 'yonma', true);
             updateStatCard('avg-score', myStats.avgScore.toFixed(0), playerStats, 'avgScore', true);
             updateStatCard('max-score', myStats.maxScore, playerStats, 'maxScore', true);
-            updateStatCard('win-rate', myStats.winRate.toFixed(1) + '%', playerStats, 'winRate', true);
-            updateStatCard('deal-rate', myStats.dealRate.toFixed(1) + '%', playerStats, 'dealRate', false);
+            updateStatCard('win-rate', myStats.winRate.toFixed(2) + ' / 試合', playerStats, 'winRate', true);
+            updateStatCard('deal-rate', myStats.dealRate.toFixed(2) + ' / 試合', playerStats, 'dealRate', false);
             updateStatCard('top-rate', myStats.topRate.toFixed(1) + '%', playerStats, 'topRate', true);
             updateStatCard('avoid-rate', myStats.avoidRate.toFixed(1) + '%', playerStats, 'avoidRate', true);
             updateStatCard('avg-rank', myStats.avgRank.toFixed(2), playerStats, 'avgRank', false);
@@ -819,8 +819,8 @@
                     yonma: p.yonma,
                     avgScore: avgScore,
                     maxScore: p.max_score === -Infinity ? 0 : p.max_score,
-                    winRate: avgWin * 100,
-                    dealRate: avgDeal * 100,
+                    winRate: avgWin,
+                    dealRate: avgDeal,
                     avgRank: avgRank,
                     topRate: topRate,
                     avoidRate: avoidRate,
