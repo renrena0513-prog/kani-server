@@ -63,6 +63,17 @@ async function fetchData() {
 function toggleSeason(season) {
     currentSeason = season;
 
+    // タイトルの更新
+    const seasonTitle = document.getElementById('season-title');
+    const pageMainTitle = document.getElementById('page-main-title');
+    if (season === 'current') {
+        seasonTitle.textContent = '🀄 第二回麻雀大会';
+        pageMainTitle.textContent = '🀄 麻雀ランキング';
+    } else {
+        seasonTitle.textContent = '🀄 全シーズン記録';
+        pageMainTitle.textContent = '🀄 歴代ランキング';
+    }
+
     // ボタンのスタイル更新
     const seasonButtons = document.querySelectorAll('.btn-group .btn');
     seasonButtons.forEach(btn => {
