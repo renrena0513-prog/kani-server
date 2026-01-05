@@ -57,7 +57,7 @@ async function displayUserInfo() {
         // プロフィール情報の同期（非同期で実行）
         const syncProfile = async () => {
             const avatarUrl = discordUser.avatar_url || discordUser.picture || '';
-            const discordAccount = discordUser.provider_id || discordId;
+            const discordUserId = discordUser.provider_id || discordId;
 
             // Discordの表示名 (Global Name) を優先取得、なければ full_name
             const discordDisplayName = discordUser.custom_claims?.global_name || discordUser.full_name || discordUser.name;
@@ -66,11 +66,11 @@ async function displayUserInfo() {
             const { data: existing } = await supabaseClient
                 .from('profiles')
                 .select('account_name')
-                .eq('discord_account', discordAccount)
+                .eq('discord_user_id', discordUserId)
                 .maybeSingle();
 
             const profileData = {
-                discord_account: discordAccount,
+                discord_user_id: discordUserId,
                 avatar_url: avatarUrl,
                 updated_at: new Date().toISOString()
             };
@@ -84,7 +84,7 @@ async function displayUserInfo() {
             if (error) {
                 console.error('Profile sync error:', error);
             } else {
-                console.log('Profile synced successfully:', discordAccount);
+                console.log('Profile synced successfully:', discordUserId);
             }
         };
 
