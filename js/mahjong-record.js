@@ -65,15 +65,15 @@ function setupPlayerInputs(count) {
                             <div class="custom-dropdown-list" id="dropdown-list-${i}"></div>
                         </div>
                     </div>
-                    <div class="col" style="flex: 0 0 ${match === 'チーム戦' ? '20%' : '21%'}; max-width: ${match === 'チーム戦' ? '20%' : '21%'};">
+                    <div class="col" style="flex: 0 0 ${match === 'チーム戦' ? '17%' : '18%'}; max-width: ${match === 'チーム戦' ? '17%' : '18%'};">
                         <label class="small text-muted">得点</label>
                         <input type="number" class="form-control form-control-sm player-score" placeholder="25000">
                     </div>
-                    <div class="col" style="flex: 0 0 ${match === 'チーム戦' ? '12%' : '14%'}; max-width: ${match === 'チーム戦' ? '12%' : '14%'};">
+                    <div class="col" style="flex: 0 0 ${match === 'チーム戦' ? '9%' : '11%'}; max-width: ${match === 'チーム戦' ? '9%' : '11%'};">
                         <label class="small text-muted">和了数</label>
                         <input type="number" class="form-control form-control-sm player-win" value="0">
                     </div>
-                    <div class="col" style="flex: 0 0 ${match === 'チーム戦' ? '12%' : '14%'}; max-width: ${match === 'チーム戦' ? '12%' : '14%'};">
+                    <div class="col" style="flex: 0 0 ${match === 'チーム戦' ? '9%' : '11%'}; max-width: ${match === 'チーム戦' ? '9%' : '11%'};">
                         <label class="small text-muted">放銃</label>
                         <input type="number" class="form-control form-control-sm player-deal" value="0">
                     </div>
