@@ -373,8 +373,11 @@
             const user = await getCurrentUser();
             if (!user) return;
 
-            const btn = event.target;
+            const btn = document.querySelector('button[onclick="updateAvatar()"]');
+            if (!btn) return;
+
             btn.disabled = true;
+            const originalText = btn.textContent;
             btn.textContent = '更新中...';
 
             try {
@@ -396,14 +399,15 @@
                     alert('エラー: ' + error.message);
                 } else {
                     alert('アバター画像を更新しました！');
-                    displayUserInfo(); // ページをリフレッシュ
+                    // アバター画像を再読み込み
+                    document.getElementById('user-avatar').src = avatarUrl;
                 }
             } catch (err) {
                 console.error('Error:', err);
                 alert('エラーが発生しました');
             } finally {
                 btn.disabled = false;
-                btn.textContent = '🔄 アイコン更新';
+                btn.textContent = originalText;
             }
         }
 
