@@ -59,58 +59,62 @@
 
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            grid-template-columns: repeat(2, 1fr);
             gap: 15px;
         }
 
-        .stat-box {
-            background: linear-gradient(135deg, var(--primary-purple), var(--deep-purple));
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
+        @media (min-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(5, 1fr);
+            }
+        }
+
+        /* 統計ミニカード */
+        .stat-card-mini {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 12px;
+            padding: 15px;
             text-align: center;
+            transition: all 0.3s ease;
+            border: 1px solid #dee2e6;
         }
 
-        .stat-value {
-            font-size: 2rem;
-            font-weight: bold;
-            display: block;
+        .stat-card-mini:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
-        .stat-label {
-            font-size: 0.9rem;
-            opacity: 0.9;
+        .stat-label-mini {
+            font-size: 0.75rem;
+            color: #6c757d;
+            font-weight: 600;
+            margin-bottom: 5px;
         }
 
-        .match-table {
-            margin-top: 20px;
+        .stat-value-mini {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--deep-purple);
         }
 
-        .rank-badge {
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-weight: bold;
-            font-size: 0.9rem;
+        .stat-rank {
+            font-size: 0.7rem;
+            color: #fff;
+            background: linear-gradient(135deg, var(--gold), #b8860b);
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-top: 5px;
+            display: inline-block;
         }
 
-        .rank-1 {
-            background: linear-gradient(135deg, #ffd700, #ffed4e);
-            color: #333;
+        .stat-rank.no-data {
+            background: #adb5bd;
         }
 
-        .rank-2 {
-            background: linear-gradient(135deg, #c0c0c0, #e8e8e8);
-            color: #333;
-        }
-
-        .rank-3 {
-            background: linear-gradient(135deg, #cd7f32, #e89a5e);
-            color: white;
-        }
-
-        .rank-4 {
-            background: #6c757d;
-            color: white;
+        .loading-spinner {
+            width: 3rem;
+            height: 3rem;
+            color: var(--gold);
         }
     </style>
 </head>
@@ -133,40 +137,102 @@
         <div class="row justify-content-center">
             <div class="col-12 col-lg-10">
                 <div class="profile-card mb-4">
-                    <div class="d-flex align-items-center gap-3 mb-4">
-                        <img id="player-avatar" src="" alt="アバター" class="rounded-circle"
-                            style="width: 80px; height: 80px; object-fit: cover;">
-                        <div>
-                            <h2 id="player-name" class="mb-0"
-                                style="font-family: var(--font-title); color: var(--deep-purple);">
-                                読み込み中...
-                            </h2>
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+                        <div class="d-flex align-items-center gap-3">
+                            <img id="player-avatar" src="" alt="アバター" class="rounded-circle"
+                                style="width: 80px; height: 80px; object-fit: cover;">
+                            <div>
+                                <h2 id="player-name" class="mb-0"
+                                    style="font-family: var(--font-title); color: var(--deep-purple);">
+                                    読み込み中...
+                                </h2>
+                            </div>
+                        </div>
+
+                        <!-- シーズン切り替え -->
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-primary btn-sm px-3"
+                                onclick="toggleSeason('current')">今シーズン</button>
+                            <button type="button" class="btn btn-outline-primary btn-sm px-3"
+                                onclick="toggleSeason('all')">全シーズン</button>
                         </div>
                     </div>
 
-                    <!-- 統計情報 -->
-                    <div class="stats-grid" id="stats-grid">
-                        <div class="stat-box">
-                            <span class="stat-value" id="total-matches">-</span>
-                            <span class="stat-label">総試合数</span>
+                    <!-- 麻雀統計 -->
+                    <div id="stats-loading" class="text-center py-5">
+                        <div class="spinner-border loading-spinner" role="status">
+                            <span class="visually-hidden">Loading...</span>
                         </div>
-                        <div class="stat-box">
-                            <span class="stat-value" id="avg-rank">-</span>
-                            <span class="stat-label">平均順位</span>
-                        </div>
-                        <div class="stat-box">
-                            <span class="stat-value" id="total-score">-</span>
-                            <span class="stat-label">総合スコア</span>
-                        </div>
-                        <div class="stat-box">
-                            <span class="stat-value" id="first-rate">-</span>
-                            <span class="stat-label">1位率</span>
+                        <p class="mt-2 text-muted">統計データを集計中...</p>
+                    </div>
+
+                    <div id="no-stats-msg" class="text-center py-5" style="display: none;">
+                        <p class="text-muted mb-0">まだ麻雀大会のデータがありません</p>
+                    </div>
+
+                    <div id="stats-content" style="display: none;">
+                        <div class="stats-grid">
+                            <div class="stat-card-mini">
+                                <div class="stat-label-mini">総合スコア</div>
+                                <div class="stat-value-mini" id="stat-total">-</div>
+                                <div class="stat-rank" id="rank-total">-</div>
+                            </div>
+                            <div class="stat-card-mini">
+                                <div class="stat-label-mini">三麻スコア</div>
+                                <div class="stat-value-mini" id="stat-sanma">-</div>
+                                <div class="stat-rank" id="rank-sanma">-</div>
+                            </div>
+                            <div class="stat-card-mini">
+                                <div class="stat-label-mini">四麻スコア</div>
+                                <div class="stat-value-mini" id="stat-yonma">-</div>
+                                <div class="stat-rank" id="rank-yonma">-</div>
+                            </div>
+                            <div class="stat-card-mini">
+                                <div class="stat-label-mini">平均スコア</div>
+                                <div class="stat-value-mini" id="stat-avg-score">-</div>
+                                <div class="stat-rank" id="rank-avg-score">-</div>
+                            </div>
+                            <div class="stat-card-mini">
+                                <div class="stat-label-mini">最大スコア</div>
+                                <div class="stat-value-mini" id="stat-max-score">-</div>
+                                <div class="stat-rank" id="rank-max-score">-</div>
+                            </div>
+                            <div class="stat-card-mini">
+                                <div class="stat-label-mini">和了率</div>
+                                <div class="stat-value-mini" id="stat-win-rate">-</div>
+                                <div class="stat-rank" id="rank-win-rate">-</div>
+                            </div>
+                            <div class="stat-card-mini">
+                                <div class="stat-label-mini">放銃率</div>
+                                <div class="stat-value-mini" id="stat-deal-rate">-</div>
+                                <div class="stat-rank" id="rank-deal-rate">-</div>
+                            </div>
+                            <div class="stat-card-mini">
+                                <div class="stat-label-mini">トップ率</div>
+                                <div class="stat-value-mini" id="stat-top-rate">-</div>
+                                <div class="stat-rank" id="rank-top-rate">-</div>
+                            </div>
+                            <div class="stat-card-mini">
+                                <div class="stat-label-mini">ラス回避</div>
+                                <div class="stat-value-mini" id="stat-avoid-rate">-</div>
+                                <div class="stat-rank" id="rank-avoid-rate">-</div>
+                            </div>
+                            <div class="stat-card-mini">
+                                <div class="stat-label-mini">平均順位</div>
+                                <div class="stat-value-mini" id="stat-avg-rank">-</div>
+                                <div class="stat-rank" id="rank-avg-rank">-</div>
+                            </div>
+                            <div class="stat-card-mini">
+                                <div class="stat-label-mini">対局数</div>
+                                <div class="stat-value-mini" id="stat-games">-</div>
+                                <div class="stat-rank" id="rank-games">-</div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- 試合履歴 -->
-                <div class="profile-card">
+                <div class="profile-card match-history-section">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h3 style="font-family: var(--font-title); color: var(--deep-purple);">試合履歴</h3>
                         <div class="btn-group" role="group">
