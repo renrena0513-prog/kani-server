@@ -143,7 +143,17 @@ function renderRanking(records, groupKey) {
             };
         }
         summary[key].score += Number(r.final_score || r.score_total || 0); // 過去データはscore_totalかも
-        summary[key].count += 1;
+
+        // 過去データ（第一回）は既に集計済み、新データは試合ごとにカウント
+        if (r.tournament_type === '第一回麻雀大会') {
+            // 過去データ: score_totalを直接使用、countは加算しない
+            summary[key].score = Number(r.score_total || 0);
+            summary[key].count = Number(r.matches_played || 0);
+        } else {
+            // 新データ: 個別試合を合算
+            summary[key].count += 1;
+        }
+
         summary[key].win += (r.win_count || 0);
         summary[key].deal += (r.deal_in_count || 0);
     });
