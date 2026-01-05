@@ -234,7 +234,7 @@ async function submitScores() {
     const dataToInsert = tempData.map(player => ({
         match_id: matchId,
         event_datetime: now,
-        discord_account: player.discord_account,
+        discord_user_id: player.discord_account,  // profilesのdiscord_accountをmatch_resultsのdiscord_user_idにマッピング
         account_name: player.account_name,
         tournament_type: '第二回麻雀大会',
         mahjong_mode: mode,
@@ -246,7 +246,7 @@ async function submitScores() {
         hand_count: hands,
         win_count: player.win_count,
         deal_in_count: player.deal_in_count,
-        submitted_by_discord_account: submittedBy
+        submitted_by_discord_user_id: submittedBy
     }));
 
     // Step 6: データベースに挿入
