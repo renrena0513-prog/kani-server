@@ -100,6 +100,8 @@ function toggleSeason(season) {
         else if (text === 'トップ率') currentType = 'top';
         else if (text === 'ラス回避') currentType = 'avoid';
         else if (text === '平均順位') currentType = 'avg_rank';
+        else if (text === '最大スコア') currentType = 'max_score';
+        else if (text === '平均スコア') currentType = 'avg_score';
     }
     showRanking(currentType);
 }
@@ -170,6 +172,16 @@ function showRanking(type) {
         nameHeader.textContent = 'アカウント';
         filtered = seasonFiltered;
         buttons[8].classList.replace('btn-outline-success', 'btn-success');
+    } else if (type === 'max_score') {
+        title.textContent = '最大スコアランキング (最高得点)';
+        nameHeader.textContent = 'アカウント';
+        filtered = seasonFiltered;
+        buttons[9].classList.replace('btn-outline-success', 'btn-success');
+    } else if (type === 'avg_score') {
+        title.textContent = '平均スコアランキング';
+        nameHeader.textContent = 'アカウント';
+        filtered = seasonFiltered;
+        buttons[10].classList.replace('btn-outline-success', 'btn-success');
     }
 
     console.log(`🎯 ランキングタイプ: ${type}, シーズン: ${currentSeason}`);
@@ -210,6 +222,7 @@ function renderRanking(records, groupKey, type = 'all') {
                 win: 0,
                 deal: 0,
                 r1: 0, r2: 0, r3: 0, r4: 0,
+                max_score: -Infinity,
                 isTeam: (groupKey === 'team_name')
             };
         }
@@ -222,6 +235,7 @@ function renderRanking(records, groupKey, type = 'all') {
             summary[key].r2 += Number(r.rank2_count || 0);
             summary[key].r3 += Number(r.rank3_count || 0);
             summary[key].r4 += Number(r.rank4_count || 0);
+            summary[key].max_score = Math.max(summary[key].max_score, Number(r.score_max || 0));
         } else {
             summary[key].score += Number(r.final_score || 0);
             summary[key].count += 1;
@@ -231,6 +245,7 @@ function renderRanking(records, groupKey, type = 'all') {
             else if (rk === 2) summary[key].r2++;
             else if (rk === 3) summary[key].r3++;
             else if (rk === 4) summary[key].r4++;
+            summary[key].max_score = Math.max(summary[key].max_score, Number(r.final_score || 0));
         }
 
         summary[key].win += (r.win_count || 0);
@@ -255,6 +270,8 @@ function renderRanking(records, groupKey, type = 'all') {
         s.avoid_rate = s.count > 0 ? (1 - (lastCount / s.count)) * 100 : 0;
 
         s.avg_rank = s.count > 0 ? (1 * s.r1 + 2 * s.r2 + 3 * s.r3 + 4 * s.r4) / s.count : 0;
+        s.avg_score = s.count > 0 ? s.score / s.count : 0;
+        if (s.max_score === -Infinity) s.max_score = 0;
     });
 
     // ソート
@@ -264,6 +281,8 @@ function renderRanking(records, groupKey, type = 'all') {
         if (type === 'top') return b.top_rate - a.top_rate; // トップ率は高い順
         if (type === 'avoid') return b.avoid_rate - a.avoid_rate; // ラス回避は高い順
         if (type === 'avg_rank') return (a.avg_rank || 4) - (b.avg_rank || 4); // 平均順位は低い（1に近い）順
+        if (type === 'max_score') return b.max_score - a.max_score; // 最大スコアは高い順
+        if (type === 'avg_score') return b.avg_score - a.avg_score; // 平均スコアは高い順
         return b.score - a.score; // その他はスコア順
     });
 
@@ -310,6 +329,10 @@ function renderRanking(records, groupKey, type = 'all') {
             statsBadge = `<div class="small text-info fw-bold">ラス回避 ${s.avoid_rate.toFixed(1)}%</div>`;
         } else if (type === 'avg_rank') {
             statsBadge = `<div class="small text-secondary fw-bold">平均順位 ${s.avg_rank.toFixed(2)}</div>`;
+        } else if (type === 'max_score') {
+            statsBadge = `<div class="small text-warning fw-bold">最大スコア ${(s.max_score > 0 ? '+' : '') + s.max_score.toFixed(1)}</div>`;
+        } else if (type === 'avg_score') {
+            statsBadge = `<div class="small text-muted fw-bold">平均スコア ${(s.avg_score > 0 ? '+' : '') + s.avg_score.toFixed(1)}</div>`;
         }
 
         return `
