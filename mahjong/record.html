@@ -277,6 +277,17 @@
             display: none;
         }
 
+        /* 数字入力欄のスピンボタンを非表示 */
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
         /* スクロールバーのスタイリング */
         .custom-dropdown-list::-webkit-scrollbar {
             width: 8px;
