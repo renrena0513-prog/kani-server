@@ -200,7 +200,13 @@
                     <div class="profile-card mb-4">
                         <div class="row align-items-center">
                             <div class="col-auto">
-                                <img id="user-avatar" src="" alt="アバター" class="avatar-large">
+                                <div class="text-center">
+                                    <img id="user-avatar" src="" alt="アバター" class="avatar-large">
+                                    <button onclick="updateAvatar()" class="btn btn-sm btn-outline-secondary mt-2 w-100"
+                                        title="Discordから最新のアバター画像を取得">
+                                        🔄 アイコン更新
+                                    </button>
+                                </div>
                             </div>
                             <div class="col">
                                 <h2 id="user-name" class="mb-2"
@@ -353,6 +359,7 @@
 
         displayUserInfo();
 
+
         async function useDiscordName() {
             const user = await getCurrentUser();
             if (!user) return;
@@ -360,6 +367,44 @@
             // 表示名を取得 (global_name -> full_name -> name)
             const discordDisplayName = discordUser.custom_claims?.global_name || discordUser.full_name || discordUser.name;
             document.getElementById('user-nickname').value = discordDisplayName;
+        }
+
+        async function updateAvatar() {
+            const user = await getCurrentUser();
+            if (!user) return;
+
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '更新中...';
+
+            try {
+                const discordUser = user.user_metadata;
+                const discordUserId = discordUser.provider_id;
+                const avatarUrl = discordUser.avatar_url || discordUser.picture || '';
+
+                // profilesテーブルのavatar_urlを更新
+                const { error } = await supabaseClient
+                    .from('profiles')
+                    .update({
+                        avatar_url: avatarUrl,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('discord_user_id', discordUserId);
+
+                if (error) {
+                    console.error('Error updating avatar:', error);
+                    alert('エラー: ' + error.message);
+                } else {
+                    alert('アバター画像を更新しました！');
+                    displayUserInfo(); // ページをリフレッシュ
+                }
+            } catch (err) {
+                console.error('Error:', err);
+                alert('エラーが発生しました');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔄 アイコン更新';
+            }
         }
 
         // ニックネーム保存
