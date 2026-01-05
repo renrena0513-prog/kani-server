@@ -621,15 +621,9 @@
                 const user = await getCurrentUser();
                 if (!user) return;
 
-                // 自分のaccount_nameを取得
+                // 自分のdiscord_user_idを取得
                 const discordUserId = user.user_metadata.provider_id;
-                const { data: profile } = await supabaseClient
-                    .from('profiles')
-                    .select('account_name')
-                    .eq('discord_user_id', discordUserId)
-                    .maybeSingle();
-
-                myAccountName = profile?.account_name || user.user_metadata.full_name || '';
+                myAccountName = discordUserId; // discord_user_idで照合する
 
                 // 第二回麻雀大会データ
                 const { data: currentData, error: currentError } = await supabaseClient
@@ -751,19 +745,20 @@
             const players = {};
 
             records.forEach(r => {
-                const name = r.account_name;
-                if (!name) return;
+                // discord_user_idをキーとして使用
+                const id = r.discord_user_id || r.account_name;
+                if (!id) return;
 
-                if (!players[name]) {
-                    players[name] = {
-                        name,
+                if (!players[id]) {
+                    players[id] = {
+                        name: id,
                         total: 0, sanma: 0, yonma: 0,
                         scores: [], wins: 0, deals: 0, games: 0,
                         ranks: [], tops: 0, lasts: 0
                     };
                 }
 
-                const p = players[name];
+                const p = players[id];
                 const score = r.score || 0;
                 const mode = r.mode || '';
                 const rank = r.rank || 0;
