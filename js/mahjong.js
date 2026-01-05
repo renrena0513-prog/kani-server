@@ -96,12 +96,12 @@ function toggleSeason(season) {
         else if (text === '三麻') currentType = 'sanma';
         else if (text === '四麻') currentType = 'yonma';
         else if (text === '平均順位') currentType = 'avg_rank';
-        else if (text === '最大') currentType = 'max_score';
-        else if (text === '平均') currentType = 'avg_score';
-        else if (text === '和了') currentType = 'win';
-        else if (text === '放銃') currentType = 'deal';
-        else if (text === 'トップ') currentType = 'top';
-        else if (text === 'ラス') currentType = 'avoid';
+        else if (text === '最大スコア') currentType = 'max_score';
+        else if (text === '平均スコア') currentType = 'avg_score';
+        else if (text === '和了率') currentType = 'win';
+        else if (text === '放銃率') currentType = 'deal';
+        else if (text === 'トップ率') currentType = 'top';
+        else if (text === 'ラス回避') currentType = 'avoid';
     }
     showRanking(currentType);
 }
