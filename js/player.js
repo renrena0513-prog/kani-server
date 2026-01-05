@@ -24,10 +24,8 @@ async function loadPlayerData() {
         if (profile) {
             document.getElementById('player-avatar').src = profile.avatar_url || 'https://via.placeholder.com/80';
             document.getElementById('player-name').textContent = profile.account_name || playerId;
-            document.getElementById('player-id').textContent = `Discord ID: ${playerId}`;
         } else {
             document.getElementById('player-name').textContent = playerId;
-            document.getElementById('player-id').textContent = 'プロフィール未登録';
         }
 
         // 試合履歴を取得
