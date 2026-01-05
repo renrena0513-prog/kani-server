@@ -67,7 +67,7 @@ function setupPlayerInputs(count) {
                     </div>
                     <div class="col-md-2">
                         <label class="small text-muted">得点</label>
-                        <input type="number" step="0.1" class="form-control form-control-sm player-score" placeholder="0.0">
+                        <input type="number" class="form-control form-control-sm player-score" placeholder="25000">
                     </div>
                     <div class="col-md-2">
                         <label class="small text-muted">和了数</label>
