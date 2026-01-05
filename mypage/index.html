@@ -201,6 +201,48 @@
             box-shadow: 0 4px 12px rgba(88, 101, 242, 0.5);
             background: linear-gradient(135deg, #6872f4 0%, #5865F2 100%);
         }
+
+        /* 統計ミニカード */
+        .stat-card-mini {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 1px solid #dee2e6;
+        }
+
+        .stat-card-mini:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-label-mini {
+            font-size: 0.75rem;
+            color: #6c757d;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .stat-value-mini {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--deep-purple);
+        }
+
+        .stat-rank {
+            font-size: 0.7rem;
+            color: #fff;
+            background: linear-gradient(135deg, var(--gold), #b8860b);
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-top: 5px;
+            display: inline-block;
+        }
+
+        .stat-rank.no-data {
+            background: #adb5bd;
+        }
     </style>
 </head>
 
@@ -274,42 +316,124 @@
                         </div>
                     </div>
 
-                    <!-- 統計 -->
-                    <div class="row g-4 mb-4">
-                        <div class="col-6 col-md-3">
-                            <div class="stat-card">
-                                <div class="stat-value">0</div>
-                                <div class="stat-label">🀄 麻雀参加</div>
+                    <!-- 麻雀統計 -->
+                    <div class="profile-card mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4 style="font-family: var(--font-title); color: var(--deep-purple); margin: 0;">
+                                🀄 麻雀統計
+                            </h4>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" class="btn btn-primary"
+                                    onclick="toggleMySeason('current')">今シーズン</button>
+                                <button type="button" class="btn btn-outline-primary"
+                                    onclick="toggleMySeason('all')">全シーズン</button>
                             </div>
                         </div>
-                        <div class="col-6 col-md-3">
-                            <div class="stat-card">
-                                <div class="stat-value">0</div>
-                                <div class="stat-label">🃏 ポーカー参加</div>
-                            </div>
-                        </div>
-                        <div class="col-6 col-md-3">
-                            <div class="stat-card">
-                                <div class="stat-value">0</div>
-                                <div class="stat-label">🏆 優勝回数</div>
-                            </div>
-                        </div>
-                        <div class="col-6 col-md-3">
-                            <div class="stat-card">
-                                <div class="stat-value">-</div>
-                                <div class="stat-label">📊 ランキング</div>
-                            </div>
-                        </div>
-                    </div>
 
-                    <!-- 最近の成績 -->
-                    <div class="profile-card">
-                        <h4 class="mb-3" style="font-family: var(--font-title); color: var(--deep-purple);">
-                            📋 最近の成績
-                        </h4>
-                        <p class="text-muted text-center py-4">
-                            まだ大会に参加していません
-                        </p>
+                        <div id="stats-loading" class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">読み込み中...</span>
+                            </div>
+                        </div>
+
+                        <div id="stats-content" style="display: none;">
+                            <!-- スコア系 -->
+                            <div class="row g-3 mb-3">
+                                <div class="col-6 col-md-4">
+                                    <div class="stat-card-mini">
+                                        <div class="stat-label-mini">総合スコア</div>
+                                        <div class="stat-value-mini" id="stat-total">-</div>
+                                        <div class="stat-rank" id="rank-total">-</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <div class="stat-card-mini">
+                                        <div class="stat-label-mini">三麻スコア</div>
+                                        <div class="stat-value-mini" id="stat-sanma">-</div>
+                                        <div class="stat-rank" id="rank-sanma">-</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <div class="stat-card-mini">
+                                        <div class="stat-label-mini">四麻スコア</div>
+                                        <div class="stat-value-mini" id="stat-yonma">-</div>
+                                        <div class="stat-rank" id="rank-yonma">-</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 平均・最大スコア -->
+                            <div class="row g-3 mb-3">
+                                <div class="col-6">
+                                    <div class="stat-card-mini">
+                                        <div class="stat-label-mini">平均スコア</div>
+                                        <div class="stat-value-mini" id="stat-avg-score">-</div>
+                                        <div class="stat-rank" id="rank-avg-score">-</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="stat-card-mini">
+                                        <div class="stat-label-mini">最大スコア</div>
+                                        <div class="stat-value-mini" id="stat-max-score">-</div>
+                                        <div class="stat-rank" id="rank-max-score">-</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 率系 -->
+                            <div class="row g-3 mb-3">
+                                <div class="col-6 col-md-3">
+                                    <div class="stat-card-mini">
+                                        <div class="stat-label-mini">和了率</div>
+                                        <div class="stat-value-mini" id="stat-win-rate">-</div>
+                                        <div class="stat-rank" id="rank-win-rate">-</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="stat-card-mini">
+                                        <div class="stat-label-mini">放銃率</div>
+                                        <div class="stat-value-mini" id="stat-deal-rate">-</div>
+                                        <div class="stat-rank" id="rank-deal-rate">-</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="stat-card-mini">
+                                        <div class="stat-label-mini">トップ率</div>
+                                        <div class="stat-value-mini" id="stat-top-rate">-</div>
+                                        <div class="stat-rank" id="rank-top-rate">-</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="stat-card-mini">
+                                        <div class="stat-label-mini">ラス回避</div>
+                                        <div class="stat-value-mini" id="stat-avoid-rate">-</div>
+                                        <div class="stat-rank" id="rank-avoid-rate">-</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 順位系 -->
+                            <div class="row g-3">
+                                <div class="col-6">
+                                    <div class="stat-card-mini">
+                                        <div class="stat-label-mini">平均順位</div>
+                                        <div class="stat-value-mini" id="stat-avg-rank">-</div>
+                                        <div class="stat-rank" id="rank-avg-rank">-</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="stat-card-mini">
+                                        <div class="stat-label-mini">対局数</div>
+                                        <div class="stat-value-mini" id="stat-games">-</div>
+                                        <div class="stat-rank" id="rank-games">-</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="no-stats-msg" class="text-center text-muted py-3" style="display: none;">
+                                まだ麻雀大会に参加していません
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -487,8 +611,181 @@
             }
         });
 
+        // ============ 麻雀統計機能 ============
+        let allMahjongRecords = [];
+        let myAccountName = '';
+        let mySeasonMode = 'current'; // 'current' or 'all'
 
-        document.addEventListener('DOMContentLoaded', displayMyPage);
+        async function loadMahjongStats() {
+            try {
+                const user = await getCurrentUser();
+                if (!user) return;
+
+                // 自分のaccount_nameを取得
+                const discordUserId = user.user_metadata.provider_id;
+                const { data: profile } = await supabaseClient
+                    .from('profiles')
+                    .select('account_name')
+                    .eq('discord_user_id', discordUserId)
+                    .maybeSingle();
+
+                myAccountName = profile?.account_name || user.user_metadata.full_name || '';
+
+                // 第二回麻雀大会データ
+                const { data: currentData } = await supabaseClient
+                    .from('match_results')
+                    .select('*');
+
+                // 第一回麻雀大会データ
+                const { data: legacyData } = await supabaseClient
+                    .from('tournament_player_stats_snapshot')
+                    .select('*');
+
+                allMahjongRecords = [...(currentData || []), ...(legacyData || [])];
+
+                displayMahjongStats();
+            } catch (err) {
+                console.error('麻雀統計取得エラー:', err);
+                document.getElementById('stats-loading').style.display = 'none';
+                document.getElementById('no-stats-msg').style.display = 'block';
+                document.getElementById('stats-content').style.display = 'block';
+            }
+        }
+
+        function toggleMySeason(season) {
+            mySeasonMode = season;
+
+            // ボタンスタイル更新
+            const btns = document.querySelectorAll('.profile-card .btn-group .btn');
+            btns.forEach(btn => {
+                if (btn.textContent === '今シーズン' && season === 'current') {
+                    btn.classList.replace('btn-outline-primary', 'btn-primary');
+                } else if (btn.textContent === '全シーズン' && season === 'all') {
+                    btn.classList.replace('btn-outline-primary', 'btn-primary');
+                } else {
+                    btn.classList.replace('btn-primary', 'btn-outline-primary');
+                }
+            });
+
+            displayMahjongStats();
+        }
+
+        function displayMahjongStats() {
+            // シーズンフィルタ
+            let records = allMahjongRecords;
+            if (mySeasonMode === 'current') {
+                records = records.filter(r => r.tournament_name === '第二回麻雀大会' || !r.tournament_name);
+            }
+
+            // 全プレイヤーの統計計算
+            const playerStats = calculateAllPlayerStats(records);
+
+            // 自分の統計を取得
+            const myStats = playerStats.find(p => p.name === myAccountName);
+            const totalPlayers = playerStats.length;
+
+            document.getElementById('stats-loading').style.display = 'none';
+            document.getElementById('stats-content').style.display = 'block';
+
+            if (!myStats || myStats.games === 0) {
+                document.getElementById('no-stats-msg').style.display = 'block';
+                return;
+            }
+            document.getElementById('no-stats-msg').style.display = 'none';
+
+            // 各統計を表示
+            updateStatCard('total', myStats.total, playerStats, 'total', true);
+            updateStatCard('sanma', myStats.sanma, playerStats, 'sanma', true);
+            updateStatCard('yonma', myStats.yonma, playerStats, 'yonma', true);
+            updateStatCard('avg-score', myStats.avgScore.toFixed(0), playerStats, 'avgScore', true);
+            updateStatCard('max-score', myStats.maxScore, playerStats, 'maxScore', true);
+            updateStatCard('win-rate', myStats.winRate.toFixed(1) + '%', playerStats, 'winRate', true);
+            updateStatCard('deal-rate', myStats.dealRate.toFixed(1) + '%', playerStats, 'dealRate', false);
+            updateStatCard('top-rate', myStats.topRate.toFixed(1) + '%', playerStats, 'topRate', true);
+            updateStatCard('avoid-rate', myStats.avoidRate.toFixed(1) + '%', playerStats, 'avoidRate', true);
+            updateStatCard('avg-rank', myStats.avgRank.toFixed(2), playerStats, 'avgRank', false);
+            updateStatCard('games', myStats.games, playerStats, 'games', true);
+        }
+
+        function updateStatCard(id, value, allStats, key, higherIsBetter) {
+            document.getElementById('stat-' + id).textContent = value;
+
+            // 順位計算
+            const sorted = [...allStats].filter(p => p.games > 0).sort((a, b) =>
+                higherIsBetter ? b[key] - a[key] : a[key] - b[key]
+            );
+            const myRank = sorted.findIndex(p => p.name === myAccountName) + 1;
+            const total = sorted.length;
+
+            const rankEl = document.getElementById('rank-' + id);
+            if (myRank > 0) {
+                rankEl.textContent = `${myRank}/${total}位`;
+                rankEl.classList.remove('no-data');
+            } else {
+                rankEl.textContent = '-';
+                rankEl.classList.add('no-data');
+            }
+        }
+
+        function calculateAllPlayerStats(records) {
+            const players = {};
+
+            records.forEach(r => {
+                const name = r.account_name;
+                if (!name) return;
+
+                if (!players[name]) {
+                    players[name] = {
+                        name,
+                        total: 0, sanma: 0, yonma: 0,
+                        scores: [], wins: 0, deals: 0, games: 0,
+                        ranks: [], tops: 0, lasts: 0
+                    };
+                }
+
+                const p = players[name];
+                const score = r.score || 0;
+                const mode = r.mode || '';
+                const rank = r.rank || 0;
+
+                p.total += score;
+                p.scores.push(score);
+                p.games += (r.hands || 1);
+                p.wins += (r.wins || 0);
+                p.deals += (r.deals || 0);
+
+                if (mode === '三麻') p.sanma += score;
+                if (mode === '四麻') p.yonma += score;
+
+                if (rank > 0) {
+                    p.ranks.push(rank);
+                    if (rank === 1) p.tops++;
+                    const lastRank = mode === '三麻' ? 3 : 4;
+                    if (rank === lastRank) p.lasts++;
+                }
+            });
+
+            return Object.values(players).map(p => ({
+                name: p.name,
+                total: p.total,
+                sanma: p.sanma,
+                yonma: p.yonma,
+                avgScore: p.games > 0 ? p.total / p.games : 0,
+                maxScore: p.scores.length > 0 ? Math.max(...p.scores) : 0,
+                winRate: p.games > 0 ? (p.wins / p.games) * 100 : 0,
+                dealRate: p.games > 0 ? (p.deals / p.games) * 100 : 0,
+                avgRank: p.ranks.length > 0 ? p.ranks.reduce((a, b) => a + b, 0) / p.ranks.length : 0,
+                topRate: p.ranks.length > 0 ? (p.tops / p.ranks.length) * 100 : 0,
+                avoidRate: p.ranks.length > 0 ? ((p.ranks.length - p.lasts) / p.ranks.length) * 100 : 0,
+                games: p.games
+            }));
+        }
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            displayMyPage();
+            loadMahjongStats();
+        });
 
     </script>
 </body>
