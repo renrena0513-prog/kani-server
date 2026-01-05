@@ -32,11 +32,9 @@ function changePlayerCount() {
 }
 
 function changeMatchMode() {
-    const match = document.getElementById('form-match').value;
-    const teamCols = document.querySelectorAll('.team-col');
-    teamCols.forEach(col => {
-        col.style.display = (match === 'チーム戦') ? 'block' : 'none';
-    });
+    const mode = document.getElementById('form-mode').value;
+    const count = mode === '三麻' ? 3 : 4;
+    setupPlayerInputs(count);
 }
 
 function setupPlayerInputs(count) {
