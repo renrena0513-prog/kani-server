@@ -473,13 +473,13 @@
                     discordUser.full_name || discordUser.name || 'ユーザー';
 
                 // ニックネーム取得
-                const { data: profile } = await supabaseClient
+                const { data: profile, error: profileError } = await supabaseClient
                     .from('profiles')
-                    .select('nickname')
-                    .eq('discord_account', discordUser.full_name || discordUser.name)
-                    .single();
-                if (profile && profile.nickname) {
-                    document.getElementById('user-nickname').value = profile.nickname;
+                    .select('account_name')
+                    .eq('discord_user_id', discordUser.provider_id)
+                    .maybeSingle();
+                if (!profileError && profile && profile.account_name) {
+                    document.getElementById('user-nickname').value = profile.account_name;
                 }
 
             } else {
