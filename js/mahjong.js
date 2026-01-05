@@ -97,6 +97,9 @@ function toggleSeason(season) {
         else if (text === '四麻') currentType = 'yonma';
         else if (text === '和了率') currentType = 'win';
         else if (text === '放銃率') currentType = 'deal';
+        else if (text === 'トップ率') currentType = 'top';
+        else if (text === 'ラス回避') currentType = 'avoid';
+        else if (text === '平均順位') currentType = 'avg_rank';
     }
     showRanking(currentType);
 }
@@ -152,6 +155,21 @@ function showRanking(type) {
         nameHeader.textContent = 'アカウント';
         filtered = seasonFiltered;
         buttons[5].classList.replace('btn-outline-success', 'btn-success');
+    } else if (type === 'top') {
+        title.textContent = 'トップ率ランキング (1位率)';
+        nameHeader.textContent = 'アカウント';
+        filtered = seasonFiltered;
+        buttons[6].classList.replace('btn-outline-success', 'btn-success');
+    } else if (type === 'avoid') {
+        title.textContent = 'ラス回避率ランキング';
+        nameHeader.textContent = 'アカウント';
+        filtered = seasonFiltered;
+        buttons[7].classList.replace('btn-outline-success', 'btn-success');
+    } else if (type === 'avg_rank') {
+        title.textContent = '平均順位ランキング';
+        nameHeader.textContent = 'アカウント';
+        filtered = seasonFiltered;
+        buttons[8].classList.replace('btn-outline-success', 'btn-success');
     }
 
     console.log(`🎯 ランキングタイプ: ${type}, シーズン: ${currentSeason}`);
@@ -191,6 +209,7 @@ function renderRanking(records, groupKey, type = 'all') {
                 count: 0,
                 win: 0,
                 deal: 0,
+                r1: 0, r2: 0, r3: 0, r4: 0,
                 isTeam: (groupKey === 'team_name')
             };
         }
@@ -199,25 +218,52 @@ function renderRanking(records, groupKey, type = 'all') {
         if (r.tournament_type === '第一回麻雀大会') {
             summary[key].score += Number(r.score_total || 0);
             summary[key].count += Number(r.matches_played || 0);
+            summary[key].r1 += Number(r.rank1_count || 0);
+            summary[key].r2 += Number(r.rank2_count || 0);
+            summary[key].r3 += Number(r.rank3_count || 0);
+            summary[key].r4 += Number(r.rank4_count || 0);
         } else {
             summary[key].score += Number(r.final_score || 0);
             summary[key].count += 1;
+            // 新データ: rankカラムからカウント
+            const rk = Number(r.rank);
+            if (rk === 1) summary[key].r1++;
+            else if (rk === 2) summary[key].r2++;
+            else if (rk === 3) summary[key].r3++;
+            else if (rk === 4) summary[key].r4++;
         }
 
         summary[key].win += (r.win_count || 0);
         summary[key].deal += (r.deal_in_count || 0);
     });
 
-    // 平均値の計算
+    // 平均値・各種率の計算
     Object.values(summary).forEach(s => {
         s.avg_win = s.count > 0 ? (s.win / s.count) : 0;
         s.avg_deal = s.count > 0 ? (s.deal / s.count) : 0;
+
+        s.top_rate = s.count > 0 ? (s.r1 / s.count) * 100 : 0;
+
+        // ラス回避率
+        // 四麻なら4位率、三麻なら3位率を算出
+        // ただしデータが混ざっている場合は「全試合中の最大順位」をラスとみなすか
+        // ここでは三麻/四麻がフィルタリングされている可能性も考慮
+        // シンプルに「4位回数 / 試合数」または「3位回数 / 試合数」で計算
+        // 混在している場合は4位を優先
+        let lastCount = s.r4;
+        if (s.r4 === 0 && s.r3 > 0) lastCount = s.r3; // 三麻のみの場合の考慮
+        s.avoid_rate = s.count > 0 ? (1 - (lastCount / s.count)) * 100 : 0;
+
+        s.avg_rank = s.count > 0 ? (1 * s.r1 + 2 * s.r2 + 3 * s.r3 + 4 * s.r4) / s.count : 0;
     });
 
     // ソート
     const sorted = Object.values(summary).sort((a, b) => {
         if (type === 'win') return b.avg_win - a.avg_win; // 和了率は高い順
         if (type === 'deal') return a.avg_deal - b.avg_deal; // 放銃率は低い順
+        if (type === 'top') return b.top_rate - a.top_rate; // トップ率は高い順
+        if (type === 'avoid') return b.avoid_rate - a.avoid_rate; // ラス回避は高い順
+        if (type === 'avg_rank') return (a.avg_rank || 4) - (b.avg_rank || 4); // 平均順位は低い（1に近い）順
         return b.score - a.score; // その他はスコア順
     });
 
@@ -258,6 +304,12 @@ function renderRanking(records, groupKey, type = 'all') {
             statsBadge = `<div class="small text-success fw-bold">和了 ${s.avg_win.toFixed(2)} / 試合</div>`;
         } else if (type === 'deal') {
             statsBadge = `<div class="small text-danger fw-bold">放銃 ${s.avg_deal.toFixed(2)} / 試合</div>`;
+        } else if (type === 'top') {
+            statsBadge = `<div class="small text-primary fw-bold">トップ率 ${s.top_rate.toFixed(1)}%</div>`;
+        } else if (type === 'avoid') {
+            statsBadge = `<div class="small text-info fw-bold">ラス回避 ${s.avoid_rate.toFixed(1)}%</div>`;
+        } else if (type === 'avg_rank') {
+            statsBadge = `<div class="small text-secondary fw-bold">平均順位 ${s.avg_rank.toFixed(2)}</div>`;
         }
 
         return `
