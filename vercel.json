@@ -1,13 +1,8 @@
 {
   "redirects": [
     {
-      "source": "/player/(.*)",
-      "destination": "/mypage/index.html?user=$1",
-      "permanent": true
-    },
-    {
-      "source": "/player",
-      "destination": "/mypage/index.html",
+      "source": "/player/:path*",
+      "destination": "/mypage/:path*",
       "permanent": true
     }
   ]
