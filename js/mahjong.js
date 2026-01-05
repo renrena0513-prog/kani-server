@@ -344,8 +344,8 @@ function renderRanking(records, groupKey, type = 'all') {
                     <a href="${linkUrl}" 
                        class="text-decoration-none d-flex align-items-center gap-2 ${linkClass}">
                         ${avatarHtml}
-                        <div class="d-flex align-items-center flex-wrap">
-                            <span class="${canLink ? 'hover-underline' : ''}">${displayName}</span>
+                        <div class="d-flex align-items-center flex-wrap flex-grow-1">
+                            <span class="${canLink ? 'hover-underline' : ''} fw-bold" style="min-width: 120px; display: inline-block;">${displayName}</span>
                             ${statsBadge}
                         </div>
                     </a>
