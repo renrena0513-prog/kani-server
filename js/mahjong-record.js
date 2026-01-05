@@ -85,12 +85,22 @@ function setupPlayerInputs(count) {
 
 // ドロップダウン関連
 function showDropdown(idx) {
-    // 他の開いているドロップダウンを全て閉じる
+    // 他の開いているドロップダウンを全て閉じ、z-indexをリセット
     document.querySelectorAll('.custom-dropdown-list').forEach(list => {
         list.style.display = 'none';
     });
+    document.querySelectorAll('.player-entry').forEach(entry => {
+        entry.style.zIndex = '';
+        entry.style.position = '';
+    });
 
     const list = document.getElementById(`dropdown-list-${idx}`);
+    const playerEntry = document.getElementById(`player-row-${idx}`);
+
+    // 現在のプレイヤーカードを前面に表示
+    playerEntry.style.position = 'relative';
+    playerEntry.style.zIndex = '1000';
+
     renderDropdownItems(idx, allProfiles);
     list.style.display = 'block';
 
@@ -99,6 +109,9 @@ function showDropdown(idx) {
         const h = (e) => {
             if (!list.contains(e.target) && !e.target.classList.contains('player-account')) {
                 list.style.display = 'none';
+                // z-indexをリセット
+                playerEntry.style.zIndex = '';
+                playerEntry.style.position = '';
                 document.removeEventListener('mousedown', h);
             }
         };
