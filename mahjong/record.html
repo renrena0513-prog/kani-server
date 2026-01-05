@@ -120,7 +120,7 @@
 
         /* プレイヤーカード */
         .player-entry {
-            padding: 15px 0;
+            padding: 25px 0;
             margin-bottom: 0;
             border-bottom: 1px solid #eee;
         }
@@ -348,13 +348,14 @@
                 <div id="players-container">
                     <!-- プレイヤー入力欄 (JSで生成) -->
                 </div>
-
-                <div class="d-flex justify-content-center align-items-center mt-4">
-                    <button type="button" onclick="submitScores()" class="btn btn-submit">
-                        ✓ スコアを送信する
-                    </button>
-                </div>
             </form>
+        </div>
+
+        <!-- 送信ボタン（カード外） -->
+        <div class="d-flex justify-content-center align-items-center mt-4 mb-5">
+            <button type="button" onclick="submitScores()" class="btn btn-submit">
+                ✓ スコアを送信する
+            </button>
         </div>
     </div>
 
