@@ -163,7 +163,7 @@ function showRanking(type) {
     renderRanking(filtered, groupKey, type);
 }
 
-function renderRanking(records, groupKey) {
+function renderRanking(records, groupKey, type = 'all') {
     // ランキング集計
     const summary = {};
     records.forEach(r => {
@@ -208,7 +208,18 @@ function renderRanking(records, groupKey) {
         summary[key].deal += (r.deal_in_count || 0);
     });
 
-    const sorted = Object.values(summary).sort((a, b) => b.score - a.score);
+    // 平均値の計算
+    Object.values(summary).forEach(s => {
+        s.avg_win = s.count > 0 ? (s.win / s.count) : 0;
+        s.avg_deal = s.count > 0 ? (s.deal / s.count) : 0;
+    });
+
+    // ソート
+    const sorted = Object.values(summary).sort((a, b) => {
+        if (type === 'win') return b.avg_win - a.avg_win; // 和了率は高い順
+        if (type === 'deal') return a.avg_deal - b.avg_deal; // 放銃率は低い順
+        return b.score - a.score; // その他はスコア順
+    });
 
     const body = document.getElementById('ranking-body');
     body.innerHTML = sorted.map((s, idx) => {
@@ -241,6 +252,14 @@ function renderRanking(records, groupKey) {
                   style="width: 32px; height: 32px; object-fit: cover;"
                   onerror="this.style.display='none'">` : '';
 
+        // 特殊表示用のバッジ
+        let statsBadge = '';
+        if (type === 'win') {
+            statsBadge = `<div class="small text-success fw-bold">和了 ${s.avg_win.toFixed(2)} / 試合</div>`;
+        } else if (type === 'deal') {
+            statsBadge = `<div class="small text-danger fw-bold">放銃 ${s.avg_deal.toFixed(2)} / 試合</div>`;
+        }
+
         return `
             <tr>
                 <td>${idx + 1}</td>
@@ -248,7 +267,10 @@ function renderRanking(records, groupKey) {
                     <a href="${linkUrl}" 
                        class="text-decoration-none d-flex align-items-center gap-2 ${linkClass}">
                         ${avatarHtml}
-                        <span class="${canLink ? 'hover-underline' : ''}">${displayName}</span>
+                        <div>
+                            <span class="${canLink ? 'hover-underline' : ''}">${displayName}</span>
+                            ${statsBadge}
+                        </div>
                     </a>
                 </td>
                 <td class="fw-bold ${s.score > 0 ? 'text-success' : (s.score < 0 ? 'text-danger' : '')}">
