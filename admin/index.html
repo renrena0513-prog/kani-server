@@ -372,6 +372,29 @@
                                 <p class="mb-0">📍 ページのパス: <code>/admin/index.html</code></p>
                             </div>
                         </div>
+
+                        <!-- ユーザー一覧タブ -->
+                        <div class="tab-pane fade" id="users-pane" role="tabpanel" tabindex="0">
+                            <h2 class="mb-4" style="font-family: var(--font-title); color: var(--deep-gray);">👥
+                                Discord連携ユーザー一覧</h2>
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>アバター</th>
+                                            <th>Discord名 / ニックネーム</th>
+                                            <th>Discord ID</th>
+                                            <th>最終更新</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="users-list-body">
+                                        <tr>
+                                            <td colspan="4" class="text-center text-muted py-4">読み込み中...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
