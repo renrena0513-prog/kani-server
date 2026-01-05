@@ -69,11 +69,11 @@ function setupPlayerInputs(count) {
                     </div>
                     <div class="col win-col">
                         <label class="small text-muted">和了数</label>
-                        <input type="number" class="form-control form-control-sm player-win" value="0">
+                        <input type="number" class="form-control form-control-sm player-win" value="0" min="0">
                     </div>
                     <div class="col deal-col">
                         <label class="small text-muted">放銃</label>
-                        <input type="number" class="form-control form-control-sm player-deal" value="0">
+                        <input type="number" class="form-control form-control-sm player-deal" value="0" min="0">
                     </div>
                 </div>
             </div>
