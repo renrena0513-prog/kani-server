@@ -123,18 +123,26 @@ function renderRanking(records, groupKey) {
     const summary = {};
     records.forEach(r => {
         // discord_user_idでグループ化（ニックネーム変更に対応）
-        const key = r.discord_user_id;
+        // 第一回のデータはdiscord_user_idがnullの可能性があるため、nicknameまたはaccount_nameをフォールバック
+        let key = r.discord_user_id;
+        if (!key || key === 'null') {
+            // 過去データの場合、nicknameまたはaccount_nameを使用
+            key = r.nickname || r.account_name || 'Unknown';
+        }
+
         if (!key) return;
+
         if (!summary[key]) {
             summary[key] = {
-                discord_user_id: key,
+                discord_user_id: r.discord_user_id || null,
+                nickname: r.nickname || r.account_name || key, // 過去データ用
                 score: 0,
                 count: 0,
                 win: 0,
                 deal: 0
             };
         }
-        summary[key].score += Number(r.final_score || 0);
+        summary[key].score += Number(r.final_score || r.score_total || 0); // 過去データはscore_totalかも
         summary[key].count += 1;
         summary[key].win += (r.win_count || 0);
         summary[key].deal += (r.deal_in_count || 0);
@@ -145,16 +153,32 @@ function renderRanking(records, groupKey) {
     const body = document.getElementById('ranking-body');
     body.innerHTML = sorted.map((s, idx) => {
         // プロフィールから最新のaccount_nameとavatar_urlを取得
-        const profile = allProfiles.find(p => p.discord_user_id === s.discord_user_id);
-        let displayName = profile?.account_name || s.discord_user_id || 'Unknown';
-        let avatarUrl = profile?.avatar_url || 'https://via.placeholder.com/32';
+        let profile = null;
+        let displayName = 'Unknown';
+        let avatarUrl = 'https://via.placeholder.com/32';
+
+        if (s.discord_user_id) {
+            // 新データ: discord_user_idからプロフィールを検索
+            profile = allProfiles.find(p => p.discord_user_id === s.discord_user_id);
+            displayName = profile?.account_name || s.nickname || s.discord_user_id;
+            avatarUrl = profile?.avatar_url || 'https://via.placeholder.com/32';
+        } else {
+            // 過去データ: nicknameを使用
+            displayName = s.nickname || 'Unknown';
+            // nicknameからプロフィールを検索（もしあれば）
+            profile = allProfiles.find(p => p.account_name === displayName);
+            avatarUrl = profile?.avatar_url || 'https://via.placeholder.com/32';
+        }
+
+        const linkUrl = s.discord_user_id ? `../player/index.html?id=${s.discord_user_id}` : '#';
+        const linkClass = s.discord_user_id ? '' : 'pe-none'; // discord_user_idがない場合はリンク無効
 
         return `
             <tr>
                 <td>${idx + 1}</td>
                 <td class="text-start ps-4">
-                    <a href="../player/index.html?id=${s.discord_user_id}" 
-                       class="text-decoration-none text-dark d-flex align-items-center gap-2">
+                    <a href="${linkUrl}" 
+                       class="text-decoration-none text-dark d-flex align-items-center gap-2 ${linkClass}">
                         <img src="${avatarUrl}" 
                              alt="${displayName}" 
                              class="rounded-circle" 
