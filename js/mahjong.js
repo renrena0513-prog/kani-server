@@ -119,15 +119,15 @@ function showRanking(type) {
         nameHeader.textContent = 'アカウント';
         filtered = seasonFiltered; // 全集計
         buttons[1].classList.replace('btn-outline-success', 'btn-success');
-    } else if (type === 'yonma') {
-        title.textContent = '個人ランキング (四麻)';
-        nameHeader.textContent = 'アカウント';
-        filtered = seasonFiltered.filter(r => r.mahjong_mode === '四麻');
-        buttons[2].classList.replace('btn-outline-success', 'btn-success');
     } else if (type === 'sanma') {
         title.textContent = '個人ランキング (三麻)';
         nameHeader.textContent = 'アカウント';
         filtered = seasonFiltered.filter(r => r.mahjong_mode === '三麻');
+        buttons[2].classList.replace('btn-outline-success', 'btn-success');
+    } else if (type === 'yonma') {
+        title.textContent = '個人ランキング (四麻)';
+        nameHeader.textContent = 'アカウント';
+        filtered = seasonFiltered.filter(r => r.mahjong_mode === '四麻');
         buttons[3].classList.replace('btn-outline-success', 'btn-success');
     }
 
