@@ -119,14 +119,15 @@ function renderRanking(records, groupKey) {
             <tr>
                 <td>${idx + 1}</td>
                 <td class="text-start ps-4">
-                    <div class="d-flex align-items-center gap-2">
+                    <a href="../player/index.html?id=${s.discord_user_id}" 
+                       class="text-decoration-none text-dark d-flex align-items-center gap-2">
                         <img src="${avatarUrl}" 
                              alt="${displayName}" 
                              class="rounded-circle" 
                              style="width: 32px; height: 32px; object-fit: cover;"
                              onerror="this.src='https://via.placeholder.com/32'">
-                        <span>${displayName}</span>
-                    </div>
+                        <span class="hover-underline">${displayName}</span>
+                    </a>
                 </td>
                 <td class="fw-bold ${s.score > 0 ? 'text-success' : (s.score < 0 ? 'text-danger' : '')}">
                     ${(s.score > 0 ? '+' : '') + s.score.toFixed(1)}

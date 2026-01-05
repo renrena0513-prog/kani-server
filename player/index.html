@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="かにサーバー - プレイヤー戦績">
+    <title>プレイヤー戦績 | かにサーバーイベント</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;500;600;700&family=M+PLUS+Rounded+1c:wght@400;500;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Bootswatch Lux (Bootstrap 5.3.3) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary-purple: #6b5b95;
+            --deep-purple: #4a3f6b;
+            --cream: #faf5e8;
+            --gold: #d4a853;
+            --font-title: 'Noto Serif JP', serif;
+            --font-body: 'M PLUS Rounded 1c', sans-serif;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: linear-gradient(180deg, #6b5b95 0%, #5a4d80 50%, #4a3f6b 100%);
+            min-height: 100vh;
+            background-attachment: fixed;
+        }
+
+        .page-header {
+            font-family: var(--font-title);
+            color: var(--cream);
+        }
+
+        .profile-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+        }
+
+        .back-button {
+            color: var(--cream);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .back-button:hover {
+            color: var(--gold);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .stat-box {
+            background: linear-gradient(135deg, var(--primary-purple), var(--deep-purple));
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .match-table {
+            margin-top: 20px;
+        }
+
+        .rank-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .rank-1 {
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            color: #333;
+        }
+
+        .rank-2 {
+            background: linear-gradient(135deg, #c0c0c0, #e8e8e8);
+            color: #333;
+        }
+
+        .rank-3 {
+            background: linear-gradient(135deg, #cd7f32, #e89a5e);
+            color: white;
+        }
+
+        .rank-4 {
+            background: #6c757d;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container py-5">
+        <!-- 戻るボタン -->
+        <div class="mb-4">
+            <a href="../mahjong/index.html" class="back-button">
+                ← ランキングに戻る
+            </a>
+        </div>
+
+        <!-- ページヘッダー -->
+        <header class="text-center mb-5">
+            <h1 class="page-header display-4 fw-bold">📊 プレイヤー戦績</h1>
+        </header>
+
+        <!-- プレイヤー情報 -->
+        <div class="row justify-content-center">
+            <div class="col-12 col-lg-10">
+                <div class="profile-card mb-4">
+                    <div class="d-flex align-items-center gap-3 mb-4">
+                        <img id="player-avatar" src="" alt="アバター" class="rounded-circle"
+                            style="width: 80px; height: 80px; object-fit: cover;">
+                        <div>
+                            <h2 id="player-name" class="mb-1"
+                                style="font-family: var(--font-title); color: var(--deep-purple);">
+                                読み込み中...
+                            </h2>
+                            <p id="player-id" class="text-muted small mb-0"></p>
+                        </div>
+                    </div>
+
+                    <!-- 統計情報 -->
+                    <div class="stats-grid" id="stats-grid">
+                        <div class="stat-box">
+                            <span class="stat-value" id="total-matches">-</span>
+                            <span class="stat-label">総試合数</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-value" id="avg-rank">-</span>
+                            <span class="stat-label">平均順位</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-value" id="total-score">-</span>
+                            <span class="stat-label">総合スコア</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-value" id="first-rate">-</span>
+                            <span class="stat-label">1位率</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 試合履歴 -->
+                <div class="profile-card">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h3 style="font-family: var(--font-title); color: var(--deep-purple);">試合履歴</h3>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-success"
+                                onclick="filterMatches('all')">全て</button>
+                            <button type="button" class="btn btn-outline-success"
+                                onclick="filterMatches('三麻')">三麻</button>
+                            <button type="button" class="btn btn-outline-success"
+                                onclick="filterMatches('四麻')">四麻</button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive match-table">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>日時</th>
+                                    <th>モード</th>
+                                    <th>順位</th>
+                                    <th>素点</th>
+                                    <th>最終スコア</th>
+                                </tr>
+                            </thead>
+                            <tbody id="match-history">
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">読み込み中...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabase-config.js"></script>
+    <script src="../js/auth-guard.js"></script>
+    <script src="../js/player.js"></script>
+</body>
+
+</html>
