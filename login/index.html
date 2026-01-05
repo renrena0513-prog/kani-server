@@ -129,7 +129,7 @@
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (session) {
                 // リダイレクト先を取得（なければホーム）
-                const returnUrl = sessionStorage.getItem('returnUrl') || '../home/index.html';
+                const returnUrl = sessionStorage.getItem('returnUrl') || '../index.html';
                 sessionStorage.removeItem('returnUrl');
                 window.location.href = returnUrl;
             }
@@ -166,7 +166,7 @@
         // OAuth コールバックの処理
         supabaseClient.auth.onAuthStateChange((event, session) => {
             if (event === 'SIGNED_IN' && session) {
-                const returnUrl = sessionStorage.getItem('returnUrl') || '../home/index.html';
+                const returnUrl = sessionStorage.getItem('returnUrl') || '../index.html';
                 sessionStorage.removeItem('returnUrl');
                 window.location.href = returnUrl;
             }
