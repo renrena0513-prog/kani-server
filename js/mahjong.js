@@ -17,16 +17,27 @@ function changePlayerCount() {
 
 async function fetchData() {
     try {
-        // 記録取得（全シーズン）
-        const { data, error } = await supabaseClient
+        // 第二回麻雀大会のデータを取得（match_resultsテーブル）
+        const { data: currentData, error: currentError } = await supabaseClient
             .from('match_results')
             .select('*');
-        if (error) throw error;
-        allRecords = data;
+        if (currentError) throw currentError;
+
+        // 第一回麻雀大会のデータを取得（tournament_player_stats_snapshotテーブル）
+        const { data: legacyData, error: legacyError } = await supabaseClient
+            .from('tournament_player_stats_snapshot')
+            .select('*');
+
+        if (legacyError) {
+            console.warn('過去データの取得に失敗:', legacyError);
+        }
+
+        // 両方のデータを結合
+        allRecords = [...(currentData || []), ...(legacyData || [])];
 
         console.log('📊 取得したレコード数:', allRecords.length);
-        console.log('第一回:', allRecords.filter(r => r.tournament_type === '第一回麻雀大会').length);
-        console.log('第二回:', allRecords.filter(r => r.tournament_type === '第二回麻雀大会').length);
+        console.log('第二回（match_results）:', currentData?.length || 0);
+        console.log('第一回（tournament_player_stats_snapshot）:', legacyData?.length || 0);
 
         // 全プロフィール取得（アイコン用）
         const { data: profiles, error: pError } = await supabaseClient
