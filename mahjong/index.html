@@ -83,20 +83,91 @@
             flex-wrap: wrap;
         }
 
-        .ranking-card {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: white;
-            text-decoration: none;
+        .badge-inline {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.05);
+            white-space: nowrap;
         }
 
-        .player-entry {
-            background: white;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 15px;
-            border: 1px solid #ddd;
+        /* モバイル向けテーブル調整 */
+        @media (max-width: 768px) {
+            .ranking-table thead {
+                display: none;
+            }
+
+            .ranking-table,
+            .ranking-table tbody,
+            .ranking-table tr,
+            .ranking-table td {
+                display: block;
+                width: 100%;
+            }
+
+            .ranking-table tr {
+                background: white;
+                margin-bottom: 12px;
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
+                padding: 12px;
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+                position: relative;
+            }
+
+            .ranking-table td {
+                border: none !important;
+                padding: 4px 0 !important;
+                text-align: left !important;
+            }
+
+            /* 順位を左上に小さく表示 */
+            .ranking-table td:first-child {
+                font-weight: bold;
+                color: var(--gold);
+                font-size: 1.1rem;
+                border-bottom: 1px solid #f0f0f0 !important;
+                margin-bottom: 8px;
+                padding-bottom: 8px !important;
+            }
+
+            .ranking-table td:first-child::before {
+                content: "Rank ";
+                font-size: 0.8rem;
+                opacity: 0.7;
+            }
+
+            /* 各項目のラベル追加 */
+            .ranking-table td:nth-child(3)::before {
+                content: "得点: ";
+                color: #888;
+                font-size: 0.8rem;
+            }
+
+            .ranking-table td:nth-child(4)::before {
+                content: "対局数: ";
+                color: #888;
+                font-size: 0.8rem;
+            }
+
+            .ranking-table td:nth-child(5)::before {
+                content: "和了/放銃: ";
+                color: #888;
+                font-size: 0.8rem;
+            }
+
+            .ranking-table td:nth-child(3),
+            .ranking-table td:nth-child(4),
+            .ranking-table td:nth-child(5) {
+                display: inline-block;
+                width: auto;
+                margin-right: 15px;
+                font-size: 0.9rem;
+            }
+
+            .page-header {
+                font-size: 1.8rem !important;
+            }
         }
 
         .back-button {
@@ -218,18 +289,24 @@
             </div>
 
             <!-- ランキング種別切り替え -->
-            <div class="ranking-nav">
-                <button class="btn btn-outline-success" onclick="showRanking('team')">チーム</button>
-                <button class="btn btn-success" onclick="showRanking('all')">総合</button>
-                <button class="btn btn-outline-success" onclick="showRanking('sanma')">三麻</button>
-                <button class="btn btn-outline-success" onclick="showRanking('yonma')">四麻</button>
-                <button class="btn btn-outline-success" onclick="showRanking('win')">和了率</button>
-                <button class="btn btn-outline-success" onclick="showRanking('deal')">放銃率</button>
-                <button class="btn btn-outline-success" onclick="showRanking('top')">トップ率</button>
-                <button class="btn btn-outline-success" onclick="showRanking('avoid')">ラス回避</button>
-                <button class="btn btn-outline-success" onclick="showRanking('avg_rank')">平均順位</button>
-                <button class="btn btn-outline-success" onclick="showRanking('max_score')">最大スコア</button>
-                <button class="btn btn-outline-success" onclick="showRanking('avg_score')">平均スコア</button>
+            <div class="ranking-nav d-flex flex-column gap-2">
+                <!-- メイン項目 -->
+                <div class="d-flex flex-wrap justify-content-center gap-2">
+                    <button class="btn btn-outline-success" onclick="showRanking('team')">チーム</button>
+                    <button class="btn btn-success" onclick="showRanking('all')">総合</button>
+                    <button class="btn btn-outline-success" onclick="showRanking('sanma')">三麻</button>
+                    <button class="btn btn-outline-success" onclick="showRanking('yonma')">四麻</button>
+                </div>
+                <!-- 詳細指標 -->
+                <div class="d-flex flex-wrap justify-content-center gap-2">
+                    <button class="btn btn-outline-success btn-sm" onclick="showRanking('avg_score')">平均</button>
+                    <button class="btn btn-outline-success btn-sm" onclick="showRanking('max_score')">最大</button>
+                    <button class="btn btn-outline-success btn-sm" onclick="showRanking('deal')">放銃</button>
+                    <button class="btn btn-outline-success btn-sm" onclick="showRanking('win')">和了</button>
+                    <button class="btn btn-outline-success btn-sm" onclick="showRanking('avg_rank')">平均順位</button>
+                    <button class="btn btn-outline-success btn-sm" onclick="showRanking('top')">トップ</button>
+                    <button class="btn btn-outline-success btn-sm" onclick="showRanking('avoid')">ラス</button>
+                </div>
             </div>
         </header>
 

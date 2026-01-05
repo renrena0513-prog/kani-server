@@ -95,13 +95,13 @@ function toggleSeason(season) {
         else if (text === '総合') currentType = 'all';
         else if (text === '三麻') currentType = 'sanma';
         else if (text === '四麻') currentType = 'yonma';
-        else if (text === '和了率') currentType = 'win';
-        else if (text === '放銃率') currentType = 'deal';
-        else if (text === 'トップ率') currentType = 'top';
-        else if (text === 'ラス回避') currentType = 'avoid';
         else if (text === '平均順位') currentType = 'avg_rank';
-        else if (text === '最大スコア') currentType = 'max_score';
-        else if (text === '平均スコア') currentType = 'avg_score';
+        else if (text === '最大') currentType = 'max_score';
+        else if (text === '平均') currentType = 'avg_score';
+        else if (text === '和了') currentType = 'win';
+        else if (text === '放銃') currentType = 'deal';
+        else if (text === 'トップ') currentType = 'top';
+        else if (text === 'ラス') currentType = 'avoid';
     }
     showRanking(currentType);
 }
@@ -147,23 +147,23 @@ function showRanking(type) {
         nameHeader.textContent = 'アカウント';
         filtered = seasonFiltered.filter(r => r.mahjong_mode === '四麻');
         buttons[3].classList.replace('btn-outline-success', 'btn-success');
-    } else if (type === 'win') {
-        title.textContent = '和了率ランキング (平均和了)';
+    } else if (type === 'avg_score') {
+        title.textContent = '平均スコアランキング';
         nameHeader.textContent = 'アカウント';
         filtered = seasonFiltered;
         buttons[4].classList.replace('btn-outline-success', 'btn-success');
+    } else if (type === 'max_score') {
+        title.textContent = '最大スコアランキング (最高得点)';
+        nameHeader.textContent = 'アカウント';
+        filtered = seasonFiltered;
+        buttons[5].classList.replace('btn-outline-success', 'btn-success');
     } else if (type === 'deal') {
         title.textContent = '放銃率ランキング (平均放銃)';
         nameHeader.textContent = 'アカウント';
         filtered = seasonFiltered;
-        buttons[5].classList.replace('btn-outline-success', 'btn-success');
-    } else if (type === 'top') {
-        title.textContent = 'トップ率ランキング (1位率)';
-        nameHeader.textContent = 'アカウント';
-        filtered = seasonFiltered;
         buttons[6].classList.replace('btn-outline-success', 'btn-success');
-    } else if (type === 'avoid') {
-        title.textContent = 'ラス回避率ランキング';
+    } else if (type === 'win') {
+        title.textContent = '和了率ランキング (平均和了)';
         nameHeader.textContent = 'アカウント';
         filtered = seasonFiltered;
         buttons[7].classList.replace('btn-outline-success', 'btn-success');
@@ -172,13 +172,13 @@ function showRanking(type) {
         nameHeader.textContent = 'アカウント';
         filtered = seasonFiltered;
         buttons[8].classList.replace('btn-outline-success', 'btn-success');
-    } else if (type === 'max_score') {
-        title.textContent = '最大スコアランキング (最高得点)';
+    } else if (type === 'top') {
+        title.textContent = 'トップ率ランキング (1位率)';
         nameHeader.textContent = 'アカウント';
         filtered = seasonFiltered;
         buttons[9].classList.replace('btn-outline-success', 'btn-success');
-    } else if (type === 'avg_score') {
-        title.textContent = '平均スコアランキング';
+    } else if (type === 'avoid') {
+        title.textContent = 'ラス回避率ランキング';
         nameHeader.textContent = 'アカウント';
         filtered = seasonFiltered;
         buttons[10].classList.replace('btn-outline-success', 'btn-success');
@@ -310,29 +310,31 @@ function renderRanking(records, groupKey, type = 'all') {
         const linkUrl = canLink ? `../player/index.html?id=${s.discord_user_id}` : '#';
         const linkClass = canLink ? '' : 'pe-none text-dark';
 
-        const avatarHtml = avatarUrl ?
-            `<img src="${avatarUrl}" 
-                  alt="${displayName}" 
-                  class="rounded-circle" 
-                  style="width: 32px; height: 32px; object-fit: cover;"
-                  onerror="this.style.display='none'">` : '';
+        const avatarHtml = `
+            <div style="width: 32px; height: 32px;" class="flex-shrink-0 d-flex align-items-center justify-content-center">
+                ${avatarUrl ?
+                `<img src="${avatarUrl}" 
+                          alt="${displayName}" 
+                          class="rounded-circle" 
+                          style="width: 32px; height: 32px; object-fit: cover;">` : ''}
+            </div>`;
 
         // 特殊表示用のバッジ
         let statsBadge = '';
         if (type === 'win') {
-            statsBadge = `<div class="small text-success fw-bold">和了 ${s.avg_win.toFixed(2)} / 試合</div>`;
+            statsBadge = `<span class="badge-inline text-success ms-2">和了 ${s.avg_win.toFixed(2)} / 試合</span>`;
         } else if (type === 'deal') {
-            statsBadge = `<div class="small text-danger fw-bold">放銃 ${s.avg_deal.toFixed(2)} / 試合</div>`;
+            statsBadge = `<span class="badge-inline text-danger ms-2">放銃 ${s.avg_deal.toFixed(2)} / 試合</span>`;
         } else if (type === 'top') {
-            statsBadge = `<div class="small text-primary fw-bold">トップ率 ${s.top_rate.toFixed(1)}%</div>`;
+            statsBadge = `<span class="badge-inline text-primary ms-2">トップ率 ${s.top_rate.toFixed(1)}%</span>`;
         } else if (type === 'avoid') {
-            statsBadge = `<div class="small text-info fw-bold">ラス回避 ${s.avoid_rate.toFixed(1)}%</div>`;
+            statsBadge = `<span class="badge-inline text-info ms-2">ラス回避 ${s.avoid_rate.toFixed(1)}%</span>`;
         } else if (type === 'avg_rank') {
-            statsBadge = `<div class="small text-secondary fw-bold">平均順位 ${s.avg_rank.toFixed(2)}</div>`;
+            statsBadge = `<span class="badge-inline text-secondary ms-2">平均順位 ${s.avg_rank.toFixed(2)}</span>`;
         } else if (type === 'max_score') {
-            statsBadge = `<div class="small text-warning fw-bold">最大スコア ${(s.max_score > 0 ? '+' : '') + s.max_score.toFixed(1)}</div>`;
+            statsBadge = `<span class="badge-inline text-warning ms-2">最大スコア ${(s.max_score > 0 ? '+' : '') + s.max_score.toFixed(1)}</span>`;
         } else if (type === 'avg_score') {
-            statsBadge = `<div class="small text-muted fw-bold">平均スコア ${(s.avg_score > 0 ? '+' : '') + s.avg_score.toFixed(1)}</div>`;
+            statsBadge = `<span class="badge-inline text-muted ms-2">平均スコア ${(s.avg_score > 0 ? '+' : '') + s.avg_score.toFixed(1)}</span>`;
         }
 
         return `
@@ -342,7 +344,7 @@ function renderRanking(records, groupKey, type = 'all') {
                     <a href="${linkUrl}" 
                        class="text-decoration-none d-flex align-items-center gap-2 ${linkClass}">
                         ${avatarHtml}
-                        <div>
+                        <div class="d-flex align-items-center flex-wrap">
                             <span class="${canLink ? 'hover-underline' : ''}">${displayName}</span>
                             ${statsBadge}
                         </div>

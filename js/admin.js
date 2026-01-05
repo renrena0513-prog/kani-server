@@ -242,15 +242,16 @@ function editRecord(record) {
     // フィールド埋め
     const fields = [
         'event_datetime', 'account_name', 'tournament_type', 'team_name',
-        'mahjong_mode', 'match_mode', 'raw_points', 'hand_count',
-        'deal_in_count', 'win_count', 'opt1', 'opt2', 'opt3', 'opt4', 'opt5'
+        'mahjong_mode', 'match_mode', 'final_score', 'rank',
+        'matches_played', 'win_count', 'deal_in_count', 'discord_user_id'
     ];
 
 
     fields.forEach(field => {
         let val = record[field] || '';
         if (field === 'event_datetime' && val) val = val.slice(0, 16);
-        document.getElementById(field).value = val;
+        const el = document.getElementById(field);
+        if (el) el.value = val;
     });
 
     recordModal.show();
@@ -262,15 +263,17 @@ async function saveRecordFromForm() {
 
     const fields = [
         'event_datetime', 'account_name', 'tournament_type', 'team_name',
-        'mahjong_mode', 'match_mode', 'raw_points', 'hand_count',
-        'deal_in_count', 'win_count', 'opt1', 'opt2', 'opt3', 'opt4', 'opt5'
+        'mahjong_mode', 'match_mode', 'final_score', 'rank',
+        'matches_played', 'win_count', 'deal_in_count', 'discord_user_id'
     ];
 
 
     const data = {};
     fields.forEach(field => {
-        let val = document.getElementById(field).value;
-        if (['raw_points', 'hand_count', 'deal_in_count', 'win_count'].includes(field)) {
+        const el = document.getElementById(field);
+        if (!el) return;
+        let val = el.value;
+        if (['final_score', 'rank', 'matches_played', 'win_count', 'deal_in_count'].includes(field)) {
             val = val !== '' ? Number(val) : null;
         }
         data[field] = val;
@@ -377,7 +380,7 @@ async function handleCSVImport(event) {
             const obj = {};
             headers.forEach((h, idx) => {
                 let val = values[idx];
-                if (['score', 'hand_count', 'deal_in_count', 'win_count'].includes(h)) {
+                if (['final_score', 'rank', 'matches_played', 'win_count', 'deal_in_count'].includes(h)) {
                     val = (val !== '' && val !== undefined) ? Number(val) : null;
                 }
                 if (val !== undefined) obj[h] = val;
@@ -415,4 +418,85 @@ async function handleCSVImport(event) {
         event.target.value = '';
     };
     reader.readAsText(file);
+}
+
+// ユーザー一覧の取得
+async function fetchUsers() {
+    const listBody = document.getElementById('users-list-body');
+    if (!listBody) return;
+
+    try {
+        const { data: users, error } = await supabaseClient
+            .from('profiles')
+            .select('*')
+            .order('updated_at', { ascending: false });
+
+        if (error) throw error;
+
+        listBody.innerHTML = '';
+        if (users.length === 0) {
+            listBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">登録されているユーザーはいません</td></tr>';
+            return;
+        }
+
+        users.forEach(user => {
+            const tr = document.createElement('tr');
+            const dateStr = user.updated_at ? new Date(user.updated_at).toLocaleString('ja-JP') : '-';
+            const avatarHtml = user.avatar_url ? `<img src="${user.avatar_url}" width="32" height="32" class="rounded-circle shadow-sm">` : '<div class="bg-secondary rounded-circle" style="width:32px;height:32px;"></div>';
+
+            tr.innerHTML = `
+                <td>${avatarHtml}</td>
+                <td>
+                    <div class="fw-bold">${user.account_name || '名称未設定'}</div>
+                    <div class="small text-muted">${user.discord_account || ''}</div>
+                </td>
+                <td><code>${user.discord_user_id || '-'}</code></td>
+                <td class="small text-muted">${dateStr}</td>
+            `;
+            listBody.appendChild(tr);
+        });
+    } catch (err) {
+        console.error('ユーザー取得エラー:', err.message);
+        listBody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">エラー: ${err.message}</td></tr>`;
+    }
+}
+
+// 記録の表示（レコード形式に合わせて微調整）
+function displayRecords(records) {
+    const listBody = document.getElementById('records-list-body');
+    if (!listBody) return;
+
+    listBody.innerHTML = '';
+
+    if (records.length === 0) {
+        listBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">登録されている記録はありません</td></tr>';
+        return;
+    }
+
+    records.forEach(record => {
+        const tr = document.createElement('tr');
+
+        const dateStr = new Date(record.event_datetime).toLocaleString('ja-JP', {
+            year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+        });
+
+        const scoreColor = (record.final_score > 0) ? 'text-success' : (record.final_score < 0 ? 'text-danger' : '');
+
+        tr.innerHTML = `
+            <td>${dateStr}</td>
+            <td><span class="badge bg-light text-dark">${record.account_name}</span></td>
+            <td>
+                <div class="small fw-bold">${record.tournament_type || '-'}</div>
+                <div class="small text-muted">${record.mahjong_mode || ''} / ${record.match_mode || ''}</div>
+            </td>
+            <td class="fw-bold ${scoreColor}">${record.final_score !== null ? (record.final_score > 0 ? '+' : '') + record.final_score.toFixed(1) : '-'}</td>
+            <td>${record.rank ? `<span class="badge bg-primary">${record.rank}位</span>` : '-'}</td>
+            <td>${record.matches_played || 1}局</td>
+            <td>
+                <button onclick='editRecord(${JSON.stringify(record).replace(/'/g, "&apos;")})' class="btn btn-sm btn-outline-primary">編集</button>
+                <button onclick="deleteRecord('${record.id}')" class="btn btn-sm btn-outline-danger">削除</button>
+            </td>
+        `;
+        listBody.appendChild(tr);
+    });
 }

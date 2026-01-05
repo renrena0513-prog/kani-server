@@ -251,257 +251,273 @@
         <div id="admin-content" class="row justify-content-center" style="display: none;">
             <div class="col-12 col-lg-12">
                 <div class="content-card">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h2 class="mb-0" style="font-family: var(--font-title); color: var(--deep-gray);">🏆 大会記録管理</h2>
-                        <div class="csv-actions">
-                            <button onclick="document.getElementById('csv-import-input').click()"
-                                class="btn btn-outline-primary btn-sm">
-                                📥 CSVインポート
-                            </button>
-                            <input type="file" id="csv-import-input" style="display: none;" accept=".csv"
-                                onchange="handleCSVImport(event)">
-                            <button onclick="exportToCSV()" class="btn btn-outline-secondary btn-sm">
-                                📤 CSVエクスポート
-                            </button>
-                        </div>
+                    <div class="mb-4">
+                        <ul class="nav nav-pills" id="adminTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="records-tab" data-bs-toggle="pill"
+                                    data-bs-target="#records-pane" type="button" role="tab">🏆 大会記録管理</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="users-tab" data-bs-toggle="pill"
+                                    data-bs-target="#users-pane" type="button" role="tab" onclick="fetchUsers()">👥
+                                    ユーザー一覧</button>
+                            </li>
+                        </ul>
                     </div>
 
-                    <!-- 大会記録一覧 -->
-                    <div class="admin-section">
-                        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-                            <h5 class="mb-0">📋 最近の記録</h5>
-                            <div class="d-flex gap-2 mt-2 mt-md-0">
-                                <button onclick="toggleFilterPanel()" class="btn btn-outline-primary btn-sm">🔍
-                                    フィルター</button>
-                                <button onclick="openRecordModal()" class="btn btn-primary btn-sm">記録を追加</button>
+                    <div class="tab-content" id="adminTabContent">
+                        <!-- 記録管理タブ -->
+                        <div class="tab-pane fade show active" id="records-pane" role="tabpanel" tabindex="0">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h2 class="mb-0" style="font-family: var(--font-title); color: var(--deep-gray);">🏆
+                                    大会記録管理</h2>
+                                <div class="csv-actions">
+                                    <button onclick="document.getElementById('csv-import-input').click()"
+                                        class="btn btn-outline-primary btn-sm">
+                                        📥 CSVインポート
+                                    </button>
+                                    <input type="file" id="csv-import-input" style="display: none;" accept=".csv"
+                                        onchange="handleCSVImport(event)">
+                                    <button onclick="exportToCSV()" class="btn btn-outline-secondary btn-sm">
+                                        📤 CSVエクスポート
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- 大会記録一覧 -->
+                            <div class="admin-section">
+                                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                                    <h5 class="mb-0">📋 最近の記録</h5>
+                                    <div class="d-flex gap-2 mt-2 mt-md-0">
+                                        <button onclick="toggleFilterPanel()" class="btn btn-outline-primary btn-sm">🔍
+                                            フィルター</button>
+                                        <button onclick="openRecordModal()"
+                                            class="btn btn-primary btn-sm">記録を追加</button>
+                                    </div>
+                                </div>
+
+                                <!-- フィルタパネル -->
+                                <div id="filter-panel" class="filter-panel shadow-sm">
+                                    <div class="row">
+                                        <div class="col-6 col-md-4 col-lg-2 mb-3">
+                                            <div class="filter-group-title">👤 アカウント</div>
+                                            <div id="filter-accounts" class="filter-options-scroll">
+                                                <!-- 動的に生成 -->
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-4 col-lg-2 mb-3">
+                                            <div class="filter-group-title">🏆 大会名</div>
+                                            <div id="filter-tournaments" class="filter-options-scroll">
+                                                <!-- 動的に生成 -->
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-4 col-lg-2 mb-3">
+                                            <div class="filter-group-title">🚩 チーム名</div>
+                                            <div id="filter-teams" class="filter-options-scroll">
+                                                <!-- 動的に生成 -->
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-4 col-lg-3 mb-3">
+                                            <div class="filter-group-title">🀄 モード</div>
+                                            <div id="filter-modes" class="filter-options-scroll">
+                                                <!-- 動的に生成 -->
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-4 col-lg-3 mb-3">
+                                            <div class="filter-group-title">⚔️ 試合方法</div>
+                                            <div id="filter-match-modes" class="filter-options-scroll">
+                                                <!-- 動的に生成 -->
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                    <div class="d-flex justify-content-end gap-2 mt-2">
+                                        <button onclick="clearFilters()"
+                                            class="btn btn-link btn-sm text-muted text-decoration-none">リセット</button>
+                                        <button onclick="toggleFilterPanel()"
+                                            class="btn btn-secondary btn-sm">閉じる</button>
+                                    </div>
+                                </div>
+
+                                <div class="table-responsive">
+
+                                    <table class="table table-hover align-middle">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th onclick="sortRecords('event_datetime')" class="sortable"
+                                                    id="th-event_datetime">日時</th>
+                                                <th onclick="sortRecords('account_name')" class="sortable"
+                                                    id="th-account_name">
+                                                    アカウント名</th>
+                                                <th onclick="sortRecords('tournament_type')" class="sortable"
+                                                    id="th-tournament_type">大会/モード</th>
+                                                <th onclick="sortRecords('score')" class="sortable" id="th-score">スコア
+                                                </th>
+                                                <th onclick="sortRecords('hand_count')" class="sortable"
+                                                    id="th-hand_count">局数
+                                                </th>
+                                                <th onclick="sortRecords('deal_in_count')" class="sortable"
+                                                    id="th-deal_in_count">放銃/和了</th>
+                                                <th>操作</th>
+                                            </tr>
+                                        </thead>
+
+                                        <tbody id="records-list-body">
+                                            <tr>
+                                                <td colspan="7" class="text-center text-muted py-4">読み込み中...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="text-center mt-4 p-3 rounded" style="background: #f8f9fa;">
+                                <p class="mb-0">📍 ページのパス: <code>/admin/index.html</code></p>
                             </div>
                         </div>
-
-                        <!-- フィルタパネル -->
-                        <div id="filter-panel" class="filter-panel shadow-sm">
-                            <div class="row">
-                                <div class="col-6 col-md-4 col-lg-2 mb-3">
-                                    <div class="filter-group-title">👤 アカウント</div>
-                                    <div id="filter-accounts" class="filter-options-scroll">
-                                        <!-- 動的に生成 -->
-                                    </div>
-                                </div>
-                                <div class="col-6 col-md-4 col-lg-2 mb-3">
-                                    <div class="filter-group-title">🏆 大会名</div>
-                                    <div id="filter-tournaments" class="filter-options-scroll">
-                                        <!-- 動的に生成 -->
-                                    </div>
-                                </div>
-                                <div class="col-6 col-md-4 col-lg-2 mb-3">
-                                    <div class="filter-group-title">🚩 チーム名</div>
-                                    <div id="filter-teams" class="filter-options-scroll">
-                                        <!-- 動的に生成 -->
-                                    </div>
-                                </div>
-                                <div class="col-6 col-md-4 col-lg-3 mb-3">
-                                    <div class="filter-group-title">🀄 モード</div>
-                                    <div id="filter-modes" class="filter-options-scroll">
-                                        <!-- 動的に生成 -->
-                                    </div>
-                                </div>
-                                <div class="col-6 col-md-4 col-lg-3 mb-3">
-                                    <div class="filter-group-title">⚔️ 試合方法</div>
-                                    <div id="filter-match-modes" class="filter-options-scroll">
-                                        <!-- 動的に生成 -->
-                                    </div>
-                                </div>
-
-                            </div>
-                            <div class="d-flex justify-content-end gap-2 mt-2">
-                                <button onclick="clearFilters()"
-                                    class="btn btn-link btn-sm text-muted text-decoration-none">リセット</button>
-                                <button onclick="toggleFilterPanel()" class="btn btn-secondary btn-sm">閉じる</button>
-                            </div>
-                        </div>
-
-                        <div class="table-responsive">
-
-                            <table class="table table-hover align-middle">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th onclick="sortRecords('event_datetime')" class="sortable"
-                                            id="th-event_datetime">日時</th>
-                                        <th onclick="sortRecords('account_name')" class="sortable" id="th-account_name">
-                                            アカウント名</th>
-                                        <th onclick="sortRecords('tournament_type')" class="sortable"
-                                            id="th-tournament_type">大会/モード</th>
-                                        <th onclick="sortRecords('score')" class="sortable" id="th-score">スコア</th>
-                                        <th onclick="sortRecords('hand_count')" class="sortable" id="th-hand_count">局数
-                                        </th>
-                                        <th onclick="sortRecords('deal_in_count')" class="sortable"
-                                            id="th-deal_in_count">放銃/和了</th>
-                                        <th>操作</th>
-                                    </tr>
-                                </thead>
-
-                                <tbody id="records-list-body">
-                                    <tr>
-                                        <td colspan="7" class="text-center text-muted py-4">読み込み中...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div class="text-center mt-4 p-3 rounded" style="background: #f8f9fa;">
-                        <p class="mb-0">📍 ページのパス: <code>/admin/index.html</code></p>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- 記録編集モーダル -->
-    <div class="modal fade" id="recordModal" tabindex="-1" aria-labelledby="recordModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="recordModalLabel">大会記録編集</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="record-form">
-                        <input type="hidden" id="record-id">
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="event_datetime" class="form-label">日時</label>
-                                <input type="datetime-local" class="form-control" id="event_datetime" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="account_name" class="form-label">アカウント名</label>
-                                <input type="text" class="form-control" id="account_name" placeholder="ユーザー名" required>
-                            </div>
+            <!-- 記録編集モーダル -->
+            <div class="modal fade" id="recordModal" tabindex="-1" aria-labelledby="recordModalLabel"
+                aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="recordModalLabel">大会記録編集</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
+                        <div class="modal-body">
+                            <form id="record-form">
+                                <input type="hidden" id="record-id">
 
-                        <div class="row">
-                            <div class="col-md-3 mb-3">
-                                <label for="tournament_type" class="form-label">大会名 (第一回など)</label>
-                                <input type="text" class="form-control" id="tournament_type">
-                            </div>
-                            <div class="col-md-3 mb-3">
-                                <label for="team_name" class="form-label">チーム名</label>
-                                <input type="text" class="form-control" id="team_name">
-                            </div>
-                            <div class="col-md-3 mb-3">
-                                <label for="mahjong_mode" class="form-label">麻雀/モード (四麻/三麻)</label>
-                                <input type="text" class="form-control" id="mahjong_mode">
-                            </div>
-                            <div class="col-md-3 mb-3">
-                                <label for="match_mode" class="form-label">試合方式 (チーム/個人)</label>
-                                <input type="text" class="form-control" id="match_mode">
-                            </div>
-                        </div>
-
-
-                        <div class="row">
-                            <div class="col-md-3 mb-3">
-                                <label for="score" class="form-label">スコア</label>
-                                <input type="number" step="0.1" class="form-control" id="raw_points">
-                            </div>
-                            <div class="col-md-3 mb-3">
-                                <label for="hand_count" class="form-label">局数</label>
-                                <input type="number" class="form-control" id="hand_count">
-                            </div>
-                            <div class="col-md-3 mb-3">
-                                <label for="deal_in_count" class="form-label">放銃数</label>
-                                <input type="number" class="form-control" id="deal_in_count">
-                            </div>
-                            <div class="col-md-3 mb-3">
-                                <label for="win_count" class="form-label">和了数</label>
-                                <input type="number" class="form-control" id="win_count">
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col mb-3">
-                                <label class="form-label text-muted small">自由項目 (オプション)</label>
-                                <div class="input-group mb-2">
-                                    <span class="input-group-text">opt1</span>
-                                    <input type="text" class="form-control" id="opt1">
-                                    <span class="input-group-text">opt2</span>
-                                    <input type="text" class="form-control" id="opt2">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="event_datetime" class="form-label">日時</label>
+                                        <input type="datetime-local" class="form-control" id="event_datetime" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="account_name" class="form-label">アカウント名</label>
+                                        <input type="text" class="form-control" id="account_name" placeholder="ユーザー名"
+                                            required>
+                                    </div>
                                 </div>
-                                <div class="input-group">
-                                    <span class="input-group-text">opt3</span>
-                                    <input type="text" class="form-control" id="opt3">
-                                    <span class="input-group-text">opt4</span>
-                                    <input type="text" class="form-control" id="opt4">
-                                    <span class="input-group-text">opt5</span>
-                                    <input type="text" class="form-control" id="opt5">
+
+                                <div class="row">
+                                    <div class="col-md-3 mb-3">
+                                        <label for="tournament_type" class="form-label">大会名 (第一回など)</label>
+                                        <input type="text" class="form-control" id="tournament_type">
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label for="team_name" class="form-label">チーム名</label>
+                                        <input type="text" class="form-control" id="team_name">
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label for="mahjong_mode" class="form-label">麻雀/モード (四麻/三麻)</label>
+                                        <input type="text" class="form-control" id="mahjong_mode">
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label for="match_mode" class="form-label">試合方式 (チーム/個人)</label>
+                                        <input type="text" class="form-control" id="match_mode">
+                                    </div>
                                 </div>
-                            </div>
+
+
+                                <div class="row">
+                                    <div class="col-md-3 mb-3">
+                                        <label for="final_score" class="form-label">最終得点</label>
+                                        <input type="number" step="0.1" class="form-control" id="final_score" required>
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label for="rank" class="form-label">順位</label>
+                                        <input type="number" class="form-control" id="rank" min="1" max="4">
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label for="matches_played" class="form-label">対局数</label>
+                                        <input type="number" class="form-control" id="matches_played" value="1">
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label for="win_count" class="form-label">和了数</label>
+                                        <input type="number" class="form-control" id="win_count" value="0">
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-3 mb-3">
+                                        <label for="deal_in_count" class="form-label">放銃数</label>
+                                        <input type="number" class="form-control" id="deal_in_count" value="0">
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label for="discord_user_id" class="form-label">Discord User ID (任意)</label>
+                                        <input type="text" class="form-control" id="discord_user_id">
+                                    </div>
+                                </div>
+                            </form>
                         </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
-                    <button type="button" class="btn btn-primary" onclick="saveRecordFromForm()">保存する</button>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                            <button type="button" class="btn btn-primary" onclick="saveRecordFromForm()">保存する</button>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
 
 
-    <!-- ローディングオーバーレイ -->
-    <div id="loading-overlay" class="loading-overlay">
-        <div class="spinner-border text-light" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
-    </div>
+            <!-- ローディングオーバーレイ -->
+            <div id="loading-overlay" class="loading-overlay">
+                <div class="spinner-border text-light" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
 
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- Supabase設定 -->
-    <script src="../js/supabase-config.js"></script>
-    <script src="../js/auth-guard.js"></script>
-    <!-- 管理ロジック -->
-    <script src="../js/admin.js"></script>
+            <!-- Bootstrap JS -->
+            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+            <!-- Supabase -->
+            <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+            <!-- Supabase設定 -->
+            <script src="../js/supabase-config.js"></script>
+            <script src="../js/auth-guard.js"></script>
+            <!-- 管理ロジック -->
+            <script src="../js/admin.js"></script>
 
 
-    <script>
-        // admin/index.html 内の ADMIN_DISCORD_IDS 定義は削除 (supabase-config.js を使用)
+            <script>
+                // admin/index.html 内の ADMIN_DISCORD_IDS 定義は削除 (supabase-config.js を使用)
 
 
-        // 管理者チェック
-        async function checkAdminAccess() {
-            const loading = document.getElementById('loading');
-            const accessDenied = document.getElementById('access-denied');
-            const loginPrompt = document.getElementById('login-prompt');
-            const adminContent = document.getElementById('admin-content');
+                // 管理者チェック
+                async function checkAdminAccess() {
+                    const loading = document.getElementById('loading');
+                    const accessDenied = document.getElementById('access-denied');
+                    const loginPrompt = document.getElementById('login-prompt');
+                    const adminContent = document.getElementById('admin-content');
 
-            const user = await getCurrentUser();
+                    const user = await getCurrentUser();
 
-            if (!user) {
-                // 未ログイン
-                loading.style.display = 'none';
-                loginPrompt.style.display = 'block';
-                return;
-            }
+                    if (!user) {
+                        // 未ログイン
+                        loading.style.display = 'none';
+                        loginPrompt.style.display = 'block';
+                        return;
+                    }
 
-            const discordId = user.user_metadata.provider_id;
-            console.log('Discord ID:', discordId); // デバッグ用
+                    const discordId = user.user_metadata.provider_id;
+                    console.log('Discord ID:', discordId); // デバッグ用
 
-            // 管理者リストが空の場合は全員アクセス可能（初期設定用）
-            if (ADMIN_DISCORD_IDS.length === 0 || ADMIN_DISCORD_IDS.includes(discordId)) {
-                loading.style.display = 'none';
-                adminContent.style.display = 'flex';
-            } else {
-                loading.style.display = 'none';
-                accessDenied.style.display = 'block';
-            }
-        }
+                    // 管理者リストが空の場合は全員アクセス可能（初期設定用）
+                    if (ADMIN_DISCORD_IDS.length === 0 || ADMIN_DISCORD_IDS.includes(discordId)) {
+                        loading.style.display = 'none';
+                        adminContent.style.display = 'flex';
+                    } else {
+                        loading.style.display = 'none';
+                        accessDenied.style.display = 'block';
+                    }
+                }
 
-        document.addEventListener('DOMContentLoaded', checkAdminAccess);
-    </script>
+                document.addEventListener('DOMContentLoaded', checkAdminAccess);
+            </script>
 </body>
 
 </html>
