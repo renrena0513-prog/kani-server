@@ -632,16 +632,32 @@
                 myAccountName = profile?.account_name || user.user_metadata.full_name || '';
 
                 // 第二回麻雀大会データ
-                const { data: currentData } = await supabaseClient
+                const { data: currentData, error: currentError } = await supabaseClient
                     .from('match_results')
                     .select('*');
 
-                // 第一回麻雀大会データ
-                const { data: legacyData } = await supabaseClient
-                    .from('tournament_player_stats_snapshot')
-                    .select('*');
+                if (currentError) {
+                    console.warn('第二回データ取得エラー:', currentError);
+                }
 
-                allMahjongRecords = [...(currentData || []), ...(legacyData || [])];
+                // 第一回麻雀大会データ
+                let legacyData = [];
+                try {
+                    const { data, error: legacyError } = await supabaseClient
+                        .from('tournament_player_stats_snapshot')
+                        .select('*');
+
+                    if (legacyError) {
+                        console.warn('第一回データ取得エラー:', legacyError);
+                    } else {
+                        legacyData = data || [];
+                    }
+                } catch (e) {
+                    console.warn('第一回データ取得スキップ:', e);
+                }
+
+                allMahjongRecords = [...(currentData || []), ...legacyData];
+                console.log('📊 取得したレコード数:', allMahjongRecords.length);
 
                 displayMahjongStats();
             } catch (err) {
