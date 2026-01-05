@@ -37,7 +37,7 @@ let filterState = {
 async function fetchRecords() {
     try {
         const { data: records, error } = await supabaseClient
-            .from('tournament_records')
+            .from('match_results')
             .select('*');
 
         if (error) throw error;
@@ -47,9 +47,9 @@ async function fetchRecords() {
         applyFiltersAndSort();
     } catch (err) {
         console.error('記録取得エラー:', err.message);
-        if (err.message.includes('relation "tournament_records" does not exist')) {
+        if (err.message.includes('relation "match_results" does not exist')) {
             const listBody = document.getElementById('records-list-body');
-            if (listBody) listBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">テーブル "tournament_records" が見つかりません。Supabaseでテーブルを作成してください。</td></tr>';
+            if (listBody) listBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">テーブル "match_results" が見つかりません。Supabaseでテーブルを作成してください。</td></tr>';
         }
     }
 }
@@ -72,12 +72,13 @@ function updateFilterOptions() {
     const matchModeSet = new Set();
 
     allRecords.forEach(r => {
-        if (r.discord_account) accountSet.add(r.discord_account);
+        if (r.account_name) accountSet.add(r.account_name);
         if (r.tournament_type) tournamentSet.add(r.tournament_type);
         if (r.team_name) teamSet.add(r.team_name);
         if (r.mahjong_mode) modeSet.add(r.mahjong_mode);
         if (r.match_mode) matchModeSet.add(r.match_mode);
     });
+
 
     renderCheckboxes('filter-accounts', Array.from(accountSet), 'accounts');
     renderCheckboxes('filter-tournaments', Array.from(tournamentSet), 'tournaments');
@@ -145,7 +146,8 @@ function sortRecords(key) {
 function applyFiltersAndSort() {
     // 1. フィルタリング (マルチセレクト)
     filteredRecords = allRecords.filter(record => {
-        const matchAccount = filterState.accounts.length === 0 || filterState.accounts.includes(record.discord_account);
+        const matchAccount = filterState.accounts.length === 0 || filterState.accounts.includes(record.account_name);
+
         const matchTournament = filterState.tournaments.length === 0 || filterState.tournaments.includes(record.tournament_type);
         const matchTeam = filterState.teams.length === 0 || filterState.teams.includes(record.team_name);
         const matchMode = filterState.modes.length === 0 || filterState.modes.includes(record.mahjong_mode);
@@ -199,16 +201,17 @@ function displayRecords(records) {
             year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
         });
 
-        const scoreColor = (record.score > 0) ? 'text-success' : (record.score < 0 ? 'text-danger' : '');
+        const scoreColor = (record.raw_points > 0) ? 'text-success' : (record.raw_points < 0 ? 'text-danger' : '');
 
         tr.innerHTML = `
             <td>${dateStr}</td>
-            <td><span class="badge bg-light text-dark">${record.discord_account}</span></td>
+            <td><span class="badge bg-light text-dark">${record.account_name}</span></td>
             <td>
                 <div class="small fw-bold">${record.tournament_type || '-'}</div>
                 <div class="small text-muted">${record.mahjong_mode || ''} / ${record.match_mode || ''}</div>
             </td>
-            <td class="fw-bold ${scoreColor}">${record.score !== null ? (record.score > 0 ? '+' : '') + record.score : '-'}</td>
+            <td class="fw-bold ${scoreColor}">${record.raw_points !== null ? (record.raw_points > 0 ? '+' : '') + record.raw_points : '-'}</td>
+
             <td>${record.hand_count || '-'}</td>
             <td>
                 <span class="badge bg-danger bg-opacity-10 text-danger">${record.deal_in_count || 0} 放</span>
@@ -238,8 +241,8 @@ function editRecord(record) {
 
     // フィールド埋め
     const fields = [
-        'event_datetime', 'discord_account', 'tournament_type', 'team_name',
-        'mahjong_mode', 'match_mode', 'score', 'hand_count',
+        'event_datetime', 'account_name', 'tournament_type', 'team_name',
+        'mahjong_mode', 'match_mode', 'raw_points', 'hand_count',
         'deal_in_count', 'win_count', 'opt1', 'opt2', 'opt3', 'opt4', 'opt5'
     ];
 
@@ -258,8 +261,8 @@ async function saveRecordFromForm() {
     const id = document.getElementById('record-id').value;
 
     const fields = [
-        'event_datetime', 'discord_account', 'tournament_type', 'team_name',
-        'mahjong_mode', 'match_mode', 'score', 'hand_count',
+        'event_datetime', 'account_name', 'tournament_type', 'team_name',
+        'mahjong_mode', 'match_mode', 'raw_points', 'hand_count',
         'deal_in_count', 'win_count', 'opt1', 'opt2', 'opt3', 'opt4', 'opt5'
     ];
 
@@ -267,13 +270,13 @@ async function saveRecordFromForm() {
     const data = {};
     fields.forEach(field => {
         let val = document.getElementById(field).value;
-        if (['score', 'hand_count', 'deal_in_count', 'win_count'].includes(field)) {
+        if (['raw_points', 'hand_count', 'deal_in_count', 'win_count'].includes(field)) {
             val = val !== '' ? Number(val) : null;
         }
         data[field] = val;
     });
 
-    if (!data.event_datetime || !data.discord_account) {
+    if (!data.event_datetime || !data.account_name) {
         alert('日時とDiscordアカウントは必須です');
         return;
     }
@@ -282,9 +285,9 @@ async function saveRecordFromForm() {
     try {
         let result;
         if (id) {
-            result = await supabaseClient.from('tournament_records').update(data).eq('id', id);
+            result = await supabaseClient.from('match_results').update(data).eq('id', id);
         } else {
-            result = await supabaseClient.from('tournament_records').insert([data]);
+            result = await supabaseClient.from('match_results').insert([data]);
         }
 
         if (result.error) throw result.error;
@@ -304,7 +307,7 @@ async function deleteRecord(id) {
 
     toggleLoading(true);
     try {
-        const { error } = await supabaseClient.from('tournament_records').delete().eq('id', id);
+        const { error } = await supabaseClient.from('match_results').delete().eq('id', id);
         if (error) throw error;
         fetchRecords();
     } catch (err) {
@@ -323,8 +326,9 @@ async function exportToCSV() {
         }
 
         const headers = [
-            'id', 'event_datetime', 'discord_account', 'tournament_type', 'team_name',
-            'mahjong_mode', 'match_mode', 'score', 'hand_count',
+            'id', 'event_datetime', 'account_name', 'tournament_type', 'team_name',
+            'mahjong_mode', 'match_mode', 'raw_points', 'hand_count',
+
             'deal_in_count', 'win_count', 'opt1', 'opt2', 'opt3', 'opt4', 'opt5'
         ];
 
@@ -345,7 +349,7 @@ async function exportToCSV() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.setAttribute('href', url);
-        link.setAttribute('download', `tournament_records_${new Date().toISOString().slice(0, 10)}.csv`);
+        link.setAttribute('download', `match_results_${new Date().toISOString().slice(0, 10)}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -384,7 +388,7 @@ async function handleCSVImport(event) {
                 delete obj.id;
             }
 
-            if (obj.event_datetime && obj.discord_account) {
+            if (obj.event_datetime && obj.account_name) {
                 dataToInsert.push(obj);
             }
         }
@@ -397,7 +401,7 @@ async function handleCSVImport(event) {
         if (confirm(`${dataToInsert.length}件の記録をインポート（同一IDは上書き）しますか？`)) {
             toggleLoading(true);
             try {
-                const { error } = await supabaseClient.from('tournament_records').upsert(dataToInsert);
+                const { error } = await supabaseClient.from('match_results').upsert(dataToInsert);
                 if (error) throw error;
                 alert('インポート完了');
                 fetchRecords();

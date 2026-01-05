@@ -113,9 +113,9 @@ function renderDropdownItems(idx, profiles) {
         return;
     }
     list.innerHTML = profiles.map(p => {
-        const display = p.nickname || p.discord_account;
+        const display = p.account_name || p.discord_user_id;
         return `
-            <div class="dropdown-item-flex" onclick="selectPlayer(${idx}, '${p.discord_account}')">
+            <div class="dropdown-item-flex" onclick="selectPlayer(${idx}, '${p.discord_user_id}', '${p.account_name || ''}')">
                 <img src="${p.avatar_url}" class="dropdown-avatar" onerror="this.src='https://via.placeholder.com/24'">
                 <span class="small">${display}</span>
             </div>
@@ -123,14 +123,19 @@ function renderDropdownItems(idx, profiles) {
     }).join('');
 }
 
-function selectPlayer(idx, account) {
-    const profile = allProfiles.find(p => p.discord_account === account);
+function selectPlayer(idx, discordUserId, accountName) {
+    const profile = allProfiles.find(p => p.discord_user_id === discordUserId);
     const input = document.querySelector(`#player-row-${idx} .player-account`);
     const badge = document.getElementById(`selected-badge-${idx}`);
-    input.value = account;
+
+    // discord_user_idとaccount_nameの両方を保存（data属性に）
+    input.value = accountName || discordUserId;
+    input.dataset.discordUserId = discordUserId;
+    input.dataset.accountName = accountName;
     input.style.display = 'none';
+
     badge.querySelector('img').src = (profile && profile.avatar_url) ? profile.avatar_url : 'https://via.placeholder.com/24';
-    badge.querySelector('.name').textContent = (profile && profile.nickname) ? profile.nickname : account;
+    badge.querySelector('.name').textContent = accountName || discordUserId;
     badge.style.display = 'flex';
     document.getElementById(`dropdown-list-${idx}`).style.display = 'none';
 }
@@ -152,25 +157,24 @@ async function submitScores() {
     const targetCount = mode === '三麻' ? 3 : 4;
 
     const entries = document.querySelectorAll('.player-entry');
-    const dataToInsert = [];
+    const tempData = []; // raw_points を一時的に格納
     const now = new Date().toISOString();
 
+    // Step 1: 入力データの収集
     let filledCount = 0;
     for (const entry of entries) {
-        const account = entry.querySelector('.player-account').value;
-        const score = entry.querySelector('.player-score').value;
+        const input = entry.querySelector('.player-account');
+        const discordUserId = input.dataset.discordUserId || '';
+        const accountName = input.dataset.accountName || input.value;
+        const rawPoints = Number(entry.querySelector('.player-score').value);
 
-        if (account && score !== '') {
+        if (accountName && !isNaN(rawPoints)) {
             filledCount++;
-            dataToInsert.push({
-                event_datetime: now,
-                discord_account: account,
-                tournament_type: '第二回麻雀大会',
-                mahjong_mode: mode,
-                match_mode: match,
+            tempData.push({
+                discord_user_id: discordUserId || null,
+                account_name: accountName,
+                raw_points: rawPoints,
                 team_name: (match === 'チーム戦') ? (entry.querySelector('.player-team').value || null) : null,
-                score: Number(score),
-                hand_count: hands,
                 win_count: Number(entry.querySelector('.player-win').value || 0),
                 deal_in_count: Number(entry.querySelector('.player-deal').value || 0)
             });
@@ -183,7 +187,7 @@ async function submitScores() {
         return;
     }
 
-    if (dataToInsert.length === 0) {
+    if (tempData.length === 0) {
         alert('データを入力してください');
         return;
     }
@@ -194,11 +198,53 @@ async function submitScores() {
         }
     }
 
+    // Step 2: final_score 計算（ウマオカ: 10-30, 5000点返し）
+    const calculateFinalScore = (rawPoints, rank) => {
+        const uma = { 1: 30, 2: 10, 3: -10, 4: -30 };
+        return Math.round(((rawPoints - 25000) / 1000 + uma[rank]) * 10) / 10;
+    };
+
+    // raw_pointsで降順ソート（同点は同順位）
+    tempData.sort((a, b) => b.raw_points - a.raw_points);
+
+    // rankとfinal_scoreを計算
+    tempData.forEach((player, index) => {
+        player.rank = index + 1;
+        player.final_score = calculateFinalScore(player.raw_points, player.rank);
+    });
+
+    // Step 3: match_id を生成（全プレイヤーに同じIDを割り当て）
+    const matchId = crypto.randomUUID();
+
+    // Step 4: 現在のユーザーのdiscord_user_idを取得
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    const submittedBy = user?.user_metadata?.provider_id || null;
+
+    // Step 5: 最終的な挿入データを構築
+    const dataToInsert = tempData.map(player => ({
+        match_id: matchId,
+        event_datetime: now,
+        discord_user_id: player.discord_user_id,
+        account_name: player.account_name,
+        tournament_type: '第二回麻雀大会',
+        mahjong_mode: mode,
+        match_mode: match,
+        team_name: player.team_name,
+        rank: player.rank,
+        raw_points: player.raw_points,
+        final_score: player.final_score,
+        hand_count: hands,
+        win_count: player.win_count,
+        deal_in_count: player.deal_in_count,
+        submitted_by_discord_user_id: submittedBy
+    }));
+
+    // Step 6: データベースに挿入
     document.getElementById('loading-overlay').style.display = 'flex';
 
     try {
         const { error } = await supabaseClient
-            .from('tournament_records')
+            .from('match_results')
             .insert(dataToInsert);
 
         if (error) throw error;

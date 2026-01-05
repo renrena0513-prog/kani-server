@@ -18,7 +18,7 @@ async function fetchData() {
     try {
         // 記録取得
         const { data, error } = await supabaseClient
-            .from('tournament_records')
+            .from('match_results')
             .select('*')
             .eq('tournament_type', '第二回麻雀大会');
         if (error) throw error;
@@ -32,9 +32,9 @@ async function fetchData() {
             allProfiles = profiles;
         } else {
             // 背景：profilesが空（まだ誰もログインして同期してない）場合
-            // tournament_records から過去の名前を拾って仮のリストを作る
-            const names = Array.from(new Set(allRecords.map(r => r.discord_account)));
-            allProfiles = names.map(n => ({ discord_account: n, avatar_url: '' }));
+            // match_results から過去の名前を拾って仮のリストを作る
+            const names = Array.from(new Set(allRecords.map(r => r.account_name)));
+            allProfiles = names.map(n => ({ account_name: n, avatar_url: '' }));
         }
 
 
@@ -54,7 +54,8 @@ function switchRanking(type) {
     buttons.forEach(btn => btn.classList.replace('btn-success', 'btn-outline-success'));
 
     let filtered = [];
-    let groupKey = 'discord_account';
+    let groupKey = 'account_name';
+
 
     if (type === 'team') {
         title.textContent = 'チームランキング';
@@ -92,7 +93,7 @@ function renderRanking(records, groupKey) {
         if (!summary[key]) {
             summary[key] = { name: key, score: 0, count: 0, win: 0, deal: 0 };
         }
-        summary[key].score += Number(r.score || 0);
+        summary[key].score += Number(r.final_score || 0);
         summary[key].count += 1;
         summary[key].win += (r.win_count || 0);
         summary[key].deal += (r.deal_in_count || 0);
@@ -102,13 +103,11 @@ function renderRanking(records, groupKey) {
 
     const body = document.getElementById('ranking-body');
     body.innerHTML = sorted.map((s, idx) => {
-        // ニックネーム解決
+        // アカウント名は既に account_name なのでそのまま使用
         let displayName = s.name;
-        if (groupKey === 'discord_account') {
-            const profile = allProfiles.find(p => p.discord_account === s.name);
-            if (profile && profile.nickname) {
-                displayName = profile.nickname;
-            }
+        if (groupKey === 'account_name') {
+            // profilesからアイコン情報のみ取得（表示名は既にaccount_nameに格納されている）
+            const profile = allProfiles.find(p => p.account_name === s.name);
         }
 
 
