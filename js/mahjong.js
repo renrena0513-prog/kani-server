@@ -193,17 +193,25 @@ function renderRanking(records, groupKey) {
             // 新データ: discord_user_idからプロフィールを検索
             profile = allProfiles.find(p => p.discord_user_id === s.discord_user_id);
             displayName = profile?.account_name || s.nickname || s.discord_user_id;
-            avatarUrl = profile?.avatar_url || 'https://via.placeholder.com/32';
+            avatarUrl = profile?.avatar_url;
         } else {
             // 過去データ: nicknameを使用
             displayName = s.nickname || 'Unknown';
             // nicknameからプロフィールを検索（もしあれば）
             profile = allProfiles.find(p => p.account_name === displayName);
-            avatarUrl = profile?.avatar_url || 'https://via.placeholder.com/32';
+            avatarUrl = profile?.avatar_url;
         }
 
         const linkUrl = s.discord_user_id ? `../player/index.html?id=${s.discord_user_id}` : '#';
         const linkClass = s.discord_user_id ? '' : 'pe-none'; // discord_user_idがない場合はリンク無効
+
+        // アイコンHTML（avatarUrlがある場合のみ表示）
+        const avatarHtml = avatarUrl ?
+            `<img src="${avatarUrl}" 
+                  alt="${displayName}" 
+                  class="rounded-circle" 
+                  style="width: 32px; height: 32px; object-fit: cover;"
+                  onerror="this.style.display='none'">` : '';
 
         return `
             <tr>
@@ -211,11 +219,7 @@ function renderRanking(records, groupKey) {
                 <td class="text-start ps-4">
                     <a href="${linkUrl}" 
                        class="text-decoration-none text-dark d-flex align-items-center gap-2 ${linkClass}">
-                        <img src="${avatarUrl}" 
-                             alt="${displayName}" 
-                             class="rounded-circle" 
-                             style="width: 32px; height: 32px; object-fit: cover;"
-                             onerror="this.src='https://via.placeholder.com/32'">
+                        ${avatarHtml}
                         <span class="hover-underline">${displayName}</span>
                     </a>
                 </td>
