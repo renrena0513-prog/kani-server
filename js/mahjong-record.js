@@ -48,7 +48,7 @@ function setupPlayerInputs(count) {
         container.innerHTML += `
             <div class="player-entry" id="player-row-${i}">
                 <div class="row g-2 align-items-end flex-nowrap">
-                    <div class="col team-col" style="display: ${match === 'チーム戦' ? 'block' : 'none'}; flex: 0 0 20%; max-width: 20%;">
+                    <div class="col team-col" style="display: ${match === 'チーム戦' ? 'block' : 'none'}; flex: 0 0 22%; max-width: 22%;">
                         <label class="small text-muted">チーム名</label>
                         <input type="text" class="form-control form-control-sm player-team" placeholder="チーム名">
                     </div>
