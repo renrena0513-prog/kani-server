@@ -144,35 +144,40 @@ function renderRanking(records, groupKey) {
     // ランキング集計
     const summary = {};
     records.forEach(r => {
-        // discord_user_idでグループ化（ニックネーム変更に対応）
-        // 第一回のデータはdiscord_user_idがnullの可能性があるため、nicknameまたはaccount_nameをフォールバック
-        let key = r.discord_user_id;
-        if (!key || key === 'null') {
-            // 過去データの場合、nicknameまたはaccount_nameを使用
-            key = r.nickname || r.account_name || 'Unknown';
+        // グループ化のキーを決定
+        let key;
+        if (groupKey === 'team_name') {
+            key = r.team_name;
+        } else {
+            key = r.discord_user_id;
+            if (!key || key === 'null') {
+                // 過去データの場合、nicknameまたはaccount_nameを使用
+                key = r.nickname || r.account_name || 'Unknown';
+            }
         }
 
         if (!key) return;
 
         if (!summary[key]) {
             summary[key] = {
-                discord_user_id: r.discord_user_id || null,
-                nickname: r.nickname || r.account_name || key, // 過去データ用
+                key: key,
+                discord_user_id: groupKey === 'team_name' ? null : (r.discord_user_id || null),
+                nickname: r.nickname || r.account_name || key,
+                display: key,
                 score: 0,
                 count: 0,
                 win: 0,
-                deal: 0
+                deal: 0,
+                isTeam: (groupKey === 'team_name')
             };
         }
-        summary[key].score += Number(r.final_score || r.score_total || 0); // 過去データはscore_totalかも
 
-        // 過去データ（第一回）は既に集計済み、新データは試合ごとにカウント
+        // 過去データ（第一回）は既に集計済み、新データは試合ごとに合算
         if (r.tournament_type === '第一回麻雀大会') {
-            // 過去データ: score_totalを直接使用、countは加算しない
-            summary[key].score = Number(r.score_total || 0);
-            summary[key].count = Number(r.matches_played || 0);
+            summary[key].score += Number(r.score_total || 0);
+            summary[key].count += Number(r.matches_played || 0);
         } else {
-            // 新データ: 個別試合を合算
+            summary[key].score += Number(r.final_score || 0);
             summary[key].count += 1;
         }
 
@@ -184,28 +189,28 @@ function renderRanking(records, groupKey) {
 
     const body = document.getElementById('ranking-body');
     body.innerHTML = sorted.map((s, idx) => {
-        // プロフィールから最新のaccount_nameとavatar_urlを取得
-        let profile = null;
-        let displayName = 'Unknown';
-        let avatarUrl = 'https://via.placeholder.com/32';
+        let displayName = s.display;
+        let avatarUrl = null;
+        let canLink = false;
 
-        if (s.discord_user_id) {
-            // 新データ: discord_user_idからプロフィールを検索
-            profile = allProfiles.find(p => p.discord_user_id === s.discord_user_id);
-            displayName = profile?.account_name || s.nickname || s.discord_user_id;
-            avatarUrl = profile?.avatar_url;
-        } else {
-            // 過去データ: nicknameを使用
-            displayName = s.nickname || 'Unknown';
-            // nicknameからプロフィールを検索（もしあれば）
-            profile = allProfiles.find(p => p.account_name === displayName);
-            avatarUrl = profile?.avatar_url;
+        if (!s.isTeam) {
+            // 個人ランキングの場合のみプロフィール/アイコン処理
+            let profile = null;
+            if (s.discord_user_id) {
+                profile = allProfiles.find(p => p.discord_user_id === s.discord_user_id);
+                displayName = profile?.account_name || s.nickname || s.discord_user_id;
+                avatarUrl = profile?.avatar_url;
+                canLink = true;
+            } else {
+                displayName = s.nickname || 'Unknown';
+                profile = allProfiles.find(p => p.account_name === displayName);
+                avatarUrl = profile?.avatar_url;
+            }
         }
 
-        const linkUrl = s.discord_user_id ? `../player/index.html?id=${s.discord_user_id}` : '#';
-        const linkClass = s.discord_user_id ? '' : 'pe-none'; // discord_user_idがない場合はリンク無効
+        const linkUrl = canLink ? `../player/index.html?id=${s.discord_user_id}` : '#';
+        const linkClass = canLink ? '' : 'pe-none text-dark';
 
-        // アイコンHTML（avatarUrlがある場合のみ表示）
         const avatarHtml = avatarUrl ?
             `<img src="${avatarUrl}" 
                   alt="${displayName}" 
@@ -218,9 +223,9 @@ function renderRanking(records, groupKey) {
                 <td>${idx + 1}</td>
                 <td class="text-start ps-4">
                     <a href="${linkUrl}" 
-                       class="text-decoration-none text-dark d-flex align-items-center gap-2 ${linkClass}">
+                       class="text-decoration-none d-flex align-items-center gap-2 ${linkClass}">
                         ${avatarHtml}
-                        <span class="hover-underline">${displayName}</span>
+                        <span class="${canLink ? 'hover-underline' : ''}">${displayName}</span>
                     </a>
                 </td>
                 <td class="fw-bold ${s.score > 0 ? 'text-success' : (s.score < 0 ? 'text-danger' : '')}">
