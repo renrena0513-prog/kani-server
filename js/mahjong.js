@@ -103,13 +103,28 @@ function renderRanking(records, groupKey) {
 
     const body = document.getElementById('ranking-body');
     body.innerHTML = sorted.map((s, idx) => {
-        // アカウント名は既に account_name なのでそのまま使用
         let displayName = s.name;
-        if (groupKey === 'account_name') {
-            // profilesからアイコン情報のみ取得（表示名は既にaccount_nameに格納されている）
-            const profile = allProfiles.find(p => p.account_name === s.name);
-        }
 
+        // account_nameでグループ化されている場合、プロフィール情報を取得
+        if (groupKey === 'account_name') {
+            // プロフィールテーブルからニックネームを検索
+            const profile = allProfiles.find(p => p.account_name === s.name);
+            if (profile) {
+                displayName = profile.account_name || s.name;
+            }
+
+            // それでも表示名が無い場合は、discord_user_idを参照
+            if (!displayName || displayName === '' || displayName === 'null') {
+                // レコードからdiscord_user_idを取得
+                const record = allRecords.find(r => r.account_name === s.name);
+                if (record && record.discord_user_id) {
+                    const profileById = allProfiles.find(p => p.discord_user_id === record.discord_user_id);
+                    displayName = profileById?.account_name || record.discord_user_id || 'Unknown';
+                } else {
+                    displayName = 'Unknown';
+                }
+            }
+        }
 
         return `
             <tr>
