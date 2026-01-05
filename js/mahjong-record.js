@@ -114,9 +114,10 @@ function renderDropdownItems(idx, profiles) {
     }
     list.innerHTML = profiles.map(p => {
         const display = p.account_name || p.discord_user_id;
+        const avatarUrl = p.avatar_url || 'https://via.placeholder.com/24';
         return `
-            <div class="dropdown-item-flex" onclick="selectPlayer(${idx}, '${p.discord_user_id}', '${p.account_name || ''}')">
-                <img src="${p.avatar_url}" class="dropdown-avatar" onerror="this.src='https://via.placeholder.com/24'">
+            <div class="dropdown-item-flex" onclick="selectPlayer(${idx}, '${p.discord_user_id}', '${(p.account_name || '').replace(/'/g, "\\'")}')">
+                <img src="${avatarUrl}" class="dropdown-avatar" onerror="this.src='https://via.placeholder.com/24'">
                 <span class="small">${display}</span>
             </div>
         `;
