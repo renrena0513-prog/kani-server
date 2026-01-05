@@ -95,6 +95,8 @@ function toggleSeason(season) {
         else if (text === '総合') currentType = 'all';
         else if (text === '三麻') currentType = 'sanma';
         else if (text === '四麻') currentType = 'yonma';
+        else if (text === '和了率') currentType = 'win';
+        else if (text === '放銃率') currentType = 'deal';
     }
     showRanking(currentType);
 }
@@ -140,6 +142,16 @@ function showRanking(type) {
         nameHeader.textContent = 'アカウント';
         filtered = seasonFiltered.filter(r => r.mahjong_mode === '四麻');
         buttons[3].classList.replace('btn-outline-success', 'btn-success');
+    } else if (type === 'win') {
+        title.textContent = '和了率ランキング (平均和了)';
+        nameHeader.textContent = 'アカウント';
+        filtered = seasonFiltered;
+        buttons[4].classList.replace('btn-outline-success', 'btn-success');
+    } else if (type === 'deal') {
+        title.textContent = '放銃率ランキング (平均放銃)';
+        nameHeader.textContent = 'アカウント';
+        filtered = seasonFiltered;
+        buttons[5].classList.replace('btn-outline-success', 'btn-success');
     }
 
     console.log(`🎯 ランキングタイプ: ${type}, シーズン: ${currentSeason}`);
@@ -148,7 +160,7 @@ function showRanking(type) {
         console.log('サンプルレコード:', filtered[0]);
     }
 
-    renderRanking(filtered, groupKey);
+    renderRanking(filtered, groupKey, type);
 }
 
 function renderRanking(records, groupKey) {
