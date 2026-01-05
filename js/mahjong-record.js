@@ -208,20 +208,35 @@ async function submitScores() {
         }
     }
 
-    // Step 2: final_score 計算（ウマオカ: 10-30, 5000点返し）
-    const calculateFinalScore = (rawPoints, rank) => {
-        const uma = { 1: 30, 2: 10, 3: -10, 4: -30 };
-        return Math.round(((rawPoints - 25000) / 1000 + uma[rank]) * 10) / 10;
+    // Step 2: final_score 計算（ウマオカ）
+    const calculateFinalScore = (rawPoints, rank, mahjongMode) => {
+        let basePoints, uma;
+
+        if (mahjongMode === '三麻') {
+            // 三麻: 35000点返し、ウマ 1位+20, 2位0, 3位-20
+            basePoints = 35000;
+            uma = { 1: 20, 2: 0, 3: -20 };
+        } else {
+            // 四麻: 25000点返し、ウマ 1位+30, 2位+10, 3位-10, 4位-30
+            basePoints = 25000;
+            uma = { 1: 30, 2: 10, 3: -10, 4: -30 };
+        }
+
+        return Math.round(((rawPoints - basePoints) / 1000 + uma[rank]) * 10) / 10;
     };
 
     // raw_pointsで降順ソート（同点は同順位）
     tempData.sort((a, b) => b.raw_points - a.raw_points);
 
     // rankとfinal_scoreを計算
-    tempData.forEach((player, index) => {
-        player.rank = index + 1;
-        player.final_score = calculateFinalScore(player.raw_points, player.rank);
-    });
+    let currentRank = 1;
+    for (let i = 0; i < tempData.length; i++) {
+        if (i > 0 && tempData[i].raw_points < tempData[i - 1].raw_points) {
+            currentRank = i + 1;
+        }
+        tempData[i].rank = currentRank;
+        tempData[i].final_score = calculateFinalScore(tempData[i].raw_points, currentRank, mode);
+    }
 
     // Step 3: match_id を生成（全プレイヤーに同じIDを割り当て）
     const matchId = crypto.randomUUID();
