@@ -277,14 +277,14 @@
             display: none;
         }
 
-        /* 数字入力欄のスピンボタンを非表示 */
-        input[type="number"]::-webkit-outer-spin-button,
-        input[type="number"]::-webkit-inner-spin-button {
+        /* 得点入力欄のみスピンボタンを非表示 */
+        .player-score::-webkit-outer-spin-button,
+        .player-score::-webkit-inner-spin-button {
             -webkit-appearance: none;
             margin: 0;
         }
 
-        input[type="number"] {
+        .player-score {
             -moz-appearance: textfield;
         }
 
