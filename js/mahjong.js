@@ -125,15 +125,7 @@ function showRanking(type) {
     let filtered = [];
     let groupKey = 'account_name';
 
-    // ヘッダーを左寄せに設定
-    nameHeader.style.textAlign = 'left';
-    nameHeader.style.paddingLeft = '3rem'; // アイコン分を考慮して調整
-
     const statHeader = document.getElementById('stat-header');
-
-    // ヘッダーを左寄せに設定
-    nameHeader.style.textAlign = 'left';
-    nameHeader.style.paddingLeft = '3rem';
 
     if (type === 'team') {
         title.textContent = 'チームランキング';
@@ -369,13 +361,11 @@ function renderRanking(records, groupKey, type = 'all') {
         return `
             <tr>
                 <td>${idx + 1}</td>
-                <td class="text-start ps-4">
+                <td>
                     <a href="${linkUrl}" 
-                       class="text-decoration-none d-flex align-items-center gap-2 ${linkClass}">
+                       class="text-decoration-none d-flex align-items-center justify-content-center gap-2 ${linkClass}">
                         ${avatarHtml}
-                        <div class="d-flex align-items-center flex-wrap flex-grow-1">
-                            <span class="${canLink ? 'hover-underline' : ''} fw-bold" style="min-width: 140px; display: inline-block;">${displayName}</span>
-                        </div>
+                        <span class="${canLink ? 'hover-underline' : ''} fw-bold">${displayName}</span>
                     </a>
                 </td>
                 <td class="fw-bold ${statColorClass}" style="font-size: 1.1rem;">
