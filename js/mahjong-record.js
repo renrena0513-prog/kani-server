@@ -151,10 +151,14 @@ function clearPlayer(idx) {
 
 // 送信処理
 async function submitScores() {
-    const mode = document.getElementById('form-mode').value;
-    const match = document.getElementById('form-match').value;
+    const modeDisplay = document.getElementById('form-mode').value;
+    const matchDisplay = document.getElementById('form-match').value;
     const hands = Number(document.getElementById('form-hands').value);
-    const targetCount = mode === '三麻' ? 3 : 4;
+
+    // UI表示値をデータベース値にマッピング
+    const mode = modeDisplay === '四麻' ? 'yonma' : 'sanma';
+    const match = matchDisplay === 'チーム戦' ? 'team' : 'solo';
+    const targetCount = modeDisplay === '三麻' ? 3 : 4;
 
     const entries = document.querySelectorAll('.player-entry');
     const tempData = []; // raw_points を一時的に格納
@@ -169,6 +173,13 @@ async function submitScores() {
         const rawPoints = Number(entry.querySelector('.player-score').value);
 
         if (accountName && !isNaN(rawPoints)) {
+            // 100点単位チェック
+            if (rawPoints % 100 !== 0) {
+                alert('得点は100点単位で入力してください。');
+                document.getElementById('loading-overlay').style.display = 'none';
+                return;
+            }
+
             filledCount++;
             tempData.push({
                 discord_user_id: discordUserId || null,

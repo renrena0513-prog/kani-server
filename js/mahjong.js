@@ -61,7 +61,7 @@ function switchRanking(type) {
         title.textContent = 'チームランキング';
         nameHeader.textContent = 'チーム名';
         // 個人戦以外のデータを抽出し、チーム名があるものを対象にする
-        filtered = allRecords.filter(r => r.match_mode !== '個人戦' && r.team_name);
+        filtered = allRecords.filter(r => r.match_mode === 'team' && r.team_name);
         groupKey = 'team_name';
         buttons[0].classList.replace('btn-outline-success', 'btn-success');
     } else if (type === 'all') {
@@ -72,12 +72,12 @@ function switchRanking(type) {
     } else if (type === 'ma4') {
         title.textContent = '個人ランキング (四麻)';
         nameHeader.textContent = 'アカウント';
-        filtered = allRecords.filter(r => r.mahjong_mode === '四麻');
+        filtered = allRecords.filter(r => r.mahjong_mode === 'yonma');
         buttons[2].classList.replace('btn-outline-success', 'btn-success');
     } else if (type === 'ma3') {
         title.textContent = '個人ランキング (三麻)';
         nameHeader.textContent = 'アカウント';
-        filtered = allRecords.filter(r => r.mahjong_mode === '三麻');
+        filtered = allRecords.filter(r => r.mahjong_mode === 'sanma');
         buttons[3].classList.replace('btn-outline-success', 'btn-success');
     }
 
