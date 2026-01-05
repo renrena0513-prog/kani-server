@@ -696,6 +696,10 @@
             // 全プレイヤーの統計計算
             const playerStats = calculateAllPlayerStats(records);
 
+            // デバッグ: 全プレイヤー名を表示
+            console.log('🎯 自分のアカウント名:', myAccountName);
+            console.log('📋 全プレイヤー名:', playerStats.map(p => p.name));
+
             // 自分の統計を取得
             const myStats = playerStats.find(p => p.name === myAccountName);
             const totalPlayers = playerStats.length;
