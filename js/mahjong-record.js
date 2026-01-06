@@ -422,3 +422,49 @@ async function submitScores() {
         document.getElementById('loading-overlay').style.display = 'none';
     }
 }
+
+/**
+ * Discordに試合結果を通知する
+ * @param {Array} matchData 挿入された試合結果データ
+ */
+async function sendDiscordNotification(matchData) {
+    if (!matchData || matchData.length === 0) return;
+
+    const first = matchData[0];
+    const mode = first.mahjong_mode; // "三麻" or "四麻"
+    const matchType = first.match_mode; // "個人戦" or "チーム戦"
+
+    // 順位順にソート
+    const sorted = [...matchData].sort((a, b) => a.rank - b.rank);
+
+    // メッセージの構築
+    let description = sorted.map(p => {
+        const medal = p.rank === 1 ? '🥇' : p.rank === 2 ? '🥈' : p.rank === 3 ? '🥉' : '🔹';
+        const teamInfo = p.team_name ? ` [${p.team_name}]` : '';
+        return `${medal} **${p.rank}位**: ${p.account_name}${teamInfo}\n` +
+            `　　素点: ${p.raw_points.toLocaleString()} | スコア: **${p.final_score > 0 ? '+' : ''}${p.final_score.toFixed(1)}**`;
+    }).join('\n\n');
+
+    const embed = {
+        title: `🀄 麻雀対局結果報告 (${mode})`,
+        description: description,
+        color: 0x00ff00, // 緑色
+        fields: [
+            { name: '対局種別', value: matchType, inline: true },
+            { name: '本場数', value: `${first.hand_count}局`, inline: true }
+        ],
+        timestamp: new Date().toISOString(),
+        footer: { text: "かに鯖麻雀大会" }
+    };
+
+    try {
+        await fetch(DISCORD_WEBHOOK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ embeds: [embed] })
+        });
+        console.log('Discord通知送信成功');
+    } catch (err) {
+        console.error('Discord通知送信エラー:', err);
+    }
+}
