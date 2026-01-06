@@ -82,23 +82,27 @@ async function displayUserInfo() {
 
         // なりすましバナーの表示
         const impersonatedUserJson = localStorage.getItem('admin_impersonate_user');
-        if (impersonatedUserJson && !document.getElementById('impersonation-banner')) {
-            try {
-                const impersonatedUser = JSON.parse(impersonatedUserJson);
-                const banner = document.createElement('div');
-                banner.id = 'impersonation-banner';
-                banner.className = 'bg-warning text-dark px-3 py-2 text-center sticky-top shadow-sm';
-                banner.style.zIndex = '2000';
-                banner.innerHTML = `
-                    <div class="d-flex align-items-center justify-content-center flex-wrap">
-                        <span class="me-3 fw-bold">👑 ${impersonatedUser.name || 'ユーザー'} として操作中 (管理者権限)</span>
-                        <button onclick="stopImpersonation()" class="btn btn-sm btn-outline-dark fw-bold">なりすましを終了</button>
-                    </div>
-                `;
-                document.body.prepend(banner);
-            } catch (e) {
-                console.error("Banner display error:", e);
+        if (impersonatedUserJson) {
+            document.body.classList.add('user-impersonating');
+            if (!document.getElementById('impersonation-banner')) {
+                try {
+                    const impersonatedUser = JSON.parse(impersonatedUserJson);
+                    const banner = document.createElement('div');
+                    banner.id = 'impersonation-banner';
+                    banner.className = 'impersonation-banner bg-warning text-dark px-3 py-2 text-center shadow-sm';
+                    banner.innerHTML = `
+                        <div class="d-flex align-items-center justify-content-center flex-wrap">
+                            <span class="me-3 fw-bold">👑 ${impersonatedUser.name || 'ユーザー'} として操作中 (管理者権限)</span>
+                            <button onclick="stopImpersonation()" class="btn btn-sm btn-outline-dark fw-bold">なりすましを終了</button>
+                        </div>
+                    `;
+                    document.body.prepend(banner);
+                } catch (e) {
+                    console.error("Banner display error:", e);
+                }
             }
+        } else {
+            document.body.classList.remove('user-impersonating');
         }
 
         // プロフィール情報の同期（非同期で実行）

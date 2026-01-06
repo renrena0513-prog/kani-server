@@ -324,9 +324,6 @@ async function fetchUsers() {
                     <button onclick="impersonateUser('${user.discord_user_id}', '${(user.account_name || '名称未設定').replace(/'/g, "\\'")}', '${user.avatar_url || ''}')" class="btn btn-sm btn-outline-warning">
                         🎭 操作
                     </button>
-                    <a href="../mypage/index.html?user=${user.discord_user_id}" class="ms-2 small text-decoration-none" target="_blank" title="統計ページを開く">
-                        📊
-                    </a>
                 </td>
             `;
             listBody.appendChild(tr);
