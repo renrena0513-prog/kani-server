@@ -543,6 +543,12 @@ async function approveDissolution(requestId, teamId) {
             .update({ team_id: null })
             .eq('team_id', teamId);
 
+        // このチームに関連する全ての申請を削除（外部キー制約のため先に削除）
+        await supabaseClient
+            .from('team_admin_requests')
+            .delete()
+            .eq('team_id', teamId);
+
         // チームを削除
         await supabaseClient
             .from('teams')
