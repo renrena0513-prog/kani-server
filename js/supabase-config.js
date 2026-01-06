@@ -10,9 +10,6 @@ const ADMIN_DISCORD_IDS = [
 // Supabase クライアント初期化
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Discord Webhook URL
-const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1458091853713772708/tXp5Ahcvzc6I0MXc4XlZLbq--tEwUSf1AT5ZVtodgDsXQBqnOKsi6I6YWhKdDXyKpWWk';
-
 // ===== 認証機能 =====
 
 // Discord でログイン
@@ -39,29 +36,6 @@ async function logout() {
 
 // 現在のユーザー情報を取得
 async function getCurrentUser() {
-    // なりすまし実行中かチェック
-    const impersonatedUser = localStorage.getItem('admin_impersonate_user');
-    if (impersonatedUser) {
-        try {
-            const userData = JSON.parse(impersonatedUser);
-            // Supabaseのユーザーオブジェクトに近い構造を返す（user_metadataにデータを詰め込む）
-            return {
-                id: 'impersonated',
-                user_metadata: {
-                    provider_id: userData.discord_user_id,
-                    full_name: userData.name,
-                    name: userData.name,
-                    avatar_url: userData.avatar_url,
-                    is_impersonated: true
-                },
-                is_impersonated: true
-            };
-        } catch (e) {
-            console.error("なりすましデータのパースに失敗しました:", e);
-            localStorage.removeItem('admin_impersonate_user');
-        }
-    }
-
     const { data: { user } } = await supabaseClient.auth.getUser();
     return user;
 }
@@ -79,31 +53,6 @@ async function displayUserInfo() {
         // ログイン済み
         const discordUser = user.user_metadata;
         const discordId = discordUser.provider_id;
-
-        // なりすましバナーの表示
-        const impersonatedUserJson = localStorage.getItem('admin_impersonate_user');
-        if (impersonatedUserJson) {
-            document.body.classList.add('user-impersonating');
-            if (!document.getElementById('impersonation-banner')) {
-                try {
-                    const impersonatedUser = JSON.parse(impersonatedUserJson);
-                    const banner = document.createElement('div');
-                    banner.id = 'impersonation-banner';
-                    banner.className = 'impersonation-banner bg-warning text-dark px-3 py-2 text-center shadow-sm';
-                    banner.innerHTML = `
-                        <div class="d-flex align-items-center justify-content-center flex-wrap">
-                            <span class="me-3 fw-bold">👑 ${impersonatedUser.name || 'ユーザー'} として操作中 (管理者権限)</span>
-                            <button onclick="stopImpersonation()" class="btn btn-sm btn-outline-dark fw-bold">なりすましを終了</button>
-                        </div>
-                    `;
-                    document.body.prepend(banner);
-                } catch (e) {
-                    console.error("Banner display error:", e);
-                }
-            }
-        } else {
-            document.body.classList.remove('user-impersonating');
-        }
 
         // プロフィール情報の同期（非同期で実行）
         const syncProfile = async () => {
@@ -142,13 +91,6 @@ async function displayUserInfo() {
 
         syncProfile();
 
-        // データベースから詳細プロフィールを取得（コイン・バッジ用）
-        const { data: profile } = await supabaseClient
-            .from('profiles')
-            .select('*, badges!equipped_badge_id(image_url, name)')
-            .eq('discord_user_id', discordId)
-            .maybeSingle();
-
         // 管理者ボタンの表示制御
         if (adminButton) {
             if (ADMIN_DISCORD_IDS.includes(discordId)) {
@@ -166,16 +108,17 @@ async function displayUserInfo() {
                 !window.location.pathname.includes('/mypage/');
             const mypagePath = isRoot ? 'mypage/index.html' : '../mypage/index.html';
 
+            // Supabaseが提供するavatar_urlを直接使用
             const avatarUrl = discordUser.avatar_url || discordUser.picture || '';
-            const displayName = profile?.account_name || discordUser.full_name || discordUser.name || 'ユーザー';
-
+            // アイコンとユーザー名をマイページリンクにする
             userInfoElement.innerHTML = `
                 <a href="${mypagePath}" style="display: flex; align-items: center; text-decoration: none; color: inherit;">
+
                     <img src="${avatarUrl}" 
                          alt="アバター" 
-                         style="width: 40px; height: 40px; border-radius: 50%;"
+                         style="width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; cursor: pointer;"
                          onerror="this.style.display='none'">
-                    <span class="user-display-name ms-2 fw-bold" style="color: white; font-size: 0.9rem;">${displayName}</span>
+                    <span>${discordUser.full_name || discordUser.name || 'ユーザー'}</span>
                 </a>
             `;
             userInfoElement.style.display = 'flex';
@@ -198,12 +141,6 @@ async function displayUserInfo() {
         const mypageLink = document.getElementById('mypage-link');
         if (mypageLink) mypageLink.style.display = 'none';
     }
-}
-
-// なりすましを終了
-function stopImpersonation() {
-    localStorage.removeItem('admin_impersonate_user');
-    window.location.reload();
 }
 
 // ページ読み込み時にユーザー情報を確認
