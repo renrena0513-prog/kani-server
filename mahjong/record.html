@@ -372,7 +372,8 @@
             <li><a class="dropdown-item" href="./index.html">📊 ランキング</a></li>
             <li><a class="dropdown-item" href="./record.html">📝 記録する</a></li>
             <li><a class="dropdown-item" href="./users/index.html">👥 ユーザー一覧</a></li>
-            <li><a class="dropdown-item" href="./team/index.html">🏅 チーム管理</a></li>
+            <li><a class="dropdown-item" href="./team/index.html">🏅 チーム管理 <span id="team-notification-badge"
+                        class="notification-badge" style="display:none;">0</span></a></li>
         </ul>
     </div>
 
@@ -495,6 +496,42 @@
     <script src="../js/supabase-config.js"></script>
     <script src="../js/auth-guard.js"></script>
     <script src="../js/mahjong-record.js"></script>
+    <!-- チーム通知バッジ -->
+    <script>
+        async function checkTeamNotifications() {
+            const user = await getCurrentUser();
+            if (!user) return;
+
+            const discordId = user.user_metadata.provider_id;
+
+            const { data: myTeams } = await supabaseClient
+                .from('teams')
+                .select('id')
+                .eq('creator_discord_id', discordId);
+
+            if (!myTeams || myTeams.length === 0) return;
+
+            const teamIds = myTeams.map(t => t.id);
+
+            const { data: pendingRequests } = await supabaseClient
+                .from('team_join_requests')
+                .select('id')
+                .in('team_id', teamIds)
+                .in('status', ['pending', 'leave_pending']);
+
+            const count = pendingRequests?.length || 0;
+
+            if (count > 0) {
+                const badge = document.getElementById('team-notification-badge');
+                if (badge) {
+                    badge.textContent = count;
+                    badge.style.display = 'inline';
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', checkTeamNotifications);
+    </script>
 </body>
 
 </html>

@@ -76,10 +76,94 @@
             font-size: 0.85rem;
             font-weight: 600;
         }
+
+        /* ナビゲーションドロップダウン */
+        .nav-dropdown {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .record-button {
+            background: linear-gradient(135deg, var(--gold) 0%, #b8892d 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            box-shadow: 0 6px 20px rgba(212, 168, 83, 0.5);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .record-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(212, 168, 83, 0.6);
+            color: white;
+        }
+
+        .nav-dropdown-menu {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+            min-width: 200px;
+            overflow: hidden;
+        }
+
+        .nav-dropdown-menu .dropdown-item {
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #333;
+            transition: background 0.2s;
+        }
+
+        .nav-dropdown-menu .dropdown-item:hover {
+            background: #f5f5f5;
+        }
+
+        .nav-dropdown-menu .dropdown-divider {
+            margin: 0;
+        }
+
+        .notification-badge {
+            background: #dc3545;
+            color: white;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-left: auto;
+        }
     </style>
 </head>
 
 <body>
+    <!-- 右上のナビゲーションドロップダウン -->
+    <div class="nav-dropdown dropdown">
+        <button class="record-button dropdown-toggle" type="button" id="navDropdown" data-bs-toggle="dropdown"
+            aria-expanded="false">
+            📝 メニュー
+        </button>
+        <ul class="dropdown-menu nav-dropdown-menu dropdown-menu-end" aria-labelledby="navDropdown">
+            <li><a class="dropdown-item" href="../index.html">🏠 ホームに戻る</a></li>
+            <li><a class="dropdown-item" href="../mypage/index.html">👤 マイページ</a></li>
+            <li>
+                <hr class="dropdown-divider">
+            </li>
+            <li><a class="dropdown-item" href="../mahjong/index.html">📊 ランキング</a></li>
+            <li><a class="dropdown-item" href="../mahjong/record.html">📝 記録する</a></li>
+            <li><a class="dropdown-item" href="../mahjong/users/index.html">👥 ユーザー一覧</a></li>
+            <li><a class="dropdown-item" href="../mahjong/team/index.html">🏅 チーム管理 <span id="team-notification-badge"
+                        class="notification-badge" style="display:none;">0</span></a></li>
+        </ul>
+    </div>
+
     <div class="container py-5">
         <!-- 戻るボタン -->
         <div class="mb-4">
@@ -116,6 +200,47 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabase-config.js"></script>
+    <script src="../js/auth-guard.js"></script>
+
+    <!-- チーム通知バッジ -->
+    <script>
+        async function checkTeamNotifications() {
+            const user = await getCurrentUser();
+            if (!user) return;
+
+            const discordId = user.user_metadata.provider_id;
+
+            const { data: myTeams } = await supabaseClient
+                .from('teams')
+                .select('id')
+                .eq('creator_discord_id', discordId);
+
+            if (!myTeams || myTeams.length === 0) return;
+
+            const teamIds = myTeams.map(t => t.id);
+
+            const { data: pendingRequests } = await supabaseClient
+                .from('team_join_requests')
+                .select('id')
+                .in('team_id', teamIds)
+                .in('status', ['pending', 'leave_pending']);
+
+            const count = pendingRequests?.length || 0;
+
+            if (count > 0) {
+                const badge = document.getElementById('team-notification-badge');
+                if (badge) {
+                    badge.textContent = count;
+                    badge.style.display = 'inline';
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', checkTeamNotifications);
+    </script>
 </body>
 
 </html>
