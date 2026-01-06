@@ -795,6 +795,7 @@
                 .from('match_results')
                 .select('*')
                 .in('discord_user_id', memberIds)
+                .eq('match_mode', 'チーム戦')
                 .order('event_datetime', { ascending: false });
 
             console.log('Team stats query result:', results, error);
@@ -870,7 +871,7 @@
                 const member = teamMembers.find(m => m.discord_user_id === r.discord_user_id);
                 const name = member?.account_name || '名称未設定';
                 const avatar = member?.avatar_url || 'https://via.placeholder.com/32';
-                const date = new Date(r.created_at).toLocaleDateString('ja-JP');
+                const date = new Date(r.event_datetime || r.created_at).toLocaleDateString('ja-JP');
                 const score = r.final_score || r.score || 0;
                 const scoreClass = score >= 0 ? 'text-success' : 'text-danger';
                 const scorePrefix = score >= 0 ? '+' : '';
