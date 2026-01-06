@@ -795,7 +795,7 @@
                 .from('match_results')
                 .select('*')
                 .in('discord_user_id', memberIds)
-                .order('created_at', { ascending: false });
+                .order('event_datetime', { ascending: false });
 
             console.log('Team stats query result:', results, error);
 
@@ -871,14 +871,15 @@
                 const name = member?.account_name || '名称未設定';
                 const avatar = member?.avatar_url || 'https://via.placeholder.com/32';
                 const date = new Date(r.created_at).toLocaleDateString('ja-JP');
-                const scoreClass = r.score >= 0 ? 'text-success' : 'text-danger';
-                const scorePrefix = r.score >= 0 ? '+' : '';
+                const score = r.final_score || r.score || 0;
+                const scoreClass = score >= 0 ? 'text-success' : 'text-danger';
+                const scorePrefix = score >= 0 ? '+' : '';
 
                 return `
                     <div class="d-flex align-items-center p-2 border-bottom">
                         <img src="${avatar}" class="rounded-circle me-2" width="32" height="32" onerror="this.src='https://via.placeholder.com/32'">
                         <span class="me-auto">${name}</span>
-                        <span class="me-3 ${scoreClass} fw-bold">${scorePrefix}${r.score?.toLocaleString() || 0}</span>
+                        <span class="me-3 ${scoreClass} fw-bold">${scorePrefix}${score.toLocaleString()}</span>
                         <small class="text-muted">${date}</small>
                     </div>
                 `;
