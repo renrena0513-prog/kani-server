@@ -437,7 +437,7 @@ async function sendDiscordNotification(matchData) {
     // 順位順にソート
     const sorted = [...matchData].sort((a, b) => a.rank - b.rank);
 
-    // メンション用のIDリスト（重複排除）
+    // メンション用のIDリスト（通知を飛ばすため）
     const mentionIds = new Set();
     if (first.submitted_by_discord_user_id) mentionIds.add(first.submitted_by_discord_user_id);
     matchData.forEach(p => {
@@ -445,13 +445,14 @@ async function sendDiscordNotification(matchData) {
     });
     const mentionsStr = Array.from(mentionIds).map(id => `<@${id}>`).join(' ');
 
-    // メッセージの構築
-    let description = sorted.map(p => {
+    // 埋め込み内での表示用テキスト構築
+    let scoreDisplay = sorted.map(p => {
         const medal = p.rank === 1 ? '🥇' : p.rank === 2 ? '🥈' : p.rank === 3 ? '🥉' : '🔹';
-        const teamInfo = p.team_name ? ` [${p.team_name}]` : '';
-        const nameDisplay = p.discord_user_id ? `<@${p.discord_user_id}>` : p.account_name;
-        return `${medal} **${p.rank}位**: ${nameDisplay}${teamInfo}\n` +
-            `　　素点: ${p.raw_points.toLocaleString()} | スコア: **${p.final_score > 0 ? '+' : ''}${p.final_score.toFixed(1)}**`;
+        const teamInfo = p.team_name ? ` (${p.team_name})` : '';
+        const scoreStr = (p.final_score > 0 ? '+' : '') + p.final_score.toFixed(1);
+
+        return `${medal} **${p.rank}位**: ${p.account_name}${teamInfo}\n` +
+            `　　 \`${p.raw_points.toLocaleString()}点\` ➡ **${scoreStr} pts**`;
     }).join('\n\n');
 
     // ルール情報の取得
@@ -462,25 +463,26 @@ async function sendDiscordNotification(matchData) {
     const isTobiOn = document.querySelector('input[name="opt-tobi"]:checked').value === 'yes';
     const isYakitoriOn = document.querySelector('input[name="opt-yakitori"]:checked').value === 'yes';
 
-    const rulesStr = [
-        `配給点: ${distPoints.toLocaleString()}`,
-        `返し点: ${returnPoints.toLocaleString()}`,
-        `飛び賞: ${isTobiOn ? 'あり' : 'なし'}`,
-        `やきとり: ${isYakitoriOn ? 'あり' : 'なし'}`
-    ].join(' / ');
+    // 記録者の名前を取得
+    const reporter = matchData.find(p => p.discord_user_id === first.submitted_by_discord_user_id);
+    const reporterName = reporter ? reporter.account_name : '不明';
 
     const embed = {
         title: `🀄 麻雀対局結果報告 (${mode})`,
-        description: description,
-        color: 0x00ff00, // 緑色
+        description: scoreDisplay,
+        color: 0x2ecc71, // 鮮やかな緑色
         fields: [
-            { name: '対局種別', value: matchType, inline: true },
-            { name: '本場数', value: `${first.hand_count}局`, inline: true },
-            { name: '適用ルール', value: rulesStr, inline: false },
-            { name: '記録者', value: first.submitted_by_discord_user_id ? `<@${first.submitted_by_discord_user_id}>` : '不明', inline: false }
+            { name: '📋 基本情報', value: `種別: **${matchType}** / 局数: **${first.hand_count}局**`, inline: false },
+            {
+                name: '⚙️ ルール設定',
+                value: `配給: ${distPoints.toLocaleString()} / 返し: ${returnPoints.toLocaleString()}\n` +
+                    `飛び賞: ${isTobiOn ? 'あり' : 'なし'} / やきとり: ${isYakitoriOn ? 'あり' : 'なし'}`,
+                inline: false
+            },
+            { name: '✍️ 記録者', value: reporterName, inline: true }
         ],
         timestamp: new Date().toISOString(),
-        footer: { text: "かに鯖麻雀大会" }
+        footer: { text: "かに鯖麻雀大会システム" }
     };
 
     try {
@@ -488,7 +490,7 @@ async function sendDiscordNotification(matchData) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                content: mentionsStr, // メンションをメッセージ本文に入れて通知を飛ばす
+                content: mentionsStr, // メンションは本文（Embedの外）に配置
                 embeds: [embed]
             })
         });
