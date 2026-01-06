@@ -314,46 +314,32 @@
                             <div class="col-auto">
                                 <div class="text-center">
                                     <img id="user-avatar" src="" alt="アバター" class="avatar-large">
-                                    <button id="sync-btn" onclick="updateAvatar()" class="btn-avatar-update mt-2"
-                                        title="Discordから最新のアバター画像を取得">
-                                        🔄 同期
+                                    <button id="sync-btn" onclick="updateAvatar()"
+                                        class="btn btn-sm btn-outline-secondary mt-2 w-100"
+                                        title="Discordから最新のアバター画像を取得" style="font-size: 0.75rem;">
+                                        🔄 Discord画像と同期
                                     </button>
                                 </div>
                             </div>
                             <div class="col">
                                 <h2 id="page-title-label" class="small text-muted mb-1" style="display:none;">プレイヤー</h2>
-                                <h2 id="user-name" class="mb-1"
-                                    style="font-family: var(--font-title); color: var(--deep-purple);">
-                                    ユーザー名
-                                </h2>
-                                <div id="user-coins-display" class="mb-2" style="display: none;">
-                                    <span class="badge bg-light text-dark shadow-sm"
-                                        style="font-size: 0.9rem; border: 1px solid var(--gold);">
-                                        🪙 <span id="user-coins-value">0</span>
-                                    </span>
-                                </div>
-                                <!-- バッジ変更ボタン -->
-                                <div id="badge-change-area" style="display: none;">
-                                    <button id="badge-change-btn" class="btn btn-outline-secondary btn-sm"
-                                        onclick="openBadgeChangeModal()">
-                                        📛 装着バッジを変更
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <h2 id="user-name" class="mb-0"
+                                        style="font-family: var(--font-title); color: var(--deep-purple);">
+                                        ユーザー名
+                                    </h2>
+                                    <!-- ニックネーム編集ボタン（自分の場合のみ表示） -->
+                                    <button id="nickname-edit-btn" onclick="openNicknameModal()"
+                                        class="btn btn-sm btn-outline-secondary" title="ニックネームを変更"
+                                        style="display: none; padding: 2px 8px;">
+                                        ✏️
                                     </button>
                                 </div>
-
-                                <!-- 自分の場合のみ表示する編集エリア -->
-                                <div id="edit-area" class="mt-3">
-                                    <label class="small text-muted mb-2">ニックネーム (ランキング等で表示)</label>
-                                    <input type="text" id="user-nickname" class="form-control nickname-input mb-2"
-                                        placeholder="タップして入力...">
-                                    <div class="d-flex gap-2">
-                                        <button onclick="useDiscordName()" class="btn btn-outline-secondary btn-sm"
-                                            title="Discordの表示名を入れる">
-                                            <small>Discord名を使用</small>
-                                        </button>
-                                        <button onclick="saveNickname()"
-                                            class="btn btn-gold text-white fw-bold btn-sm">保存</button>
-                                    </div>
-                                    <div id="save-msg" class="small mt-1" style="display:none;"></div>
+                                <div id="user-coins-display" class="mb-2" style="display: none;">
+                                    <span class="badge bg-light text-dark shadow-sm"
+                                        style="font-size: 0.85rem; border: 1px solid var(--gold);">
+                                        所持金: 🪙 <span id="user-coins-value">0</span>
+                                    </span>
                                 </div>
 
                                 <!-- 他人の場合のみ表示する表示エリア -->
@@ -490,9 +476,15 @@
 
                     <!-- バッジコレクション -->
                     <div class="profile-card mb-4" id="badge-collection-section" style="display: none;">
-                        <h4 style="font-family: var(--font-title); color: var(--deep-purple); margin-bottom: 20px;">
-                            📛 バッジコレクション
-                        </h4>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4 style="font-family: var(--font-title); color: var(--deep-purple); margin: 0;">
+                                📛 バッジコレクション
+                            </h4>
+                            <button id="badge-change-btn" onclick="openBadgeChangeModal()"
+                                class="btn btn-sm btn-outline-secondary" style="display: none;">
+                                装着バッジを変更
+                            </button>
+                        </div>
                         <div id="badge-list" class="row g-3">
                             <!-- JSで生成 -->
                             <p class="text-center text-muted py-3">読み込み中...</p>
@@ -520,6 +512,31 @@
                     <div class="text-center mt-3">
                         <button class="btn btn-outline-danger btn-sm" onclick="equipBadge(null)">バッジを外す</button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ニックネーム編集モーダル -->
+    <div class="modal fade" id="nicknameModal" tabindex="-1" aria-labelledby="nicknameModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="nicknameModalLabel">ニックネーム変更</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label small text-muted">ランキング等で表示される名前</label>
+                    <input type="text" id="user-nickname" class="form-control mb-3" placeholder="ニックネームを入力...">
+                    <div class="d-grid gap-2">
+                        <button onclick="useDiscordName()" class="btn btn-outline-secondary btn-sm">
+                            Discord名を使用
+                        </button>
+                        <button onclick="saveNickname()" class="btn btn-gold text-white fw-bold">
+                            保存
+                        </button>
+                    </div>
+                    <div id="save-msg" class="small mt-2 text-center" style="display:none;"></div>
                 </div>
             </div>
         </div>
@@ -644,15 +661,22 @@
                 coinsDisplay.style.display = 'block';
             }
 
-            // バッジ変更ボタンを表示
-            const badgeChangeArea = document.getElementById('badge-change-area');
-            if (badgeChangeArea) {
-                badgeChangeArea.style.display = 'block';
+            // ニックネーム編集ボタンを表示
+            const nicknameEditBtn = document.getElementById('nickname-edit-btn');
+            if (nicknameEditBtn) {
+                nicknameEditBtn.style.display = 'inline-block';
             }
 
             if (profile?.account_name) {
                 document.getElementById('user-nickname').value = profile.account_name;
             }
+        }
+
+        // ニックネーム編集モーダルを開く
+        function openNicknameModal() {
+            const modalEl = document.getElementById('nicknameModal');
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
         }
 
         /**
@@ -765,13 +789,22 @@
                 if (error) throw error;
 
                 msg.textContent = '保存しました！';
-                msg.className = 'small mt-1 text-success flex-grow-1';
-                document.getElementById('user-name').textContent = newNickname;
-                setTimeout(() => { msg.style.display = 'none'; }, 2000);
+                msg.className = 'small mt-2 text-center text-success';
+
+                // モーダルを閉じる
+                const modalEl = document.getElementById('nicknameModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) {
+                    setTimeout(() => {
+                        modal.hide();
+                        // ユーザー情報を再読み込みしてバッジ付きの名前を更新
+                        loadTargetUserInfo();
+                    }, 1000);
+                }
             } catch (err) {
                 console.error('Error updating nickname:', err);
                 msg.textContent = 'エラーが発生しました';
-                msg.className = 'small mt-1 text-danger flex-grow-1';
+                msg.className = 'small mt-2 text-center text-danger';
             }
         }
 
@@ -804,7 +837,16 @@
 
                 if (!owned || owned.length === 0) {
                     list.innerHTML = '<p class="text-center text-muted py-3">まだバッジを持っていません</p>';
+                    // 自分のページならバッジ変更ボタンを表示
+                    if (!isViewMode) {
+                        document.getElementById('badge-change-btn').style.display = 'inline-block';
+                    }
                     return;
+                }
+
+                // 自分のページならバッジ変更ボタンを表示
+                if (!isViewMode) {
+                    document.getElementById('badge-change-btn').style.display = 'inline-block';
                 }
 
                 list.innerHTML = owned.map(item => {
