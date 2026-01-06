@@ -171,7 +171,6 @@ async function displayUserInfo() {
 
             userInfoElement.innerHTML = `
                 <a href="${mypagePath}" style="display: flex; align-items: center; text-decoration: none; color: inherit;">
-                    <span class="user-display-name me-2 fw-bold" style="color: white; font-size: 0.9rem;">${displayName}</span>
                     <img src="${avatarUrl}" 
                          alt="アバター" 
                          style="width: 40px; height: 40px; border-radius: 50%;"
