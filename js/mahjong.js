@@ -32,6 +32,12 @@ async function fetchData() {
             console.warn('過去データの取得に失敗:', legacyError);
         }
 
+        // 新データにも tournament_type を保障（初期データ等で抜けている場合のため）
+        const taggedCurrentData = (currentData || []).map(r => ({
+            ...r,
+            tournament_type: r.tournament_type || '第二回麻雀大会'
+        }));
+
         // 過去データに tournament_type を付与（タグ付けされていない場合）
         const taggedLegacyData = (legacyData || []).map(r => ({
             ...r,
@@ -39,10 +45,10 @@ async function fetchData() {
         }));
 
         // 両方のデータを結合
-        allRecords = [...(currentData || []), ...taggedLegacyData];
+        allRecords = [...taggedCurrentData, ...taggedLegacyData];
 
         console.log('📊 取得したレコード数:', allRecords.length);
-        console.log('第二回（match_results）:', currentData?.length || 0);
+        console.log('第二回（match_results）:', taggedCurrentData.length);
         console.log('第一回（tournament_player_stats_snapshot）:', taggedLegacyData.length);
 
         renderTournamentButtons();
@@ -223,7 +229,7 @@ function showRanking(type) {
         buttons[10].classList.replace('btn-outline-success', 'btn-success');
     }
 
-    console.log(`🎯 ランキングタイプ: ${type}, シーズン: ${currentSeason}`);
+    console.log(`🎯 ランキングタイプ: ${type}, 大会: ${currentTournament}`);
     console.log(`フィルター後のレコード数: ${filtered.length}`);
     if (filtered.length > 0) {
         console.log('サンプルレコード:', filtered[0]);
@@ -407,7 +413,7 @@ function renderRanking(records, groupKey, type = 'all') {
     }).join('');
 
     if (sorted.length === 0) {
-        body.innerHTML = '<tr><td colspan="5" class="text-muted py-4">該当するデータがありません</td></tr>';
+        body.innerHTML = '<tr><td colspan="6" class="text-muted py-4">該当するデータがありません</td></tr>';
     }
 }
 
