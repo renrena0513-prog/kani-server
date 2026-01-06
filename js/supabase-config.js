@@ -168,25 +168,17 @@ async function displayUserInfo() {
 
             const avatarUrl = discordUser.avatar_url || discordUser.picture || '';
             const displayName = profile?.account_name || discordUser.full_name || discordUser.name || 'ユーザー';
-            const coins = profile?.coins || 0;
-            const badge = profile?.badges;
 
-            // バッジ画像、名前、コインを表示
             userInfoElement.innerHTML = `
-                <div class="me-2 text-end">
-                    <span class="user-display-name fw-bold" style="color: white; font-size: 0.9rem;">
-                        ${badge ? `<img src="${badge.image_url}" title="${badge.name}" style="width: 18px; height: 18px; margin-right: 4px; vertical-align: text-bottom;">` : ''}${displayName}
-                    </span>
-                </div>
-                <a href="${mypagePath}" class="avatar-link">
+                <a href="${mypagePath}" style="display: flex; align-items: center; text-decoration: none; color: inherit;">
+                    <span class="user-display-name me-2 fw-bold" style="color: white; font-size: 0.9rem;">${displayName}</span>
                     <img src="${avatarUrl}" 
                          alt="アバター" 
-                         style="width: 40px; height: 40px; border-radius: 50%; cursor: pointer;"
+                         style="width: 40px; height: 40px; border-radius: 50%;"
                          onerror="this.style.display='none'">
                 </a>
             `;
             userInfoElement.style.display = 'flex';
-            userInfoElement.style.alignItems = 'center';
         }
         if (loginButton) loginButton.style.display = 'none';
         // ホームではログアウトボタンを非表示
