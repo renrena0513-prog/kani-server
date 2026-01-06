@@ -332,11 +332,11 @@
                             <h4 style="font-family: var(--font-title); color: var(--deep-purple); margin: 0;">
                                 🀄 麻雀統計
                             </h4>
-                            <div class="btn-group btn-group-sm" role="group">
-                                <button type="button" class="btn btn-primary"
-                                    onclick="toggleMySeason('current')">今シーズン</button>
-                                <button type="button" class="btn btn-outline-primary"
-                                    onclick="toggleMySeason('all')">全シーズン</button>
+                            <div id="tournament-filter-container">
+                                <select id="tournament-select" class="form-select form-select-sm"
+                                    style="width: auto; min-width: 150px;" onchange="handleTournamentChange()">
+                                    <!-- JSで生成 -->
+                                </select>
                             </div>
                         </div>
 
@@ -664,7 +664,7 @@
         // ============ 麻雀統計機能 ============
         let allMahjongRecords = [];
         let myAccountName = '';
-        let mySeasonMode = 'current'; // 'current' or 'all'
+        let currentMyTournament = '第二回麻雀大会';
 
         async function loadMahjongStats() {
             try {
@@ -707,9 +707,22 @@
                     console.warn('第一回データ取得スキップ:', e);
                 }
 
-                allMahjongRecords = [...(currentData || []), ...legacyData];
+                // 新データにも tournament_type を保障
+                const taggedCurrentData = (currentData || []).map(r => ({
+                    ...r,
+                    tournament_type: r.tournament_type || '第二回麻雀大会'
+                }));
+
+                // 過去データに tournament_type を保障
+                const taggedLegacyData = (legacyData || []).map(r => ({
+                    ...r,
+                    tournament_type: r.tournament_type || '第一回麻雀大会'
+                }));
+
+                allMahjongRecords = [...taggedCurrentData, ...taggedLegacyData];
                 console.log('📊 取得したレコード数:', allMahjongRecords.length);
 
+                renderTournamentDropdown();
                 displayMahjongStats();
             } catch (err) {
                 console.error('麻雀統計取得エラー:', err);
@@ -719,30 +732,32 @@
             }
         }
 
-        function toggleMySeason(season) {
-            mySeasonMode = season;
+        function renderTournamentDropdown() {
+            const select = document.getElementById('tournament-select');
+            if (!select) return;
 
-            // ボタンスタイル更新
-            const btns = document.querySelectorAll('.profile-card .btn-group .btn');
-            btns.forEach(btn => {
-                if (btn.textContent === '今シーズン' && season === 'current') {
-                    btn.classList.replace('btn-outline-primary', 'btn-primary');
-                } else if (btn.textContent === '全シーズン' && season === 'all') {
-                    btn.classList.replace('btn-outline-primary', 'btn-primary');
-                } else {
-                    btn.classList.replace('btn-primary', 'btn-outline-primary');
-                }
+            const tournaments = ['第二回麻雀大会', '第一回麻雀大会'];
+
+            let html = '';
+            tournaments.forEach(t => {
+                html += `<option value="${t}" ${currentMyTournament === t ? 'selected' : ''}>${t}</option>`;
             });
+            html += `<option value="all" ${currentMyTournament === 'all' ? 'selected' : ''}>全シーズン</option>`;
 
+            select.innerHTML = html;
+        }
+
+        function handleTournamentChange() {
+            const select = document.getElementById('tournament-select');
+            currentMyTournament = select.value;
             displayMahjongStats();
         }
 
         function displayMahjongStats() {
-            // シーズンフィルタ
+            // 大会フィルタ
             let records = allMahjongRecords;
-            if (mySeasonMode === 'current') {
-                // ランキング画面と同じく tournament_type でフィルタリング
-                records = records.filter(r => r.tournament_type === '第二回麻雀大会');
+            if (currentMyTournament !== 'all') {
+                records = allMahjongRecords.filter(r => r.tournament_type === currentMyTournament);
             }
 
             // 全プレイヤーの統計計算
