@@ -305,18 +305,14 @@
         async function checkUserStatus() {
             const user = await getCurrentUser();
             if (!user) {
-                // 未ログインでもボタンは表示（ログイン促す）
-                document.getElementById('action-buttons').style.display = 'flex';
+                // 未ログイン - 特に何もしない
                 return;
             }
 
             const discordId = user.user_metadata.provider_id;
             myProfile = allProfiles.find(p => p.discord_user_id === discordId);
 
-            if (myProfile && myProfile.team_id) {
-                // チーム所属済み - チーム管理ボタンを表示
-                document.getElementById('action-buttons').style.display = 'flex';
-            } else {
+            if (!myProfile || !myProfile.team_id) {
                 // 未所属 - 申請中かチェック
                 const { data: pendingRequest } = await supabaseClient
                     .from('team_join_requests')
@@ -329,9 +325,6 @@
                     // 申請中
                     document.getElementById('pending-team-name').textContent = pendingRequest.teams?.team_name || 'チーム';
                     document.getElementById('pending-status').style.display = 'block';
-                } else {
-                    // 未所属・未申請 - ボタン表示
-                    document.getElementById('action-buttons').style.display = 'flex';
                 }
             }
         }
