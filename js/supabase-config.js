@@ -175,6 +175,7 @@ async function displayUserInfo() {
                          alt="アバター" 
                          style="width: 40px; height: 40px; border-radius: 50%;"
                          onerror="this.style.display='none'">
+                    <span class="user-display-name ms-2 fw-bold" style="color: white; font-size: 0.9rem;">${displayName}</span>
                 </a>
             `;
             userInfoElement.style.display = 'flex';
