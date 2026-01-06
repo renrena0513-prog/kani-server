@@ -781,16 +781,25 @@
 
         // チーム戦績を読み込む
         async function loadTeamStats() {
-            const memberIds = teamMembers.map(m => m.discord_user_id);
+            const memberIds = teamMembers.map(m => m.discord_user_id).filter(id => id);
+
+            // メンバーがいない場合は終了
+            if (memberIds.length === 0) {
+                document.getElementById('member-scores').innerHTML = '<p class="text-muted">メンバーがいません</p>';
+                document.getElementById('team-battle-log').innerHTML = '<p class="text-muted">メンバーがいません</p>';
+                return;
+            }
 
             // チームメンバーの対局結果を取得
-            const { data: results } = await supabaseClient
+            const { data: results, error } = await supabaseClient
                 .from('match_results')
                 .select('*')
                 .in('discord_user_id', memberIds)
                 .order('created_at', { ascending: false });
 
-            if (!results || results.length === 0) {
+            console.log('Team stats query result:', results, error);
+
+            if (error || !results || results.length === 0) {
                 document.getElementById('member-scores').innerHTML = '<p class="text-muted">まだ対局記録がありません</p>';
                 document.getElementById('team-battle-log').innerHTML = '<p class="text-muted">まだ対局記録がありません</p>';
                 return;
@@ -809,7 +818,7 @@
 
             results.forEach(r => {
                 if (memberScores[r.discord_user_id]) {
-                    memberScores[r.discord_user_id].totalScore += r.score || 0;
+                    memberScores[r.discord_user_id].totalScore += r.final_score || r.score || 0;
                     memberScores[r.discord_user_id].games += 1;
                 }
             });
