@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await fetchProfiles();
     await fetchTeams();
     changePlayerCount(); // 初期化
+    updateRuleDisplay(); // ルール表示の初期設定
 });
 
 async function checkAdminStatus() {
@@ -40,12 +41,33 @@ function changePlayerCount() {
     const mode = document.getElementById('form-mode').value;
     const count = mode === '三麻' ? 3 : 4;
     setupPlayerInputs(count);
+    updateRuleDisplay();
 }
 
 function changeMatchMode() {
     const mode = document.getElementById('form-mode').value;
     const count = mode === '三麻' ? 3 : 4;
     setupPlayerInputs(count);
+    updateRuleDisplay();
+}
+
+/**
+ * ルール表示（返し点、オカ、ウマ）を更新
+ */
+function updateRuleDisplay() {
+    const mode = document.getElementById('form-mode').value;
+    const distType = document.getElementById('opt-dist-points').value;
+
+    let distPoints = (mode === '三麻' ? 30000 : 25000);
+    if (distType === '100000') distPoints = 100000;
+
+    const returnPoints = distPoints + 5000;
+    const numPlayers = (mode === '三麻' ? 3 : 4);
+    const oka = (returnPoints - distPoints) * numPlayers;
+
+    document.getElementById('disp-return-points').textContent = returnPoints.toLocaleString() + '点';
+    document.getElementById('disp-uma').textContent = (mode === '三麻' ? '20-20' : '10-30');
+    document.getElementById('disp-oka').textContent = '+' + (oka / 1000).toFixed(1);
 }
 
 function setupPlayerInputs(count) {
@@ -58,6 +80,12 @@ function setupPlayerInputs(count) {
     const teamOptions = allTeams.map(t => `<option value="${t.id}">${t.team_name}</option>`).join('');
 
     for (let i = 1; i <= count; i++) {
+        // デフォルト得点を配給点に合わせる
+        const mode = document.getElementById('form-mode').value;
+        const distType = document.getElementById('opt-dist-points').value;
+        let defaultScore = (mode === '三麻' ? 30000 : 25000);
+        if (distType === '100000') defaultScore = 100000;
+
         container.innerHTML += `
             <div class="player-entry" id="player-row-${i}">
                 <div class="row g-2 align-items-end player-row">
@@ -83,7 +111,7 @@ function setupPlayerInputs(count) {
                     </div>
                     <div class="col score-col">
                         <label class="small text-muted">得点</label>
-                        <input type="number" class="form-control form-control-sm player-score" placeholder="25000">
+                        <input type="number" class="form-control form-control-sm player-score" value="${defaultScore}" placeholder="${defaultScore}">
                     </div>
                     <div class="col win-col">
                         <label class="small text-muted">和了数</label>
@@ -266,35 +294,70 @@ async function submitScores() {
         }
     }
 
-    // Step 2: final_score 計算（ウマオカ）
-    const calculateFinalScore = (rawPoints, rank, mahjongMode) => {
-        let basePoints, uma;
-
-        if (mahjongMode === '三麻') {
-            // 三麻: 35000点返し、ウマ 1位+20, 2位0, 3位-20
-            basePoints = 35000;
-            uma = { 1: 20, 2: 0, 3: -20 };
-        } else {
-            // 四麻: 25000点返し、ウマ 1位+30, 2位+10, 3位-10, 4位-30
-            basePoints = 25000;
-            uma = { 1: 30, 2: 10, 3: -10, 4: -30 };
-        }
-
-        return Math.round(((rawPoints - basePoints) / 1000 + uma[rank]) * 10) / 10;
-    };
+    // Step 2: final_score 計算
+    // ルール設定の取得
+    const distType = document.getElementById('opt-dist-points').value;
+    let distPoints = (mode === '三麻' ? 30000 : 25000);
+    if (distType === '100000') distPoints = 100000;
+    const returnPoints = distPoints + 5000;
+    const isTobiOn = document.querySelector('input[name="opt-tobi"]:checked').value === 'yes';
+    const isYakitoriOn = document.querySelector('input[name="opt-yakitori"]:checked').value === 'yes';
 
     // raw_pointsで降順ソート（同点は同順位）
     tempData.sort((a, b) => b.raw_points - a.raw_points);
 
-    // rankとfinal_scoreを計算
+    // 順位と基本スコアの計算
     let currentRank = 1;
+    let poolBonus = 0; // 飛び賞とやきとりのプール
+    const numPlayers = tempData.length;
+    const oka = (returnPoints - distPoints) * numPlayers;
+
     for (let i = 0; i < tempData.length; i++) {
         if (i > 0 && tempData[i].raw_points < tempData[i - 1].raw_points) {
             currentRank = i + 1;
         }
         tempData[i].rank = currentRank;
-        tempData[i].final_score = calculateFinalScore(tempData[i].raw_points, currentRank, mode);
+
+        // 基本スコア計算: (持ち点 - 返し点) / 1000 + ウマ
+        let uma = 0;
+        if (mode === '三麻') {
+            const umaMap = { 1: 20, 2: 0, 3: -20 };
+            uma = umaMap[currentRank] || 0;
+        } else {
+            const umaMap = { 1: 30, 2: 10, 3: -10, 4: -30 };
+            uma = umaMap[currentRank] || 0;
+        }
+
+        let score = (tempData[i].raw_points - returnPoints) / 1000 + uma;
+
+        // 飛び賞ペナルティ
+        if (isTobiOn && tempData[i].raw_points < 0) {
+            score -= 10;
+            poolBonus += 10;
+        }
+
+        // やきとりペナルティ
+        if (isYakitoriOn && tempData[i].win_count === 0) {
+            score -= 10;
+            poolBonus += 10;
+        }
+
+        tempData[i].final_score = score;
     }
+
+    // 1位にオカとプールボーナスを加算
+    // 同点1位の場合は山分け
+    const topRankPlayers = tempData.filter(p => p.rank === 1);
+    const topBonus = (oka / 1000 + poolBonus) / topRankPlayers.length;
+
+    topRankPlayers.forEach(p => {
+        p.final_score = Math.round((p.final_score + topBonus) * 10) / 10;
+    });
+
+    // 他の順位も丸める
+    tempData.filter(p => p.rank !== 1).forEach(p => {
+        p.final_score = Math.round(p.final_score * 10) / 10;
+    });
 
     // Step 3: match_id を生成（全プレイヤーに同じIDを割り当て）
     const matchId = crypto.randomUUID();
