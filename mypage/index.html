@@ -838,15 +838,17 @@
                 if (!owned || owned.length === 0) {
                     list.innerHTML = '<p class="text-center text-muted py-3">まだバッジを持っていません</p>';
                     // 自分のページならバッジ変更ボタンを表示
-                    if (!isViewMode) {
-                        document.getElementById('badge-change-btn').style.display = 'inline-block';
+                    const btn = document.getElementById('badge-change-btn');
+                    if (!isViewMode && btn) {
+                        btn.style.display = 'inline-block';
                     }
                     return;
                 }
 
                 // 自分のページならバッジ変更ボタンを表示
-                if (!isViewMode) {
-                    document.getElementById('badge-change-btn').style.display = 'inline-block';
+                const badgeBtn = document.getElementById('badge-change-btn');
+                if (!isViewMode && badgeBtn) {
+                    badgeBtn.style.display = 'inline-block';
                 }
 
                 list.innerHTML = owned.map(item => {
