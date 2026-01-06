@@ -462,7 +462,7 @@ async function sendDiscordNotification(matchData) {
     const reporterMention = first.submitted_by_discord_user_id ? `<@${first.submitted_by_discord_user_id}>` : '不明';
 
     const embed = {
-        title: `🀄 ${matchType}結果報告 (${mode})`,
+        title: `🀄 ${matchType} (${mode})　結果`, // 「個人戦 (三麻)　結果」の形式に変更
         description: scoreDisplay + '\n━━━━━━━━━━━━━━━━',
         color: 0x2ecc71, // 鮮やかな緑色
         fields: [
@@ -470,7 +470,8 @@ async function sendDiscordNotification(matchData) {
                 name: '⚙️ ルール設定',
                 value: `配給: ${distPoints.toLocaleString()} / 返し: ${returnPoints.toLocaleString()}\n` +
                     `飛び賞: ${isTobiOn ? 'あり' : 'なし'} / やきとり: ${isYakitoriOn ? 'あり' : 'なし'}\n` +
-                    `合計局数: ${first.hand_count}局`,
+                    `合計局数: ${first.hand_count}局\n` +
+                    `━━━━━━━━━━━━━━━━`, // ルールと記録者の間に線を追加
                 inline: false
             },
             { name: '✍️ 記録者', value: reporterMention, inline: true }
@@ -484,6 +485,8 @@ async function sendDiscordNotification(matchData) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+                // 通知を飛ばすために本文にプレイヤー全員のメンションを入れる（表示はEmbedが主役）
+                content: matchData.filter(p => p.discord_user_id).map(p => `<@${p.discord_user_id}>`).join(' '),
                 embeds: [embed]
             })
         });
