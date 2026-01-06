@@ -5,14 +5,7 @@ let currentTournament = '第二回麻雀大会'; // 初期表示は第二回
 
 document.addEventListener('DOMContentLoaded', () => {
     fetchData();
-    changePlayerCount(); // プルダウンの状態に合わせて初期化
 });
-
-function changePlayerCount() {
-    const mode = document.getElementById('form-mode').value;
-    const count = mode === '三麻' ? 3 : 4;
-    setupPlayerInputs(count);
-}
 
 
 async function fetchData() {
