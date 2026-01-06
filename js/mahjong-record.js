@@ -484,8 +484,6 @@ async function sendDiscordNotification(matchData) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                // 通知を飛ばすために本文にプレイヤー全員のメンションを入れる（表示はEmbedが主役）
-                content: matchData.filter(p => p.discord_user_id).map(p => `<@${p.discord_user_id}>`).join(' '),
                 embeds: [embed]
             })
         });
