@@ -863,25 +863,67 @@
                 `;
             }
 
-            // 最近の対局ログ（最新10件）
-            const recentResults = results.slice(0, 10);
-            const logContainer = document.getElementById('team-battle-log');
+            // 最近の対局ログ用に最新のmatch_idを取得（最新10件分）
+            const matchIds = [...new Set(results.map(r => r.match_id))].slice(0, 10);
 
-            logContainer.innerHTML = recentResults.map(r => {
-                const member = teamMembers.find(m => m.discord_user_id === r.discord_user_id);
-                const name = member?.account_name || '名称未設定';
-                const avatar = member?.avatar_url || 'https://via.placeholder.com/32';
-                const date = new Date(r.event_datetime || r.created_at).toLocaleDateString('ja-JP');
-                const score = r.final_score || r.score || 0;
-                const scoreClass = score >= 0 ? 'text-success' : 'text-danger';
-                const scorePrefix = score >= 0 ? '+' : '';
+            let allMatchPlayers = [];
+            if (matchIds.length > 0) {
+                const { data: participants } = await supabaseClient
+                    .from('match_results')
+                    .select('*')
+                    .in('match_id', matchIds)
+                    .order('event_datetime', { ascending: false });
+                allMatchPlayers = participants || [];
+            }
+
+            const logContainer = document.getElementById('team-battle-log');
+            if (matchIds.length === 0) {
+                logContainer.innerHTML = '<p class="text-muted">まだ対戦記録がありません</p>';
+                return;
+            }
+
+            // match_idごとにグループ化
+            const matchesMap = {};
+            allMatchPlayers.forEach(p => {
+                if (!matchesMap[p.match_id]) {
+                    matchesMap[p.match_id] = {
+                        date: new Date(p.event_datetime || p.created_at).toLocaleDateString('ja-JP'),
+                        players: []
+                    };
+                }
+                matchesMap[p.match_id].players.push(p);
+            });
+
+            logContainer.innerHTML = matchIds.map(mid => {
+                const match = matchesMap[mid];
+                if (!match) return '';
+
+                // チームメンバーを前（左）に、それ以外を後ろに
+                const sortedPlayers = [...match.players].sort((a, b) => {
+                    const aIsMember = memberIds.includes(a.discord_user_id);
+                    const bIsMember = memberIds.includes(b.discord_user_id);
+                    if (aIsMember && !bIsMember) return -1;
+                    if (!aIsMember && bIsMember) return 1;
+                    return b.final_score - a.final_score; // スコア順
+                });
 
                 return `
-                    <div class="d-flex align-items-center p-2 border-bottom">
-                        <img src="${avatar}" class="rounded-circle me-2" width="32" height="32" onerror="this.src='https://via.placeholder.com/32'">
-                        <span class="me-auto">${name}</span>
-                        <span class="me-3 ${scoreClass} fw-bold">${scorePrefix}${score.toLocaleString()}</span>
-                        <small class="text-muted">${date}</small>
+                    <div class="match-log-row p-2 border-bottom">
+                        <div class="d-flex flex-wrap align-items-center gap-3">
+                            <div class="date-badge small text-muted me-2">${match.date}</div>
+                            ${sortedPlayers.map(p => {
+                    const isMember = memberIds.includes(p.discord_user_id);
+                    const score = p.final_score || p.score || 0;
+                    const scoreClass = score >= 0 ? 'text-success' : 'text-danger';
+                    const scorePrefix = score >= 0 ? '+' : '';
+                    return `
+                                    <div class="player-entry d-flex align-items-center ${isMember ? 'fw-bold border-start border-3 ps-2 border-success' : ''}" style="min-width: 120px;">
+                                        <span class="player-name text-truncate" style="max-width: 80px;">${p.account_name}</span>
+                                        <span class="ms-2 scale-90 ${scoreClass}">${scorePrefix}${score.toLocaleString()}</span>
+                                    </div>
+                                `;
+                }).join('')}
+                        </div>
                     </div>
                 `;
             }).join('');
