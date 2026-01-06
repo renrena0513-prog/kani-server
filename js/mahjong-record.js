@@ -445,13 +445,29 @@ async function sendDiscordNotification(matchData) {
             `　　素点: ${p.raw_points.toLocaleString()} | スコア: **${p.final_score > 0 ? '+' : ''}${p.final_score.toFixed(1)}**`;
     }).join('\n\n');
 
+    // ルール情報の取得
+    const distType = document.getElementById('opt-dist-points').value;
+    let distPoints = (mode === '三麻' ? 30000 : 25000);
+    if (distType === '100000') distPoints = 100000;
+    const returnPoints = distPoints + 5000;
+    const isTobiOn = document.querySelector('input[name="opt-tobi"]:checked').value === 'yes';
+    const isYakitoriOn = document.querySelector('input[name="opt-yakitori"]:checked').value === 'yes';
+
+    const rulesStr = [
+        `配給点: ${distPoints.toLocaleString()}`,
+        `返し点: ${returnPoints.toLocaleString()}`,
+        `飛び賞: ${isTobiOn ? 'あり' : 'なし'}`,
+        `やきとり: ${isYakitoriOn ? 'あり' : 'なし'}`
+    ].join(' / ');
+
     const embed = {
         title: `🀄 麻雀対局結果報告 (${mode})`,
         description: description,
         color: 0x00ff00, // 緑色
         fields: [
             { name: '対局種別', value: matchType, inline: true },
-            { name: '本場数', value: `${first.hand_count}局`, inline: true }
+            { name: '本場数', value: `${first.hand_count}局`, inline: true },
+            { name: '適用ルール', value: rulesStr, inline: false }
         ],
         timestamp: new Date().toISOString(),
         footer: { text: "かに鯖麻雀大会" }
