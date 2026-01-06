@@ -1,10 +1,12 @@
 // 麻雀スコア記録ページ用ロジック
 let allProfiles = [];
+let allTeams = [];
 let isAdmin = false;
 
 document.addEventListener('DOMContentLoaded', async () => {
     await checkAdminStatus();
     await fetchProfiles();
+    await fetchTeams();
     changePlayerCount(); // 初期化
 });
 
@@ -25,6 +27,15 @@ async function fetchProfiles() {
     }
 }
 
+async function fetchTeams() {
+    try {
+        const { data, error } = await supabaseClient.from('teams').select('*').order('team_name');
+        if (!error) allTeams = data || [];
+    } catch (err) {
+        console.error('チーム取得エラー:', err);
+    }
+}
+
 function changePlayerCount() {
     const mode = document.getElementById('form-mode').value;
     const count = mode === '三麻' ? 3 : 4;
@@ -41,14 +52,21 @@ function setupPlayerInputs(count) {
     const container = document.getElementById('players-container');
     container.innerHTML = '';
     const match = document.getElementById('form-match').value;
+    const isTeamMatch = match === 'チーム戦';
+
+    // チームオプションを生成
+    const teamOptions = allTeams.map(t => `<option value="${t.id}">${t.team_name}</option>`).join('');
 
     for (let i = 1; i <= count; i++) {
         container.innerHTML += `
             <div class="player-entry" id="player-row-${i}">
                 <div class="row g-2 align-items-end player-row">
-                    <div class="col team-col" style="display: ${match === 'チーム戦' ? 'block' : 'none'};">
+                    <div class="col team-col" style="display: ${isTeamMatch ? 'block' : 'none'};">
                         <label class="small text-muted">チーム名</label>
-                        <input type="text" class="form-control form-control-sm player-team" placeholder="チーム名">
+                        <select class="form-select form-select-sm player-team" onchange="filterAccountsByTeam(${i})">
+                            <option value="">チームを選択</option>
+                            ${teamOptions}
+                        </select>
                     </div>
                     <div class="col account-col">
                         <label class="small text-muted">アカウント名</label>
@@ -81,6 +99,15 @@ function setupPlayerInputs(count) {
     }
 }
 
+// チーム選択時にアカウントをフィルタリング
+function filterAccountsByTeam(idx) {
+    const teamSelect = document.querySelector(`#player-row-${idx} .player-team`);
+    const selectedTeamId = teamSelect.value;
+
+    // 選択済みプレイヤーをクリア
+    clearPlayer(idx);
+}
+
 // ドロップダウン関連
 function showDropdown(idx) {
     // 他の開いているドロップダウンを全て閉じ、z-indexをリセット
@@ -99,7 +126,16 @@ function showDropdown(idx) {
     playerEntry.style.position = 'relative';
     playerEntry.style.zIndex = '1000';
 
-    renderDropdownItems(idx, allProfiles);
+    // チーム戦の場合、選択されたチームでフィルタリング
+    const match = document.getElementById('form-match').value;
+    const teamSelect = document.querySelector(`#player-row-${idx} .player-team`);
+    let filteredProfiles = allProfiles;
+
+    if (match === 'チーム戦' && teamSelect && teamSelect.value) {
+        filteredProfiles = allProfiles.filter(p => p.team_id === teamSelect.value);
+    }
+
+    renderDropdownItems(idx, filteredProfiles);
     list.style.display = 'block';
 
     // 別クリックで閉じる

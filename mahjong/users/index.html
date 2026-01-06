@@ -154,12 +154,54 @@
 </head>
 
 <body>
-    <a href="../index.html" class="back-button">← ランキングに戻る</a>
+    <!-- 右上のナビゲーションドロップダウン -->
+    <div class="nav-dropdown dropdown" style="position: fixed; top: 20px; right: 20px; z-index: 1000;">
+        <button class="btn-gold dropdown-toggle" type="button" id="navDropdown" data-bs-toggle="dropdown"
+            aria-expanded="false" style="padding: 12px 24px; border-radius: 25px; font-weight: bold;">
+            📝 メニュー
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navDropdown">
+            <li><a class="dropdown-item" href="../../index.html">🏠 ホームに戻る</a></li>
+            <li><a class="dropdown-item" href="../../mypage/index.html">👤 マイページ</a></li>
+            <li>
+                <hr class="dropdown-divider">
+            </li>
+            <li><a class="dropdown-item" href="../index.html">📊 ランキング</a></li>
+            <li><a class="dropdown-item" href="../record.html">📝 記録する</a></li>
+            <li><a class="dropdown-item" href="./index.html">👥 ユーザー一覧</a></li>
+            <li><a class="dropdown-item" href="../team/index.html">🏅 チーム管理</a></li>
+        </ul>
+    </div>
 
     <div class="container py-5 mt-4">
         <header class="text-center mb-4">
             <h1 class="page-header display-4 fw-bold">👥 ユーザー一覧</h1>
         </header>
+
+        <!-- アクションボタン・ステータス（カードの外） -->
+        <div id="action-buttons" class="action-buttons mb-4" style="display: none;">
+            <button class="btn-gold" data-bs-toggle="modal" data-bs-target="#createTeamModal">
+                ➕ チームを作成
+            </button>
+            <button class="btn-gold" data-bs-toggle="modal" data-bs-target="#joinTeamModal">
+                🤝 チームに加入
+            </button>
+        </div>
+
+        <div id="pending-status" class="mb-4" style="display: none;">
+            <div class="alert alert-warning text-center">
+                <strong>⏳ チーム加入申請中</strong><br>
+                <span id="pending-team-name"></span>への加入申請を送信済みです。管理者の承認をお待ちください。
+            </div>
+        </div>
+
+        <div id="team-member-status" class="mb-4" style="display: none;">
+            <div class="alert alert-success text-center">
+                <strong>🏅 チーム所属中</strong><br>
+                <span id="my-team-name"></span>に所属しています。
+                <a href="../team/index.html" class="btn btn-outline-success btn-sm ms-2">チーム管理へ</a>
+            </div>
+        </div>
 
         <div class="content-card">
             <div id="users-loading" class="text-center py-5">
@@ -176,33 +218,6 @@
                 <div class="team-section">
                     <h3 class="team-header">🚫 未所属</h3>
                     <div id="unaffiliated-users"></div>
-                </div>
-            </div>
-
-            <!-- アクションボタン（未所属者のみ表示） -->
-            <div id="action-buttons" class="action-buttons" style="display: none;">
-                <button class="btn-gold" data-bs-toggle="modal" data-bs-target="#createTeamModal">
-                    ➕ チームを作成
-                </button>
-                <button class="btn-gold" data-bs-toggle="modal" data-bs-target="#joinTeamModal">
-                    🤝 チームに加入
-                </button>
-            </div>
-
-            <!-- 申請中表示 -->
-            <div id="pending-status" class="text-center py-3" style="display: none;">
-                <div class="alert alert-warning">
-                    <strong>⏳ チーム加入申請中</strong><br>
-                    <span id="pending-team-name"></span>への加入申請を送信済みです。管理者の承認をお待ちください。
-                </div>
-            </div>
-
-            <!-- 所属済み表示 -->
-            <div id="team-member-status" class="text-center py-3" style="display: none;">
-                <div class="alert alert-success">
-                    <strong>🏅 チーム所属中</strong><br>
-                    <span id="my-team-name"></span>に所属しています。
-                    <a href="../team/index.html" class="btn btn-outline-success btn-sm ms-2">チーム管理へ</a>
                 </div>
             </div>
         </div>

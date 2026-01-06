@@ -355,7 +355,25 @@
 </head>
 
 <body>
-    <a href="./index.html" class="back-button">← ランキングに戻る</a>
+    <!-- 右上のナビゲーションドロップダウン -->
+    <div class="nav-dropdown dropdown" style="position: fixed; top: 20px; right: 20px; z-index: 1000;">
+        <button class="btn dropdown-toggle" type="button" id="navDropdown" data-bs-toggle="dropdown"
+            aria-expanded="false"
+            style="background: linear-gradient(135deg, var(--gold) 0%, #b8892d 100%); color: white; padding: 12px 24px; border-radius: 25px; font-weight: bold;">
+            📝 メニュー
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navDropdown">
+            <li><a class="dropdown-item" href="../index.html">🏠 ホームに戻る</a></li>
+            <li><a class="dropdown-item" href="../mypage/index.html">👤 マイページ</a></li>
+            <li>
+                <hr class="dropdown-divider">
+            </li>
+            <li><a class="dropdown-item" href="./index.html">📊 ランキング</a></li>
+            <li><a class="dropdown-item" href="./record.html">📝 記録する</a></li>
+            <li><a class="dropdown-item" href="./users/index.html">👥 ユーザー一覧</a></li>
+            <li><a class="dropdown-item" href="./team/index.html">🏅 チーム管理</a></li>
+        </ul>
+    </div>
 
     <div class="container py-5" style="padding-top: 80px !important; max-width: 1200px;">
         <header class="text-center">

@@ -200,7 +200,25 @@
 </head>
 
 <body>
-    <a href="../users/index.html" class="back-button">← ユーザー一覧に戻る</a>
+    <!-- 右上のナビゲーションドロップダウン -->
+    <div class="nav-dropdown dropdown" style="position: fixed; top: 20px; right: 20px; z-index: 1000;">
+        <button class="btn dropdown-toggle" type="button" id="navDropdown" data-bs-toggle="dropdown"
+            aria-expanded="false"
+            style="background: linear-gradient(135deg, var(--gold) 0%, #b8892d 100%); color: white; padding: 12px 24px; border-radius: 25px; font-weight: bold;">
+            📝 メニュー
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navDropdown">
+            <li><a class="dropdown-item" href="../../index.html">🏠 ホームに戻る</a></li>
+            <li><a class="dropdown-item" href="../../mypage/index.html">👤 マイページ</a></li>
+            <li>
+                <hr class="dropdown-divider">
+            </li>
+            <li><a class="dropdown-item" href="../index.html">📊 ランキング</a></li>
+            <li><a class="dropdown-item" href="../record.html">📝 記録する</a></li>
+            <li><a class="dropdown-item" href="../users/index.html">👥 ユーザー一覧</a></li>
+            <li><a class="dropdown-item" href="./index.html">🏅 チーム管理</a></li>
+        </ul>
+    </div>
 
     <div class="container py-5 mt-4">
         <header class="text-center mb-4">
@@ -414,12 +432,16 @@
                 const isAdmin = member.discord_user_id === myTeam.creator_discord_id;
                 const avatarUrl = member.avatar_url || 'https://via.placeholder.com/48';
                 const name = member.account_name || '名称未設定';
+                const kickButton = (!isAdmin && isTeamAdmin)
+                    ? `<button class="btn btn-outline-danger btn-sm ms-2" onclick="requestKick('${member.discord_user_id}', '${name.replace(/'/g, "\\'")}')">追放</button>`
+                    : '';
 
                 return `
                     <div class="member-card">
                         <img src="${avatarUrl}" alt="${name}" class="member-avatar" onerror="this.src='https://via.placeholder.com/48'">
                         <span class="member-name">${name}</span>
                         ${isAdmin ? '<span class="member-role">👑 リーダー</span>' : ''}
+                        ${kickButton}
                     </div>
                 `;
             }).join('');
@@ -789,6 +811,25 @@
                     </div>
                 `;
             }).join('');
+        }
+
+        // メンバー追放（管理者のみ）
+        async function requestKick(discordId, memberName) {
+            if (!confirm(`${memberName}をチームから追放しますか？`)) return;
+            if (!confirm('本当に追放してもよろしいですか？この操作は取り消せません。')) return;
+
+            try {
+                await supabaseClient
+                    .from('profiles')
+                    .update({ team_id: null })
+                    .eq('discord_user_id', discordId);
+
+                alert(`${memberName}をチームから追放しました`);
+                location.reload();
+            } catch (err) {
+                console.error('追放エラー:', err);
+                alert('エラーが発生しました');
+            }
         }
     </script>
 </body>
