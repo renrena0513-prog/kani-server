@@ -21,7 +21,9 @@ async function checkAdminStatus() {
 
 async function fetchProfiles() {
     try {
-        const { data, error } = await supabaseClient.from('profiles').select('*');
+        const { data, error } = await supabaseClient
+            .from('profiles')
+            .select('*, badges!equipped_badge_id(image_url, name)');
         if (!error) allProfiles = data;
     } catch (err) {
         console.error('プロフィール取得エラー:', err);
@@ -105,6 +107,7 @@ function setupPlayerInputs(count) {
                             <div class="selected-player-badge" id="selected-badge-${i}" style="display: none;">
                                 <img src="" class="badge-avatar">
                                 <span class="name"></span>
+                                <img src="" class="badge-icon ms-1" style="width: 20px; height: 20px; display: none;">
                                 <span class="btn-clear" onclick="clearPlayer(${i})">×</span>
                             </div>
                             <div class="custom-dropdown-list" id="dropdown-list-${i}"></div>
@@ -191,10 +194,17 @@ function renderDropdownItems(idx, profiles) {
     list.innerHTML = profiles.map(p => {
         const display = p.account_name || p.discord_user_id;
         const avatarUrl = p.avatar_url || 'https://via.placeholder.com/24';
+        const badge = p.badges;
+        const badgeHtml = badge ? `
+            <img src="${badge.image_url}" title="${badge.name}" 
+                 style="width: 18px; height: 18px; object-fit: contain; margin-left: 5px; border-radius: 2px;">
+        ` : '';
+
         return `
             <div class="dropdown-item-flex" onclick="selectPlayer(${idx}, '${p.discord_user_id}', '${(p.account_name || '').replace(/'/g, "\\'")}')">
                 <img src="${avatarUrl}" class="dropdown-avatar" onerror="this.src='https://via.placeholder.com/24'">
                 <span class="small">${display}</span>
+                ${badgeHtml}
             </div>
         `;
     }).join('');
@@ -203,7 +213,7 @@ function renderDropdownItems(idx, profiles) {
 function selectPlayer(idx, discordUserId, accountName) {
     const profile = allProfiles.find(p => p.discord_user_id === discordUserId);
     const input = document.querySelector(`#player-row-${idx} .player-account`);
-    const badge = document.getElementById(`selected-badge-${idx}`);
+    const badgeContainer = document.getElementById(`selected-badge-${idx}`);
 
     // discord_user_idとaccount_nameの両方を保存（data属性に）
     input.value = accountName || discordUserId;
@@ -211,9 +221,25 @@ function selectPlayer(idx, discordUserId, accountName) {
     input.dataset.accountName = accountName;
     input.style.display = 'none';
 
-    badge.querySelector('img').src = (profile && profile.avatar_url) ? profile.avatar_url : 'https://via.placeholder.com/24';
-    badge.querySelector('.name').textContent = accountName || discordUserId;
-    badge.style.display = 'flex';
+    // アバター設定
+    const avatarImg = badgeContainer.querySelector('.badge-avatar');
+    avatarImg.src = (profile && profile.avatar_url) ? profile.avatar_url : 'https://via.placeholder.com/24';
+
+    // 名前設定
+    badgeContainer.querySelector('.name').textContent = accountName || discordUserId;
+
+    // バッジ設定
+    const badgeImg = badgeContainer.querySelector('.badge-icon');
+    const badge = profile?.badges;
+    if (badge && badgeImg) {
+        badgeImg.src = badge.image_url;
+        badgeImg.title = badge.name;
+        badgeImg.style.display = 'inline-block';
+    } else if (badgeImg) {
+        badgeImg.style.display = 'none';
+    }
+
+    badgeContainer.style.display = 'flex';
     document.getElementById(`dropdown-list-${idx}`).style.display = 'none';
 }
 

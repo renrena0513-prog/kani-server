@@ -214,7 +214,7 @@
                 // 所持者取得
                 const { data: owners, error: ownerError } = await supabaseClient
                     .from('user_badges')
-                    .select('user_id, profiles!user_id(discord_user_id, account_name, avatar_url)')
+                    .select('user_id, profiles!user_id(discord_user_id, account_name, avatar_url, badges!equipped_badge_id(image_url, name))')
                     .eq('badge_id', badgeId);
 
                 if (ownerError) throw ownerError;
@@ -242,10 +242,17 @@
                         if (!profile) return '';
                         const avatarUrl = profile.avatar_url || 'https://via.placeholder.com/48';
                         const name = profile.account_name || '名称未設定';
+                        const badge = profile.badges;
+                        const badgeHtml = badge ? `
+                            <img src="${badge.image_url}" title="${badge.name}" 
+                                 style="width: 20px; height: 20px; object-fit: contain; margin-left: 8px; border-radius: 4px;">
+                        ` : '';
+
                         return `
                             <a href="../mypage/index.html?user=${profile.discord_user_id}" class="owner-item text-decoration-none text-dark">
                                 <img src="${avatarUrl}" alt="${name}" class="owner-avatar me-3" onerror="this.src='https://via.placeholder.com/48'">
                                 <span class="fw-bold">${name}</span>
+                                ${badgeHtml}
                             </a>
                         `;
                     }).join('');

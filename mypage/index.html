@@ -661,7 +661,7 @@
             // ユーザー情報の取得（バッジ情報・コイン・チーム情報を含む）
             const { data: profile } = await supabaseClient
                 .from('profiles')
-                .select('account_name, avatar_url, coins, equipped_badge_id, team_id, badges!equipped_badge_id(image_url, name), teams!team_id(name)')
+                .select('account_name, avatar_url, coins, equipped_badge_id, team_id, badges!equipped_badge_id(image_url, name), teams!team_id(team_name)')
                 .eq('discord_user_id', targetId)
                 .maybeSingle();
 
@@ -684,7 +684,7 @@
             const teamNameEl = document.getElementById('user-team-name');
             if (teamNameEl) {
                 const team = profile?.teams;
-                teamNameEl.textContent = team?.name || '未所属';
+                teamNameEl.textContent = team?.team_name || '未所属';
             }
 
             // コイン表示の更新
@@ -719,7 +719,7 @@
         async function loadTargetUserInfo() {
             const { data: profile, error } = await supabaseClient
                 .from('profiles')
-                .select('*, badges!equipped_badge_id(image_url, name), teams!team_id(name)')
+                .select('*, badges!equipped_badge_id(image_url, name), teams!team_id(team_name)')
                 .eq('discord_user_id', targetId)
                 .maybeSingle();
 
@@ -742,7 +742,7 @@
                 const teamNameEl = document.getElementById('user-team-name');
                 if (teamNameEl) {
                     const team = profile?.teams;
-                    teamNameEl.textContent = team?.name || '未所属';
+                    teamNameEl.textContent = team?.team_name || '未所属';
                 }
 
                 // コイン表示の更新

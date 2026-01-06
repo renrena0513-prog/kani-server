@@ -46,10 +46,10 @@ async function fetchData() {
 
         renderTournamentButtons();
 
-        // 全プロフィール取得（アイコン用）
+        // 全プロフィール取得（アイコン・バッジ用）
         const { data: profiles, error: pError } = await supabaseClient
             .from('profiles')
-            .select('*');
+            .select('*, badges!equipped_badge_id(image_url, name)');
         if (!pError && profiles.length > 0) {
             allProfiles = profiles;
         } else {
@@ -327,7 +327,7 @@ function renderRanking(records, groupKey, type = 'all') {
     const body = document.getElementById('ranking-body');
     body.innerHTML = sorted.map((s, idx) => {
         let displayName = s.display;
-        let avatarUrl = null;
+        let avatarHtml = '';
         let canLink = false;
 
         if (!s.isTeam) {
@@ -343,19 +343,35 @@ function renderRanking(records, groupKey, type = 'all') {
                 profile = allProfiles.find(p => p.account_name === displayName);
                 avatarUrl = profile?.avatar_url;
             }
+
+            const badge = profile?.badges;
+            const badgeHtml = badge ? `
+                <div style="width: 24px; height: 24px;" class="ms-1">
+                    <img src="${badge.image_url}" title="${badge.name}" 
+                         style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
+                </div>` : '';
+
+            avatarHtml = `
+                <div class="d-flex align-items-center gap-1">
+                    <div style="width: 32px; height: 32px;" class="flex-shrink-0 d-flex align-items-center justify-content-center">
+                        ${avatarUrl ?
+                    `<img src="${avatarUrl}" 
+                                  alt="${displayName}" 
+                                  class="rounded-circle" 
+                                  style="width: 32px; height: 32px; object-fit: cover;">` : ''}
+                    </div>
+                    ${badgeHtml}
+                </div>`;
+        } else {
+            // チームの場合はそのままアイコンなしまたは別のアイコン
+            avatarHtml = `
+                <div style="width: 32px; height: 32px;" class="flex-shrink-0 d-flex align-items-center justify-content-center">
+                    <span style="font-size: 1.2rem;">🏅</span>
+                </div>`;
         }
 
         const linkUrl = canLink ? `../mypage/index.html?user=${s.discord_user_id}` : '#';
         const linkClass = canLink ? '' : 'pe-none text-dark';
-
-        const avatarHtml = `
-            <div style="width: 32px; height: 32px;" class="flex-shrink-0 d-flex align-items-center justify-content-center">
-                ${avatarUrl ?
-                `<img src="${avatarUrl}" 
-                          alt="${displayName}" 
-                          class="rounded-circle" 
-                          style="width: 32px; height: 32px; object-fit: cover;">` : ''}
-            </div>`;
 
         // 別列に表示するための数値
         let statValue = '';
