@@ -173,11 +173,10 @@ async function displayUserInfo() {
 
             // バッジ画像、名前、コインを表示
             userInfoElement.innerHTML = `
-                <div class="d-flex flex-column align-items-end me-2" style="line-height: 1.2;">
+                <div class="me-2 text-end">
                     <span class="user-display-name fw-bold" style="color: white; font-size: 0.9rem;">
                         ${badge ? `<img src="${badge.image_url}" title="${badge.name}" style="width: 18px; height: 18px; margin-right: 4px; vertical-align: text-bottom;">` : ''}${displayName}
                     </span>
-                    <span style="color: var(--gold); font-size: 0.75rem;">🪙 ${coins.toLocaleString()}</span>
                 </div>
                 <a href="${mypagePath}" class="avatar-link">
                     <img src="${avatarUrl}" 
