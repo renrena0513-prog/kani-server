@@ -376,3 +376,28 @@ body::before {
 #user-info:hover {
     background: rgba(255, 255, 255, 0.25);
 }
+/* ========================================
+   なりすましバナー用スタイル
+   ======================================== */
+.impersonation-banner {
+    position: sticky;
+    top: 0;
+    z-index: 2000;
+    transition: all 0.3s ease;
+}
+
+/* なりすまし中、固定要素（認証UI等）を下へずらす */
+body.user-impersonating .auth-container {
+    top: 60px !important; /* バナーの高さ分+α */
+}
+
+/* タイトル画像のトップマージンも調整（バナー分押し下げる） */
+body.user-impersonating .title-image {
+    margin-top: 20px;
+}
+
+@media (max-width: 576px) {
+    body.user-impersonating .auth-container {
+        top: 55px !important;
+    }
+}
