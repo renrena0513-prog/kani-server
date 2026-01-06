@@ -437,11 +437,20 @@ async function sendDiscordNotification(matchData) {
     // 順位順にソート
     const sorted = [...matchData].sort((a, b) => a.rank - b.rank);
 
+    // メンション用のIDリスト（重複排除）
+    const mentionIds = new Set();
+    if (first.submitted_by_discord_user_id) mentionIds.add(first.submitted_by_discord_user_id);
+    matchData.forEach(p => {
+        if (p.discord_user_id) mentionIds.add(p.discord_user_id);
+    });
+    const mentionsStr = Array.from(mentionIds).map(id => `<@${id}>`).join(' ');
+
     // メッセージの構築
     let description = sorted.map(p => {
         const medal = p.rank === 1 ? '🥇' : p.rank === 2 ? '🥈' : p.rank === 3 ? '🥉' : '🔹';
         const teamInfo = p.team_name ? ` [${p.team_name}]` : '';
-        return `${medal} **${p.rank}位**: ${p.account_name}${teamInfo}\n` +
+        const nameDisplay = p.discord_user_id ? `<@${p.discord_user_id}>` : p.account_name;
+        return `${medal} **${p.rank}位**: ${nameDisplay}${teamInfo}\n` +
             `　　素点: ${p.raw_points.toLocaleString()} | スコア: **${p.final_score > 0 ? '+' : ''}${p.final_score.toFixed(1)}**`;
     }).join('\n\n');
 
@@ -467,7 +476,8 @@ async function sendDiscordNotification(matchData) {
         fields: [
             { name: '対局種別', value: matchType, inline: true },
             { name: '本場数', value: `${first.hand_count}局`, inline: true },
-            { name: '適用ルール', value: rulesStr, inline: false }
+            { name: '適用ルール', value: rulesStr, inline: false },
+            { name: '記録者', value: first.submitted_by_discord_user_id ? `<@${first.submitted_by_discord_user_id}>` : '不明', inline: false }
         ],
         timestamp: new Date().toISOString(),
         footer: { text: "かに鯖麻雀大会" }
@@ -477,7 +487,10 @@ async function sendDiscordNotification(matchData) {
         await fetch(DISCORD_WEBHOOK_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ embeds: [embed] })
+            body: JSON.stringify({
+                content: mentionsStr, // メンションをメッセージ本文に入れて通知を飛ばす
+                embeds: [embed]
+            })
         });
         console.log('Discord通知送信成功');
     } catch (err) {
