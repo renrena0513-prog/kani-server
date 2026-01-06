@@ -277,6 +277,29 @@
                     </button>
                 </div>
             </div>
+
+            <!-- チーム戦績セクション -->
+            <div class="content-card mt-4">
+                <h3 class="section-title">📊 チーム戦績</h3>
+
+                <!-- メンバー別スコア一覧 -->
+                <h4 class="mb-3">🏆 メンバースコアランキング</h4>
+                <div id="member-scores" class="mb-4">
+                    <div class="text-center py-3">
+                        <div class="spinner-border spinner-border-sm" role="status"></div>
+                        読み込み中...
+                    </div>
+                </div>
+
+                <!-- 最近の対局ログ -->
+                <h4 class="mb-3 mt-4">📝 最近のチーム戦</h4>
+                <div id="team-battle-log">
+                    <div class="text-center py-3">
+                        <div class="spinner-border spinner-border-sm" role="status"></div>
+                        読み込み中...
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -403,6 +426,9 @@
 
             // 譲渡モーダル用のメンバーリスト作成
             renderTransferList();
+
+            // チーム戦績を読み込む
+            await loadTeamStats();
         }
 
         function renderTransferList() {
@@ -666,6 +692,103 @@
                 console.error('解散エラー:', err);
                 alert('エラーが発生しました');
             }
+        }
+
+        // チーム戦績を読み込む
+        async function loadTeamStats() {
+            const memberIds = teamMembers.map(m => m.discord_user_id);
+
+            // チームメンバーの対局結果を取得
+            const { data: results } = await supabaseClient
+                .from('match_results')
+                .select('*')
+                .in('discord_user_id', memberIds)
+                .order('created_at', { ascending: false });
+
+            if (!results || results.length === 0) {
+                document.getElementById('member-scores').innerHTML = '<p class="text-muted">まだ対局記録がありません</p>';
+                document.getElementById('team-battle-log').innerHTML = '<p class="text-muted">まだ対局記録がありません</p>';
+                return;
+            }
+
+            // メンバー別にスコアを集計
+            const memberScores = {};
+            teamMembers.forEach(m => {
+                memberScores[m.discord_user_id] = {
+                    name: m.account_name || '名称未設定',
+                    avatar: m.avatar_url || 'https://via.placeholder.com/32',
+                    totalScore: 0,
+                    games: 0
+                };
+            });
+
+            results.forEach(r => {
+                if (memberScores[r.discord_user_id]) {
+                    memberScores[r.discord_user_id].totalScore += r.score || 0;
+                    memberScores[r.discord_user_id].games += 1;
+                }
+            });
+
+            // スコア順にソート
+            const sortedMembers = Object.values(memberScores)
+                .filter(m => m.games > 0)
+                .sort((a, b) => b.totalScore - a.totalScore);
+
+            // メンバースコアランキング表示
+            const scoresContainer = document.getElementById('member-scores');
+            if (sortedMembers.length === 0) {
+                scoresContainer.innerHTML = '<p class="text-muted">まだ対局記録がありません</p>';
+            } else {
+                scoresContainer.innerHTML = `
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>順位</th>
+                                <th>メンバー</th>
+                                <th>合計スコア</th>
+                                <th>対局数</th>
+                                <th>平均</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${sortedMembers.map((m, i) => `
+                                <tr${i === 0 ? ' class="table-warning"' : ''}>
+                                    <td>${i + 1}</td>
+                                    <td>
+                                        <img src="${m.avatar}" class="rounded-circle me-2" width="24" height="24" onerror="this.src='https://via.placeholder.com/24'">
+                                        ${m.name}
+                                    </td>
+                                    <td class="${m.totalScore >= 0 ? 'text-success' : 'text-danger'}">${m.totalScore >= 0 ? '+' : ''}${m.totalScore.toLocaleString()}</td>
+                                    <td>${m.games}</td>
+                                    <td>${(m.totalScore / m.games).toFixed(1)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            }
+
+            // 最近の対局ログ（最新10件）
+            const recentResults = results.slice(0, 10);
+            const logContainer = document.getElementById('team-battle-log');
+
+            logContainer.innerHTML = recentResults.map(r => {
+                const member = teamMembers.find(m => m.discord_user_id === r.discord_user_id);
+                const name = member?.account_name || '名称未設定';
+                const avatar = member?.avatar_url || 'https://via.placeholder.com/32';
+                const date = new Date(r.created_at).toLocaleDateString('ja-JP');
+                const scoreClass = r.score >= 0 ? 'text-success' : 'text-danger';
+                const scorePrefix = r.score >= 0 ? '+' : '';
+
+                return `
+                    <div class="d-flex align-items-center p-2 border-bottom">
+                        <img src="${avatar}" class="rounded-circle me-2" width="32" height="32" onerror="this.src='https://via.placeholder.com/32'">
+                        <span class="me-auto">${name}</span>
+                        <span class="me-3 ${scoreClass} fw-bold">${scorePrefix}${r.score?.toLocaleString() || 0}</span>
+                        <small class="text-muted">${date}</small>
+                    </div>
+                `;
+            }).join('');
         }
     </script>
 </body>

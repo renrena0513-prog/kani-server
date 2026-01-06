@@ -511,6 +511,7 @@
 
                 alert('加入申請を送信しました！チーム管理者の承認をお待ちください。');
                 bootstrap.Modal.getInstance(document.getElementById('joinTeamModal')).hide();
+                location.reload(); // 即座に申請中状態を表示
             } catch (err) {
                 console.error('申請送信エラー:', err);
                 errorDiv.textContent = 'エラーが発生しました';
