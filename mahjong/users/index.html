@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ユーザー一覧 | かにサーバー</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-green: #2d8a5e;
+            --deep-green: #1e6b47;
+            --cream: #faf5e8;
+            --gold: #d4a853;
+            --font-title: 'Noto Serif JP', serif;
+            --font-body: 'M PLUS Rounded 1c', sans-serif;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: linear-gradient(180deg, #2d8a5e 0%, #256b4a 50%, #1e5538 100%);
+            min-height: 100vh;
+            background-attachment: fixed;
+        }
+
+        .page-header {
+            font-family: var(--font-title);
+            color: var(--cream);
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: white;
+            text-decoration: none;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 18px;
+            border-radius: 20px;
+            backdrop-filter: blur(5px);
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: var(--gold);
+        }
+
+        .content-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+        }
+
+        .team-section {
+            margin-bottom: 30px;
+        }
+
+        .team-header {
+            font-family: var(--font-title);
+            color: var(--deep-green);
+            border-bottom: 2px solid var(--gold);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .user-card {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .user-card:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+
+        .user-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            margin-right: 15px;
+            border: 2px solid var(--gold);
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        .btn-gold {
+            background: linear-gradient(135deg, var(--gold) 0%, #b8892d 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .btn-gold:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(212, 168, 83, 0.5);
+            color: white;
+        }
+
+        .modal-header {
+            background: var(--deep-green);
+            color: white;
+        }
+
+        .team-list-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .team-list-item:hover {
+            background: #f8f9fa;
+            border-color: var(--gold);
+        }
+
+        .team-list-item.selected {
+            border-color: var(--deep-green);
+            background: rgba(45, 138, 94, 0.1);
+        }
+    </style>
+</head>
+
+<body>
+    <a href="../index.html" class="back-button">← ランキングに戻る</a>
+
+    <div class="container py-5 mt-4">
+        <header class="text-center mb-4">
+            <h1 class="page-header display-4 fw-bold">👥 ユーザー一覧</h1>
+        </header>
+
+        <div class="content-card">
+            <div id="users-loading" class="text-center py-5">
+                <div class="spinner-border text-success" role="status">
+                    <span class="visually-hidden">読み込み中...</span>
+                </div>
+            </div>
+
+            <div id="users-content" style="display: none;">
+                <!-- チーム別ユーザー表示 -->
+                <div id="teams-container"></div>
+
+                <!-- 未所属ユーザー -->
+                <div class="team-section">
+                    <h3 class="team-header">🚫 未所属</h3>
+                    <div id="unaffiliated-users"></div>
+                </div>
+            </div>
+
+            <!-- アクションボタン -->
+            <div class="action-buttons">
+                <button class="btn-gold" data-bs-toggle="modal" data-bs-target="#createTeamModal">
+                    ➕ チームを作成
+                </button>
+                <button class="btn-gold" data-bs-toggle="modal" data-bs-target="#joinTeamModal">
+                    🤝 チームに加入
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- チーム作成モーダル -->
+    <div class="modal fade" id="createTeamModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">➕ チームを作成</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="teamName" class="form-label">チーム名</label>
+                        <input type="text" class="form-control" id="teamName" placeholder="チーム名を入力">
+                    </div>
+                    <div id="create-team-error" class="text-danger" style="display: none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                    <button type="button" class="btn btn-success" onclick="createTeam()">作成</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- チーム加入モーダル -->
+    <div class="modal fade" id="joinTeamModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">🤝 チームに加入</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3">加入したいチームを選択してください</p>
+                    <div id="team-list-for-join">
+                        <div class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm" role="status"></div>
+                            読み込み中...
+                        </div>
+                    </div>
+                    <div id="join-team-error" class="text-danger mt-2" style="display: none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                    <button type="button" class="btn btn-success" id="sendJoinRequestBtn" onclick="sendJoinRequest()"
+                        disabled>加入申請を送る</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../js/supabase-config.js"></script>
+
+    <script>
+        let allTeams = [];
+        let allProfiles = [];
+        let selectedTeamId = null;
+
+        document.addEventListener('DOMContentLoaded', loadUsersData);
+
+        async function loadUsersData() {
+            try {
+                // チームデータ取得
+                const { data: teams, error: teamsError } = await supabaseClient
+                    .from('teams')
+                    .select('*')
+                    .order('team_name');
+
+                if (teamsError) throw teamsError;
+                allTeams = teams || [];
+
+                // プロフィールデータ取得
+                const { data: profiles, error: profilesError } = await supabaseClient
+                    .from('profiles')
+                    .select('*')
+                    .order('account_name');
+
+                if (profilesError) throw profilesError;
+                allProfiles = profiles || [];
+
+                renderUsers();
+
+                document.getElementById('users-loading').style.display = 'none';
+                document.getElementById('users-content').style.display = 'block';
+            } catch (err) {
+                console.error('データ取得エラー:', err);
+                document.getElementById('users-loading').innerHTML = '<p class="text-danger">データの読み込みに失敗しました</p>';
+            }
+        }
+
+        function renderUsers() {
+            const teamsContainer = document.getElementById('teams-container');
+            const unaffiliatedContainer = document.getElementById('unaffiliated-users');
+
+            teamsContainer.innerHTML = '';
+            unaffiliatedContainer.innerHTML = '';
+
+            // チーム別にユーザーを表示
+            allTeams.forEach(team => {
+                const teamMembers = allProfiles.filter(p => p.team_id === team.id);
+                if (teamMembers.length === 0) return;
+
+                const section = document.createElement('div');
+                section.className = 'team-section';
+                section.innerHTML = `
+                    <h3 class="team-header">🏅 ${team.team_name}</h3>
+                    <div class="team-members">
+                        ${teamMembers.map(user => createUserCard(user)).join('')}
+                    </div>
+                `;
+                teamsContainer.appendChild(section);
+            });
+
+            // 未所属ユーザー
+            const unaffiliatedUsers = allProfiles.filter(p => !p.team_id);
+            if (unaffiliatedUsers.length === 0) {
+                unaffiliatedContainer.innerHTML = '<p class="text-muted">未所属のユーザーはいません</p>';
+            } else {
+                unaffiliatedContainer.innerHTML = unaffiliatedUsers.map(user => createUserCard(user)).join('');
+            }
+        }
+
+        function createUserCard(user) {
+            const avatarUrl = user.avatar_url || 'https://via.placeholder.com/48';
+            const name = user.account_name || '名称未設定';
+            return `
+                <a href="../../mypage/index.html?user=${user.discord_user_id}" class="user-card text-decoration-none">
+                    <img src="${avatarUrl}" alt="${name}" class="user-avatar" onerror="this.src='https://via.placeholder.com/48'">
+                    <span class="user-name">${name}</span>
+                </a>
+            `;
+        }
+
+        // チーム作成
+        async function createTeam() {
+            const teamName = document.getElementById('teamName').value.trim();
+            const errorDiv = document.getElementById('create-team-error');
+
+            if (!teamName) {
+                errorDiv.textContent = 'チーム名を入力してください';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            const user = await getCurrentUser();
+            if (!user) {
+                errorDiv.textContent = 'ログインが必要です';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            const discordId = user.user_metadata.provider_id;
+
+            try {
+                // チーム作成
+                const { data: newTeam, error: createError } = await supabaseClient
+                    .from('teams')
+                    .insert({
+                        team_name: teamName,
+                        creator_discord_id: discordId
+                    })
+                    .select()
+                    .single();
+
+                if (createError) {
+                    if (createError.code === '23505') {
+                        errorDiv.textContent = 'このチーム名は既に使用されています';
+                    } else {
+                        errorDiv.textContent = 'チーム作成に失敗しました: ' + createError.message;
+                    }
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+
+                // 作成者を自動的にチームに追加
+                await supabaseClient
+                    .from('profiles')
+                    .update({ team_id: newTeam.id })
+                    .eq('discord_user_id', discordId);
+
+                alert('チームを作成しました！');
+                bootstrap.Modal.getInstance(document.getElementById('createTeamModal')).hide();
+                location.reload();
+            } catch (err) {
+                console.error('チーム作成エラー:', err);
+                errorDiv.textContent = 'エラーが発生しました';
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        // チーム一覧を加入モーダルに表示
+        document.getElementById('joinTeamModal').addEventListener('show.bs.modal', loadTeamsForJoin);
+
+        async function loadTeamsForJoin() {
+            const container = document.getElementById('team-list-for-join');
+
+            if (allTeams.length === 0) {
+                container.innerHTML = '<p class="text-muted">まだチームがありません</p>';
+                return;
+            }
+
+            container.innerHTML = allTeams.map(team => `
+                <div class="team-list-item" onclick="selectTeamForJoin('${team.id}', this)">
+                    <span>🏅 ${team.team_name}</span>
+                </div>
+            `).join('');
+        }
+
+        function selectTeamForJoin(teamId, element) {
+            document.querySelectorAll('.team-list-item').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedTeamId = teamId;
+            document.getElementById('sendJoinRequestBtn').disabled = false;
+        }
+
+        // 加入申請送信
+        async function sendJoinRequest() {
+            const errorDiv = document.getElementById('join-team-error');
+
+            if (!selectedTeamId) {
+                errorDiv.textContent = 'チームを選択してください';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            const user = await getCurrentUser();
+            if (!user) {
+                errorDiv.textContent = 'ログインが必要です';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            const discordId = user.user_metadata.provider_id;
+
+            try {
+                // 既存の申請確認
+                const { data: existing } = await supabaseClient
+                    .from('team_join_requests')
+                    .select('*')
+                    .eq('team_id', selectedTeamId)
+                    .eq('requester_discord_id', discordId)
+                    .eq('status', 'pending')
+                    .maybeSingle();
+
+                if (existing) {
+                    errorDiv.textContent = '既にこのチームに申請中です';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+
+                // 申請作成
+                const { error } = await supabaseClient
+                    .from('team_join_requests')
+                    .insert({
+                        team_id: selectedTeamId,
+                        requester_discord_id: discordId
+                    });
+
+                if (error) throw error;
+
+                alert('加入申請を送信しました！チーム管理者の承認をお待ちください。');
+                bootstrap.Modal.getInstance(document.getElementById('joinTeamModal')).hide();
+            } catch (err) {
+                console.error('申請送信エラー:', err);
+                errorDiv.textContent = 'エラーが発生しました';
+                errorDiv.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+
+</html>
