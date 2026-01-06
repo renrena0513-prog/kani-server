@@ -1,7 +1,7 @@
 // 麻雀ページ用ロジック
 let allRecords = [];
 let allProfiles = []; // プロフィール情報（アイコン付き）
-let currentSeason = 'current'; // 'current' or 'all'
+let currentTournament = '第二回麻雀大会'; // 初期表示は第二回
 
 document.addEventListener('DOMContentLoaded', () => {
     fetchData();
@@ -32,12 +32,20 @@ async function fetchData() {
             console.warn('過去データの取得に失敗:', legacyError);
         }
 
+        // 過去データに tournament_type を付与（タグ付けされていない場合）
+        const taggedLegacyData = (legacyData || []).map(r => ({
+            ...r,
+            tournament_type: r.tournament_type || '第一回麻雀大会'
+        }));
+
         // 両方のデータを結合
-        allRecords = [...(currentData || []), ...(legacyData || [])];
+        allRecords = [...(currentData || []), ...taggedLegacyData];
 
         console.log('📊 取得したレコード数:', allRecords.length);
         console.log('第二回（match_results）:', currentData?.length || 0);
-        console.log('第一回（tournament_player_stats_snapshot）:', legacyData?.length || 0);
+        console.log('第一回（tournament_player_stats_snapshot）:', taggedLegacyData.length);
+
+        renderTournamentButtons();
 
         // 全プロフィール取得（アイコン用）
         const { data: profiles, error: pError } = await supabaseClient
@@ -59,51 +67,69 @@ async function fetchData() {
     }
 }
 
-// シーズン切り替え
-function toggleSeason(season) {
-    currentSeason = season;
+// 大会フィルターボタンを動的に生成
+function renderTournamentButtons() {
+    const container = document.getElementById('tournament-filter-container');
+    if (!container) return;
+
+    // ユニークな大会名を取得。順序を制御したい場合は手動で定義するか、日付等でソートする
+    const tournaments = ['第二回麻雀大会', '第一回麻雀大会']; // 明示的に並びを固定
+    // もしデータから自動取得する場合は:
+    // const types = [...new Set(allRecords.map(r => r.tournament_type))].filter(t => t);
+
+    let html = '<div class="btn-group" role="group">';
+
+    // 大会ごとのボタン
+    tournaments.forEach(t => {
+        const isActive = currentTournament === t;
+        const label = t.replace('麻雀大会', ''); // 短く表示
+        html += `<button type="button" class="btn ${isActive ? 'btn-primary' : 'btn-outline-primary'}" onclick="setTournament('${t}')">${label}</button>`;
+    });
+
+    // 全シーズンボタン
+    const isAllActive = currentTournament === 'all';
+    html += `<button type="button" class="btn ${isAllActive ? 'btn-primary' : 'btn-outline-primary'}" onclick="setTournament('all')">全シーズン</button>`;
+
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// 大会切り替え
+function setTournament(type) {
+    currentTournament = type;
 
     // タイトルの更新
     const seasonTitle = document.getElementById('season-title');
     const pageMainTitle = document.getElementById('page-main-title');
-    if (season === 'current') {
-        seasonTitle.textContent = '🀄 第二回麻雀大会';
-        pageMainTitle.textContent = '🀄 麻雀ランキング';
-    } else {
+
+    if (type === 'all') {
         seasonTitle.textContent = '🀄 全シーズン記録';
         pageMainTitle.textContent = '🀄 歴代ランキング';
+    } else {
+        seasonTitle.textContent = `🀄 ${type}`;
+        pageMainTitle.textContent = '🀄 麻雀ランキング';
     }
 
-    // ボタンのスタイル更新
-    const seasonButtons = document.querySelectorAll('.btn-group .btn');
-    seasonButtons.forEach(btn => {
-        if (season === 'current' && btn.textContent === '今シーズン') {
-            btn.classList.replace('btn-outline-primary', 'btn-primary');
-        } else if (season === 'all' && btn.textContent === '全シーズン') {
-            btn.classList.replace('btn-outline-primary', 'btn-primary');
-        } else {
-            btn.classList.replace('btn-primary', 'btn-outline-primary');
-        }
-    });
+    renderTournamentButtons();
 
     // 現在表示中のランキングタイプを保持して再表示
     const activeBtn = document.querySelector('.ranking-nav .btn-success');
-    let currentType = 'all';
+    let rankingType = 'all';
     if (activeBtn) {
         const text = activeBtn.textContent;
-        if (text === 'チーム') currentType = 'team';
-        else if (text === '総合') currentType = 'all';
-        else if (text === '三麻') currentType = 'sanma';
-        else if (text === '四麻') currentType = 'yonma';
-        else if (text === '平均順位') currentType = 'avg_rank';
-        else if (text === '最大スコア') currentType = 'max_score';
-        else if (text === '平均スコア') currentType = 'avg_score';
-        else if (text === '和了率') currentType = 'win';
-        else if (text === '放銃率') currentType = 'deal';
-        else if (text === 'トップ率') currentType = 'top';
-        else if (text === 'ラス回避') currentType = 'avoid';
+        if (text === 'チーム') rankingType = 'team';
+        else if (text === '総合') rankingType = 'all';
+        else if (text === '三麻') rankingType = 'sanma';
+        else if (text === '四麻') rankingType = 'yonma';
+        else if (text === '平均順位') rankingType = 'avg_rank';
+        else if (text === '最大スコア') rankingType = 'max_score';
+        else if (text === '平均スコア') rankingType = 'avg_score';
+        else if (text === '和了率') rankingType = 'win';
+        else if (text === '放銃率') rankingType = 'deal';
+        else if (text === 'トップ率') rankingType = 'top';
+        else if (text === 'ラス回避') rankingType = 'avoid';
     }
-    showRanking(currentType);
+    showRanking(rankingType);
 }
 
 // ランキング切り替え
@@ -115,12 +141,11 @@ function showRanking(type) {
     // ボタンのスタイル更新
     buttons.forEach(btn => btn.classList.replace('btn-success', 'btn-outline-success'));
 
-    // シーズンフィルタリング
+    // 大会フィルタリング
     let seasonFiltered = allRecords;
-    if (currentSeason === 'current') {
-        seasonFiltered = allRecords.filter(r => r.tournament_type === '第二回麻雀大会');
+    if (currentTournament !== 'all') {
+        seasonFiltered = allRecords.filter(r => r.tournament_type === currentTournament);
     }
-    // currentSeason === 'all' の場合は全データを使用
 
     let filtered = [];
     let groupKey = 'account_name';

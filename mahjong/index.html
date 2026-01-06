@@ -378,13 +378,8 @@
             <h1 id="season-title" class="page-header display-4 fw-bold mb-0">🀄 第二回麻雀大会</h1>
             <h1 id="page-main-title" class="page-header display-4 fw-bold mb-4">🀄 麻雀ランキング</h1>
 
-            <!-- シーズン切り替え -->
-            <div class="mb-3">
-                <div class="btn-group" role="group">
-                    <button type="button" class="btn btn-primary" onclick="toggleSeason('current')">今シーズン</button>
-                    <button type="button" class="btn btn-outline-primary" onclick="toggleSeason('all')">全シーズン</button>
-                </div>
-            </div>
+            <!-- 大会切り替え（JavaScriptにより動的に生成） -->
+            <div id="tournament-filter-container" class="mb-3"></div>
 
             <!-- ランキング種別切り替え -->
             <div class="ranking-nav d-flex flex-column gap-2">
