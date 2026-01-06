@@ -409,3 +409,173 @@ async function handleCSVImport(event) {
     reader.readAsText(file);
     event.target.value = '';
 }
+
+// チーム管理申請の取得
+async function fetchTeamRequests() {
+    try {
+        // 追放申請取得
+        const { data: kickRequests } = await supabaseClient
+            .from('team_admin_requests')
+            .select('*')
+            .eq('type', 'kick')
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false });
+
+        // 解散申請取得
+        const { data: dissolutionRequests } = await supabaseClient
+            .from('team_admin_requests')
+            .select('*')
+            .eq('type', 'dissolution')
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false });
+
+        const totalPending = (kickRequests?.length || 0) + (dissolutionRequests?.length || 0);
+        const badge = document.getElementById('team-requests-badge');
+        if (totalPending > 0) {
+            badge.textContent = totalPending;
+            badge.style.display = 'inline';
+        } else {
+            badge.style.display = 'none';
+        }
+
+        // 追放申請リスト表示
+        const kickList = document.getElementById('kick-requests-list');
+        if (!kickRequests || kickRequests.length === 0) {
+            kickList.innerHTML = '<p class="text-muted">保留中の追放申請はありません</p>';
+        } else {
+            kickList.innerHTML = kickRequests.map(req => `
+                <div class="event-list-item">
+                    <div>
+                        <strong>チーム:</strong> ${req.team_name || '不明'}<br>
+                        <strong>対象メンバー:</strong> ${req.target_name || '不明'}<br>
+                        <small class="text-muted">申請者: ${req.requester_name || '不明'}</small>
+                    </div>
+                    <div>
+                        <button class="btn btn-success btn-sm me-2" onclick="approveKick('${req.id}')">承認</button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="rejectKick('${req.id}')">却下</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 解散申請リスト表示
+        const dissolveList = document.getElementById('dissolution-requests-list');
+        if (!dissolutionRequests || dissolutionRequests.length === 0) {
+            dissolveList.innerHTML = '<p class="text-muted">保留中の解散申請はありません</p>';
+        } else {
+            dissolveList.innerHTML = dissolutionRequests.map(req => `
+                <div class="event-list-item">
+                    <div>
+                        <strong>チーム:</strong> ${req.team_name || '不明'}<br>
+                        <small class="text-muted">申請者: ${req.requester_name || '不明'}</small>
+                    </div>
+                    <div>
+                        <button class="btn btn-danger btn-sm me-2" onclick="approveDissolution('${req.id}', '${req.team_id}')">解散を承認</button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="rejectDissolution('${req.id}')">却下</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+    } catch (err) {
+        console.error('チーム申請取得エラー:', err);
+    }
+}
+
+// 追放申請を承認
+async function approveKick(requestId) {
+    if (!confirm('この追放申請を承認しますか？')) return;
+    try {
+        // 申請情報取得
+        const { data: request } = await supabaseClient
+            .from('team_admin_requests')
+            .select('*')
+            .eq('id', requestId)
+            .single();
+
+        if (!request) throw new Error('申請が見つかりません');
+
+        // メンバーをチームから外す
+        await supabaseClient
+            .from('profiles')
+            .update({ team_id: null })
+            .eq('discord_user_id', request.target_discord_id);
+
+        // 申請を承認済みに
+        await supabaseClient
+            .from('team_admin_requests')
+            .update({ status: 'approved' })
+            .eq('id', requestId);
+
+        alert('追放を承認しました');
+        fetchTeamRequests();
+    } catch (err) {
+        console.error('追放承認エラー:', err);
+        alert('エラーが発生しました');
+    }
+}
+
+// 追放申請を却下
+async function rejectKick(requestId) {
+    if (!confirm('この追放申請を却下しますか？')) return;
+    try {
+        await supabaseClient
+            .from('team_admin_requests')
+            .update({ status: 'rejected' })
+            .eq('id', requestId);
+
+        alert('追放申請を却下しました');
+        fetchTeamRequests();
+    } catch (err) {
+        console.error('却下エラー:', err);
+        alert('エラーが発生しました');
+    }
+}
+
+// 解散申請を承認
+async function approveDissolution(requestId, teamId) {
+    if (!confirm('このチームを解散しますか？この操作は取り消せません')) return;
+    if (!confirm('本当に解散しますか？')) return;
+
+    try {
+        // メンバーのteam_idをnullに
+        await supabaseClient
+            .from('profiles')
+            .update({ team_id: null })
+            .eq('team_id', teamId);
+
+        // チームを削除
+        await supabaseClient
+            .from('teams')
+            .delete()
+            .eq('id', teamId);
+
+        // 申請を承認済みに
+        await supabaseClient
+            .from('team_admin_requests')
+            .update({ status: 'approved' })
+            .eq('id', requestId);
+
+        alert('チームを解散しました');
+        fetchTeamRequests();
+    } catch (err) {
+        console.error('解散承認エラー:', err);
+        alert('エラーが発生しました');
+    }
+}
+
+// 解散申請を却下
+async function rejectDissolution(requestId) {
+    if (!confirm('この解散申請を却下しますか？')) return;
+    try {
+        await supabaseClient
+            .from('team_admin_requests')
+            .update({ status: 'rejected' })
+            .eq('id', requestId);
+
+        alert('解散申請を却下しました');
+        fetchTeamRequests();
+    } catch (err) {
+        console.error('却下エラー:', err);
+        alert('エラーが発生しました');
+    }
+}

@@ -262,6 +262,13 @@
                                     data-bs-target="#users-pane" type="button" role="tab" onclick="fetchUsers()">👥
                                     ユーザー一覧</button>
                             </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="team-requests-tab" data-bs-toggle="pill"
+                                    data-bs-target="#team-requests-pane" type="button" role="tab"
+                                    onclick="fetchTeamRequests()">🏅
+                                    チーム管理申請 <span id="team-requests-badge" class="badge bg-danger"
+                                        style="display: none;">0</span></button>
+                            </li>
                         </ul>
                     </div>
 
@@ -394,6 +401,28 @@
                                         </tr>
                                     </tbody>
                                 </table>
+                            </div>
+                        </div>
+
+                        <!-- チーム管理申請タブ -->
+                        <div class="tab-pane fade" id="team-requests-pane" role="tabpanel" tabindex="0">
+                            <h2 class="mb-4" style="font-family: var(--font-title); color: var(--deep-gray);">🏅
+                                チーム管理申請</h2>
+
+                            <!-- 追放申請 -->
+                            <div class="admin-section">
+                                <h5 class="mb-3">🚫 メンバー追放申請</h5>
+                                <div id="kick-requests-list">
+                                    <p class="text-muted">読み込み中...</p>
+                                </div>
+                            </div>
+
+                            <!-- 解散申請 -->
+                            <div class="admin-section">
+                                <h5 class="mb-3">💥 チーム解散申請</h5>
+                                <div id="dissolution-requests-list">
+                                    <p class="text-muted">読み込み中...</p>
+                                </div>
                             </div>
                         </div>
                     </div>
