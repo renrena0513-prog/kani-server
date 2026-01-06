@@ -933,10 +933,10 @@
                     const scorePrefix = score >= 0 ? '+' : '';
                     const avatarUrl = profileMap[p.discord_user_id] || 'https://via.placeholder.com/32';
                     return `
-                                    <div class="player-entry d-flex align-items-center ${isMember ? 'fw-bold border-start border-3 ps-2 border-success' : ''}" style="min-width: 130px;">
+                                    <div class="player-entry d-flex align-items-center ${isMember ? 'fw-bold border-start border-3 ps-2 border-success' : ''}" style="width: 160px; flex-shrink: 0;">
                                         <img src="${avatarUrl}" class="rounded-circle me-1" width="20" height="20" onerror="this.src='https://via.placeholder.com/20'">
-                                        <span class="player-name text-truncate" style="max-width: 70px;">${p.account_name}</span>
-                                        <span class="ms-1 scale-90 ${scoreClass}" style="font-size: 0.9rem;">${scorePrefix}${score.toLocaleString()}</span>
+                                        <span class="player-name text-truncate" style="width: 90px;">${p.account_name}</span>
+                                        <span class="ms-auto fw-bold ${scoreClass}" style="font-size: 0.9rem; min-width: 40px; text-align: right;">${scorePrefix}${score.toLocaleString()}</span>
                                     </div>
                                 `;
                 }).join('')}
