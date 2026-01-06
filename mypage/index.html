@@ -598,29 +598,29 @@
         function setupUI() {
             const loginPrompt = document.getElementById('login-prompt');
             const profileContent = document.getElementById('profile-content');
-            const editArea = document.getElementById('edit-area');
             const viewArea = document.getElementById('view-area');
             const syncBtn = document.getElementById('sync-btn');
             const pageTitleLabel = document.getElementById('page-title-label');
             const pageHeader = document.querySelector('.page-header');
+            const nicknameEditBtn = document.getElementById('nickname-edit-btn');
 
-            profileContent.style.display = 'block';
-            loginPrompt.style.display = 'none';
+            if (profileContent) profileContent.style.display = 'block';
+            if (loginPrompt) loginPrompt.style.display = 'none';
 
             if (isViewMode) {
                 // 閲覧モード設定
-                editArea.style.display = 'none';
-                viewArea.style.display = 'block';
-                syncBtn.style.display = 'none';
-                pageTitleLabel.style.display = 'block';
-                pageHeader.textContent = '👤 プレイヤープロフィール';
+                if (viewArea) viewArea.style.display = 'block';
+                if (syncBtn) syncBtn.style.display = 'none';
+                if (pageTitleLabel) pageTitleLabel.style.display = 'block';
+                if (pageHeader) pageHeader.textContent = '👤 プレイヤープロフィール';
+                if (nicknameEditBtn) nicknameEditBtn.style.display = 'none';
             } else {
-                // マイページ設
-                editArea.style.display = 'block';
-                viewArea.style.display = 'none';
-                syncBtn.style.display = 'inline-block';
-                pageTitleLabel.style.display = 'none';
-                pageHeader.textContent = '👤 マイページ';
+                // マイページ設定
+                if (viewArea) viewArea.style.display = 'none';
+                if (syncBtn) syncBtn.style.display = 'inline-block';
+                if (pageTitleLabel) pageTitleLabel.style.display = 'none';
+                if (pageHeader) pageHeader.textContent = '👤 マイページ';
+                if (nicknameEditBtn) nicknameEditBtn.style.display = 'inline-block';
             }
         }
 
