@@ -65,6 +65,7 @@ function updateRuleDisplay() {
     const numPlayers = (mode === '三麻' ? 3 : 4);
     const oka = (returnPoints - distPoints) * numPlayers;
 
+    document.getElementById('opt-dist-default').textContent = `標準 (${distPoints.toLocaleString()}点)`;
     document.getElementById('disp-return-points').textContent = returnPoints.toLocaleString() + '点';
     document.getElementById('disp-uma').textContent = (mode === '三麻' ? '20-20' : '10-30');
     document.getElementById('disp-oka').textContent = '+' + (oka / 1000).toFixed(1);
