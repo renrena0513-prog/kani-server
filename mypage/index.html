@@ -266,8 +266,8 @@
         }
 
         .badge-item img {
-            width: 50px;
-            height: 50px;
+            width: 80px;
+            height: 80px;
             object-fit: contain;
         }
     </style>
@@ -331,6 +331,13 @@
                                         style="font-size: 0.9rem; border: 1px solid var(--gold);">
                                         🪙 <span id="user-coins-value">0</span>
                                     </span>
+                                </div>
+                                <!-- バッジ変更ボタン -->
+                                <div id="badge-change-area" style="display: none;">
+                                    <button id="badge-change-btn" class="btn btn-outline-secondary btn-sm"
+                                        onclick="openBadgeChangeModal()">
+                                        📛 装着バッジを変更
+                                    </button>
                                 </div>
 
                                 <!-- 自分の場合のみ表示する編集エリア -->
@@ -497,6 +504,27 @@
         </div>
     </div>
 
+    <!-- バッジ変更モーダル -->
+    <div class="modal fade" id="badgeChangeModal" tabindex="-1" aria-labelledby="badgeChangeModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="badgeChangeModalLabel">装着バッジを変更</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="badge-modal-list" class="row g-2">
+                        <!-- JSで生成 -->
+                    </div>
+                    <div class="text-center mt-3">
+                        <button class="btn btn-outline-danger btn-sm" onclick="equipBadge(null)">バッジを外す</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Supabase -->
@@ -604,7 +632,7 @@
             const coins = profile?.coins || 0;
 
             const badge = profile?.badges;
-            const badgeHtml = badge ? `<img src="${badge.image_url}" title="${badge.name}" style="width: 24px; height: 24px; vertical-align: text-bottom; margin-right: 6px;">` : '';
+            const badgeHtml = badge ? `<img src="${badge.image_url}" title="${badge.name}" style="width: 40px; height: 40px; vertical-align: middle; margin-right: 8px; border-radius: 8px;">` : '';
 
             document.getElementById('user-name').innerHTML = `${badgeHtml}${name}`;
 
@@ -614,6 +642,12 @@
             if (coinsDisplay && coinsValue) {
                 coinsValue.textContent = coins.toLocaleString();
                 coinsDisplay.style.display = 'block';
+            }
+
+            // バッジ変更ボタンを表示
+            const badgeChangeArea = document.getElementById('badge-change-area');
+            if (badgeChangeArea) {
+                badgeChangeArea.style.display = 'block';
             }
 
             if (profile?.account_name) {
@@ -779,12 +813,12 @@
                     const isEquipped = badge.id === equippedId;
                     return `
                         <div class="col-4 col-sm-3 col-md-2 text-center">
-                            <div class="badge-item ${isEquipped ? 'equipped' : ''}" 
-                                 onclick="${isViewMode ? '' : `equipBadge('${badge.id}')`}"
-                                 title="${badge.name}${isEquipped ? ' (装着中)' : ''}">
-                                <img src="${badge.image_url}" alt="${badge.name}">
-                                <div class="small mt-1 text-truncate">${badge.name}</div>
-                            </div>
+                            <a href="../badge/index.html?id=${badge.id}" class="text-decoration-none">
+                                <div class="badge-item ${isEquipped ? 'equipped' : ''}" 
+                                     title="${badge.name}${isEquipped ? ' (装着中)' : ''}">
+                                    <img src="${badge.image_url}" alt="${badge.name}">
+                                </div>
+                            </a>
                         </div>
                     `;
                 }).join('');
@@ -819,9 +853,68 @@
                 await loadOwnedBadges(); // リスト更新
                 await loadTargetUserInfo(); // 名前横のバッジ更新
                 displayUserInfo(); // ヘッダー更新
+
+                // モーダルを閉じる
+                const modalEl = document.getElementById('badgeChangeModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
             } catch (err) {
                 console.error('バッジ変更エラー:', err);
                 alert('バッジの変更に失敗しました');
+            }
+        }
+
+        // バッジ変更モーダルを開く
+        async function openBadgeChangeModal() {
+            const listEl = document.getElementById('badge-modal-list');
+            listEl.innerHTML = '<p class="text-center text-muted py-3">読み込み中...</p>';
+
+            const modalEl = document.getElementById('badgeChangeModal');
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+
+            try {
+                // 所持バッジの取得
+                const { data: owned, error } = await supabaseClient
+                    .from('user_badges')
+                    .select('badge_id, badges(*)')
+                    .eq('user_id', targetId);
+
+                if (error) throw error;
+
+                // 装着中のバッジID取得
+                const { data: profile } = await supabaseClient
+                    .from('profiles')
+                    .select('equipped_badge_id')
+                    .eq('discord_user_id', targetId)
+                    .maybeSingle();
+
+                const equippedId = profile?.equipped_badge_id;
+
+                if (!owned || owned.length === 0) {
+                    listEl.innerHTML = '<p class="text-center text-muted py-3">バッジを持っていません</p>';
+                    return;
+                }
+
+                listEl.innerHTML = owned.map(item => {
+                    const badge = item.badges;
+                    if (!badge) return '';
+                    const isEquipped = badge.id === equippedId;
+                    return `
+                        <div class="col-4 col-md-3 text-center">
+                            <div class="badge-item ${isEquipped ? 'equipped' : ''}" 
+                                 onclick="equipBadge('${badge.id}')"
+                                 style="cursor: pointer;"
+                                 title="${badge.name}${isEquipped ? ' (装着中)' : ''}">
+                                <img src="${badge.image_url}" alt="${badge.name}" style="width: 60px; height: 60px; object-fit: contain;">
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                console.error('バッジ読み込みエラー:', err);
+                listEl.innerHTML = '<p class="text-center text-danger py-3">エラーが発生しました</p>';
             }
         }
 

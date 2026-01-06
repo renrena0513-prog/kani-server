@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>バッジ詳細 - かに鯖</title>
+    <link rel="icon" type="image/png" href="../images/favicon.png">
+    <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kosugi+Maru&family=Noto+Sans+JP:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="../styles.css">
+    <style>
+        :root {
+            --deep-purple: #5a4a7a;
+            --gold: #d4a574;
+            --gold-light: #e8c89e;
+            --soft-cream: #fef9f3;
+            --font-title: 'Kosugi Maru', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .badge-detail-card {
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+        }
+
+        .badge-header {
+            background: linear-gradient(135deg, var(--deep-purple) 0%, #7c5a9a 100%);
+            padding: 40px;
+            text-align: center;
+            color: white;
+        }
+
+        .badge-image-large {
+            width: 150px;
+            height: 150px;
+            object-fit: contain;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .badge-name {
+            font-family: var(--font-title);
+            font-size: 1.8rem;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        .badge-description {
+            opacity: 0.9;
+            font-size: 0.95rem;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, var(--gold-light) 0%, var(--gold) 100%);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            color: #5a4a4a;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            font-family: var(--font-title);
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            opacity: 0.8;
+        }
+
+        .owner-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--gold);
+        }
+
+        .owner-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border-radius: 12px;
+            transition: background 0.2s;
+        }
+
+        .owner-item:hover {
+            background: #f8f9fa;
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 10px 20px;
+            border-radius: 30px;
+            background: rgba(255, 255, 255, 0.15);
+            transition: all 0.3s;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.25);
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container py-5">
+        <!-- 戻るボタン -->
+        <div class="mb-4">
+            <a href="#" onclick="goBack(); return false;" class="back-button">
+                ← 戻る
+            </a>
+        </div>
+
+        <!-- メインカード -->
+        <div class="badge-detail-card">
+            <!-- バッジヘッダー -->
+            <div class="badge-header">
+                <img id="badge-image" src="" alt="バッジ" class="badge-image-large">
+                <h1 id="badge-name" class="badge-name">読み込み中...</h1>
+                <p id="badge-description" class="badge-description"></p>
+            </div>
+
+            <!-- コンテンツ -->
+            <div class="p-4">
+                <!-- 統計 -->
+                <div class="row g-3 mb-4">
+                    <div class="col-6">
+                        <div class="stat-card">
+                            <div id="owner-count" class="stat-number">-</div>
+                            <div class="stat-label">所持者数</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-card">
+                            <div id="ownership-rate" class="stat-number">-</div>
+                            <div class="stat-label">所持率</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 所持者一覧 -->
+                <h3 class="mb-3" style="font-family: var(--font-title); color: var(--deep-purple);">
+                    🏆 このバッジの所持者
+                </h3>
+                <div id="owner-list" class="mb-3">
+                    <p class="text-center text-muted py-4">読み込み中...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Supabase設定 -->
+    <script src="../js/supabase-config.js"></script>
+
+    <script>
+        function goBack() {
+            if (document.referrer && document.referrer.includes(window.location.hostname)) {
+                history.back();
+            } else {
+                window.location.href = '../mypage/index.html';
+            }
+        }
+
+        async function initPage() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const badgeId = urlParams.get('id');
+
+            if (!badgeId) {
+                document.getElementById('badge-name').textContent = 'バッジが指定されていません';
+                return;
+            }
+
+            try {
+                // バッジ情報取得
+                const { data: badge, error: badgeError } = await supabaseClient
+                    .from('badges')
+                    .select('*')
+                    .eq('id', badgeId)
+                    .maybeSingle();
+
+                if (badgeError) throw badgeError;
+                if (!badge) {
+                    document.getElementById('badge-name').textContent = 'バッジが見つかりません';
+                    return;
+                }
+
+                // 表示更新
+                document.getElementById('badge-image').src = badge.image_url;
+                document.getElementById('badge-name').textContent = badge.name;
+                document.getElementById('badge-description').textContent = badge.description || '説明なし';
+                document.title = `${badge.name} - バッジ詳細`;
+
+                // 所持者取得
+                const { data: owners, error: ownerError } = await supabaseClient
+                    .from('user_badges')
+                    .select('user_id, profiles!user_id(discord_user_id, account_name, avatar_url)')
+                    .eq('badge_id', badgeId);
+
+                if (ownerError) throw ownerError;
+
+                // 全ユーザー数取得（所持率計算用）
+                const { count: totalUsers, error: countError } = await supabaseClient
+                    .from('profiles')
+                    .select('*', { count: 'exact', head: true });
+
+                if (countError) throw countError;
+
+                const ownerCount = owners ? owners.length : 0;
+                const ownershipRate = totalUsers > 0 ? ((ownerCount / totalUsers) * 100).toFixed(1) : 0;
+
+                document.getElementById('owner-count').textContent = ownerCount.toLocaleString();
+                document.getElementById('ownership-rate').textContent = ownershipRate + '%';
+
+                // 所持者リスト表示
+                const listEl = document.getElementById('owner-list');
+                if (ownerCount === 0) {
+                    listEl.innerHTML = '<p class="text-center text-muted py-4">まだ誰もこのバッジを持っていません</p>';
+                } else {
+                    listEl.innerHTML = owners.map(o => {
+                        const profile = o.profiles;
+                        if (!profile) return '';
+                        const avatarUrl = profile.avatar_url || 'https://via.placeholder.com/48';
+                        const name = profile.account_name || '名称未設定';
+                        return `
+                            <a href="../mypage/index.html?user=${profile.discord_user_id}" class="owner-item text-decoration-none text-dark">
+                                <img src="${avatarUrl}" alt="${name}" class="owner-avatar me-3" onerror="this.src='https://via.placeholder.com/48'">
+                                <span class="fw-bold">${name}</span>
+                            </a>
+                        `;
+                    }).join('');
+                }
+
+            } catch (err) {
+                console.error('バッジ詳細取得エラー:', err);
+                document.getElementById('badge-name').textContent = 'エラーが発生しました';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', initPage);
+    </script>
+</body>
+
+</html>
