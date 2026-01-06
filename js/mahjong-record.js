@@ -298,20 +298,26 @@ async function submitScores() {
     // Step 2: final_score 計算
     // ルール設定の取得
     const distType = document.getElementById('opt-dist-points').value;
+    const isTobiOn = document.querySelector('input[name="opt-tobi"]:checked').value === 'yes';
+    const isYakitoriOn = document.querySelector('input[name="opt-yakitori"]:checked').value === 'yes';
+
     let distPoints = (mode === '三麻' ? 30000 : 25000);
     if (distType === '100000') distPoints = 100000;
     const returnPoints = distPoints + 5000;
-    const isTobiOn = document.querySelector('input[name="opt-tobi"]:checked').value === 'yes';
-    const isYakitoriOn = document.querySelector('input[name="opt-yakitori"]:checked').value === 'yes';
+    const numPlayers = tempData.length;
+    const okaPoints = (returnPoints - distPoints) * numPlayers;
+
+    console.log('--- スコア計算開始 ---');
+    console.log('モード:', mode, '人数:', numPlayers);
+    console.log('配給点:', distPoints, '返し点:', returnPoints, 'オカ合計:', okaPoints);
+    console.log('オプション - 飛び賞:', isTobiOn, 'やきとり:', isYakitoriOn);
 
     // raw_pointsで降順ソート（同点は同順位）
     tempData.sort((a, b) => b.raw_points - a.raw_points);
 
     // 順位と基本スコアの計算
     let currentRank = 1;
-    let poolBonus = 0; // 飛び賞とやきとりのプール
-    const numPlayers = tempData.length;
-    const oka = (returnPoints - distPoints) * numPlayers;
+    let poolBonus = 0;
 
     for (let i = 0; i < tempData.length; i++) {
         if (i > 0 && tempData[i].raw_points < tempData[i - 1].raw_points) {
@@ -329,36 +335,42 @@ async function submitScores() {
             uma = umaMap[currentRank] || 0;
         }
 
-        let score = (tempData[i].raw_points - returnPoints) / 1000 + uma;
+        let baseScore = (tempData[i].raw_points - returnPoints) / 1000 + uma;
+        let penalty = 0;
 
         // 飛び賞ペナルティ
         if (isTobiOn && tempData[i].raw_points < 0) {
-            score -= 10;
+            penalty += 10;
             poolBonus += 10;
         }
 
         // やきとりペナルティ
         if (isYakitoriOn && tempData[i].win_count === 0) {
-            score -= 10;
+            penalty += 10;
             poolBonus += 10;
         }
 
-        tempData[i].final_score = score;
+        tempData[i].final_score = baseScore - penalty;
+        console.log(`プレイヤー ${i + 1}: ${tempData[i].account_name}, 点数: ${tempData[i].raw_points}, 順位: ${currentRank}, ウマ: ${uma}, ペナルティ: ${penalty}, 暫定スコア: ${tempData[i].final_score}`);
     }
 
     // 1位にオカとプールボーナスを加算
-    // 同点1位の場合は山分け
     const topRankPlayers = tempData.filter(p => p.rank === 1);
-    const topBonus = (oka / 1000 + poolBonus) / topRankPlayers.length;
+    const totalBonusPoints = (okaPoints / 1000) + poolBonus;
+    const bonusPerWinner = totalBonusPoints / topRankPlayers.length;
+
+    console.log('オカ(pts):', okaPoints / 1000, 'プール(pts):', poolBonus, 'ボーナス合計:', totalBonusPoints);
 
     topRankPlayers.forEach(p => {
-        p.final_score = Math.round((p.final_score + topBonus) * 10) / 10;
+        p.final_score += bonusPerWinner;
     });
 
-    // 他の順位も丸める
-    tempData.filter(p => p.rank !== 1).forEach(p => {
+    // 最終スコアリング（小数点1位で丸め）
+    tempData.forEach(p => {
         p.final_score = Math.round(p.final_score * 10) / 10;
+        console.log(`最終スコア - ${p.account_name}: ${p.final_score}`);
     });
+    console.log('--- スコア計算終了 ---');
 
     // Step 3: match_id を生成（全プレイヤーに同じIDを割り当て）
     const matchId = crypto.randomUUID();
