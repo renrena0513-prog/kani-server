@@ -142,6 +142,13 @@ async function displayUserInfo() {
 
         syncProfile();
 
+        // データベースから詳細プロフィールを取得（コイン・バッジ用）
+        const { data: profile } = await supabaseClient
+            .from('profiles')
+            .select('*, badges!equipped_badge_id(image_url, name)')
+            .eq('discord_user_id', discordId)
+            .maybeSingle();
+
         // 管理者ボタンの表示制御
         if (adminButton) {
             if (ADMIN_DISCORD_IDS.includes(discordId)) {
@@ -159,20 +166,28 @@ async function displayUserInfo() {
                 !window.location.pathname.includes('/mypage/');
             const mypagePath = isRoot ? 'mypage/index.html' : '../mypage/index.html';
 
-            // Supabaseが提供するavatar_urlを直接使用
             const avatarUrl = discordUser.avatar_url || discordUser.picture || '';
-            // アイコンとユーザー名をマイページリンクにする
-            userInfoElement.innerHTML = `
-                <a href="${mypagePath}" style="display: flex; align-items: center; text-decoration: none; color: inherit;">
+            const displayName = profile?.account_name || discordUser.full_name || discordUser.name || 'ユーザー';
+            const coins = profile?.coins || 0;
+            const badge = profile?.badges;
 
+            // バッジ画像、名前、コインを表示
+            userInfoElement.innerHTML = `
+                <div class="d-flex flex-column align-items-end me-2" style="line-height: 1.2;">
+                    <span class="user-display-name fw-bold" style="color: white; font-size: 0.9rem;">
+                        ${badge ? `<img src="${badge.image_url}" title="${badge.name}" style="width: 18px; height: 18px; margin-right: 4px; vertical-align: text-bottom;">` : ''}${displayName}
+                    </span>
+                    <span style="color: var(--gold); font-size: 0.75rem;">🪙 ${coins.toLocaleString()}</span>
+                </div>
+                <a href="${mypagePath}" class="avatar-link">
                     <img src="${avatarUrl}" 
                          alt="アバター" 
-                         style="width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; cursor: pointer;"
+                         style="width: 40px; height: 40px; border-radius: 50%; cursor: pointer;"
                          onerror="this.style.display='none'">
-                    <span>${discordUser.full_name || discordUser.name || 'ユーザー'}</span>
                 </a>
             `;
             userInfoElement.style.display = 'flex';
+            userInfoElement.style.alignItems = 'center';
         }
         if (loginButton) loginButton.style.display = 'none';
         // ホームではログアウトボタンを非表示

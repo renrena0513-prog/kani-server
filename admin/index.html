@@ -269,6 +269,11 @@
                                     チーム管理申請 <span id="team-requests-badge" class="badge bg-danger"
                                         style="display: none;">0</span></button>
                             </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="badges-tab" data-bs-toggle="pill"
+                                    data-bs-target="#badges-pane" type="button" role="tab" onclick="fetchBadges()">📛
+                                    バッジ管理</button>
+                            </li>
                         </ul>
                     </div>
 
@@ -392,12 +397,13 @@
                                             <th>Discord名 / ニックネーム</th>
                                             <th>Discord ID</th>
                                             <th>最終更新</th>
-                                            <th>統計</th>
+                                            <th>所持金</th>
+                                            <th>操作</th>
                                         </tr>
                                     </thead>
                                     <tbody id="users-list-body">
                                         <tr>
-                                            <td colspan="4" class="text-center text-muted py-4">読み込み中...</td>
+                                            <td colspan="6" class="text-center text-muted py-4">読み込み中...</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -423,6 +429,19 @@
                                 <div id="dissolution-requests-list">
                                     <p class="text-muted">読み込み中...</p>
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- バッジ管理タブ -->
+                        <div class="tab-pane fade" id="badges-pane" role="tabpanel" tabindex="0">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h2 class="mb-0" style="font-family: var(--font-title); color: var(--deep-gray);">📛
+                                    バッジマスター管理</h2>
+                                <button onclick="openBadgeModal()" class="btn btn-primary">新規バッジ登録</button>
+                            </div>
+                            <div class="row g-3" id="badges-list">
+                                <!-- バッジカードがここに表示される -->
+                                <p class="text-center text-muted py-5">読み込み中...</p>
                             </div>
                         </div>
                     </div>
@@ -513,6 +532,78 @@
                 </div>
             </div>
 
+            <!-- バッジ登録・編集モーダル -->
+            <div class="modal fade" id="badgeModal" tabindex="-1" aria-labelledby="badgeModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="badgeModalLabel">バッジ登録・編集</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="badge-form">
+                                <input type="hidden" id="badge-id">
+                                <div class="mb-3">
+                                    <label for="badge-name" class="form-label">バッジ名</label>
+                                    <input type="text" class="form-control" id="badge-name" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="badge-description" class="form-label">説明文</label>
+                                    <textarea class="form-control" id="badge-description" rows="2"></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="badge-image-file" class="form-label">画像アップロード</label>
+                                    <input type="file" class="form-control" id="badge-image-file" accept="image/*">
+                                    <div id="badge-image-preview" class="mt-2 text-center" style="display: none;">
+                                        <img src="" style="max-height: 100px; border-radius: 8px;" class="shadow-sm">
+                                    </div>
+                                    <input type="hidden" id="badge-image-url">
+                                </div>
+                                <div class="row">
+                                    <div class="col-6 mb-3">
+                                        <label for="badge-weight" class="form-label">ガチャ重み (確率用)</label>
+                                        <input type="number" class="form-control" id="badge-weight" value="10">
+                                    </div>
+                                    <div class="col-6 mb-3">
+                                        <label for="badge-price" class="form-label">金額 (コイン)</label>
+                                        <input type="number" class="form-control" id="badge-price" value="0">
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                            <button type="button" class="btn btn-primary" onclick="saveBadge()">保存する</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- コイン編集モーダル -->
+            <div class="modal fade" id="coinModal" tabindex="-1" aria-labelledby="coinModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-sm">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="coinModalLabel">コイン編集</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="text-center mb-3">
+                                <strong id="coin-edit-user-name">ユーザー名</strong>
+                            </div>
+                            <input type="hidden" id="coin-edit-user-id">
+                            <div class="mb-3">
+                                <label for="coin-amount" class="form-label">所持コイン</label>
+                                <input type="number" class="form-control text-center fs-4" id="coin-amount" value="0">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-primary w-100" onclick="saveUserCoins()">保存</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
 
             <!-- ローディングオーバーレイ -->
             <div id="loading-overlay" class="loading-overlay">
@@ -568,6 +659,8 @@
 
                 document.addEventListener('DOMContentLoaded', checkAdminAccess);
             </script>
+        </div> <!-- admin-content -->
+    </div> <!-- container -->
 </body>
 
 </html>

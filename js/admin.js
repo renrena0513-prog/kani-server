@@ -8,6 +8,33 @@ document.addEventListener('DOMContentLoaded', () => {
         recordModal = new bootstrap.Modal(modalElement);
     }
 
+    const badgeModalElement = document.getElementById('badgeModal');
+    if (badgeModalElement) {
+        window.badgeModal = new bootstrap.Modal(badgeModalElement);
+    }
+
+    const coinModalElement = document.getElementById('coinModal');
+    if (coinModalElement) {
+        window.coinModal = new bootstrap.Modal(coinModalElement);
+    }
+
+    // 画像プレビューの連動
+    const badgeImageFile = document.getElementById('badge-image-file');
+    if (badgeImageFile) {
+        badgeImageFile.addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const preview = document.getElementById('badge-image-preview');
+                    preview.querySelector('img').src = e.target.result;
+                    preview.style.display = 'block';
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
     // 記録一覧の取得
     fetchRecords();
 });
@@ -304,7 +331,7 @@ async function fetchUsers() {
         if (error) throw error;
         listBody.innerHTML = '';
         if (users.length === 0) {
-            listBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">登録されているユーザーはいません</td></tr>';
+            listBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">登録されているユーザーはいません</td></tr>';
             return;
         }
 
@@ -312,6 +339,10 @@ async function fetchUsers() {
             const tr = document.createElement('tr');
             const dateStr = user.updated_at ? new Date(user.updated_at).toLocaleString('ja-JP') : '-';
             const avatarHtml = user.avatar_url ? `<img src="${user.avatar_url}" width="32" height="32" class="rounded-circle shadow-sm">` : '<div class="bg-secondary rounded-circle" style="width:32px;height:32px;"></div>';
+
+            // 装着バッジの取得（簡易的に）
+            const coins = user.coins || 0;
+
             tr.innerHTML = `
                 <td>${avatarHtml}</td>
                 <td>
@@ -321,16 +352,200 @@ async function fetchUsers() {
                 <td><code>${user.discord_user_id || '-'}</code></td>
                 <td class="small text-muted">${dateStr}</td>
                 <td>
-                    <button onclick="impersonateUser('${user.discord_user_id}', '${(user.account_name || '名称未設定').replace(/'/g, "\\'")}', '${user.avatar_url || ''}')" class="btn btn-sm btn-outline-warning">
-                        🎭 操作
-                    </button>
+                    <span class="badge bg-info text-dark">🪙 ${coins.toLocaleString()}</span>
+                </td>
+                <td>
+                    <div class="d-flex gap-1">
+                        <button onclick="impersonateUser('${user.discord_user_id}', '${(user.account_name || '名称未設定').replace(/'/g, "\\'")}', '${user.avatar_url || ''}')" class="btn btn-sm btn-outline-warning" title="ユーザーとして操作">
+                            🎭
+                        </button>
+                        <button onclick="openCoinModal('${user.discord_user_id}', '${(user.account_name || '名称未設定').replace(/'/g, "\\'")}', ${coins})" class="btn btn-sm btn-outline-info" title="コイン編集">
+                            🪙
+                        </button>
+                    </div>
                 </td>
             `;
             listBody.appendChild(tr);
         });
     } catch (err) {
         console.error('ユーザー取得エラー:', err.message);
-        listBody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">エラー: ${err.message}</td></tr>`;
+        listBody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">エラー: ${err.message}</td></tr>`;
+    }
+}
+
+// 所持コイン編集
+function openCoinModal(userId, name, coins) {
+    document.getElementById('coin-edit-user-id').value = userId;
+    document.getElementById('coin-edit-user-name').textContent = name;
+    document.getElementById('coin-amount').value = coins;
+    window.coinModal.show();
+}
+
+async function saveUserCoins() {
+    const userId = document.getElementById('coin-edit-user-id').value;
+    const amount = Number(document.getElementById('coin-amount').value);
+
+    toggleLoading(true);
+    try {
+        const { error } = await supabaseClient
+            .from('profiles')
+            .update({ coins: amount })
+            .eq('discord_user_id', userId);
+
+        if (error) throw error;
+        window.coinModal.hide();
+        fetchUsers();
+    } catch (err) {
+        alert('コイン保存エラー: ' + err.message);
+    } finally {
+        toggleLoading(false);
+    }
+}
+
+// バッジ一覧取得
+async function fetchBadges() {
+    const list = document.getElementById('badges-list');
+    if (!list) return;
+
+    try {
+        const { data: badges, error } = await supabaseClient
+            .from('badges')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        list.innerHTML = '';
+        if (badges.length === 0) {
+            list.innerHTML = '<div class="col-12 text-center text-muted py-5">バッジが登録されていません</div>';
+            return;
+        }
+
+        badges.forEach(badge => {
+            const div = document.createElement('div');
+            div.className = 'col-md-4 col-lg-3';
+            div.innerHTML = `
+                <div class="card h-100 shadow-sm border-0 bg-white">
+                    <div class="card-body text-center">
+                        <img src="${badge.image_url}" class="mb-3 badge-thumb shadow-sm" style="width: 64px; height: 64px; object-fit: contain;">
+                        <h6 class="fw-bold mb-1">${badge.name}</h6>
+                        <p class="small text-muted mb-2" style="font-size: 0.75rem;">${badge.description || '(説明なし)'}</p>
+                        <div class="d-flex justify-content-between align-items-center mt-auto">
+                            <span class="badge bg-warning text-dark">🪙 ${badge.price}</span>
+                            <span class="badge bg-secondary">⚖️ ${badge.gacha_weight}</span>
+                        </div>
+                        <div class="mt-3 d-flex gap-1 justify-content-center">
+                            <button onclick='openBadgeModal(${JSON.stringify(badge).replace(/'/g, "&apos;")})' class="btn btn-sm btn-outline-primary">編集</button>
+                            <button onclick="deleteBadge('${badge.id}')" class="btn btn-sm btn-outline-danger">削除</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            list.appendChild(div);
+        });
+    } catch (err) {
+        console.error('バッジ取得エラー:', err);
+    }
+}
+
+// バッジモーダル制御
+function openBadgeModal(badge = null) {
+    const form = document.getElementById('badge-form');
+    form.reset();
+    document.getElementById('badge-image-preview').style.display = 'none';
+
+    if (badge) {
+        document.getElementById('badgeModalLabel').textContent = 'バッジ編集';
+        document.getElementById('badge-id').value = badge.id;
+        document.getElementById('badge-name').value = badge.name;
+        document.getElementById('badge-description').value = badge.description || '';
+        document.getElementById('badge-weight').value = badge.gacha_weight;
+        document.getElementById('badge-price').value = badge.price;
+        document.getElementById('badge-image-url').value = badge.image_url;
+
+        if (badge.image_url) {
+            const preview = document.getElementById('badge-image-preview');
+            preview.querySelector('img').src = badge.image_url;
+            preview.style.display = 'block';
+        }
+    } else {
+        document.getElementById('badgeModalLabel').textContent = '新規バッジ登録';
+        document.getElementById('badge-id').value = '';
+        document.getElementById('badge-image-url').value = '';
+    }
+    window.badgeModal.show();
+}
+
+async function saveBadge() {
+    const id = document.getElementById('badge-id').value;
+    const name = document.getElementById('badge-name').value;
+    const description = document.getElementById('badge-description').value;
+    const gacha_weight = Number(document.getElementById('badge-weight').value);
+    const price = Number(document.getElementById('badge-price').value);
+    let image_url = document.getElementById('badge-image-url').value;
+
+    const imageFile = document.getElementById('badge-image-file').files[0];
+
+    if (!name) { alert('バッジ名を入力してください'); return; }
+    if (!image_url && !imageFile) { alert('画像をアップロードしてください'); return; }
+
+    toggleLoading(true);
+    try {
+        // 画像アップロードがある場合
+        if (imageFile) {
+            const fileExt = imageFile.name.split('.').pop();
+            const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+            const filePath = `${fileName}`;
+
+            const { error: uploadError } = await supabaseClient
+                .storage
+                .from('badges')
+                .upload(filePath, imageFile, {
+                    cacheControl: '31536000', // 1年間キャッシュを有効にする
+                    upsert: false
+                });
+
+            if (uploadError) throw uploadError;
+
+            // 公開URLの取得
+            const { data } = supabaseClient
+                .storage
+                .from('badges')
+                .getPublicUrl(filePath);
+
+            image_url = data.publicUrl;
+        }
+
+        const badgeData = { name, description, gacha_weight, price, image_url };
+
+        let error;
+        if (id) {
+            ({ error } = await supabaseClient.from('badges').update(badgeData).eq('id', id));
+        } else {
+            ({ error } = await supabaseClient.from('badges').insert([badgeData]));
+        }
+
+        if (error) throw error;
+        window.badgeModal.hide();
+        fetchBadges();
+    } catch (err) {
+        alert('バッジ保存エラー: ' + err.message);
+    } finally {
+        toggleLoading(false);
+    }
+}
+
+async function deleteBadge(id) {
+    if (!confirm('このバッジを削除してもよろしいですか？マスターデータを削除すると、所持しているユーザーからも消える可能性があります。')) return;
+    toggleLoading(true);
+    try {
+        const { error } = await supabaseClient.from('badges').delete().eq('id', id);
+        if (error) throw error;
+        fetchBadges();
+    } catch (err) {
+        alert('バッジ削除エラー: ' + err.message);
+    } finally {
+        toggleLoading(false);
     }
 }
 

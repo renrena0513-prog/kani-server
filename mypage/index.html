@@ -243,6 +243,33 @@
         .stat-rank.no-data {
             background: #adb5bd;
         }
+
+        /* バッジ一覧のスタイル */
+        .badge-item {
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+            border-radius: 12px;
+            padding: 10px;
+            background: #f8f9fa;
+        }
+
+        .badge-item:hover {
+            transform: scale(1.05);
+            background: #fff;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .badge-item.equipped {
+            border-color: var(--gold);
+            background: #fff9e6;
+        }
+
+        .badge-item img {
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+        }
     </style>
 </head>
 
@@ -447,6 +474,17 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- バッジコレクション -->
+                    <div class="profile-card mb-4" id="badge-collection-section" style="display: none;">
+                        <h4 style="font-family: var(--font-title); color: var(--deep-purple); margin-bottom: 20px;">
+                            📛 バッジコレクション
+                        </h4>
+                        <div id="badge-list" class="row g-3">
+                            <!-- JSで生成 -->
+                            <p class="text-center text-muted py-3">読み込み中...</p>
+                        </div>
+                    </div>
                 </div>
 
             </div>
@@ -501,6 +539,9 @@
 
             // 麻雀統計の読み込み（共有ロジック）
             await loadMahjongStats();
+
+            // バッジコレクションの読み込み
+            await loadOwnedBadges();
         }
 
         function setupUI() {
@@ -546,15 +587,19 @@
             // アバター
             document.getElementById('user-avatar').src = discordUser.avatar_url || 'https://via.placeholder.com/150';
 
-            // ユーザー名（DBから取得を優先）
+            // ユーザー情報の取得（バッジ情報を含む）
             const { data: profile } = await supabaseClient
                 .from('profiles')
-                .select('account_name, avatar_url')
+                .select('account_name, avatar_url, equipped_badge_id, badges!equipped_badge_id(image_url, name)')
                 .eq('discord_user_id', targetId)
                 .maybeSingle();
 
-            document.getElementById('user-name').textContent =
-                profile?.account_name || discordUser.full_name || discordUser.name || 'ユーザー';
+            const name = profile?.account_name || discordUser.full_name || discordUser.name || 'ユーザー';
+
+            const badge = profile?.badges;
+            const badgeHtml = badge ? `<img src="${badge.image_url}" title="${badge.name}" style="width: 24px; height: 24px; vertical-align: text-bottom; margin-right: 6px;">` : '';
+
+            document.getElementById('user-name').innerHTML = `${badgeHtml}${name}`;
 
             if (profile?.account_name) {
                 document.getElementById('user-nickname').value = profile.account_name;
@@ -573,7 +618,18 @@
 
             if (profile) {
                 document.getElementById('user-avatar').src = profile.avatar_url || 'https://via.placeholder.com/150';
-                document.getElementById('user-name').textContent = profile.account_name || '名称未設定';
+
+                // バッジ装着情報の取得
+                const { data: badgeProfile } = await supabaseClient
+                    .from('profiles')
+                    .select('equipped_badge_id, badges!equipped_badge_id(image_url, name)')
+                    .eq('discord_user_id', targetId)
+                    .maybeSingle();
+
+                const badge = badgeProfile?.badges;
+                const badgeHtml = badge ? `<img src="${badge.image_url}" title="${badge.name}" style="width: 24px; height: 24px; vertical-align: text-bottom; margin-right: 6px;">` : '';
+
+                document.getElementById('user-name').innerHTML = `${badgeHtml}${profile.account_name || '名称未設定'}`;
             } else {
                 document.getElementById('user-name').textContent = 'Unknown Player';
             }
@@ -658,6 +714,90 @@
                 console.error('Error updating nickname:', err);
                 msg.textContent = 'エラーが発生しました';
                 msg.className = 'small mt-1 text-danger flex-grow-1';
+            }
+        }
+
+        // ============ バッジ管理機能 ============
+        async function loadOwnedBadges() {
+            const section = document.getElementById('badge-collection-section');
+            const list = document.getElementById('badge-list');
+            if (!section || !list) return;
+
+            // 閲覧モードの場合は、装着バッジだけ表示するか、セクション自体隠す（今回はセクション表示）
+            section.style.display = 'block';
+
+            try {
+                // 所持バッジの取得
+                const { data: owned, error } = await supabaseClient
+                    .from('user_badges')
+                    .select('badge_id, badges(*)')
+                    .eq('user_id', targetId);
+
+                if (error) throw error;
+
+                // 装着中のバッジID取得
+                const { data: profile } = await supabaseClient
+                    .from('profiles')
+                    .select('equipped_badge_id')
+                    .eq('discord_user_id', targetId)
+                    .maybeSingle();
+
+                const equippedId = profile?.equipped_badge_id;
+
+                if (!owned || owned.length === 0) {
+                    list.innerHTML = '<p class="text-center text-muted py-3">まだバッジを持っていません</p>';
+                    return;
+                }
+
+                list.innerHTML = owned.map(item => {
+                    const badge = item.badges;
+                    if (!badge) return '';
+                    const isEquipped = badge.id === equippedId;
+                    return `
+                        <div class="col-4 col-sm-3 col-md-2 text-center">
+                            <div class="badge-item ${isEquipped ? 'equipped' : ''}" 
+                                 onclick="${isViewMode ? '' : `equipBadge('${badge.id}')`}"
+                                 title="${badge.name}${isEquipped ? ' (装着中)' : ''}">
+                                <img src="${badge.image_url}" alt="${badge.name}">
+                                <div class="small mt-1 text-truncate">${badge.name}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                console.error('バッジ取得エラー:', err);
+                list.innerHTML = '<p class="text-center text-danger py-3">読み込み中にエラーが発生しました</p>';
+            }
+        }
+
+        async function equipBadge(badgeId) {
+            if (isViewMode) return;
+
+            // 現在の装着状況を確認
+            const { data: current } = await supabaseClient
+                .from('profiles')
+                .select('equipped_badge_id')
+                .eq('discord_user_id', targetId)
+                .maybeSingle();
+
+            // 同じバッジをクリックした場合は外す（任意：今回は「外す」機能も兼ねる）
+            const newBadgeId = (current?.equipped_badge_id === badgeId) ? null : badgeId;
+
+            try {
+                const { error } = await supabaseClient
+                    .from('profiles')
+                    .update({ equipped_badge_id: newBadgeId })
+                    .eq('discord_user_id', targetId);
+
+                if (error) throw error;
+
+                await loadOwnedBadges(); // リスト更新
+                await loadTargetUserInfo(); // 名前横のバッジ更新
+                displayUserInfo(); // ヘッダー更新
+            } catch (err) {
+                console.error('バッジ変更エラー:', err);
+                alert('バッジの変更に失敗しました');
             }
         }
 
