@@ -362,6 +362,9 @@ async function fetchUsers() {
                         <button onclick="openCoinModal('${user.discord_user_id}', '${(user.account_name || '名称未設定').replace(/'/g, "\\'")}', ${coins})" class="btn btn-sm btn-outline-info" title="コイン編集">
                             🪙
                         </button>
+                        <button onclick="openBadgeGrantModal('${user.discord_user_id}', '${(user.account_name || '名称未設定').replace(/'/g, "\\'")}')" class="btn btn-sm btn-outline-success" title="バッジ付与">
+                            📛
+                        </button>
                     </div>
                 </td>
             `;
@@ -397,6 +400,113 @@ async function saveUserCoins() {
         fetchUsers();
     } catch (err) {
         alert('コイン保存エラー: ' + err.message);
+    } finally {
+        toggleLoading(false);
+    }
+}
+
+// バッジ付与モーダル
+let badgeGrantModal;
+document.addEventListener('DOMContentLoaded', () => {
+    const modalEl = document.getElementById('badgeGrantModal');
+    if (modalEl) badgeGrantModal = new bootstrap.Modal(modalEl);
+});
+
+async function openBadgeGrantModal(userId, userName) {
+    document.getElementById('badge-grant-user-id').value = userId;
+    document.getElementById('badge-grant-user-name').textContent = userName;
+
+    const listEl = document.getElementById('badge-grant-list');
+    const ownedListEl = document.getElementById('badge-grant-owned-list');
+    listEl.innerHTML = '<p class="text-muted text-center">読み込み中...</p>';
+    ownedListEl.innerHTML = '';
+
+    badgeGrantModal.show();
+
+    try {
+        // 全バッジ取得
+        const { data: allBadges, error: badgeError } = await supabaseClient
+            .from('badges')
+            .select('*')
+            .order('name');
+
+        if (badgeError) throw badgeError;
+
+        // ユーザーの所持バッジ取得
+        const { data: userBadges, error: userBadgeError } = await supabaseClient
+            .from('user_badges')
+            .select('badge_id')
+            .eq('user_id', userId);
+
+        if (userBadgeError) throw userBadgeError;
+
+        const ownedBadgeIds = userBadges ? userBadges.map(ub => ub.badge_id) : [];
+
+        // 所持バッジの表示
+        const ownedBadges = allBadges.filter(b => ownedBadgeIds.includes(b.id));
+        const notOwnedBadges = allBadges.filter(b => !ownedBadgeIds.includes(b.id));
+
+        ownedListEl.innerHTML = ownedBadges.length > 0
+            ? ownedBadges.map(b => `
+                <div class="position-relative" style="cursor: pointer;" onclick="revokeBadge('${userId}', '${b.id}', '${b.name.replace(/'/g, "\\'")}')">
+                    <img src="${b.image_url}" title="${b.name} (クリックで剥奪)" style="width: 40px; height: 40px; border-radius: 8px; border: 2px solid var(--gold);">
+                </div>
+            `).join('')
+            : '<span class="text-muted small">なし</span>';
+
+        // 付与可能バッジの表示
+        listEl.innerHTML = notOwnedBadges.length > 0
+            ? notOwnedBadges.map(b => `
+                <div class="col-4 col-md-3">
+                    <div class="card h-100 text-center p-2" style="cursor: pointer;" onclick="grantBadge('${userId}', '${b.id}', '${b.name.replace(/'/g, "\\'")}')">
+                        <img src="${b.image_url}" class="mx-auto" style="width: 48px; height: 48px; border-radius: 8px;">
+                        <small class="mt-1 text-truncate">${b.name}</small>
+                    </div>
+                </div>
+            `).join('')
+            : '<p class="text-muted text-center">付与可能なバッジがありません</p>';
+
+    } catch (err) {
+        console.error('バッジ読み込みエラー:', err);
+        listEl.innerHTML = `<p class="text-danger">エラー: ${err.message}</p>`;
+    }
+}
+
+async function grantBadge(userId, badgeId, badgeName) {
+    if (!confirm(`「${badgeName}」をこのユーザーに付与しますか？`)) return;
+
+    toggleLoading(true);
+    try {
+        const { error } = await supabaseClient
+            .from('user_badges')
+            .insert([{ user_id: userId, badge_id: badgeId }]);
+
+        if (error) throw error;
+        alert('バッジを付与しました');
+        openBadgeGrantModal(userId, document.getElementById('badge-grant-user-name').textContent);
+    } catch (err) {
+        alert('バッジ付与エラー: ' + err.message);
+    } finally {
+        toggleLoading(false);
+    }
+}
+
+async function revokeBadge(userId, badgeId, badgeName) {
+    if (!confirm(`「${badgeName}」をこのユーザーから剥奪しますか？`)) return;
+
+    toggleLoading(true);
+    try {
+        const { error } = await supabaseClient
+            .from('user_badges')
+            .delete()
+            .eq('user_id', userId)
+            .eq('badge_id', badgeId);
+
+        if (error) throw error;
+        alert('バッジを剥奪しました');
+        openBadgeGrantModal(userId, document.getElementById('badge-grant-user-name').textContent);
+    } catch (err) {
+        alert('バッジ剥奪エラー: ' + err.message);
     } finally {
         toggleLoading(false);
     }

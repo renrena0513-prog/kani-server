@@ -616,6 +616,37 @@
             </div>
 
 
+            <!-- バッジ付与モーダル -->
+            <div class="modal fade" id="badgeGrantModal" tabindex="-1" aria-labelledby="badgeGrantModalLabel"
+                aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="badgeGrantModalLabel">バッジ付与</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="text-center mb-3">
+                                <strong id="badge-grant-user-name">ユーザー名</strong>
+                            </div>
+                            <input type="hidden" id="badge-grant-user-id">
+                            <div class="mb-3">
+                                <label class="form-label">付与するバッジを選択</label>
+                                <div id="badge-grant-list" class="row g-2" style="max-height: 300px; overflow-y: auto;">
+                                    <!-- JSで生成 -->
+                                </div>
+                            </div>
+                            <div id="badge-grant-owned" class="mt-3">
+                                <label class="form-label text-muted small">現在所持しているバッジ</label>
+                                <div id="badge-grant-owned-list" class="d-flex flex-wrap gap-1">
+                                    <!-- JSで生成 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- ローディングオーバーレイ -->
             <div id="loading-overlay" class="loading-overlay">
                 <div class="spinner-border text-light" role="status">
