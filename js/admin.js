@@ -321,8 +321,11 @@ async function fetchUsers() {
                 <td><code>${user.discord_user_id || '-'}</code></td>
                 <td class="small text-muted">${dateStr}</td>
                 <td>
-                    <a href="../mypage/index.html?user=${user.discord_user_id}" class="btn btn-sm btn-outline-primary" target="_blank">
-                        📊 統計
+                    <button onclick="impersonateUser('${user.discord_user_id}', '${(user.account_name || '名称未設定').replace(/'/g, "\\'")}', '${user.avatar_url || ''}')" class="btn btn-sm btn-outline-warning">
+                        🎭 操作
+                    </button>
+                    <a href="../mypage/index.html?user=${user.discord_user_id}" class="ms-2 small text-decoration-none" target="_blank" title="統計ページを開く">
+                        📊
                     </a>
                 </td>
             `;
@@ -332,6 +335,22 @@ async function fetchUsers() {
         console.error('ユーザー取得エラー:', err.message);
         listBody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">エラー: ${err.message}</td></tr>`;
     }
+}
+
+// ユーザーのなりすましを開始
+function impersonateUser(discordUserId, accountName, avatarUrl) {
+    if (!confirm(`${accountName} として操作を開始しますか？\n（管理者メニューへのアクセスは維持されますが、他の機能はそのユーザーとして動作します）`)) return;
+
+    const userData = {
+        discord_user_id: discordUserId,
+        name: accountName,
+        avatar_url: avatarUrl
+    };
+
+    localStorage.setItem('admin_impersonate_user', JSON.stringify(userData));
+
+    // トップページに遷移して操作を開始
+    window.location.href = '../index.html';
 }
 
 // CSV処理

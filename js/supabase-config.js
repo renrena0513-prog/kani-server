@@ -39,6 +39,29 @@ async function logout() {
 
 // 現在のユーザー情報を取得
 async function getCurrentUser() {
+    // なりすまし実行中かチェック
+    const impersonatedUser = localStorage.getItem('admin_impersonate_user');
+    if (impersonatedUser) {
+        try {
+            const userData = JSON.parse(impersonatedUser);
+            // Supabaseのユーザーオブジェクトに近い構造を返す（user_metadataにデータを詰め込む）
+            return {
+                id: 'impersonated',
+                user_metadata: {
+                    provider_id: userData.discord_user_id,
+                    full_name: userData.name,
+                    name: userData.name,
+                    avatar_url: userData.avatar_url,
+                    is_impersonated: true
+                },
+                is_impersonated: true
+            };
+        } catch (e) {
+            console.error("なりすましデータのパースに失敗しました:", e);
+            localStorage.removeItem('admin_impersonate_user');
+        }
+    }
+
     const { data: { user } } = await supabaseClient.auth.getUser();
     return user;
 }
@@ -56,6 +79,27 @@ async function displayUserInfo() {
         // ログイン済み
         const discordUser = user.user_metadata;
         const discordId = discordUser.provider_id;
+
+        // なりすましバナーの表示
+        const impersonatedUserJson = localStorage.getItem('admin_impersonate_user');
+        if (impersonatedUserJson && !document.getElementById('impersonation-banner')) {
+            try {
+                const impersonatedUser = JSON.parse(impersonatedUserJson);
+                const banner = document.createElement('div');
+                banner.id = 'impersonation-banner';
+                banner.className = 'bg-warning text-dark px-3 py-2 text-center sticky-top shadow-sm';
+                banner.style.zIndex = '2000';
+                banner.innerHTML = `
+                    <div class="d-flex align-items-center justify-content-center flex-wrap">
+                        <span class="me-3 fw-bold">👑 ${impersonatedUser.name || 'ユーザー'} として操作中 (管理者権限)</span>
+                        <button onclick="stopImpersonation()" class="btn btn-sm btn-outline-dark fw-bold">なりすましを終了</button>
+                    </div>
+                `;
+                document.body.prepend(banner);
+            } catch (e) {
+                console.error("Banner display error:", e);
+            }
+        }
 
         // プロフィール情報の同期（非同期で実行）
         const syncProfile = async () => {
@@ -144,6 +188,12 @@ async function displayUserInfo() {
         const mypageLink = document.getElementById('mypage-link');
         if (mypageLink) mypageLink.style.display = 'none';
     }
+}
+
+// なりすましを終了
+function stopImpersonation() {
+    localStorage.removeItem('admin_impersonate_user');
+    window.location.reload();
 }
 
 // ページ読み込み時にユーザー情報を確認
