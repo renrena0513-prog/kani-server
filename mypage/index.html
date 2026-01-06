@@ -250,8 +250,8 @@
     <div class="container py-5">
         <!-- 戻るボタン -->
         <div class="mb-4">
-            <a href="../index.html" class="back-button">
-                ← ホームに戻る
+            <a href="#" onclick="goBack(); return false;" class="back-button">
+                ← 戻る
             </a>
         </div>
 
@@ -882,6 +882,15 @@
                     games: p.count
                 };
             });
+        }
+
+        // 戻るボタン - 前のページに戻る（履歴がない場合はホームへ）
+        function goBack() {
+            if (document.referrer && document.referrer.includes(location.hostname)) {
+                history.back();
+            } else {
+                location.href = '../index.html';
+            }
         }
 
 
