@@ -227,11 +227,22 @@ async function submitScores() {
             }
 
             filledCount++;
+
+            // チーム名を取得（selectのvalueはIDなので、実際のチーム名を取得）
+            let teamName = null;
+            if (match === 'チーム戦') {
+                const teamId = entry.querySelector('.player-team').value;
+                if (teamId) {
+                    const team = allTeams.find(t => t.id === teamId);
+                    teamName = team ? team.team_name : null;
+                }
+            }
+
             tempData.push({
                 discord_user_id: discordUserId || null,
                 account_name: accountName,
                 raw_points: rawPoints,
-                team_name: (match === 'チーム戦') ? (entry.querySelector('.player-team').value || null) : null,
+                team_name: teamName,
                 win_count: Number(entry.querySelector('.player-win').value || 0),
                 deal_in_count: Number(entry.querySelector('.player-deal').value || 0)
             });

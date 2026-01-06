@@ -130,7 +130,7 @@ function showRanking(type) {
     if (type === 'team') {
         title.textContent = 'チームランキング';
         nameHeader.textContent = 'チーム名';
-        statHeader.textContent = '代表指標';
+        statHeader.style.display = 'none'; // チームランキングでは代表指標列を非表示
         // 個人戦以外のデータを抽出し、チーム名があるものを対象にする
         filtered = seasonFiltered.filter(r => r.match_mode !== '個人戦' && r.team_name);
         groupKey = 'team_name';
@@ -138,6 +138,7 @@ function showRanking(type) {
     } else if (type === 'all') {
         title.textContent = '総合個人ランキング';
         nameHeader.textContent = '名前';
+        statHeader.style.display = '';
         statHeader.textContent = '平均スコア';
         filtered = seasonFiltered; // 全集計
         buttons[1].classList.replace('btn-outline-success', 'btn-success');
@@ -368,7 +369,7 @@ function renderRanking(records, groupKey, type = 'all') {
                         <span class="${canLink ? 'hover-underline' : ''} fw-bold">${displayName}</span>
                     </a>
                 </td>
-                <td class="fw-bold ${statColorClass}" style="font-size: 1.1rem;">
+                <td class="fw-bold ${statColorClass}" style="font-size: 1.1rem;${s.isTeam ? ' display: none;' : ''}">
                     ${statValue}
                 </td>
                 <td class="fw-bold ${s.score > 0 ? 'text-success' : (s.score < 0 ? 'text-danger' : '')}">
