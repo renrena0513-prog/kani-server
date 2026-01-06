@@ -437,7 +437,18 @@
                             <div class="d-flex justify-content-between align-items-center mb-4">
                                 <h2 class="mb-0" style="font-family: var(--font-title); color: var(--deep-gray);">📛
                                     バッジマスター管理</h2>
-                                <button onclick="openBadgeModal()" class="btn btn-primary">新規バッジ登録</button>
+                                <div class="d-flex gap-2">
+                                    <button onclick="document.getElementById('badge-bulk-upload').click()"
+                                        class="btn btn-outline-success btn-sm">
+                                        🖼️ 画像一括アップロード
+                                    </button>
+                                    <input type="file" id="badge-bulk-upload" style="display: none;" accept="image/*"
+                                        multiple onchange="handleBulkBadgeUpload(event)">
+                                    <button onclick="exportBadgesToCSV()" class="btn btn-outline-secondary btn-sm">
+                                        📤 CSVエクスポート
+                                    </button>
+                                    <button onclick="openBadgeModal()" class="btn btn-primary">新規バッジ登録</button>
+                                </div>
                             </div>
                             <div class="row g-3" id="badges-list">
                                 <!-- バッジカードがここに表示される -->

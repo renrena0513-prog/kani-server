@@ -549,6 +549,107 @@ async function deleteBadge(id) {
     }
 }
 
+// 画像一括アップロード
+async function handleBulkBadgeUpload(event) {
+    const files = Array.from(event.target.files);
+    if (files.length === 0) return;
+
+    if (!confirm(`${files.length}個の画像からバッジを作成しますか？\n（名前はファイル名から自動生成されます）`)) {
+        event.target.value = '';
+        return;
+    }
+
+    toggleLoading(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const file of files) {
+        try {
+            // ファイル名からバッジ名を生成（拡張子除去）
+            const baseName = file.name.replace(/\.[^/.]+$/, '');
+
+            // 画像をアップロード
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+
+            const { error: uploadError } = await supabaseClient
+                .storage
+                .from('badges')
+                .upload(fileName, file, {
+                    cacheControl: '31536000',
+                    upsert: false
+                });
+
+            if (uploadError) throw uploadError;
+
+            // 公開URLの取得
+            const { data } = supabaseClient
+                .storage
+                .from('badges')
+                .getPublicUrl(fileName);
+
+            // バッジをDBに登録
+            const { error: insertError } = await supabaseClient
+                .from('badges')
+                .insert([{
+                    name: baseName,
+                    description: '',
+                    gacha_weight: 10,
+                    price: 0,
+                    image_url: data.publicUrl
+                }]);
+
+            if (insertError) throw insertError;
+            successCount++;
+        } catch (err) {
+            console.error(`${file.name} の登録に失敗:`, err);
+            errorCount++;
+        }
+    }
+
+    toggleLoading(false);
+    alert(`完了: ${successCount}件成功, ${errorCount}件失敗`);
+    event.target.value = '';
+    fetchBadges();
+}
+
+// バッジCSVエクスポート
+async function exportBadgesToCSV() {
+    try {
+        const { data: badges, error } = await supabaseClient
+            .from('badges')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        if (!badges || badges.length === 0) {
+            alert('エクスポートするバッジがありません');
+            return;
+        }
+
+        const headers = ['id', 'name', 'description', 'image_url', 'gacha_weight', 'price', 'created_at'];
+        const csvRows = [headers.join(',')];
+
+        badges.forEach(badge => {
+            const values = headers.map(header => {
+                const val = badge[header] ?? '';
+                return `"${String(val).replace(/"/g, '""')}"`;
+            });
+            csvRows.push(values.join(','));
+        });
+
+        const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `badges_${new Date().toISOString().slice(0, 10)}.csv`;
+        link.click();
+    } catch (err) {
+        alert('CSVエクスポートエラー: ' + err.message);
+    }
+}
+
+
 // ユーザーのなりすましを開始
 function impersonateUser(discordUserId, accountName, avatarUrl) {
     if (!confirm(`${accountName} として操作を開始しますか？\n（管理者メニューへのアクセスは維持されますが、他の機能はそのユーザーとして動作します）`)) return;
