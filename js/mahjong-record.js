@@ -409,6 +409,12 @@ async function submitScores() {
         if (error) throw error;
 
         alert('スコアを送信しました！');
+
+        // Discord通知を送信
+        if (typeof DISCORD_WEBHOOK_URL !== 'undefined' && DISCORD_WEBHOOK_URL) {
+            await sendDiscordNotification(dataToInsert);
+        }
+
         window.location.href = './index.html'; // ランキングに戻る
     } catch (err) {
         alert('送信エラー: ' + err.message);

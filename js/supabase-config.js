@@ -10,6 +10,9 @@ const ADMIN_DISCORD_IDS = [
 // Supabase クライアント初期化
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// Discord Webhook URL
+const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1458091853713772708/tXp5Ahcvzc6I0MXc4XlZLbq--tEwUSf1AT5ZVtodgDsXQBqnOKsi6I6YWhKdDXyKpWWk';
+
 // ===== 認証機能 =====
 
 // Discord でログイン
