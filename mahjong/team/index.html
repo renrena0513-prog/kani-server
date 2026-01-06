@@ -867,14 +867,29 @@
             const matchIds = [...new Set(results.map(r => r.match_id))].slice(0, 10);
 
             let allMatchPlayers = [];
+            let participantProfiles = [];
             if (matchIds.length > 0) {
                 const { data: participants } = await supabaseClient
                     .from('match_results')
                     .select('*')
                     .in('match_id', matchIds)
+                    .eq('match_mode', 'チーム戦') // ここでも念のためチーム戦に絞る
                     .order('event_datetime', { ascending: false });
                 allMatchPlayers = participants || [];
+
+                // 全参加者のプロフィール（アバター用）を取得
+                const participantIds = [...new Set(allMatchPlayers.map(p => p.discord_user_id).filter(id => id))];
+                if (participantIds.length > 0) {
+                    const { data: profiles } = await supabaseClient
+                        .from('profiles')
+                        .select('discord_user_id, avatar_url')
+                        .in('discord_user_id', participantIds);
+                    participantProfiles = profiles || [];
+                }
             }
+
+            const profileMap = {};
+            participantProfiles.forEach(p => profileMap[p.discord_user_id] = p.avatar_url);
 
             const logContainer = document.getElementById('team-battle-log');
             if (matchIds.length === 0) {
@@ -916,10 +931,12 @@
                     const score = p.final_score || p.score || 0;
                     const scoreClass = score >= 0 ? 'text-success' : 'text-danger';
                     const scorePrefix = score >= 0 ? '+' : '';
+                    const avatarUrl = profileMap[p.discord_user_id] || 'https://via.placeholder.com/32';
                     return `
-                                    <div class="player-entry d-flex align-items-center ${isMember ? 'fw-bold border-start border-3 ps-2 border-success' : ''}" style="min-width: 120px;">
-                                        <span class="player-name text-truncate" style="max-width: 80px;">${p.account_name}</span>
-                                        <span class="ms-2 scale-90 ${scoreClass}">${scorePrefix}${score.toLocaleString()}</span>
+                                    <div class="player-entry d-flex align-items-center ${isMember ? 'fw-bold border-start border-3 ps-2 border-success' : ''}" style="min-width: 130px;">
+                                        <img src="${avatarUrl}" class="rounded-circle me-1" width="20" height="20" onerror="this.src='https://via.placeholder.com/20'">
+                                        <span class="player-name text-truncate" style="max-width: 70px;">${p.account_name}</span>
+                                        <span class="ms-1 scale-90 ${scoreClass}" style="font-size: 0.9rem;">${scorePrefix}${score.toLocaleString()}</span>
                                     </div>
                                 `;
                 }).join('')}
