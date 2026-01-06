@@ -110,6 +110,11 @@
             margin-bottom: 10px;
         }
 
+        .leave-request-card {
+            background: #f8d7da;
+            border: 1px solid #dc3545;
+        }
+
         .request-actions {
             display: flex;
             gap: 10px;
@@ -142,18 +147,60 @@
             margin-bottom: 20px;
         }
 
-        .btn-leave-team {
-            background: #dc3545;
-            color: white;
-            border: none;
+        .admin-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .btn-danger-outline {
+            background: transparent;
+            color: #dc3545;
+            border: 2px solid #dc3545;
             padding: 10px 20px;
             border-radius: 10px;
+            transition: all 0.3s;
+        }
+
+        .btn-danger-outline:hover {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-warning-outline {
+            background: transparent;
+            color: #ffc107;
+            border: 2px solid #ffc107;
+            padding: 10px 20px;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+
+        .btn-warning-outline:hover {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .member-select {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .member-select:hover {
+            background: #e9ecef;
+        }
+
+        .member-select.selected {
+            background: rgba(45, 138, 94, 0.1);
+            border: 2px solid var(--deep-green);
         }
     </style>
 </head>
 
 <body>
-    <a href="../index.html" class="back-button">← ランキングに戻る</a>
+    <a href="./users/index.html" class="back-button">← ユーザー一覧に戻る</a>
 
     <div class="container py-5 mt-4">
         <header class="text-center mb-4">
@@ -197,13 +244,58 @@
                     <div id="join-requests-list"></div>
                 </div>
 
+                <!-- 脱退申請セクション（管理者のみ） -->
+                <div id="leave-requests-section" style="display: none;">
+                    <h4 class="mb-3 mt-4">🚪 脱退申請</h4>
+                    <div id="leave-requests-list"></div>
+                </div>
+
                 <!-- メンバー一覧 -->
                 <h4 class="mb-3 mt-4">👥 メンバー一覧</h4>
                 <div id="members-list"></div>
 
-                <!-- 脱退ボタン -->
-                <div class="text-center mt-4">
-                    <button onclick="leaveTeam()" class="btn-leave-team">チームを脱退する</button>
+                <!-- メンバー用ボタン -->
+                <div id="member-actions" class="text-center mt-4" style="display: none;">
+                    <button onclick="requestLeave()" class="btn-danger-outline">🚪 脱退申請を送る</button>
+                </div>
+
+                <!-- 脱退申請中表示 -->
+                <div id="leave-pending" class="text-center mt-4" style="display: none;">
+                    <div class="alert alert-warning">
+                        <strong>⏳ 脱退申請中</strong><br>
+                        チームリーダーの承認をお待ちください。
+                    </div>
+                </div>
+
+                <!-- 管理者用ボタン -->
+                <div id="admin-actions" class="admin-actions" style="display: none;">
+                    <button class="btn-warning-outline" data-bs-toggle="modal" data-bs-target="#transferModal">
+                        👑 リーダーを譲渡
+                    </button>
+                    <button class="btn-danger-outline" onclick="dissolveTeam()">
+                        💥 チームを解散
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- リーダー譲渡モーダル -->
+    <div class="modal fade" id="transferModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header" style="background: var(--deep-green); color: white;">
+                    <h5 class="modal-title">👑 リーダーを譲渡</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3">新しいリーダーを選択してください</p>
+                    <div id="transfer-member-list"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                    <button type="button" class="btn btn-success" id="confirmTransferBtn" onclick="confirmTransfer()"
+                        disabled>譲渡する</button>
                 </div>
             </div>
         </div>
@@ -211,13 +303,15 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="../../js/supabase-config.js"></script>
+    <script src="../js/supabase-config.js"></script>
 
     <script>
         let currentUser = null;
         let myProfile = null;
         let myTeam = null;
         let isTeamAdmin = false;
+        let teamMembers = [];
+        let selectedNewLeader = null;
 
         document.addEventListener('DOMContentLoaded', initTeamPage);
 
@@ -266,10 +360,16 @@
         async function renderTeamContent() {
             document.getElementById('team-name-header').textContent = `🏅 ${myTeam.team_name}`;
 
-            // 管理者の場合、加入申請を表示
+            // 管理者の場合
             if (isTeamAdmin) {
                 document.getElementById('join-requests-section').style.display = 'block';
+                document.getElementById('leave-requests-section').style.display = 'block';
+                document.getElementById('admin-actions').style.display = 'flex';
                 await loadJoinRequests();
+                await loadLeaveRequests();
+            } else {
+                // メンバーの場合 - 脱退申請ボタンまたは申請中表示
+                await checkMyLeaveRequest();
             }
 
             // メンバー一覧取得
@@ -278,6 +378,8 @@
                 .select('*')
                 .eq('team_id', myTeam.id)
                 .order('account_name');
+
+            teamMembers = members || [];
 
             const membersList = document.getElementById('members-list');
             if (!members || members.length === 0) {
@@ -298,6 +400,54 @@
                     </div>
                 `;
             }).join('');
+
+            // 譲渡モーダル用のメンバーリスト作成
+            renderTransferList();
+        }
+
+        function renderTransferList() {
+            const container = document.getElementById('transfer-member-list');
+            const otherMembers = teamMembers.filter(m => m.discord_user_id !== myTeam.creator_discord_id);
+
+            if (otherMembers.length === 0) {
+                container.innerHTML = '<p class="text-muted">他のメンバーがいません</p>';
+                return;
+            }
+
+            container.innerHTML = otherMembers.map(member => {
+                const avatarUrl = member.avatar_url || 'https://via.placeholder.com/48';
+                const name = member.account_name || '名称未設定';
+                return `
+                    <div class="member-card member-select" onclick="selectNewLeader('${member.discord_user_id}', this)">
+                        <img src="${avatarUrl}" alt="${name}" class="member-avatar" onerror="this.src='https://via.placeholder.com/48'">
+                        <span class="member-name">${name}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function selectNewLeader(discordId, element) {
+            document.querySelectorAll('.member-select').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedNewLeader = discordId;
+            document.getElementById('confirmTransferBtn').disabled = false;
+        }
+
+        async function confirmTransfer() {
+            if (!selectedNewLeader || !confirm('本当にリーダーを譲渡しますか？')) return;
+
+            try {
+                await supabaseClient
+                    .from('teams')
+                    .update({ creator_discord_id: selectedNewLeader })
+                    .eq('id', myTeam.id);
+
+                alert('リーダーを譲渡しました！');
+                location.reload();
+            } catch (err) {
+                console.error('譲渡エラー:', err);
+                alert('エラーが発生しました');
+            }
         }
 
         async function loadJoinRequests() {
@@ -314,7 +464,6 @@
                 return;
             }
 
-            // 申請者のプロフィール取得
             const requesterIds = requests.map(r => r.requester_discord_id);
             const { data: profiles } = await supabaseClient
                 .from('profiles')
@@ -330,27 +479,105 @@
                 const name = profile.account_name || '名称未設定';
 
                 return `
-                    <div class="request-card" id="request-${req.id}">
+                    <div class="request-card" id="join-request-${req.id}">
                         <img src="${avatarUrl}" alt="${name}" class="member-avatar" onerror="this.src='https://via.placeholder.com/48'">
                         <span class="member-name">${name}</span>
                         <div class="request-actions">
-                            <button class="btn-approve" onclick="approveRequest('${req.id}', '${req.requester_discord_id}')">✓ 許可</button>
-                            <button class="btn-reject" onclick="rejectRequest('${req.id}')">✗ 拒否</button>
+                            <button class="btn-approve" onclick="approveJoin('${req.id}', '${req.requester_discord_id}')">✓ 許可</button>
+                            <button class="btn-reject" onclick="rejectJoin('${req.id}')">✗ 拒否</button>
                         </div>
                     </div>
                 `;
             }).join('');
         }
 
-        async function approveRequest(requestId, requesterDiscordId) {
+        async function loadLeaveRequests() {
+            const { data: requests } = await supabaseClient
+                .from('team_join_requests')
+                .select('*')
+                .eq('team_id', myTeam.id)
+                .eq('status', 'leave_pending');
+
+            const container = document.getElementById('leave-requests-list');
+
+            if (!requests || requests.length === 0) {
+                container.innerHTML = '<p class="text-muted">脱退申請はありません</p>';
+                return;
+            }
+
+            const requesterIds = requests.map(r => r.requester_discord_id);
+            const { data: profiles } = await supabaseClient
+                .from('profiles')
+                .select('*')
+                .in('discord_user_id', requesterIds);
+
+            const profileMap = {};
+            profiles?.forEach(p => profileMap[p.discord_user_id] = p);
+
+            container.innerHTML = requests.map(req => {
+                const profile = profileMap[req.requester_discord_id] || {};
+                const avatarUrl = profile.avatar_url || 'https://via.placeholder.com/48';
+                const name = profile.account_name || '名称未設定';
+
+                return `
+                    <div class="request-card leave-request-card" id="leave-request-${req.id}">
+                        <img src="${avatarUrl}" alt="${name}" class="member-avatar" onerror="this.src='https://via.placeholder.com/48'">
+                        <span class="member-name">${name}</span>
+                        <div class="request-actions">
+                            <button class="btn-approve" onclick="approveLeave('${req.id}', '${req.requester_discord_id}')">✓ 許可</button>
+                            <button class="btn-reject" onclick="rejectLeave('${req.id}')">✗ 拒否</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function checkMyLeaveRequest() {
+            const discordId = currentUser.user_metadata.provider_id;
+            const { data: pending } = await supabaseClient
+                .from('team_join_requests')
+                .select('*')
+                .eq('team_id', myTeam.id)
+                .eq('requester_discord_id', discordId)
+                .eq('status', 'leave_pending')
+                .maybeSingle();
+
+            if (pending) {
+                document.getElementById('leave-pending').style.display = 'block';
+            } else {
+                document.getElementById('member-actions').style.display = 'block';
+            }
+        }
+
+        async function requestLeave() {
+            if (!confirm('チームからの脱退を申請しますか？リーダーの承認が必要です。')) return;
+
+            const discordId = currentUser.user_metadata.provider_id;
+
             try {
-                // 申請を承認済みに更新
+                await supabaseClient
+                    .from('team_join_requests')
+                    .insert({
+                        team_id: myTeam.id,
+                        requester_discord_id: discordId,
+                        status: 'leave_pending'
+                    });
+
+                alert('脱退申請を送信しました。リーダーの承認をお待ちください。');
+                location.reload();
+            } catch (err) {
+                console.error('脱退申請エラー:', err);
+                alert('エラーが発生しました');
+            }
+        }
+
+        async function approveJoin(requestId, requesterDiscordId) {
+            try {
                 await supabaseClient
                     .from('team_join_requests')
                     .update({ status: 'approved' })
                     .eq('id', requestId);
 
-                // 申請者をチームに追加
                 await supabaseClient
                     .from('profiles')
                     .update({ team_id: myTeam.id })
@@ -364,7 +591,7 @@
             }
         }
 
-        async function rejectRequest(requestId) {
+        async function rejectJoin(requestId) {
             if (!confirm('この申請を拒否しますか？')) return;
 
             try {
@@ -373,34 +600,70 @@
                     .update({ status: 'rejected' })
                     .eq('id', requestId);
 
-                document.getElementById(`request-${requestId}`).remove();
+                document.getElementById(`join-request-${requestId}`).remove();
             } catch (err) {
                 console.error('拒否エラー:', err);
                 alert('エラーが発生しました');
             }
         }
 
-        async function leaveTeam() {
-            if (!confirm('本当にチームを脱退しますか？')) return;
-
-            const discordId = currentUser.user_metadata.provider_id;
-
-            // リーダーは脱退できない
-            if (isTeamAdmin) {
-                alert('チームリーダーは脱退できません。チームを解散するか、リーダーを譲渡してください。');
-                return;
-            }
-
+        async function approveLeave(requestId, requesterDiscordId) {
             try {
+                await supabaseClient
+                    .from('team_join_requests')
+                    .update({ status: 'left' })
+                    .eq('id', requestId);
+
                 await supabaseClient
                     .from('profiles')
                     .update({ team_id: null })
-                    .eq('discord_user_id', discordId);
+                    .eq('discord_user_id', requesterDiscordId);
 
-                alert('チームを脱退しました');
+                alert('脱退を許可しました');
                 location.reload();
             } catch (err) {
-                console.error('脱退エラー:', err);
+                console.error('脱退承認エラー:', err);
+                alert('エラーが発生しました');
+            }
+        }
+
+        async function rejectLeave(requestId) {
+            if (!confirm('この脱退申請を拒否しますか？')) return;
+
+            try {
+                await supabaseClient
+                    .from('team_join_requests')
+                    .update({ status: 'leave_rejected' })
+                    .eq('id', requestId);
+
+                document.getElementById(`leave-request-${requestId}`).remove();
+            } catch (err) {
+                console.error('拒否エラー:', err);
+                alert('エラーが発生しました');
+            }
+        }
+
+        async function dissolveTeam() {
+            if (!confirm('本当にチームを解散しますか？この操作は取り消せません。')) return;
+            if (!confirm('全メンバーがチームから外れます。本当によろしいですか？')) return;
+
+            try {
+                // 全メンバーのteam_idをnullに
+                await supabaseClient
+                    .from('profiles')
+                    .update({ team_id: null })
+                    .eq('team_id', myTeam.id);
+
+                // チームを削除
+                await supabaseClient
+                    .from('teams')
+                    .delete()
+                    .eq('id', myTeam.id);
+
+                alert('チームを解散しました');
+                location.href = './users/index.html';
+            } catch (err) {
+                console.error('解散エラー:', err);
                 alert('エラーが発生しました');
             }
         }

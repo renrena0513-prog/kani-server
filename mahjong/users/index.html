@@ -179,14 +179,31 @@
                 </div>
             </div>
 
-            <!-- アクションボタン -->
-            <div class="action-buttons">
+            <!-- アクションボタン（未所属者のみ表示） -->
+            <div id="action-buttons" class="action-buttons" style="display: none;">
                 <button class="btn-gold" data-bs-toggle="modal" data-bs-target="#createTeamModal">
                     ➕ チームを作成
                 </button>
                 <button class="btn-gold" data-bs-toggle="modal" data-bs-target="#joinTeamModal">
                     🤝 チームに加入
                 </button>
+            </div>
+
+            <!-- 申請中表示 -->
+            <div id="pending-status" class="text-center py-3" style="display: none;">
+                <div class="alert alert-warning">
+                    <strong>⏳ チーム加入申請中</strong><br>
+                    <span id="pending-team-name"></span>への加入申請を送信済みです。管理者の承認をお待ちください。
+                </div>
+            </div>
+
+            <!-- 所属済み表示 -->
+            <div id="team-member-status" class="text-center py-3" style="display: none;">
+                <div class="alert alert-success">
+                    <strong>🏅 チーム所属中</strong><br>
+                    <span id="my-team-name"></span>に所属しています。
+                    <a href="../team/index.html" class="btn btn-outline-success btn-sm ms-2">チーム管理へ</a>
+                </div>
             </div>
         </div>
     </div>
@@ -249,6 +266,7 @@
         let allTeams = [];
         let allProfiles = [];
         let selectedTeamId = null;
+        let myProfile = null;
 
         document.addEventListener('DOMContentLoaded', loadUsersData);
 
@@ -274,11 +292,50 @@
 
                 renderUsers();
 
+                // ログインユーザーの状態をチェック
+                await checkUserStatus();
+
                 document.getElementById('users-loading').style.display = 'none';
                 document.getElementById('users-content').style.display = 'block';
             } catch (err) {
                 console.error('データ取得エラー:', err);
                 document.getElementById('users-loading').innerHTML = '<p class="text-danger">データの読み込みに失敗しました</p>';
+            }
+        }
+
+        async function checkUserStatus() {
+            const user = await getCurrentUser();
+            if (!user) {
+                // 未ログインでもボタンは表示（ログイン促す）
+                document.getElementById('action-buttons').style.display = 'flex';
+                return;
+            }
+
+            const discordId = user.user_metadata.provider_id;
+            myProfile = allProfiles.find(p => p.discord_user_id === discordId);
+
+            if (myProfile && myProfile.team_id) {
+                // チーム所属済み
+                const myTeam = allTeams.find(t => t.id === myProfile.team_id);
+                document.getElementById('my-team-name').textContent = myTeam?.team_name || 'チーム';
+                document.getElementById('team-member-status').style.display = 'block';
+            } else {
+                // 未所属 - 申請中かチェック
+                const { data: pendingRequest } = await supabaseClient
+                    .from('team_join_requests')
+                    .select('*, teams(*)')
+                    .eq('requester_discord_id', discordId)
+                    .eq('status', 'pending')
+                    .maybeSingle();
+
+                if (pendingRequest) {
+                    // 申請中
+                    document.getElementById('pending-team-name').textContent = pendingRequest.teams?.team_name || 'チーム';
+                    document.getElementById('pending-status').style.display = 'block';
+                } else {
+                    // 未所属・未申請 - ボタン表示
+                    document.getElementById('action-buttons').style.display = 'flex';
+                }
             }
         }
 

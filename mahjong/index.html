@@ -451,6 +451,45 @@
     <script src="../js/supabase-config.js"></script>
     <script src="../js/auth-guard.js"></script>
     <script src="../js/mahjong.js"></script>
+
+    <!-- チーム通知バッジ -->
+    <script>
+        async function checkTeamNotifications() {
+            const user = await getCurrentUser();
+            if (!user) return;
+
+            const discordId = user.user_metadata.provider_id;
+
+            // 自分がリーダーのチームを取得
+            const { data: myTeams } = await supabaseClient
+                .from('teams')
+                .select('id')
+                .eq('creator_discord_id', discordId);
+
+            if (!myTeams || myTeams.length === 0) return;
+
+            const teamIds = myTeams.map(t => t.id);
+
+            // 保留中の申請（加入・脱退）をカウント
+            const { data: pendingRequests } = await supabaseClient
+                .from('team_join_requests')
+                .select('id')
+                .in('team_id', teamIds)
+                .in('status', ['pending', 'leave_pending']);
+
+            const count = pendingRequests?.length || 0;
+
+            if (count > 0) {
+                const badge = document.getElementById('team-notification-badge');
+                if (badge) {
+                    badge.textContent = count;
+                    badge.style.display = 'inline';
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', checkTeamNotifications);
+    </script>
 </body>
 
 </html>
