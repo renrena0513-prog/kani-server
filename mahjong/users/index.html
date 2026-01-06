@@ -178,28 +178,17 @@
             <h1 class="page-header display-4 fw-bold">👥 ユーザー一覧</h1>
         </header>
 
-        <!-- アクションボタン・ステータス（カードの外） -->
+        <!-- アクションボタン（カードの外） -->
         <div id="action-buttons" class="action-buttons mb-4" style="display: none;">
-            <button class="btn-gold" data-bs-toggle="modal" data-bs-target="#createTeamModal">
-                ➕ チームを作成
-            </button>
-            <button class="btn-gold" data-bs-toggle="modal" data-bs-target="#joinTeamModal">
-                🤝 チームに加入
-            </button>
+            <a href="../team/index.html" class="btn-gold">
+                🏅 チーム管理へ
+            </a>
         </div>
 
         <div id="pending-status" class="mb-4" style="display: none;">
             <div class="alert alert-warning text-center">
                 <strong>⏳ チーム加入申請中</strong><br>
                 <span id="pending-team-name"></span>への加入申請を送信済みです。管理者の承認をお待ちください。
-            </div>
-        </div>
-
-        <div id="team-member-status" class="mb-4" style="display: none;">
-            <div class="alert alert-success text-center">
-                <strong>🏅 チーム所属中</strong><br>
-                <span id="my-team-name"></span>に所属しています。
-                <a href="../team/index.html" class="btn btn-outline-success btn-sm ms-2">チーム管理へ</a>
             </div>
         </div>
 
@@ -330,10 +319,8 @@
             myProfile = allProfiles.find(p => p.discord_user_id === discordId);
 
             if (myProfile && myProfile.team_id) {
-                // チーム所属済み
-                const myTeam = allTeams.find(t => t.id === myProfile.team_id);
-                document.getElementById('my-team-name').textContent = myTeam?.team_name || 'チーム';
-                document.getElementById('team-member-status').style.display = 'block';
+                // チーム所属済み - チーム管理ボタンを表示
+                document.getElementById('action-buttons').style.display = 'flex';
             } else {
                 // 未所属 - 申請中かチェック
                 const { data: pendingRequest } = await supabaseClient
