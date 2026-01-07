@@ -56,8 +56,9 @@
         }
 
         .badge-description {
-            opacity: 0.9;
-            font-size: 0.95rem;
+            font-size: 1rem;
+            color: #ffffff;
+            font-weight: 500;
         }
 
         .badge-requirements-section {
@@ -70,8 +71,9 @@
 
         .requirements-label {
             font-size: 0.85rem;
-            opacity: 0.8;
+            color: rgba(255, 255, 255, 0.9);
             margin-bottom: 5px;
+            font-weight: bold;
         }
 
         .badge-requirements {
@@ -95,8 +97,9 @@
         }
 
         .stat-label {
-            font-size: 0.85rem;
-            opacity: 0.8;
+            font-size: 1rem;
+            font-weight: bold;
+            color: #4a3a3a;
         }
 
         .owner-avatar {
@@ -392,10 +395,10 @@
                         return `
                             <a href="../mypage/index.html?user=${profile.discord_user_id}" class="owner-item text-decoration-none text-dark d-flex align-items-center">
                                 <img src="${avatarUrl}" alt="${name}" class="owner-avatar me-3" onerror="this.src='https://via.placeholder.com/48'">
-                                <span class="fw-bold">${name}</span>
+                                <span class="fw-bold fs-5">${name}</span>
                                 ${badgeHtml}
-                                <span class="badge bg-primary rounded-pill ms-2" style="font-size: 0.75rem;">${countText}</span>
-                                <span class="ms-2 text-muted small" style="font-size: 0.8rem;">(占有率: ${share}%)</span>
+                                <span class="badge bg-dark rounded-pill ms-2" style="font-size: 0.85rem;">${countText}</span>
+                                <span class="ms-2 fw-bold" style="font-size: 0.9rem; color: #555;">(占有率: ${share}%)</span>
                             </a>
                         `;
                     }).join('');
