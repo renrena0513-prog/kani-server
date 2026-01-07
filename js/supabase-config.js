@@ -134,13 +134,14 @@ async function displayUserInfo() {
             syncProfile();
         }
 
-        // 管理者ボタンの表示制御（なりすまし中も管理者なら表示）
-        if (adminButton) {
-            if (ADMIN_DISCORD_IDS.includes(discordId)) {
-                adminButton.style.display = 'block';
-            } else {
-                adminButton.style.display = 'none';
-            }
+        // 管理者関連の表示制御（なりすまし中も管理者なら表示）
+        const adminElements = document.querySelectorAll('.admin-only');
+        if (ADMIN_DISCORD_IDS.includes(discordId)) {
+            if (adminButton) adminButton.style.display = 'block';
+            adminElements.forEach(el => el.style.setProperty('display', 'block', 'important'));
+        } else {
+            if (adminButton) adminButton.style.display = 'none';
+            adminElements.forEach(el => el.style.display = 'none');
         }
 
         if (userInfoElement) {
