@@ -77,10 +77,15 @@
         }
 
         .shop-img {
-            width: 80px;
-            height: 80px;
+            width: 120px;
+            height: 120px;
             object-fit: contain;
             margin-bottom: 15px;
+            transition: transform 0.3s ease;
+        }
+
+        .shop-item:hover .shop-img {
+            transform: scale(1.1);
         }
 
         .shop-name {
@@ -323,8 +328,10 @@
                         <div class="col-6 col-md-4 col-lg-3">
                             <div class="shop-item position-relative ${isSoldOut ? 'sold-out' : ''}">
                                 ${isSoldOut ? '<div class="sold-out-badge">SOLD OUT</div>' : ''}
-                                <img src="${badge.image_url}" class="shop-img" alt="${badge.name}">
-                                <div class="shop-name">${badge.name}</div>
+                                <a href="./index.html?id=${badge.id}" class="text-decoration-none text-dark d-flex flex-column align-items-center w-100">
+                                    <img src="${badge.image_url}" class="shop-img" alt="${badge.name}">
+                                    <div class="shop-name">${badge.name}</div>
+                                </a>
                                 <div class="shop-price">🪙 ${badge.price.toLocaleString()}</div>
                                 <div class="shop-stock">残り: ${badge.remaining_count !== null ? badge.remaining_count : '∞'}個</div>
                                 <button class="btn btn-buy ${isSoldOut ? 'btn-secondary disabled' : 'btn-primary'}" 
