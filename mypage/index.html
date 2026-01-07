@@ -312,6 +312,42 @@
             opacity: 1;
         }
 
+        /* ユーザー選択リスト */
+        .user-select-item {
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .user-select-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .user-select-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 15px;
+            border: 2px solid var(--gold);
+        }
+
+        .user-select-badge {
+            width: 24px;
+            height: 24px;
+            object-fit: contain;
+            margin-left: 8px;
+        }
+
+        .user-select-name {
+            font-weight: 700;
+            color: var(--deep-purple);
+            font-size: 1rem;
+        }
+
         /* ナビゲーションドロップダウン */
         .nav-dropdown {
             position: fixed;
@@ -633,10 +669,20 @@
                             <h4 style="font-family: var(--font-title); color: var(--deep-purple); margin: 0;">
                                 📛 バッジコレクション
                             </h4>
-                            <button id="badge-change-btn" onclick="openBadgeChangeModal()"
-                                class="btn btn-sm btn-outline-secondary" style="display: none;">
-                                装着バッジを変更
-                            </button>
+                            <div class="d-flex gap-2">
+                                <button id="badge-transfer-btn" onclick="openBadgeSelectionModal('transfer')"
+                                    class="btn btn-sm btn-outline-primary" style="display: none;">
+                                    譲渡
+                                </button>
+                                <button id="badge-sell-btn" onclick="openBadgeSelectionModal('sell')"
+                                    class="btn btn-sm btn-outline-danger" style="display: none;">
+                                    売却
+                                </button>
+                                <button id="badge-change-btn" onclick="openBadgeChangeModal()"
+                                    class="btn btn-sm btn-outline-secondary" style="display: none;">
+                                    装着
+                                </button>
+                            </div>
                         </div>
 
                         <!-- 非売品バッジ -->
@@ -719,26 +765,37 @@
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Supabase -->
-    <!-- バッジ譲渡モーダル -->
-    <div class="modal fade" id="transferModal" tabindex="-1" aria-labelledby="transferModalLabel" aria-hidden="true">
+    <!-- バッジ譲渡・売却用バッジ選択モーダル -->
+    <div class="modal fade" id="badgeActionModal" tabindex="-1" aria-labelledby="badgeActionModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="transferModalLabel">バッジの譲渡</h5>
+                    <h5 class="modal-title" id="badgeActionModalLabel">バッジを選択</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <p id="transfer-badge-name" class="fw-bold text-center mb-3"></p>
-                    <div class="mb-3">
-                        <label class="form-label">譲渡先のユーザーを選択してください</label>
-                        <select id="transfer-user-select" class="form-select">
-                            <option value="">読み込み中...</option>
-                        </select>
+                    <div id="action-badge-list" class="row g-2">
+                        <!-- JSで生成 -->
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
-                    <button type="button" class="btn btn-primary" onclick="executeTransfer()">譲渡する</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ユーザー選択モーダル (譲渡用) -->
+    <div class="modal fade" id="userSelectModal" tabindex="-1" aria-labelledby="userSelectModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="userSelectModalLabel">譲渡先のユーザーを選択</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div id="transfer-user-list" class="list-group list-group-flush">
+                        <!-- JSで生成 -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -1080,10 +1137,14 @@
                 const equippedId = profileData?.equipped_badge_id;
                 let badgeAssets = 0;
 
-                // 自分のページならバッジ変更ボタンを表示
+                // 自分のページなら管理ボタンを表示
                 const badgeBtn = document.getElementById('badge-change-btn');
-                if (!isViewMode && badgeBtn) {
-                    badgeBtn.style.display = 'inline-block';
+                const transferBtn = document.getElementById('badge-transfer-btn');
+                const sellBtn = document.getElementById('badge-sell-btn');
+                if (!isViewMode) {
+                    if (badgeBtn) badgeBtn.style.display = 'inline-block';
+                    if (transferBtn) transferBtn.style.display = 'inline-block';
+                    if (sellBtn) sellBtn.style.display = 'inline-block';
                 }
 
                 if (!owned || owned.length === 0) {
@@ -1131,15 +1192,6 @@
                 const renderBadge = (item) => {
                     const badge = item.badge;
                     const isEquipped = badge.id === equippedId;
-                    const actionButtons = (!isViewMode && badge.gacha_weight > 0) ? `
-                        <div class="d-flex gap-1 mt-1 justify-content-center">
-                            <button class="btn btn-sm btn-outline-primary py-0" style="font-size: 0.65rem;" 
-                                    onclick="openTransferModal('${badge.id}', '${badge.name.replace(/'/g, "\\'")}')">譲渡</button>
-                            <button class="btn btn-sm btn-outline-danger py-0" style="font-size: 0.65rem;" 
-                                    onclick="sellBadge('${badge.id}', '${badge.name.replace(/'/g, "\\'")}', ${badge.price})">売却</button>
-                        </div>
-                    ` : '';
-
                     return `
                         <div class="col-4 col-sm-3 col-md-2 text-center mb-3">
                             <div class="position-relative">
@@ -1153,7 +1205,6 @@
                                 </a>
                             </div>
                             <div class="small text-muted text-truncate mt-1" style="font-size: 0.75rem;">${badge.name}</div>
-                            ${actionButtons}
                         </div>
                     `;
                 };
@@ -1191,7 +1242,90 @@
             }
         }
 
-        async function sellBadge(badgeId, badgeName, price) {
+        // ============ バッジ譲渡・売却：バッジ選択モーダル ============
+        async function openBadgeSelectionModal(mode) {
+            const listEl = document.getElementById('action-badge-list');
+            listEl.innerHTML = '<p class="text-center text-muted py-3">読み込み中...</p>';
+
+            document.getElementById('badgeActionModalLabel').textContent = mode === 'transfer' ? '譲渡するバッジを選択' : '売却するバッジを選択';
+
+            const modalEl = document.getElementById('badgeActionModal');
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+
+            try {
+                // 所持バッジの取得 (非売品以外)
+                const { data: owned, error } = await supabaseClient
+                    .from('user_badges')
+                    .select('badge_id, badges(*)')
+                    .eq('user_id', targetId);
+
+                if (error) throw error;
+
+                // 非売品を除外して、同じバッジをまとめる
+                const badgeGroups = {};
+                owned.forEach(item => {
+                    const badge = item.badges;
+                    if (!badge || badge.gacha_weight === 0) return;
+                    if (!badgeGroups[badge.id]) {
+                        badgeGroups[badge.id] = { badge: badge, count: 0 };
+                    }
+                    badgeGroups[badge.id].count++;
+                });
+
+                const sortedBadges = Object.values(badgeGroups);
+
+                if (sortedBadges.length === 0) {
+                    listEl.innerHTML = '<p class="text-center text-muted py-3">選択可能なバッジがありません</p>';
+                    return;
+                }
+
+                listEl.innerHTML = sortedBadges.map(item => {
+                    const badge = item.badge;
+                    const priceInfo = mode === 'sell' ? `<div class="small text-danger fw-bold">🪙${Math.floor(badge.price * 0.5).toLocaleString()}</div>` : '';
+                    return `
+                        <div class="col-4 col-md-3 text-center mb-2">
+                            <div class="badge-item" 
+                                 onclick="onBadgeSelectedForAction('${badge.id}', '${badge.name.replace(/'/g, "\\'")}', ${badge.price}, '${mode}')"
+                                 style="cursor: pointer; position: relative;"
+                                 title="${badge.name}">
+                                <img src="${badge.image_url}" alt="${badge.name}" style="width: 60px; height: 60px; object-fit: contain;">
+                                ${item.count > 1 ? `<span class="badge-count-overlay">${item.count}</span>` : ''}
+                            </div>
+                            <div class="small text-truncate mt-1" style="font-size: 0.7rem;">${badge.name}</div>
+                            ${priceInfo}
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                console.error('バッジ読み込みエラー:', err);
+                listEl.innerHTML = '<p class="text-center text-danger py-3">エラーが発生しました</p>';
+            }
+        }
+
+        let currentActionBadgeId = null;
+        let currentActionBadgeName = '';
+        let currentActionBadgePrice = 0;
+
+        function onBadgeSelectedForAction(badgeId, badgeName, price, mode) {
+            currentActionBadgeId = badgeId;
+            currentActionBadgeName = badgeName;
+            currentActionBadgePrice = price;
+
+            // 選択モーダルを閉じる
+            const actionModal = bootstrap.Modal.getInstance(document.getElementById('badgeActionModal'));
+            actionModal.hide();
+
+            if (mode === 'transfer') {
+                openUserSelectModal();
+            } else {
+                executeSell(badgeId, badgeName, price);
+            }
+        }
+
+        // ============ 売却実行 ============
+        async function executeSell(badgeId, badgeName, price) {
             const sellPrice = Math.floor(price * 0.5);
             if (!confirm(`「${badgeName}」を売却して 🪙${sellPrice.toLocaleString()} を受け取りますか？\n（この操作は取り消せません）`)) {
                 return;
@@ -1200,7 +1334,7 @@
             try {
                 toggleLoading(true);
 
-                // 1. バッジの所持を1つ削除 (最新の1件を削除)
+                // 1. バッジを1つ削除
                 const { data: owned, error: fetchError } = await supabaseClient
                     .from('user_badges')
                     .select('id')
@@ -1244,54 +1378,62 @@
             }
         }
 
-        let transferBadgeId = null;
-        async function openTransferModal(badgeId, badgeName) {
-            transferBadgeId = badgeId;
-            document.getElementById('transfer-badge-name').textContent = `「${badgeName}」を譲渡します`;
+        // ============ 譲渡：ユーザー選択 ============
+        async function openUserSelectModal() {
+            const listEl = document.getElementById('transfer-user-list');
+            listEl.innerHTML = '<p class="text-center text-muted py-4">読み込み中...</p>';
 
-            const select = document.getElementById('transfer-user-select');
-            select.innerHTML = '<option value="">読み込み中...</option>';
-
-            const modal = new bootstrap.Modal(document.getElementById('transferModal'));
+            const modal = new bootstrap.Modal(document.getElementById('userSelectModal'));
             modal.show();
 
             try {
                 const { data: users, error } = await supabaseClient
                     .from('profiles')
-                    .select('discord_user_id, account_name')
+                    .select('discord_user_id, account_name, avatar_url, equipped_badge_id, badges!equipped_badge_id(image_url, name)')
                     .neq('discord_user_id', targetId) // 自分以外
                     .order('account_name');
 
                 if (error) throw error;
 
-                select.innerHTML = '<option value="">ユーザーを選択してください</option>' +
-                    users.map(u => `<option value="${u.discord_user_id}">${u.account_name}</option>`).join('');
+                if (!users || users.length === 0) {
+                    listEl.innerHTML = '<p class="text-center text-muted py-4">ユーザーが見つかりません</p>';
+                    return;
+                }
+
+                listEl.innerHTML = users.map(u => {
+                    const avatar = u.avatar_url || 'https://via.placeholder.com/40';
+                    const badgeHtml = u.badges ? `<img src="${u.badges.image_url}" class="user-select-badge" title="${u.badges.name}">` : '';
+                    return `
+                        <div class="user-select-item" onclick="executeTransferConfirmation('${u.discord_user_id}', '${u.account_name.replace(/'/g, "\\'")}')">
+                            <img src="${avatar}" class="user-select-avatar" onerror="this.src='https://via.placeholder.com/40'">
+                            <div class="d-flex align-items-center flex-grow-1">
+                                <span class="user-select-name">${u.account_name}</span>
+                                ${badgeHtml}
+                            </div>
+                            <div class="text-muted small">選択 ❯</div>
+                        </div>
+                    `;
+                }).join('');
             } catch (err) {
                 console.error('ユーザー取得エラー:', err);
-                select.innerHTML = '<option value="">読み込み失敗</option>';
+                listEl.innerHTML = '<p class="text-center text-danger py-4">エラーが発生しました</p>';
             }
         }
 
-        async function executeTransfer() {
-            const targetUserId = document.getElementById('transfer-user-select').value;
-            if (!targetUserId) {
-                alert('譲渡先のユーザーを選択してください');
-                return;
-            }
-
-            if (!confirm('本当にこのユーザーにバッジを譲渡しますか？\n（あなたの手持ちからは1つなくなります）')) {
+        async function executeTransferConfirmation(toUserId, toUserName) {
+            if (!confirm(`「${currentActionBadgeName}」を ${toUserName} さんに譲渡しますか？\n（あなたの手持ちからは1つなくなります）`)) {
                 return;
             }
 
             try {
                 toggleLoading(true);
 
-                // 1. 自分のバッジを1つ取得して削除
+                // 1. 自分のバッジを1つ削除
                 const { data: owned, error: fetchError } = await supabaseClient
                     .from('user_badges')
                     .select('id')
                     .eq('user_id', targetId)
-                    .eq('badge_id', transferBadgeId)
+                    .eq('badge_id', currentActionBadgeId)
                     .limit(1)
                     .single();
 
@@ -1304,14 +1446,14 @@
 
                 if (deleteError) throw deleteError;
 
-                // 2. 相手にバッジを付与
+                // 2. 相手に付与
                 const { error: insertError } = await supabaseClient
                     .from('user_badges')
-                    .insert([{ user_id: targetUserId, badge_id: transferBadgeId }]);
+                    .insert([{ user_id: toUserId, badge_id: currentActionBadgeId }]);
 
                 if (insertError) throw insertError;
 
-                alert('バッジの譲渡が完了しました！');
+                alert(`${toUserName} さんにバッジを譲渡しました！`);
                 location.reload();
             } catch (err) {
                 console.error('譲渡エラー:', err);
