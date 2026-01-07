@@ -7,6 +7,9 @@ const ADMIN_DISCORD_IDS = [
     '666909228300107797' // nameless
 ];
 
+// ===== Discord 通知設定 =====
+const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1458091853713772708/tXp5Ahcvzc6I0MXc4XlZLbq--tEwUSf1AT5ZVtodgDsXQBqnOKsi6I6YWhKdDXyKpWWk';
+
 // Supabase クライアント初期化
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
