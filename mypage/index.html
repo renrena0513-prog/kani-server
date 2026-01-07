@@ -1677,11 +1677,17 @@
             noStatsMsg.style.display = 'none';
 
             // 各統計を表示
-            updateStatCard('total', myStats.total, playerStats, 'total', true);
-            updateStatCard('sanma', myStats.sanma, playerStats, 'sanma', true);
-            updateStatCard('yonma', myStats.yonma, playerStats, 'yonma', true);
-            updateStatCard('avg-score', myStats.avgScore.toFixed(0), playerStats, 'avgScore', true);
-            updateStatCard('max-score', myStats.maxScore, playerStats, 'maxScore', true);
+            const formatScore = (val) => {
+                if (typeof val !== 'number') return val;
+                // 小数点第1位までに丸めるが、.0 の場合は整数にする
+                return Math.round(val * 10) / 10;
+            };
+
+            updateStatCard('total', formatScore(myStats.total), playerStats, 'total', true);
+            updateStatCard('sanma', formatScore(myStats.sanma), playerStats, 'sanma', true);
+            updateStatCard('yonma', formatScore(myStats.yonma), playerStats, 'yonma', true);
+            updateStatCard('avg-score', formatScore(myStats.avgScore), playerStats, 'avgScore', true);
+            updateStatCard('max-score', formatScore(myStats.maxScore), playerStats, 'maxScore', true);
             updateStatCard('win-rate', myStats.winRate.toFixed(2) + ' / 試合', playerStats, 'winRate', true);
             updateStatCard('deal-rate', myStats.dealRate.toFixed(2) + ' / 試合', playerStats, 'dealRate', false);
             updateStatCard('top-rate', myStats.topRate.toFixed(1) + '%', playerStats, 'topRate', true);
