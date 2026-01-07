@@ -424,10 +424,11 @@ async function openBadgeGrantModal(userId, userName) {
     badgeGrantModal.show();
 
     try {
-        // 全バッジ取得
+        // 全バッジ取得 (ソート順)
         const { data: allBadges, error: badgeError } = await supabaseClient
             .from('badges')
             .select('*')
+            .order('sort_order', { ascending: true })
             .order('name');
 
         if (badgeError) throw badgeError;
@@ -435,40 +436,102 @@ async function openBadgeGrantModal(userId, userName) {
         // ユーザーの所持バッジ取得
         const { data: userBadges, error: userBadgeError } = await supabaseClient
             .from('user_badges')
-            .select('badge_id')
+            .select('badge_id, badges(name)')
             .eq('user_id', userId);
 
         if (userBadgeError) throw userBadgeError;
 
-        const ownedBadgeIds = userBadges ? userBadges.map(ub => ub.badge_id) : [];
+        // 所持数をカウント
+        const ownedCounts = {};
+        userBadges.forEach(ub => {
+            ownedCounts[ub.badge_id] = (ownedCounts[ub.badge_id] || 0) + 1;
+        });
 
-        // 所持バッジの表示
-        const ownedBadges = allBadges.filter(b => ownedBadgeIds.includes(b.id));
-        const notOwnedBadges = allBadges.filter(b => !ownedBadgeIds.includes(b.id));
+        // 所持バッジの表示 (剥奪用)
+        const aggregatedOwned = [];
+        const seen = new Set();
+        userBadges.forEach(ub => {
+            if (!seen.has(ub.badge_id) && ub.badges) {
+                aggregatedOwned.push({
+                    id: ub.badge_id,
+                    name: ub.badges.name,
+                    count: ownedCounts[ub.badge_id]
+                });
+                seen.add(ub.badge_id);
+            }
+        });
 
-        ownedListEl.innerHTML = ownedBadges.length > 0
-            ? ownedBadges.map(b => `
+        ownedListEl.innerHTML = aggregatedOwned.length > 0
+            ? aggregatedOwned.map(b => {
+                const badgeInfo = allBadges.find(allB => allB.id === b.id);
+                return `
                 <div class="position-relative" style="cursor: pointer;" onclick="revokeBadge('${userId}', '${b.id}', '${b.name.replace(/'/g, "\\'")}')">
-                    <img src="${b.image_url}" title="${b.name} (クリックで剥奪)" style="width: 40px; height: 40px; border-radius: 8px; border: 2px solid var(--gold);">
+                    <img src="${badgeInfo?.image_url || ''}" title="${b.name} x${b.count} (クリックで1つ剥奪)" style="width: 40px; height: 40px; border-radius: 8px; border: 2px solid var(--gold);">
+                    <span class="badge bg-danger position-absolute top-0 start-100 translate-middle p-1 rounded-circle" style="font-size: 0.6rem;">${b.count}</span>
                 </div>
-            `).join('')
+                `;
+            }).join('')
             : '<span class="text-muted small">なし</span>';
 
-        // 付与可能バッジの表示
-        listEl.innerHTML = notOwnedBadges.length > 0
-            ? notOwnedBadges.map(b => `
-                <div class="col-4 col-md-3">
-                    <div class="card h-100 text-center p-2" style="cursor: pointer;" onclick="grantBadge('${userId}', '${b.id}', '${b.name.replace(/'/g, "\\'")}')">
-                        <img src="${b.image_url}" class="mx-auto" style="width: 48px; height: 48px; border-radius: 8px;">
-                        <small class="mt-1 text-truncate">${b.name}</small>
+        // 付与可能バッジの表示 (複数選択用)
+        listEl.innerHTML = allBadges.length > 0
+            ? allBadges.map(b => `
+                <div class="col-12">
+                    <div class="card p-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="checkbox" class="badge-grant-checkbox" data-badge-id="${b.id}" id="grant-check-${b.id}">
+                            <img src="${b.image_url}" style="width: 32px; height: 32px; border-radius: 4px;">
+                            <label class="flex-grow-1 small text-truncate m-0" for="grant-check-${b.id}">${b.name}</label>
+                            <input type="number" class="form-control form-control-sm badge-grant-quantity" 
+                                   data-badge-id="${b.id}" value="1" min="1" style="width: 60px;">
+                        </div>
                     </div>
                 </div>
             `).join('')
-            : '<p class="text-muted text-center">付与可能なバッジがありません</p>';
+            : '<p class="text-muted text-center">バッジがありません</p>';
 
     } catch (err) {
         console.error('バッジ読み込みエラー:', err);
         listEl.innerHTML = `<p class="text-danger">エラー: ${err.message}</p>`;
+    }
+}
+
+async function grantMultiBadges() {
+    const userId = document.getElementById('badge-grant-user-id').value;
+    const userName = document.getElementById('badge-grant-user-name').textContent;
+    const checkboxes = document.querySelectorAll('.badge-grant-checkbox:checked');
+
+    if (checkboxes.length === 0) {
+        alert('付与するバッジを選択してください');
+        return;
+    }
+
+    const grants = [];
+    checkboxes.forEach(cb => {
+        const badgeId = cb.getAttribute('data-badge-id');
+        const quantityInput = document.querySelector(`.badge-grant-quantity[data-badge-id="${badgeId}"]`);
+        const quantity = parseInt(quantityInput.value) || 1;
+
+        for (let i = 0; i < quantity; i++) {
+            grants.push({ user_id: userId, badge_id: badgeId });
+        }
+    });
+
+    if (!confirm(`${grants.length}個のバッジを付与しますか？`)) return;
+
+    toggleLoading(true);
+    try {
+        const { error } = await supabaseClient
+            .from('user_badges')
+            .insert(grants);
+
+        if (error) throw error;
+        alert('バッジを付与しました');
+        openBadgeGrantModal(userId, userName);
+    } catch (err) {
+        alert('バッジ付与エラー: ' + err.message);
+    } finally {
+        toggleLoading(false);
     }
 }
 
@@ -492,18 +555,29 @@ async function grantBadge(userId, badgeId, badgeName) {
 }
 
 async function revokeBadge(userId, badgeId, badgeName) {
-    if (!confirm(`「${badgeName}」をこのユーザーから剥奪しますか？`)) return;
+    if (!confirm(`「${badgeName}」を1つ剥奪しますか？`)) return;
 
     toggleLoading(true);
     try {
+        // ID指定で1件だけ削除 (user_id と badge_id が一致するもののうち最新の1つ)
+        const { data: targetRows, error: findError } = await supabaseClient
+            .from('user_badges')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('badge_id', badgeId)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+        if (findError) throw findError;
+        if (!targetRows || targetRows.length === 0) throw new Error('バッジが見つかりません');
+
         const { error } = await supabaseClient
             .from('user_badges')
             .delete()
-            .eq('user_id', userId)
-            .eq('badge_id', badgeId);
+            .eq('id', targetRows[0].id);
 
         if (error) throw error;
-        alert('バッジを剥奪しました');
+        alert('バッジを1つ剥奪しました');
         openBadgeGrantModal(userId, document.getElementById('badge-grant-user-name').textContent);
     } catch (err) {
         alert('バッジ剥奪エラー: ' + err.message);
@@ -521,6 +595,7 @@ async function fetchBadges() {
         const { data: badges, error } = await supabaseClient
             .from('badges')
             .select('*')
+            .order('sort_order', { ascending: true })
             .order('name', { ascending: true });
 
         if (error) throw error;
@@ -540,10 +615,16 @@ async function fetchBadges() {
                         <img src="${badge.image_url}" class="mb-3 badge-thumb shadow-sm" style="width: 64px; height: 64px; object-fit: contain;">
                         <h6 class="fw-bold mb-1">${badge.name}</h6>
                         <p class="small text-muted mb-2" style="font-size: 0.75rem;">${badge.description || '(説明なし)'}</p>
-                        <div class="d-flex justify-content-between align-items-center mt-auto">
-                            <span class="badge bg-warning text-dark">🪙 ${badge.price}</span>
-                            <span class="badge bg-secondary">⚖️ ${badge.gacha_weight}</span>
-                        </div>
+                            <div class="d-flex justify-content-between align-items-center mt-auto">
+                                <span class="badge bg-warning text-dark">🪙 ${badge.price}</span>
+                                <span class="badge ${badge.gacha_weight === 0 ? 'bg-danger' : 'bg-secondary'}">
+                                    ${badge.gacha_weight === 0 ? '🔒 非売品' : '⚖️ ' + badge.gacha_weight}
+                                </span>
+                            </div>
+                            <div class="mt-1 d-flex justify-content-between align-items-center">
+                                <span class="small text-muted">📦 在庫: ${badge.stock ?? '∞'}</span>
+                                <span class="small text-muted">🔢 順序: ${badge.sort_order ?? 0}</span>
+                            </div>
                         <div class="mt-3 d-flex gap-1 justify-content-center">
                             <button onclick='openBadgeModal(${JSON.stringify(badge).replace(/'/g, "&apos;")})' class="btn btn-sm btn-outline-primary">編集</button>
                             <button onclick="deleteBadge('${badge.id}')" class="btn btn-sm btn-outline-danger">削除</button>
@@ -571,6 +652,8 @@ function openBadgeModal(badge = null) {
         document.getElementById('badge-description').value = badge.description || '';
         document.getElementById('badge-weight').value = badge.gacha_weight;
         document.getElementById('badge-price').value = badge.price;
+        document.getElementById('badge-stock').value = badge.stock ?? 999;
+        document.getElementById('badge-sort-order').value = badge.sort_order ?? 0;
         document.getElementById('badge-image-url').value = badge.image_url;
 
         if (badge.image_url) {
@@ -592,6 +675,8 @@ async function saveBadge() {
     const description = document.getElementById('badge-description').value;
     const gacha_weight = Number(document.getElementById('badge-weight').value);
     const price = Number(document.getElementById('badge-price').value);
+    const stock = Number(document.getElementById('badge-stock').value);
+    const sort_order = Number(document.getElementById('badge-sort-order').value);
     let image_url = document.getElementById('badge-image-url').value;
 
     const imageFile = document.getElementById('badge-image-file').files[0];
@@ -626,7 +711,7 @@ async function saveBadge() {
             image_url = data.publicUrl;
         }
 
-        const badgeData = { name, description, gacha_weight, price, image_url };
+        const badgeData = { name, description, gacha_weight, price, stock, sort_order, image_url };
 
         let error;
         if (id) {
@@ -706,6 +791,8 @@ async function handleBulkBadgeUpload(event) {
                     description: '',
                     gacha_weight: 10,
                     price: 0,
+                    stock: 999,
+                    sort_order: 0,
                     image_url: data.publicUrl
                 }]);
 
@@ -729,6 +816,7 @@ async function exportBadgesToCSV() {
         const { data: badges, error } = await supabaseClient
             .from('badges')
             .select('*')
+            .order('sort_order', { ascending: true })
             .order('name', { ascending: true });
 
         if (error) throw error;
@@ -737,7 +825,7 @@ async function exportBadgesToCSV() {
             return;
         }
 
-        const headers = ['id', 'name', 'description', 'requirements', 'image_url', 'gacha_weight', 'price'];
+        const headers = ['id', 'name', 'description', 'requirements', 'image_url', 'gacha_weight', 'price', 'stock', 'sort_order'];
         const csvRows = [headers.join(',')];
 
         badges.forEach(badge => {
@@ -790,8 +878,8 @@ async function handleBadgeCSVImport(event) {
                     let val = values[idx];
 
                     // 数値型のカラム
-                    if (['gacha_weight', 'price'].includes(h)) {
-                        val = (val !== '' && val !== undefined && val !== 'null') ? Number(val) : null;
+                    if (['gacha_weight', 'price', 'stock', 'sort_order'].includes(h)) {
+                        val = (val !== '' && val !== undefined && val !== 'null') ? Number(val) : 0;
                     }
 
                     // 空文字列やnullはスキップ（不要なカラム）

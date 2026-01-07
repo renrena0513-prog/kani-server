@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>バッジショップ - かに鯖</title>
+    <link rel="icon" type="image/png" href="../images/favicon.png">
+    <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kosugi+Maru&family=Noto+Sans+JP:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="../styles.css">
+    <style>
+        :root {
+            --deep-purple: #5a4a7a;
+            --gold: #d4a574;
+            --font-title: 'Kosugi Maru', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            min-height: 100vh;
+        }
+
+        .page-header {
+            color: #fff;
+            font-family: var(--font-title);
+            text-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+        }
+
+        .coin-balance-card {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50px;
+            padding: 10px 30px;
+            display: inline-flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .coin-balance-card span {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .shop-grid-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .shop-item {
+            background: #fff;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border: 1px solid #eee;
+        }
+
+        .shop-item:hover:not(.sold-out) {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .shop-item.sold-out {
+            opacity: 0.7;
+            background: #f8f9fa;
+        }
+
+        .shop-img {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+            margin-bottom: 15px;
+        }
+
+        .shop-name {
+            font-family: var(--font-title);
+            font-size: 1rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            height: 2.4em;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        .shop-price {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #e67e22;
+            margin-bottom: 15px;
+        }
+
+        .shop-stock {
+            font-size: 0.8rem;
+            color: #777;
+            margin-bottom: 15px;
+        }
+
+        .btn-buy {
+            width: 100%;
+            border-radius: 10px;
+            font-weight: bold;
+            padding: 8px 0;
+            transition: all 0.2s;
+        }
+
+        .sold-out-badge {
+            background: #6c757d;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-15deg);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        /* ナビゲーションドロップダウン */
+        .nav-dropdown {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .record-button {
+            background: linear-gradient(135deg, var(--gold) 0%, #b8892d 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            box-shadow: 0 6px 20px rgba(212, 168, 83, 0.5);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .record-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(212, 168, 83, 0.6);
+            color: white;
+        }
+
+        .nav-dropdown-menu {
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+            min-width: 200px;
+            overflow: hidden;
+            border: none;
+        }
+
+        .dropdown-item {
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #333;
+            transition: background 0.2s;
+        }
+
+        .notification-badge {
+            background: #dc3545;
+            color: white;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-left: auto;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            visibility: hidden;
+        }
+
+        .loading-overlay.active {
+            visibility: visible;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- ローディング -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="spinner-border text-primary" role="status"></div>
+    </div>
+
+    <!-- 右上のナビゲーションドロップダウン -->
+    <div class="nav-dropdown dropdown">
+        <button class="record-button dropdown-toggle" type="button" id="navDropdown" data-bs-toggle="dropdown"
+            aria-expanded="false">
+            📝 メニュー
+        </button>
+        <ul class="dropdown-menu nav-dropdown-menu dropdown-menu-end" aria-labelledby="navDropdown">
+            <li><a class="dropdown-item" href="../index.html">🏠 ホームに戻る</a></li>
+            <li><a class="dropdown-item" href="../mypage/index.html">👤 マイページ</a></li>
+            <li>
+                <hr class="dropdown-divider">
+            </li>
+            <li><a class="dropdown-item" href="../mahjong/index.html">📊 ランキング</a></li>
+            <li><a class="dropdown-item" href="../mahjong/record.html">📝 記録する</a></li>
+            <li><a class="dropdown-item" href="../mahjong/users/index.html">👥 ユーザー一覧</a></li>
+            <li><a class="dropdown-item" href="../mahjong/team/index.html">🏅 チーム管理 <span id="team-notification-badge"
+                        class="notification-badge" style="display:none;">0</span></a></li>
+            <li><a class="dropdown-item" href="./list.html">📛 バッジ一覧</a></li>
+            <li><a class="dropdown-item" href="./shop.html">🛒 バッジショップ</a></li>
+            <li class="admin-only" style="display:none;">
+                <hr class="dropdown-divider">
+            </li>
+            <li class="admin-only" style="display:none;">
+                <a class="dropdown-item" href="../admin/index.html">⚙️ 管理画面</a>
+            </li>
+        </ul>
+    </div>
+
+    <div class="container py-5">
+        <header class="text-center">
+            <h1 class="page-header display-4 fw-bold">🛒 バッジショップ</h1>
+        </header>
+
+        <div class="text-center">
+            <div class="coin-balance-card">
+                <span>🪙 <span id="user-coins">---</span></span>
+            </div>
+        </div>
+
+        <div class="shop-grid-card">
+            <div id="shop-grid" class="row g-4">
+                <div class="col-12 text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">読み込み中...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/supabase-config.js"></script>
+    <script>
+        let currentUserId = null;
+        let currentUserCoins = 0;
+
+        async function initShop() {
+            const user = await getCurrentUser();
+            if (!user) {
+                alert('ショップを利用するにはログインが必要です');
+                window.location.href = '../index.html';
+                return;
+            }
+            currentUserId = user.user_metadata.provider_id;
+            await loadUserCoins();
+            await fetchShopBadges();
+        }
+
+        async function loadUserCoins() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('profiles')
+                    .select('coins')
+                    .eq('discord_user_id', currentUserId)
+                    .single();
+
+                if (error) throw error;
+                currentUserCoins = data.coins || 0;
+                document.getElementById('user-coins').textContent = currentUserCoins.toLocaleString();
+            } catch (err) {
+                console.error('Error loading coins:', err);
+            }
+        }
+
+        async function fetchShopBadges() {
+            const grid = document.getElementById('shop-grid');
+            try {
+                // gacha_weight > 0 のものだけをショップに表示
+                const { data: badges, error } = await supabaseClient
+                    .from('badges')
+                    .select('*')
+                    .gt('gacha_weight', 0)
+                    .order('sort_order', { ascending: true })
+                    .order('name');
+
+                if (error) throw error;
+
+                if (!badges || badges.length === 0) {
+                    grid.innerHTML = '<div class="col-12 text-center text-muted py-5">販売中のバッジはありません</div>';
+                    return;
+                }
+
+                grid.innerHTML = badges.map(badge => {
+                    const isSoldOut = badge.stock !== null && badge.stock <= 0;
+                    return `
+                        <div class="col-6 col-md-4 col-lg-3">
+                            <div class="shop-item position-relative ${isSoldOut ? 'sold-out' : ''}">
+                                ${isSoldOut ? '<div class="sold-out-badge">SOLD OUT</div>' : ''}
+                                <img src="${badge.image_url}" class="shop-img" alt="${badge.name}">
+                                <div class="shop-name">${badge.name}</div>
+                                <div class="shop-price">🪙 ${badge.price.toLocaleString()}</div>
+                                <div class="shop-stock">残り: ${badge.stock !== null ? badge.stock : '∞'}個</div>
+                                <button class="btn btn-buy ${isSoldOut ? 'btn-secondary disabled' : 'btn-primary'}" 
+                                        onclick="buyBadge('${badge.id}', ${badge.price}, '${badge.name.replace(/'/g, "\\'")}', ${badge.stock})"
+                                        ${isSoldOut ? 'disabled' : ''}>
+                                    ${isSoldOut ? '売り切れ' : '購入する'}
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                console.error('Error fetching shop badges:', err);
+                grid.innerHTML = '<div class="col-12 text-center text-danger py-5">読み込みエラーが発生しました</div>';
+            }
+        }
+
+        async function buyBadge(badgeId, price, name, stock) {
+            if (currentUserCoins < price) {
+                alert('コインが足りません');
+                return;
+            }
+
+            if (!confirm(`「${name}」を 🪙${price.toLocaleString()} で購入しますか？`)) {
+                return;
+            }
+
+            const overlay = document.getElementById('loading-overlay');
+            overlay.classList.add('active');
+
+            try {
+                // 1. 在庫チェックと減算 (RPCを使いたいが、とりあえずクライアント側でやる簡易版)
+                // 厳密には在庫引き当てが必要だが、ここではシンプルに
+                if (stock !== null) {
+                    const { error: stockError } = await supabaseClient
+                        .from('badges')
+                        .update({ stock: stock - 1 })
+                        .eq('id', badgeId)
+                        .gte('stock', 1);
+
+                    if (stockError) throw new Error('在庫の更新に失敗しました（売り切れた可能性があります）');
+                }
+
+                // 2. コイン減算
+                const { error: coinError } = await supabaseClient
+                    .from('profiles')
+                    .update({ coins: currentUserCoins - price })
+                    .eq('discord_user_id', currentUserId);
+
+                if (coinError) throw coinError;
+
+                // 3. バッジ付与 (重複許可)
+                const { error: grantError } = await supabaseClient
+                    .from('user_badges')
+                    .insert([{ user_id: currentUserId, badge_id: badgeId }]);
+
+                if (grantError) throw grantError;
+
+                alert('購入が完了しました！');
+                await loadUserCoins();
+                await fetchShopBadges();
+
+            } catch (err) {
+                alert('エラーが発生しました: ' + err.message);
+                console.error(err);
+            } finally {
+                overlay.classList.remove('active');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', initShop);
+    </script>
+</body>
+
+</html>

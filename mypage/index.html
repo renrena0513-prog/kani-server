@@ -276,6 +276,20 @@
             display: block;
         }
 
+        .badge-count-overlay {
+            position: absolute;
+            bottom: -5px;
+            right: -5px;
+            background: #dc3545;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 10px;
+            border: 2px solid white;
+            z-index: 10;
+        }
+
         /* ナビゲーションドロップダウン */
         .nav-dropdown {
             position: fixed;
@@ -360,6 +374,8 @@
             <li><a class="dropdown-item" href="../mahjong/users/index.html">👥 ユーザー一覧</a></li>
             <li><a class="dropdown-item" href="../mahjong/team/index.html">🏅 チーム管理 <span id="team-notification-badge"
                         class="notification-badge" style="display:none;">0</span></a></li>
+            <li><a class="dropdown-item" href="../badge/list.html">📛 バッジ一覧</a></li>
+            <li><a class="dropdown-item" href="../badge/shop.html">🛒 バッジショップ</a></li>
             <li class="admin-only" style="display:none;">
                 <hr class="dropdown-divider">
             </li>
@@ -445,10 +461,15 @@
                                 </div>
 
                                 <!-- 所持金 -->
-                                <div id="user-coins-display" class="mb-2" style="display: none;">
+                                <div id="user-coins-display" class="mb-2"
+                                    style="display: none; flex-wrap: wrap; gap: 8px;">
                                     <span class="badge bg-light text-dark shadow-sm"
-                                        style="font-size: 0.85rem; border: 1px solid var(--gold);">
+                                        style="font-size: 0.85rem; border: 1px solid var(--gold); padding: 6px 12px;">
                                         所持金: 🪙 <span id="user-coins-value">0</span>
+                                    </span>
+                                    <span class="badge bg-light text-dark shadow-sm"
+                                        style="font-size: 0.85rem; border: 1px solid #17a2b8; padding: 6px 12px;">
+                                        総資産: 📊 <span id="total-assets-value">0</span>
                                     </span>
                                 </div>
 
@@ -980,6 +1001,7 @@
             const purchasableSection = document.getElementById('purchasable-badges-section');
             const purchasableList = document.getElementById('purchasable-badge-list');
             const noBadgesMsg = document.getElementById('no-badges-msg');
+            const totalAssetsEl = document.getElementById('total-assets-value');
 
             if (!section) return;
 
@@ -995,14 +1017,16 @@
 
                 if (error) throw error;
 
-                // 装着中のバッジID取得
-                const { data: profile } = await supabaseClient
+                // ユーザーの所持コインを取得（総資産計算用）
+                const { data: profileData } = await supabaseClient
                     .from('profiles')
-                    .select('equipped_badge_id')
+                    .select('coins, equipped_badge_id')
                     .eq('discord_user_id', targetId)
                     .maybeSingle();
 
-                const equippedId = profile?.equipped_badge_id;
+                const userCoins = profileData?.coins || 0;
+                const equippedId = profileData?.equipped_badge_id;
+                let badgeAssets = 0;
 
                 // 自分のページならバッジ変更ボタンを表示
                 const badgeBtn = document.getElementById('badge-change-btn');
@@ -1014,33 +1038,58 @@
                     if (specialSection) specialSection.style.display = 'none';
                     if (purchasableSection) purchasableSection.style.display = 'none';
                     if (noBadgesMsg) noBadgesMsg.style.display = 'block';
+                    if (totalAssetsEl) totalAssetsEl.textContent = userCoins.toLocaleString();
                     return;
                 }
 
-                // 非売品（price = 0 または null）と購入バッジ（price > 0）に分ける
-                const specialBadges = owned.filter(item => {
+                // バッジを集計（重複をカウント）
+                const badgeGroups = {};
+                owned.forEach(item => {
                     const badge = item.badges;
-                    return badge && (badge.price === 0 || badge.price === null || badge.price === undefined);
+                    if (!badge) return;
+
+                    if (!badgeGroups[badge.id]) {
+                        badgeGroups[badge.id] = {
+                            badge: badge,
+                            count: 0
+                        };
+                    }
+                    badgeGroups[badge.id].count++;
+                    badgeAssets += (badge.price || 0);
                 });
 
-                const purchasableBadges = owned.filter(item => {
-                    const badge = item.badges;
-                    return badge && badge.price > 0;
+                // 総資産の表示更新
+                if (totalAssetsEl) {
+                    totalAssetsEl.textContent = (userCoins + badgeAssets).toLocaleString();
+                }
+
+                // バッジを配列に変換してソート (sort_order -> name)
+                const aggregatedBadges = Object.values(badgeGroups).sort((a, b) => {
+                    const orderA = a.badge.sort_order ?? 999;
+                    const orderB = b.badge.sort_order ?? 999;
+                    if (orderA !== orderB) return orderA - orderB;
+                    return a.badge.name.localeCompare(b.badge.name);
                 });
+
+                // 非売品（gacha_weight = 0）と購入可能バッジに分ける
+                const specialBadges = aggregatedBadges.filter(item => item.badge.gacha_weight === 0);
+                const purchasableBadges = aggregatedBadges.filter(item => item.badge.gacha_weight !== 0);
 
                 // バッジHTML生成関数
                 const renderBadge = (item) => {
-                    const badge = item.badges;
-                    if (!badge) return '';
+                    const badge = item.badge;
                     const isEquipped = badge.id === equippedId;
                     return `
                         <div class="col-4 col-sm-3 col-md-2 text-center">
                             <a href="../badge/index.html?id=${badge.id}" class="text-decoration-none">
                                 <div class="badge-item ${isEquipped ? 'equipped' : ''}" 
-                                     title="${badge.name}${isEquipped ? ' (装着中)' : ''}">
+                                     title="${badge.name}${isEquipped ? ' (装着中)' : ''}"
+                                     style="position: relative;">
                                     <img src="${badge.image_url}" alt="${badge.name}">
+                                    ${item.count > 1 ? `<span class="badge-count-overlay">${item.count}</span>` : ''}
                                 </div>
                             </a>
+                            <div class="small text-muted text-truncate mt-1" style="font-size: 0.75rem;">${badge.name}</div>
                         </div>
                     `;
                 };
