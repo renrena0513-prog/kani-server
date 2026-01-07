@@ -437,7 +437,35 @@ async function submitScores() {
 
         if (error) throw error;
 
-        alert('スコアを送信しました！');
+        // コイン報酬の加算処理
+        for (const player of dataToInsert) {
+            if (!player.discord_user_id) continue;
+
+            const bonus = player.final_score > 0 ? Math.floor(player.final_score / 10) : 0;
+            const reward = 1 + bonus;
+
+            try {
+                // 現在の所持金を取得
+                const { data: profile, error: fetchError } = await supabaseClient
+                    .from('profiles')
+                    .select('coins')
+                    .eq('discord_user_id', player.discord_user_id)
+                    .maybeSingle();
+
+                if (!fetchError && profile) {
+                    // 加算して更新
+                    await supabaseClient
+                        .from('profiles')
+                        .update({ coins: (profile.coins || 0) + reward })
+                        .eq('discord_user_id', player.discord_user_id);
+                    console.log(`${player.account_name} にコイン ${reward} 枚を付与しました`);
+                }
+            } catch (coinErr) {
+                console.error(`コイン付与エラー (${player.account_name}):`, coinErr);
+            }
+        }
+
+        alert('スコアを送信しました！コインが各プレイヤーに付与されました。');
 
         // Discord通知を送信
         if (typeof DISCORD_WEBHOOK_URL !== 'undefined' && DISCORD_WEBHOOK_URL) {
@@ -475,8 +503,12 @@ async function sendDiscordNotification(matchData) {
         // ユーザーIDがある場合はメンション形式にする
         const nameDisplay = p.discord_user_id ? `<@${p.discord_user_id}>` : p.account_name;
 
+        // 報酬コインの計算
+        const bonus = p.final_score > 0 ? Math.floor(p.final_score / 10) : 0;
+        const reward = 1 + bonus;
+
         return `${medal} **${p.rank}位**: ${nameDisplay}${teamInfo}\n` +
-            `　　 \`${p.raw_points.toLocaleString()}点\` ➡ **${scoreStr} pts**\n`; // ゆとりのための改行
+            `　　 \`${p.raw_points.toLocaleString()}点\` ➡ **${scoreStr} pts** (💰+${reward})\n`; // 報酬コインを表示
     }).join('\n');
 
     // ルール情報の取得
