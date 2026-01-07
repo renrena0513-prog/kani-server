@@ -729,7 +729,7 @@ async function exportBadgesToCSV() {
         const { data: badges, error } = await supabaseClient
             .from('badges')
             .select('*')
-            .order('created_at', { ascending: false });
+            .order('name', { ascending: true });
 
         if (error) throw error;
         if (!badges || badges.length === 0) {
@@ -737,7 +737,7 @@ async function exportBadgesToCSV() {
             return;
         }
 
-        const headers = ['id', 'name', 'description', 'requirements', 'image_url', 'gacha_weight', 'price', 'created_at'];
+        const headers = ['id', 'name', 'description', 'requirements', 'image_url', 'gacha_weight', 'price'];
         const csvRows = [headers.join(',')];
 
         badges.forEach(badge => {
