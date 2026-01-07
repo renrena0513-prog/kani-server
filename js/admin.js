@@ -915,8 +915,8 @@ function impersonateUser(discordUserId, accountName, avatarUrl) {
 
     localStorage.setItem('admin_impersonate_user', JSON.stringify(userData));
 
-    // トップページに遷移して操作を開始
-    window.location.href = '../index.html';
+    // そのユーザーのマイページに遷移して操作を開始
+    window.location.href = `../mypage/index.html`;
 }
 
 // CSV処理

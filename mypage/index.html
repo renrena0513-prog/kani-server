@@ -679,18 +679,28 @@
          */
         async function initPage() {
             const urlParams = new URLSearchParams(window.location.search);
-            targetId = urlParams.get('user');
+            const urlUserId = urlParams.get('user');
 
             const user = await getCurrentUser();
             const myId = user?.user_metadata?.provider_id;
 
-            // 閲覧モード判定: パラメータがあり、かつ自分ではない場合
-            if (targetId && targetId !== myId) {
-                isViewMode = true;
+            // なりすまし中のユーザー情報を取得
+            const impersonated = getImpersonatedUser();
+            const effectiveId = impersonated ? impersonated.discord_user_id : myId;
+
+            // URLパラメータがある場合
+            if (urlUserId) {
+                targetId = urlUserId;
+                // 自分でもなりすまし対象でもない場合は閲覧モード
+                if (urlUserId !== myId && urlUserId !== (impersonated?.discord_user_id)) {
+                    isViewMode = true;
+                } else {
+                    isViewMode = false;
+                }
             } else {
+                // URLパラメータがない場合は有効なユーザーID（なりすまし優先）
+                targetId = effectiveId;
                 isViewMode = false;
-                // パラメータがない場合は自分のIDをセット
-                if (!targetId) targetId = myId;
             }
 
             // UIの基本表示切り替え
