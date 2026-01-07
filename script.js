@@ -1,5 +1,46 @@
 // パーティクルのランダム化（位置・速度・順序）
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    const particlesContainer = document.getElementById('particles');
+    if (!particlesContainer) return;
+
+    // Supabaseからバッジ画像を取得
+    try {
+        const { data: badges, error } = await supabaseClient
+            .from('badges')
+            .select('image_url, name')
+            .order('name', { ascending: true });
+
+        if (error) {
+            console.error('バッジ取得エラー:', error);
+            return;
+        }
+
+        if (!badges || badges.length === 0) {
+            console.log('バッジがありません');
+            return;
+        }
+
+        // バッジ画像からパーティクルを生成
+        badges.forEach(badge => {
+            if (!badge.image_url) return;
+
+            const img = document.createElement('img');
+            img.className = 'particle';
+            img.src = badge.image_url;
+            img.alt = badge.name || '';
+            particlesContainer.appendChild(img);
+        });
+
+        // 生成後にアニメーションを設定
+        initParticleAnimation();
+
+    } catch (err) {
+        console.error('パーティクル生成エラー:', err);
+    }
+});
+
+// パーティクルアニメーションの初期化
+function initParticleAnimation() {
     const particles = document.querySelectorAll('.particle');
 
     particles.forEach((particle) => {
@@ -17,4 +58,4 @@ document.addEventListener('DOMContentLoaded', () => {
             particle.style.left = `${Math.random() * 90}%`;
         });
     });
-});
+}
