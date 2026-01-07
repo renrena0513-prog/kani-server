@@ -737,7 +737,7 @@ async function exportBadgesToCSV() {
             return;
         }
 
-        const headers = ['id', 'name', 'description', 'image_url', 'gacha_weight', 'price', 'created_at'];
+        const headers = ['id', 'name', 'description', 'requirements', 'image_url', 'gacha_weight', 'price', 'created_at'];
         const csvRows = [headers.join(',')];
 
         badges.forEach(badge => {
@@ -757,6 +757,149 @@ async function exportBadgesToCSV() {
     } catch (err) {
         alert('CSVエクスポートエラー: ' + err.message);
     }
+}
+
+// バッジCSVインポート
+async function handleBadgeCSVImport(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const text = e.target.result;
+            const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
+
+            if (rows.length < 2) {
+                alert('有効なデータがありません');
+                return;
+            }
+
+            // ヘッダー解析
+            const headers = rows[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+            const dataToProcess = [];
+
+            // データ行解析
+            for (let i = 1; i < rows.length; i++) {
+                // CSVの引用符内カンマに対応した分割
+                const values = rows[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/)
+                    .map(v => v.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
+
+                const obj = {};
+                headers.forEach((h, idx) => {
+                    let val = values[idx];
+
+                    // 数値型のカラム
+                    if (['gacha_weight', 'price'].includes(h)) {
+                        val = (val !== '' && val !== undefined && val !== 'null') ? Number(val) : null;
+                    }
+
+                    // 空文字列やnullはスキップ（不要なカラム）
+                    if (h === 'created_at') return; // created_atはDBで自動生成
+
+                    if (val !== undefined && val !== 'null' && val !== '') {
+                        obj[h] = val;
+                    }
+                });
+
+                // idが空または無効なUUIDなら削除（新規として扱う）
+                if (!obj.id || obj.id === '' || obj.id === 'null' || obj.id.length < 30) {
+                    delete obj.id;
+                }
+
+                // 必須フィールドのチェック（nameとimage_url）
+                if (obj.name && obj.image_url) {
+                    // デフォルト値の設定
+                    if (obj.gacha_weight === null || obj.gacha_weight === undefined) obj.gacha_weight = 10;
+                    if (obj.price === null || obj.price === undefined) obj.price = 0;
+                    dataToProcess.push(obj);
+                }
+            }
+
+            if (dataToProcess.length === 0) {
+                alert('有効なバッジデータが見つかりませんでした\n（name と image_url は必須です）');
+                return;
+            }
+
+            // 確認ダイアログ
+            const updateCount = dataToProcess.filter(d => d.id).length;
+            const insertCount = dataToProcess.length - updateCount;
+            const message = `${dataToProcess.length}件のバッジをインポートしますか？\n` +
+                `・新規追加: ${insertCount}件\n` +
+                `・更新: ${updateCount}件`;
+
+            if (!confirm(message)) {
+                event.target.value = '';
+                return;
+            }
+
+            toggleLoading(true);
+
+            // 更新と新規挿入を分けて処理
+            const toUpdate = dataToProcess.filter(d => d.id);
+            const toInsert = dataToProcess.filter(d => !d.id);
+
+            let successCount = 0;
+            let errorCount = 0;
+
+            // 更新処理
+            for (const badge of toUpdate) {
+                try {
+                    const { error } = await supabaseClient
+                        .from('badges')
+                        .update({
+                            name: badge.name,
+                            description: badge.description || '',
+                            requirements: badge.requirements || null,
+                            image_url: badge.image_url,
+                            gacha_weight: badge.gacha_weight,
+                            price: badge.price
+                        })
+                        .eq('id', badge.id);
+
+                    if (error) throw error;
+                    successCount++;
+                } catch (err) {
+                    console.error(`バッジ更新エラー (${badge.name}):`, err);
+                    errorCount++;
+                }
+            }
+
+            // 新規挿入処理
+            if (toInsert.length > 0) {
+                try {
+                    const { error } = await supabaseClient
+                        .from('badges')
+                        .insert(toInsert.map(b => ({
+                            name: b.name,
+                            description: b.description || '',
+                            requirements: b.requirements || null,
+                            image_url: b.image_url,
+                            gacha_weight: b.gacha_weight,
+                            price: b.price
+                        })));
+
+                    if (error) throw error;
+                    successCount += toInsert.length;
+                } catch (err) {
+                    console.error('バッジ挿入エラー:', err);
+                    errorCount += toInsert.length;
+                }
+            }
+
+            toggleLoading(false);
+            alert(`インポート完了\n成功: ${successCount}件, エラー: ${errorCount}件`);
+            fetchBadges();
+
+        } catch (err) {
+            console.error('CSVインポートエラー:', err);
+            alert('CSVインポートエラー: ' + err.message);
+            toggleLoading(false);
+        }
+    };
+
+    reader.readAsText(file);
+    event.target.value = '';
 }
 
 

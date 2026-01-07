@@ -528,6 +528,12 @@
                                     </button>
                                     <input type="file" id="badge-bulk-upload" style="display: none;" accept="image/*"
                                         multiple onchange="handleBulkBadgeUpload(event)">
+                                    <button onclick="document.getElementById('badge-csv-import').click()"
+                                        class="btn btn-outline-primary btn-sm">
+                                        📥 CSVインポート
+                                    </button>
+                                    <input type="file" id="badge-csv-import" style="display: none;" accept=".csv"
+                                        onchange="handleBadgeCSVImport(event)">
                                     <button onclick="exportBadgesToCSV()" class="btn btn-outline-secondary btn-sm">
                                         📤 CSVエクスポート
                                     </button>

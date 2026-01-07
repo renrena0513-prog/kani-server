@@ -60,6 +60,26 @@
             font-size: 0.95rem;
         }
 
+        .badge-requirements-section {
+            margin-top: 20px;
+            padding: 15px 25px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            display: inline-block;
+        }
+
+        .requirements-label {
+            font-size: 0.85rem;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+
+        .badge-requirements {
+            font-size: 1rem;
+            margin: 0;
+            font-weight: 500;
+        }
+
         .stat-card {
             background: linear-gradient(135deg, var(--gold-light) 0%, var(--gold) 100%);
             border-radius: 15px;
@@ -219,6 +239,10 @@
                 <img id="badge-image" src="" alt="バッジ" class="badge-image-large">
                 <h1 id="badge-name" class="badge-name">読み込み中...</h1>
                 <p id="badge-description" class="badge-description"></p>
+                <div id="badge-requirements-section" class="badge-requirements-section" style="display: none;">
+                    <div class="requirements-label">🎯 獲得条件</div>
+                    <p id="badge-requirements" class="badge-requirements"></p>
+                </div>
             </div>
 
             <!-- コンテンツ -->
@@ -294,6 +318,12 @@
                 document.getElementById('badge-image').src = badge.image_url;
                 document.getElementById('badge-name').textContent = badge.name;
                 document.getElementById('badge-description').textContent = badge.description || '説明なし';
+
+                // 獲得条件の表示
+                if (badge.requirements) {
+                    document.getElementById('badge-requirements').textContent = badge.requirements;
+                    document.getElementById('badge-requirements-section').style.display = 'inline-block';
+                }
                 document.title = `${badge.name} - バッジ詳細`;
 
                 // 所持者取得
