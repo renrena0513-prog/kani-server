@@ -589,9 +589,25 @@
                                 装着バッジを変更
                             </button>
                         </div>
-                        <div id="badge-list" class="row g-3">
-                            <!-- JSで生成 -->
-                            <p class="text-center text-muted py-3">読み込み中...</p>
+
+                        <!-- 非売品バッジ -->
+                        <div id="special-badges-section" style="display: none;">
+                            <h6 class="text-muted mb-2" style="font-size: 0.85rem;">🏆 限定バッジ</h6>
+                            <div id="special-badge-list" class="row g-3 mb-4">
+                                <!-- JSで生成 -->
+                            </div>
+                        </div>
+
+                        <!-- 購入バッジ -->
+                        <div id="purchasable-badges-section" style="display: none;">
+                            <h6 class="text-muted mb-2" style="font-size: 0.85rem;">🛒 購入バッジ</h6>
+                            <div id="purchasable-badge-list" class="row g-3">
+                                <!-- JSで生成 -->
+                            </div>
+                        </div>
+
+                        <div id="no-badges-msg" class="text-center text-muted py-3" style="display: none;">
+                            まだバッジを持っていません
                         </div>
                     </div>
                 </div>
@@ -936,8 +952,13 @@
         // ============ バッジ管理機能 ============
         async function loadOwnedBadges() {
             const section = document.getElementById('badge-collection-section');
-            const list = document.getElementById('badge-list');
-            if (!section || !list) return;
+            const specialSection = document.getElementById('special-badges-section');
+            const specialList = document.getElementById('special-badge-list');
+            const purchasableSection = document.getElementById('purchasable-badges-section');
+            const purchasableList = document.getElementById('purchasable-badge-list');
+            const noBadgesMsg = document.getElementById('no-badges-msg');
+
+            if (!section) return;
 
             // 閲覧モードの場合は、装着バッジだけ表示するか、セクション自体隠す（今回はセクション表示）
             section.style.display = 'block';
@@ -960,23 +981,32 @@
 
                 const equippedId = profile?.equipped_badge_id;
 
-                if (!owned || owned.length === 0) {
-                    list.innerHTML = '<p class="text-center text-muted py-3">まだバッジを持っていません</p>';
-                    // 自分のページならバッジ変更ボタンを表示
-                    const btn = document.getElementById('badge-change-btn');
-                    if (!isViewMode && btn) {
-                        btn.style.display = 'inline-block';
-                    }
-                    return;
-                }
-
                 // 自分のページならバッジ変更ボタンを表示
                 const badgeBtn = document.getElementById('badge-change-btn');
                 if (!isViewMode && badgeBtn) {
                     badgeBtn.style.display = 'inline-block';
                 }
 
-                list.innerHTML = owned.map(item => {
+                if (!owned || owned.length === 0) {
+                    if (specialSection) specialSection.style.display = 'none';
+                    if (purchasableSection) purchasableSection.style.display = 'none';
+                    if (noBadgesMsg) noBadgesMsg.style.display = 'block';
+                    return;
+                }
+
+                // 非売品（price = 0 または null）と購入バッジ（price > 0）に分ける
+                const specialBadges = owned.filter(item => {
+                    const badge = item.badges;
+                    return badge && (badge.price === 0 || badge.price === null || badge.price === undefined);
+                });
+
+                const purchasableBadges = owned.filter(item => {
+                    const badge = item.badges;
+                    return badge && badge.price > 0;
+                });
+
+                // バッジHTML生成関数
+                const renderBadge = (item) => {
                     const badge = item.badges;
                     if (!badge) return '';
                     const isEquipped = badge.id === equippedId;
@@ -990,11 +1020,38 @@
                             </a>
                         </div>
                     `;
-                }).join('');
+                };
+
+                // 非売品バッジを表示
+                if (specialBadges.length > 0) {
+                    specialSection.style.display = 'block';
+                    specialList.innerHTML = specialBadges.map(renderBadge).join('');
+                } else {
+                    specialSection.style.display = 'none';
+                }
+
+                // 購入バッジを表示
+                if (purchasableBadges.length > 0) {
+                    purchasableSection.style.display = 'block';
+                    purchasableList.innerHTML = purchasableBadges.map(renderBadge).join('');
+                } else {
+                    purchasableSection.style.display = 'none';
+                }
+
+                // どちらもない場合
+                if (specialBadges.length === 0 && purchasableBadges.length === 0) {
+                    noBadgesMsg.style.display = 'block';
+                } else {
+                    noBadgesMsg.style.display = 'none';
+                }
 
             } catch (err) {
                 console.error('バッジ取得エラー:', err);
-                list.innerHTML = '<p class="text-center text-danger py-3">読み込み中にエラーが発生しました</p>';
+                if (noBadgesMsg) {
+                    noBadgesMsg.textContent = '読み込み中にエラーが発生しました';
+                    noBadgesMsg.className = 'text-center text-danger py-3';
+                    noBadgesMsg.style.display = 'block';
+                }
             }
         }
 
