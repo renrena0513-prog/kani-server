@@ -520,7 +520,7 @@
 
                                 <!-- 所持金 -->
                                 <div id="user-coins-display" class="mb-2"
-                                    style="display: none; flex-wrap: wrap; gap: 8px;">
+                                    style="display: none; flex-wrap: wrap; gap: 8px; align-items: center;">
                                     <span class="badge bg-light text-dark shadow-sm"
                                         style="font-size: 0.85rem; border: 1px solid var(--gold); padding: 6px 12px;">
                                         所持金: 🪙 <span id="user-coins-value">0</span>
@@ -529,6 +529,11 @@
                                         style="font-size: 0.85rem; border: 1px solid #17a2b8; padding: 6px 12px;">
                                         総資産: 📊 <span id="total-assets-value">0</span>
                                     </span>
+                                    <button id="coin-transfer-btn" onclick="openCoinTransferModal()"
+                                        class="btn btn-sm btn-outline-primary"
+                                        style="display: none; padding: 2px 8px; font-size: 0.75rem;">
+                                        💸 送金
+                                    </button>
                                 </div>
 
                                 <!-- 他人の場合のみ表示する表示エリア -->
@@ -783,7 +788,7 @@
         </div>
     </div>
 
-    <!-- ユーザー選択モーダル (譲渡用) -->
+    <!-- ユーザー選択モーダル (譲渡・送金用) -->
     <div class="modal fade" id="userSelectModal" tabindex="-1" aria-labelledby="userSelectModalLabel"
         aria-hidden="true">
         <div class="modal-dialog modal-dialog-scrollable">
@@ -796,6 +801,31 @@
                     <div id="transfer-user-list" class="list-group list-group-flush">
                         <!-- JSで生成 -->
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- コイン送金金額入力モーダル -->
+    <div class="modal fade" id="coinAmountModal" tabindex="-1" aria-labelledby="coinAmountModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="coinAmountModalLabel">送金金額を入力</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="coin-transfer-target-name" class="fw-bold text-center mb-3"></p>
+                    <div class="mb-3">
+                        <label class="form-label">送金するコイン数</label>
+                        <input type="number" id="coin-transfer-amount" class="form-control" placeholder="金額..." min="1">
+                        <div class="form-text mt-2 text-center">あなたの所持金: 🪙 <span id="my-coins-ref">0</span></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                    <button type="button" class="btn btn-primary" onclick="executeCoinTransfer()">送金する</button>
                 </div>
             </div>
         </div>
@@ -887,6 +917,8 @@
                 if (pageTitleLabel) pageTitleLabel.style.display = 'none';
                 if (pageHeader) pageHeader.textContent = '👤 マイページ';
                 if (nicknameEditBtn) nicknameEditBtn.style.display = 'inline-block';
+                const coinTransferBtn = document.getElementById('coin-transfer-btn');
+                if (coinTransferBtn) coinTransferBtn.style.display = 'inline-block';
             }
         }
 
@@ -1318,7 +1350,7 @@
             actionModal.hide();
 
             if (mode === 'transfer') {
-                openUserSelectModal();
+                openUserSelectModal('badge');
             } else {
                 executeSell(badgeId, badgeName, price);
             }
@@ -1379,9 +1411,13 @@
         }
 
         // ============ 譲渡：ユーザー選択 ============
-        async function openUserSelectModal() {
+        let transferType = 'badge'; // 'badge' or 'coin'
+        async function openUserSelectModal(type = 'badge') {
+            transferType = type;
             const listEl = document.getElementById('transfer-user-list');
             listEl.innerHTML = '<p class="text-center text-muted py-4">読み込み中...</p>';
+
+            document.getElementById('userSelectModalLabel').textContent = type === 'coin' ? '送金先のユーザーを選択' : '譲渡先のユーザーを選択';
 
             const modal = new bootstrap.Modal(document.getElementById('userSelectModal'));
             modal.show();
@@ -1404,7 +1440,7 @@
                     const avatar = u.avatar_url || 'https://via.placeholder.com/40';
                     const badgeHtml = u.badges ? `<img src="${u.badges.image_url}" class="user-select-badge" title="${u.badges.name}">` : '';
                     return `
-                        <div class="user-select-item" onclick="executeTransferConfirmation('${u.discord_user_id}', '${u.account_name.replace(/'/g, "\\'")}')">
+                        <div class="user-select-item" onclick="onUserSelectedForTransfer('${u.discord_user_id}', '${u.account_name.replace(/'/g, "\\'")}')">
                             <img src="${avatar}" class="user-select-avatar" onerror="this.src='https://via.placeholder.com/40'">
                             <div class="d-flex align-items-center flex-grow-1">
                                 <span class="user-select-name">${u.account_name}</span>
@@ -1417,6 +1453,117 @@
             } catch (err) {
                 console.error('ユーザー取得エラー:', err);
                 listEl.innerHTML = '<p class="text-center text-danger py-4">エラーが発生しました</p>';
+            }
+        }
+
+        function onUserSelectedForTransfer(userId, userName) {
+            // ユーザー選択モーダルを閉じる
+            const userModal = bootstrap.Modal.getInstance(document.getElementById('userSelectModal'));
+            userModal.hide();
+
+            if (transferType === 'badge') {
+                executeTransferConfirmation(userId, userName);
+            } else {
+                openCoinAmountModal(userId, userName);
+            }
+        }
+
+        // ============ コイン送金フロー ============
+        let coinTransferTargetId = null;
+        let coinTransferTargetName = '';
+
+        function openCoinTransferModal() {
+            openUserSelectModal('coin');
+        }
+
+        async function openCoinAmountModal(userId, userName) {
+            coinTransferTargetId = userId;
+            coinTransferTargetName = userName;
+
+            document.getElementById('coin-transfer-target-name').textContent = `${userName} さんへ送金`;
+
+            // 自分の今の所持金を表示
+            const { data: profile } = await supabaseClient
+                .from('profiles')
+                .select('coins')
+                .eq('discord_user_id', targetId)
+                .single();
+
+            const currentCoins = profile?.coins || 0;
+            document.getElementById('my-coins-ref').textContent = currentCoins.toLocaleString();
+            document.getElementById('coin-transfer-amount').value = '';
+
+            const modal = new bootstrap.Modal(document.getElementById('coinAmountModal'));
+            modal.show();
+        }
+
+        async function executeCoinTransfer() {
+            const amountInput = document.getElementById('coin-transfer-amount');
+            const amount = parseInt(amountInput.value);
+
+            if (isNaN(amount) || amount <= 0) {
+                alert('有効な金額を入力してください');
+                return;
+            }
+
+            // 最終確認
+            if (!confirm(`${coinTransferTargetName} さんに 🪙${amount.toLocaleString()} を送金しますか？`)) {
+                return;
+            }
+
+            try {
+                toggleLoading(true);
+
+                // 1. 自分の所持金チェック
+                const { data: sender, error: senderError } = await supabaseClient
+                    .from('profiles')
+                    .select('coins')
+                    .eq('discord_user_id', targetId)
+                    .single();
+
+                if (senderError) throw senderError;
+                if ((sender.coins || 0) < amount) {
+                    throw new Error('所持金が足りません');
+                }
+
+                // 2. 相手の存在チェック（念のため）
+                const { data: receiver, error: receiverError } = await supabaseClient
+                    .from('profiles')
+                    .select('coins')
+                    .eq('discord_user_id', coinTransferTargetId)
+                    .single();
+
+                if (receiverError) throw receiverError;
+
+                // 3. 送金処理 (マイナス)
+                const { error: updateSenderError } = await supabaseClient
+                    .from('profiles')
+                    .update({ coins: sender.coins - amount })
+                    .eq('discord_user_id', targetId);
+
+                if (updateSenderError) throw updateSenderError;
+
+                // 4. 入金処理 (プラス)
+                const { error: updateReceiverError } = await supabaseClient
+                    .from('profiles')
+                    .update({ coins: (receiver.coins || 0) + amount })
+                    .eq('discord_user_id', coinTransferTargetId);
+
+                if (updateReceiverError) {
+                    // ロールバック的な処理が必要だが、Supabase RLS/Updateでは難しいのでエラー通知
+                    console.error('入金に失敗しました（送金元は減額済み）:', updateReceiverError);
+                    alert('入金処理に失敗しました。管理者に連絡してください。');
+                    return;
+                }
+
+                alert(`${coinTransferTargetName} さんに 🪙${amount.toLocaleString()} を送金しました！`);
+                location.reload();
+
+            } catch (err) {
+                console.error('送金エラー:', err);
+                alert('送金に失敗しました: ' + err.message);
+            } finally {
+                toggleLoading(false);
             }
         }
 
