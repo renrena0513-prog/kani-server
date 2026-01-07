@@ -10,6 +10,43 @@ const ADMIN_DISCORD_IDS = [
 // Supabase クライアント初期化
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// ===== なりすまし機能 =====
+
+// なりすまし中かどうかを確認
+function isImpersonating() {
+    const data = localStorage.getItem('admin_impersonate_user');
+    return data !== null;
+}
+
+// なりすまし中のユーザー情報を取得
+function getImpersonatedUser() {
+    const data = localStorage.getItem('admin_impersonate_user');
+    if (data) {
+        try {
+            return JSON.parse(data);
+        } catch (e) {
+            return null;
+        }
+    }
+    return null;
+}
+
+// 有効なユーザーIDを取得（なりすまし中ならなりすましユーザー、そうでなければ自分）
+async function getEffectiveUserId() {
+    const impersonated = getImpersonatedUser();
+    if (impersonated) {
+        return impersonated.discord_user_id;
+    }
+    const user = await getCurrentUser();
+    return user?.user_metadata?.provider_id || null;
+}
+
+// なりすましを終了
+function stopImpersonation() {
+    localStorage.removeItem('admin_impersonate_user');
+    window.location.reload();
+}
+
 // ===== 認証機能 =====
 
 // Discord でログイン
@@ -27,6 +64,8 @@ async function loginWithDiscord() {
 
 // ログアウト
 async function logout() {
+    // なりすまし中もクリア
+    localStorage.removeItem('admin_impersonate_user');
     const { error } = await supabaseClient.auth.signOut();
     if (error) {
         console.error('ログアウトエラー:', error.message);
@@ -49,49 +88,53 @@ async function displayUserInfo() {
 
     const adminButton = document.querySelector('.admin-button');
 
+    // なりすまし中の処理
+    const impersonated = getImpersonatedUser();
+
     if (user) {
         // ログイン済み
         const discordUser = user.user_metadata;
         const discordId = discordUser.provider_id;
 
-        // プロフィール情報の同期（非同期で実行）
-        const syncProfile = async () => {
-            const avatarUrl = discordUser.avatar_url || discordUser.picture || '';
-            const discordUserId = discordUser.provider_id || discordId;
+        // プロフィール情報の同期（非同期で実行）- なりすまし中は同期しない
+        if (!impersonated) {
+            const syncProfile = async () => {
+                const avatarUrl = discordUser.avatar_url || discordUser.picture || '';
+                const discordUserId = discordUser.provider_id || discordId;
 
-            // Discordの表示名 (Global Name) を優先取得、なければ full_name
-            const discordDisplayName = discordUser.custom_claims?.global_name || discordUser.full_name || discordUser.name;
+                // Discordの表示名 (Global Name) を優先取得、なければ full_name
+                const discordDisplayName = discordUser.custom_claims?.global_name || discordUser.full_name || discordUser.name;
 
-            // 既存のプロフィールを確認
-            const { data: existing } = await supabaseClient
-                .from('profiles')
-                .select('account_name')
-                .eq('discord_user_id', discordUserId)
-                .maybeSingle();
+                // 既存のプロフィールを確認
+                const { data: existing } = await supabaseClient
+                    .from('profiles')
+                    .select('account_name')
+                    .eq('discord_user_id', discordUserId)
+                    .maybeSingle();
 
-            const profileData = {
-                discord_user_id: discordUserId,
-                avatar_url: avatarUrl,
-                updated_at: new Date().toISOString()
+                const profileData = {
+                    discord_user_id: discordUserId,
+                    avatar_url: avatarUrl,
+                    updated_at: new Date().toISOString()
+                };
+
+                // 【初回のみ】DBにまだデータがない場合だけ、Discordの表示名をアカウント名として設定
+                if (!existing) {
+                    profileData.account_name = discordDisplayName;
+                }
+
+                const { error } = await supabaseClient.from('profiles').upsert(profileData);
+                if (error) {
+                    console.error('Profile sync error:', error);
+                } else {
+                    console.log('Profile synced successfully:', discordUserId);
+                }
             };
 
-            // 【初回のみ】DBにまだデータがない場合だけ、Discordの表示名をアカウント名として設定
-            if (!existing) {
-                profileData.account_name = discordDisplayName;
-            }
+            syncProfile();
+        }
 
-            const { error } = await supabaseClient.from('profiles').upsert(profileData);
-            if (error) {
-                console.error('Profile sync error:', error);
-            } else {
-                console.log('Profile synced successfully:', discordUserId);
-            }
-        };
-
-
-        syncProfile();
-
-        // 管理者ボタンの表示制御
+        // 管理者ボタンの表示制御（なりすまし中も管理者なら表示）
         if (adminButton) {
             if (ADMIN_DISCORD_IDS.includes(discordId)) {
                 adminButton.style.display = 'block';
@@ -108,19 +151,36 @@ async function displayUserInfo() {
                 !window.location.pathname.includes('/mypage/');
             const mypagePath = isRoot ? 'mypage/index.html' : '../mypage/index.html';
 
-            // Supabaseが提供するavatar_urlを直接使用
-            const avatarUrl = discordUser.avatar_url || discordUser.picture || '';
-            // アイコンとユーザー名をマイページリンクにする
-            userInfoElement.innerHTML = `
-                <a href="${mypagePath}" style="display: flex; align-items: center; text-decoration: none; color: inherit;">
-
-                    <img src="${avatarUrl}" 
-                         alt="アバター" 
-                         style="width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; cursor: pointer;"
-                         onerror="this.style.display='none'">
-                    <span>${discordUser.full_name || discordUser.name || 'ユーザー'}</span>
-                </a>
-            `;
+            // なりすまし中の表示
+            if (impersonated) {
+                userInfoElement.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <a href="${mypagePath}?user=${impersonated.discord_user_id}" style="display: flex; align-items: center; text-decoration: none; color: inherit;">
+                            <img src="${impersonated.avatar_url || ''}" 
+                                 alt="アバター" 
+                                 style="width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; cursor: pointer; border: 3px solid #ffc107;"
+                                 onerror="this.style.display='none'">
+                            <span style="color: #ffc107; font-weight: bold;">🎭 ${impersonated.name || 'ユーザー'}</span>
+                        </a>
+                        <button onclick="stopImpersonation()" 
+                                style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.8rem;">
+                            終了
+                        </button>
+                    </div>
+                `;
+            } else {
+                // 通常の表示
+                const avatarUrl = discordUser.avatar_url || discordUser.picture || '';
+                userInfoElement.innerHTML = `
+                    <a href="${mypagePath}" style="display: flex; align-items: center; text-decoration: none; color: inherit;">
+                        <img src="${avatarUrl}" 
+                             alt="アバター" 
+                             style="width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; cursor: pointer;"
+                             onerror="this.style.display='none'">
+                        <span>${discordUser.full_name || discordUser.name || 'ユーザー'}</span>
+                    </a>
+                `;
+            }
             userInfoElement.style.display = 'flex';
         }
         if (loginButton) loginButton.style.display = 'none';
