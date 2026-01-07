@@ -428,7 +428,7 @@ async function openBadgeGrantModal(userId, userName) {
         const { data: allBadges, error: badgeError } = await supabaseClient
             .from('badges')
             .select('*')
-            .order('sort_order', { ascending: true })
+            .order('order', { ascending: true })
             .order('name');
 
         if (badgeError) throw badgeError;
