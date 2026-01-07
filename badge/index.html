@@ -343,15 +343,19 @@
                 if (ownerError) throw ownerError;
 
                 // 同じユーザーをグループ化
+                let totalInCirculation = 0;
                 const groupedOwners = owners ? owners.reduce((acc, o) => {
                     const uid = o.user_id;
                     if (!acc[uid]) {
                         acc[uid] = { ...o, count: 0 };
                     }
                     acc[uid].count++;
+                    totalInCirculation++;
                     return acc;
                 }, {}) : {};
-                const uniqueOwners = Object.values(groupedOwners);
+
+                // 所持数が多い順にソート
+                const sortedOwners = Object.values(groupedOwners).sort((a, b) => b.count - a.count);
 
                 // 全ユーザー数取得（所持率計算用）
                 const { count: totalUsers, error: countError } = await supabaseClient
@@ -360,7 +364,7 @@
 
                 if (countError) throw countError;
 
-                const uniqueOwnerCount = uniqueOwners.length;
+                const uniqueOwnerCount = sortedOwners.length;
                 const ownershipRate = totalUsers > 0 ? ((uniqueOwnerCount / totalUsers) * 100).toFixed(1) : 0;
 
                 document.getElementById('owner-count').textContent = uniqueOwnerCount.toLocaleString();
@@ -371,7 +375,7 @@
                 if (uniqueOwnerCount === 0) {
                     listEl.innerHTML = '<p class="text-center text-muted py-4">まだ誰もこのバッジを持っていません</p>';
                 } else {
-                    listEl.innerHTML = uniqueOwners.map(o => {
+                    listEl.innerHTML = sortedOwners.map(o => {
                         const profile = o.profiles;
                         if (!profile) return '';
                         const avatarUrl = profile.avatar_url || 'https://via.placeholder.com/48';
@@ -382,16 +386,16 @@
                                  style="width: 20px; height: 20px; object-fit: contain; margin-left: 8px; border-radius: 4px;">
                         ` : '';
 
-                        const countBadge = o.count > 1 ? `
-                            <span class="badge bg-primary rounded-pill ms-2" style="font-size: 0.75rem;">x${o.count}</span>
-                        ` : '';
+                        const countText = `x${o.count}`;
+                        const share = totalInCirculation > 0 ? ((o.count / totalInCirculation) * 100).toFixed(1) : 0;
 
                         return `
                             <a href="../mypage/index.html?user=${profile.discord_user_id}" class="owner-item text-decoration-none text-dark d-flex align-items-center">
                                 <img src="${avatarUrl}" alt="${name}" class="owner-avatar me-3" onerror="this.src='https://via.placeholder.com/48'">
                                 <span class="fw-bold">${name}</span>
                                 ${badgeHtml}
-                                ${countBadge}
+                                <span class="badge bg-primary rounded-pill ms-2" style="font-size: 0.75rem;">${countText}</span>
+                                <span class="ms-2 text-muted small" style="font-size: 0.8rem;">(占有率: ${share}%)</span>
                             </a>
                         `;
                     }).join('');
