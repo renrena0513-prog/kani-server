@@ -211,7 +211,11 @@
             const user = await getCurrentUser();
             if (!user) return;
 
-            const discordId = user.user_metadata.provider_id;
+            // なりすまし中ならそのユーザーID
+            const impersonated = getImpersonatedUser();
+            const discordId = impersonated
+                ? impersonated.discord_user_id
+                : user.user_metadata.provider_id;
 
             const { data: myTeams } = await supabaseClient
                 .from('teams')

@@ -952,13 +952,8 @@
             if (!confirm(`${memberName}の追放をサイト管理者に申請しますか？`)) return;
 
             try {
-                // 自分の情報取得
-                const { data: { user } } = await supabaseClient.auth.getUser();
-                const myProfile = await supabaseClient
-                    .from('profiles')
-                    .select('account_name')
-                    .eq('discord_user_id', user.user_metadata.provider_id)
-                    .single();
+                // 対象ユーザーの情報を使用
+                const accountName = myProfile?.account_name || '不明';
 
                 await supabaseClient
                     .from('team_admin_requests')
@@ -968,8 +963,8 @@
                         team_name: myTeam.team_name,
                         target_discord_id: discordId,
                         target_name: memberName,
-                        requester_discord_id: user.user_metadata.provider_id,
-                        requester_name: myProfile.data?.account_name || '不明',
+                        requester_discord_id: effectiveDiscordId,
+                        requester_name: accountName,
                         status: 'pending'
                     });
 
@@ -993,7 +988,7 @@
             }
 
             try {
-                const discordId = currentUser.user_metadata.provider_id;
+                const discordId = effectiveDiscordId;
 
                 // チーム作成
                 const { data: newTeam, error: teamError } = await supabaseClient
@@ -1072,7 +1067,7 @@
             errorDiv.style.display = 'none';
 
             try {
-                const discordId = currentUser.user_metadata.provider_id;
+                const discordId = effectiveDiscordId;
 
                 // 既存の申請をチェック
                 const { data: existingRequest } = await supabaseClient
