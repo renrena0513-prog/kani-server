@@ -411,6 +411,7 @@
         let isTeamAdmin = false;
         let teamMembers = [];
         let selectedNewLeader = null;
+        let effectiveDiscordId = null; // なりすまし中はそのユーザーID、通常は自分のID
 
         document.addEventListener('DOMContentLoaded', initTeamPage);
 
@@ -423,13 +424,17 @@
                 return;
             }
 
-            const discordId = currentUser.user_metadata.provider_id;
+            // なりすまし中ならそのユーザーID、そうでなければ自分のID
+            const impersonated = getImpersonatedUser();
+            effectiveDiscordId = impersonated
+                ? impersonated.discord_user_id
+                : currentUser.user_metadata.provider_id;
 
-            // 自分のプロフィール取得
+            // 対象ユーザーのプロフィール取得
             const { data: profile } = await supabaseClient
                 .from('profiles')
                 .select('*')
-                .eq('discord_user_id', discordId)
+                .eq('discord_user_id', effectiveDiscordId)
                 .maybeSingle();
 
             myProfile = profile;
@@ -448,7 +453,7 @@
                 .single();
 
             myTeam = team;
-            isTeamAdmin = team.creator_discord_id === discordId;
+            isTeamAdmin = team.creator_discord_id === effectiveDiscordId;
 
             await renderTeamContent();
 
@@ -639,7 +644,7 @@
         }
 
         async function checkMyLeaveRequest() {
-            const discordId = currentUser.user_metadata.provider_id;
+            const discordId = effectiveDiscordId;
             const { data: pending } = await supabaseClient
                 .from('team_join_requests')
                 .select('*')
@@ -658,7 +663,7 @@
         async function requestLeave() {
             if (!confirm('チームからの脱退を申請しますか？リーダーの承認が必要です。')) return;
 
-            const discordId = currentUser.user_metadata.provider_id;
+            const discordId = effectiveDiscordId;
 
             try {
                 await supabaseClient
@@ -753,13 +758,8 @@
             if (!confirm('チームの解散をサイト管理者に申請しますか？')) return;
 
             try {
-                // 自分の情報取得
-                const { data: { user } } = await supabaseClient.auth.getUser();
-                const myProfile = await supabaseClient
-                    .from('profiles')
-                    .select('account_name')
-                    .eq('discord_user_id', user.user_metadata.provider_id)
-                    .single();
+                // 対象ユーザーの情報を使用
+                const accountName = myProfile?.account_name || '不明';
 
                 await supabaseClient
                     .from('team_admin_requests')
@@ -767,8 +767,8 @@
                         type: 'dissolution',
                         team_id: myTeam.id,
                         team_name: myTeam.team_name,
-                        requester_discord_id: user.user_metadata.provider_id,
-                        requester_name: myProfile.data?.account_name || '不明',
+                        requester_discord_id: effectiveDiscordId,
+                        requester_name: accountName,
                         status: 'pending'
                     });
 

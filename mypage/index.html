@@ -760,13 +760,11 @@
         }
 
         /**
-         * 自分の情報を表示
+         * 自分（またはなりすましユーザー）の情報を表示
          */
         async function displayMyInfo(user) {
             const discordUser = user.user_metadata;
-
-            // アバター
-            document.getElementById('user-avatar').src = discordUser.avatar_url || 'https://via.placeholder.com/150';
+            const impersonated = getImpersonatedUser();
 
             // ユーザー情報の取得（バッジ情報・コイン・チーム情報を含む）
             const { data: profile } = await supabaseClient
@@ -775,7 +773,16 @@
                 .eq('discord_user_id', targetId)
                 .maybeSingle();
 
-            const name = profile?.account_name || discordUser.full_name || discordUser.name || 'ユーザー';
+            // アバター（なりすまし中はDBから、そうでなければDiscord）
+            const avatarUrl = impersonated
+                ? (profile?.avatar_url || 'https://via.placeholder.com/150')
+                : (discordUser.avatar_url || 'https://via.placeholder.com/150');
+            document.getElementById('user-avatar').src = avatarUrl;
+
+            // 名前（なりすまし中はなりすましユーザー名を優先）
+            const name = impersonated
+                ? (impersonated.name || profile?.account_name || 'ユーザー')
+                : (profile?.account_name || discordUser.full_name || discordUser.name || 'ユーザー');
             const coins = profile?.coins || 0;
 
             // 名前のみ表示（バッジは別要素）
