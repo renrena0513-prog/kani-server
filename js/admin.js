@@ -521,7 +521,7 @@ async function fetchBadges() {
         const { data: badges, error } = await supabaseClient
             .from('badges')
             .select('*')
-            .order('created_at', { ascending: false });
+            .order('name', { ascending: true });
 
         if (error) throw error;
 
