@@ -188,7 +188,7 @@
                 const { data: badges, error } = await supabaseClient
                     .from('badges')
                     .select('*')
-                    .order('sort_order', { ascending: true })
+                    .order('order', { ascending: true })
                     .order('name');
 
                 if (error) throw error;

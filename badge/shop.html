@@ -306,7 +306,7 @@
                     .from('badges')
                     .select('*')
                     .gt('gacha_weight', 0)
-                    .order('sort_order', { ascending: true })
+                    .order('order', { ascending: true })
                     .order('name');
 
                 if (error) throw error;
@@ -317,7 +317,7 @@
                 }
 
                 grid.innerHTML = badges.map(badge => {
-                    const isSoldOut = badge.stock !== null && badge.stock <= 0;
+                    const isSoldOut = badge.remaining_count !== null && badge.remaining_count <= 0;
                     return `
                         <div class="col-6 col-md-4 col-lg-3">
                             <div class="shop-item position-relative ${isSoldOut ? 'sold-out' : ''}">
@@ -325,9 +325,9 @@
                                 <img src="${badge.image_url}" class="shop-img" alt="${badge.name}">
                                 <div class="shop-name">${badge.name}</div>
                                 <div class="shop-price">🪙 ${badge.price.toLocaleString()}</div>
-                                <div class="shop-stock">残り: ${badge.stock !== null ? badge.stock : '∞'}個</div>
+                                <div class="shop-stock">残り: ${badge.remaining_count !== null ? badge.remaining_count : '∞'}個</div>
                                 <button class="btn btn-buy ${isSoldOut ? 'btn-secondary disabled' : 'btn-primary'}" 
-                                        onclick="buyBadge('${badge.id}', ${badge.price}, '${badge.name.replace(/'/g, "\\'")}', ${badge.stock})"
+                                        onclick="buyBadge('${badge.id}', ${badge.price}, '${badge.name.replace(/'/g, "\\'")}', ${badge.remaining_count})"
                                         ${isSoldOut ? 'disabled' : ''}>
                                     ${isSoldOut ? '売り切れ' : '購入する'}
                                 </button>
@@ -342,7 +342,7 @@
             }
         }
 
-        async function buyBadge(badgeId, price, name, stock) {
+        async function buyBadge(badgeId, price, name, remaining_count) {
             if (currentUserCoins < price) {
                 alert('コインが足りません');
                 return;
@@ -356,14 +356,13 @@
             overlay.classList.add('active');
 
             try {
-                // 1. 在庫チェックと減算 (RPCを使いたいが、とりあえずクライアント側でやる簡易版)
-                // 厳密には在庫引き当てが必要だが、ここではシンプルに
-                if (stock !== null) {
+                // 1. 在庫チェックと減算
+                if (remaining_count !== null) {
                     const { error: stockError } = await supabaseClient
                         .from('badges')
-                        .update({ stock: stock - 1 })
+                        .update({ remaining_count: remaining_count - 1 })
                         .eq('id', badgeId)
-                        .gte('stock', 1);
+                        .gte('remaining_count', 1);
 
                     if (stockError) throw new Error('在庫の更新に失敗しました（売り切れた可能性があります）');
                 }

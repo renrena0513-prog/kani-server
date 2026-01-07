@@ -595,7 +595,7 @@ async function fetchBadges() {
         const { data: badges, error } = await supabaseClient
             .from('badges')
             .select('*')
-            .order('sort_order', { ascending: true })
+            .order('order', { ascending: true })
             .order('name', { ascending: true });
 
         if (error) throw error;
@@ -622,8 +622,8 @@ async function fetchBadges() {
                                 </span>
                             </div>
                             <div class="mt-1 d-flex justify-content-between align-items-center">
-                                <span class="small text-muted">📦 在庫: ${badge.stock ?? '∞'}</span>
-                                <span class="small text-muted">🔢 順序: ${badge.sort_order ?? 0}</span>
+                                <span class="small text-muted">📦 在庫: ${badge.remaining_count ?? '∞'}</span>
+                                <span class="small text-muted">🔢 順序: ${badge.order ?? 0}</span>
                             </div>
                         <div class="mt-3 d-flex gap-1 justify-content-center">
                             <button onclick='openBadgeModal(${JSON.stringify(badge).replace(/'/g, "&apos;")})' class="btn btn-sm btn-outline-primary">編集</button>
@@ -652,8 +652,8 @@ function openBadgeModal(badge = null) {
         document.getElementById('badge-description').value = badge.description || '';
         document.getElementById('badge-weight').value = badge.gacha_weight;
         document.getElementById('badge-price').value = badge.price;
-        document.getElementById('badge-stock').value = badge.stock ?? 999;
-        document.getElementById('badge-sort-order').value = badge.sort_order ?? 0;
+        document.getElementById('badge-stock').value = badge.remaining_count ?? 999;
+        document.getElementById('badge-sort-order').value = badge.order ?? 0;
         document.getElementById('badge-image-url').value = badge.image_url;
 
         if (badge.image_url) {
@@ -675,8 +675,8 @@ async function saveBadge() {
     const description = document.getElementById('badge-description').value;
     const gacha_weight = Number(document.getElementById('badge-weight').value);
     const price = Number(document.getElementById('badge-price').value);
-    const stock = Number(document.getElementById('badge-stock').value);
-    const sort_order = Number(document.getElementById('badge-sort-order').value);
+    const remaining_count = Number(document.getElementById('badge-stock').value);
+    const order = Number(document.getElementById('badge-sort-order').value);
     let image_url = document.getElementById('badge-image-url').value;
 
     const imageFile = document.getElementById('badge-image-file').files[0];
@@ -711,7 +711,7 @@ async function saveBadge() {
             image_url = data.publicUrl;
         }
 
-        const badgeData = { name, description, gacha_weight, price, stock, sort_order, image_url };
+        const badgeData = { name, description, gacha_weight, price, remaining_count, order, image_url };
 
         let error;
         if (id) {
@@ -791,8 +791,8 @@ async function handleBulkBadgeUpload(event) {
                     description: '',
                     gacha_weight: 10,
                     price: 0,
-                    stock: 999,
-                    sort_order: 0,
+                    remaining_count: 999,
+                    order: 0,
                     image_url: data.publicUrl
                 }]);
 
@@ -816,7 +816,7 @@ async function exportBadgesToCSV() {
         const { data: badges, error } = await supabaseClient
             .from('badges')
             .select('*')
-            .order('sort_order', { ascending: true })
+            .order('order', { ascending: true })
             .order('name', { ascending: true });
 
         if (error) throw error;
@@ -825,7 +825,7 @@ async function exportBadgesToCSV() {
             return;
         }
 
-        const headers = ['id', 'name', 'description', 'requirements', 'image_url', 'gacha_weight', 'price', 'stock', 'sort_order'];
+        const headers = ['id', 'name', 'description', 'requirements', 'image_url', 'gacha_weight', 'price', 'remaining_count', 'order'];
         const csvRows = [headers.join(',')];
 
         badges.forEach(badge => {
@@ -878,7 +878,7 @@ async function handleBadgeCSVImport(event) {
                     let val = values[idx];
 
                     // 数値型のカラム
-                    if (['gacha_weight', 'price', 'stock', 'sort_order'].includes(h)) {
+                    if (['gacha_weight', 'price', 'remaining_count', 'order'].includes(h)) {
                         val = (val !== '' && val !== undefined && val !== 'null') ? Number(val) : 0;
                     }
 

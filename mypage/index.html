@@ -1063,10 +1063,10 @@
                     totalAssetsEl.textContent = (userCoins + badgeAssets).toLocaleString();
                 }
 
-                // バッジを配列に変換してソート (sort_order -> name)
+                // バッジを配列に変換してソート (order -> name)
                 const aggregatedBadges = Object.values(badgeGroups).sort((a, b) => {
-                    const orderA = a.badge.sort_order ?? 999;
-                    const orderB = b.badge.sort_order ?? 999;
+                    const orderA = a.badge.order ?? 999;
+                    const orderB = b.badge.order ?? 999;
                     if (orderA !== orderB) return orderA - orderB;
                     return a.badge.name.localeCompare(b.badge.name);
                 });
