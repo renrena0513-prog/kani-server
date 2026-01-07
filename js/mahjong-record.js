@@ -14,6 +14,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function checkAdminStatus() {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (user) {
+        // 管理者チェックは実ユーザー（ログイン中の管理者）で行うべきなので、そのまま provider_id を使う。
+        // ただし、なりすまし中のユーザーが管理者かどうかでUIが変わるのを防ぐため、
+        // ログインユーザーが管理者なら常に isAdmin = true にする。
         const discordId = user.user_metadata.provider_id;
         isAdmin = ADMIN_DISCORD_IDS.includes(discordId);
     }
@@ -401,9 +404,9 @@ async function submitScores() {
     // Step 3: match_id を生成（全プレイヤーに同じIDを割り当て）
     const matchId = crypto.randomUUID();
 
-    // Step 4: 現在のユーザーのdiscord_user_idを取得
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    const submittedBy = user?.user_metadata?.provider_id || null;
+    // Step 4: 記録者のIDを取得（なりすまし対応）
+    const effectiveUserId = await getEffectiveUserId();
+    const submittedBy = effectiveUserId;
 
     // Step 5: 最終的な挿入データを構築
     const dataToInsert = tempData.map(player => ({

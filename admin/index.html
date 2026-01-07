@@ -799,7 +799,9 @@
             const { data: { user } } = await supabaseClient.auth.getUser();
             if (!user) return;
 
-            const discordId = user.user_metadata.provider_id;
+            // なりすまし対応
+            const impersonated = getImpersonatedUser();
+            const discordId = impersonated ? impersonated.discord_user_id : user.user_metadata.provider_id;
 
             const { data: myTeams } = await supabaseClient
                 .from('teams')

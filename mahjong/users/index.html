@@ -279,7 +279,9 @@
             }
             if (!user) return;
 
-            const discordId = user.user_metadata.provider_id;
+            // なりすまし対応
+            const impersonated = getImpersonatedUser();
+            const discordId = impersonated ? impersonated.discord_user_id : user.user_metadata.provider_id;
 
             const { data: myTeams } = await supabaseClient
                 .from('teams')
@@ -358,7 +360,10 @@
                 return;
             }
 
-            const discordId = user.user_metadata.provider_id;
+            // なりすまし対応
+            const impersonated = getImpersonatedUser();
+            const discordId = impersonated ? impersonated.discord_user_id : user.user_metadata.provider_id;
+
             myProfile = allProfiles.find(p => p.discord_user_id === discordId);
 
             if (!myProfile || !myProfile.team_id) {
@@ -446,7 +451,8 @@
                 return;
             }
 
-            const discordId = user.user_metadata.provider_id;
+            const impersonated = getImpersonatedUser();
+            const discordId = impersonated ? impersonated.discord_user_id : user.user_metadata.provider_id;
 
             try {
                 // チーム作成
@@ -527,7 +533,8 @@
                 return;
             }
 
-            const discordId = user.user_metadata.provider_id;
+            const impersonated = getImpersonatedUser();
+            const discordId = impersonated ? impersonated.discord_user_id : user.user_metadata.provider_id;
 
             try {
                 // 既存の申請確認
