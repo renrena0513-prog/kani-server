@@ -779,8 +779,14 @@
             <!-- Supabase設定 -->
             <script src="../js/supabase-config.js"></script>
             <script src="../js/auth-guard.js"></script>
+            <script src="../js/navigation.js"></script>
             <!-- 管理ロジック -->
             <script src="../js/admin.js"></script>
+            <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                    initAccordionNav('../');
+                });
+            </script>
 
 
             <script>
