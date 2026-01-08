@@ -61,25 +61,24 @@
             font-weight: 500;
         }
 
-        .badge-requirements-section {
-            margin-top: 20px;
-            padding: 15px 25px;
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 12px;
-            display: inline-block;
-        }
-
-        .requirements-label {
-            font-size: 0.85rem;
-            color: rgba(255, 255, 255, 0.9);
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-
         .badge-requirements {
             font-size: 1rem;
             margin: 0;
             font-weight: 500;
+        }
+
+        .badge-extra-info {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 15px 25px;
+            flex: 1;
+            min-width: 250px;
+            max-width: 450px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
         }
 
         .stat-card {
@@ -230,26 +229,38 @@
         <div class="badge-detail-card">
             <!-- バッジヘッダー -->
             <div class="badge-header">
-                <div id="badge-rarity-badge" class="badge rounded-pill mb-3"
-                    style="font-size: 0.9rem; padding: 6px 15px; display: none;">Normal</div>
-                <img id="badge-image" src="" alt="バッジ" class="badge-image-large">
-                <h1 id="badge-name" class="badge-name">読み込み中...</h1>
-                <p id="badge-description" class="badge-description"></p>
-                <div id="badge-requirements-section" class="badge-requirements-section" style="display: none;">
-                    <div class="requirements-label">🎯 獲得条件</div>
-                    <p id="badge-requirements" class="badge-requirements"></p>
-                </div>
+                <div class="d-flex flex-column align-items-center">
+                    <!-- レアリティ -->
+                    <div id="badge-rarity-badge" class="badge rounded-pill mb-3"
+                        style="font-size: 0.9rem; padding: 6px 15px; display: none;">Normal</div>
 
-                <!-- 権利者情報 -->
-                <div id="badge-owner-section" class="mt-4" style="display: none;">
-                    <div class="small fw-bold mb-2" style="color: rgba(255,255,255,0.8);">🎨 権利者（出品者）</div>
-                    <a id="badge-owner-link" href="#"
-                        class="text-decoration-none d-inline-flex align-items-center bg-white bg-opacity-10 p-2 rounded-pill pr-3 text-white transition-all hover-opacity-20"
-                        style="padding-right: 20px !important;">
-                        <img id="badge-owner-avatar" src="" class="rounded-circle me-2" width="32" height="32"
-                            style="border: 1px solid rgba(255,255,255,0.3);">
-                        <span id="badge-owner-name" class="fw-bold"></span>
-                    </a>
+                    <!-- バッジ画像 -->
+                    <img id="badge-image" src="" alt="バッジ" class="badge-image-large">
+
+                    <!-- 名称 -->
+                    <h1 id="badge-name" class="badge-name">読み込み中...</h1>
+
+                    <!-- 説明 -->
+                    <p id="badge-description" class="badge-description mb-4"></p>
+
+                    <!-- 獲得条件と権利者 (横並び) -->
+                    <div class="d-flex flex-wrap justify-content-center gap-4 w-100">
+                        <div id="badge-requirements-section" class="badge-extra-info" style="display: none;">
+                            <div class="small fw-bold mb-2" style="color: rgba(255,255,255,0.8);">🎯 獲得条件</div>
+                            <p id="badge-requirements" class="badge-requirements m-0"></p>
+                        </div>
+
+                        <div id="badge-owner-section" class="badge-extra-info" style="display: none;">
+                            <div class="small fw-bold mb-2" style="color: rgba(255,255,255,0.8);">🎨 権利者（出品者）</div>
+                            <a id="badge-owner-link" href="#"
+                                class="text-decoration-none d-inline-flex align-items-center bg-white bg-opacity-10 p-2 rounded-pill text-white transition-all"
+                                style="padding-right: 20px !important;">
+                                <img id="badge-owner-avatar" src="" class="rounded-circle me-2" width="32" height="32"
+                                    style="border: 1px solid rgba(255,255,255,0.3);">
+                                <span id="badge-owner-name" class="fw-bold"></span>
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -352,7 +363,7 @@
                 // 獲得条件の表示
                 if (badge.requirements) {
                     document.getElementById('badge-requirements').textContent = badge.requirements;
-                    document.getElementById('badge-requirements-section').style.display = 'inline-block';
+                    document.getElementById('badge-requirements-section').style.display = 'flex';
                 }
 
                 // 権利者情報の表示
@@ -367,7 +378,7 @@
                         document.getElementById('badge-owner-name').textContent = ownerProfile.account_name || '名称未設定';
                         document.getElementById('badge-owner-avatar').src = ownerProfile.avatar_url || 'https://via.placeholder.com/32';
                         document.getElementById('badge-owner-link').href = `../mypage/index.html?user=${badge.discord_user_id}`;
-                        document.getElementById('badge-owner-section').style.display = 'block';
+                        document.getElementById('badge-owner-section').style.display = 'flex';
                     }
                 }
 
