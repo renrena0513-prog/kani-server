@@ -661,10 +661,13 @@ async function fetchBadges() {
 }
 
 // バッジモーダル制御
-function openBadgeModal(badge = null) {
+async function openBadgeModal(badge = null) {
     const form = document.getElementById('badge-form');
     form.reset();
     document.getElementById('badge-image-preview').style.display = 'none';
+
+    // ユーザーリストを読み込む
+    await loadBadgeOwnerOptions(badge?.discord_user_id);
 
     if (badge) {
         document.getElementById('badgeModalLabel').textContent = 'バッジ編集';
@@ -676,6 +679,7 @@ function openBadgeModal(badge = null) {
         document.getElementById('badge-stock').value = badge.remaining_count ?? 999;
         document.getElementById('badge-sort-order').value = badge.order ?? 0;
         document.getElementById('badge-image-url').value = badge.image_url;
+        document.getElementById('badge-owner').value = badge.discord_user_id || '';
 
         if (badge.image_url) {
             const preview = document.getElementById('badge-image-preview');
@@ -686,8 +690,38 @@ function openBadgeModal(badge = null) {
         document.getElementById('badgeModalLabel').textContent = '新規バッジ登録';
         document.getElementById('badge-id').value = '';
         document.getElementById('badge-image-url').value = '';
+        document.getElementById('badge-owner').value = '';
     }
     window.badgeModal.show();
+}
+
+// 権利者選択リストを読み込む
+async function loadBadgeOwnerOptions(selectedId = null) {
+    const select = document.getElementById('badge-owner');
+    select.innerHTML = '<option value="">なし（権利者なし）</option>';
+
+    try {
+        const { data: profiles, error } = await supabaseClient
+            .from('profiles')
+            .select('discord_user_id, account_name')
+            .order('account_name');
+
+        if (error) throw error;
+
+        if (profiles) {
+            profiles.forEach(profile => {
+                const option = document.createElement('option');
+                option.value = profile.discord_user_id;
+                option.textContent = profile.account_name || '名称未設定';
+                if (selectedId && profile.discord_user_id === selectedId) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+        }
+    } catch (err) {
+        console.error('ユーザーリスト読み込みエラー:', err);
+    }
 }
 
 async function saveBadge() {
@@ -732,7 +766,16 @@ async function saveBadge() {
             image_url = data.publicUrl;
         }
 
-        const badgeData = { name, description, gacha_weight, price, remaining_count, order, image_url };
+        const badgeData = {
+            name,
+            description,
+            gacha_weight,
+            price,
+            remaining_count,
+            order,
+            image_url,
+            discord_user_id: document.getElementById('badge-owner').value || null
+        };
 
         let error;
         if (id) {
