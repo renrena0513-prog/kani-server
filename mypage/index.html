@@ -1519,6 +1519,12 @@
                     const typeName = typeNames[log.action_type] || '📝 その他';
                     let amountStr = log.amount ? `🪙${log.amount.toLocaleString()}` : '';
 
+                    // 名前解決ヘルパー
+                    const getDisplayName = (uid, fallback) => {
+                        const p = allProfiles.find(u => u.discord_user_id === uid);
+                        return p ? (p.account_name || uid) : fallback;
+                    };
+
                     // 詳細文字列の構築
                     let detailsStr = '';
                     if (log.isMatch) {
@@ -1527,13 +1533,17 @@
                         const mode = log.details?.mode || '';
                         detailsStr = `<span class="badge bg-light text-dark">${mode} ${rank}位 (${score}pts)</span>`;
                     } else if (log.action_type === 'transfer_send') {
-                        detailsStr = `➡ ${log.details?.target_name || '不明'} への送金`;
+                        const name = log.details?.target_name || getDisplayName(log.target_user_id, '不明');
+                        detailsStr = `➡ ${name} への送金`;
                     } else if (log.action_type === 'transfer_receive') {
-                        detailsStr = `⬅ ${log.details?.sender_name || '誰か'} からの送金`;
+                        const name = log.details?.sender_name || getDisplayName(log.target_user_id, '誰か');
+                        detailsStr = `⬅ ${name} からの送金`;
                     } else if (log.action_type === 'badge_transfer') {
-                        detailsStr = `🎁 「${log.details?.badge_name || 'バッジ'}」を ${log.details?.target_name || '誰か'} へ譲渡`;
+                        const name = log.details?.target_name || getDisplayName(log.target_user_id, '誰か');
+                        detailsStr = `🎁 「${log.details?.badge_name || 'バッジ'}」を ${name} へ譲渡`;
                     } else if (log.action_type === 'badge_receive') {
-                        detailsStr = `📦 「${log.details?.badge_name || 'バッジ'}」を ${log.details?.sender_name || '誰か'} から受取`;
+                        const name = log.details?.sender_name || getDisplayName(log.target_user_id, '誰か');
+                        detailsStr = `📦 「${log.details?.badge_name || 'バッジ'}」を ${name} から受取`;
                     } else if (log.action_type === 'badge_sell') {
                         detailsStr = `💴 「${log.details?.badge_name || 'バッジ'}」を売却`;
                     } else if (log.action_type === 'badge_purchase') {
