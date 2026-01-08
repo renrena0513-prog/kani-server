@@ -644,6 +644,9 @@ async function fetchBadges() {
                             </div>
                             <div class="mt-1 d-flex justify-content-between align-items-center">
                                 <span class="small text-muted">📦 在庫: ${badge.remaining_count ?? '∞'}</span>
+                                <span class="small text-muted">⭐ ${badge.rarity || 'Normal'}</span>
+                            </div>
+                            <div class="mt-1 text-center">
                                 <span class="small text-muted">🔢 順序: ${badge.order ?? 0}</span>
                             </div>
                         <div class="mt-3 d-flex gap-1 justify-content-center">
@@ -679,6 +682,8 @@ async function openBadgeModal(badge = null) {
         document.getElementById('badge-stock').value = badge.remaining_count ?? 999;
         document.getElementById('badge-sort-order').value = badge.order ?? 0;
         document.getElementById('badge-image-url').value = badge.image_url;
+        document.getElementById('badge-rarity').value = badge.rarity || 'Normal';
+        document.getElementById('badge-requirements').value = badge.requirements || '';
         document.getElementById('badge-owner').value = badge.discord_user_id || '';
 
         if (badge.image_url) {
@@ -690,6 +695,8 @@ async function openBadgeModal(badge = null) {
         document.getElementById('badgeModalLabel').textContent = '新規バッジ登録';
         document.getElementById('badge-id').value = '';
         document.getElementById('badge-image-url').value = '';
+        document.getElementById('badge-rarity').value = 'Normal';
+        document.getElementById('badge-requirements').value = '';
         document.getElementById('badge-owner').value = '';
     }
     window.badgeModal.show();
@@ -697,31 +704,58 @@ async function openBadgeModal(badge = null) {
 
 // 権利者選択リストを読み込む
 async function loadBadgeOwnerOptions(selectedId = null) {
-    const select = document.getElementById('badge-owner');
-    select.innerHTML = '<option value="">なし（権利者なし）</option>';
+    const listEl = document.getElementById('badge-owner-list');
+    const labelEl = document.getElementById('selected-owner-label');
+    const hiddenInput = document.getElementById('badge-owner');
+
+    listEl.innerHTML = '<li><a class="dropdown-item" href="#" onclick="selectBadgeOwner(\'\', \'なし（権利者なし）\', \'\')">なし（権利者なし）</a></li>';
 
     try {
         const { data: profiles, error } = await supabaseClient
             .from('profiles')
-            .select('discord_user_id, account_name')
+            .select('discord_user_id, account_name, avatar_url')
             .order('account_name');
 
         if (error) throw error;
 
         if (profiles) {
             profiles.forEach(profile => {
-                const option = document.createElement('option');
-                option.value = profile.discord_user_id;
-                option.textContent = profile.account_name || '名称未設定';
+                const name = profile.account_name || '名称未設定';
+                const avatar = profile.avatar_url || '';
+                const avatarHtml = avatar ? `<img src="${avatar}" width="24" height="24" class="rounded-circle me-2">` : '<div class="bg-secondary rounded-circle me-2" style="width:24px;height:24px;"></div>';
+
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <a class="dropdown-item d-flex align-items-center" href="#" onclick="selectBadgeOwner('${profile.discord_user_id}', '${name.replace(/'/g, "\\'")}', '${avatar}')">
+                        ${avatarHtml}
+                        <span>${name}</span>
+                    </a>
+                `;
+                listEl.appendChild(li);
+
                 if (selectedId && profile.discord_user_id === selectedId) {
-                    option.selected = true;
+                    selectBadgeOwner(profile.discord_user_id, name, avatar);
                 }
-                select.appendChild(option);
             });
+        }
+
+        if (!selectedId) {
+            selectBadgeOwner('', 'なし（権利者なし）', '');
         }
     } catch (err) {
         console.error('ユーザーリスト読み込みエラー:', err);
     }
+}
+
+// 権利者を選択した時の処理
+function selectBadgeOwner(id, name, avatarUrl) {
+    const labelEl = document.getElementById('selected-owner-label');
+    const hiddenInput = document.getElementById('badge-owner');
+
+    hiddenInput.value = id;
+
+    const avatarHtml = avatarUrl ? `<img src="${avatarUrl}" width="24" height="24" class="rounded-circle me-2">` : (id ? '<div class="bg-secondary rounded-circle me-2" style="width:24px;height:24px;"></div>' : '');
+    labelEl.innerHTML = `${avatarHtml}<span>${name}</span>`;
 }
 
 async function saveBadge() {
@@ -732,6 +766,8 @@ async function saveBadge() {
     const price = Number(document.getElementById('badge-price').value);
     const remaining_count = Number(document.getElementById('badge-stock').value);
     const order = Number(document.getElementById('badge-sort-order').value);
+    const rarity = document.getElementById('badge-rarity').value;
+    const requirements = document.getElementById('badge-requirements').value;
     let image_url = document.getElementById('badge-image-url').value;
 
     const imageFile = document.getElementById('badge-image-file').files[0];
@@ -774,6 +810,8 @@ async function saveBadge() {
             remaining_count,
             order,
             image_url,
+            rarity,
+            requirements,
             discord_user_id: document.getElementById('badge-owner').value || null
         };
 
@@ -857,6 +895,8 @@ async function handleBulkBadgeUpload(event) {
                     price: 0,
                     remaining_count: 999,
                     order: 0,
+                    rarity: 'Normal',
+                    requirements: '',
                     image_url: data.publicUrl
                 }]);
 
@@ -889,7 +929,7 @@ async function exportBadgesToCSV() {
             return;
         }
 
-        const headers = ['id', 'name', 'description', 'requirements', 'image_url', 'gacha_weight', 'price', 'remaining_count', 'order'];
+        const headers = ['id', 'name', 'description', 'requirements', 'rarity', 'image_url', 'gacha_weight', 'price', 'remaining_count', 'order', 'discord_user_id'];
         const csvRows = [headers.join(',')];
 
         badges.forEach(badge => {
@@ -1003,9 +1043,11 @@ async function handleBadgeCSVImport(event) {
                             name: badge.name,
                             description: badge.description || '',
                             requirements: badge.requirements || null,
+                            rarity: badge.rarity || 'Normal',
                             image_url: badge.image_url,
                             gacha_weight: badge.gacha_weight,
-                            price: badge.price
+                            price: badge.price,
+                            discord_user_id: badge.discord_user_id || null
                         })
                         .eq('id', badge.id);
 
@@ -1026,9 +1068,11 @@ async function handleBadgeCSVImport(event) {
                             name: b.name,
                             description: b.description || '',
                             requirements: b.requirements || null,
+                            rarity: b.rarity || 'Normal',
                             image_url: b.image_url,
                             gacha_weight: b.gacha_weight,
-                            price: b.price
+                            price: b.price,
+                            discord_user_id: b.discord_user_id || null
                         })));
 
                     if (error) throw error;

@@ -11,7 +11,7 @@ function generateAccordionNav(basePath = '../') {
 
     const navHTML = `
         <div class="nav-dropdown dropdown">
-            <button class="record-button dropdown-toggle" type="button" id="navDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+            <button class="record-button dropdown-toggle btn" type="button" id="navDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                 📝 メニュー
             </button>
             <ul class="dropdown-menu nav-dropdown-menu dropdown-menu-end" aria-labelledby="navDropdown" style="min-width: 260px;">
@@ -86,12 +86,67 @@ function toggleNavGroup(header, event) {
  */
 function getAccordionNavStyles() {
     return `
+        /* 固定位置のナビゲーションドロップダウン */
+        .nav-dropdown {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        /* 共通のメニューボタン（金色のグラデーション） */
+        .record-button {
+            background: linear-gradient(135deg, #d4a574 0%, #b8892d 100%) !important;
+            color: white !important;
+            padding: 12px 24px !important;
+            border-radius: 25px !important;
+            font-weight: bold !important;
+            font-size: 1.1rem !important;
+            box-shadow: 0 6px 20px rgba(212, 168, 83, 0.5) !important;
+            transition: all 0.3s ease !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+            border: none !important;
+            cursor: pointer !important;
+        }
+
+        .record-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(212, 168, 83, 0.6) !important;
+            color: white !important;
+        }
+
+        /* ドロップダウンメニューの基本スタイル */
+        .nav-dropdown-menu {
+            border-radius: 12px !important;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2) !important;
+            min-width: 260px !important;
+            overflow: hidden !important;
+            border: none !important;
+            background: white !important;
+        }
+
+        .dropdown-item {
+            padding: 12px 20px !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            color: #333 !important;
+            transition: background 0.2s !important;
+            font-size: 1rem !important;
+        }
+
+        .dropdown-item:hover {
+            background: #f5f5f5 !important;
+        }
+
         .nav-group {
             list-style: none;
         }
         
         .nav-group-header {
-            padding: 10px 20px;
+            padding: 12px 20px;
             cursor: pointer;
             display: flex;
             justify-content: space-between;
@@ -129,13 +184,18 @@ function getAccordionNavStyles() {
         }
         
         .dropdown-item.sub-item {
-            padding-left: 40px;
-            font-size: 0.9rem;
-            color: #555;
+            padding-left: 40px !important;
+            font-size: 0.9rem !important;
+            color: #555 !important;
         }
         
-        .dropdown-item.sub-item:hover {
-            background: #f0f0f0;
+        .notification-badge {
+            background: #dc3545;
+            color: white;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-left: auto;
         }
     `;
 }
