@@ -21,7 +21,7 @@ function generateAccordionNav(basePath = '../') {
                 
                 <!-- 麻雀大会グループ -->
                 <li class="nav-group">
-                    <div class="nav-group-header" onclick="toggleNavGroup(this)" data-group="mahjong">
+                    <div class="nav-group-header" onclick="toggleNavGroup(this, event)" data-group="mahjong">
                         <span>📊 麻雀大会</span>
                         <span class="nav-chevron ${isPC ? 'open' : ''}">▼</span>
                     </div>
@@ -35,7 +35,7 @@ function generateAccordionNav(basePath = '../') {
                 
                 <!-- お楽しみグループ -->
                 <li class="nav-group">
-                    <div class="nav-group-header" onclick="toggleNavGroup(this)" data-group="fun">
+                    <div class="nav-group-header" onclick="toggleNavGroup(this, event)" data-group="fun">
                         <span>🎉 お楽しみ</span>
                         <span class="nav-chevron ${isPC ? 'open' : ''}">▼</span>
                     </div>
@@ -61,7 +61,13 @@ function generateAccordionNav(basePath = '../') {
 /**
  * ナビゲーショングループを開閉
  */
-function toggleNavGroup(header) {
+function toggleNavGroup(header, event) {
+    // メニューが閉じないようにイベント伝播を止める
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+
     const groupId = header.getAttribute('data-group');
     const items = document.getElementById(`nav-group-${groupId}`);
     const chevron = header.querySelector('.nav-chevron');
