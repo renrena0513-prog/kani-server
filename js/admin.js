@@ -386,13 +386,34 @@ function openCoinModal(userId, name, coins) {
 
 async function saveUserCoins() {
     const userId = document.getElementById('coin-edit-user-id').value;
-    const amount = Number(document.getElementById('coin-amount').value);
+    const newAmount = Number(document.getElementById('coin-amount').value);
 
     toggleLoading(true);
     try {
+        // 現在のcoinsとtotal_assetsを取得
+        const { data: profile, error: fetchError } = await supabaseClient
+            .from('profiles')
+            .select('coins, total_assets')
+            .eq('discord_user_id', userId)
+            .single();
+
+        if (fetchError) throw fetchError;
+
+        const currentCoins = profile.coins || 0;
+        const currentTotalAssets = profile.total_assets || 0;
+        const difference = newAmount - currentCoins;
+
+        // 更新オブジェクトを作成
+        const updateData = { coins: newAmount };
+
+        // 増加した場合のみtotal_assetsに加算
+        if (difference > 0) {
+            updateData.total_assets = currentTotalAssets + difference;
+        }
+
         const { error } = await supabaseClient
             .from('profiles')
-            .update({ coins: amount })
+            .update(updateData)
             .eq('discord_user_id', userId);
 
         if (error) throw error;
