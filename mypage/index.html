@@ -1360,52 +1360,91 @@
         let activityPage = 0;
         const ACTIVITY_PER_PAGE = 10;
 
-        async function loadActivityLogs(page = 0) {
-            activityPage = page;
-            const section = document.getElementById('activity-section');
+        async function loadActivityLogs(page = 1) {
             const listEl = document.getElementById('activity-list');
             const paginationEl = document.getElementById('activity-pagination');
+            const section = document.getElementById('activity-section');
+            if (!listEl) return;
 
-            if (!section) return;
+            const pageSize = 10;
 
             try {
-                // 総件数を取得
-                const { count, error: countError } = await supabaseClient
+                // 1. activity_logs から最新のログを取得
+                const { data: logs, error: logsError } = await supabaseClient
                     .from('activity_logs')
-                    .select('id', { count: 'exact', head: true })
-                    .eq('user_id', targetId);
+                    .select('*')
+                    .eq('user_id', targetId)
+                    .order('created_at', { ascending: false })
+                    .limit(50); // 一旦多めに取得
 
-                if (countError) {
-                    console.log('Activity logs table count fetch error:', countError);
-                    listEl.innerHTML = '<div class="text-center text-muted py-3">活動ログの取得に失敗しました</div>';
+                if (logsError) throw logsError;
+
+                // 2. match_results から最新の麻雀記録を取得
+                const { data: matches, error: matchError } = await supabaseClient
+                    .from('match_results')
+                    .select('match_id, event_datetime, rank, final_score, mahjong_mode')
+                    .eq('discord_user_id', targetId)
+                    .order('event_datetime', { ascending: false })
+                    .limit(50);
+
+                if (matchError) throw matchError;
+
+                // 3. データをマージして重複排除
+                let combined = [];
+                const matchIdsInLogs = new Set(logs.filter(l => l.match_id).map(l => l.match_id));
+
+                // ログにあるデータを追加
+                logs.forEach(l => {
+                    combined.push({
+                        ...l,
+                        timestamp: new Date(l.created_at),
+                        isMatch: l.action_type === 'mahjong'
+                    });
+                });
+
+                // match_results にあって logs にないデータを追加
+                matches.forEach(m => {
+                    if (!matchIdsInLogs.has(m.match_id)) {
+                        combined.push({
+                            action_type: 'mahjong',
+                            amount: null,
+                            match_id: m.match_id,
+                            timestamp: new Date(m.event_datetime),
+                            details: {
+                                rank: m.rank,
+                                final_score: m.final_score,
+                                mode: m.mahjong_mode,
+                                is_legacy: true // activity_logsにない過去分
+                            },
+                            isMatch: true
+                        });
+                    }
+                });
+
+                // 4. ソート (日時降順)
+                combined.sort((a, b) => b.timestamp - a.timestamp);
+
+                if (combined.length === 0) {
+                    listEl.innerHTML = '<div class="text-center text-muted py-3">活動ログはまだありません</div>';
+                    section.style.display = 'block';
+                    paginationEl.style.display = 'none';
                     return;
                 }
 
                 section.style.display = 'block';
 
-                if (!count || count === 0) {
-                    listEl.innerHTML = '<div class="text-center text-muted py-3">活動ログはまだありません</div>';
-                    paginationEl.style.display = 'none';
-                    return;
-                }
+                // 5. ページネーション処理 (簡易版：上位N件を表示)
+                const start = (page - 1) * pageSize;
+                const end = start + pageSize;
+                const pageItems = combined.slice(start, end);
+                const totalPages = Math.ceil(combined.length / pageSize);
 
-                // ページネーション付きでログを取得
-                const { data: logs, error } = await supabaseClient
-                    .from('activity_logs')
-                    .select('*')
-                    .eq('user_id', targetId)
-                    .order('created_at', { ascending: false })
-                    .range(page * ACTIVITY_PER_PAGE, (page + 1) * ACTIVITY_PER_PAGE - 1);
-
-                if (error) throw error;
-
-                // アクションタイプの日本語変換
-                const actionLabels = {
-                    'mahjong': '🀄 麻雀報酬',
-                    'transfer_send': '💸 送金',
-                    'transfer_receive': '💰 受取',
-                    'badge_transfer': '📛 バッジ譲渡',
-                    'badge_receive': '🎁 バッジ受取',
+                const typeNames = {
+                    'mahjong': '🀄 麻雀記録',
+                    'transfer_send': '💸 送金(送)',
+                    'transfer_receive': '🧧 送金(受)',
+                    'badge_transfer': '🎁 バッジ譲渡',
+                    'badge_receive': '📦 バッジ受取',
                     'badge_sell': '💴 バッジ売却',
                     'badge_purchase': '🛒 バッジ購入',
                     'omikuji': '🎋 おみくじ',
@@ -1413,49 +1452,57 @@
                     'badge_equip': '✨ バッジ装着'
                 };
 
-                listEl.innerHTML = logs.map(log => {
-                    const date = new Date(log.created_at);
-                    const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
-                    const label = actionLabels[log.action_type] || log.action_type;
-                    const amountStr = log.amount
-                        ? (log.amount >= 0 ? `<span class="text-success">+${log.amount}</span>` : `<span class="text-danger">${log.amount}</span>`)
-                        : '';
+                listEl.innerHTML = pageItems.map(log => {
+                    const date = log.timestamp.toLocaleString('ja-JP', {
+                        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                    });
+                    const typeName = typeNames[log.action_type] || '📝 その他';
+                    let amountStr = log.amount ? `🪙${log.amount.toLocaleString()}` : '';
+
+                    // 麻雀の詳細表示
+                    let detailsStr = '';
+                    if (log.isMatch) {
+                        const rank = log.details?.rank;
+                        const score = log.details?.final_score;
+                        const mode = log.details?.mode || '';
+                        detailsStr = `<span class="badge bg-light text-dark ms-2">${mode} ${rank}位 (${score}pts)</span>`;
+                    }
 
                     return `
-                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                            <div>
-                                <span class="fw-bold">${label}</span>
-                                ${amountStr ? `<span class="ms-2">${amountStr}</span>` : ''}
+                        <div class="activity-item">
+                            <div class="row align-items-center">
+                                <div class="col-auto">
+                                    <span class="activity-date">${date}</span>
+                                </div>
+                                <div class="col">
+                                    <span class="activity-type">${typeName}</span>
+                                    ${detailsStr}
+                                </div>
+                                <div class="col-auto text-end">
+                                    <span class="activity-amount ${log.amount > 0 ? 'text-success' : ''}">${amountStr}</span>
+                                </div>
                             </div>
-                            <small class="text-muted">${dateStr}</small>
                         </div>
                     `;
                 }).join('');
 
-                // ページネーションを生成
-                const totalPages = Math.ceil(count / ACTIVITY_PER_PAGE);
+                // 6. ページネーションUI
                 if (totalPages > 1) {
+                    let pagHtml = '';
+                    for (let i = 1; i <= totalPages; i++) {
+                        pagHtml += `<li class="page-item ${i === page ? 'active' : ''}">
+                            <a class="page-link" href="javascript:void(0)" onclick="loadActivityLogs(${i})">${i}</a>
+                        </li>`;
+                    }
+                    paginationEl.innerHTML = pagHtml;
                     paginationEl.style.display = 'flex';
-                    let paginationHTML = '';
-
-                    if (page > 0) {
-                        paginationHTML += `<button class="btn btn-sm btn-outline-secondary" onclick="loadActivityLogs(${page - 1})">← 前</button>`;
-                    }
-
-                    paginationHTML += `<span class="align-self-center px-2">${page + 1} / ${totalPages}</span>`;
-
-                    if (page < totalPages - 1) {
-                        paginationHTML += `<button class="btn btn-sm btn-outline-secondary" onclick="loadActivityLogs(${page + 1})">次 →</button>`;
-                    }
-
-                    paginationEl.innerHTML = paginationHTML;
                 } else {
                     paginationEl.style.display = 'none';
                 }
 
             } catch (err) {
-                console.error('活動ログ取得エラー:', err);
-                listEl.innerHTML = '<div class="text-center text-danger py-3">読み込みエラー</div>';
+                console.error('Activity logs error:', err);
+                listEl.innerHTML = '<div class="text-center text-danger py-3">エラーが発生しました</div>';
             }
         }
 
