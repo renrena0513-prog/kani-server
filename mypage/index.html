@@ -1369,6 +1369,12 @@
             if (!section) return;
 
             try {
+                // 総件数を取得
+                const { count, error: countError } = await supabaseClient
+                    .from('activity_logs')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('user_id', targetId);
+
                 if (countError) {
                     console.log('Activity logs table count fetch error:', countError);
                     listEl.innerHTML = '<div class="text-center text-muted py-3">活動ログの取得に失敗しました</div>';
