@@ -241,9 +241,6 @@ async function logActivity(userId, actionType, options = {}) {
             .from('activity_logs')
             .insert([logData]);
 
-        if (error) {
-            console.error('Activity log error:', error);
-        }
     } catch (err) {
         console.error('Failed to log activity:', err);
     }

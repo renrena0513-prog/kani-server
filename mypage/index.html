@@ -1369,24 +1369,19 @@
             if (!section) return;
 
             try {
-                // 総件数を取得
-                const { count, error: countError } = await supabaseClient
-                    .from('activity_logs')
-                    .select('id', { count: 'exact', head: true })
-                    .eq('user_id', targetId);
-
                 if (countError) {
-                    console.log('Activity logs table may not exist yet:', countError);
-                    listEl.innerHTML = '<div class="text-center text-muted py-3">活動ログはまだありません</div>';
-                    return;
-                }
-
-                if (!count || count === 0) {
-                    listEl.innerHTML = '<div class="text-center text-muted py-3">活動ログはまだありません</div>';
+                    console.log('Activity logs table count fetch error:', countError);
+                    listEl.innerHTML = '<div class="text-center text-muted py-3">活動ログの取得に失敗しました</div>';
                     return;
                 }
 
                 section.style.display = 'block';
+
+                if (!count || count === 0) {
+                    listEl.innerHTML = '<div class="text-center text-muted py-3">活動ログはまだありません</div>';
+                    paginationEl.style.display = 'none';
+                    return;
+                }
 
                 // ページネーション付きでログを取得
                 const { data: logs, error } = await supabaseClient
@@ -1408,7 +1403,8 @@
                     'badge_sell': '💴 バッジ売却',
                     'badge_purchase': '🛒 バッジ購入',
                     'omikuji': '🎋 おみくじ',
-                    'revenue_share': '💎 売上還元'
+                    'revenue_share': '💎 売上還元',
+                    'badge_equip': '✨ バッジ装着'
                 };
 
                 listEl.innerHTML = logs.map(log => {
@@ -1861,6 +1857,15 @@
                     .eq('discord_user_id', targetId);
 
                 if (error) throw error;
+
+                // 活動ログを記録
+                if (typeof logActivity === 'function') {
+                    const badgeName = newBadgeId ? allProfiles.flatMap(p => p.badges).find(b => b?.id === newBadgeId)?.name || 'バッジ' : 'なし';
+                    await logActivity(targetId, 'badge_equip', {
+                        badgeId: newBadgeId,
+                        details: { badge_name: badgeName }
+                    });
+                }
 
                 await loadOwnedBadges(); // リスト更新
                 await loadTargetUserInfo(); // 名前横のバッジ更新
