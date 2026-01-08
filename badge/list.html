@@ -129,6 +129,16 @@
             border-radius: 10px;
             margin-left: auto;
         }
+
+        .rarity-pill {
+            font-size: 0.65rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-bottom: 5px;
+            color: white;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
     </style>
 </head>
 
@@ -187,14 +197,27 @@
                     return;
                 }
 
-                grid.innerHTML = badges.map(badge => `
-                    <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-                        <a href="./index.html?id=${badge.id}" class="badge-item-large">
-                            <img src="${badge.image_url}" class="badge-img-large" alt="${badge.name}">
-                            <div class="badge-name-large">${badge.name}</div>
-                        </a>
-                    </div>
-                `).join('');
+                const rarityColors = {
+                    'Normal': '#888',
+                    'Rare': '#3498db',
+                    'Epic': '#9b59b6',
+                    'Legendary': '#f1c40f',
+                    'Special': '#e74c3c'
+                };
+
+                grid.innerHTML = badges.map(badge => {
+                    const rarity = badge.rarity || 'Normal';
+                    const color = rarityColors[rarity] || '#888';
+                    return `
+                        <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                            <a href="./index.html?id=${badge.id}" class="badge-item-large">
+                                <div class="rarity-pill" style="background-color: ${color}">${rarity}</div>
+                                <img src="${badge.image_url}" class="badge-img-large" alt="${badge.name}">
+                                <div class="badge-name-large">${badge.name}</div>
+                            </a>
+                        </div>
+                    `;
+                }).join('');
 
             } catch (err) {
                 console.error('Error fetching badges:', err);

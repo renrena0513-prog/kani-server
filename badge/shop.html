@@ -193,6 +193,16 @@
             margin-left: auto;
         }
 
+        .rarity-pill {
+            font-size: 0.65rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-bottom: 5px;
+            color: white;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
         .loading-overlay {
             position: fixed;
             top: 0;
@@ -314,7 +324,7 @@
             try {
                 const { data: badges, error } = await supabaseClient
                     .from('badges')
-                    .select('id, name, image_url, price, remaining_count')
+                    .select('id, name, image_url, price, remaining_count, rarity')
                     .eq('discord_user_id', currentUserId);
 
                 if (error) throw error;
@@ -328,19 +338,32 @@
                 }
 
                 section.style.display = 'block';
-                grid.innerHTML = badges.map(badge => `
-                    <div class="col-6 col-md-3 col-lg-2">
-                        <div class="text-center p-2" style="background: #f8f9fa; border-radius: 10px; border: 2px solid var(--gold);">
-                            <a href="./index.html?id=${badge.id}" class="text-decoration-none">
-                                <img src="${badge.image_url}" alt="${badge.name}" 
-                                     style="width: 60px; height: 60px; object-fit: contain;">
-                                <div class="small text-truncate mt-1" style="color: #333;">${badge.name}</div>
-                            </a>
-                            <div class="small text-muted">🪙${badge.price}</div>
-                            <div class="small text-success">残り: ${badge.remaining_count !== null ? badge.remaining_count : '∞'}</div>
+                const rarityColors = {
+                    'Normal': '#888',
+                    'Rare': '#3498db',
+                    'Epic': '#9b59b6',
+                    'Legendary': '#f1c40f',
+                    'Special': '#e74c3c'
+                };
+
+                grid.innerHTML = badges.map(badge => {
+                    const rarity = badge.rarity || 'Normal';
+                    const color = rarityColors[rarity] || '#888';
+                    return `
+                        <div class="col-6 col-md-3 col-lg-2">
+                            <div class="text-center p-2" style="background: #f8f9fa; border-radius: 10px; border: 2px solid var(--gold);">
+                                <a href="./index.html?id=${badge.id}" class="text-decoration-none">
+                                    <div class="rarity-pill mx-auto" style="background-color: ${color}; width: fit-content; margin-bottom: 5px;">${rarity}</div>
+                                    <img src="${badge.image_url}" alt="${badge.name}" 
+                                         style="width: 60px; height: 60px; object-fit: contain;">
+                                    <div class="small text-truncate mt-1" style="color: #333;">${badge.name}</div>
+                                </a>
+                                <div class="small text-muted">🪙${badge.price}</div>
+                                <div class="small text-success">残り: ${badge.remaining_count !== null ? badge.remaining_count : '∞'}</div>
+                            </div>
                         </div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
 
             } catch (err) {
                 console.error('Error loading rights badges:', err);
@@ -381,13 +404,24 @@
                     return;
                 }
 
+                const rarityColors = {
+                    'Normal': '#888',
+                    'Rare': '#3498db',
+                    'Epic': '#9b59b6',
+                    'Legendary': '#f1c40f',
+                    'Special': '#e74c3c'
+                };
+
                 grid.innerHTML = badges.map(badge => {
                     const isSoldOut = badge.remaining_count !== null && badge.remaining_count <= 0;
+                    const rarity = badge.rarity || 'Normal';
+                    const color = rarityColors[rarity] || '#888';
                     return `
                         <div class="col-6 col-md-4 col-lg-3">
                             <div class="shop-item position-relative ${isSoldOut ? 'sold-out' : ''}">
                                 ${isSoldOut ? '<div class="sold-out-badge">SOLD OUT</div>' : ''}
                                 <a href="./index.html?id=${badge.id}" class="text-decoration-none text-dark d-flex flex-column align-items-center w-100">
+                                    <div class="rarity-pill" style="background-color: ${color}">${rarity}</div>
                                     <img src="${badge.image_url}" class="shop-img" alt="${badge.name}">
                                     <div class="shop-name">${badge.name}</div>
                                 </a>

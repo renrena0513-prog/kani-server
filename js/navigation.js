@@ -6,8 +6,8 @@
  * @param {string} basePath - 現在のページからルートへの相対パス（例: '../' or './'）
  */
 function generateAccordionNav(basePath = '../') {
-    // PC(768px以上)ではデフォルト展開、スマホでは折りたたみ
-    const isPC = window.innerWidth >= 768;
+    // 初期状態は常に閉じている状態にする
+    // const isPC = window.innerWidth >= 768; // 以前のロジック
 
     const navHTML = `
         <div class="nav-dropdown dropdown">
@@ -23,9 +23,9 @@ function generateAccordionNav(basePath = '../') {
                 <li class="nav-group">
                     <div class="nav-group-header" onclick="toggleNavGroup(this, event)" data-group="mahjong">
                         <span>📊 麻雀大会</span>
-                        <span class="nav-chevron ${isPC ? 'open' : ''}">▼</span>
+                        <span class="nav-chevron">▼</span>
                     </div>
-                    <ul class="nav-group-items ${isPC ? 'show' : ''}" id="nav-group-mahjong">
+                    <ul class="nav-group-items" id="nav-group-mahjong">
                         <li><a class="dropdown-item sub-item" href="${basePath}mahjong/index.html">📊 ランキング</a></li>
                         <li><a class="dropdown-item sub-item" href="${basePath}mahjong/record.html">📝 記録する</a></li>
                         <li><a class="dropdown-item sub-item" href="${basePath}mahjong/users/index.html">👥 ユーザー一覧</a></li>
@@ -37,10 +37,10 @@ function generateAccordionNav(basePath = '../') {
                 <li class="nav-group">
                     <div class="nav-group-header" onclick="toggleNavGroup(this, event)" data-group="fun">
                         <span>🎉 お楽しみ</span>
-                        <span class="nav-chevron ${isPC ? 'open' : ''}">▼</span>
+                        <span class="nav-chevron">▼</span>
                     </div>
-                    <ul class="nav-group-items ${isPC ? 'show' : ''}" id="nav-group-fun">
-                        <li class="admin-only" style="display:none;"><a class="dropdown-item sub-item" href="${basePath}omikuji/index.html">🎋 おみくじ</a></li>
+                    <ul class="nav-group-items" id="nav-group-fun">
+                        <li><a class="dropdown-item sub-item" href="${basePath}omikuji/index.html">🎋 おみくじ</a></li>
                         <li><a class="dropdown-item sub-item" href="${basePath}ranking/index.html">💰 資産ランキング</a></li>
                         <li><a class="dropdown-item sub-item" href="${basePath}badge/list.html">📛 バッジ一覧</a></li>
                         <li><a class="dropdown-item sub-item" href="${basePath}badge/shop.html">🛒 バッジショップ</a></li>

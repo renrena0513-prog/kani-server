@@ -221,6 +221,10 @@
             <li><a class="dropdown-item" href="../mahjong/team/index.html">🏅 チーム管理</a></li>
             <li><a class="dropdown-item" href="../badge/list.html">📛 バッジ一覧</a></li>
             <li><a class="dropdown-item" href="../badge/shop.html">🛒 バッジショップ</a></li>
+            <li>
+                <hr class="dropdown-divider">
+            </li>
+            <li><a class="dropdown-item" href="./index.html">🎋 おみくじ</a></li>
             <li class="admin-only" style="display:none;">
                 <hr class="dropdown-divider">
             </li>
@@ -306,11 +310,13 @@
 
             currentUserId = user.user_metadata.provider_id;
 
-            // 管理者チェック
+            // 管理者チェックを削除（全員開放）
+            /*
             if (!ADMIN_DISCORD_IDS.includes(currentUserId)) {
                 document.getElementById('access-denied').style.display = 'block';
                 return;
             }
+            */
 
             // おみくじ設定を取得
             const { data: settings, error: settingsError } = await supabaseClient
