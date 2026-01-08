@@ -1478,27 +1478,25 @@
                     m.discord_user_id === targetId || (targetName && (m.account_name === targetName || m.nickname === targetName || m.player_name === targetName))
                 );
 
-                console.log('Filtered Results:', { logs: logs.length, matches: matches.length, legacy: legacy.length });
+                console.log('Filtered (Subjective Only):', { logs: logs.length, matches: matches.length, legacy: legacy.length });
 
                 // --- マージ ---
+                // activity_logs から麻雀記録がなくなったため、単純な結合とソートで済むようになります。
                 let combined = [];
-                const matchIdsInLogs = new Set(logs.filter(l => l.match_id).map(l => String(l.match_id)));
 
                 logs.forEach(l => {
                     let details = l.details;
                     if (typeof details === 'string') { try { details = JSON.parse(details); } catch (e) { } }
-                    combined.push({ ...l, details, timestamp: new Date(l.created_at), isMatch: l.action_type === 'mahjong' });
+                    combined.push({ ...l, details, timestamp: new Date(l.created_at), isMatch: false });
                 });
 
                 matches.forEach(m => {
-                    if (!matchIdsInLogs.has(String(m.match_id))) {
-                        combined.push({
-                            action_type: 'mahjong', amount: null, match_id: m.match_id,
-                            timestamp: new Date(m.event_datetime),
-                            details: { rank: m.rank, final_score: m.final_score, mode: m.mahjong_mode },
-                            isMatch: true
-                        });
-                    }
+                    combined.push({
+                        action_type: 'mahjong', amount: null, match_id: m.match_id,
+                        timestamp: new Date(m.event_datetime),
+                        details: { rank: m.rank, final_score: m.final_score, mode: m.mahjong_mode },
+                        isMatch: true
+                    });
                 });
 
                 legacy.forEach(m => {
@@ -1935,12 +1933,7 @@
                     return;
                 }
 
-                // 5. 受信側の総資産を加算
-                if (typeof addToTotalAssets === 'function') {
-                    await addToTotalAssets(coinTransferTargetId, amount);
-                }
-
-                // 6. 活動ログを記録（送信側）
+                // 5. 活動ログを記録（送信側）
                 if (typeof logActivity === 'function') {
                     await logActivity(targetId, 'transfer_send', {
                         amount: amount,

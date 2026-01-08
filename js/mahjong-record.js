@@ -473,21 +473,6 @@ async function submitScores() {
                         await addToTotalAssets(player.discord_user_id, reward);
                     }
 
-                    // 活動ログを記録
-                    if (typeof logActivity === 'function') {
-                        await logActivity(player.discord_user_id, 'mahjong', {
-                            amount: reward,
-                            matchId: matchId,
-                            details: {
-                                rank: player.rank,
-                                final_score: player.final_score,
-                                score_bonus: scoreBonus,
-                                rank_bonus: rankBonus,
-                                mode: mode
-                            }
-                        });
-                    }
-
                     console.log(`${player.account_name} にコイン ${reward} 枚を付与しました（スコア:${scoreBonus} + 順位:${rankBonus} + 基本:1）`);
                 }
             } catch (coinErr) {
