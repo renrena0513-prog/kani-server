@@ -1424,6 +1424,7 @@
             if (!listEl) return;
 
             const pageSize = 10;
+            console.log('--- loadActivityLogs start ---', { targetId, page });
 
             try {
                 // 1. activity_logs から最新のログを取得
@@ -1431,12 +1432,13 @@
                     .from('activity_logs')
                     .select('*')
                     .eq('user_id', targetId)
-                    .neq('action_type', 'badge_equip') // バッジ装着ログは除外
+                    .neq('action_type', 'badge_equip')
                     .order('created_at', { ascending: false })
-                    .limit(50);
+                    .limit(100);
 
                 const logs = rawLogs || [];
                 if (logsError) console.warn('Activity logs fetch error:', logsError);
+                console.log('Fetched activity_logs:', logs.length);
 
                 // 2. match_results から最新の麻雀記録を取得
                 const { data: rawMatches, error: matchError } = await supabaseClient
@@ -1444,14 +1446,18 @@
                     .select('match_id, event_datetime, rank, final_score, mahjong_mode')
                     .eq('discord_user_id', targetId)
                     .order('event_datetime', { ascending: false })
-                    .limit(50);
+                    .limit(100);
 
                 const matches = rawMatches || [];
                 if (matchError) console.warn('Match results fetch error:', matchError);
+                console.log('Fetched match_results:', matches.length);
 
                 // 3. データをマージして重複排除
                 let combined = [];
-                const matchIdsInLogs = new Set(logs.filter(l => l.match_id).map(l => l.match_id));
+                // match_id を文字列としてセットに保存（比較の安全のため）
+                const matchIdsInLogs = new Set(
+                    logs.filter(l => l.match_id).map(l => String(l.match_id))
+                );
 
                 // ログにあるデータを追加
                 logs.forEach(l => {
@@ -1473,7 +1479,8 @@
 
                 // match_results にあって logs にないデータを追加
                 matches.forEach(m => {
-                    if (!matchIdsInLogs.has(m.match_id)) {
+                    const mId = String(m.match_id);
+                    if (!matchIdsInLogs.has(mId)) {
                         combined.push({
                             action_type: 'mahjong',
                             amount: null,
@@ -1483,7 +1490,7 @@
                                 rank: m.rank,
                                 final_score: m.final_score,
                                 mode: m.mahjong_mode,
-                                is_legacy: true // activity_logsにない過去分
+                                is_legacy: true
                             },
                             isMatch: true
                         });
@@ -1492,6 +1499,7 @@
 
                 // 4. ソート (日時降順)
                 combined.sort((a, b) => b.timestamp - a.timestamp);
+                console.log('Combined activity items:', combined.length);
 
                 if (combined.length === 0) {
                     listEl.innerHTML = '<div class="text-center text-muted py-3">活動ログはまだありません</div>';
@@ -1502,7 +1510,7 @@
 
                 section.style.display = 'block';
 
-                // 5. ページネーション処理 (簡易版：上位N件を表示)
+                // 5. ページネーション処理
                 const start = (page - 1) * pageSize;
                 const end = start + pageSize;
                 const pageItems = combined.slice(start, end);
@@ -1533,7 +1541,7 @@
                         return p ? (p.account_name || uid) : fallback;
                     };
 
-                    // 詳細文字列の構築
+                    // 詳細文字列
                     let detailsStr = '';
                     if (log.isMatch) {
                         const rank = log.details?.rank;
@@ -1562,8 +1570,6 @@
                         detailsStr = `💎 「${log.details?.badge_name || 'バッジ'}」の売上還元`;
                     } else if (log.action_type === 'admin_edit') {
                         detailsStr = `⚙️ 管理者による${log.amount >= 0 ? '加算' : '減算'}`;
-                    } else if (log.details?.badge_name) {
-                        detailsStr = log.details.badge_name;
                     }
 
                     return `
