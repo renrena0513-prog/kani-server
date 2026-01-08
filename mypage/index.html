@@ -1428,33 +1428,35 @@
 
             try {
                 // 1. activity_logs から最新のログを取得
+                // NOTE: user_id が targetId と一致するものを取得
                 const { data: rawLogs, error: logsError } = await supabaseClient
                     .from('activity_logs')
                     .select('*')
                     .eq('user_id', targetId)
                     .neq('action_type', 'badge_equip')
                     .order('created_at', { ascending: false })
-                    .limit(100);
+                    .limit(200);
 
                 const logs = rawLogs || [];
                 if (logsError) console.warn('Activity logs fetch error:', logsError);
-                console.log('Fetched activity_logs:', logs.length);
+                console.log('--- Debug: activity_logs ---', { count: logs.length, targetId });
 
                 // 2. match_results から最新の麻雀記録を取得
+                // NOTE: discord_user_id, nickname, player_name のいずれかが一致するものを拾う
+                const matchFilter = `discord_user_id.eq.${targetId},nickname.eq.${targetId},player_name.eq.${targetId}`;
                 const { data: rawMatches, error: matchError } = await supabaseClient
                     .from('match_results')
-                    .select('match_id, event_datetime, rank, final_score, mahjong_mode')
-                    .eq('discord_user_id', targetId)
+                    .select('match_id, event_datetime, rank, final_score, mahjong_mode, discord_user_id, nickname, player_name')
+                    .or(matchFilter)
                     .order('event_datetime', { ascending: false })
-                    .limit(100);
+                    .limit(200);
 
                 const matches = rawMatches || [];
                 if (matchError) console.warn('Match results fetch error:', matchError);
-                console.log('Fetched match_results:', matches.length);
+                console.log('--- Debug: match_results ---', { count: matches.length, targetId });
 
                 // 3. データをマージして重複排除
                 let combined = [];
-                // match_id を文字列としてセットに保存（比較の安全のため）
                 const matchIdsInLogs = new Set(
                     logs.filter(l => l.match_id).map(l => String(l.match_id))
                 );
@@ -1463,11 +1465,7 @@
                 logs.forEach(l => {
                     let details = l.details;
                     if (typeof details === 'string') {
-                        try {
-                            details = JSON.parse(details);
-                        } catch (e) {
-                            console.warn('Failed to parse details JSON:', details);
-                        }
+                        try { details = JSON.parse(details); } catch (e) { }
                     }
                     combined.push({
                         ...l,
@@ -1499,7 +1497,7 @@
 
                 // 4. ソート (日時降順)
                 combined.sort((a, b) => b.timestamp - a.timestamp);
-                console.log('Combined activity items:', combined.length);
+                console.log('--- Debug: combined ---', { count: combined.length });
 
                 if (combined.length === 0) {
                     listEl.innerHTML = '<div class="text-center text-muted py-3">活動ログはまだありません</div>';
