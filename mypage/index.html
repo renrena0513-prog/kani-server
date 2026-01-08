@@ -1459,9 +1459,22 @@
                     .limit(500);
 
                 // --- フィルタリング ---
-                const logs = (allLogs || []).filter(l =>
-                    l.user_id === targetId || l.target_user_id === targetId
-                ).filter(l => l.action_type !== 'badge_equip');
+                const logs = (allLogs || []).filter(l => {
+                    // 基本は自分に関係あるもの
+                    if (l.user_id !== targetId && l.target_user_id !== targetId) return false;
+                    // 装着ログは隠す
+                    if (l.action_type === 'badge_equip') return false;
+
+                    // 【修正】送金ログを「自分からの時はSEND」「相手からの時はRECEIVE」のみに限定
+                    // データベースには1回の送金で send/receive 両方が記録されているため、自分に関係ある1行だけを出す
+                    if (l.action_type === 'transfer_send' && l.user_id !== targetId) return false;
+                    if (l.action_type === 'transfer_receive' && l.target_user_id !== targetId) return false;
+
+                    // 【修正】売上還元 (revenue_share) は、受け取った側(amount > 0)にのみ表示
+                    if (l.action_type === 'revenue_share' && (l.amount || 0) <= 0) return false;
+
+                    return true;
+                });
 
                 const matches = (allMatches || []).filter(m =>
                     m.discord_user_id === targetId || (targetName && (m.account_name === targetName || m.nickname === targetName || m.player_name === targetName))
@@ -1471,27 +1484,18 @@
                     m.discord_user_id === targetId || (targetName && (m.account_name === targetName || m.nickname === targetName || m.player_name === targetName))
                 );
 
-                console.log('Fetch Results:', {
-                    logs: logs.length,
-                    matches: matches.length,
-                    legacy: legacy.length,
-                    allLogsRaw: allLogs?.length
-                });
+                console.log('Filtered Results:', { logs: logs.length, matches: matches.length, legacy: legacy.length });
 
-                // --- マージと重複排除 ---
+                // --- マージ ---
                 let combined = [];
                 const matchIdsInLogs = new Set(logs.filter(l => l.match_id).map(l => String(l.match_id)));
 
-                // 活動ログ（送金など）を追加
                 logs.forEach(l => {
                     let details = l.details;
                     if (typeof details === 'string') { try { details = JSON.parse(details); } catch (e) { } }
-                    combined.push({
-                        ...l, details: details, timestamp: new Date(l.created_at), isMatch: l.action_type === 'mahjong'
-                    });
+                    combined.push({ ...l, details, timestamp: new Date(l.created_at), isMatch: l.action_type === 'mahjong' });
                 });
 
-                // 最新麻雀記録を追加
                 matches.forEach(m => {
                     if (!matchIdsInLogs.has(String(m.match_id))) {
                         combined.push({
@@ -1503,27 +1507,23 @@
                     }
                 });
 
-                // 過去の麻雀記録を追加
                 legacy.forEach(m => {
                     combined.push({
                         action_type: 'mahjong', amount: null, match_id: 'legacy-' + Math.random(),
                         timestamp: new Date(m.created_at || m.updated_at || '2024-01-01'),
                         details: {
                             rank: m.rank1_count > 0 ? 1 : (m.rank2_count > 0 ? 2 : (m.rank3_count > 0 ? 3 : 4)),
-                            final_score: m.score_total,
-                            mode: '過去大会',
-                            is_legacy: true
+                            final_score: m.score_total, mode: '過去大会', is_legacy: true
                         },
                         isMatch: true
                     });
                 });
 
-                // 4. ソート (日時降順)
                 combined.sort((a, b) => b.timestamp - a.timestamp);
-                console.log('Final combined items:', combined.length);
 
                 if (combined.length === 0) {
-                    listEl.innerHTML = '<div class="text-center text-muted py-3">活動ログはまだありません</div>';
+                    const rlsHint = (allLogs && allLogs.length === 0) ? '<br><small class="text-warning">※送金記録などが1件も表示されない場合、Supabaseの権限設定(RLS)が必要です。</small>' : '';
+                    listEl.innerHTML = `<div class="text-center text-muted py-3">活動ログはまだありません${rlsHint}</div>`;
                     section.style.display = 'block';
                     paginationEl.style.display = 'none';
                     return;
@@ -1532,7 +1532,7 @@
                 section.style.display = 'block';
 
                 // 5. ページネーション処理
-                const itemsPerPage = 10;
+                const itemsPerPage = 8;
                 const totalPages = Math.ceil(combined.length / itemsPerPage);
                 const pageItems = combined.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
@@ -1545,7 +1545,8 @@
                     'badge_sell': '💴 バッジ売却',
                     'badge_purchase': '🛒 バッジ購入',
                     'omikuji': '🎋 おみくじ',
-                    'revenue_share': '💎 売上還元'
+                    'revenue_share': '💎 売上還元',
+                    'admin_edit': '⚙️ 管理者修正'
                 };
 
                 listEl.innerHTML = pageItems.map(log => {
@@ -1555,39 +1556,43 @@
                     const typeName = typeNames[log.action_type] || log.action_type;
                     const amountStr = log.amount !== null ? `🪙 ${log.amount.toLocaleString()}` : '';
 
-                    // 名前解決ヘルパー
-                    const getDisplayName = (uid, fallback) => {
-                        if (!uid) return fallback;
-                        const p = allProfiles.find(u => u.discord_user_id === String(uid));
-                        if (p) return p.account_name || p.discord_user_id;
-                        return fallback;
-                    };
+                    // 名前の解決とアイコン取得
+                    // transfer_send の場合は送信相手(target_user_id)、receive の場合は送り主(user_id)
+                    let otherId = null;
+                    if (log.action_type === 'transfer_send' || log.action_type === 'badge_transfer') {
+                        otherId = log.target_user_id;
+                    } else if (log.action_type === 'transfer_receive' || log.action_type === 'badge_receive') {
+                        otherId = log.user_id;
+                    }
 
-                    // 詳細文字列の構築
+                    const otherProfile = otherId ? allProfiles.find(p => p.discord_user_id === String(otherId)) : null;
+                    const targetNameHtml = otherProfile ? `
+                        <div class="d-flex align-items-center gap-2">
+                            <img src="${otherProfile.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
+                                 class="rounded-circle" style="width: 24px; height: 24px; object-fit: cover;">
+                            <span>${otherProfile.account_name || '誰か'}</span>
+                        </div>` : (otherId ? `ID: ${otherId}` : '');
+
                     let detailsStr = '';
                     if (log.isMatch) {
                         const rank = log.details?.rank || '-';
                         const score = log.details?.final_score || '0';
                         const mode = log.details?.mode || '';
-                        detailsStr = `<span class="badge bg-light text-dark">${mode} ${rank}位 (${score}pts)</span>`;
+                        detailsStr = `<span class="badge bg-light text-dark shadow-sm">${mode} ${rank}位 (${score}pts)</span>`;
                     } else if (log.action_type === 'transfer_send') {
-                        const name = log.details?.target_name || getDisplayName(log.target_user_id, '不明な相手');
-                        detailsStr = `➡ ${name} への送金`;
+                        detailsStr = `<div class="d-flex align-items-center gap-2"><i class="bi bi-arrow-right-short"></i> ${targetNameHtml} への送金</div>`;
                     } else if (log.action_type === 'transfer_receive') {
-                        const name = log.details?.sender_name || getDisplayName(log.user_id, '不明な送り主');
-                        detailsStr = `⬅ ${name} からの送金`;
+                        detailsStr = `<div class="d-flex align-items-center gap-2"><i class="bi bi-arrow-left-short"></i> ${targetNameHtml} からの送金</div>`;
                     } else if (log.action_type === 'badge_transfer') {
-                        const name = log.details?.target_name || getDisplayName(log.target_user_id, '不明な相手');
-                        detailsStr = `🎁 「${log.details?.badge_name || 'バッジ'}」を ${name} へ譲渡`;
+                        detailsStr = `🎁 「${log.details?.badge_name || 'バッジ'}」を ${targetNameHtml} へ譲渡`;
                     } else if (log.action_type === 'badge_receive') {
-                        const name = log.details?.sender_name || getDisplayName(log.user_id, '不明な送り主');
-                        detailsStr = `📦 「${log.details?.badge_name || 'バッジ'}」を ${name} から受取`;
+                        detailsStr = `📦 「${log.details?.badge_name || 'バッジ'}」を ${targetNameHtml} から受取`;
                     } else if (log.action_type === 'badge_sell') {
                         detailsStr = `💴 「${log.details?.badge_name || 'バッジ'}」を売却`;
                     } else if (log.action_type === 'badge_purchase') {
                         detailsStr = `🛒 「${log.details?.badge_name || 'バッジ'}」を購入`;
                     } else if (log.action_type === 'omikuji') {
-                        detailsStr = `🎋 運勢: ${log.details?.rank || 'おみくじ'}`;
+                        detailsStr = `🎋 運勢: <strong>${log.details?.rank || '不明'}</strong>`;
                     } else if (log.action_type === 'revenue_share') {
                         detailsStr = `💎 「${log.details?.badge_name || 'バッジ'}」の売上還元`;
                     } else if (log.action_type === 'admin_edit') {
