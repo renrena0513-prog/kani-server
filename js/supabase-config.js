@@ -285,21 +285,15 @@ async function addToTotalAssets(userId, amount) {
 }
 
 /**
- * JSTで今日の0時を取得
- * @returns {Date} JSTの当日0時のDateオブジェクト
+ * JSTで今日の0時を取得（日本時間の0時にリセットするための基準値）
+ * @returns {Date} JSTの当日0時を指す Date オブジェクト
  */
 function getJSTMidnight() {
     const now = new Date();
-    // JSTはUTC+9
-    const jstOffset = 9 * 60; // 分単位
-    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    const jst = new Date(utc + (jstOffset * 60000));
-
-    // JSTの0時にセット
-    jst.setHours(0, 0, 0, 0);
-
-    // UTC時刻に戻す（Supabaseはタイムスタンプをそのまま保存するため）
-    return new Date(jst.getTime() - (jstOffset * 60000));
+    // 日本時間での「YYYY-MM-DD」を取得（en-CAロケールは YYYY-MM-DD 形式を返すため利用）
+    const jstDate = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' });
+    // その日付の 00:00:00 JST (+09:00) のインスタンスを作成
+    return new Date(`${jstDate}T00:00:00+09:00`);
 }
 
 /**

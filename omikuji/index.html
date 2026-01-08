@@ -303,20 +303,13 @@
         async function initOmikuji() {
             const user = await getCurrentUser();
 
-            if (!user) {
+            // なりすまし対応
+            currentUserId = await getEffectiveUserId();
+
+            if (!user && !currentUserId) {
                 document.getElementById('login-prompt').style.display = 'block';
                 return;
             }
-
-            currentUserId = user.user_metadata.provider_id;
-
-            // 管理者チェックを削除（全員開放）
-            /*
-            if (!ADMIN_DISCORD_IDS.includes(currentUserId)) {
-                document.getElementById('access-denied').style.display = 'block';
-                return;
-            }
-            */
 
             // おみくじ設定を取得
             const { data: settings, error: settingsError } = await supabaseClient
