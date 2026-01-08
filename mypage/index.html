@@ -109,6 +109,57 @@
             border-left: 4px solid var(--gold);
         }
 
+        .activity-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .activity-item-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border: 1px solid #eee;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .activity-item-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            border-color: var(--gold);
+        }
+
+        .activity-date {
+            font-size: 0.8rem;
+            color: #999;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .activity-type-badge {
+            font-size: 0.75rem;
+            font-weight: bold;
+            padding: 4px 10px;
+            border-radius: 20px;
+            margin-right: 10px;
+            background: #f0f0f0;
+            color: #555;
+        }
+
+        .activity-details {
+            font-size: 0.9rem;
+            color: #444;
+        }
+
+        .activity-amount {
+            font-family: 'Kosugi Maru', sans-serif;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
         .stat-value {
             font-size: 2rem;
             font-weight: 700;
@@ -1459,27 +1510,47 @@
                     const typeName = typeNames[log.action_type] || '📝 その他';
                     let amountStr = log.amount ? `🪙${log.amount.toLocaleString()}` : '';
 
-                    // 麻雀の詳細表示
+                    // 詳細文字列の構築
                     let detailsStr = '';
                     if (log.isMatch) {
                         const rank = log.details?.rank;
                         const score = log.details?.final_score;
                         const mode = log.details?.mode || '';
-                        detailsStr = `<span class="badge bg-light text-dark ms-2">${mode} ${rank}位 (${score}pts)</span>`;
+                        detailsStr = `<span class="badge bg-light text-dark">${mode} ${rank}位 (${score}pts)</span>`;
+                    } else if (log.action_type === 'transfer_send') {
+                        detailsStr = `➡ ${log.details?.target_name || '不明'} への送金`;
+                    } else if (log.action_type === 'transfer_receive') {
+                        detailsStr = `⬅ ${log.details?.sender_name || '誰か'} からの送金`;
+                    } else if (log.action_type === 'badge_transfer') {
+                        detailsStr = `🎁 「${log.details?.badge_name || 'バッジ'}」を ${log.details?.target_name || '誰か'} へ譲渡`;
+                    } else if (log.action_type === 'badge_receive') {
+                        detailsStr = `📦 「${log.details?.badge_name || 'バッジ'}」を ${log.details?.sender_name || '誰か'} から受取`;
+                    } else if (log.action_type === 'badge_sell') {
+                        detailsStr = `💴 「${log.details?.badge_name || 'バッジ'}」を売却`;
+                    } else if (log.action_type === 'badge_purchase') {
+                        detailsStr = `🛒 「${log.details?.badge_name || 'バッジ'}」を購入`;
+                    } else if (log.action_type === 'omikuji') {
+                        detailsStr = `🎋 結果: ${log.details?.rank || '不明'}`;
+                    } else if (log.action_type === 'revenue_share') {
+                        detailsStr = `💎 「${log.details?.badge_name || 'バッジ'}」の売上還元`;
+                    } else if (log.action_type === 'admin_edit') {
+                        detailsStr = `⚙️ 管理者による${log.amount >= 0 ? '加算' : '減算'}`;
+                    } else if (log.details?.badge_name) {
+                        detailsStr = log.details.badge_name;
                     }
 
                     return `
-                        <div class="activity-item">
-                            <div class="row align-items-center">
-                                <div class="col-auto">
-                                    <span class="activity-date">${date}</span>
-                                </div>
+                        <div class="activity-item-card">
+                            <span class="activity-date">${date}</span>
+                            <div class="row align-items-center g-2">
                                 <div class="col">
-                                    <span class="activity-type">${typeName}</span>
-                                    ${detailsStr}
+                                    <div class="d-flex flex-wrap align-items-center gap-2">
+                                        <span class="activity-type-badge">${typeName}</span>
+                                        <span class="activity-details">${detailsStr}</span>
+                                    </div>
                                 </div>
-                                <div class="col-auto text-end">
-                                    <span class="activity-amount ${log.amount > 0 ? 'text-success' : ''}">${amountStr}</span>
+                                <div class="col-auto">
+                                    <span class="activity-amount ${log.amount > 0 ? 'text-success' : log.amount < 0 ? 'text-danger' : ''}">${amountStr}</span>
                                 </div>
                             </div>
                         </div>
@@ -1829,10 +1900,11 @@
                         details: { target_name: coinTransferTargetName }
                     });
                     // 活動ログを記録（受信側）
+                    const senderName = document.getElementById('nickname-display')?.textContent || '誰か';
                     await logActivity(coinTransferTargetId, 'transfer_receive', {
                         amount: amount,
                         targetUserId: targetId,
-                        details: {}
+                        details: { sender_name: senderName }
                     });
                 }
 
@@ -1879,6 +1951,21 @@
                     .insert([{ user_id: toUserId, badge_id: currentActionBadgeId }]);
 
                 if (insertError) throw insertError;
+
+                // 3. 活動ログを記録
+                if (typeof logActivity === 'function') {
+                    const senderName = document.getElementById('nickname-display')?.textContent || '誰か';
+                    await logActivity(targetId, 'badge_transfer', {
+                        badgeId: currentActionBadgeId,
+                        targetUserId: toUserId,
+                        details: { target_name: toUserName, badge_name: currentActionBadgeName }
+                    });
+                    await logActivity(toUserId, 'badge_receive', {
+                        badgeId: currentActionBadgeId,
+                        targetUserId: targetId,
+                        details: { sender_name: senderName, badge_name: currentActionBadgeName }
+                    });
+                }
 
                 alert(`${toUserName} さんにバッジを譲渡しました！`);
                 location.reload();
