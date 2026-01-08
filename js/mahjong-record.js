@@ -533,9 +533,18 @@ async function sendDiscordNotification(matchData) {
         // ユーザーIDがある場合はメンション形式にする
         const nameDisplay = p.discord_user_id ? `<@${p.discord_user_id}>` : p.account_name;
 
-        // 報酬コインの計算
-        const bonus = p.final_score > 0 ? Math.floor(p.final_score / 10) : 0;
-        const reward = 1 + bonus;
+        // 報酬コインの計算（実際の付与ロジックと一致させる）
+        // スコアボーナス: 切り上げ
+        const scoreBonus = p.final_score > 0 ? Math.ceil(p.final_score / 10) : 0;
+
+        // 四麻順位ボーナス
+        let rankBonus = 0;
+        if (mode === '四麻') {
+            const yonmaRankBonus = { 1: 5, 2: 3, 3: 1, 4: 0 };
+            rankBonus = yonmaRankBonus[p.rank] || 0;
+        }
+
+        const reward = 1 + scoreBonus + rankBonus;
 
         return `${medal} **${p.rank}位**: ${nameDisplay}${teamInfo}\n` +
             `　　 \`${p.raw_points.toLocaleString()}点\` ➡ **${scoreStr} pts** (💰+${reward})\n`; // 報酬コインを表示
