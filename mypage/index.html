@@ -710,6 +710,39 @@
                             まだバッジを持っていません
                         </div>
                     </div>
+
+                    <!-- 販売実績セクション -->
+                    <div class="profile-card mb-4" id="revenue-section" style="display: none;">
+                        <h4 style="font-family: var(--font-title); color: var(--deep-purple); margin: 0 0 15px 0;">
+                            💰 販売実績
+                        </h4>
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <div class="stat-card-mini">
+                                    <div class="stat-label-mini">累計収益</div>
+                                    <div class="stat-value-mini" id="total-revenue" style="color: #27ae60;">0</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stat-card-mini">
+                                    <div class="stat-label-mini">販売回数</div>
+                                    <div class="stat-value-mini" id="revenue-count">0</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 最近の活動セクション -->
+                    <div class="profile-card mb-4" id="activity-section" style="display: none;">
+                        <h4 style="font-family: var(--font-title); color: var(--deep-purple); margin: 0 0 15px 0;">
+                            📋 最近の活動
+                        </h4>
+                        <div id="activity-list">
+                            <div class="text-center text-muted py-3">読み込み中...</div>
+                        </div>
+                        <div id="activity-pagination" class="d-flex justify-content-center gap-2 mt-3"
+                            style="display: none;"></div>
+                    </div>
                 </div>
 
             </div>
@@ -889,6 +922,12 @@
 
             // バッジコレクションの読み込み
             await loadOwnedBadges();
+
+            // 販売実績の読み込み
+            await loadRevenueStats();
+
+            // 最近の活動の読み込み
+            await loadActivityLogs();
         }
 
         function setupUI() {
@@ -1274,6 +1313,141 @@
             }
         }
 
+        // ============ 販売実績の読み込み ============
+        async function loadRevenueStats() {
+            const section = document.getElementById('revenue-section');
+            if (!section) return;
+
+            try {
+                // revenue_share（売上還元）のログを取得
+                const { data: logs, error } = await supabaseClient
+                    .from('activity_logs')
+                    .select('amount')
+                    .eq('user_id', targetId)
+                    .eq('action_type', 'revenue_share');
+
+                if (error) {
+                    console.log('Activity logs table may not exist yet:', error);
+                    return;
+                }
+
+                if (!logs || logs.length === 0) {
+                    // 販売実績がない場合は非表示のまま
+                    return;
+                }
+
+                section.style.display = 'block';
+
+                const totalRevenue = logs.reduce((sum, log) => sum + (log.amount || 0), 0);
+                document.getElementById('total-revenue').textContent = `🪙 ${totalRevenue.toLocaleString()}`;
+                document.getElementById('revenue-count').textContent = logs.length;
+
+            } catch (err) {
+                console.error('販売実績取得エラー:', err);
+            }
+        }
+
+        // ============ 最近の活動ログの読み込み ============
+        let activityPage = 0;
+        const ACTIVITY_PER_PAGE = 10;
+
+        async function loadActivityLogs(page = 0) {
+            activityPage = page;
+            const section = document.getElementById('activity-section');
+            const listEl = document.getElementById('activity-list');
+            const paginationEl = document.getElementById('activity-pagination');
+
+            if (!section) return;
+
+            try {
+                // 総件数を取得
+                const { count, error: countError } = await supabaseClient
+                    .from('activity_logs')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('user_id', targetId);
+
+                if (countError) {
+                    console.log('Activity logs table may not exist yet:', countError);
+                    listEl.innerHTML = '<div class="text-center text-muted py-3">活動ログはまだありません</div>';
+                    return;
+                }
+
+                if (!count || count === 0) {
+                    listEl.innerHTML = '<div class="text-center text-muted py-3">活動ログはまだありません</div>';
+                    return;
+                }
+
+                section.style.display = 'block';
+
+                // ページネーション付きでログを取得
+                const { data: logs, error } = await supabaseClient
+                    .from('activity_logs')
+                    .select('*')
+                    .eq('user_id', targetId)
+                    .order('created_at', { ascending: false })
+                    .range(page * ACTIVITY_PER_PAGE, (page + 1) * ACTIVITY_PER_PAGE - 1);
+
+                if (error) throw error;
+
+                // アクションタイプの日本語変換
+                const actionLabels = {
+                    'mahjong': '🀄 麻雀報酬',
+                    'transfer_send': '💸 送金',
+                    'transfer_receive': '💰 受取',
+                    'badge_transfer': '📛 バッジ譲渡',
+                    'badge_receive': '🎁 バッジ受取',
+                    'badge_sell': '💴 バッジ売却',
+                    'badge_purchase': '🛒 バッジ購入',
+                    'omikuji': '🎋 おみくじ',
+                    'revenue_share': '💎 売上還元'
+                };
+
+                listEl.innerHTML = logs.map(log => {
+                    const date = new Date(log.created_at);
+                    const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+                    const label = actionLabels[log.action_type] || log.action_type;
+                    const amountStr = log.amount
+                        ? (log.amount >= 0 ? `<span class="text-success">+${log.amount}</span>` : `<span class="text-danger">${log.amount}</span>`)
+                        : '';
+
+                    return `
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <div>
+                                <span class="fw-bold">${label}</span>
+                                ${amountStr ? `<span class="ms-2">${amountStr}</span>` : ''}
+                            </div>
+                            <small class="text-muted">${dateStr}</small>
+                        </div>
+                    `;
+                }).join('');
+
+                // ページネーションを生成
+                const totalPages = Math.ceil(count / ACTIVITY_PER_PAGE);
+                if (totalPages > 1) {
+                    paginationEl.style.display = 'flex';
+                    let paginationHTML = '';
+
+                    if (page > 0) {
+                        paginationHTML += `<button class="btn btn-sm btn-outline-secondary" onclick="loadActivityLogs(${page - 1})">← 前</button>`;
+                    }
+
+                    paginationHTML += `<span class="align-self-center px-2">${page + 1} / ${totalPages}</span>`;
+
+                    if (page < totalPages - 1) {
+                        paginationHTML += `<button class="btn btn-sm btn-outline-secondary" onclick="loadActivityLogs(${page + 1})">次 →</button>`;
+                    }
+
+                    paginationEl.innerHTML = paginationHTML;
+                } else {
+                    paginationEl.style.display = 'none';
+                }
+
+            } catch (err) {
+                console.error('活動ログ取得エラー:', err);
+                listEl.innerHTML = '<div class="text-center text-danger py-3">読み込みエラー</div>';
+            }
+        }
+
         // ============ バッジ譲渡・売却：バッジ選択モーダル ============
         async function openBadgeSelectionModal(mode) {
             const listEl = document.getElementById('action-badge-list');
@@ -1384,7 +1558,21 @@
 
                 if (deleteError) throw deleteError;
 
-                // 2. コインの加算
+                // 2. バッジの在庫を戻す（remaining_count が設定されている場合）
+                const { data: badge, error: badgeFetchError } = await supabaseClient
+                    .from('badges')
+                    .select('remaining_count')
+                    .eq('id', badgeId)
+                    .single();
+
+                if (!badgeFetchError && badge && badge.remaining_count !== null) {
+                    await supabaseClient
+                        .from('badges')
+                        .update({ remaining_count: badge.remaining_count + 1 })
+                        .eq('id', badgeId);
+                }
+
+                // 3. コインの加算
                 const { data: profile, error: profileError } = await supabaseClient
                     .from('profiles')
                     .select('coins')
@@ -1399,6 +1587,20 @@
                     .eq('discord_user_id', targetId);
 
                 if (updateError) throw updateError;
+
+                // 4. 総資産を加算
+                if (typeof addToTotalAssets === 'function') {
+                    await addToTotalAssets(targetId, sellPrice);
+                }
+
+                // 5. 活動ログを記録
+                if (typeof logActivity === 'function') {
+                    await logActivity(targetId, 'badge_sell', {
+                        amount: sellPrice,
+                        badgeId: badgeId,
+                        details: { badge_name: badgeName, original_price: price }
+                    });
+                }
 
                 alert(`${badgeName} を売却しました。🪙${sellPrice} を獲得しました。`);
                 location.reload();
@@ -1554,6 +1756,26 @@
                     console.error('入金に失敗しました（送金元は減額済み）:', updateReceiverError);
                     alert('入金処理に失敗しました。管理者に連絡してください。');
                     return;
+                }
+
+                // 5. 受信側の総資産を加算
+                if (typeof addToTotalAssets === 'function') {
+                    await addToTotalAssets(coinTransferTargetId, amount);
+                }
+
+                // 6. 活動ログを記録（送信側）
+                if (typeof logActivity === 'function') {
+                    await logActivity(targetId, 'transfer_send', {
+                        amount: amount,
+                        targetUserId: coinTransferTargetId,
+                        details: { target_name: coinTransferTargetName }
+                    });
+                    // 活動ログを記録（受信側）
+                    await logActivity(coinTransferTargetId, 'transfer_receive', {
+                        amount: amount,
+                        targetUserId: targetId,
+                        details: {}
+                    });
                 }
 
                 alert(`${coinTransferTargetName} さんに 🪙${amount.toLocaleString()} を送金しました！`);

@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>資産ランキング - かに鯖</title>
+    <link rel="icon" type="image/png" href="../images/favicon.png">
+    <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kosugi+Maru&family=Noto+Sans+JP:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="../styles.css">
+    <style>
+        :root {
+            --deep-purple: #5a4a7a;
+            --gold: #d4a574;
+            --font-title: 'Kosugi Maru', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .page-header {
+            color: #fff;
+            font-family: var(--font-title);
+            text-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+        }
+
+        .ranking-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .ranking-table {
+            width: 100%;
+        }
+
+        .ranking-table th {
+            background: var(--deep-purple);
+            color: white;
+            padding: 15px 10px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .ranking-table td {
+            padding: 15px 10px;
+            text-align: center;
+            vertical-align: middle;
+            border-bottom: 1px solid #eee;
+        }
+
+        .ranking-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .rank-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .rank-1 {
+            background: linear-gradient(135deg, #ffd700, #ffb347);
+            color: #333;
+            box-shadow: 0 2px 10px rgba(255, 215, 0, 0.5);
+        }
+
+        .rank-2 {
+            background: linear-gradient(135deg, #c0c0c0, #a0a0a0);
+            color: #333;
+        }
+
+        .rank-3 {
+            background: linear-gradient(135deg, #cd7f32, #b87333);
+            color: white;
+        }
+
+        .rank-other {
+            background: #e9ecef;
+            color: #666;
+        }
+
+        .user-cell {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            justify-content: flex-start;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .user-badge {
+            width: 24px;
+            height: 24px;
+            object-fit: contain;
+        }
+
+        /* ナビゲーションドロップダウン */
+        .nav-dropdown {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .record-button {
+            background: linear-gradient(135deg, var(--gold) 0%, #b8892d 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            box-shadow: 0 6px 20px rgba(212, 168, 83, 0.5);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .record-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(212, 168, 83, 0.6);
+            color: white;
+        }
+
+        .nav-dropdown-menu {
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+            min-width: 200px;
+            overflow: hidden;
+            border: none;
+        }
+
+        .dropdown-item {
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #333;
+            transition: background 0.2s;
+        }
+
+        .notification-badge {
+            background: #dc3545;
+            color: white;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-left: auto;
+        }
+
+        @media (max-width: 768px) {
+
+            .ranking-table th,
+            .ranking-table td {
+                padding: 10px 5px;
+                font-size: 0.85rem;
+            }
+
+            .user-cell {
+                flex-direction: column;
+                gap: 5px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 右上のナビゲーションドロップダウン -->
+    <div class="nav-dropdown dropdown">
+        <button class="record-button dropdown-toggle" type="button" id="navDropdown" data-bs-toggle="dropdown"
+            aria-expanded="false">
+            📝 メニュー
+        </button>
+        <ul class="dropdown-menu nav-dropdown-menu dropdown-menu-end" aria-labelledby="navDropdown">
+            <li><a class="dropdown-item" href="../index.html">🏠 ホームに戻る</a></li>
+            <li><a class="dropdown-item" href="../mypage/index.html">👤 マイページ</a></li>
+            <li>
+                <hr class="dropdown-divider">
+            </li>
+            <li><a class="dropdown-item" href="../mahjong/index.html">📊 ランキング</a></li>
+            <li><a class="dropdown-item" href="../mahjong/record.html">📝 記録する</a></li>
+            <li><a class="dropdown-item" href="../mahjong/users/index.html">👥 ユーザー一覧</a></li>
+            <li><a class="dropdown-item" href="../mahjong/team/index.html">🏅 チーム管理</a></li>
+            <li><a class="dropdown-item" href="../badge/list.html">📛 バッジ一覧</a></li>
+            <li><a class="dropdown-item" href="../badge/shop.html">🛒 バッジショップ</a></li>
+            <li class="admin-only" style="display:none;">
+                <hr class="dropdown-divider">
+            </li>
+            <li class="admin-only" style="display:none;">
+                <a class="dropdown-item" href="../admin/index.html">⚙️ 管理画面</a>
+            </li>
+        </ul>
+    </div>
+
+    <div class="container py-5">
+        <header class="text-center">
+            <h1 class="page-header display-4 fw-bold">💰 資産ランキング</h1>
+            <p class="text-white-50">累計獲得金額順</p>
+        </header>
+
+        <div class="ranking-card">
+            <div class="table-responsive">
+                <table class="ranking-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">順位</th>
+                            <th>名前</th>
+                            <th>総資産（累計）</th>
+                            <th>資金（手持ち）</th>
+                            <th>バッジ数</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ranking-body">
+                        <tr>
+                            <td colspan="5" class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">読み込み中...</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/supabase-config.js"></script>
+    <script>
+        async function loadRanking() {
+            const tbody = document.getElementById('ranking-body');
+
+            try {
+                // プロフィール情報を取得
+                const { data: profiles, error } = await supabaseClient
+                    .from('profiles')
+                    .select('discord_user_id, account_name, avatar_url, coins, total_assets, equipped_badge_id, badges!equipped_badge_id(image_url, name)')
+                    .order('total_assets', { ascending: false, nullsFirst: false });
+
+                if (error) throw error;
+
+                if (!profiles || profiles.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">データがありません</td></tr>';
+                    return;
+                }
+
+                // 各ユーザーのバッジ数を取得
+                const badgeCounts = {};
+                const { data: badgeData } = await supabaseClient
+                    .from('user_badges')
+                    .select('user_id');
+
+                if (badgeData) {
+                    badgeData.forEach(b => {
+                        badgeCounts[b.user_id] = (badgeCounts[b.user_id] || 0) + 1;
+                    });
+                }
+
+                tbody.innerHTML = profiles.map((profile, index) => {
+                    const rank = index + 1;
+                    const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
+                    const avatar = profile.avatar_url || 'https://via.placeholder.com/40';
+                    const badgeImg = profile.badges ? `<img src="${profile.badges.image_url}" class="user-badge" title="${profile.badges.name}">` : '';
+                    const badgeCount = badgeCounts[profile.discord_user_id] || 0;
+                    const totalAssets = profile.total_assets || 0;
+                    const coins = profile.coins || 0;
+
+                    return `
+                        <tr>
+                            <td><span class="rank-badge ${rankClass}">${rank}</span></td>
+                            <td>
+                                <div class="user-cell">
+                                    <img src="${avatar}" class="user-avatar" onerror="this.src='https://via.placeholder.com/40'">
+                                    <a href="../mypage/index.html?user=${profile.discord_user_id}" class="text-decoration-none text-dark fw-bold">
+                                        ${profile.account_name || '名称未設定'}
+                                    </a>
+                                    ${badgeImg}
+                                </div>
+                            </td>
+                            <td class="fw-bold" style="color: #e67e22;">📊 ${totalAssets.toLocaleString()}</td>
+                            <td>🪙 ${coins.toLocaleString()}</td>
+                            <td>📛 ${badgeCount}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                console.error('Error loading ranking:', err);
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-4">読み込みエラーが発生しました</td></tr>';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadRanking);
+    </script>
+</body>
+
+</html>

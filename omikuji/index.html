@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>おみくじ - かに鯖</title>
+    <link rel="icon" type="image/png" href="../images/favicon.png">
+    <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kosugi+Maru&family=Noto+Sans+JP:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="../styles.css">
+    <style>
+        :root {
+            --deep-purple: #5a4a7a;
+            --gold: #d4a574;
+            --font-title: 'Kosugi Maru', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+            min-height: 100vh;
+        }
+
+        .page-header {
+            color: #fff;
+            font-family: var(--font-title);
+            text-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+        }
+
+        .omikuji-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .fortune-box {
+            padding: 30px;
+            border-radius: 15px;
+            margin: 20px 0;
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+        }
+
+        .fortune-rank {
+            font-size: 3rem;
+            font-weight: bold;
+            font-family: var(--font-title);
+            color: var(--deep-purple);
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .fortune-reward {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .fortune-reward.positive {
+            color: #27ae60;
+        }
+
+        .fortune-reward.negative {
+            color: #e74c3c;
+        }
+
+        .fortune-message {
+            margin-top: 20px;
+            font-size: 1.1rem;
+            color: #555;
+            line-height: 1.8;
+        }
+
+        .draw-button {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            border: none;
+            padding: 15px 50px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(231, 76, 60, 0.4);
+        }
+
+        .draw-button:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(231, 76, 60, 0.5);
+        }
+
+        .draw-button:disabled {
+            background: #aaa;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .already-drawn {
+            color: #999;
+            font-size: 1.1rem;
+        }
+
+        .access-denied {
+            color: #e74c3c;
+            font-size: 1.2rem;
+        }
+
+        /* アニメーション */
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            10%,
+            30%,
+            50%,
+            70%,
+            90% {
+                transform: translateX(-5px);
+            }
+
+            20%,
+            40%,
+            60%,
+            80% {
+                transform: translateX(5px);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .shaking {
+            animation: shake 0.8s ease-in-out;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        /* ナビゲーションドロップダウン */
+        .nav-dropdown {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .record-button {
+            background: linear-gradient(135deg, var(--gold) 0%, #b8892d 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            box-shadow: 0 6px 20px rgba(212, 168, 83, 0.5);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .record-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(212, 168, 83, 0.6);
+            color: white;
+        }
+
+        .nav-dropdown-menu {
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+            min-width: 200px;
+            overflow: hidden;
+            border: none;
+        }
+
+        .dropdown-item {
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #333;
+            transition: background 0.2s;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 右上のナビゲーションドロップダウン -->
+    <div class="nav-dropdown dropdown">
+        <button class="record-button dropdown-toggle" type="button" id="navDropdown" data-bs-toggle="dropdown"
+            aria-expanded="false">
+            📝 メニュー
+        </button>
+        <ul class="dropdown-menu nav-dropdown-menu dropdown-menu-end" aria-labelledby="navDropdown">
+            <li><a class="dropdown-item" href="../index.html">🏠 ホームに戻る</a></li>
+            <li><a class="dropdown-item" href="../mypage/index.html">👤 マイページ</a></li>
+            <li>
+                <hr class="dropdown-divider">
+            </li>
+            <li><a class="dropdown-item" href="../mahjong/index.html">📊 ランキング</a></li>
+            <li><a class="dropdown-item" href="../mahjong/record.html">📝 記録する</a></li>
+            <li><a class="dropdown-item" href="../mahjong/users/index.html">👥 ユーザー一覧</a></li>
+            <li><a class="dropdown-item" href="../mahjong/team/index.html">🏅 チーム管理</a></li>
+            <li><a class="dropdown-item" href="../badge/list.html">📛 バッジ一覧</a></li>
+            <li><a class="dropdown-item" href="../badge/shop.html">🛒 バッジショップ</a></li>
+            <li class="admin-only" style="display:none;">
+                <hr class="dropdown-divider">
+            </li>
+            <li class="admin-only" style="display:none;">
+                <a class="dropdown-item" href="../admin/index.html">⚙️ 管理画面</a>
+            </li>
+        </ul>
+    </div>
+
+    <div class="container py-5">
+        <header class="text-center">
+            <h1 class="page-header display-4 fw-bold">🎋 おみくじ</h1>
+            <p class="text-white-50">1日1回の運試し！</p>
+        </header>
+
+        <div class="omikuji-card">
+            <!-- アクセス拒否表示 -->
+            <div id="access-denied" style="display: none;">
+                <div class="access-denied mb-4">
+                    <p>🚫 このページは管理者限定です</p>
+                </div>
+                <a href="../index.html" class="btn btn-outline-secondary">ホームに戻る</a>
+            </div>
+
+            <!-- ログイン促進 -->
+            <div id="login-prompt" style="display: none;">
+                <p class="mb-4">おみくじを引くにはログインしてください</p>
+                <button onclick="loginWithDiscord()" class="btn btn-primary">Discordでログイン</button>
+            </div>
+
+            <!-- おみくじUI -->
+            <div id="omikuji-ui" style="display: none;">
+                <!-- 引く前 -->
+                <div id="before-draw">
+                    <p class="mb-4" style="font-size: 1.1rem;">今日の運勢を占いましょう！</p>
+                    <button id="draw-button" class="draw-button" onclick="drawOmikuji()">
+                        🎋 おみくじを引く
+                    </button>
+                </div>
+
+                <!-- 引いた後 -->
+                <div id="after-draw" style="display: none;">
+                    <div id="result-box" class="fortune-box fade-in">
+                        <div id="fortune-rank" class="fortune-rank"></div>
+                        <div id="fortune-reward" class="fortune-reward"></div>
+                    </div>
+                    <div id="fortune-message" class="fortune-message"></div>
+                    <button class="btn btn-outline-secondary mt-4" onclick="location.href='../mypage/index.html'">
+                        マイページで確認
+                    </button>
+                </div>
+
+                <!-- 既に引いた -->
+                <div id="already-drawn" style="display: none;">
+                    <p class="already-drawn">🌙 本日は既におみくじを引いています</p>
+                    <p class="text-muted mt-3">次のおみくじは明日の0時以降に引けます</p>
+                    <a href="../mypage/index.html" class="btn btn-outline-primary mt-3">マイページへ</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/supabase-config.js"></script>
+    <script>
+        let currentUserId = null;
+        let omikujiSettings = [];
+
+        async function initOmikuji() {
+            const user = await getCurrentUser();
+
+            if (!user) {
+                document.getElementById('login-prompt').style.display = 'block';
+                return;
+            }
+
+            currentUserId = user.user_metadata.provider_id;
+
+            // 管理者チェック
+            if (!ADMIN_DISCORD_IDS.includes(currentUserId)) {
+                document.getElementById('access-denied').style.display = 'block';
+                return;
+            }
+
+            // おみくじ設定を取得
+            const { data: settings, error: settingsError } = await supabaseClient
+                .from('omikuji_settings')
+                .select('*');
+
+            if (settingsError || !settings || settings.length === 0) {
+                document.getElementById('omikuji-ui').style.display = 'block';
+                document.getElementById('before-draw').innerHTML = '<p class="text-danger">おみくじの設定が見つかりません。管理者にお問い合わせください。</p>';
+                return;
+            }
+
+            omikujiSettings = settings;
+
+            // 本日既に引いたかチェック
+            const { data: profile } = await supabaseClient
+                .from('profiles')
+                .select('last_omikuji_at')
+                .eq('discord_user_id', currentUserId)
+                .single();
+
+            document.getElementById('omikuji-ui').style.display = 'block';
+
+            if (profile?.last_omikuji_at && hasDrawnOmikujiToday(profile.last_omikuji_at)) {
+                document.getElementById('before-draw').style.display = 'none';
+                document.getElementById('already-drawn').style.display = 'block';
+            }
+        }
+
+        async function drawOmikuji() {
+            const button = document.getElementById('draw-button');
+            button.disabled = true;
+            button.textContent = '占い中...';
+            button.classList.add('shaking');
+
+            try {
+                // 重み付きランダム選択
+                const totalWeight = omikujiSettings.reduce((sum, s) => sum + s.weight, 0);
+                let random = Math.random() * totalWeight;
+                let selected = omikujiSettings[0];
+
+                for (const setting of omikujiSettings) {
+                    random -= setting.weight;
+                    if (random <= 0) {
+                        selected = setting;
+                        break;
+                    }
+                }
+
+                // メッセージをランダムに選択
+                const messages = selected.messages || ['今日も良い一日を！'];
+                const message = messages[Math.floor(Math.random() * messages.length)];
+
+                // 現在のプロフィールを取得
+                const { data: profile, error: profileError } = await supabaseClient
+                    .from('profiles')
+                    .select('coins, total_assets')
+                    .eq('discord_user_id', currentUserId)
+                    .single();
+
+                if (profileError) throw profileError;
+
+                const reward = selected.reward;
+                let newCoins = (profile.coins || 0) + reward;
+                let newTotalAssets = profile.total_assets || 0;
+
+                // マイナスの場合は0以下にしない
+                if (newCoins < 0) newCoins = 0;
+
+                // プラスの場合のみ総資産に加算
+                if (reward > 0) {
+                    newTotalAssets += reward;
+                }
+
+                // プロフィールを更新
+                const { error: updateError } = await supabaseClient
+                    .from('profiles')
+                    .update({
+                        coins: newCoins,
+                        total_assets: newTotalAssets,
+                        last_omikuji_at: new Date().toISOString()
+                    })
+                    .eq('discord_user_id', currentUserId);
+
+                if (updateError) throw updateError;
+
+                // 活動ログを記録
+                if (typeof logActivity === 'function') {
+                    await logActivity(currentUserId, 'omikuji', {
+                        amount: reward,
+                        details: { rank: selected.rank, message: message }
+                    });
+                }
+
+                // 少し待ってから結果を表示
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                // 結果を表示
+                document.getElementById('before-draw').style.display = 'none';
+                document.getElementById('after-draw').style.display = 'block';
+
+                document.getElementById('fortune-rank').textContent = selected.rank;
+
+                const rewardEl = document.getElementById('fortune-reward');
+                rewardEl.textContent = reward >= 0 ? `+${reward} コイン` : `${reward} コイン`;
+                rewardEl.className = 'fortune-reward ' + (reward >= 0 ? 'positive' : 'negative');
+
+                document.getElementById('fortune-message').textContent = message;
+
+            } catch (err) {
+                console.error('Omikuji error:', err);
+                alert('エラーが発生しました: ' + err.message);
+                button.disabled = false;
+                button.textContent = '🎋 おみくじを引く';
+            } finally {
+                button.classList.remove('shaking');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', initOmikuji);
+    </script>
+</body>
+
+</html>

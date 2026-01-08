@@ -211,3 +211,106 @@ async function displayUserInfo() {
 document.addEventListener('DOMContentLoaded', () => {
     displayUserInfo();
 });
+
+// ===== 活動ログシステム =====
+
+/**
+ * 活動ログを記録する
+ * @param {string} userId - ユーザーID
+ * @param {string} actionType - アクションタイプ ('mahjong', 'transfer_send', 'transfer_receive', 'badge_transfer', 'badge_receive', 'badge_sell', 'badge_purchase', 'omikuji', 'revenue_share')
+ * @param {Object} options - オプション
+ * @param {number} options.amount - 金額または数量
+ * @param {string} options.badgeId - バッジID（バッジ関連の場合）
+ * @param {string} options.targetUserId - 相手ユーザーID（送金・譲渡の場合）
+ * @param {string} options.matchId - マッチID（麻雀記録の場合）
+ * @param {Object} options.details - その他詳細情報
+ */
+async function logActivity(userId, actionType, options = {}) {
+    try {
+        const logData = {
+            user_id: userId,
+            action_type: actionType,
+            amount: options.amount || null,
+            badge_id: options.badgeId || null,
+            target_user_id: options.targetUserId || null,
+            match_id: options.matchId || null,
+            details: options.details || null
+        };
+
+        const { error } = await supabaseClient
+            .from('activity_logs')
+            .insert([logData]);
+
+        if (error) {
+            console.error('Activity log error:', error);
+        }
+    } catch (err) {
+        console.error('Failed to log activity:', err);
+    }
+}
+
+/**
+ * 総資産（total_assets）を加算する（収入時のみ呼び出す）
+ * @param {string} userId - ユーザーID
+ * @param {number} amount - 加算する金額
+ */
+async function addToTotalAssets(userId, amount) {
+    if (amount <= 0) return;
+
+    try {
+        const { data: profile, error: fetchError } = await supabaseClient
+            .from('profiles')
+            .select('total_assets')
+            .eq('discord_user_id', userId)
+            .maybeSingle();
+
+        if (fetchError) {
+            console.error('Fetch total_assets error:', fetchError);
+            return;
+        }
+
+        const currentTotal = profile?.total_assets || 0;
+        const { error: updateError } = await supabaseClient
+            .from('profiles')
+            .update({ total_assets: currentTotal + amount })
+            .eq('discord_user_id', userId);
+
+        if (updateError) {
+            console.error('Update total_assets error:', updateError);
+        }
+    } catch (err) {
+        console.error('Failed to update total_assets:', err);
+    }
+}
+
+/**
+ * JSTで今日の0時を取得
+ * @returns {Date} JSTの当日0時のDateオブジェクト
+ */
+function getJSTMidnight() {
+    const now = new Date();
+    // JSTはUTC+9
+    const jstOffset = 9 * 60; // 分単位
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const jst = new Date(utc + (jstOffset * 60000));
+
+    // JSTの0時にセット
+    jst.setHours(0, 0, 0, 0);
+
+    // UTC時刻に戻す（Supabaseはタイムスタンプをそのまま保存するため）
+    return new Date(jst.getTime() - (jstOffset * 60000));
+}
+
+/**
+ * 今日（JST）既におみくじを実行したかどうかをチェック
+ * @param {string} lastOmikujiAt - 最後のおみくじ実行時刻（ISO文字列）
+ * @returns {boolean} 今日既に実行済みならtrue
+ */
+function hasDrawnOmikujiToday(lastOmikujiAt) {
+    if (!lastOmikujiAt) return false;
+
+    const lastDraw = new Date(lastOmikujiAt);
+    const todayMidnight = getJSTMidnight();
+
+    return lastDraw >= todayMidnight;
+}

@@ -437,12 +437,21 @@ async function submitScores() {
 
         if (error) throw error;
 
-        // コイン報酬の加算処理
+        // コイン報酬の加算処理（切り上げ + 四麻ボーナス）
         for (const player of dataToInsert) {
             if (!player.discord_user_id) continue;
 
-            const bonus = player.final_score > 0 ? Math.floor(player.final_score / 10) : 0;
-            const reward = 1 + bonus;
+            // スコアボーナス: 切り上げ（floor → ceil）
+            const scoreBonus = player.final_score > 0 ? Math.ceil(player.final_score / 10) : 0;
+
+            // 四麻順位ボーナス（三麻は対象外）
+            let rankBonus = 0;
+            if (mode === '四麻') {
+                const yonmaRankBonus = { 1: 5, 2: 3, 3: 1, 4: 0 };
+                rankBonus = yonmaRankBonus[player.rank] || 0;
+            }
+
+            const reward = 1 + scoreBonus + rankBonus;
 
             try {
                 // 現在の所持金を取得
@@ -458,7 +467,28 @@ async function submitScores() {
                         .from('profiles')
                         .update({ coins: (profile.coins || 0) + reward })
                         .eq('discord_user_id', player.discord_user_id);
-                    console.log(`${player.account_name} にコイン ${reward} 枚を付与しました`);
+
+                    // 総資産も加算
+                    if (typeof addToTotalAssets === 'function') {
+                        await addToTotalAssets(player.discord_user_id, reward);
+                    }
+
+                    // 活動ログを記録
+                    if (typeof logActivity === 'function') {
+                        await logActivity(player.discord_user_id, 'mahjong', {
+                            amount: reward,
+                            matchId: matchId,
+                            details: {
+                                rank: player.rank,
+                                final_score: player.final_score,
+                                score_bonus: scoreBonus,
+                                rank_bonus: rankBonus,
+                                mode: mode
+                            }
+                        });
+                    }
+
+                    console.log(`${player.account_name} にコイン ${reward} 枚を付与しました（スコア:${scoreBonus} + 順位:${rankBonus} + 基本:1）`);
                 }
             } catch (coinErr) {
                 console.error(`コイン付与エラー (${player.account_name}):`, coinErr);

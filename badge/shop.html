@@ -258,6 +258,17 @@
             </div>
         </div>
 
+        <!-- 自分の権利バッジセクション -->
+        <div id="my-rights-section" class="shop-grid-card mb-4" style="display: none;">
+            <h4 class="mb-3" style="color: var(--deep-purple); font-family: var(--font-title);">
+                💎 あなたの権利バッジ
+            </h4>
+            <p class="text-muted small mb-3">これらのバッジが売れると、売上の10%があなたに還元されます。</p>
+            <div id="my-rights-grid" class="row g-3">
+                <!-- JSで生成 -->
+            </div>
+        </div>
+
         <div class="shop-grid-card">
             <div id="shop-grid" class="row g-4">
                 <div class="col-12 text-center py-5">
@@ -285,7 +296,46 @@
             }
             currentUserId = user.user_metadata.provider_id;
             await loadUserCoins();
+            await loadMyRightsBadges();
             await fetchShopBadges();
+        }
+
+        // 自分の権利バッジを読み込む
+        async function loadMyRightsBadges() {
+            try {
+                const { data: badges, error } = await supabaseClient
+                    .from('badges')
+                    .select('id, name, image_url, price, remaining_count')
+                    .eq('discord_user_id', currentUserId);
+
+                if (error) throw error;
+
+                const section = document.getElementById('my-rights-section');
+                const grid = document.getElementById('my-rights-grid');
+
+                if (!badges || badges.length === 0) {
+                    section.style.display = 'none';
+                    return;
+                }
+
+                section.style.display = 'block';
+                grid.innerHTML = badges.map(badge => `
+                    <div class="col-6 col-md-3 col-lg-2">
+                        <div class="text-center p-2" style="background: #f8f9fa; border-radius: 10px; border: 2px solid var(--gold);">
+                            <a href="./index.html?id=${badge.id}" class="text-decoration-none">
+                                <img src="${badge.image_url}" alt="${badge.name}" 
+                                     style="width: 60px; height: 60px; object-fit: contain;">
+                                <div class="small text-truncate mt-1" style="color: #333;">${badge.name}</div>
+                            </a>
+                            <div class="small text-muted">🪙${badge.price}</div>
+                            <div class="small text-success">残り: ${badge.remaining_count !== null ? badge.remaining_count : '∞'}</div>
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (err) {
+                console.error('Error loading rights badges:', err);
+            }
         }
 
         async function loadUserCoins() {
@@ -364,6 +414,15 @@
             overlay.classList.add('active');
 
             try {
+                // 0. バッジの権利者情報を取得
+                const { data: badgeData, error: badgeError } = await supabaseClient
+                    .from('badges')
+                    .select('discord_user_id')
+                    .eq('id', badgeId)
+                    .single();
+
+                const creatorId = badgeData?.discord_user_id;
+
                 // 1. 在庫チェックと減算
                 if (remaining_count !== null) {
                     const { error: stockError } = await supabaseClient
@@ -389,6 +448,51 @@
                     .insert([{ user_id: currentUserId, badge_id: badgeId }]);
 
                 if (grantError) throw grantError;
+
+                // 4. 売上還元（権利者が設定されている場合、10%切り上げ）
+                if (creatorId && creatorId !== currentUserId) {
+                    const revenueShare = Math.ceil(price * 0.1); // 10%切り上げ
+
+                    // 権利者のコインを取得して加算
+                    const { data: creatorProfile, error: creatorFetchError } = await supabaseClient
+                        .from('profiles')
+                        .select('coins')
+                        .eq('discord_user_id', creatorId)
+                        .maybeSingle();
+
+                    if (!creatorFetchError && creatorProfile) {
+                        await supabaseClient
+                            .from('profiles')
+                            .update({ coins: (creatorProfile.coins || 0) + revenueShare })
+                            .eq('discord_user_id', creatorId);
+
+                        // 権利者の総資産を加算
+                        if (typeof addToTotalAssets === 'function') {
+                            await addToTotalAssets(creatorId, revenueShare);
+                        }
+
+                        // 活動ログを記録（権利者側）
+                        if (typeof logActivity === 'function') {
+                            await logActivity(creatorId, 'revenue_share', {
+                                amount: revenueShare,
+                                badgeId: badgeId,
+                                targetUserId: currentUserId,
+                                details: { badge_name: name, sale_price: price }
+                            });
+                        }
+
+                        console.log(`権利者 ${creatorId} に 🪙${revenueShare} を還元しました`);
+                    }
+                }
+
+                // 5. 購入者の活動ログを記録
+                if (typeof logActivity === 'function') {
+                    await logActivity(currentUserId, 'badge_purchase', {
+                        amount: price,
+                        badgeId: badgeId,
+                        details: { badge_name: name }
+                    });
+                }
 
                 alert('購入が完了しました！');
                 await loadUserCoins();
