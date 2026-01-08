@@ -1437,49 +1437,35 @@
                 // targetId に対応するプロフィール名を取得（検索範囲を広げるため）
                 const targetProfile = allProfiles.find(u => u.discord_user_id === targetId);
                 const targetName = targetProfile?.account_name;
-                console.log('Searching for:', { targetId, targetName });
+                console.log('--- loadActivityLogs Data Fetch ---', { targetId, targetName });
 
-                // 1. activity_logs から最新のログを取得
-                // NOTE: 自分が操作主または相手であるログを拾う
-                const logFilter = `user_id.eq.${targetId},target_user_id.eq.${targetId}`;
-                const { data: rawLogs, error: logsError } = await supabaseClient
+                // 1. activity_logs から最新のログを取得 (統計機能と同じく一旦多めに取ってJSでフィルタ)
+                const { data: allLogs, error: logsError } = await supabaseClient
                     .from('activity_logs')
                     .select('*')
-                    .or(logFilter)
-                    .neq('action_type', 'badge_equip')
                     .order('created_at', { ascending: false })
-                    .limit(300);
+                    .limit(500);
 
-                const logs = rawLogs || [];
+                const logs = (allLogs || []).filter(l =>
+                    l.user_id === targetId || l.target_user_id === targetId
+                ).filter(l => l.action_type !== 'badge_equip');
+
                 if (logsError) console.warn('Activity logs fetch error:', logsError);
-                console.log('--- Debug: activity_logs ---', { count: logs.length });
+                console.log('activity_logs:', { totalFetched: allLogs?.length, userMatches: logs.length });
 
-                // 2. match_results から最新の麻雀記録を取得
-                // NOTE: IDまたは名前が一致するものを拾う（nicknameは存在しないので account_name, player_name を試す）
-                // ただし存在しないカラムで400エラーになるのを防ぐため、一つずつチェックするか安全な方を選ぶ
-                let matchFilter = `discord_user_id.eq.${targetId}`;
-                if (targetName) {
-                    matchFilter += `,account_name.eq.${targetName}`;
-                }
-
-                const { data: rawMatches, error: matchError } = await supabaseClient
+                // 2. match_results から最新の麻雀記録を取得 (統計機能と同じ仕組み)
+                const { data: allMatches, error: matchError } = await supabaseClient
                     .from('match_results')
-                    .select('match_id, event_datetime, rank, final_score, mahjong_mode, discord_user_id, account_name')
-                    .or(matchFilter)
+                    .select('*')
                     .order('event_datetime', { ascending: false })
-                    .limit(300);
+                    .limit(500);
 
-                const matches = rawMatches || [];
-                if (matchError) {
-                    console.warn('Match results fetch error (with filter):', matchError);
-                    // フィルタで失敗した場合はフォールバックとして全件取得してJSでフィルタ（統計と同じ挙動）
-                    const { data: allData } = await supabaseClient.from('match_results').select('*').limit(500);
-                    const filtered = (allData || []).filter(r =>
-                        r.discord_user_id === targetId || (targetName && r.account_name === targetName)
-                    );
-                    matches.push(...filtered);
-                }
-                console.log('--- Debug: match_results ---', { count: matches.length });
+                const matches = (allMatches || []).filter(m =>
+                    m.discord_user_id === targetId || (targetName && (m.account_name === targetName || m.nickname === targetName || m.player_name === targetName))
+                );
+
+                if (matchError) console.warn('Match results fetch error:', matchError);
+                console.log('match_results:', { totalFetched: allMatches?.length, userMatches: matches.length });
 
                 // 3. データをマージして重複排除
                 let combined = [];
@@ -1523,7 +1509,7 @@
 
                 // 4. ソート (日時降順)
                 combined.sort((a, b) => b.timestamp - a.timestamp);
-                console.log('--- Debug: combined ---', { count: combined.length });
+                console.log('Final combined items:', combined.length);
 
                 if (combined.length === 0) {
                     listEl.innerHTML = '<div class="text-center text-muted py-3">活動ログはまだありません</div>';
