@@ -1434,77 +1434,88 @@
             console.log('--- loadActivityLogs start ---', { targetId, page });
 
             try {
-                // targetId に対応するプロフィール名を取得（検索範囲を広げるため）
                 const targetProfile = allProfiles.find(u => u.discord_user_id === targetId);
                 const targetName = targetProfile?.account_name;
-                console.log('--- loadActivityLogs Data Fetch ---', { targetId, targetName });
+                console.log('--- loadActivityLogs Integrated Fetch ---', { targetId, targetName });
 
-                // 1. activity_logs から最新のログを取得 (統計機能と同じく一旦多めに取ってJSでフィルタ)
-                const { data: allLogs, error: logsError } = await supabaseClient
+                // 1. 最新の活動ログ (送金・おみくじ等)
+                const { data: allLogs } = await supabaseClient
                     .from('activity_logs')
                     .select('*')
                     .order('created_at', { ascending: false })
                     .limit(500);
 
-                const logs = (allLogs || []).filter(l =>
-                    l.user_id === targetId || l.target_user_id === targetId
-                ).filter(l => l.action_type !== 'badge_equip');
-
-                if (logsError) console.warn('Activity logs fetch error:', logsError);
-                console.log('activity_logs:', { totalFetched: allLogs?.length, userMatches: logs.length });
-
-                // 2. match_results から最新の麻雀記録を取得 (統計機能と同じ仕組み)
-                const { data: allMatches, error: matchError } = await supabaseClient
+                // 2. 最新の麻雀記録
+                const { data: allMatches } = await supabaseClient
                     .from('match_results')
                     .select('*')
                     .order('event_datetime', { ascending: false })
                     .limit(500);
 
+                // 3. 過去の麻雀記録 (第一回大会など)
+                const { data: legacyMatches } = await supabaseClient
+                    .from('tournament_player_stats_snapshot')
+                    .select('*')
+                    .limit(500);
+
+                // --- フィルタリング ---
+                const logs = (allLogs || []).filter(l =>
+                    l.user_id === targetId || l.target_user_id === targetId
+                ).filter(l => l.action_type !== 'badge_equip');
+
                 const matches = (allMatches || []).filter(m =>
                     m.discord_user_id === targetId || (targetName && (m.account_name === targetName || m.nickname === targetName || m.player_name === targetName))
                 );
 
-                if (matchError) console.warn('Match results fetch error:', matchError);
-                console.log('match_results:', { totalFetched: allMatches?.length, userMatches: matches.length });
-
-                // 3. データをマージして重複排除
-                let combined = [];
-                const matchIdsInLogs = new Set(
-                    logs.filter(l => l.match_id).map(l => String(l.match_id))
+                const legacy = (legacyMatches || []).filter(m =>
+                    m.discord_user_id === targetId || (targetName && (m.account_name === targetName || m.nickname === targetName || m.player_name === targetName))
                 );
 
-                // ログにあるデータを追加
+                console.log('Fetch Results:', {
+                    logs: logs.length,
+                    matches: matches.length,
+                    legacy: legacy.length,
+                    allLogsRaw: allLogs?.length
+                });
+
+                // --- マージと重複排除 ---
+                let combined = [];
+                const matchIdsInLogs = new Set(logs.filter(l => l.match_id).map(l => String(l.match_id)));
+
+                // 活動ログ（送金など）を追加
                 logs.forEach(l => {
                     let details = l.details;
-                    if (typeof details === 'string') {
-                        try { details = JSON.parse(details); } catch (e) { }
-                    }
+                    if (typeof details === 'string') { try { details = JSON.parse(details); } catch (e) { } }
                     combined.push({
-                        ...l,
-                        details: details,
-                        timestamp: new Date(l.created_at),
-                        isMatch: l.action_type === 'mahjong'
+                        ...l, details: details, timestamp: new Date(l.created_at), isMatch: l.action_type === 'mahjong'
                     });
                 });
 
-                // match_results にあって logs にないデータを追加
+                // 最新麻雀記録を追加
                 matches.forEach(m => {
-                    const mId = String(m.match_id);
-                    if (!matchIdsInLogs.has(mId)) {
+                    if (!matchIdsInLogs.has(String(m.match_id))) {
                         combined.push({
-                            action_type: 'mahjong',
-                            amount: null,
-                            match_id: m.match_id,
+                            action_type: 'mahjong', amount: null, match_id: m.match_id,
                             timestamp: new Date(m.event_datetime),
-                            details: {
-                                rank: m.rank,
-                                final_score: m.final_score,
-                                mode: m.mahjong_mode,
-                                is_legacy: true
-                            },
+                            details: { rank: m.rank, final_score: m.final_score, mode: m.mahjong_mode },
                             isMatch: true
                         });
                     }
+                });
+
+                // 過去の麻雀記録を追加
+                legacy.forEach(m => {
+                    combined.push({
+                        action_type: 'mahjong', amount: null, match_id: 'legacy-' + Math.random(),
+                        timestamp: new Date(m.created_at || m.updated_at || '2024-01-01'),
+                        details: {
+                            rank: m.rank1_count > 0 ? 1 : (m.rank2_count > 0 ? 2 : (m.rank3_count > 0 ? 3 : 4)),
+                            final_score: m.score_total,
+                            mode: '過去大会',
+                            is_legacy: true
+                        },
+                        isMatch: true
+                    });
                 });
 
                 // 4. ソート (日時降順)
