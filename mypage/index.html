@@ -1521,10 +1521,9 @@
                 section.style.display = 'block';
 
                 // 5. ページネーション処理
-                const start = (page - 1) * pageSize;
-                const end = start + pageSize;
-                const pageItems = combined.slice(start, end);
-                const totalPages = Math.ceil(combined.length / pageSize);
+                const itemsPerPage = 10;
+                const totalPages = Math.ceil(combined.length / itemsPerPage);
+                const pageItems = combined.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
                 const typeNames = {
                     'mahjong': '🀄 麻雀記録',
@@ -1542,40 +1541,42 @@
                     const date = log.timestamp.toLocaleString('ja-JP', {
                         month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                     });
-                    const typeName = typeNames[log.action_type] || '📝 その他';
-                    let amountStr = log.amount ? `🪙${log.amount.toLocaleString()}` : '';
+                    const typeName = typeNames[log.action_type] || log.action_type;
+                    const amountStr = log.amount !== null ? `🪙 ${log.amount.toLocaleString()}` : '';
 
                     // 名前解決ヘルパー
                     const getDisplayName = (uid, fallback) => {
-                        const p = allProfiles.find(u => u.discord_user_id === uid);
-                        return p ? (p.account_name || uid) : fallback;
+                        if (!uid) return fallback;
+                        const p = allProfiles.find(u => u.discord_user_id === String(uid));
+                        if (p) return p.account_name || p.discord_user_id;
+                        return fallback;
                     };
 
-                    // 詳細文字列
+                    // 詳細文字列の構築
                     let detailsStr = '';
                     if (log.isMatch) {
-                        const rank = log.details?.rank;
-                        const score = log.details?.final_score;
+                        const rank = log.details?.rank || '-';
+                        const score = log.details?.final_score || '0';
                         const mode = log.details?.mode || '';
                         detailsStr = `<span class="badge bg-light text-dark">${mode} ${rank}位 (${score}pts)</span>`;
                     } else if (log.action_type === 'transfer_send') {
-                        const name = log.details?.target_name || getDisplayName(log.target_user_id, '不明');
+                        const name = log.details?.target_name || getDisplayName(log.target_user_id, '不明な相手');
                         detailsStr = `➡ ${name} への送金`;
                     } else if (log.action_type === 'transfer_receive') {
-                        const name = log.details?.sender_name || getDisplayName(log.target_user_id, '誰か');
+                        const name = log.details?.sender_name || getDisplayName(log.user_id, '不明な送り主');
                         detailsStr = `⬅ ${name} からの送金`;
                     } else if (log.action_type === 'badge_transfer') {
-                        const name = log.details?.target_name || getDisplayName(log.target_user_id, '誰か');
+                        const name = log.details?.target_name || getDisplayName(log.target_user_id, '不明な相手');
                         detailsStr = `🎁 「${log.details?.badge_name || 'バッジ'}」を ${name} へ譲渡`;
                     } else if (log.action_type === 'badge_receive') {
-                        const name = log.details?.sender_name || getDisplayName(log.target_user_id, '誰か');
+                        const name = log.details?.sender_name || getDisplayName(log.user_id, '不明な送り主');
                         detailsStr = `📦 「${log.details?.badge_name || 'バッジ'}」を ${name} から受取`;
                     } else if (log.action_type === 'badge_sell') {
                         detailsStr = `💴 「${log.details?.badge_name || 'バッジ'}」を売却`;
                     } else if (log.action_type === 'badge_purchase') {
                         detailsStr = `🛒 「${log.details?.badge_name || 'バッジ'}」を購入`;
                     } else if (log.action_type === 'omikuji') {
-                        detailsStr = `🎋 結果: ${log.details?.rank || '不明'}`;
+                        detailsStr = `🎋 運勢: ${log.details?.rank || 'おみくじ'}`;
                     } else if (log.action_type === 'revenue_share') {
                         detailsStr = `💎 「${log.details?.badge_name || 'バッジ'}」の売上還元`;
                     } else if (log.action_type === 'admin_edit') {
@@ -1592,7 +1593,7 @@
                                         <span class="activity-details">${detailsStr}</span>
                                     </div>
                                 </div>
-                                <div class="col-auto">
+                                <div class="col-auto text-end">
                                     <span class="activity-amount ${log.amount > 0 ? 'text-success' : log.amount < 0 ? 'text-danger' : ''}">${amountStr}</span>
                                 </div>
                             </div>
