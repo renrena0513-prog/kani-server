@@ -938,6 +938,7 @@
     <script>
         let isViewMode = false;
         let targetId = null;
+        let allProfiles = []; // 全ユーザーのプロファイルリスト
 
         /**
          * ページ初期化
@@ -945,6 +946,12 @@
         async function initPage() {
             const urlParams = new URLSearchParams(window.location.search);
             const urlUserId = urlParams.get('user');
+
+            // 全ユーザー情報を取得（名前解決用）
+            const { data: profiles, error: profileError } = await supabaseClient
+                .from('profiles')
+                .select('discord_user_id, account_name, avatar_url');
+            if (profiles) allProfiles = profiles;
 
             const user = await getCurrentUser();
             const myId = user?.user_metadata?.provider_id;
