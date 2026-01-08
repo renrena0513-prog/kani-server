@@ -1460,18 +1460,12 @@
 
                 // --- フィルタリング ---
                 const logs = (allLogs || []).filter(l => {
-                    // 基本は自分に関係あるもの
-                    if (l.user_id !== targetId && l.target_user_id !== targetId) return false;
-                    // 装着ログは隠す
+                    // 【修正】自分が「主体（user_id）」であるログのみを表示。
+                    // これにより、送受信ペアの重複表示や、購入者が「売上還元」ログを見るのを防ぎます。
+                    if (l.user_id !== targetId) return false;
+
+                    // 装着ログは非表示
                     if (l.action_type === 'badge_equip') return false;
-
-                    // 【修正】送金ログを「自分からの時はSEND」「相手からの時はRECEIVE」のみに限定
-                    // データベースには1回の送金で send/receive 両方が記録されているため、自分に関係ある1行だけを出す
-                    if (l.action_type === 'transfer_send' && l.user_id !== targetId) return false;
-                    if (l.action_type === 'transfer_receive' && l.target_user_id !== targetId) return false;
-
-                    // 【修正】売上還元 (revenue_share) は、受け取った側(amount > 0)にのみ表示
-                    if (l.action_type === 'revenue_share' && (l.amount || 0) <= 0) return false;
 
                     return true;
                 });
@@ -1556,22 +1550,16 @@
                     const typeName = typeNames[log.action_type] || log.action_type;
                     const amountStr = log.amount !== null ? `🪙 ${log.amount.toLocaleString()}` : '';
 
-                    // 名前の解決とアイコン取得
-                    // transfer_send の場合は送信相手(target_user_id)、receive の場合は送り主(user_id)
-                    let otherId = null;
-                    if (log.action_type === 'transfer_send' || log.action_type === 'badge_transfer') {
-                        otherId = log.target_user_id;
-                    } else if (log.action_type === 'transfer_receive' || log.action_type === 'badge_receive') {
-                        otherId = log.user_id;
-                    }
-
+                    // 相手の情報を取得（基本は target_user_id。常に最新のプロフィールを参照）
+                    const otherId = log.target_user_id;
                     const otherProfile = otherId ? allProfiles.find(p => p.discord_user_id === String(otherId)) : null;
-                    const targetNameHtml = otherProfile ? `
-                        <div class="d-flex align-items-center gap-2">
+
+                    const otherHtml = otherProfile ? `
+                        <div class="d-inline-flex align-items-center gap-1 mx-1">
                             <img src="${otherProfile.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
-                                 class="rounded-circle" style="width: 24px; height: 24px; object-fit: cover;">
-                            <span>${otherProfile.account_name || '誰か'}</span>
-                        </div>` : (otherId ? `ID: ${otherId}` : '');
+                                 class="rounded-circle shadow-sm" style="width: 24px; height: 24px; object-fit: cover;">
+                            <span class="fw-bold">${otherProfile.account_name || '誰か'}</span>
+                        </div>` : (otherId ? `<span class="badge bg-secondary">ID: ${otherId}</span>` : '');
 
                     let detailsStr = '';
                     if (log.isMatch) {
@@ -1580,13 +1568,13 @@
                         const mode = log.details?.mode || '';
                         detailsStr = `<span class="badge bg-light text-dark shadow-sm">${mode} ${rank}位 (${score}pts)</span>`;
                     } else if (log.action_type === 'transfer_send') {
-                        detailsStr = `<div class="d-flex align-items-center gap-2"><i class="bi bi-arrow-right-short"></i> ${targetNameHtml} への送金</div>`;
+                        detailsStr = `➡ ${otherHtml} への送金`;
                     } else if (log.action_type === 'transfer_receive') {
-                        detailsStr = `<div class="d-flex align-items-center gap-2"><i class="bi bi-arrow-left-short"></i> ${targetNameHtml} からの送金</div>`;
+                        detailsStr = `⬅ ${otherHtml} からの送金`;
                     } else if (log.action_type === 'badge_transfer') {
-                        detailsStr = `🎁 「${log.details?.badge_name || 'バッジ'}」を ${targetNameHtml} へ譲渡`;
+                        detailsStr = `🎁 「${log.details?.badge_name || 'バッジ'}」を ${otherHtml} へ譲渡`;
                     } else if (log.action_type === 'badge_receive') {
-                        detailsStr = `📦 「${log.details?.badge_name || 'バッジ'}」を ${targetNameHtml} から受取`;
+                        detailsStr = `📦 「${log.details?.badge_name || 'バッジ'}」を ${otherHtml} から受取`;
                     } else if (log.action_type === 'badge_sell') {
                         detailsStr = `💴 「${log.details?.badge_name || 'バッジ'}」を売却`;
                     } else if (log.action_type === 'badge_purchase') {
@@ -1594,7 +1582,7 @@
                     } else if (log.action_type === 'omikuji') {
                         detailsStr = `🎋 運勢: <strong>${log.details?.rank || '不明'}</strong>`;
                     } else if (log.action_type === 'revenue_share') {
-                        detailsStr = `💎 「${log.details?.badge_name || 'バッジ'}」の売上還元`;
+                        detailsStr = `💎 「${log.details?.badge_name || 'バッジ'}」の売買還元 ${otherId ? `(by ${otherHtml})` : ''}`;
                     } else if (log.action_type === 'admin_edit') {
                         detailsStr = `⚙️ 管理者による${log.amount >= 0 ? '加算' : '減算'}`;
                     }
