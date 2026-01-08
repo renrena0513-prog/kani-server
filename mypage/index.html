@@ -1428,31 +1428,33 @@
 
             try {
                 // 1. activity_logs から最新のログを取得
-                // NOTE: user_id が targetId と一致するものを取得
+                // NOTE: 自分が操作主(user_id)または相手(target_user_id)であるログを両方拾う
+                const logFilter = `user_id.eq.${targetId},target_user_id.eq.${targetId}`;
                 const { data: rawLogs, error: logsError } = await supabaseClient
                     .from('activity_logs')
                     .select('*')
-                    .eq('user_id', targetId)
+                    .or(logFilter)
                     .neq('action_type', 'badge_equip')
                     .order('created_at', { ascending: false })
                     .limit(200);
 
                 const logs = rawLogs || [];
                 if (logsError) console.warn('Activity logs fetch error:', logsError);
-                console.log('--- Debug: activity_logs ---', { count: logs.length, targetId });
+                console.log('--- Debug: activity_logs ---', { count: logs.length, filter: logFilter });
 
                 // 2. match_results から最新の麻雀記録を取得
-                // NOTE: discord_user_id, nickname, player_name のいずれかが一致するものを拾う
-                const matchFilter = `discord_user_id.eq.${targetId},nickname.eq.${targetId},player_name.eq.${targetId}`;
+                // NOTE: discord_user_id が一致するものを拾う（nicknameカラムは存在しないため削除）
                 const { data: rawMatches, error: matchError } = await supabaseClient
                     .from('match_results')
-                    .select('match_id, event_datetime, rank, final_score, mahjong_mode, discord_user_id, nickname, player_name')
-                    .or(matchFilter)
+                    .select('match_id, event_datetime, rank, final_score, mahjong_mode, discord_user_id')
+                    .eq('discord_user_id', targetId)
                     .order('event_datetime', { ascending: false })
                     .limit(200);
 
                 const matches = rawMatches || [];
-                if (matchError) console.warn('Match results fetch error:', matchError);
+                if (matchError) {
+                    console.warn('Match results fetch error:', matchError);
+                }
                 console.log('--- Debug: match_results ---', { count: matches.length, targetId });
 
                 // 3. データをマージして重複排除
