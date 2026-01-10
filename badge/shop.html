@@ -94,13 +94,6 @@
             -webkit-box-orient: vertical;
         }
 
-        .shop-price {
-            font-size: 1.1rem;
-            font-weight: bold;
-            color: var(--gold);
-            margin-bottom: 15px;
-        }
-
         .btn-buy {
             background: linear-gradient(135deg, var(--gold) 0%, #b8892d 100%);
             border: none;
@@ -248,7 +241,7 @@
             <div class="rights-title">
                 💎 あなたの権利バッジ
             </div>
-            <p class="small text-muted mb-3">これらのバッジが売れると、売上の一定割合があなたに還元されます。</p>
+            <p class="small text-muted mb-3">これらのバッジが売れると、売上の還元があなたに行われます。</p>
             <div id="my-rights-grid" class="row g-3">
                 <!-- JSで権利バッジを表示 -->
             </div>
@@ -276,11 +269,13 @@
         });
     </script>
     <script>
+        // グローバルステート
         let currentUserId = null;
         let currentUserCoins = 0;
-        let cachedMarketCounts = {};
+        let cachedMarketCounts = {}; // {} で初期化し undefined エラーを防止
         let cachedThresholds = [];
 
+        // ページ初期化
         async function initShop() {
             const user = await getCurrentUser();
             if (!user) {
@@ -293,36 +288,44 @@
             await refreshMarketContext();
         }
 
+        // 市場データとユーザー財産の再取得
         async function refreshMarketContext() {
             try {
-                // 共通データの取得
                 const [statsRes, thresholdsRes, coinsRes] = await Promise.all([
                     supabaseClient.from('user_badges_new').select('badge_id'),
                     supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true }),
                     supabaseClient.from('profiles').select('coins').eq('discord_user_id', currentUserId).single()
                 ]);
 
+                if (statsRes.error) throw statsRes.error;
+                if (thresholdsRes.error) throw thresholdsRes.error;
+
+                // データの格納
                 const marketStats = statsRes.data || [];
                 cachedThresholds = thresholdsRes.data || [];
                 currentUserCoins = coinsRes.data?.coins || 0;
                 document.getElementById('user-coins').textContent = currentUserCoins.toLocaleString();
 
-                cachedMarketCounts = {};
+                // 流通数のカウント
+                const newCounts = {};
                 marketStats.forEach(s => {
-                    cachedMarketCounts[s.badge_id] = (cachedMarketCounts[s.badge_id] || 0) + 1;
+                    newCounts[s.badge_id] = (newCounts[s.badge_id] || 0) + 1;
                 });
+                cachedMarketCounts = newCounts; // 一括更新
 
+                // 各セクションの描画
                 await loadMyRightsBadges();
                 await fetchShopBadges();
             } catch (err) {
                 console.error('Error refreshing shop context:', err);
+                document.getElementById('shop-grid').innerHTML = '<div class="col-12 text-center text-danger py-5">エラーが発生しました</div>';
             }
         }
 
         // 自分の権利バッジを読み込む
         async function loadMyRightsBadges() {
-            const marketCounts = cachedMarketCounts;
-            const thresholds = cachedThresholds;
+            const marketCounts = cachedMarketCounts || {};
+            const thresholds = cachedThresholds || [];
             try {
                 const { data: badges, error } = await supabaseClient
                     .from('badges')
@@ -346,33 +349,22 @@
                     'Divine': '#00d2ff', 'Celestial': '#00d2ff', 'Eternal': '#f80759', 'Cosmic': '#000'
                 };
 
-                function getDynamicRarity(assetValue, fixedRarity) {
+                const getDynamicRarity = (assetValue, fixedRarity) => {
                     if (fixedRarity) return fixedRarity;
-                    if (!thresholds || thresholds.length === 0) return '-';
+                    if (!thresholds.length) return '-';
                     let current = thresholds[0].rarity_name;
                     for (const t of thresholds) {
-                        if (assetValue >= t.threshold_value) {
-                            current = t.rarity_name;
-                        } else {
-                            break;
-                        }
+                        if (assetValue >= t.threshold_value) current = t.rarity_name;
+                        else break;
                     }
                     return current;
-                }
+                };
 
                 grid.innerHTML = badges.map(badge => {
                     const n = marketCounts[badge.id] || 0;
-                    let pBuy;
-                    if (badge.sales_type === '固定型') {
-                        pBuy = badge.price;
-                    } else {
-                        pBuy = Math.ceil(badge.price * Math.pow(1.3, n));
-                    }
+                    let pBuy = (badge.sales_type === '固定型') ? badge.price : Math.ceil(badge.price * Math.pow(1.3, n));
 
-                    // 利益（還元額）の計算
-                    let rate = 0;
-                    if (badge.sales_type === '固定型') rate = 0.2;
-                    else if (badge.sales_type === '変動型') rate = 0.05;
+                    const rate = (badge.sales_type === '固定型') ? 0.2 : (badge.sales_type === '変動型' ? 0.05 : 0);
                     const profit = Math.ceil(pBuy * rate);
 
                     const rarity = getDynamicRarity(badge.price, badge.fixed_rarity_name);
@@ -382,14 +374,13 @@
                             <div class="text-center p-2 h-100 d-flex flex-column" style="background: #f8f9fa; border-radius: 10px; border: 2px solid var(--gold);">
                                 <a href="./index.html?id=${badge.id}" class="text-decoration-none mb-auto">
                                     <div class="rarity-pill mx-auto" style="background-color: ${color}; width: fit-content; margin-bottom: 5px;">${rarity}</div>
-                                    <img src="${badge.image_url}" alt="${badge.name}" 
-                                         style="width: 60px; height: 60px; object-fit: contain;">
+                                    <img src="${badge.image_url}" alt="${badge.name}" style="width: 60px; height: 60px; object-fit: contain;">
                                     <div class="small text-truncate mt-1 fw-bold" style="color: #333;">${badge.name}</div>
                                 </a>
                                 <div class="mt-2" style="font-size: 0.75rem;">
-                                    <div class="text-muted">現在価格: 🪙${pBuy.toLocaleString()}</div>
+                                    <div class="text-muted text-truncate">現在: 🪙${pBuy.toLocaleString()}</div>
                                     <div class="text-success fw-bold">利益: 🪙${profit.toLocaleString()}</div>
-                                    <div class="text-info">残り: ${badge.remaining_count !== null ? badge.remaining_count : '∞'}</div>
+                                    <div class="text-info">残り: ${badge.remaining_count ?? '∞'}</div>
                                 </div>
                             </div>
                         </div>
@@ -401,12 +392,12 @@
             }
         }
 
+        // ショップアイテム一覧の読み込み
         async function fetchShopBadges() {
-            const marketCounts = cachedMarketCounts;
-            const thresholds = cachedThresholds;
+            const marketCounts = cachedMarketCounts || {};
+            const thresholds = cachedThresholds || [];
             const grid = document.getElementById('shop-grid');
             try {
-                // バッジマスター情報を取得
                 const { data: badges, error } = await supabaseClient
                     .from('badges')
                     .select('*')
@@ -421,30 +412,24 @@
                     'Divine': '#00d2ff', 'Celestial': '#00d2ff', 'Eternal': '#f80759', 'Cosmic': '#000'
                 };
 
-                function getDynamicRarity(assetValue, fixedRarity) {
+                const getDynamicRarity = (assetValue, fixedRarity) => {
                     if (fixedRarity) return fixedRarity;
-                    if (!thresholds || thresholds.length === 0) return '-';
+                    if (!thresholds.length) return '-';
                     let current = thresholds[0].rarity_name;
                     for (const t of thresholds) {
-                        if (assetValue >= t.threshold_value) {
-                            current = t.rarity_name;
-                        } else {
-                            break;
-                        }
+                        if (assetValue >= t.threshold_value) current = t.rarity_name;
+                        else break;
                     }
                     return current;
-                }
+                };
 
                 grid.innerHTML = badges.map(badge => {
                     const n = marketCounts[badge.id] || 0;
 
-                    // 価格計算: sales_type に基づく
                     let pBuy, pValue;
                     if (badge.sales_type === '固定型') {
-                        pBuy = badge.price;
-                        pValue = badge.price;
+                        pBuy = pValue = badge.price;
                     } else {
-                        // 変動型
                         pBuy = Math.ceil(badge.price * Math.pow(1.3, n));
                         pValue = Math.ceil(badge.price * Math.pow(1.3, Math.max(0, n - 1)));
                     }
@@ -462,27 +447,21 @@
                                     <img src="${badge.image_url}" class="shop-img" alt="${badge.name}">
                                     <div class="shop-name">${badge.name}</div>
                                 </a>
-                                <div class="w-100 px-2 small mb-2">
+                                <div class="w-100 px-2 small mb-2 text-start">
                                     <div class="d-flex justify-content-between text-muted" style="font-size: 0.7rem;">
-                                        <span>初期価格:</span>
-                                        <span>🪙 ${badge.price.toLocaleString()}</span>
+                                        <span>初期価格: 🪙${badge.price.toLocaleString()}</span>
                                     </div>
                                     <div class="d-flex justify-content-between text-muted" style="font-size: 0.7rem;">
-                                        <span>資産価値:</span>
-                                        <span>🪙 ${pValue.toLocaleString()}</span>
+                                        <span>資産価値: 🪙${pValue.toLocaleString()}</span>
                                     </div>
                                     <div class="d-flex justify-content-between fw-bold text-primary">
-                                        <span>販売価格:</span>
-                                        <span>🪙 ${pBuy.toLocaleString()}</span>
+                                        <span>販売価格: 🪙${pBuy.toLocaleString()}</span>
                                     </div>
                                     <div class="d-flex justify-content-between mt-1 text-muted" style="font-size: 0.7rem;">
-                                        <span>現在の流通: ${n} 枚</span>
-                                        <span class="${badge.remaining_count !== null && badge.remaining_count <= 5 ? 'text-danger fw-bold' : ''}">
-                                            残り: ${badge.remaining_count !== null ? badge.remaining_count : '∞'}
-                                        </span>
+                                        <span>流通: ${n} 枚 | 残り: ${badge.remaining_count ?? '∞'}</span>
                                     </div>
                                 </div>
-                                <button class="btn btn-buy ${isSoldOut ? 'btn-secondary disabled' : 'btn-primary'}" 
+                                <button class="btn btn-buy ${isSoldOut ? 'btn-secondary' : 'btn-primary'}" 
                                         onclick="buyBadgeV2('${badge.id}', ${pBuy}, '${badge.name.replace(/'/g, "\\'")}')"
                                         ${isSoldOut ? 'disabled' : ''}>
                                     ${isSoldOut ? '売り切れ' : '購入する'}
@@ -498,6 +477,7 @@
             }
         }
 
+        // 購入処理
         async function buyBadgeV2(badgeId, price, name) {
             if (currentUserCoins < price) {
                 alert('コインが足りません');
@@ -512,7 +492,6 @@
             overlay.classList.add('active');
 
             try {
-                // RPC 関数 purchase_badge_v2 を呼び出し
                 const { data, error } = await supabaseClient.rpc('purchase_badge_v2', {
                     p_user_id: currentUserId,
                     p_badge_id: badgeId
@@ -527,13 +506,13 @@
                     alert('購入が完了しました！');
                 }
 
-                // 活動ログ記録
                 await logActivity(currentUserId, 'badge_purchase', {
-                    amount: -price, // 支出なのでマイナス
+                    amount: -price,
                     badgeId: badgeId,
                     details: { badge_name: name, is_mutant: data.is_mutant }
                 });
 
+                // コンテキストのリフレッシュ（これにより cachedMarketCounts なども更新され fetchShopBadges が呼ばれる）
                 await refreshMarketContext();
 
             } catch (err) {
