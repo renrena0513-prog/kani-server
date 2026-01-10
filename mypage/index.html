@@ -950,7 +950,7 @@
 
             // 全ユーザー情報を取得（名前解決用）
             const [profilesRes, thresholdsRes] = await Promise.all([
-                supabaseClient.from('profiles').select('discord_user_id, account_name, avatar_url'),
+                supabaseClient.from('profiles').select('discord_user_id, account_name, avatar_url, coins'),
                 supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true })
             ]);
             if (profilesRes.data) allProfiles = profilesRes.data;
@@ -1056,6 +1056,14 @@
                 .eq('discord_user_id', targetId)
                 .maybeSingle();
 
+            // allProfiles にも最新情報を同期
+            if (profile) {
+                const pIdx = allProfiles.findIndex(p => p.discord_user_id === targetId);
+                if (pIdx !== -1) {
+                    allProfiles[pIdx] = { ...allProfiles[pIdx], ...profile };
+                }
+            }
+
             // アバター（なりすまし中はDBから、そうでなければDiscord）
             const avatarUrl = impersonated
                 ? (profile?.avatar_url || 'https://via.placeholder.com/150')
@@ -1126,6 +1134,14 @@
                 .select('*, badges!equipped_badge_id(image_url, name), teams!team_id(team_name)')
                 .eq('discord_user_id', targetId)
                 .maybeSingle();
+
+            // allProfiles にも最新情報を同期
+            if (profile) {
+                const pIdx = allProfiles.findIndex(p => p.discord_user_id === targetId);
+                if (pIdx !== -1) {
+                    allProfiles[pIdx] = { ...allProfiles[pIdx], ...profile };
+                }
+            }
 
             if (profile) {
                 document.getElementById('user-avatar').src = profile.avatar_url || 'https://via.placeholder.com/150';
@@ -2180,7 +2196,7 @@
                 document.getElementById('coin-transfer-target-name').textContent = `${name} さんへ送金`;
                 // 所持金を表示に反映
                 const myProfile = allProfiles.find(p => p.discord_user_id === targetId);
-                const currentCoins = myProfile ? myProfile.coins : 0;
+                const currentCoins = (myProfile && myProfile.coins !== undefined) ? myProfile.coins : 0;
                 const coinsRefEl = document.getElementById('my-coins-ref');
                 if (coinsRefEl) coinsRefEl.textContent = currentCoins.toLocaleString();
 
