@@ -13,37 +13,22 @@ UPDATE badges SET sales_type = '限定品';
 ALTER TABLE badges DROP COLUMN IF EXISTS is_fixed_price;
 ALTER TABLE badges DROP COLUMN IF EXISTS rarity;
 
--- 3. レアリティ判定テーブルの定義
-CREATE TABLE IF NOT EXISTS rarity_thresholds (
-    id Serial PRIMARY KEY,
-    threshold_value Int NOT NULL,
-    rarity_name Text NOT NULL,
-    created_at Timestamptz DEFAULT Now()
-);
-
--- シードデータ投入（価値に応じたレアリティ）
-INSERT INTO rarity_thresholds (threshold_value, rarity_name) VALUES
-(0, 'Common'),
-(3000, 'Uncommon'),
-(10000, 'Rare'),
-(30000, 'Epic'),
-(100000, 'Legendary'),
-(500000, 'Mythic'),
-(2000000, 'Divine')
-ON CONFLICT DO NOTHING;
-
 -- 既存データの移行 (古い user_badges から引き継ぎ)
 DO $$ 
 BEGIN 
+    -- 1. カラム名の変更 (order -> sort_order)
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='badges' AND column_name='order') THEN
         ALTER TABLE badges RENAME COLUMN "order" TO sort_order;
     END IF;
-END $$;
 
-INSERT INTO user_badges_new (user_id, badge_id, purchased_price)
-SELECT user_id, badge_id, 0 
-FROM user_badges
-ON CONFLICT DO NOTHING; -- すでにある場合はスキップ
+    -- 2. データの移行 (テーブルが存在する場合のみ)
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'user_badges') THEN
+        INSERT INTO user_badges_new (user_id, badge_id, purchased_price)
+        SELECT user_id, badge_id, 0 
+        FROM user_badges
+        ON CONFLICT DO NOTHING;
+    END IF;
+END $$;
 
 -- 5. 経済ロジック RPC 関数の定義
 
@@ -75,6 +60,7 @@ DECLARE
     v_user_coins Int;
     v_is_mutant Boolean;
     v_share_rate Float;
+    v_share_amount Int;
     v_remaining_count Int;
 BEGIN
     -- バッジ情報取得

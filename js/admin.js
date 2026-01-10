@@ -748,7 +748,7 @@ async function openBadgeGrantModal(userId, userName) {
         // ユーザーの所持バッジ取得
         const { data: userBadgesNew, error: userBadgeError } = await supabaseClient
             .from('user_badges_new')
-            .select('badge_id, badges(name)')
+            .select('badge_id, badges!badge_id(name)')
             .eq('user_id', userId);
 
         if (userBadgeError) throw userBadgeError;
@@ -1185,9 +1185,7 @@ async function handleBulkBadgeUpload(event) {
                     gacha_weight: 10,
                     price: 0,
                     remaining_count: 999,
-                    order: 0,
-                    rarity: 'Normal',
-                    requirements: '',
+                    sort_order: 0,
                     image_url: data.publicUrl
                 }]);
 
