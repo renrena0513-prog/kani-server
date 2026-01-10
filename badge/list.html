@@ -4,11 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>バッジ一覧 - かに鯖</title>
+    <title>バッジ図鑑 - かに鯖</title>
     <link rel="icon" type="image/png" href="../images/favicon.png">
     <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Kosugi+Maru&family=Noto+Sans+JP:wght@400;700&display=swap"
         rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="../styles.css">
     <style>
         :root {
@@ -18,7 +19,7 @@
         }
 
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             min-height: 100vh;
         }
 
@@ -26,52 +27,114 @@
             color: #fff;
             font-family: var(--font-title);
             text-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-            margin-bottom: 40px;
+            margin-bottom: 30px;
         }
 
         .badge-list-card {
             background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
+            border-radius: 24px;
             padding: 30px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            min-height: 500px;
+        }
+
+        .filter-controls {
+            background: #f8f9fa;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border: 1px solid #eee;
+        }
+
+        .category-tabs {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 8px 18px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #555;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .tab-btn:hover {
+            border-color: var(--gold);
+            color: var(--gold);
+        }
+
+        .tab-btn.active {
+            background: var(--gold);
+            color: white;
+            border-color: var(--gold);
+            box-shadow: 0 4px 10px rgba(212, 165, 116, 0.3);
         }
 
         .badge-item-large {
             background: #fff;
-            border-radius: 15px;
-            padding: 20px;
+            border-radius: 16px;
+            padding: 15px;
             text-align: center;
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            border: 2px solid transparent;
+            border: 1px solid #eee;
             height: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
             text-decoration: none;
             color: inherit;
         }
 
         .badge-item-large:hover {
-            transform: translateY(-8px) scale(1.03);
+            transform: translateY(-5px);
             border-color: var(--gold);
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .badge-number-label {
+            font-size: 0.65rem;
+            font-weight: bold;
+            color: #bbb;
+            margin-bottom: 5px;
         }
 
         .badge-img-large {
-            width: 100px;
-            height: 100px;
+            width: 80px;
+            height: 80px;
             object-fit: contain;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
         }
 
         .badge-name-large {
             font-family: var(--font-title);
-            font-size: 1.1rem;
+            font-size: 0.9rem;
             font-weight: bold;
             color: var(--deep-purple);
-            word-break: break-all;
+            margin-bottom: 8px;
+            line-height: 1.2;
+            height: 2.4em;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        .rarity-pill {
+            font-size: 0.6rem;
+            padding: 2px 10px;
+            border-radius: 20px;
+            color: white;
+            font-weight: bold;
+            text-transform: uppercase;
         }
 
         /* ナビゲーションドロップダウン */
@@ -98,46 +161,18 @@
             cursor: pointer;
         }
 
-        .record-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(212, 168, 83, 0.6);
-            color: white;
-        }
-
-        .nav-dropdown-menu {
+        .search-input {
             border-radius: 12px;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
-            min-width: 200px;
-            overflow: hidden;
-            border: none;
+            padding-left: 40px;
+            border: 1px solid #ddd;
         }
 
-        .dropdown-item {
-            padding: 12px 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: #333;
-            transition: background 0.2s;
-        }
-
-        .notification-badge {
-            background: #dc3545;
-            color: white;
-            font-size: 0.7rem;
-            padding: 2px 6px;
-            border-radius: 10px;
-            margin-left: auto;
-        }
-
-        .rarity-pill {
-            font-size: 0.65rem;
-            padding: 2px 8px;
-            border-radius: 10px;
-            margin-bottom: 5px;
-            color: white;
-            font-weight: bold;
-            text-transform: uppercase;
+        .search-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #aaa;
         }
     </style>
 </head>
@@ -156,11 +191,51 @@
 
     <div class="container py-5">
         <header class="text-center">
-            <h1 class="page-header display-4 fw-bold">📛 バッジ一覧</h1>
+            <h1 class="page-header display-4 fw-bold">📛 バッジ図鑑</h1>
+            <p class="text-white-50 mb-4">かに鯖で獲得・購入できるバッジの一覧です</p>
         </header>
 
         <div class="badge-list-card">
-            <div id="badge-list-grid" class="row g-4">
+            <!-- フィルタ・コントロール -->
+            <div class="filter-controls">
+                <div class="row g-3">
+                    <!-- 検索 -->
+                    <div class="col-12 col-md-5">
+                        <div class="position-relative">
+                            <i class="bi bi-search search-icon"></i>
+                            <input type="text" id="search-box" class="form-control search-input"
+                                placeholder="バッジ名で検索..." oninput="filterAndRender()">
+                        </div>
+                    </div>
+                    <!-- ソート -->
+                    <div class="col-12 col-md-4">
+                        <div class="d-flex align-items-center gap-2">
+                            <label class="small text-muted flex-shrink-0">並び替え:</label>
+                            <select id="sort-select" class="form-select form-select-sm" onchange="filterAndRender()">
+                                <option value="number">ナンバー順 (#0〜)</option>
+                                <option value="rarity">レアリティ順 (高〜)</option>
+                                <option value="name">名前順</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- 表示統計 -->
+                    <div class="col-12 col-md-3 d-flex align-items-center justify-content-md-end">
+                        <span class="badge bg-secondary" id="badge-count-status">0 / 0 件</span>
+                    </div>
+                </div>
+
+                <hr class="my-3">
+
+                <!-- カテゴリタブ -->
+                <div class="category-tabs" id="category-tabs">
+                    <button class="tab-btn active" onclick="setCategory('all', this)">全件</button>
+                    <button class="tab-btn" onclick="setCategory('purchasable', this)">販売中</button>
+                    <button class="tab-btn" onclick="setCategory('special', this)">限定品</button>
+                </div>
+            </div>
+
+            <!-- グリッド -->
+            <div id="badge-list-grid" class="row g-3">
                 <div class="col-12 text-center py-5">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">読み込み中...</span>
@@ -179,53 +254,122 @@
         document.addEventListener('DOMContentLoaded', function () {
             initAccordionNav('../');
         });
-    </script>
-    <script>
-        async function fetchBadgeList() {
-            const grid = document.getElementById('badge-list-grid');
+
+        let allBadges = [];
+        let currentCategory = 'all';
+        let rarityThresholds = [];
+
+        async function initBadgeList() {
             try {
-                const { data: badges, error } = await supabaseClient
-                    .from('badges')
-                    .select('*')
-                    .order('sort_order', { ascending: true })
-                    .order('name');
+                // レアリティ閾値の取得
+                const [badgesRes, thresholdsRes] = await Promise.all([
+                    supabaseClient.from('badges').select('*').order('sort_order', { ascending: true }),
+                    supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true })
+                ]);
 
-                if (error) throw error;
+                if (badgesRes.error) throw badgesRes.error;
+                if (thresholdsRes.error) throw thresholdsRes.error;
 
-                if (!badges || badges.length === 0) {
-                    grid.innerHTML = '<div class="col-12 text-center text-muted py-5">バッジが登録されていません</div>';
-                    return;
-                }
+                allBadges = badgesRes.data || [];
+                rarityThresholds = thresholdsRes.data || [];
 
-                const rarityColors = {
-                    'Normal': '#888',
-                    'Rare': '#3498db',
-                    'Epic': '#9b59b6',
-                    'Legendary': '#f1c40f',
-                    'Special': '#e74c3c'
-                };
-
-                grid.innerHTML = badges.map(badge => {
-                    const rarity = badge.rarity || 'Normal';
-                    const color = rarityColors[rarity] || '#888';
-                    return `
-                        <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-                            <a href="./index.html?id=${badge.id}" class="badge-item-large">
-                                <div class="rarity-pill" style="background-color: ${color}">${rarity}</div>
-                                <img src="${badge.image_url}" class="badge-img-large" alt="${badge.name}">
-                                <div class="badge-name-large">${badge.name}</div>
-                            </a>
-                        </div>
-                    `;
-                }).join('');
-
+                filterAndRender();
             } catch (err) {
                 console.error('Error fetching badges:', err);
-                grid.innerHTML = '<div class="col-12 text-center text-danger py-5">読み込みエラーが発生しました</div>';
+                document.getElementById('badge-list-grid').innerHTML = '<div class="col-12 text-center text-danger py-5">読み込みエラーが発生しました</div>';
             }
         }
 
-        document.addEventListener('DOMContentLoaded', fetchBadgeList);
+        function getDynamicRarity(assetValue, fixedRarity) {
+            if (fixedRarity) return fixedRarity;
+            if (!rarityThresholds || rarityThresholds.length === 0) return '-';
+            let current = rarityThresholds[0].rarity_name;
+            for (const t of rarityThresholds) {
+                if (assetValue >= t.threshold_value) {
+                    current = t.rarity_name;
+                } else {
+                    break;
+                }
+            }
+            return current;
+        }
+
+        function setCategory(cat, btn) {
+            currentCategory = cat;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            filterAndRender();
+        }
+
+        const rarityOrder = ['Cosmic', 'Eternal', 'Celestial', 'Divine', 'Mythic', 'Legendary', 'Epic', 'Rare', 'Uncommon', 'Common', '-'];
+        const rarityColors = {
+            'Common': '#888', 'Uncommon': '#2ecc71', 'Rare': '#3498db',
+            'Epic': '#9b59b6', 'Legendary': '#f1c40f', 'Mythic': '#e67e22',
+            'Divine': '#00d2ff', 'Celestial': '#00d2ff', 'Eternal': '#f80759', 'Cosmic': '#000'
+        };
+
+        function filterAndRender() {
+            const grid = document.getElementById('badge-list-grid');
+            const searchVal = document.getElementById('search-box').value.toLowerCase();
+            const sortBy = document.getElementById('sort-select').value;
+
+            // 1. フィルタリング
+            let filtered = allBadges.filter(b => {
+                // 名前検索
+                if (searchVal && !b.name.toLowerCase().includes(searchVal)) return false;
+
+                // カテゴリ
+                if (currentCategory === 'purchasable' && b.sales_type === '限定品') return false;
+                if (currentCategory === 'special' && b.sales_type !== '限定品') return false;
+
+                return true;
+            });
+
+            // 各バッジに動的レアリティ情報を付加（ソート用）
+            filtered.forEach(b => {
+                b._rarity = getDynamicRarity(b.price, b.fixed_rarity_name);
+            });
+
+            // 2. ソート
+            if (sortBy === 'number') {
+                filtered.sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
+            } else if (sortBy === 'rarity') {
+                filtered.sort((a, b) => {
+                    const idxA = rarityOrder.indexOf(a._rarity);
+                    const idxB = rarityOrder.indexOf(b._rarity);
+                    if (idxA !== idxB) return idxA - idxB;
+                    // 同じレアリティならナンバー順
+                    return (a.sort_order ?? 9999) - (b.sort_order ?? 9999);
+                });
+            } else if (sortBy === 'name') {
+                filtered.sort((a, b) => a.name.localeCompare(b.name));
+            }
+
+            // 3. 描画
+            document.getElementById('badge-count-status').textContent = `${filtered.length} / ${allBadges.length} 件`;
+
+            if (filtered.length === 0) {
+                grid.innerHTML = '<div class="col-12 text-center text-muted py-5">該当するバッジがありません</div>';
+                return;
+            }
+
+            grid.innerHTML = filtered.map(badge => {
+                const rarity = badge._rarity;
+                const color = rarityColors[rarity] || '#888';
+                return `
+                    <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                        <a href="./index.html?id=${badge.id}" class="badge-item-large">
+                            <div class="badge-number-label">#${badge.sort_order ?? '???'}</div>
+                            <div class="rarity-pill mb-2" style="background-color: ${color}">${rarity}</div>
+                            <img src="${badge.image_url}" class="badge-img-large" alt="${badge.name}">
+                            <div class="badge-name-large">${badge.name}</div>
+                        </a>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        document.addEventListener('DOMContentLoaded', initBadgeList);
     </script>
 </body>
 

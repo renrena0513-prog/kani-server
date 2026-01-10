@@ -240,6 +240,10 @@
                     <!-- 名称 -->
                     <h1 id="badge-name" class="badge-name">読み込み中...</h1>
 
+                    <!-- バッジナンバー -->
+                    <div id="badge-number" class="text-white-50 small mb-2"
+                        style="font-family: inherit; font-weight: bold; font-size: 0.9rem;"></div>
+
                     <!-- 説明 -->
                     <p id="badge-description" class="badge-description mb-4"></p>
 
@@ -343,22 +347,39 @@
                 document.getElementById('badge-name').textContent = badge.name;
                 document.getElementById('badge-description').textContent = badge.description || '説明なし';
 
-                // レアリティ表示
-                if (badge.rarity) {
-                    const rBadge = document.getElementById('badge-rarity-badge');
-                    rBadge.textContent = badge.rarity;
-                    rBadge.style.display = 'inline-block';
-
-                    // レアリティに応じた色分け（例）
-                    const rarityColors = {
-                        'Normal': '#888',
-                        'Rare': '#3498db',
-                        'Epic': '#9b59b6',
-                        'Legendary': '#f1c40f',
-                        'Special': '#e74c3c'
-                    };
-                    rBadge.style.backgroundColor = rarityColors[badge.rarity] || '#888';
+                // バッジナンバー
+                if (badge.sort_order !== null) {
+                    document.getElementById('badge-number').textContent = `バッジナンバー: #${badge.sort_order}`;
                 }
+
+                // 最新のレアリティ判定
+                const { data: thresholds } = await supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true });
+
+                function getDynamicRarity(assetValue, fixedRarity) {
+                    if (fixedRarity) return fixedRarity;
+                    if (!thresholds || thresholds.length === 0) return '-';
+                    let current = thresholds[0].rarity_name;
+                    for (const t of thresholds) {
+                        if (assetValue >= t.threshold_value) {
+                            current = t.rarity_name;
+                        } else {
+                            break;
+                        }
+                    }
+                    return current;
+                }
+
+                const rarity = getDynamicRarity(badge.price, badge.fixed_rarity_name);
+                const rBadge = document.getElementById('badge-rarity-badge');
+                rBadge.textContent = rarity;
+                rBadge.style.display = 'inline-block';
+
+                const rarityColors = {
+                    'Common': '#888', 'Uncommon': '#2ecc71', 'Rare': '#3498db',
+                    'Epic': '#9b59b6', 'Legendary': '#f1c40f', 'Mythic': '#e67e22',
+                    'Divine': '#00d2ff', 'Celestial': '#00d2ff', 'Eternal': '#f80759', 'Cosmic': '#000'
+                };
+                rBadge.style.backgroundColor = rarityColors[rarity] || '#888';
 
                 // 獲得条件の表示
                 if (badge.requirements) {
