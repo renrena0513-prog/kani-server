@@ -389,12 +389,12 @@
         async function fetchShopBadges() {
             const grid = document.getElementById('shop-grid');
             try {
-                // 最新の各バッジの流通枚数を取得して、価格を計算する
-                const { data: marketStats, error: statsError } = await supabaseClient
-                    .from('user_badges_new')
-                    .select('badge_id');
-
-                if (statsError) throw statsError;
+                // バッジマスター情報を取得
+                const { data: badges, error: badgesError } = await supabaseClient
+                    .from('badges')
+                    .select('*')
+                    .order('order', { ascending: true });
+                if (badgesError) throw badgesError;
 
                 // badge_id ごとのカウントを集計
                 const marketCounts = {};
@@ -480,7 +480,7 @@
                 // RPC 関数 purchase_badge_v2 を呼び出し
                 const { data, error } = await supabaseClient.rpc('purchase_badge_v2', {
                     p_user_id: currentUserId,
-                    p_badge_id: parseInt(badgeId)
+                    p_badge_id: badgeId
                 });
 
                 if (error) throw error;

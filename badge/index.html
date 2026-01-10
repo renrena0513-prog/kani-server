@@ -386,7 +386,7 @@
 
                 // 所持者取得
                 const { data: owners, error: ownerError } = await supabaseClient
-                    .from('user_badges')
+                    .from('user_badges_new')
                     .select('user_id, profiles!user_id(discord_user_id, account_name, avatar_url, badges!equipped_badge_id(image_url, name))')
                     .eq('badge_id', badgeId);
 

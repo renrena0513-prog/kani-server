@@ -949,12 +949,12 @@
             const urlUserId = urlParams.get('user');
 
             // 全ユーザー情報を取得（名前解決用）
-            const { data: [profiles, thresholds] } = await Promise.all([
+            const [profilesRes, thresholdsRes] = await Promise.all([
                 supabaseClient.from('profiles').select('discord_user_id, account_name, avatar_url'),
                 supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true })
             ]);
-            if (profiles) allProfiles = profiles;
-            if (thresholds) rarityThresholds = thresholds;
+            if (profilesRes.data) allProfiles = profilesRes.data;
+            if (thresholdsRes.data) rarityThresholds = thresholdsRes.data;
 
             const user = await getCurrentUser();
             const myId = user?.user_metadata?.provider_id;
