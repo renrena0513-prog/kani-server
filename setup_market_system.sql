@@ -2,10 +2,19 @@
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS total_assets BigInt DEFAULT 0;
 
 -- 2. badges テーブル拡張
+ALTER TABLE badges ADD COLUMN IF NOT EXISTS sales_type Text; -- '限定品', '変動型', '固定型'
 ALTER TABLE badges ADD COLUMN IF NOT EXISTS price Int DEFAULT 1000;
 ALTER TABLE badges ADD COLUMN IF NOT EXISTS discord_user_id Text;
 ALTER TABLE badges ADD COLUMN IF NOT EXISTS is_fixed_price Boolean DEFAULT False;
 ALTER TABLE badges ADD COLUMN IF NOT EXISTS fixed_rarity_name Text;
+
+-- 既存データの移行
+DO $$
+BEGIN
+    UPDATE badges SET sales_type = '限定品' WHERE is_fixed_price IS NULL AND sales_type IS NULL;
+    UPDATE badges SET sales_type = '変動型' WHERE is_fixed_price = False AND sales_type IS NULL;
+    UPDATE badges SET sales_type = '固定型' WHERE is_fixed_price = True AND sales_type IS NULL;
+END $$;
 
 -- 3. rarity_thresholds テーブル新設
 CREATE TABLE IF NOT EXISTS rarity_thresholds (
@@ -68,23 +77,29 @@ DECLARE
     v_n Int;
     v_buy_price Int;
     v_creator_id Text;
-    v_is_fixed Boolean;
+    v_sales_type Text;
     v_user_coins Int;
     v_is_mutant Boolean;
     v_share_rate Float;
     v_share_amount Int;
 BEGIN
     -- バッジ情報取得
-    SELECT price, is_fixed_price, discord_user_id INTO v_base_price, v_is_fixed, v_creator_id
+    SELECT price, sales_type, discord_user_id INTO v_base_price, v_sales_type, v_creator_id
     FROM badges WHERE id = p_badge_id;
     
+    -- 購入不可（限定品）チェック
+    IF v_sales_type = '限定品' THEN
+        RETURN jsonb_build_object('ok', false, 'error', 'This badge is not for sale');
+    END IF;
+
     -- 流通枚数 $n$
     SELECT Count(*) INTO v_n FROM user_badges_new WHERE badge_id = p_badge_id;
     
     -- 価格決定
-    IF v_is_fixed THEN
+    IF v_sales_type = '固定型' THEN
         v_buy_price := v_base_price;
     ELSE
+        -- 変動型またはその他
         v_buy_price := Ceil(v_base_price * Power(1.3, v_n));
     END IF;
     
@@ -107,7 +122,7 @@ BEGIN
     
     -- 3. クリエイター還元
     IF v_creator_id IS NOT NULL AND v_creator_id != p_user_id THEN
-        v_share_rate := CASE WHEN v_is_fixed THEN 0.2 ELSE 0.05 END;
+        v_share_rate := CASE WHEN v_sales_type = '固定型' THEN 0.2 ELSE 0.05 END;
         v_share_amount := Ceil(v_buy_price * v_share_rate);
         UPDATE profiles 
         SET coins = coins + v_share_amount, 
@@ -126,7 +141,7 @@ DECLARE
     v_badge_id UUID;
     v_purchased_price Int;
     v_is_mutant Boolean;
-    v_is_fixed Boolean;
+    v_sales_type Text;
     v_base_price Int;
     v_n Int;
     v_asset_value Int;
@@ -141,15 +156,21 @@ BEGIN
     END IF;
     
     -- バッジマスター情報
-    SELECT price, is_fixed_price INTO v_base_price, v_is_fixed FROM badges WHERE id = v_badge_id;
+    SELECT price, sales_type INTO v_base_price, v_sales_type FROM badges WHERE id = v_badge_id;
     
+    -- 売却不可（限定品）チェック
+    IF v_sales_type = '限定品' THEN
+        RETURN jsonb_build_object('ok', false, 'error', 'This badge cannot be sold');
+    END IF;
+
     -- 全流通枚数 $n$
     SELECT Count(*) INTO v_n FROM user_badges_new WHERE badge_id = v_badge_id;
     
-    -- 資産価値 P_value = price * 1.3^(n-1)
-    IF v_is_fixed THEN
+    -- 資産価値 P_value
+    IF v_sales_type = '固定型' THEN
         v_asset_value := v_base_price;
     ELSE
+        -- 変動型
         v_asset_value := Ceil(v_base_price * Power(1.3, v_n - 1));
     END IF;
     

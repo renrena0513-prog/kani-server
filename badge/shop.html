@@ -392,7 +392,7 @@
                 // 最新の流通状況とバッジマスター情報を取得
                 const [statsRes, badgesRes] = await Promise.all([
                     supabaseClient.from('user_badges_new').select('badge_id'),
-                    supabaseClient.from('badges').select('*').not('is_fixed_price', 'is', null).order('sort_order', { ascending: true })
+                    supabaseClient.from('badges').select('*').neq('sales_type', '限定品').order('sort_order', { ascending: true })
                 ]);
 
                 if (statsRes.error) throw statsRes.error;
@@ -418,12 +418,13 @@
                 grid.innerHTML = badges.map(badge => {
                     const n = marketCounts[badge.id] || 0;
 
-                    // 価格計算 (1.3^n)
+                    // 価格計算: sales_type に基づく
                     let pBuy, pValue;
-                    if (badge.is_fixed_price) {
+                    if (badge.sales_type === '固定型') {
                         pBuy = badge.price;
                         pValue = badge.price;
                     } else {
+                        // 変動型
                         pBuy = Math.ceil(badge.price * Math.pow(1.3, n));
                         pValue = Math.ceil(badge.price * Math.pow(1.3, Math.max(0, n - 1)));
                     }

@@ -318,11 +318,11 @@
                 // 2. 全バッジ個体データを取得（資産価値計算用）
                 const { data: userBadges, error: bError } = await supabaseClient
                     .from('user_badges_new')
-                    .select('user_id, badge_id, is_mutant, badges(price, is_fixed_price)');
+                    .select('user_id, badge_id, is_mutant, badges(price, sales_type)');
                 if (bError) throw bError;
 
                 // 3. バッジマスター情報を取得（固定価格対応）
-                const { data: masterBadges } = await supabaseClient.from('badges').select('id, price, is_fixed_price');
+                const { data: masterBadges } = await supabaseClient.from('badges').select('id, price, sales_type');
 
                 // バッジごとの流通数をカウント
                 const marketCounts = {};
@@ -334,9 +334,10 @@
                 const badgeValues = {};
                 masterBadges.forEach(mb => {
                     const n = marketCounts[mb.id] || 0;
-                    if (mb.is_fixed_price) {
+                    if (mb.sales_type === '固定型') {
                         badgeValues[mb.id] = mb.price;
                     } else {
+                        // 変動型または限定品
                         // P_value = price * 1.3^(n-1) if n > 0 else 0
                         badgeValues[mb.id] = n > 0 ? Math.ceil(mb.price * Math.pow(1.3, n - 1)) : 0;
                     }
