@@ -898,27 +898,6 @@ async function revokeBadge(userId, badgeId, badgeName) {
     }
 }
 
-
-// レアリティ名からCSSクラスを取得
-function getRarityClass(rarityName) {
-    if (!rarityName) return '';
-    const map = {
-        '一般': 'rarity-wood',
-        '良質': 'rarity-stone',
-        '希少・Ⅰ': 'rarity-bronze',
-        '希少・Ⅱ': 'rarity-silver',
-        '貴重': 'rarity-gold',
-        '特上': 'rarity-platinum',
-        '極上': 'rarity-gem',
-        '伝説': 'rarity-legend',
-        '幻想': 'rarity-fantasy',
-        '至高': 'rarity-supreme',
-        '神話': 'rarity-mythic',
-        '測定不能': 'rarity-void'
-    };
-    return map[rarityName] || '';
-}
-
 // バッジ一覧取得
 async function fetchBadges() {
     const list = document.getElementById('badges-list');

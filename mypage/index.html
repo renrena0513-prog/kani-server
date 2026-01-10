@@ -1372,7 +1372,7 @@
                     totalBadgeAssetValue += (pValue * count);
 
                     const rarity = getDynamicRarity(pValue, badge.fixed_rarity_name);
-                    const color = rarityColors[rarity] || '#888';
+                    const rarityClass = getRarityClass(rarity);
                     const isEquipped = group.isEquipped;
                     const hasMutant = group.instances.some(i => i.is_mutant);
 
@@ -1387,25 +1387,25 @@
 
                     const cardHtml = `
                         <div class="col-4 col-sm-3 col-md-5th mb-3">
-                            <div class="card h-100 shadow-sm border-0 position-relative" style="border-radius: 12px; background: ${hasMutant ? 'rgba(255,193,7,0.05)' : '#fff'}; overflow: hidden; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
-                                <a href="../badge/index.html?id=${badge.id}" class="text-decoration-none w-100 h-100 d-flex flex-column align-items-center justify-content-center">
+                            <div class="card h-100 shadow-sm border-0 position-relative badge-card ${rarityClass}" style="border-radius: 12px; overflow: hidden; transition: transform 0.2s; color: inherit;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
+                                <a href="../badge/index.html?id=${badge.id}" class="text-decoration-none w-100 h-100 d-flex flex-column align-items-center justify-content-center" style="color: inherit;">
                                     <div class="card-body p-2 d-flex flex-column align-items-center justify-content-center text-center">
                                         <div class="position-relative mb-1">
                                             <div class="badge-item ${isEquipped ? 'equipped' : ''}" style="width: 60px; height: 60px; padding: 5px; background: transparent; border-width: 2px;">
-                                                <img src="${badge.image_url}" alt="${badge.name}" style="width: 100%; height: 100%; object-fit: contain;">
+                                                <img src="${badge.image_url}" alt="${badge.name}" style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.2));">
                                             </div>
                                             ${isEquipped ? '<span class="badge bg-gold position-absolute top-0 start-0" style="font-size:0.4rem; z-index:2;">装着中</span>' : ''}
                                             ${mutantLabel}
                                             ${countLabel}
                                         </div>
-                                        <div class="small text-muted text-truncate w-100 px-1" style="font-size: 0.65rem; line-height: 1.2;">${badge.name}</div>
-                                        <span class="badge mt-1" style="background-color: ${color}; font-size: 0.45rem; padding: 2px 5px;">${rarity}</span>
+                                        <div class="small opacity-75 text-truncate w-100 px-1" style="font-size: 0.65rem; line-height: 1.2;">${badge.name}</div>
+                                        <span class="badge mt-1" style="background: rgba(0,0,0,0.2); font-size: 0.45rem; padding: 2px 5px;">${rarity}</span>
                                     </div>
                                 </a>
                                 
                                 ${(!isViewMode && !isNonSaleable) ? `
                                     <div class="dropdown position-absolute top-0 end-0" style="z-index: 5;">
-                                        <button class="btn btn-link btn-sm text-muted p-1" data-bs-toggle="dropdown" style="font-size: 0.7rem;">
+                                        <button class="btn btn-link btn-sm p-1" data-bs-toggle="dropdown" style="font-size: 0.7rem; color: inherit; opacity: 0.5;">
                                             <i class="bi bi-three-dots-vertical"></i>
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0" style="font-size: 0.75rem; min-width: 80px;">

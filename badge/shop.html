@@ -364,23 +364,23 @@
                     const n = marketCounts[badge.id] || 0;
                     let pBuy = (badge.sales_type === '固定型') ? badge.price : Math.ceil(badge.price * Math.pow(1.3, n));
 
-                    const rate = (badge.sales_type === '固定型') ? 0.2 : (badge.sales_type === '変動型' ? 0.05 : 0);
+                    const rate = (badge.sales_type === '固定型') ? 0.2 : (badge.sales_type === '変動型' ? 0.1 : 0);
                     const profit = Math.ceil(pBuy * rate);
 
                     const rarity = getDynamicRarity(badge.price, badge.fixed_rarity_name);
-                    const color = rarityColors[rarity] || '#888';
+                    const rarityClass = getRarityClass(rarity);
                     return `
                         <div class="col-6 col-md-3 col-lg-2">
-                            <div class="text-center p-2 h-100 d-flex flex-column" style="background: #f8f9fa; border-radius: 10px; border: 2px solid var(--gold);">
-                                <a href="./index.html?id=${badge.id}" class="text-decoration-none mb-auto">
-                                    <div class="rarity-pill mx-auto" style="background-color: ${color}; width: fit-content; margin-bottom: 5px;">${rarity}</div>
-                                    <img src="${badge.image_url}" alt="${badge.name}" style="width: 60px; height: 60px; object-fit: contain;">
-                                    <div class="small text-truncate mt-1 fw-bold" style="color: #333;">${badge.name}</div>
+                            <div class="text-center p-2 h-100 d-flex flex-column badge-card ${rarityClass}" style="border-radius: 10px;">
+                                <a href="./index.html?id=${badge.id}" class="text-decoration-none mb-auto" style="color: inherit;">
+                                    <div class="rarity-pill mx-auto" style="background: rgba(0,0,0,0.2); width: fit-content; margin-bottom: 5px;">${rarity}</div>
+                                    <img src="${badge.image_url}" alt="${badge.name}" style="width: 60px; height: 60px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">
+                                    <div class="small text-truncate mt-1 fw-bold">${badge.name}</div>
                                 </a>
                                 <div class="mt-2" style="font-size: 0.75rem;">
-                                    <div class="text-muted text-truncate">現在: 🪙${pBuy.toLocaleString()}</div>
-                                    <div class="text-success fw-bold">利益: 🪙${profit.toLocaleString()}</div>
-                                    <div class="text-info">残り: ${badge.remaining_count ?? '∞'}</div>
+                                    <div class="opacity-75 text-truncate">現在: 🪙${pBuy.toLocaleString()}</div>
+                                    <div class="fw-bold">利益: 🪙${profit.toLocaleString()}</div>
+                                    <div class="">残り: ${badge.remaining_count ?? '∞'}</div>
                                 </div>
                             </div>
                         </div>
@@ -440,28 +440,28 @@
 
                     return `
                         <div class="col-6 col-md-4 col-lg-3">
-                            <div class="shop-item position-relative ${isSoldOut ? 'sold-out' : ''}">
+                            <div class="shop-item position-relative badge-card ${rarityClass} ${isSoldOut ? 'sold-out' : ''}">
                                 ${isSoldOut ? '<div class="sold-out-badge">SOLD OUT</div>' : ''}
-                                <a href="./index.html?id=${badge.id}" class="text-decoration-none text-dark d-flex flex-column align-items-center w-100">
-                                    <div class="rarity-pill" style="background-color: ${color}">${rarity}</div>
-                                    <img src="${badge.image_url}" class="shop-img" alt="${badge.name}">
-                                    <div class="shop-name">${badge.name}</div>
+                                <a href="./index.html?id=${badge.id}" class="text-decoration-none d-flex flex-column align-items-center w-100" style="color: inherit;">
+                                    <div class="rarity-pill" style="background: rgba(0,0,0,0.2);">${rarity}</div>
+                                    <img src="${badge.image_url}" class="shop-img" alt="${badge.name}" style="filter: drop-shadow(0 5px 15px rgba(0,0,0,0.2));">
+                                    <div class="shop-name" style="color: inherit;">${badge.name}</div>
                                 </a>
                                 <div class="w-100 px-2 small mb-2 text-start">
-                                    <div class="d-flex justify-content-between text-muted" style="font-size: 0.7rem;">
+                                    <div class="d-flex justify-content-between opacity-75" style="font-size: 0.7rem;">
                                         <span>初期価格: 🪙${badge.price.toLocaleString()}</span>
                                     </div>
-                                    <div class="d-flex justify-content-between text-muted" style="font-size: 0.7rem;">
+                                    <div class="d-flex justify-content-between opacity-75" style="font-size: 0.7rem;">
                                         <span>資産価値: 🪙${pValue.toLocaleString()}</span>
                                     </div>
-                                    <div class="d-flex justify-content-between fw-bold text-primary">
+                                    <div class="d-flex justify-content-between fw-bold">
                                         <span>販売価格: 🪙${pBuy.toLocaleString()}</span>
                                     </div>
-                                    <div class="d-flex justify-content-between mt-1 text-muted" style="font-size: 0.7rem;">
+                                    <div class="d-flex justify-content-between mt-1 opacity-75" style="font-size: 0.7rem;">
                                         <span>流通: ${n} 枚 | 残り: ${badge.remaining_count ?? '∞'}</span>
                                     </div>
                                 </div>
-                                <button class="btn btn-buy ${isSoldOut ? 'btn-secondary' : 'btn-primary'}" 
+                                <button class="btn btn-buy ${isSoldOut ? 'btn-secondary' : 'btn-light'}" 
                                         onclick="buyBadgeV2('${badge.id}', ${pBuy}, '${badge.name.replace(/'/g, "\\'")}')"
                                         ${isSoldOut ? 'disabled' : ''}>
                                     ${isSoldOut ? '売り切れ' : '購入する'}
