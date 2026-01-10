@@ -871,10 +871,10 @@ async function revokeBadge(userId, badgeId, badgeName) {
 
     toggleLoading(true);
     try {
-        // ID指定で1件だけ削除 (user_id と badge_id が一致するもののうち最新の1つ)
+        // uuid指定で1件だけ削除 (user_id と badge_id が一致するもののうち最新の1つ)
         const { data: targetRows, error: findError } = await supabaseClient
             .from('user_badges_new')
-            .select('id')
+            .select('uuid')
             .eq('user_id', userId)
             .eq('badge_id', badgeId)
             .order('created_at', { ascending: false })
@@ -886,7 +886,7 @@ async function revokeBadge(userId, badgeId, badgeName) {
         const { error } = await supabaseClient
             .from('user_badges_new')
             .delete()
-            .eq('id', targetRows[0].id);
+            .eq('uuid', targetRows[0].uuid);
 
         if (error) throw error;
         alert('バッジを1つ剥奪しました');

@@ -155,7 +155,7 @@ BEGIN
     
     RETURN jsonb_build_object('ok', true, 'buy_price', v_buy_price, 'is_mutant', v_is_mutant);
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- 売却処理 RPC
 CREATE OR REPLACE FUNCTION sell_badge_v2(p_user_id Text, p_badge_uuid UUID)
@@ -218,7 +218,7 @@ BEGIN
     
     RETURN jsonb_build_object('ok', true, 'sell_price', v_sell_price);
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- 6. 追加の不具合修正
 
@@ -255,4 +255,4 @@ BEGIN
 
     RETURN jsonb_build_object('ok', true);
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
