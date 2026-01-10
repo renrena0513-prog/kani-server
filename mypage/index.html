@@ -1258,19 +1258,7 @@
         }
 
         // ============ バッジ管理機能 ============
-        // レアリティ判定ヘルパー
-        function getBadgeRarity(assetValue, fixedRarity = null) {
-            if (fixedRarity) return fixedRarity;
-            let current = rarityThresholds[0]?.rarity_name || 'Common';
-            for (const t of rarityThresholds) {
-                if (assetValue >= t.threshold_value) {
-                    current = t.rarity_name;
-                } else {
-                    break;
-                }
-            }
-            return current;
-        }
+
 
         async function loadOwnedBadges() {
             const section = document.getElementById('badge-collection-section');
@@ -1367,7 +1355,7 @@
 
                     totalBadgeAssetValue += (pValue * count);
 
-                    const rarity = badge.fixed_rarity_name || 'Common';
+                    const rarity = badge.fixed_rarity_name || '-';
                     const color = rarityColors[rarity] || '#888';
                     const isEquipped = group.isEquipped;
                     const hasMutant = group.instances.some(i => i.is_mutant);
