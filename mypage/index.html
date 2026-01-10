@@ -1327,7 +1327,7 @@
                 const rarityColors = {
                     'Common': '#888', 'Uncommon': '#2ecc71', 'Rare': '#3498db',
                     'Epic': '#9b59b6', 'Legendary': '#f1c40f', 'Mythic': '#e67e22',
-                    'Divine': '#e74c3c', 'Celestial': '#00d2ff', 'Eternal': '#f80759', 'Cosmic': '#000'
+                    'Divine': '#00d2ff', 'Celestial': '#00d2ff', 'Eternal': '#f80759', 'Cosmic': '#000'
                 };
 
                 const badgeItemsHtml = owned.map(item => {
@@ -1395,7 +1395,7 @@
 
                 // 表示の出し分け (簡略化のため一つに統合)
                 purchasableSection.style.display = 'block';
-                purchasableList.innerHTML = badgeItemsHtml.join('');
+                purchasableList.innerHTML = badgeItemsHtml;
                 specialSection.style.display = 'none';
                 noBadgesMsg.style.display = 'none';
 
@@ -1747,6 +1747,13 @@
                 if (!data.ok) throw new Error(data.error);
 
                 alert(`バッジを 🪙${data.sell_price.toLocaleString()} で売却しました。`);
+                // 活動ログ記録
+                if (typeof logActivity === 'function') {
+                    await logActivity(targetId, 'badge_sell', {
+                        amount: data.sell_price,
+                        details: { badge_uuid: currentActionUUID, badge_name: currentActionBadgeName }
+                    });
+                }
                 loadOwnedBadges();
                 loadActivityLogs();
                 // 自分の情報を再読み込み
@@ -2048,7 +2055,7 @@
         let currentSelectMode = '';
         async function openUserSelectModal(mode) {
             currentSelectMode = mode;
-            const listEl = document.getElementById('user-select-list');
+            const listEl = document.getElementById('transfer-user-list');
             listEl.innerHTML = '<p class="text-center text-muted py-3">読み込み中...</p>';
             new bootstrap.Modal(document.getElementById('userSelectModal')).show();
 
@@ -2143,6 +2150,22 @@
                 if (!data.ok) throw new Error(data.error);
 
                 alert(`${selectedToUserName} さんに 🪙${amount.toLocaleString()} 送金しました。`);
+                // 活動ログ記録
+                if (typeof logActivity === 'function') {
+                    const sender = allProfiles.find(p => p.discord_user_id === targetId);
+                    const senderName = sender?.account_name || '誰か';
+
+                    await logActivity(targetId, 'transfer_send', {
+                        amount: -amount, // 送金はマイナス
+                        targetUserId: selectedToUserId,
+                        details: { target_name: selectedToUserName }
+                    });
+                    await logActivity(selectedToUserId, 'transfer_receive', {
+                        amount: amount,
+                        targetUserId: targetId,
+                        details: { sender_name: senderName }
+                    });
+                }
                 location.reload();
             } catch (err) {
                 alert('送金失敗: ' + err.message);

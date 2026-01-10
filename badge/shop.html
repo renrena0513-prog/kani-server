@@ -497,6 +497,13 @@
                     alert('購入が完了しました！');
                 }
 
+                // 活動ログ記録
+                await logActivity(currentUserId, 'badge_purchase', {
+                    amount: -price, // 支出なのでマイナス
+                    badgeId: badgeId,
+                    details: { badge_name: name, is_mutant: data.is_mutant }
+                });
+
                 await loadUserCoins();
                 await fetchShopBadges();
 
