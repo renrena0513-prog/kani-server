@@ -175,8 +175,19 @@ $$ LANGUAGE plpgsql;
 -- activity_logs に match_id カラムがない場合に追加
 ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS match_id Text;
 
--- コイン送金 RPC (404エラー対策)
--- ポストグレストのエラーに合わせ、パラメータの順序を調整 (p_amount, p_from_id, p_to_id)
+-- user_badges_new と profiles のリレーション（外部キー）を強制設定
+-- これがないと、バッジ詳細画面などで profiles を結合 (Join) するときにエラーになります。
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'user_badges_new_user_id_fkey') THEN
+        ALTER TABLE user_badges_new 
+        ADD CONSTRAINT user_badges_new_user_id_fkey 
+        FOREIGN KEY (user_id) REFERENCES profiles(discord_user_id) 
+        ON DELETE CASCADE;
+    END IF;
+END $$;
+
+-- コイン送金 RPC (引数の順番を JS 側と一致させる: p_amount を先頭に)
 CREATE OR REPLACE FUNCTION transfer_coins(p_amount Int, p_from_id Text, p_to_id Text)
 RETURNS JSONB AS $$
 DECLARE

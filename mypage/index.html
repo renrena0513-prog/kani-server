@@ -1318,10 +1318,25 @@
                     if (specialSection) specialSection.style.display = 'none';
                     if (purchasableSection) purchasableSection.style.display = 'none';
                     if (noBadgesMsg) noBadgesMsg.style.display = 'block';
-                    // 純資産をプロフィールの数値(現金のみ)で更新
-                    // if (netWorthEl) netWorthEl.textContent = userCoins.toLocaleString();
                     return;
                 }
+
+                // バッジのグルーピング処理 (badge_id ごとにまとめる)
+                const groupedOwned = {};
+                owned.forEach(item => {
+                    const bid = item.badge_id;
+                    if (!groupedOwned[bid]) {
+                        groupedOwned[bid] = {
+                            badge: item.badges,
+                            instances: [],
+                            isEquipped: false
+                        };
+                    }
+                    groupedOwned[bid].instances.push(item);
+                    if (item.badge_id === equippedId) {
+                        groupedOwned[bid].isEquipped = true;
+                    }
+                });
 
                 let totalBadgeAssetValue = 0;
                 const rarityColors = {
@@ -1333,53 +1348,67 @@
                 let purchasableHtml = '';
                 let specialHtml = '';
 
-                owned.forEach(item => {
-                    const badge = item.badges;
+                // グループ化されたバッジを描画
+                Object.values(groupedOwned).forEach(group => {
+                    const badge = group.badge;
                     if (!badge) return;
+
+                    const count = group.instances.length;
+                    const mainItem = group.instances[0]; // 代表品
 
                     const n = marketCounts[badge.id] || 0;
                     const pValue = badge.is_fixed_price ? badge.price : Math.ceil(badge.price * Math.pow(1.3, Math.max(0, n - 1)));
-                    const pSell = Math.ceil(pValue * 0.7 * (item.is_mutant ? 3 : 1));
-                    const profit = pSell - item.purchased_price;
+                    const pSell = Math.ceil(pValue * 0.7 * (mainItem.is_mutant ? 3 : 1));
 
-                    totalBadgeAssetValue += pValue;
+                    totalBadgeAssetValue += (pValue * count);
 
                     const rarity = getBadgeRarity(pValue, badge.fixed_rarity_name);
                     const color = rarityColors[rarity] || '#888';
-                    const isEquipped = badge.id === equippedId;
-                    const mutantLabel = item.is_mutant ? '<span class="badge bg-warning text-dark position-absolute bottom-0 end-0" style="font-size:0.5rem; z-index:2;">変異</span>' : '';
+                    const isEquipped = group.isEquipped;
+                    const hasMutant = group.instances.some(i => i.is_mutant);
+
+                    // 右下に個数を表示するためのラベル
+                    const countLabel = count > 1 ? `<span class="badge bg-dark position-absolute bottom-0 end-0 m-1" style="font-size:0.6rem; z-index:4; opacity: 0.9;">x${count}</span>` : '';
+
+                    // 左下（個数と重ならないように）または別の場所にミュータント表示
+                    const mutantLabel = hasMutant ? '<span class="badge bg-warning text-dark position-absolute bottom-0 start-0 m-1" style="font-size:0.5rem; z-index:4;">変異</span>' : '';
+
+                    // 非売品判定
+                    const isNonSaleable = badge.sort_order <= 10000 || mainItem.purchased_price === 0;
 
                     const cardHtml = `
                         <div class="col-4 col-sm-3 col-md-2 mb-3">
-                            <div class="card h-100 shadow-sm border-0 position-relative" style="border-radius: 12px; background: ${item.is_mutant ? 'rgba(255,193,7,0.05)' : '#fff'}; overflow: hidden;">
-                                <div class="card-body p-2 d-flex flex-column align-items-center justify-content-center text-center">
-                                    <div class="position-relative mb-1">
-                                        <div class="badge-item ${isEquipped ? 'equipped' : ''}" style="width: 60px; height: 60px; padding: 5px;">
-                                            <img src="${badge.image_url}" alt="${badge.name}" style="width: 100%; height: 100%; object-fit: contain;">
+                            <div class="card h-100 shadow-sm border-0 position-relative" style="border-radius: 12px; background: ${hasMutant ? 'rgba(255,193,7,0.05)' : '#fff'}; overflow: hidden; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
+                                <a href="../badge/index.html?id=${badge.id}" class="text-decoration-none w-100 h-100 d-flex flex-column align-items-center justify-content-center">
+                                    <div class="card-body p-2 d-flex flex-column align-items-center justify-content-center text-center">
+                                        <div class="position-relative mb-1">
+                                            <div class="badge-item ${isEquipped ? 'equipped' : ''}" style="width: 60px; height: 60px; padding: 5px;">
+                                                <img src="${badge.image_url}" alt="${badge.name}" style="width: 100%; height: 100%; object-fit: contain;">
+                                            </div>
+                                            ${isEquipped ? '<span class="badge bg-gold position-absolute top-0 start-0" style="font-size:0.4rem; z-index:2;">装着中</span>' : ''}
+                                            ${mutantLabel}
+                                            ${countLabel}
                                         </div>
-                                        ${isEquipped ? '<span class="badge bg-gold position-absolute top-0 start-0" style="font-size:0.4rem; z-index:2;">装着中</span>' : ''}
-                                        ${mutantLabel}
+                                        <span class="badge mb-1" style="background-color: ${color}; font-size: 0.5rem;">${rarity}</span>
                                     </div>
-                                    <span class="badge mb-1" style="background-color: ${color}; font-size: 0.5rem;">${rarity}</span>
-                                    
-                                    ${!isViewMode ? `
-                                        <div class="dropdown position-absolute top-0 end-0">
-                                            <button class="btn btn-link btn-sm text-muted p-1" data-bs-toggle="dropdown">
-                                                <i class="bi bi-three-dots-vertical"></i>
-                                            </button>
-                                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0" style="font-size: 0.8rem;">
-                                                <li><a class="dropdown-item" href="javascript:void(0)" onclick="sellBadgeConfirm('${item.uuid}', '${badge.name.replace(/'/g, "\\'")}', ${item.purchased_price}, ${pValue}, ${pSell})">売却</a></li>
-                                                <li><a class="dropdown-item" href="javascript:void(0)" onclick="openUUIDTransferModal('${item.uuid}', '${badge.name.replace(/'/g, "\\'")}', ${item.purchased_price}, ${pValue}, ${pSell})">譲渡</a></li>
-                                            </ul>
-                                        </div>
-                                    ` : ''}
-                                </div>
+                                </a>
+                                
+                                ${(!isViewMode && !isNonSaleable) ? `
+                                    <div class="dropdown position-absolute top-0 end-0" style="z-index: 5;">
+                                        <button class="btn btn-link btn-sm text-muted p-1" data-bs-toggle="dropdown">
+                                            <i class="bi bi-three-dots-vertical"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0" style="font-size: 0.8rem;">
+                                            <li><a class="dropdown-item" href="javascript:void(0)" onclick="sellBadgeConfirm('${mainItem.uuid}', '${badge.name.replace(/'/g, "\\'")}', ${mainItem.purchased_price || 0}, ${pValue}, ${pSell})">売却</a></li>
+                                            <li><a class="dropdown-item" href="javascript:void(0)" onclick="openUUIDTransferModal('${mainItem.uuid}', '${badge.name.replace(/'/g, "\\'")}', ${mainItem.purchased_price || 0}, ${pValue}, ${pSell})">譲渡</a></li>
+                                        </ul>
+                                    </div>
+                                ` : ''}
                             </div>
                         </div>
                     `;
 
-                    // 【修正】購入額が0（非売品）または sort_order が 10000 以下のものは特別枠へ
-                    if (badge.sort_order > 10000 && item.purchased_price > 0) {
+                    if (!isNonSaleable) {
                         purchasableHtml += cardHtml;
                     } else {
                         specialHtml += cardHtml;
@@ -1402,9 +1431,6 @@
                 }
 
                 noBadgesMsg.style.display = 'none';
-
-                // ※純資産表示の更新が必要な場合はここで更新。現在の要件では profiles.total_assets を「累計」として表示
-                // console.log('Current Net Worth:', userCoins + totalBadgeAssetValue);
 
             } catch (err) {
                 console.error('バッジ取得エラー:', err);
@@ -1688,32 +1714,51 @@
                     return;
                 }
 
-                listEl.innerHTML = owned.map(item => {
-                    const badge = item.badges;
+                // グルーピング処理
+                const grouped = {};
+                owned.forEach(item => {
+                    const bid = item.badge_id;
+                    if (!grouped[bid]) {
+                        grouped[bid] = {
+                            badge: item.badges,
+                            instances: []
+                        };
+                    }
+                    grouped[bid].instances.push(item);
+                });
+
+                listEl.innerHTML = Object.values(grouped).map(group => {
+                    const badge = group.badge;
                     if (!badge) return '';
 
+                    const count = group.instances.length;
+                    const mainItem = group.instances[0]; // 代表として1つ目を使用
                     const n = marketCounts[badge.id] || 0;
                     const pValue = badge.is_fixed_price ? badge.price : Math.ceil(badge.price * Math.pow(1.3, Math.max(0, n - 1)));
-                    const pSell = Math.ceil(pValue * 0.7 * (item.is_mutant ? 3 : 1));
+                    const pSell = Math.ceil(pValue * 0.7 * (mainItem.is_mutant ? 3 : 1));
+                    const buyPrice = mainItem.purchased_price || 0;
+
+                    const mutantLabel = mainItem.is_mutant ? '<span class="text-warning fw-bold">(Mutant)</span>' : '';
+                    const countBadge = count > 1 ? `<span class="badge bg-dark ms-2">x${count}</span>` : '';
 
                     if (mode === 'transfer') {
                         return `
-                            <div class="user-select-item" onclick="openUUIDTransferModal('${item.uuid}', '${badge.name.replace(/'/g, "\\'")}')">
+                            <div class="user-select-item" onclick="openUUIDTransferModal('${mainItem.uuid}', '${badge.name.replace(/'/g, "\\'")}', ${buyPrice}, ${pValue}, ${pSell})">
                                 <img src="${badge.image_url}" class="user-select-avatar" style="border-radius: 8px;">
                                 <div class="flex-grow-1">
-                                    <div class="user-select-name">${badge.name}</div>
-                                    <div class="small text-muted">評価額: 🪙${pValue.toLocaleString()} ${item.is_mutant ? '<span class="text-warning fw-bold">(Mutant)</span>' : ''}</div>
+                                    <div class="user-select-name">${badge.name} ${countBadge}</div>
+                                    <div class="small text-muted">評価額: 🪙${pValue.toLocaleString()} ${mutantLabel}</div>
                                 </div>
                                 <div class="text-primary fw-bold">選択</div>
                             </div>
                         `;
                     } else {
                         return `
-                            <div class="user-select-item" onclick="sellBadgeConfirm('${item.uuid}', '${badge.name.replace(/'/g, "\\'")}', ${pSell})">
+                            <div class="user-select-item" onclick="sellBadgeConfirm('${mainItem.uuid}', '${badge.name.replace(/'/g, "\\'")}', ${buyPrice}, ${pValue}, ${pSell})">
                                 <img src="${badge.image_url}" class="user-select-avatar" style="border-radius: 8px;">
                                 <div class="flex-grow-1">
-                                    <div class="user-select-name">${badge.name}</div>
-                                    <div class="small text-muted">売却額: 🪙${pSell.toLocaleString()} ${item.is_mutant ? '<span class="text-warning fw-bold">(Mutant)</span>' : ''}</div>
+                                    <div class="user-select-name">${badge.name} ${countBadge}</div>
+                                    <div class="small text-muted">売却額: 🪙${pSell.toLocaleString()} ${mutantLabel}</div>
                                 </div>
                                 <div class="text-danger fw-bold">売却</div>
                             </div>
@@ -1734,20 +1779,28 @@
         function sellBadgeConfirm(uuid, name, purchasedPrice, pValue, pSell) {
             currentActionUUID = uuid;
             currentActionBadgeName = name;
-            const profit = pSell - purchasedPrice;
+
+            // 安全な数値変換とデフォルト値設定
+            const pPrice = Number(purchasedPrice) || 0;
+            const pVal = Number(pValue) || 0;
+            const sPrice = Number(pSell) || 0;
+            const profit = sPrice - pPrice;
             const profitStr = (profit >= 0 ? '+' : '') + profit.toLocaleString();
 
             const msg = `「${name}」を売却しますか？\n\n` +
-                `・購入額: 🪙 ${purchasedPrice.toLocaleString()}\n` +
-                `・現在価値: 🪙 ${pValue.toLocaleString()}\n` +
-                `・売却価格: 🪙 ${pSell.toLocaleString()}\n` +
+                `・購入時の金額: 🪙 ${pPrice.toLocaleString()}\n` +
+                `・現在の市場価値: 🪙 ${pVal.toLocaleString()}\n` +
+                `・実際の売却価格: 🪙 ${sPrice.toLocaleString()}\n` +
                 `--------------------------\n` +
                 `・予想損益: ${profitStr}`;
 
             if (confirm(msg)) {
                 // 選択モーダルを閉じる
                 const modalEl = document.getElementById('badgeActionModal');
-                if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
+                if (modalEl) {
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                }
                 executeSellUUID();
             }
         }
@@ -1784,12 +1837,21 @@
             }
         }
 
-        function openUUIDTransferModal(uuid, name) {
+        function openUUIDTransferModal(uuid, name, purchasedPrice, pValue, pSell) {
             currentActionUUID = uuid;
             currentActionBadgeName = name;
+
+            // 譲渡時にも詳細情報を表示するために詳細文字列を構築
+            currentActionDetails =
+                `・購入額: 🪙 ${purchasedPrice.toLocaleString()}\n` +
+                `・現在価値: 🪙 ${pValue.toLocaleString()}\n` +
+                `・期待売却額: 🪙 ${pSell.toLocaleString()}\n` +
+                `--------------------------\n` +
+                `※譲渡するとあなたの手元からはなくなります。`;
+
             // 選択モーダルを閉じる
             const modalEl = document.getElementById('badgeActionModal');
-            bootstrap.Modal.getInstance(modalEl)?.hide();
+            if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
             openUserSelectModal('badge_transfer');
         }
 
