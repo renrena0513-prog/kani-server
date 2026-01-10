@@ -169,3 +169,28 @@ BEGIN
     RETURN jsonb_build_object('ok', true, 'sell_price', v_sell_price);
 END;
 $$ LANGUAGE plpgsql;
+
+-- 6. 追加の不具合修正
+
+-- activity_logs に match_id カラムがない場合に追加
+ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS match_id Text;
+
+-- コイン送金 RPC (404エラー対策)
+CREATE OR REPLACE FUNCTION transfer_coins(p_from_id Text, p_to_id Text, p_amount Int)
+RETURNS JSONB AS $$
+DECLARE
+    v_from_coins Int;
+BEGIN
+    -- 1. 送り主の残高チェック
+    SELECT coins INTO v_from_coins FROM profiles WHERE discord_user_id = p_from_id;
+    IF v_from_coins < p_amount THEN
+        RETURN jsonb_build_object('ok', false, 'error', 'Insufficient coins');
+    END IF;
+
+    -- 2. トランザクション
+    UPDATE profiles SET coins = coins - p_amount WHERE discord_user_id = p_from_id;
+    UPDATE profiles SET coins = coins + p_amount, total_assets = total_assets + p_amount WHERE discord_user_id = p_to_id;
+
+    RETURN jsonb_build_object('ok', true);
+END;
+$$ LANGUAGE plpgsql;
