@@ -1220,7 +1220,7 @@ async function exportBadgesToCSV() {
             return;
         }
 
-        const headers = ['id', 'name', 'description', 'requirements', 'fixed_rarity_name', 'image_url', 'gacha_weight', 'price', 'remaining_count', 'sort_order', 'discord_user_id'];
+        const headers = ['id', 'name', 'description', 'requirements', 'fixed_rarity_name', 'sales_type', 'image_url', 'gacha_weight', 'price', 'remaining_count', 'sort_order', 'discord_user_id'];
         const csvRows = [headers.join(',')];
 
         badges.forEach(badge => {
@@ -1295,6 +1295,7 @@ async function handleBadgeCSVImport(event) {
                     // デフォルト値の設定
                     if (obj.gacha_weight === null || obj.gacha_weight === undefined) obj.gacha_weight = 10;
                     if (obj.price === null || obj.price === undefined) obj.price = 0;
+                    if (!obj.sales_type) obj.sales_type = '限定品';
                     dataToProcess.push(obj);
                 }
             }
