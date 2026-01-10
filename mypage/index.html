@@ -2143,8 +2143,15 @@
                 }
 
                 alert(`${toUserName} さんにバッジを譲渡しました！`);
-                loadOwnedBadges();
-                loadActivityLogs();
+                // ヘッダーの所持金・バッジ情報も更新するために全体をリロード
+                if (isViewMode) {
+                    await loadTargetUserInfo();
+                } else {
+                    const user = await getCurrentUser();
+                    if (user) await displayMyInfo(user);
+                }
+                await loadOwnedBadges();
+                await loadActivityLogs();
             } catch (err) {
                 console.error('譲渡エラー:', err);
                 alert('譲渡に失敗しました');
@@ -2160,13 +2167,13 @@
             toggleLoading(true);
             try {
                 const { data, error } = await supabaseClient.rpc('transfer_coins', {
+                    p_amount: amount,
                     p_from_id: targetId,
-                    p_to_id: selectedToUserId,
-                    p_amount: amount
+                    p_to_id: selectedToUserId
                 });
 
                 if (error) throw error;
-                if (!data.ok) throw new Error(data.error);
+                if (!data.ok) throw new Error(data.error || '送金に失敗しました');
 
                 alert(`${selectedToUserName} さんに 🪙${amount.toLocaleString()} 送金しました。`);
                 // 活動ログ記録
@@ -2185,9 +2192,17 @@
                         details: { sender_name: senderName }
                     });
                 }
-                location.reload();
+
+                // UI更新
+                if (!isViewMode) {
+                    const user = await getCurrentUser();
+                    if (user) await displayMyInfo(user);
+                }
+                await loadOwnedBadges();
+                await loadActivityLogs();
             } catch (err) {
-                alert('送金失敗: ' + err.message);
+                console.error('送金エラー:', err);
+                alert('送金失敗: ' + (err.message || '不明なエラー'));
             } finally {
                 toggleLoading(false);
             }

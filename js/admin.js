@@ -746,8 +746,8 @@ async function openBadgeGrantModal(userId, userName) {
         if (badgeError) throw badgeError;
 
         // ユーザーの所持バッジ取得
-        const { data: userBadges, error: userBadgeError } = await supabaseClient
-            .from('user_badges')
+        const { data: userBadgesNew, error: userBadgeError } = await supabaseClient
+            .from('user_badges_new')
             .select('badge_id, badges(name)')
             .eq('user_id', userId);
 
@@ -755,14 +755,14 @@ async function openBadgeGrantModal(userId, userName) {
 
         // 所持数をカウント
         const ownedCounts = {};
-        userBadges.forEach(ub => {
+        userBadgesNew.forEach(ub => {
             ownedCounts[ub.badge_id] = (ownedCounts[ub.badge_id] || 0) + 1;
         });
 
         // 所持バッジの表示 (剥奪用)
         const aggregatedOwned = [];
         const seen = new Set();
-        userBadges.forEach(ub => {
+        userBadgesNew.forEach(ub => {
             if (!seen.has(ub.badge_id) && ub.badges) {
                 aggregatedOwned.push({
                     id: ub.badge_id,
@@ -834,7 +834,7 @@ async function grantMultiBadges() {
     toggleLoading(true);
     try {
         const { error } = await supabaseClient
-            .from('user_badges')
+            .from('user_badges_new')
             .insert(grants);
 
         if (error) throw error;
@@ -853,7 +853,7 @@ async function grantBadge(userId, badgeId, badgeName) {
     toggleLoading(true);
     try {
         const { error } = await supabaseClient
-            .from('user_badges')
+            .from('user_badges_new')
             .insert([{ user_id: userId, badge_id: badgeId }]);
 
         if (error) throw error;
@@ -873,7 +873,7 @@ async function revokeBadge(userId, badgeId, badgeName) {
     try {
         // ID指定で1件だけ削除 (user_id と badge_id が一致するもののうち最新の1つ)
         const { data: targetRows, error: findError } = await supabaseClient
-            .from('user_badges')
+            .from('user_badges_new')
             .select('id')
             .eq('user_id', userId)
             .eq('badge_id', badgeId)
@@ -884,7 +884,7 @@ async function revokeBadge(userId, badgeId, badgeName) {
         if (!targetRows || targetRows.length === 0) throw new Error('バッジが見つかりません');
 
         const { error } = await supabaseClient
-            .from('user_badges')
+            .from('user_badges_new')
             .delete()
             .eq('id', targetRows[0].id);
 

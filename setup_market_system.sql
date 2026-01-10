@@ -176,7 +176,8 @@ $$ LANGUAGE plpgsql;
 ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS match_id Text;
 
 -- コイン送金 RPC (404エラー対策)
-CREATE OR REPLACE FUNCTION transfer_coins(p_from_id Text, p_to_id Text, p_amount Int)
+-- ポストグレストのエラーに合わせ、パラメータの順序を調整 (p_amount, p_from_id, p_to_id)
+CREATE OR REPLACE FUNCTION transfer_coins(p_amount Int, p_from_id Text, p_to_id Text)
 RETURNS JSONB AS $$
 DECLARE
     v_from_coins Int;
