@@ -29,19 +29,18 @@ INSERT INTO rarity_thresholds (threshold_value, rarity_name) VALUES
 (3000000, 'Cosmic')
 ON CONFLICT DO NOTHING;
 
--- 4. user_badges テーブル新設 (既存の構成を拡張)
-CREATE TABLE IF NOT EXISTS user_badges_new (
-    uuid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id Text NOT NULL,
-    badge_id UUID NOT NULL REFERENCES badges(id),
-    purchased_price Int NOT NULL,
-    is_mutant Boolean DEFAULT False,
-    acquired_at Timestamptz DEFAULT Now()
-);
+-- 既存データの移行 (古い user_badges から引き継ぎ)
+DO $$ 
+BEGIN 
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='badges' AND column_name='order') THEN
+        ALTER TABLE badges RENAME COLUMN "order" TO sort_order;
+    END IF;
+END $$;
 
--- 既存データの移行 (簡易的な移行。必要に応じて調整)
--- INSERT INTO user_badges_new (user_id, badge_id, purchased_price)
--- SELECT discord_user_id, badge_id, 0 FROM user_badges;
+INSERT INTO user_badges_new (user_id, badge_id, purchased_price)
+SELECT user_id, badge_id, 0 
+FROM user_badges
+ON CONFLICT DO NOTHING; -- すでにある場合はスキップ
 
 -- 5. 経済ロジック RPC 関数の定義
 

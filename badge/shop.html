@@ -392,7 +392,7 @@
                 // 最新の流通状況とバッジマスター情報を取得
                 const [statsRes, badgesRes] = await Promise.all([
                     supabaseClient.from('user_badges_new').select('badge_id'),
-                    supabaseClient.from('badges').select('*').gt('order', 10000).order('order', { ascending: true })
+                    supabaseClient.from('badges').select('*').gt('sort_order', 10000).order('sort_order', { ascending: true })
                 ]);
 
                 if (statsRes.error) throw statsRes.error;

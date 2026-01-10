@@ -740,7 +740,7 @@ async function openBadgeGrantModal(userId, userName) {
         const { data: allBadges, error: badgeError } = await supabaseClient
             .from('badges')
             .select('*')
-            .order('order', { ascending: true })
+            .order('sort_order', { ascending: true })
             .order('name');
 
         if (badgeError) throw badgeError;
@@ -907,7 +907,7 @@ async function fetchBadges() {
         const { data: badges, error } = await supabaseClient
             .from('badges')
             .select('*')
-            .order('order', { ascending: true })
+            .order('sort_order', { ascending: true })
             .order('name', { ascending: true });
 
         if (error) throw error;
@@ -1211,7 +1211,7 @@ async function exportBadgesToCSV() {
         const { data: badges, error } = await supabaseClient
             .from('badges')
             .select('*')
-            .order('order', { ascending: true })
+            .order('sort_order', { ascending: true })
             .order('name', { ascending: true });
 
         if (error) throw error;
@@ -1220,7 +1220,7 @@ async function exportBadgesToCSV() {
             return;
         }
 
-        const headers = ['id', 'name', 'description', 'requirements', 'rarity', 'image_url', 'gacha_weight', 'price', 'remaining_count', 'order', 'discord_user_id'];
+        const headers = ['id', 'name', 'description', 'requirements', 'rarity', 'image_url', 'gacha_weight', 'price', 'remaining_count', 'sort_order', 'discord_user_id'];
         const csvRows = [headers.join(',')];
 
         badges.forEach(badge => {
@@ -1273,7 +1273,7 @@ async function handleBadgeCSVImport(event) {
                     let val = values[idx];
 
                     // 数値型のカラム
-                    if (['gacha_weight', 'price', 'remaining_count', 'order'].includes(h)) {
+                    if (['gacha_weight', 'price', 'remaining_count', 'sort_order'].includes(h)) {
                         val = (val !== '' && val !== undefined && val !== 'null') ? Number(val) : 0;
                     }
 
