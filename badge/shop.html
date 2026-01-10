@@ -9,6 +9,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Kosugi+Maru&family=Noto+Sans+JP:wght@400;700&display=swap"
         rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="../styles.css">
     <style>
         :root {
@@ -18,81 +19,73 @@
         }
 
         body {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            background: linear-gradient(135deg, #1d976c 0%, #93f9b9 100%);
             min-height: 100vh;
         }
 
-        .page-header {
+        .shop-header {
             color: #fff;
             font-family: var(--font-title);
             text-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
             margin-bottom: 30px;
         }
 
-        .coin-balance-card {
+        .coins-display {
             background: rgba(255, 255, 255, 0.9);
-            border-radius: 50px;
-            padding: 10px 30px;
+            padding: 10px 25px;
+            border-radius: 30px;
             display: inline-flex;
             align-items: center;
-            gap: 15px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        }
-
-        .coin-balance-card span {
+            gap: 10px;
             font-size: 1.5rem;
             font-weight: bold;
-            color: #555;
+            color: var(--deep-purple);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
         }
 
-        .shop-grid-card {
+        .shop-container {
             background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
+            border-radius: 24px;
             padding: 30px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
         }
 
         .shop-item {
             background: #fff;
-            border-radius: 15px;
+            border-radius: 16px;
             padding: 20px;
             text-align: center;
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 1px solid #eee;
             height: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
-            border: 1px solid #eee;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         }
 
-        .shop-item:hover:not(.sold-out) {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-        }
-
-        .shop-item.sold-out {
-            opacity: 0.7;
-            background: #f8f9fa;
+        .shop-item:hover {
+            transform: translateY(-10px);
+            border-color: var(--gold);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
         }
 
         .shop-img {
-            width: 120px;
-            height: 120px;
+            width: 100px;
+            height: 100px;
             object-fit: contain;
             margin-bottom: 15px;
-            transition: transform 0.3s ease;
-        }
-
-        .shop-item:hover .shop-img {
-            transform: scale(1.1);
+            filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.1));
         }
 
         .shop-name {
             font-family: var(--font-title);
             font-size: 1rem;
             font-weight: bold;
+            color: var(--deep-purple);
             margin-bottom: 10px;
+            line-height: 1.2;
             height: 2.4em;
             overflow: hidden;
             display: -webkit-box;
@@ -104,37 +97,75 @@
         .shop-price {
             font-size: 1.1rem;
             font-weight: bold;
-            color: #e67e22;
-            margin-bottom: 15px;
-        }
-
-        .shop-stock {
-            font-size: 0.8rem;
-            color: #777;
+            color: var(--gold);
             margin-bottom: 15px;
         }
 
         .btn-buy {
-            width: 100%;
-            border-radius: 10px;
+            background: linear-gradient(135deg, var(--gold) 0%, #b8892d 100%);
+            border: none;
+            color: white;
             font-weight: bold;
-            padding: 8px 0;
+            width: 100%;
+            border-radius: 12px;
+            padding: 10px;
             transition: all 0.2s;
         }
 
-        .sold-out-badge {
-            background: #6c757d;
-            color: white;
-            padding: 5px 15px;
+        .btn-buy:hover:not(:disabled) {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(212, 165, 116, 0.4);
+        }
+
+        .rarity-pill {
+            font-size: 0.7rem;
+            padding: 2px 12px;
             border-radius: 20px;
-            font-size: 0.9rem;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(-15deg);
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-            z-index: 5;
-            pointer-events: none;
+            color: white;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        /* 権利バッジセクション */
+        .rights-section {
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-left: 5px solid var(--gold);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .rights-title {
+            font-family: var(--font-title);
+            color: var(--deep-purple);
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* ローディングオーバーレイ */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            color: white;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        #loading-overlay.active {
+            display: flex;
         }
 
         /* ナビゲーションドロップダウン */
@@ -161,72 +192,35 @@
             cursor: pointer;
         }
 
-        .record-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(212, 168, 83, 0.6);
+        /* 売り切れ表示 */
+        .shop-item.sold-out {
+            filter: grayscale(0.8);
+            opacity: 0.7;
+        }
+
+        .sold-out-badge {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-15deg);
+            background: rgba(220, 53, 69, 0.9);
             color: white;
-        }
-
-        .nav-dropdown-menu {
-            border-radius: 12px;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
-            min-width: 200px;
-            overflow: hidden;
-            border: none;
-        }
-
-        .dropdown-item {
-            padding: 12px 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: #333;
-            transition: background 0.2s;
-        }
-
-        .notification-badge {
-            background: #dc3545;
-            color: white;
-            font-size: 0.7rem;
-            padding: 2px 6px;
-            border-radius: 10px;
-            margin-left: auto;
-        }
-
-        .rarity-pill {
-            font-size: 0.65rem;
-            padding: 2px 8px;
-            border-radius: 10px;
-            margin-bottom: 5px;
-            color: white;
+            padding: 5px 20px;
             font-weight: bold;
-            text-transform: uppercase;
-        }
-
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(255, 255, 255, 0.7);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-            visibility: hidden;
-        }
-
-        .loading-overlay.active {
-            visibility: visible;
+            font-size: 1.2rem;
+            border: 2px solid white;
+            z-index: 10;
+            pointer-events: none;
+            border-radius: 4px;
         }
     </style>
 </head>
 
 <body>
     <!-- ローディング -->
-    <div id="loading-overlay" class="loading-overlay">
-        <div class="spinner-border text-primary" role="status"></div>
+    <div id="loading-overlay">
+        <div class="spinner-border text-light" style="width: 3rem; height: 3rem;" role="status"></div>
+        <div class="h4">処理中...</div>
     </div>
 
     <!-- 右上のナビゲーションドロップダウン -->
@@ -236,53 +230,31 @@
             📝 メニュー
         </button>
         <ul class="dropdown-menu nav-dropdown-menu dropdown-menu-end" aria-labelledby="navDropdown">
-            <li><a class="dropdown-item" href="../index.html">🏠 ホームに戻る</a></li>
-            <li><a class="dropdown-item" href="../mypage/index.html">👤 マイページ</a></li>
-            <li>
-                <hr class="dropdown-divider">
-            </li>
-            <li><a class="dropdown-item" href="../mahjong/index.html">📊 ランキング</a></li>
-            <li><a class="dropdown-item" href="../mahjong/record.html">📝 記録する</a></li>
-            <li><a class="dropdown-item" href="../mahjong/users/index.html">👥 ユーザー一覧</a></li>
-            <li><a class="dropdown-item" href="../mahjong/team/index.html">🏅 チーム管理 <span id="team-notification-badge"
-                        class="notification-badge" style="display:none;">0</span></a></li>
-            <li><a class="dropdown-item" href="./list.html">📛 バッジ一覧</a></li>
-            <li><a class="dropdown-item" href="./shop.html">🛒 バッジショップ</a></li>
-            <li><a class="dropdown-item" href="../ranking/index.html">💰 資産ランキング</a></li>
-            <li class="admin-only" style="display:none;"><a class="dropdown-item" href="../omikuji/index.html">🎋
-                    おみくじ</a></li>
-            <li class="admin-only" style="display:none;">
-                <hr class="dropdown-divider">
-            </li>
-            <li class="admin-only" style="display:none;">
-                <a class="dropdown-item" href="../admin/index.html">⚙️ 管理画面</a>
-            </li>
+            <!-- JSでアコーディオンメニューに置き換えられます -->
         </ul>
     </div>
 
     <div class="container py-5">
         <header class="text-center">
-            <h1 class="page-header display-4 fw-bold">🛒 バッジショップ</h1>
+            <h1 class="shop-header display-4 fw-bold">🛒 バッジショップ</h1>
+            <div class="coins-display">
+                <span>🪙</span>
+                <span id="user-coins">0</span>
+            </div>
         </header>
 
-        <div class="text-center">
-            <div class="coin-balance-card">
-                <span>🪙 <span id="user-coins">---</span></span>
-            </div>
-        </div>
-
-        <!-- 自分の権利バッジセクション -->
-        <div id="my-rights-section" class="shop-grid-card mb-4" style="display: none;">
-            <h4 class="mb-3" style="color: var(--deep-purple); font-family: var(--font-title);">
+        <!-- 自分の権利バッジ -->
+        <div id="my-rights-section" class="rights-section mb-4" style="display: none;">
+            <div class="rights-title">
                 💎 あなたの権利バッジ
-            </h4>
-            <p class="text-muted small mb-3">これらのバッジが売れると、売上の10%があなたに還元されます。</p>
+            </div>
+            <p class="small text-muted mb-3">これらのバッジが売れると、売上の一定割合があなたに還元されます。</p>
             <div id="my-rights-grid" class="row g-3">
-                <!-- JSで生成 -->
+                <!-- JSで権利バッジを表示 -->
             </div>
         </div>
 
-        <div class="shop-grid-card">
+        <div class="shop-container">
             <div id="shop-grid" class="row g-4">
                 <div class="col-12 text-center py-5">
                     <div class="spinner-border text-primary" role="status">
@@ -293,6 +265,7 @@
         </div>
     </div>
 
+    <!-- Supabase & Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../js/supabase-config.js"></script>
@@ -305,6 +278,8 @@
     <script>
         let currentUserId = null;
         let currentUserCoins = 0;
+        let cachedMarketCounts = {};
+        let cachedThresholds = [];
 
         async function initShop() {
             const user = await getCurrentUser();
@@ -315,29 +290,39 @@
             }
             currentUserId = user.user_metadata.provider_id;
 
-            // 共通データの取得
-            const [statsRes, thresholdsRes, coinsRes] = await Promise.all([
-                supabaseClient.from('user_badges_new').select('badge_id'),
-                supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true }),
-                supabaseClient.from('profiles').select('coins').eq('discord_user_id', currentUserId).single()
-            ]);
+            await refreshMarketContext();
+        }
 
-            const marketStats = statsRes.data || [];
-            const thresholds = thresholdsRes.data || [];
-            currentUserCoins = coinsRes.data?.coins || 0;
-            document.getElementById('user-coins').textContent = currentUserCoins.toLocaleString();
+        async function refreshMarketContext() {
+            try {
+                // 共通データの取得
+                const [statsRes, thresholdsRes, coinsRes] = await Promise.all([
+                    supabaseClient.from('user_badges_new').select('badge_id'),
+                    supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true }),
+                    supabaseClient.from('profiles').select('coins').eq('discord_user_id', currentUserId).single()
+                ]);
 
-            const marketCounts = {};
-            marketStats.forEach(s => {
-                marketCounts[s.badge_id] = (marketCounts[s.badge_id] || 0) + 1;
-            });
+                const marketStats = statsRes.data || [];
+                cachedThresholds = thresholdsRes.data || [];
+                currentUserCoins = coinsRes.data?.coins || 0;
+                document.getElementById('user-coins').textContent = currentUserCoins.toLocaleString();
 
-            await loadMyRightsBadges(marketCounts, thresholds);
-            await fetchShopBadges(marketCounts, thresholds);
+                cachedMarketCounts = {};
+                marketStats.forEach(s => {
+                    cachedMarketCounts[s.badge_id] = (cachedMarketCounts[s.badge_id] || 0) + 1;
+                });
+
+                await loadMyRightsBadges();
+                await fetchShopBadges();
+            } catch (err) {
+                console.error('Error refreshing shop context:', err);
+            }
         }
 
         // 自分の権利バッジを読み込む
-        async function loadMyRightsBadges(marketCounts, thresholds) {
+        async function loadMyRightsBadges() {
+            const marketCounts = cachedMarketCounts;
+            const thresholds = cachedThresholds;
             try {
                 const { data: badges, error } = await supabaseClient
                     .from('badges')
@@ -416,23 +401,9 @@
             }
         }
 
-        async function loadUserCoins() {
-            try {
-                const { data, error } = await supabaseClient
-                    .from('profiles')
-                    .select('coins')
-                    .eq('discord_user_id', currentUserId)
-                    .single();
-
-                if (error) throw error;
-                currentUserCoins = data.coins || 0;
-                document.getElementById('user-coins').textContent = currentUserCoins.toLocaleString();
-            } catch (err) {
-                console.error('Error loading coins:', err);
-            }
-        }
-
-        async function fetchShopBadges(marketCounts, thresholds) {
+        async function fetchShopBadges() {
+            const marketCounts = cachedMarketCounts;
+            const thresholds = cachedThresholds;
             const grid = document.getElementById('shop-grid');
             try {
                 // バッジマスター情報を取得
@@ -563,8 +534,7 @@
                     details: { badge_name: name, is_mutant: data.is_mutant }
                 });
 
-                await loadUserCoins();
-                await fetchShopBadges();
+                await refreshMarketContext();
 
             } catch (err) {
                 alert('エラーが発生しました: ' + err.message);
