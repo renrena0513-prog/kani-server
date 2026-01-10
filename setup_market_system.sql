@@ -113,9 +113,8 @@ BEGIN
     
     -- 3. クリエイター還元
     IF v_creator_id IS NOT NULL AND v_creator_id != p_user_id THEN
-        v_share_rate := CASE 
             WHEN v_sales_type = '固定型' THEN 0.2 
-            WHEN v_sales_type = '変動型' THEN 0.05 
+            WHEN v_sales_type = '変動型' THEN 0.1 
             ELSE 0 
         END;
         
