@@ -401,3 +401,11 @@ body.user-impersonating .title-image {
         top: 55px !important;
     }
 }
+
+/* 5列グリッド用のカスタムクラス */
+@media (min-width: 768px) {
+    .col-md-5th {
+        flex: 0 0 auto;
+        width: 20% !important;
+    }
+}

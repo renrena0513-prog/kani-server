@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="かにサーバー - マイページ">
-    <title>マイページ | かにサーバーイベント</title>
+    <meta name="description" content="縺九↓繧ｵ繝ｼ繝舌・ - 繝槭う繝壹・繧ｸ">
+    <title>繝槭う繝壹・繧ｸ | 縺九↓繧ｵ繝ｼ繝舌・繧､繝吶Φ繝・/title>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -118,7 +118,7 @@
 
         .activity-item-card {
             background: #fdfdfd;
-            /* カードの中にカードであることを強調するための微調整 */
+            /* 繧ｫ繝ｼ繝峨・荳ｭ縺ｫ繧ｫ繝ｼ繝峨〒縺ゅｋ縺薙→繧貞ｼｷ隱ｿ縺吶ｋ縺溘ａ縺ｮ蠕ｮ隱ｿ謨ｴ */
             border-radius: 12px;
             padding: 18px;
             margin-bottom: 15px;
@@ -216,7 +216,7 @@
             color: white;
         }
 
-        /* ニックネーム入力欄 */
+        /* 繝九ャ繧ｯ繝阪・繝蜈･蜉帶ｬ・*/
         .nickname-input {
             background: #fff;
             border: 2px solid #e0d8f0;
@@ -239,7 +239,7 @@
             background: #fff;
         }
 
-        /* アイコン更新ボタン */
+        /* 繧｢繧､繧ｳ繝ｳ譖ｴ譁ｰ繝懊ち繝ｳ */
         .btn-avatar-update {
             background: linear-gradient(135deg, #5865F2 0%, #4752c4 100%);
             color: white;
@@ -259,7 +259,7 @@
             background: linear-gradient(135deg, #6872f4 0%, #5865F2 100%);
         }
 
-        /* 統計ミニカード */
+        /* 邨ｱ險医Α繝九き繝ｼ繝・*/
         .stat-card-mini {
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
             border-radius: 12px;
@@ -301,7 +301,7 @@
             background: #adb5bd;
         }
 
-        /* バッジ一覧のスタイル */
+        /* 繝舌ャ繧ｸ荳隕ｧ縺ｮ繧ｹ繧ｿ繧､繝ｫ */
         .badge-item {
             cursor: pointer;
             transition: all 0.2s;
@@ -347,7 +347,7 @@
             z-index: 10;
         }
 
-        /* ローディングオーバーレイ */
+        /* 繝ｭ繝ｼ繝・ぅ繝ｳ繧ｰ繧ｪ繝ｼ繝舌・繝ｬ繧､ */
         .loading-overlay {
             position: fixed;
             top: 0;
@@ -369,7 +369,7 @@
             opacity: 1;
         }
 
-        /* ユーザー選択リスト */
+        /* 繝ｦ繝ｼ繧ｶ繝ｼ驕ｸ謚槭Μ繧ｹ繝・*/
         .user-select-item {
             cursor: pointer;
             transition: background 0.2s;
@@ -405,7 +405,7 @@
             font-size: 1rem;
         }
 
-        /* ナビゲーションドロップダウン */
+        /* 繝翫ン繧ｲ繝ｼ繧ｷ繝ｧ繝ｳ繝峨Ο繝・・繝繧ｦ繝ｳ */
         .nav-dropdown {
             position: fixed;
             top: 20px;
@@ -472,249 +472,244 @@
 </head>
 
 <body>
-    <!-- 右上のナビゲーションドロップダウン -->
+    <!-- 蜿ｳ荳翫・繝翫ン繧ｲ繝ｼ繧ｷ繝ｧ繝ｳ繝峨Ο繝・・繝繧ｦ繝ｳ -->
     <div class="nav-dropdown dropdown">
         <button class="record-button dropdown-toggle" type="button" id="navDropdown" data-bs-toggle="dropdown"
             aria-expanded="false">
-            📝 メニュー
+            統 繝｡繝九Η繝ｼ
         </button>
         <ul class="dropdown-menu nav-dropdown-menu dropdown-menu-end" aria-labelledby="navDropdown">
-            <li><a class="dropdown-item" href="../index.html">🏠 ホームに戻る</a></li>
-            <li><a class="dropdown-item" href="./index.html">👤 マイページ</a></li>
+            <li><a class="dropdown-item" href="../index.html">匠 繝帙・繝縺ｫ謌ｻ繧・/a></li>
+            <li><a class="dropdown-item" href="./index.html">側 繝槭う繝壹・繧ｸ</a></li>
             <li>
                 <hr class="dropdown-divider">
             </li>
-            <li><a class="dropdown-item" href="../mahjong/index.html">📊 ランキング</a></li>
-            <li><a class="dropdown-item" href="../mahjong/record.html">📝 記録する</a></li>
-            <li><a class="dropdown-item" href="../mahjong/users/index.html">👥 ユーザー一覧</a></li>
-            <li><a class="dropdown-item" href="../mahjong/team/index.html">🏅 チーム管理 <span id="team-notification-badge"
+            <li><a class="dropdown-item" href="../mahjong/index.html">投 繝ｩ繝ｳ繧ｭ繝ｳ繧ｰ</a></li>
+            <li><a class="dropdown-item" href="../mahjong/record.html">統 險倬鹸縺吶ｋ</a></li>
+            <li><a class="dropdown-item" href="../mahjong/users/index.html">則 繝ｦ繝ｼ繧ｶ繝ｼ荳隕ｧ</a></li>
+            <li><a class="dropdown-item" href="../mahjong/team/index.html">遵 繝√・繝邂｡逅・<span id="team-notification-badge"
                         class="notification-badge" style="display:none;">0</span></a></li>
-            <li><a class="dropdown-item" href="../badge/list.html">📛 バッジ一覧</a></li>
-            <li><a class="dropdown-item" href="../badge/shop.html">🛒 バッジショップ</a></li>
-            <li><a class="dropdown-item" href="../ranking/index.html">💰 資産ランキング</a></li>
-            <li class="admin-only" style="display:none;"><a class="dropdown-item" href="../omikuji/index.html">🎋
-                    おみくじ</a></li>
+            <li><a class="dropdown-item" href="../badge/list.html">筒 繝舌ャ繧ｸ荳隕ｧ</a></li>
+            <li><a class="dropdown-item" href="../badge/shop.html">將 繝舌ャ繧ｸ繧ｷ繝ｧ繝・・</a></li>
+            <li><a class="dropdown-item" href="../ranking/index.html">腸 雉・肇繝ｩ繝ｳ繧ｭ繝ｳ繧ｰ</a></li>
+            <li class="admin-only" style="display:none;"><a class="dropdown-item" href="../omikuji/index.html">視
+                    縺翫∩縺上§</a></li>
             <li class="admin-only" style="display:none;">
                 <hr class="dropdown-divider">
             </li>
             <li class="admin-only" style="display:none;">
-                <a class="dropdown-item" href="../admin/index.html">⚙️ 管理画面</a>
+                <a class="dropdown-item" href="../admin/index.html">笞呻ｸ・邂｡逅・判髱｢</a>
             </li>
         </ul>
     </div>
 
     <div class="container py-5">
-        <!-- 戻るボタン -->
+        <!-- 謌ｻ繧九・繧ｿ繝ｳ -->
         <div class="mb-4">
             <a href="#" onclick="goBack(); return false;" class="back-button">
-                ← 戻る
-            </a>
+                竊・謌ｻ繧・            </a>
         </div>
 
 
-        <!-- ヘッダー -->
+        <!-- 繝倥ャ繝繝ｼ -->
         <header class="text-center mb-5">
-            <h1 class="page-header display-4 fw-bold mb-3">👤 マイページ</h1>
+            <h1 class="page-header display-4 fw-bold mb-3">側 繝槭う繝壹・繧ｸ</h1>
         </header>
 
-        <!-- コンテンツ -->
+        <!-- 繧ｳ繝ｳ繝・Φ繝・-->
         <div class="row justify-content-center">
             <div class="col-12 col-lg-8">
 
-                <!-- 未ログイン時 -->
+                <!-- 譛ｪ繝ｭ繧ｰ繧､繝ｳ譎・-->
                 <div id="login-prompt" class="profile-card login-prompt" style="display: none;">
                     <h3 class="mb-4" style="font-family: var(--font-title); color: var(--deep-purple);">
-                        ログインしてください
+                        繝ｭ繧ｰ繧､繝ｳ縺励※縺上□縺輔＞
                     </h3>
                     <p class="text-muted mb-4">
-                        マイページを表示するにはDiscordでログインが必要です。
-                    </p>
+                        繝槭う繝壹・繧ｸ繧定｡ｨ遉ｺ縺吶ｋ縺ｫ縺ｯDiscord縺ｧ繝ｭ繧ｰ繧､繝ｳ縺悟ｿ・ｦ√〒縺吶・                    </p>
                     <button onclick="loginWithDiscord()" class="login-prompt-btn">
                         <img src="https://assets-global.website-files.com/6257adef93867e50d84d30e2/636e0a69f118df70ad7828d4_icon_clyde_blurple_RGB.svg"
                             alt="Discord" style="width: 24px;">
-                        Discordでログイン
+                        Discord縺ｧ繝ｭ繧ｰ繧､繝ｳ
                     </button>
                 </div>
 
-                <!-- ログイン済み（または閲覧モード） -->
+                <!-- 繝ｭ繧ｰ繧､繝ｳ貂医∩・医∪縺溘・髢ｲ隕ｧ繝｢繝ｼ繝会ｼ・-->
                 <div id="profile-content" style="display: none;">
                     <div class="profile-card mb-4">
-                        <!-- 上段: バッジ + 名前 + 編集ボタン -->
+                        <!-- 荳頑ｮｵ: 繝舌ャ繧ｸ + 蜷榊燕 + 邱ｨ髮・・繧ｿ繝ｳ -->
                         <div class="d-flex align-items-center justify-content-between mb-3">
                             <div class="d-flex align-items-center gap-2 flex-grow-1" style="min-width: 0;">
                                 <img id="user-equipped-badge" src="" alt=""
                                     style="width: 36px; height: 36px; border-radius: 8px; display: none;">
                                 <h2 id="user-name" class="mb-0 text-truncate"
                                     style="font-family: var(--font-title); color: var(--deep-purple); font-size: 1.4rem;">
-                                    ユーザー名
-                                </h2>
+                                    繝ｦ繝ｼ繧ｶ繝ｼ蜷・                                </h2>
                             </div>
                             <button id="nickname-edit-btn" onclick="openNicknameModal()"
-                                class="btn btn-sm btn-outline-secondary flex-shrink-0" title="ニックネームを変更"
+                                class="btn btn-sm btn-outline-secondary flex-shrink-0" title="繝九ャ繧ｯ繝阪・繝繧貞､画峩"
                                 style="display: none; padding: 4px 10px;">
-                                ✏️
-                            </button>
+                                笨擾ｸ・                            </button>
                         </div>
 
-                        <!-- 下段: アバター + 情報 -->
+                        <!-- 荳区ｮｵ: 繧｢繝舌ち繝ｼ + 諠・ｱ -->
                         <div class="row align-items-start">
                             <div class="col-auto">
                                 <div class="text-center">
-                                    <img id="user-avatar" src="" alt="アバター" class="avatar-large">
+                                    <img id="user-avatar" src="" alt="繧｢繝舌ち繝ｼ" class="avatar-large">
                                     <button id="sync-btn" onclick="updateAvatar()"
-                                        class="btn btn-sm btn-outline-secondary mt-2" title="Discordから最新のアバター画像を取得"
+                                        class="btn btn-sm btn-outline-secondary mt-2" title="Discord縺九ｉ譛譁ｰ縺ｮ繧｢繝舌ち繝ｼ逕ｻ蜒上ｒ蜿門ｾ・
                                         style="font-size: 0.7rem; padding: 3px 8px;">
-                                        🔄 同期
+                                        売 蜷梧悄
                                     </button>
                                 </div>
                             </div>
                             <div class="col">
-                                <h2 id="page-title-label" class="small text-muted mb-1" style="display:none;">プレイヤー</h2>
+                                <h2 id="page-title-label" class="small text-muted mb-1" style="display:none;">繝励Ξ繧､繝､繝ｼ</h2>
 
-                                <!-- チーム名 -->
+                                <!-- 繝√・繝蜷・-->
                                 <div id="user-team-display" class="mb-2">
                                     <span class="badge bg-secondary" style="font-size: 0.85rem;">
-                                        🏠 <span id="user-team-name">未所属</span>
+                                        匠 <span id="user-team-name">譛ｪ謇螻・/span>
                                     </span>
                                 </div>
 
-                                <!-- 所持金 -->
+                                <!-- 謇謖・≡ -->
                                 <div id="user-coins-display" class="mb-2"
                                     style="display: none; flex-wrap: wrap; gap: 8px; align-items: center;">
                                     <span class="badge bg-light text-dark shadow-sm"
                                         style="font-size: 0.85rem; border: 1px solid var(--gold); padding: 6px 12px;">
-                                        所持金: 🪙 <span id="user-coins-value">0</span>
+                                        謇謖・≡: ｪ・<span id="user-coins-value">0</span>
                                     </span>
                                     <span class="badge bg-light text-dark shadow-sm"
                                         style="font-size: 0.85rem; border: 1px solid #17a2b8; padding: 6px 12px;">
-                                        総資産: 📊 <span id="total-assets-value">0</span>
+                                        邱剰ｳ・肇: 投 <span id="total-assets-value">0</span>
                                     </span>
                                     <button id="coin-transfer-btn" onclick="openCoinTransferModal()"
                                         class="btn btn-sm btn-outline-primary"
                                         style="display: none; padding: 2px 8px; font-size: 0.75rem;">
-                                        💸 送金
+                                        頂 騾・≡
                                     </button>
                                 </div>
 
-                                <!-- 他人の場合のみ表示する表示エリア -->
+                                <!-- 莉紋ｺｺ縺ｮ蝣ｴ蜷医・縺ｿ陦ｨ遉ｺ縺吶ｋ陦ｨ遉ｺ繧ｨ繝ｪ繧｢ -->
                                 <div id="view-area" class="mt-2" style="display:none;">
                                     <div class="discord-badge">
-                                        🀄 麻雀プレイヤー
+                                        ・鮗ｻ髮繝励Ξ繧､繝､繝ｼ
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- 麻雀統計 -->
+                    <!-- 鮗ｻ髮邨ｱ險・-->
                     <div class="profile-card mb-4">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h4 style="font-family: var(--font-title); color: var(--deep-purple); margin: 0;">
-                                🀄 麻雀統計
-                            </h4>
+                                ・鮗ｻ髮邨ｱ險・                            </h4>
                             <div id="tournament-filter-container">
                                 <select id="tournament-select" class="form-select form-select-sm"
                                     style="width: auto; min-width: 150px;" onchange="handleTournamentChange()">
-                                    <!-- JSで生成 -->
+                                    <!-- JS縺ｧ逕滓・ -->
                                 </select>
                             </div>
                         </div>
 
                         <div id="stats-loading" class="text-center py-4">
                             <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">読み込み中...</span>
+                                <span class="visually-hidden">隱ｭ縺ｿ霎ｼ縺ｿ荳ｭ...</span>
                             </div>
                         </div>
 
                         <div id="stats-content" style="display: none;">
                             <div id="stats-grid">
-                                <!-- スコア系 -->
+                                <!-- 繧ｹ繧ｳ繧｢邉ｻ -->
                                 <div class="row g-3 mb-3">
                                     <div class="col-6 col-md-4">
                                         <div class="stat-card-mini">
-                                            <div class="stat-label-mini">総合スコア</div>
+                                            <div class="stat-label-mini">邱丞粋繧ｹ繧ｳ繧｢</div>
                                             <div class="stat-value-mini" id="stat-total">-</div>
                                             <div class="stat-rank" id="rank-total">-</div>
                                         </div>
                                     </div>
                                     <div class="col-6 col-md-4">
                                         <div class="stat-card-mini">
-                                            <div class="stat-label-mini">三麻スコア</div>
+                                            <div class="stat-label-mini">荳蛾ｺｻ繧ｹ繧ｳ繧｢</div>
                                             <div class="stat-value-mini" id="stat-sanma">-</div>
                                             <div class="stat-rank" id="rank-sanma">-</div>
                                         </div>
                                     </div>
                                     <div class="col-6 col-md-4">
                                         <div class="stat-card-mini">
-                                            <div class="stat-label-mini">四麻スコア</div>
+                                            <div class="stat-label-mini">蝗幃ｺｻ繧ｹ繧ｳ繧｢</div>
                                             <div class="stat-value-mini" id="stat-yonma">-</div>
                                             <div class="stat-rank" id="rank-yonma">-</div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- 平均・最大スコア -->
+                                <!-- 蟷ｳ蝮・・譛螟ｧ繧ｹ繧ｳ繧｢ -->
                                 <div class="row g-3 mb-3">
                                     <div class="col-6">
                                         <div class="stat-card-mini">
-                                            <div class="stat-label-mini">平均スコア</div>
+                                            <div class="stat-label-mini">蟷ｳ蝮・せ繧ｳ繧｢</div>
                                             <div class="stat-value-mini" id="stat-avg-score">-</div>
                                             <div class="stat-rank" id="rank-avg-score">-</div>
                                         </div>
                                     </div>
                                     <div class="col-6">
                                         <div class="stat-card-mini">
-                                            <div class="stat-label-mini">最大スコア</div>
+                                            <div class="stat-label-mini">譛螟ｧ繧ｹ繧ｳ繧｢</div>
                                             <div class="stat-value-mini" id="stat-max-score">-</div>
                                             <div class="stat-rank" id="rank-max-score">-</div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- 率系 -->
+                                <!-- 邇・ｳｻ -->
                                 <div class="row g-3 mb-3">
                                     <div class="col-6 col-md-3">
                                         <div class="stat-card-mini">
-                                            <div class="stat-label-mini">和了率</div>
+                                            <div class="stat-label-mini">蜥御ｺ・紫</div>
                                             <div class="stat-value-mini" id="stat-win-rate">-</div>
                                             <div class="stat-rank" id="rank-win-rate">-</div>
                                         </div>
                                     </div>
                                     <div class="col-6 col-md-3">
                                         <div class="stat-card-mini">
-                                            <div class="stat-label-mini">放銃率</div>
+                                            <div class="stat-label-mini">謾ｾ驫・紫</div>
                                             <div class="stat-value-mini" id="stat-deal-rate">-</div>
                                             <div class="stat-rank" id="rank-deal-rate">-</div>
                                         </div>
                                     </div>
                                     <div class="col-6 col-md-3">
                                         <div class="stat-card-mini">
-                                            <div class="stat-label-mini">トップ率</div>
+                                            <div class="stat-label-mini">繝医ャ繝礼紫</div>
                                             <div class="stat-value-mini" id="stat-top-rate">-</div>
                                             <div class="stat-rank" id="rank-top-rate">-</div>
                                         </div>
                                     </div>
                                     <div class="col-6 col-md-3">
                                         <div class="stat-card-mini">
-                                            <div class="stat-label-mini">ラス回避</div>
+                                            <div class="stat-label-mini">繝ｩ繧ｹ蝗樣∩</div>
                                             <div class="stat-value-mini" id="stat-avoid-rate">-</div>
                                             <div class="stat-rank" id="rank-avoid-rate">-</div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- 順位系 -->
+                                <!-- 鬆・ｽ咲ｳｻ -->
                                 <div class="row g-3">
                                     <div class="col-6">
                                         <div class="stat-card-mini">
-                                            <div class="stat-label-mini">平均順位</div>
+                                            <div class="stat-label-mini">蟷ｳ蝮・・ｽ・/div>
                                             <div class="stat-value-mini" id="stat-avg-rank">-</div>
                                             <div class="stat-rank" id="rank-avg-rank">-</div>
                                         </div>
                                     </div>
                                     <div class="col-6">
                                         <div class="stat-card-mini">
-                                            <div class="stat-label-mini">対局数</div>
+                                            <div class="stat-label-mini">蟇ｾ螻謨ｰ</div>
                                             <div class="stat-value-mini" id="stat-games">-</div>
                                             <div class="stat-rank" id="rank-games">-</div>
                                         </div>
@@ -723,82 +718,81 @@
                             </div>
 
                             <div id="no-stats-msg" class="text-center text-muted py-3" style="display: none;">
-                                まだ麻雀大会に参加していません
+                                縺ｾ縺鮗ｻ髮螟ｧ莨壹↓蜿ょ刈縺励※縺・∪縺帙ｓ
                             </div>
                         </div>
                     </div>
 
-                    <!-- バッジコレクション -->
+                    <!-- 繝舌ャ繧ｸ繧ｳ繝ｬ繧ｯ繧ｷ繝ｧ繝ｳ -->
                     <div class="profile-card mb-4" id="badge-collection-section" style="display: none;">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h4 style="font-family: var(--font-title); color: var(--deep-purple); margin: 0;">
-                                📛 バッジコレクション
+                                筒 繝舌ャ繧ｸ繧ｳ繝ｬ繧ｯ繧ｷ繝ｧ繝ｳ
                             </h4>
                             <div class="d-flex gap-2">
                                 <button id="badge-transfer-btn" onclick="openBadgeSelectionModal('transfer')"
                                     class="btn btn-sm btn-outline-primary" style="display: none;">
-                                    譲渡
+                                    隴ｲ貂｡
                                 </button>
                                 <button id="badge-sell-btn" onclick="openBadgeSelectionModal('sell')"
                                     class="btn btn-sm btn-outline-danger" style="display: none;">
-                                    売却
+                                    螢ｲ蜊ｴ
                                 </button>
                                 <button id="badge-change-btn" onclick="openBadgeChangeModal()"
                                     class="btn btn-sm btn-outline-secondary" style="display: none;">
-                                    装着
+                                    陬・捩
                                 </button>
                             </div>
                         </div>
 
-                        <!-- 非売品バッジ -->
+                        <!-- 髱槫｣ｲ蜩√ヰ繝・ず -->
                         <div id="special-badges-section" style="display: none;">
-                            <h6 class="text-muted mb-2" style="font-size: 0.85rem;">🏆 限定バッジ</h6>
+                            <h6 class="text-muted mb-2" style="font-size: 0.85rem;">醇 髯仙ｮ壹ヰ繝・ず</h6>
                             <div id="special-badge-list" class="row g-3 mb-4">
-                                <!-- JSで生成 -->
+                                <!-- JS縺ｧ逕滓・ -->
                             </div>
                         </div>
 
-                        <!-- 購入バッジ -->
+                        <!-- 雉ｼ蜈･繝舌ャ繧ｸ -->
                         <div id="purchasable-badges-section" style="display: none;">
-                            <h6 class="text-muted mb-2" style="font-size: 0.85rem;">🛒 購入バッジ</h6>
+                            <h6 class="text-muted mb-2" style="font-size: 0.85rem;">將 雉ｼ蜈･繝舌ャ繧ｸ</h6>
                             <div id="purchasable-badge-list" class="row g-3">
-                                <!-- JSで生成 -->
+                                <!-- JS縺ｧ逕滓・ -->
                             </div>
                         </div>
 
                         <div id="no-badges-msg" class="text-center text-muted py-3" style="display: none;">
-                            まだバッジを持っていません
+                            縺ｾ縺繝舌ャ繧ｸ繧呈戟縺｣縺ｦ縺・∪縺帙ｓ
                         </div>
                     </div>
 
-                    <!-- 販売実績セクション -->
+                    <!-- 雋ｩ螢ｲ螳溽ｸｾ繧ｻ繧ｯ繧ｷ繝ｧ繝ｳ -->
                     <div class="profile-card mb-4" id="revenue-section" style="display: none;">
                         <h4 style="font-family: var(--font-title); color: var(--deep-purple); margin: 0 0 15px 0;">
-                            💰 販売実績
+                            腸 雋ｩ螢ｲ螳溽ｸｾ
                         </h4>
                         <div class="row g-3">
                             <div class="col-6">
                                 <div class="stat-card-mini">
-                                    <div class="stat-label-mini">累計収益</div>
+                                    <div class="stat-label-mini">邏ｯ險亥庶逶・/div>
                                     <div class="stat-value-mini" id="total-revenue" style="color: #27ae60;">0</div>
                                 </div>
                             </div>
                             <div class="col-6">
                                 <div class="stat-card-mini">
-                                    <div class="stat-label-mini">販売回数</div>
+                                    <div class="stat-label-mini">雋ｩ螢ｲ蝗樊焚</div>
                                     <div class="stat-value-mini" id="revenue-count">0</div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- 最近の活動セクション -->
+                    <!-- 譛霑代・豢ｻ蜍輔そ繧ｯ繧ｷ繝ｧ繝ｳ -->
                     <div class="profile-card mb-4" id="activity-section" style="display: none;">
                         <h4 style="font-family: var(--font-title); color: var(--deep-purple); margin: 0 0 15px 0;">
-                            📋 最近の活動
-                        </h4>
+                            搭 譛霑代・豢ｻ蜍・                        </h4>
                         <div id="activity-list">
-                            <div class="text-center text-muted py-3">読み込み中...</div>
+                            <div class="text-center text-muted py-3">隱ｭ縺ｿ霎ｼ縺ｿ荳ｭ...</div>
                         </div>
                         <div id="activity-pagination" class="d-flex justify-content-center gap-2 mt-3"
                             style="display: none;"></div>
@@ -809,45 +803,44 @@
         </div>
     </div>
 
-    <!-- バッジ変更モーダル -->
+    <!-- 繝舌ャ繧ｸ螟画峩繝｢繝ｼ繝繝ｫ -->
     <div class="modal fade" id="badgeChangeModal" tabindex="-1" aria-labelledby="badgeChangeModalLabel"
         aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="badgeChangeModalLabel">装着バッジを変更</h5>
+                    <h5 class="modal-title" id="badgeChangeModalLabel">陬・捩繝舌ャ繧ｸ繧貞､画峩</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div id="badge-modal-list" class="row g-2">
-                        <!-- JSで生成 -->
+                        <!-- JS縺ｧ逕滓・ -->
                     </div>
                     <div class="text-center mt-3">
-                        <button class="btn btn-outline-danger btn-sm" onclick="equipBadge(null)">バッジを外す</button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="equipBadge(null)">繝舌ャ繧ｸ繧貞､悶☆</button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ニックネーム編集モーダル -->
+    <!-- 繝九ャ繧ｯ繝阪・繝邱ｨ髮・Δ繝ｼ繝繝ｫ -->
     <div class="modal fade" id="nicknameModal" tabindex="-1" aria-labelledby="nicknameModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-sm">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="nicknameModalLabel">ニックネーム変更</h5>
+                    <h5 class="modal-title" id="nicknameModalLabel">繝九ャ繧ｯ繝阪・繝螟画峩</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <label class="form-label small text-muted">ランキング等で表示される名前</label>
-                    <input type="text" id="user-nickname" class="form-control mb-3" placeholder="ニックネームを入力...">
+                    <label class="form-label small text-muted">繝ｩ繝ｳ繧ｭ繝ｳ繧ｰ遲峨〒陦ｨ遉ｺ縺輔ｌ繧句錐蜑・/label>
+                    <input type="text" id="user-nickname" class="form-control mb-3" placeholder="繝九ャ繧ｯ繝阪・繝繧貞・蜉・..">
                     <div class="d-grid gap-2">
                         <button onclick="useDiscordName()" class="btn btn-outline-secondary btn-sm">
-                            Discord名を使用
+                            Discord蜷阪ｒ菴ｿ逕ｨ
                         </button>
                         <button onclick="saveNickname()" class="btn btn-gold text-white fw-bold">
-                            保存
-                        </button>
+                            菫晏ｭ・                        </button>
                     </div>
                     <div id="save-msg" class="small mt-2 text-center" style="display:none;"></div>
                 </div>
@@ -855,7 +848,7 @@
         </div>
     </div>
 
-    <!-- ローディング -->
+    <!-- 繝ｭ繝ｼ繝・ぅ繝ｳ繧ｰ -->
     <div id="loading-overlay" class="loading-overlay">
         <div class="spinner-border text-primary" role="status"></div>
     </div>
@@ -863,69 +856,69 @@
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Supabase -->
-    <!-- バッジ譲渡・売却用バッジ選択モーダル -->
+    <!-- 繝舌ャ繧ｸ隴ｲ貂｡繝ｻ螢ｲ蜊ｴ逕ｨ繝舌ャ繧ｸ驕ｸ謚槭Δ繝ｼ繝繝ｫ -->
     <div class="modal fade" id="badgeActionModal" tabindex="-1" aria-labelledby="badgeActionModalLabel"
         aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="badgeActionModalLabel">バッジを選択</h5>
+                    <h5 class="modal-title" id="badgeActionModalLabel">繝舌ャ繧ｸ繧帝∈謚・/h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div id="action-badge-list" class="row g-2">
-                        <!-- JSで生成 -->
+                        <!-- JS縺ｧ逕滓・ -->
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ユーザー選択モーダル (譲渡・送金用) -->
+    <!-- 繝ｦ繝ｼ繧ｶ繝ｼ驕ｸ謚槭Δ繝ｼ繝繝ｫ (隴ｲ貂｡繝ｻ騾・≡逕ｨ) -->
     <div class="modal fade" id="userSelectModal" tabindex="-1" aria-labelledby="userSelectModalLabel"
         aria-hidden="true">
         <div class="modal-dialog modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="userSelectModalLabel">譲渡先のユーザーを選択</h5>
+                    <h5 class="modal-title" id="userSelectModalLabel">隴ｲ貂｡蜈医・繝ｦ繝ｼ繧ｶ繝ｼ繧帝∈謚・/h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-0">
                     <div id="transfer-user-list" class="list-group list-group-flush">
-                        <!-- JSで生成 -->
+                        <!-- JS縺ｧ逕滓・ -->
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- コイン送金金額入力モーダル -->
+    <!-- 繧ｳ繧､繝ｳ騾・≡驥鷹｡榊・蜉帙Δ繝ｼ繝繝ｫ -->
     <div class="modal fade" id="coinAmountModal" tabindex="-1" aria-labelledby="coinAmountModalLabel"
         aria-hidden="true">
         <div class="modal-dialog modal-sm">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="coinAmountModalLabel">送金金額を入力</h5>
+                    <h5 class="modal-title" id="coinAmountModalLabel">騾・≡驥鷹｡阪ｒ蜈･蜉・/h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <p id="coin-transfer-target-name" class="fw-bold text-center mb-3"></p>
                     <div class="mb-3">
-                        <label class="form-label">送金するコイン数</label>
-                        <input type="number" id="coin-transfer-amount" class="form-control" placeholder="金額..." min="1">
-                        <div class="form-text mt-2 text-center">あなたの所持金: 🪙 <span id="my-coins-ref">0</span></div>
+                        <label class="form-label">騾・≡縺吶ｋ繧ｳ繧､繝ｳ謨ｰ</label>
+                        <input type="number" id="coin-transfer-amount" class="form-control" placeholder="驥鷹｡・.." min="1">
+                        <div class="form-text mt-2 text-center">縺ゅ↑縺溘・謇謖・≡: ｪ・<span id="my-coins-ref">0</span></div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
-                    <button type="button" class="btn btn-primary" onclick="executeCoinTransfer()">送金する</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">繧ｭ繝｣繝ｳ繧ｻ繝ｫ</button>
+                    <button type="button" class="btn btn-primary" onclick="executeCoinTransfer()">騾・≡縺吶ｋ</button>
                 </div>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- Supabase設定 -->
+    <!-- Supabase險ｭ螳・-->
     <script src="../js/supabase-config.js"></script>
     <script src="../js/auth-guard.js"></script>
     <script src="../js/navigation.js"></script>
@@ -938,50 +931,39 @@
     <script>
         let isViewMode = false;
         let targetId = null;
-        let allProfiles = []; // 全ユーザーのプロファイルリスト
-        let rarityThresholds = []; // レアリティ境界データ
-
+        let allProfiles = []; // 蜈ｨ繝ｦ繝ｼ繧ｶ繝ｼ縺ｮ繝励Ο繝輔ぃ繧､繝ｫ繝ｪ繧ｹ繝・
         /**
-         * ページ初期化
-         */
+         * 繝壹・繧ｸ蛻晄悄蛹・         */
         async function initPage() {
             const urlParams = new URLSearchParams(window.location.search);
             const urlUserId = urlParams.get('user');
 
-            // 全ユーザー情報を取得（名前解決用）
-            const [profilesRes, thresholdsRes] = await Promise.all([
-                supabaseClient.from('profiles').select('discord_user_id, account_name, avatar_url'),
-                supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true })
-            ]);
-            if (profilesRes.data) allProfiles = profilesRes.data;
-            if (thresholdsRes.data) rarityThresholds = thresholdsRes.data;
+            // 蜈ｨ繝ｦ繝ｼ繧ｶ繝ｼ諠・ｱ繧貞叙蠕暦ｼ亥錐蜑崎ｧ｣豎ｺ逕ｨ・・            const { data: profiles, error: profileError } = await supabaseClient
+                .from('profiles')
+                .select('discord_user_id, account_name, avatar_url');
+            if (profiles) allProfiles = profiles;
 
             const user = await getCurrentUser();
             const myId = user?.user_metadata?.provider_id;
 
-            // なりすまし中のユーザー情報を取得
-            const impersonated = getImpersonatedUser();
+            // 縺ｪ繧翫☆縺ｾ縺嶺ｸｭ縺ｮ繝ｦ繝ｼ繧ｶ繝ｼ諠・ｱ繧貞叙蠕・            const impersonated = getImpersonatedUser();
             const effectiveId = impersonated ? impersonated.discord_user_id : myId;
 
-            // URLパラメータがある場合
-            if (urlUserId) {
+            // URL繝代Λ繝｡繝ｼ繧ｿ縺後≠繧句ｴ蜷・            if (urlUserId) {
                 targetId = urlUserId;
-                // 自分でもなりすまし対象でもない場合は閲覧モード
-                if (urlUserId !== myId && urlUserId !== (impersonated?.discord_user_id)) {
+                // 閾ｪ蛻・〒繧ゅ↑繧翫☆縺ｾ縺怜ｯｾ雎｡縺ｧ繧ゅ↑縺・ｴ蜷医・髢ｲ隕ｧ繝｢繝ｼ繝・                if (urlUserId !== myId && urlUserId !== (impersonated?.discord_user_id)) {
                     isViewMode = true;
                 } else {
                     isViewMode = false;
                 }
             } else {
-                // URLパラメータがない場合は有効なユーザーID（なりすまし優先）
-                targetId = effectiveId;
+                // URL繝代Λ繝｡繝ｼ繧ｿ縺後↑縺・ｴ蜷医・譛牙柑縺ｪ繝ｦ繝ｼ繧ｶ繝ｼID・医↑繧翫☆縺ｾ縺怜━蜈茨ｼ・                targetId = effectiveId;
                 isViewMode = false;
             }
 
-            // UIの基本表示切り替え
-            setupUI();
+            // UI縺ｮ蝓ｺ譛ｬ陦ｨ遉ｺ蛻・ｊ譖ｿ縺・            setupUI();
 
-            // データの読み込み
+            // 繝・・繧ｿ縺ｮ隱ｭ縺ｿ霎ｼ縺ｿ
             if (isViewMode) {
                 await loadTargetUserInfo();
             } else {
@@ -993,16 +975,15 @@
                 }
             }
 
-            // 麻雀統計の読み込み（共有ロジック）
-            await loadMahjongStats();
+            // 鮗ｻ髮邨ｱ險医・隱ｭ縺ｿ霎ｼ縺ｿ・亥・譛峨Ο繧ｸ繝・け・・            await loadMahjongStats();
 
-            // バッジコレクションの読み込み
+            // 繝舌ャ繧ｸ繧ｳ繝ｬ繧ｯ繧ｷ繝ｧ繝ｳ縺ｮ隱ｭ縺ｿ霎ｼ縺ｿ
             await loadOwnedBadges();
 
-            // 販売実績の読み込み
+            // 雋ｩ螢ｲ螳溽ｸｾ縺ｮ隱ｭ縺ｿ霎ｼ縺ｿ
             await loadRevenueStats();
 
-            // 最近の活動の読み込み
+            // 譛霑代・豢ｻ蜍輔・隱ｭ縺ｿ霎ｼ縺ｿ
             await loadActivityLogs();
         }
 
@@ -1019,18 +1000,16 @@
             if (loginPrompt) loginPrompt.style.display = 'none';
 
             if (isViewMode) {
-                // 閲覧モード設定
-                if (viewArea) viewArea.style.display = 'block';
+                // 髢ｲ隕ｧ繝｢繝ｼ繝芽ｨｭ螳・                if (viewArea) viewArea.style.display = 'block';
                 if (syncBtn) syncBtn.style.display = 'none';
                 if (pageTitleLabel) pageTitleLabel.style.display = 'block';
-                if (pageHeader) pageHeader.textContent = '👤 プレイヤープロフィール';
+                if (pageHeader) pageHeader.textContent = '側 繝励Ξ繧､繝､繝ｼ繝励Ο繝輔ぅ繝ｼ繝ｫ';
                 if (nicknameEditBtn) nicknameEditBtn.style.display = 'none';
             } else {
-                // マイページ設定
-                if (viewArea) viewArea.style.display = 'none';
+                // 繝槭う繝壹・繧ｸ險ｭ螳・                if (viewArea) viewArea.style.display = 'none';
                 if (syncBtn) syncBtn.style.display = 'inline-block';
                 if (pageTitleLabel) pageTitleLabel.style.display = 'none';
-                if (pageHeader) pageHeader.textContent = '👤 マイページ';
+                if (pageHeader) pageHeader.textContent = '側 繝槭う繝壹・繧ｸ';
                 if (nicknameEditBtn) nicknameEditBtn.style.display = 'inline-block';
                 const coinTransferBtn = document.getElementById('coin-transfer-btn');
                 if (coinTransferBtn) coinTransferBtn.style.display = 'inline-block';
@@ -1043,36 +1022,31 @@
         }
 
         /**
-         * 自分（またはなりすましユーザー）の情報を表示
+         * 閾ｪ蛻・ｼ医∪縺溘・縺ｪ繧翫☆縺ｾ縺励Θ繝ｼ繧ｶ繝ｼ・峨・諠・ｱ繧定｡ｨ遉ｺ
          */
         async function displayMyInfo(user) {
             const discordUser = user.user_metadata;
             const impersonated = getImpersonatedUser();
 
-            // ユーザー情報の取得（バッジ情報・コイン・チーム情報を含む）
-            const { data: profile } = await supabaseClient
+            // 繝ｦ繝ｼ繧ｶ繝ｼ諠・ｱ縺ｮ蜿門ｾ暦ｼ医ヰ繝・ず諠・ｱ繝ｻ繧ｳ繧､繝ｳ繝ｻ繝√・繝諠・ｱ繧貞性繧・・            const { data: profile } = await supabaseClient
                 .from('profiles')
-                .select('account_name, avatar_url, coins, total_assets, equipped_badge_id, team_id, badges!equipped_badge_id(image_url, name), teams!team_id(team_name)')
+                .select('account_name, avatar_url, coins, equipped_badge_id, team_id, badges!equipped_badge_id(image_url, name), teams!team_id(team_name)')
                 .eq('discord_user_id', targetId)
                 .maybeSingle();
 
-            // アバター（なりすまし中はDBから、そうでなければDiscord）
-            const avatarUrl = impersonated
+            // 繧｢繝舌ち繝ｼ・医↑繧翫☆縺ｾ縺嶺ｸｭ縺ｯDB縺九ｉ縲√◎縺・〒縺ｪ縺代ｌ縺ｰDiscord・・            const avatarUrl = impersonated
                 ? (profile?.avatar_url || 'https://via.placeholder.com/150')
                 : (discordUser.avatar_url || 'https://via.placeholder.com/150');
             document.getElementById('user-avatar').src = avatarUrl;
 
-            // 名前（なりすまし中はなりすましユーザー名を優先）
-            const name = impersonated
-                ? (impersonated.name || profile?.account_name || 'ユーザー')
-                : (profile?.account_name || discordUser.full_name || discordUser.name || 'ユーザー');
+            // 蜷榊燕・医↑繧翫☆縺ｾ縺嶺ｸｭ縺ｯ縺ｪ繧翫☆縺ｾ縺励Θ繝ｼ繧ｶ繝ｼ蜷阪ｒ蜆ｪ蜈茨ｼ・            const name = impersonated
+                ? (impersonated.name || profile?.account_name || '繝ｦ繝ｼ繧ｶ繝ｼ')
+                : (profile?.account_name || discordUser.full_name || discordUser.name || '繝ｦ繝ｼ繧ｶ繝ｼ');
             const coins = profile?.coins || 0;
 
-            // 名前のみ表示（バッジは別要素）
-            document.getElementById('user-name').textContent = name;
+            // 蜷榊燕縺ｮ縺ｿ陦ｨ遉ｺ・医ヰ繝・ず縺ｯ蛻･隕∫ｴ・・            document.getElementById('user-name').textContent = name;
 
-            // バッジ画像を設定
-            const badgeImg = document.getElementById('user-equipped-badge');
+            // 繝舌ャ繧ｸ逕ｻ蜒上ｒ險ｭ螳・            const badgeImg = document.getElementById('user-equipped-badge');
             const badge = profile?.badges;
             if (badgeImg && badge) {
                 badgeImg.src = badge.image_url;
@@ -1080,26 +1054,21 @@
                 badgeImg.style.display = 'block';
             }
 
-            // チーム名を設定
-            const teamNameEl = document.getElementById('user-team-name');
+            // 繝√・繝蜷阪ｒ險ｭ螳・            const teamNameEl = document.getElementById('user-team-name');
             if (teamNameEl) {
                 const team = profile?.teams;
-                teamNameEl.textContent = team?.team_name || '未所属';
+                teamNameEl.textContent = team?.team_name || '譛ｪ謇螻・;
             }
 
-            // コイン表示の更新
+            // 繧ｳ繧､繝ｳ陦ｨ遉ｺ縺ｮ譖ｴ譁ｰ
             const coinsDisplay = document.getElementById('user-coins-display');
             const coinsValue = document.getElementById('user-coins-value');
-            const totalAssetsValue = document.getElementById('total-assets-value');
             if (coinsDisplay && coinsValue) {
                 coinsValue.textContent = coins.toLocaleString();
-                if (totalAssetsValue) {
-                    totalAssetsValue.textContent = (profile?.total_assets || 0).toLocaleString();
-                }
                 coinsDisplay.style.display = 'block';
             }
 
-            // ニックネーム編集ボタンを表示
+            // 繝九ャ繧ｯ繝阪・繝邱ｨ髮・・繧ｿ繝ｳ繧定｡ｨ遉ｺ
             const nicknameEditBtn = document.getElementById('nickname-edit-btn');
             if (nicknameEditBtn) {
                 nicknameEditBtn.style.display = 'inline-block';
@@ -1110,15 +1079,14 @@
             }
         }
 
-        // ニックネーム編集モーダルを開く
-        function openNicknameModal() {
+        // 繝九ャ繧ｯ繝阪・繝邱ｨ髮・Δ繝ｼ繝繝ｫ繧帝幕縺・        function openNicknameModal() {
             const modalEl = document.getElementById('nicknameModal');
             const modal = new bootstrap.Modal(modalEl);
             modal.show();
         }
 
         /**
-         * 他人の情報を取得して表示
+         * 莉紋ｺｺ縺ｮ諠・ｱ繧貞叙蠕励＠縺ｦ陦ｨ遉ｺ
          */
         async function loadTargetUserInfo() {
             const { data: profile, error } = await supabaseClient
@@ -1130,11 +1098,9 @@
             if (profile) {
                 document.getElementById('user-avatar').src = profile.avatar_url || 'https://via.placeholder.com/150';
 
-                // 名前を設定
-                document.getElementById('user-name').textContent = profile.account_name || '名称未設定';
+                // 蜷榊燕繧定ｨｭ螳・                document.getElementById('user-name').textContent = profile.account_name || '蜷咲ｧｰ譛ｪ險ｭ螳・;
 
-                // バッジ画像を設定
-                const badgeImg = document.getElementById('user-equipped-badge');
+                // 繝舌ャ繧ｸ逕ｻ蜒上ｒ險ｭ螳・                const badgeImg = document.getElementById('user-equipped-badge');
                 const badge = profile?.badges;
                 if (badgeImg && badge) {
                     badgeImg.src = badge.image_url;
@@ -1142,23 +1108,18 @@
                     badgeImg.style.display = 'block';
                 }
 
-                // チーム名を設定
-                const teamNameEl = document.getElementById('user-team-name');
+                // 繝√・繝蜷阪ｒ險ｭ螳・                const teamNameEl = document.getElementById('user-team-name');
                 if (teamNameEl) {
                     const team = profile?.teams;
-                    teamNameEl.textContent = team?.team_name || '未所属';
+                    teamNameEl.textContent = team?.team_name || '譛ｪ謇螻・;
                 }
 
-                // コイン表示の更新
+                // 繧ｳ繧､繝ｳ陦ｨ遉ｺ縺ｮ譖ｴ譁ｰ
                 const coins = profile?.coins || 0;
                 const coinsDisplay = document.getElementById('user-coins-display');
                 const coinsValue = document.getElementById('user-coins-value');
-                const totalAssetsValue = document.getElementById('total-assets-value');
                 if (coinsDisplay && coinsValue) {
                     coinsValue.textContent = coins.toLocaleString();
-                    if (totalAssetsValue) {
-                        totalAssetsValue.textContent = (profile?.total_assets || 0).toLocaleString();
-                    }
                     coinsDisplay.style.display = 'block';
                 }
             } else {
@@ -1181,7 +1142,7 @@
             const btn = document.getElementById('sync-btn');
             btn.disabled = true;
             const originalText = btn.textContent;
-            btn.textContent = '更新中...';
+            btn.textContent = '譖ｴ譁ｰ荳ｭ...';
 
             try {
                 const discordUser = user.user_metadata;
@@ -1197,11 +1158,11 @@
 
                 if (error) throw error;
 
-                alert('アバター画像を更新しました！');
+                alert('繧｢繝舌ち繝ｼ逕ｻ蜒上ｒ譖ｴ譁ｰ縺励∪縺励◆・・);
                 document.getElementById('user-avatar').src = avatarUrl;
             } catch (err) {
                 console.error('Error:', err);
-                alert('エラーが発生しました');
+                alert('繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆');
             } finally {
                 btn.disabled = false;
                 btn.textContent = originalText;
@@ -1215,7 +1176,7 @@
             const msg = document.getElementById('save-msg');
 
             if (!newNickname) {
-                msg.textContent = 'ニックネームを入力してください';
+                msg.textContent = '繝九ャ繧ｯ繝阪・繝繧貞・蜉帙＠縺ｦ縺上□縺輔＞';
                 msg.className = 'small mt-1 text-danger flex-grow-1';
                 msg.style.display = 'block';
                 setTimeout(() => { msg.style.display = 'none'; }, 3000);
@@ -1223,7 +1184,7 @@
             }
 
             msg.style.display = 'block';
-            msg.textContent = '保存中...';
+            msg.textContent = '菫晏ｭ倅ｸｭ...';
             msg.className = 'small mt-1 text-muted flex-grow-1';
 
             try {
@@ -1237,29 +1198,27 @@
 
                 if (error) throw error;
 
-                msg.textContent = '保存しました！';
+                msg.textContent = '菫晏ｭ倥＠縺ｾ縺励◆・・;
                 msg.className = 'small mt-2 text-center text-success';
 
-                // モーダルを閉じる
+                // 繝｢繝ｼ繝繝ｫ繧帝哩縺倥ｋ
                 const modalEl = document.getElementById('nicknameModal');
                 const modal = bootstrap.Modal.getInstance(modalEl);
                 if (modal) {
                     setTimeout(() => {
                         modal.hide();
-                        // ユーザー情報を再読み込みしてバッジ付きの名前を更新
+                        // 繝ｦ繝ｼ繧ｶ繝ｼ諠・ｱ繧貞・隱ｭ縺ｿ霎ｼ縺ｿ縺励※繝舌ャ繧ｸ莉倥″縺ｮ蜷榊燕繧呈峩譁ｰ
                         loadTargetUserInfo();
                     }, 1000);
                 }
             } catch (err) {
                 console.error('Error updating nickname:', err);
-                msg.textContent = 'エラーが発生しました';
+                msg.textContent = '繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆';
                 msg.className = 'small mt-2 text-center text-danger';
             }
         }
 
-        // ============ バッジ管理機能 ============
-
-
+        // ============ 繝舌ャ繧ｸ邂｡逅・ｩ溯・ ============
         async function loadOwnedBadges() {
             const section = document.getElementById('badge-collection-section');
             const specialSection = document.getElementById('special-badges-section');
@@ -1267,48 +1226,31 @@
             const purchasableSection = document.getElementById('purchasable-badges-section');
             const purchasableList = document.getElementById('purchasable-badge-list');
             const noBadgesMsg = document.getElementById('no-badges-msg');
-            const netWorthEl = document.getElementById('total-assets-value'); // 総資産ラベルを流用または追加検討。要件は「純資産ランキング」
+            const totalAssetsEl = document.getElementById('total-assets-value');
 
             if (!section) return;
-            section.style.display = 'block';
+
+            // 髢ｲ隕ｧ繝｢繝ｼ繝峨・蝣ｴ蜷医・縲∬｣・捩繝舌ャ繧ｸ縺縺題｡ｨ遉ｺ縺吶ｋ縺九√そ繧ｯ繧ｷ繝ｧ繝ｳ閾ｪ菴馴國縺呻ｼ井ｻ雁屓縺ｯ繧ｻ繧ｯ繧ｷ繝ｧ繝ｳ陦ｨ遉ｺ・・            section.style.display = 'block';
 
             try {
-                // 所持バッジ（新・個体管理テーブル）と全バッジの流通数を取得
-                const [ownedRes, marketCountRes, profileRes, thresholdsRes] = await Promise.all([
-                    supabaseClient.from('user_badges_new').select('*, badges(*)').eq('user_id', targetId),
-                    supabaseClient.from('user_badges_new').select('badge_id'),
-                    supabaseClient.from('profiles').select('coins, equipped_badge_id, total_assets').eq('discord_user_id', targetId).maybeSingle(),
-                    supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true })
-                ]);
+                // 謇謖√ヰ繝・ず縺ｮ蜿門ｾ・                const { data: owned, error } = await supabaseClient
+                    .from('user_badges')
+                    .select('badge_id, badges(*)')
+                    .eq('user_id', targetId);
 
-                if (ownedRes.error) throw ownedRes.error;
-                const thresholds = thresholdsRes.data || [];
+                if (error) throw error;
 
-                function getDynamicRarity(assetValue, fixedRarity) {
-                    if (fixedRarity) return fixedRarity;
-                    if (!thresholds || thresholds.length === 0) return '-';
-                    let current = thresholds[0].rarity_name;
-                    for (const t of thresholds) {
-                        if (assetValue >= t.threshold_value) {
-                            current = t.rarity_name;
-                        } else {
-                            break;
-                        }
-                    }
-                    return current;
-                }
-                const owned = ownedRes.data;
-                const profileData = profileRes.data;
+                // 繝ｦ繝ｼ繧ｶ繝ｼ縺ｮ謇謖√さ繧､繝ｳ繧貞叙蠕暦ｼ育ｷ剰ｳ・肇險育ｮ礼畑・・                const { data: profileData } = await supabaseClient
+                    .from('profiles')
+                    .select('coins, equipped_badge_id')
+                    .eq('discord_user_id', targetId)
+                    .maybeSingle();
+
                 const userCoins = profileData?.coins || 0;
                 const equippedId = profileData?.equipped_badge_id;
+                let badgeAssets = 0;
 
-                // 各バッジの現在流通数 n を集計
-                const marketCounts = {};
-                (marketCountRes.data || []).forEach(s => {
-                    marketCounts[s.badge_id] = (marketCounts[s.badge_id] || 0) + 1;
-                });
-
-                // 自分のページなら管理ボタンを表示
+                // 閾ｪ蛻・・繝壹・繧ｸ縺ｪ繧臥ｮ｡逅・・繧ｿ繝ｳ繧定｡ｨ遉ｺ
                 const badgeBtn = document.getElementById('badge-change-btn');
                 const transferBtn = document.getElementById('badge-transfer-btn');
                 const sellBtn = document.getElementById('badge-sell-btn');
@@ -1322,143 +1264,101 @@
                     if (specialSection) specialSection.style.display = 'none';
                     if (purchasableSection) purchasableSection.style.display = 'none';
                     if (noBadgesMsg) noBadgesMsg.style.display = 'block';
+                    if (totalAssetsEl) totalAssetsEl.textContent = userCoins.toLocaleString();
                     return;
                 }
 
-                // バッジのグルーピング処理 (badge_id ごとにまとめる)
-                const groupedOwned = {};
+                // 繝舌ャ繧ｸ繧帝寔險茨ｼ磯㍾隍・ｒ繧ｫ繧ｦ繝ｳ繝茨ｼ・                const badgeGroups = {};
                 owned.forEach(item => {
-                    const bid = item.badge_id;
-                    if (!groupedOwned[bid]) {
-                        groupedOwned[bid] = {
-                            badge: item.badges,
-                            instances: [],
-                            isEquipped: false
-                        };
-                    }
-                    groupedOwned[bid].instances.push(item);
-                    if (item.badge_id === equippedId) {
-                        groupedOwned[bid].isEquipped = true;
-                    }
-                });
-
-                let totalBadgeAssetValue = 0;
-                const rarityColors = {
-                    'Common': '#888', 'Uncommon': '#2ecc71', 'Rare': '#3498db',
-                    'Epic': '#9b59b6', 'Legendary': '#f1c40f', 'Mythic': '#e67e22',
-                    'Divine': '#00d2ff', 'Celestial': '#00d2ff', 'Eternal': '#f80759', 'Cosmic': '#000'
-                };
-
-                let purchasableHtml = '';
-                let specialHtml = '';
-
-                // グループ化されたバッジを描画
-                Object.values(groupedOwned).forEach(group => {
-                    const badge = group.badge;
+                    const badge = item.badges;
                     if (!badge) return;
 
-                    const count = group.instances.length;
-                    const mainItem = group.instances[0]; // 代表品
-
-                    const n = marketCounts[badge.id] || 0;
-                    let pValue;
-                    if (badge.sales_type === '固定型') {
-                        pValue = badge.price;
-                    } else {
-                        pValue = Math.ceil(badge.price * Math.pow(1.3, Math.max(0, n - 1)));
+                    if (!badgeGroups[badge.id]) {
+                        badgeGroups[badge.id] = {
+                            badge: badge,
+                            count: 0
+                        };
                     }
-                    const pSell = Math.ceil(pValue * 0.7 * (mainItem.is_mutant ? 3 : 1));
-
-                    totalBadgeAssetValue += (pValue * count);
-
-                    const rarity = getDynamicRarity(pValue, badge.fixed_rarity_name);
-                    const color = rarityColors[rarity] || '#888';
-                    const isEquipped = group.isEquipped;
-                    const hasMutant = group.instances.some(i => i.is_mutant);
-
-                    // 右下に個数を表示するためのラベル
-                    const countLabel = count > 1 ? `<span class="badge bg-dark position-absolute bottom-0 end-0 m-1" style="font-size:0.6rem; z-index:4; opacity: 0.9;">x${count}</span>` : '';
-
-                    // 左下（個数と重ならないように）または別の場所にミュータント表示
-                    const mutantLabel = hasMutant ? '<span class="badge bg-warning text-dark position-absolute bottom-0 start-0 m-1" style="font-size:0.5rem; z-index:4;">変異</span>' : '';
-
-                    // 非売品判定: sales_type が '限定品' の場合は非売品
-                    const isNonSaleable = (badge.sales_type === '限定品');
-
-                    const cardHtml = `
-                        <div class="col-4 col-sm-3 col-md-5th mb-3">
-                            <div class="card h-100 shadow-sm border-0 position-relative" style="border-radius: 12px; background: ${hasMutant ? 'rgba(255,193,7,0.05)' : '#fff'}; overflow: hidden; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
-                                <a href="../badge/index.html?id=${badge.id}" class="text-decoration-none w-100 h-100 d-flex flex-column align-items-center justify-content-center">
-                                    <div class="card-body p-2 d-flex flex-column align-items-center justify-content-center text-center">
-                                        <div class="position-relative mb-1">
-                                            <div class="badge-item ${isEquipped ? 'equipped' : ''}" style="width: 60px; height: 60px; padding: 5px; background: transparent; border-width: 2px;">
-                                                <img src="${badge.image_url}" alt="${badge.name}" style="width: 100%; height: 100%; object-fit: contain;">
-                                            </div>
-                                            ${isEquipped ? '<span class="badge bg-gold position-absolute top-0 start-0" style="font-size:0.4rem; z-index:2;">装着中</span>' : ''}
-                                            ${mutantLabel}
-                                            ${countLabel}
-                                        </div>
-                                        <div class="small text-muted text-truncate w-100 px-1" style="font-size: 0.65rem; line-height: 1.2;">${badge.name}</div>
-                                        <span class="badge mt-1" style="background-color: ${color}; font-size: 0.45rem; padding: 2px 5px;">${rarity}</span>
-                                    </div>
-                                </a>
-                                
-                                ${(!isViewMode && !isNonSaleable) ? `
-                                    <div class="dropdown position-absolute top-0 end-0" style="z-index: 5;">
-                                        <button class="btn btn-link btn-sm text-muted p-1" data-bs-toggle="dropdown" style="font-size: 0.7rem;">
-                                            <i class="bi bi-three-dots-vertical"></i>
-                                        </button>
-                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0" style="font-size: 0.75rem; min-width: 80px;">
-                                            <li><a class="dropdown-item py-1" href="javascript:void(0)" onclick="openBadgeSelectionModal('sell')">売却</a></li>
-                                            <li><a class="dropdown-item py-1" href="javascript:void(0)" onclick="openBadgeSelectionModal('transfer')">譲渡</a></li>
-                                        </ul>
-                                    </div>
-                                ` : ''}
-                            </div>
-                        </div>
-                    `;
-
-                    if (!isNonSaleable) {
-                        purchasableHtml += cardHtml;
-                    } else {
-                        specialHtml += cardHtml;
-                    }
+                    badgeGroups[badge.id].count++;
+                    badgeAssets += (badge.price || 0);
                 });
 
-                // 表示の出し分け
-                if (purchasableHtml) {
-                    purchasableSection.style.display = 'block';
-                    purchasableList.innerHTML = purchasableHtml;
-                } else {
-                    purchasableSection.style.display = 'none';
+                // 邱剰ｳ・肇縺ｮ陦ｨ遉ｺ譖ｴ譁ｰ
+                if (totalAssetsEl) {
+                    totalAssetsEl.textContent = (userCoins + badgeAssets).toLocaleString();
                 }
 
-                if (specialHtml) {
+                // 繝舌ャ繧ｸ繧帝・蛻励↓螟画鋤縺励※繧ｽ繝ｼ繝・(order -> name)
+                const aggregatedBadges = Object.values(badgeGroups).sort((a, b) => {
+                    const orderA = a.badge.order ?? 999;
+                    const orderB = b.badge.order ?? 999;
+                    if (orderA !== orderB) return orderA - orderB;
+                    return a.badge.name.localeCompare(b.badge.name);
+                });
+
+                // 髱槫｣ｲ蜩・ｼ・acha_weight = 0・峨→雉ｼ蜈･蜿ｯ閭ｽ繝舌ャ繧ｸ縺ｫ蛻・￠繧・                const specialBadges = aggregatedBadges.filter(item => item.badge.gacha_weight === 0);
+                const purchasableBadges = aggregatedBadges.filter(item => item.badge.gacha_weight !== 0);
+
+                // 繝舌ャ繧ｸHTML逕滓・髢｢謨ｰ
+                const renderBadge = (item) => {
+                    const badge = item.badge;
+                    const isEquipped = badge.id === equippedId;
+                    return `
+                        <div class="col-4 col-sm-3 col-md-2 text-center mb-3">
+                            <div class="position-relative">
+                                <a href="../badge/index.html?id=${badge.id}" class="text-decoration-none">
+                                    <div class="badge-item ${isEquipped ? 'equipped' : ''}" 
+                                         title="${badge.name}${isEquipped ? ' (陬・捩荳ｭ)' : ''}"
+                                         style="position: relative;">
+                                        <img src="${badge.image_url}" alt="${badge.name}">
+                                        ${item.count > 1 ? `<span class="badge-count-overlay">${item.count}</span>` : ''}
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="small text-muted text-truncate mt-1" style="font-size: 0.75rem;">${badge.name}</div>
+                        </div>
+                    `;
+                };
+
+                // 髱槫｣ｲ蜩√ヰ繝・ず繧定｡ｨ遉ｺ
+                if (specialBadges.length > 0) {
                     specialSection.style.display = 'block';
-                    specialList.innerHTML = specialHtml;
+                    specialList.innerHTML = specialBadges.map(renderBadge).join('');
                 } else {
                     specialSection.style.display = 'none';
                 }
 
-                noBadgesMsg.style.display = 'none';
+                // 雉ｼ蜈･繝舌ャ繧ｸ繧定｡ｨ遉ｺ
+                if (purchasableBadges.length > 0) {
+                    purchasableSection.style.display = 'block';
+                    purchasableList.innerHTML = purchasableBadges.map(renderBadge).join('');
+                } else {
+                    purchasableSection.style.display = 'none';
+                }
+
+                // 縺ｩ縺｡繧峨ｂ縺ｪ縺・ｴ蜷・                if (specialBadges.length === 0 && purchasableBadges.length === 0) {
+                    noBadgesMsg.style.display = 'block';
+                } else {
+                    noBadgesMsg.style.display = 'none';
+                }
 
             } catch (err) {
-                console.error('バッジ取得エラー:', err);
+                console.error('繝舌ャ繧ｸ蜿門ｾ励お繝ｩ繝ｼ:', err);
                 if (noBadgesMsg) {
-                    noBadgesMsg.textContent = '読み込み中にエラーが発生しました';
+                    noBadgesMsg.textContent = '隱ｭ縺ｿ霎ｼ縺ｿ荳ｭ縺ｫ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆';
+                    noBadgesMsg.className = 'text-center text-danger py-3';
                     noBadgesMsg.style.display = 'block';
                 }
             }
         }
 
-        // ============ 販売実績の読み込み ============
+        // ============ 雋ｩ螢ｲ螳溽ｸｾ縺ｮ隱ｭ縺ｿ霎ｼ縺ｿ ============
         async function loadRevenueStats() {
             const section = document.getElementById('revenue-section');
             if (!section) return;
 
             try {
-                // revenue_share（売上還元）のログを取得
-                const { data: logs, error } = await supabaseClient
+                // revenue_share・亥｣ｲ荳企ｄ蜈・ｼ峨・繝ｭ繧ｰ繧貞叙蠕・                const { data: logs, error } = await supabaseClient
                     .from('activity_logs')
                     .select('amount')
                     .eq('user_id', targetId)
@@ -1470,22 +1370,22 @@
                 }
 
                 if (!logs || logs.length === 0) {
-                    // 販売実績がない場合は非表示のまま
+                    // 雋ｩ螢ｲ螳溽ｸｾ縺後↑縺・ｴ蜷医・髱櫁｡ｨ遉ｺ縺ｮ縺ｾ縺ｾ
                     return;
                 }
 
                 section.style.display = 'block';
 
                 const totalRevenue = logs.reduce((sum, log) => sum + (log.amount || 0), 0);
-                document.getElementById('total-revenue').textContent = `🪙 ${totalRevenue.toLocaleString()}`;
+                document.getElementById('total-revenue').textContent = `ｪ・${totalRevenue.toLocaleString()}`;
                 document.getElementById('revenue-count').textContent = logs.length;
 
             } catch (err) {
-                console.error('販売実績取得エラー:', err);
+                console.error('雋ｩ螢ｲ螳溽ｸｾ蜿門ｾ励お繝ｩ繝ｼ:', err);
             }
         }
 
-        // ============ 最近の活動ログの読み込み ============
+        // ============ 譛霑代・豢ｻ蜍輔Ο繧ｰ縺ｮ隱ｭ縺ｿ霎ｼ縺ｿ ============
         let activityPage = 0;
         const ACTIVITY_PER_PAGE = 10;
 
@@ -1503,33 +1403,31 @@
                 const targetName = targetProfile?.account_name;
                 console.log('--- loadActivityLogs Integrated Fetch ---', { targetId, targetName });
 
-                // 1. 最新の活動ログ (送金・おみくじ等)
+                // 1. 譛譁ｰ縺ｮ豢ｻ蜍輔Ο繧ｰ (騾・≡繝ｻ縺翫∩縺上§遲・
                 const { data: allLogs } = await supabaseClient
                     .from('activity_logs')
                     .select('*')
                     .order('created_at', { ascending: false })
                     .limit(500);
 
-                // 2. 最新の麻雀記録
+                // 2. 譛譁ｰ縺ｮ鮗ｻ髮險倬鹸
                 const { data: allMatches } = await supabaseClient
                     .from('match_results')
                     .select('*')
                     .order('event_datetime', { ascending: false })
                     .limit(500);
 
-                // 3. 過去の麻雀記録 (第一回大会など)
+                // 3. 驕主悉縺ｮ鮗ｻ髮險倬鹸 (隨ｬ荳蝗槫､ｧ莨壹↑縺ｩ)
                 const { data: legacyMatches } = await supabaseClient
                     .from('tournament_player_stats_snapshot')
                     .select('*')
                     .limit(500);
 
-                // --- フィルタリング ---
+                // --- 繝輔ぅ繝ｫ繧ｿ繝ｪ繝ｳ繧ｰ ---
                 const logs = (allLogs || []).filter(l => {
-                    // 【修正】自分が「主体（user_id）」であるログのみを表示。
-                    // これにより、送受信ペアの重複表示や、購入者が「売上還元」ログを見るのを防ぎます。
-                    if (l.user_id !== targetId) return false;
+                    // 縲蝉ｿｮ豁｣縲題・蛻・′縲御ｸｻ菴難ｼ・ser_id・峨阪〒縺ゅｋ繝ｭ繧ｰ縺ｮ縺ｿ繧定｡ｨ遉ｺ縲・                    // 縺薙ｌ縺ｫ繧医ｊ縲・∝女菫｡繝壹い縺ｮ驥崎､・｡ｨ遉ｺ繧・∬ｳｼ蜈･閠・′縲悟｣ｲ荳企ｄ蜈・阪Ο繧ｰ繧定ｦ九ｋ縺ｮ繧帝亟縺弱∪縺吶・                    if (l.user_id !== targetId) return false;
 
-                    // 装着ログは非表示
+                    // 陬・捩繝ｭ繧ｰ縺ｯ髱櫁｡ｨ遉ｺ
                     if (l.action_type === 'badge_equip') return false;
 
                     return true;
@@ -1545,9 +1443,8 @@
 
                 console.log('Filtered (Subjective Only):', { logs: logs.length, matches: matches.length, legacy: legacy.length });
 
-                // --- マージ ---
-                // activity_logs から麻雀記録がなくなったため、単純な結合とソートで済むようになります。
-                let combined = [];
+                // --- 繝槭・繧ｸ ---
+                // activity_logs 縺九ｉ鮗ｻ髮險倬鹸縺後↑縺上↑縺｣縺溘◆繧√∝腰邏斐↑邨仙粋縺ｨ繧ｽ繝ｼ繝医〒貂医・繧医≧縺ｫ縺ｪ繧翫∪縺吶・                let combined = [];
 
                 logs.forEach(l => {
                     let details = l.details;
@@ -1570,7 +1467,7 @@
                         timestamp: new Date(m.created_at || m.updated_at || '2024-01-01'),
                         details: {
                             rank: m.rank1_count > 0 ? 1 : (m.rank2_count > 0 ? 2 : (m.rank3_count > 0 ? 3 : 4)),
-                            final_score: m.score_total, mode: '過去大会', is_legacy: true
+                            final_score: m.score_total, mode: '驕主悉螟ｧ莨・, is_legacy: true
                         },
                         isMatch: true
                     });
@@ -1579,8 +1476,8 @@
                 combined.sort((a, b) => b.timestamp - a.timestamp);
 
                 if (combined.length === 0) {
-                    const rlsHint = (allLogs && allLogs.length === 0) ? '<br><small class="text-warning">※送金記録などが1件も表示されない場合、Supabaseの権限設定(RLS)が必要です。</small>' : '';
-                    listEl.innerHTML = `<div class="text-center text-muted py-3">活動ログはまだありません${rlsHint}</div>`;
+                    const rlsHint = (allLogs && allLogs.length === 0) ? '<br><small class="text-warning">窶ｻ騾・≡險倬鹸縺ｪ縺ｩ縺・莉ｶ繧り｡ｨ遉ｺ縺輔ｌ縺ｪ縺・ｴ蜷医ヾupabase縺ｮ讓ｩ髯占ｨｭ螳・RLS)縺悟ｿ・ｦ√〒縺吶・/small>' : '';
+                    listEl.innerHTML = `<div class="text-center text-muted py-3">豢ｻ蜍輔Ο繧ｰ縺ｯ縺ｾ縺縺ゅｊ縺ｾ縺帙ｓ${rlsHint}</div>`;
                     section.style.display = 'block';
                     paginationEl.style.display = 'none';
                     return;
@@ -1588,22 +1485,21 @@
 
                 section.style.display = 'block';
 
-                // 5. ページネーション処理
-                const itemsPerPage = 8;
+                // 5. 繝壹・繧ｸ繝阪・繧ｷ繝ｧ繝ｳ蜃ｦ逅・                const itemsPerPage = 8;
                 const totalPages = Math.ceil(combined.length / itemsPerPage);
                 const pageItems = combined.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
                 const typeNames = {
-                    'mahjong': '🀄 麻雀記録',
-                    'transfer_send': '💸 送金(送)',
-                    'transfer_receive': '🧧 送金(受)',
-                    'badge_transfer': '🎁 バッジ譲渡',
-                    'badge_receive': '📦 バッジ受取',
-                    'badge_sell': '💴 バッジ売却',
-                    'badge_purchase': '🛒 バッジ購入',
-                    'omikuji': '🎋 おみくじ',
-                    'revenue_share': '💎 売上還元',
-                    'admin_edit': '⚙️ 管理者修正'
+                    'mahjong': '・鮗ｻ髮險倬鹸',
+                    'transfer_send': '頂 騾・≡(騾・',
+                    'transfer_receive': 'ｧｧ 騾・≡(蜿・',
+                    'badge_transfer': '氏 繝舌ャ繧ｸ隴ｲ貂｡',
+                    'badge_receive': '逃 繝舌ャ繧ｸ蜿怜叙',
+                    'badge_sell': '超 繝舌ャ繧ｸ螢ｲ蜊ｴ',
+                    'badge_purchase': '將 繝舌ャ繧ｸ雉ｼ蜈･',
+                    'omikuji': '視 縺翫∩縺上§',
+                    'revenue_share': '虫 螢ｲ荳企ｄ蜈・,
+                    'admin_edit': '笞呻ｸ・邂｡逅・・ｿｮ豁｣'
                 };
 
                 listEl.innerHTML = pageItems.map(log => {
@@ -1611,17 +1507,16 @@
                         month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                     });
                     const typeName = typeNames[log.action_type] || log.action_type;
-                    const amountStr = log.amount !== null ? `🪙 ${log.amount.toLocaleString()}` : '';
+                    const amountStr = log.amount !== null ? `ｪ・${log.amount.toLocaleString()}` : '';
 
-                    // 相手の情報を取得（基本は target_user_id。常に最新のプロフィールを参照）
-                    const otherId = log.target_user_id;
+                    // 逶ｸ謇九・諠・ｱ繧貞叙蠕暦ｼ亥渕譛ｬ縺ｯ target_user_id縲ょｸｸ縺ｫ譛譁ｰ縺ｮ繝励Ο繝輔ぅ繝ｼ繝ｫ繧貞盾辣ｧ・・                    const otherId = log.target_user_id;
                     const otherProfile = otherId ? allProfiles.find(p => p.discord_user_id === String(otherId)) : null;
 
                     const otherHtml = otherProfile ? `
                         <div class="d-inline-flex align-items-center gap-1 mx-1">
                             <img src="${otherProfile.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
                                  class="rounded-circle shadow-sm" style="width: 24px; height: 24px; object-fit: cover;">
-                            <span class="fw-bold">${otherProfile.account_name || '誰か'}</span>
+                            <span class="fw-bold">${otherProfile.account_name || '隱ｰ縺・}</span>
                         </div>` : (otherId ? `<span class="badge bg-secondary">ID: ${otherId}</span>` : '');
 
                     let detailsStr = '';
@@ -1629,25 +1524,25 @@
                         const rank = log.details?.rank || '-';
                         const score = log.details?.final_score || '0';
                         const mode = log.details?.mode || '';
-                        detailsStr = `<span class="badge bg-light text-dark shadow-sm">${mode} ${rank}位 (${score}pts)</span>`;
+                        detailsStr = `<span class="badge bg-light text-dark shadow-sm">${mode} ${rank}菴・(${score}pts)</span>`;
                     } else if (log.action_type === 'transfer_send') {
-                        detailsStr = `➡ ${otherHtml} への送金`;
+                        detailsStr = `筐｡ ${otherHtml} 縺ｸ縺ｮ騾・≡`;
                     } else if (log.action_type === 'transfer_receive') {
-                        detailsStr = `⬅ ${otherHtml} からの送金`;
+                        detailsStr = `筮・${otherHtml} 縺九ｉ縺ｮ騾・≡`;
                     } else if (log.action_type === 'badge_transfer') {
-                        detailsStr = `🎁 「${log.details?.badge_name || 'バッジ'}」を ${otherHtml} へ譲渡`;
+                        detailsStr = `氏 縲・{log.details?.badge_name || '繝舌ャ繧ｸ'}縲阪ｒ ${otherHtml} 縺ｸ隴ｲ貂｡`;
                     } else if (log.action_type === 'badge_receive') {
-                        detailsStr = `📦 「${log.details?.badge_name || 'バッジ'}」を ${otherHtml} から受取`;
+                        detailsStr = `逃 縲・{log.details?.badge_name || '繝舌ャ繧ｸ'}縲阪ｒ ${otherHtml} 縺九ｉ蜿怜叙`;
                     } else if (log.action_type === 'badge_sell') {
-                        detailsStr = `💴 「${log.details?.badge_name || 'バッジ'}」を売却`;
+                        detailsStr = `超 縲・{log.details?.badge_name || '繝舌ャ繧ｸ'}縲阪ｒ螢ｲ蜊ｴ`;
                     } else if (log.action_type === 'badge_purchase') {
-                        detailsStr = `🛒 「${log.details?.badge_name || 'バッジ'}」を購入`;
+                        detailsStr = `將 縲・{log.details?.badge_name || '繝舌ャ繧ｸ'}縲阪ｒ雉ｼ蜈･`;
                     } else if (log.action_type === 'omikuji') {
-                        detailsStr = `🎋 運勢: <strong>${log.details?.rank || '不明'}</strong>`;
+                        detailsStr = `視 驕句兇: <strong>${log.details?.rank || '荳肴・'}</strong>`;
                     } else if (log.action_type === 'revenue_share') {
-                        detailsStr = `💎 「${log.details?.badge_name || 'バッジ'}」の売買還元 ${otherId ? `(by ${otherHtml})` : ''}`;
+                        detailsStr = `虫 縲・{log.details?.badge_name || '繝舌ャ繧ｸ'}縲阪・螢ｲ雋ｷ驍・・ ${otherId ? `(by ${otherHtml})` : ''}`;
                     } else if (log.action_type === 'admin_edit') {
-                        detailsStr = `⚙️ 管理者による${log.amount >= 0 ? '加算' : '減算'}`;
+                        detailsStr = `笞呻ｸ・邂｡逅・・↓繧医ｋ${log.amount >= 0 ? '蜉邂・ : '貂帷ｮ・}`;
                     }
 
                     return `
@@ -1668,7 +1563,7 @@
                     `;
                 }).join('');
 
-                // 6. ページネーションUI
+                // 6. 繝壹・繧ｸ繝阪・繧ｷ繝ｧ繝ｳUI
                 if (totalPages > 1) {
                     let pagHtml = '';
                     for (let i = 1; i <= totalPages; i++) {
@@ -1684,212 +1579,406 @@
 
             } catch (err) {
                 console.error('Activity logs error:', err);
-                listEl.innerHTML = '<div class="text-center text-danger py-3">エラーが発生しました</div>';
+                listEl.innerHTML = '<div class="text-center text-danger py-3">繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆</div>';
             }
         }
 
-        // ============ バッジ譲渡・売却：バッジ選択モーダル ============
-        // ============ バッジ譲渡・売却：バッジ選択モーダル ============
+        // ============ 繝舌ャ繧ｸ隴ｲ貂｡繝ｻ螢ｲ蜊ｴ・壹ヰ繝・ず驕ｸ謚槭Δ繝ｼ繝繝ｫ ============
         async function openBadgeSelectionModal(mode) {
             const listEl = document.getElementById('action-badge-list');
-            listEl.innerHTML = '<p class="text-center text-muted py-3">読み込み中...</p>';
+            listEl.innerHTML = '<p class="text-center text-muted py-3">隱ｭ縺ｿ霎ｼ縺ｿ荳ｭ...</p>';
 
-            document.getElementById('badgeActionModalLabel').textContent = mode === 'transfer' ? '譲渡するバッジを選択' : '売却するバッジを選択';
+            document.getElementById('badgeActionModalLabel').textContent = mode === 'transfer' ? '隴ｲ貂｡縺吶ｋ繝舌ャ繧ｸ繧帝∈謚・ : '螢ｲ蜊ｴ縺吶ｋ繝舌ャ繧ｸ繧帝∈謚・;
 
             const modalEl = document.getElementById('badgeActionModal');
             const modal = new bootstrap.Modal(modalEl);
             modal.show();
 
             try {
-                // 所持バッジの取得（新テーブル user_badges_new を使用）
+                // 謇謖√ヰ繝・ず縺ｮ蜿門ｾ・(髱槫｣ｲ蜩∽ｻ･螟・
                 const { data: owned, error } = await supabaseClient
-                    .from('user_badges_new')
-                    .select('*, badges(*)')
+                    .from('user_badges')
+                    .select('badge_id, badges(*)')
                     .eq('user_id', targetId);
 
                 if (error) throw error;
 
-                // 全バッジの流通数を取得（価格計算用）
-                const { data: marketCountRes } = await supabaseClient
-                    .from('user_badges_new')
-                    .select('badge_id');
-
-                const marketCounts = {};
-                (marketCountRes || []).forEach(s => {
-                    marketCounts[s.badge_id] = (marketCounts[s.badge_id] || 0) + 1;
-                });
-
-                if (!owned || owned.length === 0) {
-                    listEl.innerHTML = '<p class="text-center text-muted py-3">対象のバッジを持っていません</p>';
-                    return;
-                }
-
-                // 非売品（限定品）を除外
-                const targetBadges = owned.filter(item => item.badges && item.badges.sales_type !== '限定品');
-
-                if (targetBadges.length === 0) {
-                    listEl.innerHTML = '<p class="text-center text-muted py-3">譲渡・売却可能なバッジを持っていません</p>';
-                    return;
-                }
-
-                listEl.innerHTML = targetBadges.map(item => {
+                // 髱槫｣ｲ蜩√ｒ髯､螟悶＠縺ｦ縲∝酔縺倥ヰ繝・ず繧偵∪縺ｨ繧√ｋ
+                const badgeGroups = {};
+                owned.forEach(item => {
                     const badge = item.badges;
-                    if (!badge) return '';
-
-                    const n = marketCounts[badge.id] || 0;
-
-                    // 価格計算: sales_type に基づく
-                    let pValue;
-                    if (badge.sales_type === '固定型') {
-                        pValue = badge.price;
-                    } else {
-                        pValue = Math.ceil(badge.price * Math.pow(1.3, Math.max(0, n - 1)));
+                    if (!badge || badge.gacha_weight === 0) return;
+                    if (!badgeGroups[badge.id]) {
+                        badgeGroups[badge.id] = { badge: badge, count: 0 };
                     }
-
-                    const pSell = Math.ceil(pValue * 0.7 * (item.is_mutant ? 3 : 1));
-                    const buyPrice = item.purchased_price || 0;
-
-                    const mutantLabel = item.is_mutant ? '<span class="text-warning fw-bold">(Mutant)</span>' : '';
-
-                    if (mode === 'transfer') {
-                        return `
-                            <div class="user-select-item" onclick="openUUIDTransferModal('${item.uuid}', '${badge.name.replace(/'/g, "\\'")}', ${buyPrice}, ${pValue}, ${pSell})">
-                                <img src="${badge.image_url}" class="user-select-avatar" style="border-radius: 8px;">
-                                <div class="flex-grow-1">
-                                    <div class="user-select-name">${badge.name} ${mutantLabel}</div>
-                                    <div class="small text-muted" style="font-size: 0.75rem;">
-                                        購入: 🪙${buyPrice.toLocaleString()} | 
-                                        時価: 🪙${pValue.toLocaleString()} | 
-                                        売却: 🪙${pSell.toLocaleString()}
-                                    </div>
-                                </div>
-                                <div class="text-primary fw-bold">選択</div>
-                            </div>
-                        `;
-                    } else {
-                        return `
-                            <div class="user-select-item" onclick="sellBadgeConfirm('${item.uuid}', '${badge.name.replace(/'/g, "\\'")}', ${buyPrice}, ${pValue}, ${pSell})">
-                                <img src="${badge.image_url}" class="user-select-avatar" style="border-radius: 8px;">
-                                <div class="flex-grow-1">
-                                    <div class="user-select-name">${badge.name} ${mutantLabel}</div>
-                                    <div class="small text-muted" style="font-size: 0.75rem;">
-                                        購入: 🪙${buyPrice.toLocaleString()} | 
-                                        時価: 🪙${pValue.toLocaleString()} | 
-                                        売却: 🪙${pSell.toLocaleString()}
-                                    </div>
-                                </div>
-                                <div class="text-danger fw-bold">売却</div>
-                            </div>
-                        `;
-                    }
-                }).join('');
-            } catch (err) {
-                console.error('Error loading action badges:', err);
-                listEl.innerHTML = '<p class="text-center text-danger py-3">エラーが発生しました</p>';
-            }
-        }
-
-        // ======= バッジ売却・譲渡 =======
-        let currentActionUUID = null;
-        let currentActionBadgeName = null;
-        let currentActionDetails = null;
-
-        function sellBadgeConfirm(uuid, name, purchasedPrice, pValue, pSell) {
-            currentActionUUID = uuid;
-            currentActionBadgeName = name;
-
-            // 安全な数値変換とデフォルト値設定
-            const pPrice = Number(purchasedPrice) || 0;
-            const pVal = Number(pValue) || 0;
-            const sPrice = Number(pSell) || 0;
-            const profit = sPrice - pPrice;
-            const profitStr = (profit >= 0 ? '+' : '') + profit.toLocaleString();
-
-            const msg = `「${name}」を売却しますか？\n\n` +
-                `・購入時の金額: 🪙 ${pPrice.toLocaleString()}\n` +
-                `・現在の市場価値: 🪙 ${pVal.toLocaleString()}\n` +
-                `・実際の売却価格: 🪙 ${sPrice.toLocaleString()}\n` +
-                `--------------------------\n` +
-                `・予想損益: ${profitStr}`;
-
-            if (confirm(msg)) {
-                // 選択モーダルを閉じる
-                const modalEl = document.getElementById('badgeActionModal');
-                if (modalEl) {
-                    const modal = bootstrap.Modal.getInstance(modalEl);
-                    if (modal) modal.hide();
-                }
-                executeSellUUID();
-            }
-        }
-
-        async function executeSellUUID() {
-            toggleLoading(true);
-            try {
-                const { data, error } = await supabaseClient.rpc('sell_badge_v2', {
-                    p_user_id: targetId,
-                    p_badge_uuid: currentActionUUID
+                    badgeGroups[badge.id].count++;
                 });
 
-                if (error) throw error;
-                if (!data.ok) throw new Error(data.error);
+                const sortedBadges = Object.values(badgeGroups);
 
-                alert(`バッジを 🪙${data.sell_price.toLocaleString()} で売却しました。`);
-                // 活動ログ記録
+                if (sortedBadges.length === 0) {
+                    listEl.innerHTML = '<p class="text-center text-muted py-3">驕ｸ謚槫庄閭ｽ縺ｪ繝舌ャ繧ｸ縺後≠繧翫∪縺帙ｓ</p>';
+                    return;
+                }
+
+                listEl.innerHTML = sortedBadges.map(item => {
+                    const badge = item.badge;
+                    const priceInfo = mode === 'sell' ? `<div class="small text-danger fw-bold">ｪ・{Math.floor(badge.price * 0.5).toLocaleString()}</div>` : '';
+                    return `
+                        <div class="col-4 col-md-3 text-center mb-2">
+                            <div class="badge-item" 
+                                 onclick="onBadgeSelectedForAction('${badge.id}', '${badge.name.replace(/'/g, "\\'")}', ${badge.price}, '${mode}')"
+                                 style="cursor: pointer; position: relative;"
+                                 title="${badge.name}">
+                                <img src="${badge.image_url}" alt="${badge.name}" style="width: 60px; height: 60px; object-fit: contain;">
+                                ${item.count > 1 ? `<span class="badge-count-overlay">${item.count}</span>` : ''}
+                            </div>
+                            <div class="small text-truncate mt-1" style="font-size: 0.7rem;">${badge.name}</div>
+                            ${priceInfo}
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                console.error('繝舌ャ繧ｸ隱ｭ縺ｿ霎ｼ縺ｿ繧ｨ繝ｩ繝ｼ:', err);
+                listEl.innerHTML = '<p class="text-center text-danger py-3">繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆</p>';
+            }
+        }
+
+        let currentActionBadgeId = null;
+        let currentActionBadgeName = '';
+        let currentActionBadgePrice = 0;
+
+        function onBadgeSelectedForAction(badgeId, badgeName, price, mode) {
+            currentActionBadgeId = badgeId;
+            currentActionBadgeName = badgeName;
+            currentActionBadgePrice = price;
+
+            // 驕ｸ謚槭Δ繝ｼ繝繝ｫ繧帝哩縺倥ｋ
+            const actionModal = bootstrap.Modal.getInstance(document.getElementById('badgeActionModal'));
+            actionModal.hide();
+
+            if (mode === 'transfer') {
+                openUserSelectModal('badge');
+            } else {
+                executeSell(badgeId, badgeName, price);
+            }
+        }
+
+        // ============ 螢ｲ蜊ｴ螳溯｡・============
+        async function executeSell(badgeId, badgeName, price) {
+            const sellPrice = Math.floor(price * 0.5);
+            if (!confirm(`縲・{badgeName}縲阪ｒ螢ｲ蜊ｴ縺励※ ｪ・{sellPrice.toLocaleString()} 繧貞女縺大叙繧翫∪縺吶°・歃n・医％縺ｮ謫堺ｽ懊・蜿悶ｊ豸医○縺ｾ縺帙ｓ・荏)) {
+                return;
+            }
+
+            try {
+                toggleLoading(true);
+
+                // 1. 繝舌ャ繧ｸ繧・縺､蜑企勁
+                const { data: owned, error: fetchError } = await supabaseClient
+                    .from('user_badges')
+                    .select('id')
+                    .eq('user_id', targetId)
+                    .eq('badge_id', badgeId)
+                    .limit(1)
+                    .single();
+
+                if (fetchError) throw new Error('繝舌ャ繧ｸ縺ｮ謇謖√ョ繝ｼ繧ｿ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ縺ｧ縺励◆');
+
+                const { error: deleteError } = await supabaseClient
+                    .from('user_badges')
+                    .delete()
+                    .eq('id', owned.id);
+
+                if (deleteError) throw deleteError;
+
+                // 2. 繝舌ャ繧ｸ縺ｮ蝨ｨ蠎ｫ繧呈綾縺呻ｼ・emaining_count 縺瑚ｨｭ螳壹＆繧後※縺・ｋ蝣ｴ蜷茨ｼ・                const { data: badge, error: badgeFetchError } = await supabaseClient
+                    .from('badges')
+                    .select('remaining_count')
+                    .eq('id', badgeId)
+                    .single();
+
+                if (!badgeFetchError && badge && badge.remaining_count !== null) {
+                    await supabaseClient
+                        .from('badges')
+                        .update({ remaining_count: badge.remaining_count + 1 })
+                        .eq('id', badgeId);
+                }
+
+                // 3. 繧ｳ繧､繝ｳ縺ｮ蜉邂・                const { data: profile, error: profileError } = await supabaseClient
+                    .from('profiles')
+                    .select('coins')
+                    .eq('discord_user_id', targetId)
+                    .single();
+
+                if (profileError) throw profileError;
+
+                const { error: updateError } = await supabaseClient
+                    .from('profiles')
+                    .update({ coins: (profile.coins || 0) + sellPrice })
+                    .eq('discord_user_id', targetId);
+
+                if (updateError) throw updateError;
+
+                // 4. 邱剰ｳ・肇繧貞刈邂・                if (typeof addToTotalAssets === 'function') {
+                    await addToTotalAssets(targetId, sellPrice);
+                }
+
+                // 5. 豢ｻ蜍輔Ο繧ｰ繧定ｨ倬鹸
                 if (typeof logActivity === 'function') {
                     await logActivity(targetId, 'badge_sell', {
-                        amount: data.sell_price,
-                        details: { badge_uuid: currentActionUUID, badge_name: currentActionBadgeName }
+                        amount: sellPrice,
+                        badgeId: badgeId,
+                        details: { badge_name: badgeName, original_price: price }
                     });
                 }
-                loadOwnedBadges();
-                loadActivityLogs();
-                // 自分の情報を再読み込み
-                const user = await getCurrentUser();
-                if (user) displayMyInfo(user);
+
+                alert(`${badgeName} 繧貞｣ｲ蜊ｴ縺励∪縺励◆縲を洙・{sellPrice} 繧堤佐蠕励＠縺ｾ縺励◆縲Ａ);
+                location.reload();
             } catch (err) {
-                console.error('売却エラー:', err);
-                alert('売却に失敗しました: ' + err.message);
+                console.error('螢ｲ蜊ｴ繧ｨ繝ｩ繝ｼ:', err);
+                alert('螢ｲ蜊ｴ蜃ｦ逅・↓螟ｱ謨励＠縺ｾ縺励◆: ' + err.message);
             } finally {
                 toggleLoading(false);
             }
         }
 
-        function openUUIDTransferModal(uuid, name, purchasedPrice, pValue, pSell) {
-            currentActionUUID = uuid;
-            currentActionBadgeName = name;
+        // ============ 隴ｲ貂｡・壹Θ繝ｼ繧ｶ繝ｼ驕ｸ謚・============
+        let transferType = 'badge'; // 'badge' or 'coin'
+        async function openUserSelectModal(type = 'badge') {
+            transferType = type;
+            const listEl = document.getElementById('transfer-user-list');
+            listEl.innerHTML = '<p class="text-center text-muted py-4">隱ｭ縺ｿ霎ｼ縺ｿ荳ｭ...</p>';
 
-            // 譲渡時にも詳細情報を表示するために詳細文字列を構築
-            currentActionDetails =
-                `・購入額: 🪙 ${purchasedPrice.toLocaleString()}\n` +
-                `・現在価値: 🪙 ${pValue.toLocaleString()}\n` +
-                `・期待売却額: 🪙 ${pSell.toLocaleString()}\n` +
-                `--------------------------\n` +
-                `※譲渡するとあなたの手元からはなくなります。`;
+            document.getElementById('userSelectModalLabel').textContent = type === 'coin' ? '騾・≡蜈医・繝ｦ繝ｼ繧ｶ繝ｼ繧帝∈謚・ : '隴ｲ貂｡蜈医・繝ｦ繝ｼ繧ｶ繝ｼ繧帝∈謚・;
 
-            // 選択モーダルを閉じる
-            const modalEl = document.getElementById('badgeActionModal');
-            if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
-            openUserSelectModal('badge_transfer');
+            const modal = new bootstrap.Modal(document.getElementById('userSelectModal'));
+            modal.show();
+
+            try {
+                const { data: users, error } = await supabaseClient
+                    .from('profiles')
+                    .select('discord_user_id, account_name, avatar_url, equipped_badge_id, badges!equipped_badge_id(image_url, name)')
+                    .neq('discord_user_id', targetId) // 閾ｪ蛻・ｻ･螟・                    .order('account_name');
+
+                if (error) throw error;
+
+                if (!users || users.length === 0) {
+                    listEl.innerHTML = '<p class="text-center text-muted py-4">繝ｦ繝ｼ繧ｶ繝ｼ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ</p>';
+                    return;
+                }
+
+                listEl.innerHTML = users.map(u => {
+                    const avatar = u.avatar_url || 'https://via.placeholder.com/40';
+                    const badgeHtml = u.badges ? `<img src="${u.badges.image_url}" class="user-select-badge" title="${u.badges.name}">` : '';
+                    return `
+                        <div class="user-select-item" onclick="onUserSelectedForTransfer('${u.discord_user_id}', '${u.account_name.replace(/'/g, "\\'")}')">
+                            <img src="${avatar}" class="user-select-avatar" onerror="this.src='https://via.placeholder.com/40'">
+                            <div class="d-flex align-items-center flex-grow-1">
+                                <span class="user-select-name">${u.account_name}</span>
+                                ${badgeHtml}
+                            </div>
+                            <div class="text-muted small">驕ｸ謚・笶ｯ</div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                console.error('繝ｦ繝ｼ繧ｶ繝ｼ蜿門ｾ励お繝ｩ繝ｼ:', err);
+                listEl.innerHTML = '<p class="text-center text-danger py-4">繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆</p>';
+            }
         }
 
-        // 譲渡実行のオーバーライド（共有されている openUserSelectModal から呼ばれる）
-        // 既存の executeTransferConfirmation は badge_id ベースの可能性があるため、UUID対応版に差し替えが必要な場合は
-        // ここで再定義するか、グローバルに調整する。mypage/index.html 内に定義されている場合、それを上書きする。
+        function onUserSelectedForTransfer(userId, userName) {
+            // 繝ｦ繝ｼ繧ｶ繝ｼ驕ｸ謚槭Δ繝ｼ繝繝ｫ繧帝哩縺倥ｋ
+            const userModal = bootstrap.Modal.getInstance(document.getElementById('userSelectModal'));
+            userModal.hide();
 
-        // ============ バッジ装着 ============
+            if (transferType === 'badge') {
+                executeTransferConfirmation(userId, userName);
+            } else {
+                openCoinAmountModal(userId, userName);
+            }
+        }
+
+        // ============ 繧ｳ繧､繝ｳ騾・≡繝輔Ο繝ｼ ============
+        let coinTransferTargetId = null;
+        let coinTransferTargetName = '';
+
+        function openCoinTransferModal() {
+            openUserSelectModal('coin');
+        }
+
+        async function openCoinAmountModal(userId, userName) {
+            coinTransferTargetId = userId;
+            coinTransferTargetName = userName;
+
+            document.getElementById('coin-transfer-target-name').textContent = `${userName} 縺輔ｓ縺ｸ騾・≡`;
+
+            // 閾ｪ蛻・・莉翫・謇謖・≡繧定｡ｨ遉ｺ
+            const { data: profile } = await supabaseClient
+                .from('profiles')
+                .select('coins')
+                .eq('discord_user_id', targetId)
+                .single();
+
+            const currentCoins = profile?.coins || 0;
+            document.getElementById('my-coins-ref').textContent = currentCoins.toLocaleString();
+            document.getElementById('coin-transfer-amount').value = '';
+
+            const modal = new bootstrap.Modal(document.getElementById('coinAmountModal'));
+            modal.show();
+        }
+
+        async function executeCoinTransfer() {
+            const amountInput = document.getElementById('coin-transfer-amount');
+            const amount = parseInt(amountInput.value);
+
+            if (isNaN(amount) || amount <= 0) {
+                alert('譛牙柑縺ｪ驥鷹｡阪ｒ蜈･蜉帙＠縺ｦ縺上□縺輔＞');
+                return;
+            }
+
+            // 譛邨ら｢ｺ隱・            if (!confirm(`${coinTransferTargetName} 縺輔ｓ縺ｫ ｪ・{amount.toLocaleString()} 繧帝・≡縺励∪縺吶°・歔)) {
+                return;
+            }
+
+            try {
+                toggleLoading(true);
+
+                // 1. 閾ｪ蛻・・謇謖・≡繝√ぉ繝・け
+                const { data: sender, error: senderError } = await supabaseClient
+                    .from('profiles')
+                    .select('coins')
+                    .eq('discord_user_id', targetId)
+                    .single();
+
+                if (senderError) throw senderError;
+                if ((sender.coins || 0) < amount) {
+                    throw new Error('謇謖・≡縺瑚ｶｳ繧翫∪縺帙ｓ');
+                }
+
+                // 2. 逶ｸ謇九・蟄伜惠繝√ぉ繝・け・亥ｿｵ縺ｮ縺溘ａ・・                const { data: receiver, error: receiverError } = await supabaseClient
+                    .from('profiles')
+                    .select('coins')
+                    .eq('discord_user_id', coinTransferTargetId)
+                    .single();
+
+                if (receiverError) throw receiverError;
+
+                // 3. 騾・≡蜃ｦ逅・(繝槭う繝翫せ)
+                const { error: updateSenderError } = await supabaseClient
+                    .from('profiles')
+                    .update({ coins: sender.coins - amount })
+                    .eq('discord_user_id', targetId);
+
+                if (updateSenderError) throw updateSenderError;
+
+                // 4. 蜈･驥大・逅・(繝励Λ繧ｹ)
+                const { error: updateReceiverError } = await supabaseClient
+                    .from('profiles')
+                    .update({ coins: (receiver.coins || 0) + amount })
+                    .eq('discord_user_id', coinTransferTargetId);
+
+                if (updateReceiverError) {
+                    // 繝ｭ繝ｼ繝ｫ繝舌ャ繧ｯ逧・↑蜃ｦ逅・′蠢・ｦ√□縺後ヾupabase RLS/Update縺ｧ縺ｯ髮｣縺励＞縺ｮ縺ｧ繧ｨ繝ｩ繝ｼ騾夂衍
+                    console.error('蜈･驥代↓螟ｱ謨励＠縺ｾ縺励◆・磯・≡蜈・・貂幃｡肴ｸ医∩・・', updateReceiverError);
+                    alert('蜈･驥大・逅・↓螟ｱ謨励＠縺ｾ縺励◆縲らｮ｡逅・・↓騾｣邨｡縺励※縺上□縺輔＞縲・);
+                    return;
+                }
+
+                // 5. 豢ｻ蜍輔Ο繧ｰ繧定ｨ倬鹸・磯∽ｿ｡蛛ｴ・・                if (typeof logActivity === 'function') {
+                    await logActivity(targetId, 'transfer_send', {
+                        amount: amount,
+                        targetUserId: coinTransferTargetId,
+                        details: { target_name: coinTransferTargetName }
+                    });
+                    // 豢ｻ蜍輔Ο繧ｰ繧定ｨ倬鹸・亥女菫｡蛛ｴ・・                    const senderName = document.getElementById('nickname-display')?.textContent || '隱ｰ縺・;
+                    await logActivity(coinTransferTargetId, 'transfer_receive', {
+                        amount: amount,
+                        targetUserId: targetId,
+                        details: { sender_name: senderName }
+                    });
+                }
+
+                alert(`${coinTransferTargetName} 縺輔ｓ縺ｫ ｪ・{amount.toLocaleString()} 繧帝・≡縺励∪縺励◆・～);
+                location.reload();
+
+            } catch (err) {
+                console.error('騾・≡繧ｨ繝ｩ繝ｼ:', err);
+                alert('騾・≡縺ｫ螟ｱ謨励＠縺ｾ縺励◆: ' + err.message);
+            } finally {
+                toggleLoading(false);
+            }
+        }
+
+        async function executeTransferConfirmation(toUserId, toUserName) {
+            if (!confirm(`縲・{currentActionBadgeName}縲阪ｒ ${toUserName} 縺輔ｓ縺ｫ隴ｲ貂｡縺励∪縺吶°・歃n・医≠縺ｪ縺溘・謇区戟縺｡縺九ｉ縺ｯ1縺､縺ｪ縺上↑繧翫∪縺呻ｼ荏)) {
+                return;
+            }
+
+            try {
+                toggleLoading(true);
+
+                // 1. 閾ｪ蛻・・繝舌ャ繧ｸ繧・縺､蜑企勁
+                const { data: owned, error: fetchError } = await supabaseClient
+                    .from('user_badges')
+                    .select('id')
+                    .eq('user_id', targetId)
+                    .eq('badge_id', currentActionBadgeId)
+                    .limit(1)
+                    .single();
+
+                if (fetchError) throw new Error('隴ｲ貂｡縺吶ｋ繝舌ャ繧ｸ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ');
+
+                const { error: deleteError } = await supabaseClient
+                    .from('user_badges')
+                    .delete()
+                    .eq('id', owned.id);
+
+                if (deleteError) throw deleteError;
+
+                // 2. 逶ｸ謇九↓莉倅ｸ・                const { error: insertError } = await supabaseClient
+                    .from('user_badges')
+                    .insert([{ user_id: toUserId, badge_id: currentActionBadgeId }]);
+
+                if (insertError) throw insertError;
+
+                // 3. 豢ｻ蜍輔Ο繧ｰ繧定ｨ倬鹸
+                if (typeof logActivity === 'function') {
+                    const senderName = document.getElementById('nickname-display')?.textContent || '隱ｰ縺・;
+                    await logActivity(targetId, 'badge_transfer', {
+                        badgeId: currentActionBadgeId,
+                        targetUserId: toUserId,
+                        details: { target_name: toUserName, badge_name: currentActionBadgeName }
+                    });
+                    await logActivity(toUserId, 'badge_receive', {
+                        badgeId: currentActionBadgeId,
+                        targetUserId: targetId,
+                        details: { sender_name: senderName, badge_name: currentActionBadgeName }
+                    });
+                }
+
+                alert(`${toUserName} 縺輔ｓ縺ｫ繝舌ャ繧ｸ繧定ｭｲ貂｡縺励∪縺励◆・～);
+                location.reload();
+            } catch (err) {
+                console.error('隴ｲ貂｡繧ｨ繝ｩ繝ｼ:', err);
+                alert('隴ｲ貂｡縺ｫ螟ｱ謨励＠縺ｾ縺励◆: ' + err.message);
+            } finally {
+                toggleLoading(false);
+            }
+        }
+
         async function equipBadge(badgeId) {
             if (isViewMode) return;
 
-            // 現在の装着状況を確認
-            const { data: current } = await supabaseClient
+            // 迴ｾ蝨ｨ縺ｮ陬・捩迥ｶ豕√ｒ遒ｺ隱・            const { data: current } = await supabaseClient
                 .from('profiles')
                 .select('equipped_badge_id')
                 .eq('discord_user_id', targetId)
                 .maybeSingle();
 
-            // 同じバッジをクリックした場合は外す（任意：今回は「外す」機能も兼ねる）
-            const newBadgeId = (current?.equipped_badge_id === badgeId) ? null : badgeId;
+            // 蜷後§繝舌ャ繧ｸ繧偵け繝ｪ繝・け縺励◆蝣ｴ蜷医・螟悶☆・井ｻｻ諢擾ｼ壻ｻ雁屓縺ｯ縲悟､悶☆縲肴ｩ溯・繧ょ・縺ｭ繧具ｼ・            const newBadgeId = (current?.equipped_badge_id === badgeId) ? null : badgeId;
 
             try {
                 const { error } = await supabaseClient
@@ -1899,126 +1988,153 @@
 
                 if (error) throw error;
 
-                await loadOwnedBadges(); // リスト更新
-                await loadTargetUserInfo(); // 名前横のバッジ更新
+                await loadOwnedBadges(); // 繝ｪ繧ｹ繝域峩譁ｰ
+                await loadTargetUserInfo(); // 蜷榊燕讓ｪ縺ｮ繝舌ャ繧ｸ譖ｴ譁ｰ
+                displayUserInfo(); // 繝倥ャ繝繝ｼ譖ｴ譁ｰ
 
-                // モーダルを閉じる
+                // 繝｢繝ｼ繝繝ｫ繧帝哩縺倥ｋ
                 const modalEl = document.getElementById('badgeChangeModal');
-                bootstrap.Modal.getInstance(modalEl)?.hide();
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
             } catch (err) {
-                console.error('装着エラー:', err);
-                alert('バッジの変更に失敗しました');
+                console.error('繝舌ャ繧ｸ螟画峩繧ｨ繝ｩ繝ｼ:', err);
+                alert('繝舌ャ繧ｸ縺ｮ螟画峩縺ｫ螟ｱ謨励＠縺ｾ縺励◆');
             }
         }
 
-        // 装着バッジの変更モーダル (badge_id ベースのままでOK：見た目のため)
-        async function openBadgeChangeModal() {
+        // 繝舌ャ繧ｸ螟画峩繝｢繝ｼ繝繝ｫ繧帝幕縺・        async function openBadgeChangeModal() {
             const listEl = document.getElementById('badge-modal-list');
-            listEl.innerHTML = '<p class="text-center text-muted py-3">読み込み中...</p>';
+            listEl.innerHTML = '<p class="text-center text-muted py-3">隱ｭ縺ｿ霎ｼ縺ｿ荳ｭ...</p>';
 
             const modalEl = document.getElementById('badgeChangeModal');
             const modal = new bootstrap.Modal(modalEl);
             modal.show();
 
             try {
-                // 所持バッジ（ユニークなIDのみ抽出）
-                const { data: owned, error } = await supabaseClient
-                    .from('user_badges_new')
+                // 謇謖√ヰ繝・ず縺ｮ蜿門ｾ・                const { data: owned, error } = await supabaseClient
+                    .from('user_badges')
                     .select('badge_id, badges(*)')
                     .eq('user_id', targetId);
 
                 if (error) throw error;
 
-                const uniqueBadges = [];
-                const seen = new Set();
-                owned.forEach(item => {
-                    if (item.badges && !seen.has(item.badge_id)) {
-                        uniqueBadges.push(item.badges);
-                        seen.add(item.badge_id);
-                    }
-                });
+                // 陬・捩荳ｭ縺ｮ繝舌ャ繧ｸID蜿門ｾ・                const { data: profile } = await supabaseClient
+                    .from('profiles')
+                    .select('equipped_badge_id')
+                    .eq('discord_user_id', targetId)
+                    .maybeSingle();
 
-                const { data: profile } = await supabaseClient
-                    .from('profiles').select('equipped_badge_id').eq('discord_user_id', targetId).maybeSingle();
                 const equippedId = profile?.equipped_badge_id;
 
-                if (uniqueBadges.length === 0) {
-                    listEl.innerHTML = '<p class="text-center text-muted py-3">バッジを持っていません</p>';
+                if (!owned || owned.length === 0) {
+                    listEl.innerHTML = '<p class="text-center text-muted py-3">繝舌ャ繧ｸ繧呈戟縺｣縺ｦ縺・∪縺帙ｓ</p>';
                     return;
                 }
 
-                listEl.innerHTML = uniqueBadges.map(badge => {
+                listEl.innerHTML = owned.map(item => {
+                    const badge = item.badges;
+                    if (!badge) return '';
                     const isEquipped = badge.id === equippedId;
                     return `
-                    < div class="col-4 col-md-3 text-center" >
-                        <div class="badge-item ${isEquipped ? 'equipped' : ''}"
-                            onclick="equipBadge('${badge.id}')"
-                            style="cursor: pointer;"
-                            title="${badge.name}${isEquipped ? ' (装着中)' : ''}">
-                            <img src="${badge.image_url}" alt="${badge.name}" style="width: 60px; height: 60px; object-fit: contain;">
+                        <div class="col-4 col-md-3 text-center">
+                            <div class="badge-item ${isEquipped ? 'equipped' : ''}" 
+                                 onclick="equipBadge('${badge.id}')"
+                                 style="cursor: pointer;"
+                                 title="${badge.name}${isEquipped ? ' (陬・捩荳ｭ)' : ''}">
+                                <img src="${badge.image_url}" alt="${badge.name}" style="width: 60px; height: 60px; object-fit: contain;">
+                            </div>
                         </div>
-                        </div >
                     `;
                 }).join('');
+
             } catch (err) {
-                console.error('バッジ読み込みエラー:', err);
-                listEl.innerHTML = '<p class="text-center text-danger py-3">エラーが発生しました</p>';
+                console.error('繝舌ャ繧ｸ隱ｭ縺ｿ霎ｼ縺ｿ繧ｨ繝ｩ繝ｼ:', err);
+                listEl.innerHTML = '<p class="text-center text-danger py-3">繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆</p>';
             }
         }
 
-        // ============ 麻雀統計機能 ============
+        // ============ 鮗ｻ髮邨ｱ險域ｩ溯・ ============
         let allMahjongRecords = [];
         let myAccountName = '';
-        let currentMyTournament = '第二回麻雀大会';
+        let currentMyTournament = '隨ｬ莠悟屓鮗ｻ髮螟ｧ莨・;
 
         async function loadMahjongStats() {
             try {
-                const urlParams = new URLSearchParams(window.location.search);
+                // URL繝代Λ繝｡繝ｼ繧ｿ縺九ｉ迚ｹ螳壹Θ繝ｼ繧ｶ繝ｼID繧貞叙蠕暦ｼ育ｮ｡逅・・畑・・                const urlParams = new URLSearchParams(window.location.search);
                 const targetUserId = urlParams.get('user');
 
                 if (targetUserId) {
+                    // 迚ｹ螳壹Θ繝ｼ繧ｶ繝ｼ縺ｮ邨ｱ險医ｒ陦ｨ遉ｺ
                     myAccountName = targetUserId;
                 } else {
+                    // 閾ｪ蛻・・邨ｱ險医ｒ陦ｨ遉ｺ
                     const user = await getCurrentUser();
                     if (!user) return;
                     myAccountName = user.user_metadata.provider_id;
                 }
 
+                // 隨ｬ莠悟屓鮗ｻ髮螟ｧ莨壹ョ繝ｼ繧ｿ
                 const { data: currentData, error: currentError } = await supabaseClient
                     .from('match_results')
                     .select('*');
 
-                if (currentError) console.warn('第二回データ取得エラー:', currentError);
+                if (currentError) {
+                    console.warn('隨ｬ莠悟屓繝・・繧ｿ蜿門ｾ励お繝ｩ繝ｼ:', currentError);
+                }
 
+                // 隨ｬ荳蝗樣ｺｻ髮螟ｧ莨壹ョ繝ｼ繧ｿ
                 let legacyData = [];
                 try {
                     const { data, error: legacyError } = await supabaseClient
                         .from('tournament_player_stats_snapshot')
                         .select('*');
-                    if (!legacyError) legacyData = data || [];
+
+                    if (legacyError) {
+                        console.warn('隨ｬ荳蝗槭ョ繝ｼ繧ｿ蜿門ｾ励お繝ｩ繝ｼ:', legacyError);
+                    } else {
+                        legacyData = data || [];
+                    }
                 } catch (e) {
-                    console.warn('第一回データ取得スキップ:', e);
+                    console.warn('隨ｬ荳蝗槭ョ繝ｼ繧ｿ蜿門ｾ励せ繧ｭ繝・・:', e);
                 }
 
-                const taggedCurrentData = (currentData || []).map(r => ({ ...r, tournament_type: r.tournament_type || '第二回麻雀大会' }));
-                const taggedLegacyData = (legacyData || []).map(r => ({ ...r, tournament_type: r.tournament_type || '第一回麻雀大会' }));
+                // 譁ｰ繝・・繧ｿ縺ｫ繧・tournament_type 繧剃ｿ晞囿
+                const taggedCurrentData = (currentData || []).map(r => ({
+                    ...r,
+                    tournament_type: r.tournament_type || '隨ｬ莠悟屓鮗ｻ髮螟ｧ莨・
+                }));
+
+                // 驕主悉繝・・繧ｿ縺ｫ tournament_type 繧剃ｿ晞囿
+                const taggedLegacyData = (legacyData || []).map(r => ({
+                    ...r,
+                    tournament_type: r.tournament_type || '隨ｬ荳蝗樣ｺｻ髮螟ｧ莨・
+                }));
 
                 allMahjongRecords = [...taggedCurrentData, ...taggedLegacyData];
+                console.log('投 蜿門ｾ励＠縺溘Ξ繧ｳ繝ｼ繝画焚:', allMahjongRecords.length);
+
                 renderTournamentDropdown();
                 displayMahjongStats();
             } catch (err) {
-                console.error('麻雀統計取得エラー:', err);
+                console.error('鮗ｻ髮邨ｱ險亥叙蠕励お繝ｩ繝ｼ:', err);
                 document.getElementById('stats-loading').style.display = 'none';
                 document.getElementById('no-stats-msg').style.display = 'block';
+                document.getElementById('stats-content').style.display = 'block';
             }
         }
 
         function renderTournamentDropdown() {
             const select = document.getElementById('tournament-select');
             if (!select) return;
-            const tournaments = ['第二回麻雀大会', '第一回麻雀大会'];
-            let html = tournaments.map(t => `<option value="${t}" ${currentMyTournament === t ? 'selected' : ''}>${t}</option>`).join('');
-            html += `<option value="all" ${currentMyTournament === 'all' ? 'selected' : ''}>全シーズン</option>`;
+
+            const tournaments = ['隨ｬ莠悟屓鮗ｻ髮螟ｧ莨・, '隨ｬ荳蝗樣ｺｻ髮螟ｧ莨・];
+
+            let html = '';
+            tournaments.forEach(t => {
+                html += `<option value="${t}" ${currentMyTournament === t ? 'selected' : ''}>${t}</option>`;
+            });
+            html += `<option value="all" ${currentMyTournament === 'all' ? 'selected' : ''}>蜈ｨ繧ｷ繝ｼ繧ｺ繝ｳ</option>`;
+
             select.innerHTML = html;
         }
 
@@ -2029,13 +2145,20 @@
         }
 
         function displayMahjongStats() {
+            // 螟ｧ莨壹ヵ繧｣繝ｫ繧ｿ
             let records = allMahjongRecords;
             if (currentMyTournament !== 'all') {
                 records = allMahjongRecords.filter(r => r.tournament_type === currentMyTournament);
             }
 
-            const playerStats = calculateAllPlayerStats(records);
-            const myStats = playerStats.find(p => p.name === myAccountName);
+            // 蜈ｨ繝励Ξ繧､繝､繝ｼ縺ｮ邨ｱ險郁ｨ育ｮ・            const playerStats = calculateAllPlayerStats(records);
+
+            // 繝・ヰ繝・げ: 蜈ｨ繝励Ξ繧､繝､繝ｼ蜷阪ｒ陦ｨ遉ｺ
+            console.log('識 閾ｪ蛻・・繧｢繧ｫ繧ｦ繝ｳ繝亥錐:', myAccountName);
+            console.log('搭 蜈ｨ繝励Ξ繧､繝､繝ｼ蜷・', playerStats.map(p => p.name));
+
+            // 閾ｪ蛻・・邨ｱ險医ｒ蜿門ｾ・            const myStats = playerStats.find(p => p.name === myAccountName);
+            const totalPlayers = playerStats.length;
 
             document.getElementById('stats-loading').style.display = 'none';
             document.getElementById('stats-content').style.display = 'block';
@@ -2051,15 +2174,20 @@
             if (statsGrid) statsGrid.style.display = 'block';
             noStatsMsg.style.display = 'none';
 
-            const formatScore = (val) => (typeof val !== 'number') ? val : Math.round(val * 10) / 10;
+            // 蜷・ｵｱ險医ｒ陦ｨ遉ｺ
+            const formatScore = (val) => {
+                if (typeof val !== 'number') return val;
+                // 蟆乗焚轤ｹ隨ｬ1菴阪∪縺ｧ縺ｫ荳ｸ繧√ｋ縺後・0 縺ｮ蝣ｴ蜷医・謨ｴ謨ｰ縺ｫ縺吶ｋ
+                return Math.round(val * 10) / 10;
+            };
 
             updateStatCard('total', formatScore(myStats.total), playerStats, 'total', true);
             updateStatCard('sanma', formatScore(myStats.sanma), playerStats, 'sanma', true);
             updateStatCard('yonma', formatScore(myStats.yonma), playerStats, 'yonma', true);
             updateStatCard('avg-score', formatScore(myStats.avgScore), playerStats, 'avgScore', true);
             updateStatCard('max-score', formatScore(myStats.maxScore), playerStats, 'maxScore', true);
-            updateStatCard('win-rate', myStats.winRate.toFixed(2) + ' / 試合', playerStats, 'winRate', true);
-            updateStatCard('deal-rate', myStats.dealRate.toFixed(2) + ' / 試合', playerStats, 'dealRate', false);
+            updateStatCard('win-rate', myStats.winRate.toFixed(2) + ' / 隧ｦ蜷・, playerStats, 'winRate', true);
+            updateStatCard('deal-rate', myStats.dealRate.toFixed(2) + ' / 隧ｦ蜷・, playerStats, 'dealRate', false);
             updateStatCard('top-rate', myStats.topRate.toFixed(1) + '%', playerStats, 'topRate', true);
             updateStatCard('avoid-rate', myStats.avoidRate.toFixed(1) + '%', playerStats, 'avoidRate', true);
             updateStatCard('avg-rank', myStats.avgRank.toFixed(2), playerStats, 'avgRank', false);
@@ -2067,246 +2195,143 @@
         }
 
         function updateStatCard(id, value, allStats, key, higherIsBetter) {
-            const el = document.getElementById('stat-' + id);
-            if (el) el.textContent = value;
+            document.getElementById('stat-' + id).textContent = value;
 
-            const sorted = [...allStats].filter(p => p.games > 0).sort((a, b) => higherIsBetter ? b[key] - a[key] : a[key] - b[key]);
+            // 鬆・ｽ崎ｨ育ｮ・            const sorted = [...allStats].filter(p => p.games > 0).sort((a, b) =>
+                higherIsBetter ? b[key] - a[key] : a[key] - b[key]
+            );
             const myRank = sorted.findIndex(p => p.name === myAccountName) + 1;
             const total = sorted.length;
 
             const rankEl = document.getElementById('rank-' + id);
-            if (rankEl) {
-                if (myRank > 0) {
-                    rankEl.textContent = `${myRank}/${total}位`;
-                    rankEl.classList.remove('no-data');
-                } else {
-                    rankEl.textContent = '-';
-                    rankEl.classList.add('no-data');
-                }
+            if (myRank > 0) {
+                rankEl.textContent = `${myRank}/${total}菴港;
+                rankEl.classList.remove('no-data');
+            } else {
+                rankEl.textContent = '-';
+                rankEl.classList.add('no-data');
             }
         }
 
         function calculateAllPlayerStats(records) {
             const players = {};
+
             records.forEach(r => {
-                let id = r.discord_user_id;
-                if (!id || id === 'null') id = r.nickname || r.account_name || 'Unknown';
+                // discord_user_id繧偵く繝ｼ縺ｨ縺励※菴ｿ逕ｨ・医Λ繝ｳ繧ｭ繝ｳ繧ｰ縺ｨ蜷後§繝ｭ繧ｸ繝・け・・                let id = r.discord_user_id;
+                if (!id || id === 'null') {
+                    id = r.nickname || r.account_name || 'Unknown';
+                }
                 if (!id) return;
 
                 if (!players[id]) {
-                    players[id] = { name: id, score: 0, sanma: 0, yonma: 0, count: 0, win: 0, deal: 0, r1: 0, r2: 0, r3: 0, r4: 0, max_score: -Infinity };
+                    players[id] = {
+                        name: id,
+                        score: 0, sanma: 0, yonma: 0,
+                        count: 0, win: 0, deal: 0,
+                        r1: 0, r2: 0, r3: 0, r4: 0,
+                        max_score: -Infinity
+                    };
                 }
 
                 const p = players[id];
-                const mode = r.mahjong_mode || r.mode || '';
-
-                if (r.tournament_type === '第一回麻雀大会') {
+                const mode = r.mahjong_mode || r.mode || ''; // 繝ｩ繝ｳ繧ｭ繝ｳ繧ｰ逕ｻ髱｢縺ｫ蜷医ｏ縺帙※ mahjong_mode 繧貞━蜈・
+                // 隨ｬ荳蝗槫､ｧ莨壹→隨ｬ莠悟屓螟ｧ莨壹〒逡ｰ縺ｪ繧九き繝ｩ繝蜷阪ｒ蜃ｦ逅・                if (r.tournament_type === '隨ｬ荳蝗樣ｺｻ髮螟ｧ莨・) {
                     p.score += Number(r.score_total || 0);
                     p.count += Number(r.matches_played || 0);
-                    p.r1 += Number(r.rank1_count || 0); p.r2 += Number(r.rank2_count || 0); p.r3 += Number(r.rank3_count || 0); p.r4 += Number(r.rank4_count || 0);
+                    p.r1 += Number(r.rank1_count || 0);
+                    p.r2 += Number(r.rank2_count || 0);
+                    p.r3 += Number(r.rank3_count || 0);
+                    p.r4 += Number(r.rank4_count || 0);
                     p.max_score = Math.max(p.max_score, Number(r.score_max || 0));
                 } else {
                     p.score += Number(r.final_score || 0);
                     p.count += 1;
                     const rk = Number(r.rank);
-                    if (rk === 1) p.r1++; else if (rk === 2) p.r2++; else if (rk === 3) p.r3++; else if (rk === 4) p.r4++;
+                    if (rk === 1) p.r1++;
+                    else if (rk === 2) p.r2++;
+                    else if (rk === 3) p.r3++;
+                    else if (rk === 4) p.r4++;
                     p.max_score = Math.max(p.max_score, Number(r.final_score || 0));
                 }
+
                 p.win += Number(r.win_count || r.wins || 0);
                 p.deal += Number(r.deal_in_count || r.deals || 0);
-                if (mode === '三麻') p.sanma += Number(r.final_score || r.score_total || 0);
-                if (mode === '四麻') p.yonma += Number(r.final_score || r.score_total || 0);
+
+                // 繝｢繝ｼ繝牙挨繧ｹ繧ｳ繧｢・井ｸ蛾ｺｻ繧ｹ繧ｳ繧｢繝ｻ蝗幃ｺｻ繧ｹ繧ｳ繧｢陦ｨ遉ｺ逕ｨ・・                if (mode === '荳蛾ｺｻ') p.sanma += Number(r.final_score || r.score_total || 0);
+                if (mode === '蝗幃ｺｻ') p.yonma += Number(r.final_score || r.score_total || 0);
             });
 
-            return Object.values(players).map(p => {
-                const count = p.count;
+            // 邨ｱ險亥､繧定ｨ育ｮ・            return Object.values(players).map(p => {
+                const avgWin = p.count > 0 ? (p.win / p.count) : 0;
+                const avgDeal = p.count > 0 ? (p.deal / p.count) : 0;
+                const topRate = p.count > 0 ? (p.r1 / p.count) * 100 : 0;
+                let lastCount = p.r4;
+                if (p.r4 === 0 && p.r3 > 0) lastCount = p.r3;
+                const avoidRate = p.count > 0 ? (1 - (lastCount / p.count)) * 100 : 0;
+                const avgRank = p.count > 0 ? (1 * p.r1 + 2 * p.r2 + 3 * p.r3 + 4 * p.r4) / p.count : 0;
+                const avgScore = p.count > 0 ? p.score / p.count : 0;
+
                 return {
-                    name: p.name, total: p.score, sanma: p.sanma, yonma: p.yonma,
-                    avgScore: count > 0 ? p.score / count : 0,
+                    name: p.name,
+                    total: p.score,
+                    sanma: p.sanma,
+                    yonma: p.yonma,
+                    avgScore: avgScore,
                     maxScore: p.max_score === -Infinity ? 0 : p.max_score,
-                    winRate: count > 0 ? p.win / count : 0, dealRate: count > 0 ? p.deal / count : 0,
-                    avgRank: count > 0 ? (1 * p.r1 + 2 * p.r2 + 3 * p.r3 + 4 * p.r4) / count : 0,
-                    topRate: count > 0 ? (p.r1 / count) * 100 : 0,
-                    avoidRate: count > 0 ? (1 - ((p.r4 === 0 && p.r3 > 0 ? p.r3 : p.r4) / count)) * 100 : 0,
-                    games: count
+                    winRate: avgWin,
+                    dealRate: avgDeal,
+                    avgRank: avgRank,
+                    topRate: topRate,
+                    avoidRate: avoidRate,
+                    games: p.count
                 };
             });
         }
 
-        // 戻るボタン
-        function goBack() {
-            if (document.referrer && document.referrer.includes(location.hostname)) history.back();
-            else location.href = '../index.html';
+        // 謌ｻ繧九・繧ｿ繝ｳ - 蜑阪・繝壹・繧ｸ縺ｫ謌ｻ繧具ｼ亥ｱ･豁ｴ縺後↑縺・ｴ蜷医・繝帙・繝縺ｸ・・        function goBack() {
+            if (document.referrer && document.referrer.includes(location.hostname)) {
+                history.back();
+            } else {
+                location.href = '../index.html';
+            }
         }
 
         function toggleLoading(show) {
             const overlay = document.getElementById('loading-overlay');
-            if (overlay) overlay.classList.toggle('active', show);
+            if (show) {
+                overlay.classList.add('active');
+            } else {
+                overlay.classList.remove('active');
+            }
         }
+
 
         document.addEventListener('DOMContentLoaded', initPage);
+
     </script>
-
-    <!-- コイン送金とユーザー検索 -->
-    <script>
-        let currentSelectMode = '';
-        async function openUserSelectModal(mode) {
-            currentSelectMode = mode;
-            const listEl = document.getElementById('transfer-user-list');
-            listEl.innerHTML = '<p class="text-center text-muted py-3">読み込み中...</p>';
-            new bootstrap.Modal(document.getElementById('userSelectModal')).show();
-
-            try {
-                const { data: profiles, error } = await supabaseClient
-                    .from('profiles')
-                    .select('discord_user_id, account_name, avatar_url, equipped_badge_id, badges!equipped_badge_id(image_url)')
-                    .neq('discord_user_id', targetId)
-                    .order('account_name');
-
-                if (error) throw error;
-                listEl.innerHTML = profiles.map(p => `
-                    <div class="user-select-item" onclick="confirmSelection('${p.discord_user_id}', '${p.account_name.replace(/'/g, "\\'")}')">
-                        <img src="${p.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png'}" class="user-select-avatar">
-                        <span class="user-select-name">${p.account_name}</span>
-                        ${p.badges ? `<img src="${p.badges.image_url}" class="user-select-badge">` : ''}
-                    </div>
-                `).join('');
-            } catch (err) {
-                listEl.innerHTML = '<p class="text-center text-danger py-3">読み込み失敗</p>';
-            }
-        }
-
-        let selectedToUserId = '';
-        let selectedToUserName = '';
-        function confirmSelection(id, name) {
-            selectedToUserId = id;
-            selectedToUserName = name;
-            bootstrap.Modal.getInstance(document.getElementById('userSelectModal'))?.hide();
-            if (currentSelectMode === 'coin_transfer') {
-                document.getElementById('coin-transfer-target-name').textContent = `${name} さんへ送金`;
-                // 所持金を表示に反映
-                const myProfile = allProfiles.find(p => p.discord_user_id === targetId);
-                const currentCoins = myProfile ? myProfile.coins : 0;
-                const coinsRefEl = document.getElementById('my-coins-ref');
-                if (coinsRefEl) coinsRefEl.textContent = currentCoins.toLocaleString();
-
-                new bootstrap.Modal(document.getElementById('coinAmountModal')).show();
-            } else if (currentSelectMode === 'badge_transfer') {
-                const msg = `「${currentActionBadgeName}」を ${name} さんに譲渡しますか？\n\n` +
-                    (currentActionDetails || '');
-                if (confirm(msg)) {
-                    executeBadgeTransfer(id, name);
-                }
-            }
-        }
-
-        async function executeBadgeTransfer(toUserId, toUserName) {
-            toggleLoading(true);
-            try {
-                // 1. バッジの user_id を変更
-                const { error: updateError } = await supabaseClient
-                    .from('user_badges_new')
-                    .update({ user_id: toUserId })
-                    .eq('uuid', currentActionUUID);
-
-                if (updateError) throw updateError;
-
-                // 2. 活動ログを記録
-                if (typeof logActivity === 'function') {
-                    const sender = allProfiles.find(p => p.discord_user_id === targetId);
-                    const senderName = sender?.account_name || '誰か';
-
-                    await logActivity(targetId, 'badge_transfer', {
-                        badgeId: currentActionUUID,
-                        targetUserId: toUserId,
-                        details: { target_name: toUserName, badge_name: currentActionBadgeName }
-                    });
-                    await logActivity(toUserId, 'badge_receive', {
-                        badgeId: currentActionUUID,
-                        targetUserId: targetId,
-                        details: { sender_name: senderName, badge_name: currentActionBadgeName }
-                    });
-                }
-
-                alert(`${toUserName} さんにバッジを譲渡しました！`);
-                // ヘッダーの所持金・バッジ情報も更新するために全体をリロード
-                if (isViewMode) {
-                    await loadTargetUserInfo();
-                } else {
-                    const user = await getCurrentUser();
-                    if (user) await displayMyInfo(user);
-                }
-                await loadOwnedBadges();
-                await loadActivityLogs();
-            } catch (err) {
-                console.error('譲渡エラー:', err);
-                alert('譲渡に失敗しました');
-            } finally {
-                toggleLoading(false);
-            }
-        }
-
-        async function executeCoinTransfer() {
-            const amount = parseInt(document.getElementById('coin-transfer-amount').value);
-            if (!amount || amount <= 0) return alert('金額を入力してください');
-
-            toggleLoading(true);
-            try {
-                const { data, error } = await supabaseClient.rpc('transfer_coins', {
-                    p_amount: amount,
-                    p_from_id: targetId,
-                    p_to_id: selectedToUserId
-                });
-
-                if (error) throw error;
-                if (!data.ok) throw new Error(data.error || '送金に失敗しました');
-
-                alert(`${selectedToUserName} さんに 🪙${amount.toLocaleString()} 送金しました。`);
-                // 活動ログ記録
-                if (typeof logActivity === 'function') {
-                    const sender = allProfiles.find(p => p.discord_user_id === targetId);
-                    const senderName = sender?.account_name || '誰か';
-
-                    await logActivity(targetId, 'transfer_send', {
-                        amount: -amount, // 送金はマイナス
-                        targetUserId: selectedToUserId,
-                        details: { target_name: selectedToUserName }
-                    });
-                    await logActivity(selectedToUserId, 'transfer_receive', {
-                        amount: amount,
-                        targetUserId: targetId,
-                        details: { sender_name: senderName }
-                    });
-                }
-
-                // UI更新
-                if (!isViewMode) {
-                    const user = await getCurrentUser();
-                    if (user) await displayMyInfo(user);
-                }
-                await loadOwnedBadges();
-                await loadActivityLogs();
-            } catch (err) {
-                console.error('送金エラー:', err);
-                alert('送金失敗: ' + (err.message || '不明なエラー'));
-            } finally {
-                toggleLoading(false);
-            }
-        }
-        function openCoinTransferModal() { openUserSelectModal('coin_transfer'); }
-    </script>
-
-    <!-- チーム通知バッジ -->
+    <!-- 繝√・繝騾夂衍繝舌ャ繧ｸ -->
     <script>
         async function checkTeamNotifications() {
             const user = await getCurrentUser();
             if (!user) return;
+
             const discordId = user.user_metadata.provider_id;
-            const { data: myTeams } = await supabaseClient.from('teams').select('id').eq('creator_discord_id', discordId);
+
+            // 閾ｪ蛻・′繝ｪ繝ｼ繝繝ｼ縺ｮ繝√・繝繧貞叙蠕・            const { data: myTeams } = await supabaseClient
+                .from('teams')
+                .select('id')
+                .eq('creator_discord_id', discordId);
+
             if (!myTeams || myTeams.length === 0) return;
 
             const teamIds = myTeams.map(t => t.id);
-            const { data: pendingRequests } = await supabaseClient.from('team_join_requests').select('id').in('team_id', teamIds).in('status', ['pending', 'leave_pending']);
+
+            // 菫晉蕗荳ｭ縺ｮ逕ｳ隲具ｼ亥刈蜈･繝ｻ閼ｱ騾・峨ｒ繧ｫ繧ｦ繝ｳ繝・            const { data: pendingRequests } = await supabaseClient
+                .from('team_join_requests')
+                .select('id')
+                .in('team_id', teamIds)
+                .in('status', ['pending', 'leave_pending']);
+
             const count = pendingRequests?.length || 0;
 
             if (count > 0) {
@@ -2317,6 +2342,7 @@
                 }
             }
         }
+
         document.addEventListener('DOMContentLoaded', checkTeamNotifications);
     </script>
 </body>
