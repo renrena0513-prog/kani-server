@@ -13,8 +13,24 @@ UPDATE badges SET sales_type = '限定品';
 ALTER TABLE badges DROP COLUMN IF EXISTS is_fixed_price;
 ALTER TABLE badges DROP COLUMN IF EXISTS rarity;
 
--- 3. 不要なテーブルの削除
-DROP TABLE IF EXISTS rarity_thresholds;
+-- 3. レアリティ判定テーブルの定義
+CREATE TABLE IF NOT EXISTS rarity_thresholds (
+    id Serial PRIMARY KEY,
+    threshold_value Int NOT NULL,
+    rarity_name Text NOT NULL,
+    created_at Timestamptz DEFAULT Now()
+);
+
+-- シードデータ投入（価値に応じたレアリティ）
+INSERT INTO rarity_thresholds (threshold_value, rarity_name) VALUES
+(0, 'Common'),
+(3000, 'Uncommon'),
+(10000, 'Rare'),
+(30000, 'Epic'),
+(100000, 'Legendary'),
+(500000, 'Mythic'),
+(2000000, 'Divine')
+ON CONFLICT DO NOTHING;
 
 -- 既存データの移行 (古い user_badges から引き継ぎ)
 DO $$ 

@@ -1274,13 +1274,29 @@
 
             try {
                 // 所持バッジ（新・個体管理テーブル）と全バッジの流通数を取得
-                const [ownedRes, marketCountRes, profileRes] = await Promise.all([
+                const [ownedRes, marketCountRes, profileRes, thresholdsRes] = await Promise.all([
                     supabaseClient.from('user_badges_new').select('*, badges(*)').eq('user_id', targetId),
                     supabaseClient.from('user_badges_new').select('badge_id'),
-                    supabaseClient.from('profiles').select('coins, equipped_badge_id, total_assets').eq('discord_user_id', targetId).maybeSingle()
+                    supabaseClient.from('profiles').select('coins, equipped_badge_id, total_assets').eq('discord_user_id', targetId).maybeSingle(),
+                    supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true })
                 ]);
 
                 if (ownedRes.error) throw ownedRes.error;
+                const thresholds = thresholdsRes.data || [];
+
+                function getDynamicRarity(assetValue, fixedRarity) {
+                    if (fixedRarity) return fixedRarity;
+                    if (!thresholds || thresholds.length === 0) return '-';
+                    let current = thresholds[0].rarity_name;
+                    for (const t of thresholds) {
+                        if (assetValue >= t.threshold_value) {
+                            current = t.rarity_name;
+                        } else {
+                            break;
+                        }
+                    }
+                    return current;
+                }
                 const owned = ownedRes.data;
                 const profileData = profileRes.data;
                 const userCoins = profileData?.coins || 0;
@@ -1355,7 +1371,7 @@
 
                     totalBadgeAssetValue += (pValue * count);
 
-                    const rarity = badge.fixed_rarity_name || '-';
+                    const rarity = getDynamicRarity(pValue, badge.fixed_rarity_name);
                     const color = rarityColors[rarity] || '#888';
                     const isEquipped = group.isEquipped;
                     const hasMutant = group.instances.some(i => i.is_mutant);
