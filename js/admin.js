@@ -935,10 +935,10 @@ async function fetchBadges() {
                             </div>
                             <div class="mt-1 d-flex justify-content-between align-items-center">
                                 <span class="small text-muted">📦 在庫: ${badge.remaining_count ?? '∞'}</span>
-                                <span class="small text-muted">⭐ ${badge.rarity || 'Normal'}</span>
+                                <span class="small text-muted">⭐ ${badge.fixed_rarity_name || '-'}</span>
                             </div>
                             <div class="mt-1 text-center">
-                                <span class="small text-muted">🔢 順序: ${badge.order ?? 0}</span>
+                                <span class="small text-muted">🔢 順序: ${badge.sort_order ?? 0}</span>
                             </div>
                         <div class="mt-3 d-flex gap-1 justify-content-center">
                             <button onclick='openBadgeModal(${JSON.stringify(badge).replace(/'/g, "&apos;")})' class="btn btn-sm btn-outline-primary">編集</button>
@@ -971,9 +971,9 @@ async function openBadgeModal(badge = null) {
         document.getElementById('badge-weight').value = badge.gacha_weight;
         document.getElementById('badge-price').value = badge.price;
         document.getElementById('badge-stock').value = badge.remaining_count ?? 999;
-        document.getElementById('badge-sort-order').value = badge.order ?? 0;
+        document.getElementById('badge-sort-order').value = badge.sort_order ?? 0;
         document.getElementById('badge-image-url').value = badge.image_url;
-        document.getElementById('badge-rarity').value = badge.rarity || 'Normal';
+        document.getElementById('badge-fixed-rarity').value = badge.fixed_rarity_name || '';
         document.getElementById('badge-requirements').value = badge.requirements || '';
         document.getElementById('badge-owner').value = badge.discord_user_id || '';
 
@@ -986,7 +986,7 @@ async function openBadgeModal(badge = null) {
         document.getElementById('badgeModalLabel').textContent = '新規バッジ登録';
         document.getElementById('badge-id').value = '';
         document.getElementById('badge-image-url').value = '';
-        document.getElementById('badge-rarity').value = 'Normal';
+        document.getElementById('badge-fixed-rarity').value = '';
         document.getElementById('badge-requirements').value = '';
         document.getElementById('badge-owner').value = '';
     }
@@ -1056,8 +1056,8 @@ async function saveBadge() {
     const gacha_weight = Number(document.getElementById('badge-weight').value);
     const price = Number(document.getElementById('badge-price').value);
     const remaining_count = Number(document.getElementById('badge-stock').value);
-    const order = Number(document.getElementById('badge-sort-order').value);
-    const rarity = document.getElementById('badge-rarity').value;
+    const sort_order = Number(document.getElementById('badge-sort-order').value);
+    const fixed_rarity_name = document.getElementById('badge-fixed-rarity').value;
     const requirements = document.getElementById('badge-requirements').value;
     let image_url = document.getElementById('badge-image-url').value;
 
@@ -1099,9 +1099,9 @@ async function saveBadge() {
             gacha_weight,
             price,
             remaining_count,
-            order,
+            sort_order,
             image_url,
-            rarity,
+            fixed_rarity_name,
             requirements,
             discord_user_id: document.getElementById('badge-owner').value || null
         };
@@ -1220,7 +1220,7 @@ async function exportBadgesToCSV() {
             return;
         }
 
-        const headers = ['id', 'name', 'description', 'requirements', 'rarity', 'image_url', 'gacha_weight', 'price', 'remaining_count', 'sort_order', 'discord_user_id'];
+        const headers = ['id', 'name', 'description', 'requirements', 'fixed_rarity_name', 'image_url', 'gacha_weight', 'price', 'remaining_count', 'sort_order', 'discord_user_id'];
         const csvRows = [headers.join(',')];
 
         badges.forEach(badge => {

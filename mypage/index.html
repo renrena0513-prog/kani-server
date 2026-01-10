@@ -1382,7 +1382,7 @@
                     // 左下（個数と重ならないように）または別の場所にミュータント表示
                     const mutantLabel = hasMutant ? '<span class="badge bg-warning text-dark position-absolute bottom-0 start-0 m-1" style="font-size:0.5rem; z-index:4;">変異</span>' : '';
 
-                    // 非売品判定: is_fixed_price が null の場合は非売品
+                    // 非売品判定: sales_type が '限定品' の場合は非売品
                     const isNonSaleable = (badge.sales_type === '限定品');
 
                     const cardHtml = `
