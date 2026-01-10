@@ -1274,7 +1274,11 @@ async function handleBadgeCSVImport(event) {
 
                     // 数値型のカラム
                     if (['gacha_weight', 'price', 'remaining_count', 'sort_order'].includes(h)) {
-                        val = (val !== '' && val !== undefined && val !== 'null') ? Number(val) : 0;
+                        if (val === '' || val === undefined || val === 'null') {
+                            val = (h === 'remaining_count') ? null : 0;
+                        } else {
+                            val = Number(val);
+                        }
                     }
 
                     // 空文字列やnullはスキップ（不要なカラム）
