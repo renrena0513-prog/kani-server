@@ -60,6 +60,34 @@ let filterState = {
     match_modes: []
 };
 
+// 新規記録用のモーダル
+function openRecordModal() {
+    document.getElementById('recordModalLabel').textContent = '大会記録 追加 (一括)';
+    document.getElementById('record-form').reset();
+    document.getElementById('match-id').value = '';
+
+    // 日時を現在時刻に設定
+    const now = new Date();
+    // JST調整 (簡易版)
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    document.getElementById('event_datetime').value = now.toISOString().slice(0, 16);
+
+    // プレイヤー別項目をすべて表示（新規追加時は4人分用意）
+    const cards = document.querySelectorAll('.player-edit-card');
+    cards.forEach(card => {
+        card.style.display = 'block';
+        card.querySelector('.player-record-id').value = '';
+        card.querySelector('.player-account-name').value = '';
+        card.querySelector('.player-final-score').value = '';
+        card.querySelector('.player-rank').value = '';
+        card.querySelector('.player-win-count').value = '0';
+        card.querySelector('.player-deal-in-count').value = '0';
+        card.querySelector('.player-discord-id').value = '';
+    });
+
+    recordModal.show();
+}
+
 // 記録一覧の取得
 async function fetchRecords() {
     try {
@@ -70,17 +98,13 @@ async function fetchRecords() {
         if (error) throw error;
 
         allRecords = records;
-        updateFilterOptions(); // フィルターの選択肢を更新
+        updateFilterOptions();
         applyFiltersAndSort();
     } catch (err) {
         console.error('記録取得エラー:', err.message);
         const listBody = document.getElementById('records-list-body');
         if (listBody) {
-            if (err.message.includes('relation "match_results" does not exist')) {
-                listBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">テーブル "match_results" が見つかりません。</td></tr>';
-            } else {
-                listBody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">エラー: ${err.message}</td></tr>`;
-            }
+            listBody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">エラー: ${err.message}</td></tr>`;
         }
     }
 }
@@ -211,89 +235,184 @@ function displayRecords(records) {
         return;
     }
 
-    records.forEach(record => {
+    // match_id でグループ化
+    const matches = {};
+    records.forEach(r => {
+        const mid = r.match_id || `no-id-${r.id}`;
+        if (!matches[mid]) matches[mid] = [];
+        matches[mid].push(r);
+    });
+
+    // 試合単位で表示
+    Object.keys(matches).forEach(mid => {
+        const matchRecords = matches[mid];
+        // 順位でソート
+        matchRecords.sort((a, b) => (a.rank || 99) - (b.rank || 99));
+
+        const first = matchRecords[0];
         const tr = document.createElement('tr');
-        const dateStr = new Date(record.event_datetime).toLocaleString('ja-JP', {
+        const dateStr = new Date(first.event_datetime).toLocaleString('ja-JP', {
             year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
         });
-        const scoreColor = (record.final_score > 0) ? 'text-success' : (record.final_score < 0 ? 'text-danger' : '');
+
+        // プレイヤー一覧
+        const accountsHtml = matchRecords.map(r => `
+            <div class="mb-1">
+                <span class="badge bg-light text-dark" style="min-width: 80px;">${r.account_name}</span>
+            </div>
+        `).join('');
+
+        const scoresHtml = matchRecords.map(r => {
+            const color = (r.final_score > 0) ? 'text-success' : (r.final_score < 0 ? 'text-danger' : '');
+            return `<div class="fw-bold ${color} mb-1">${r.final_score !== null ? (r.final_score > 0 ? '+' : '') + r.final_score.toFixed(1) : '-'}</div>`;
+        }).join('');
+
+        const ranksHtml = matchRecords.map(r => `
+            <div class="mb-1">${r.rank ? `<span class="badge bg-primary">${r.rank}位</span>` : '-'}</div>
+        `).join('');
 
         tr.innerHTML = `
             <td>${dateStr}</td>
-            <td><span class="badge bg-light text-dark">${record.account_name}</span></td>
+            <td>${accountsHtml}</td>
             <td>
-                <div class="small fw-bold">${record.tournament_type || '-'}</div>
-                <div class="small text-muted">${record.mahjong_mode || ''} / ${record.match_mode || ''}</div>
+                <div class="small fw-bold">${first.tournament_type || '-'}</div>
+                <div class="small text-muted">${first.mahjong_mode || ''} / ${first.match_mode || ''}</div>
             </td>
-            <td class="fw-bold ${scoreColor}">${record.final_score !== null ? (record.final_score > 0 ? '+' : '') + record.final_score.toFixed(1) : '-'}</td>
-            <td>${record.rank ? `<span class="badge bg-primary">${record.rank}位</span>` : '-'}</td>
-            <td>${record.matches_played || 1}局</td>
+            <td>${scoresHtml}</td>
+            <td>${ranksHtml}</td>
+            <td>${first.matches_played || first.hand_count || 1}局</td>
             <td>
-                <button onclick='editRecord(${JSON.stringify(record).replace(/'/g, "&apos;")})' class="btn btn-sm btn-outline-primary">編集</button>
-                <button onclick="deleteRecord('${record.id}')" class="btn btn-sm btn-outline-danger">削除</button>
+                <div class="d-flex flex-column gap-1">
+                    <button onclick='editMatch("${mid}")' class="btn btn-sm btn-outline-primary">編集</button>
+                    <button onclick='deleteMatch("${mid}")' class="btn btn-sm btn-outline-danger">削除</button>
+                </div>
             </td>
         `;
         listBody.appendChild(tr);
     });
 }
 
-// モーダル制御
-function openRecordModal() {
-    document.getElementById('recordModalLabel').textContent = '大会記録 追加';
-    document.getElementById('record-form').reset();
-    document.getElementById('record-id').value = '';
-    recordModal.show();
-}
+// 試合単位の編集（複数プレイヤー一括）
+function editMatch(matchId) {
+    const matchRecords = allRecords.filter(r => (r.match_id || `no-id-${r.id}`) === matchId);
+    if (matchRecords.length === 0) return;
 
-function editRecord(record) {
-    document.getElementById('recordModalLabel').textContent = '大会記録 編集';
-    document.getElementById('record-id').value = record.id;
-    const fields = [
-        'event_datetime', 'account_name', 'tournament_type', 'team_name',
-        'mahjong_mode', 'match_mode', 'final_score', 'rank',
-        'matches_played', 'win_count', 'deal_in_count', 'discord_user_id'
-    ];
-    fields.forEach(field => {
-        let val = record[field] || '';
-        if (field === 'event_datetime' && val) val = val.slice(0, 16);
-        const el = document.getElementById(field);
-        if (el) el.value = val;
+    // 順位順に並べ替え
+    matchRecords.sort((a, b) => (a.rank || 99) - (b.rank || 99));
+
+    document.getElementById('recordModalLabel').textContent = '大会記録 編集 (一括)';
+    document.getElementById('match-id').value = matchId;
+
+    // 共通項目
+    const first = matchRecords[0];
+    document.getElementById('event_datetime').value = first.event_datetime ? first.event_datetime.slice(0, 16) : '';
+    document.getElementById('tournament_type').value = first.tournament_type || '';
+    document.getElementById('mahjong_mode').value = first.mahjong_mode || '';
+    document.getElementById('match_mode').value = first.match_mode || '';
+    document.getElementById('matches_played').value = first.matches_played || first.hand_count || 1;
+
+    // プレイヤー別項目をクリア・リセット
+    const cards = document.querySelectorAll('.player-edit-card');
+    cards.forEach(card => card.style.display = 'none');
+
+    matchRecords.forEach((r, i) => {
+        if (i >= 4) return; // 最大4名まで
+        const card = cards[i];
+        card.style.display = 'block';
+        card.querySelector('.player-record-id').value = r.id;
+        card.querySelector('.player-account-name').value = r.account_name || '';
+        card.querySelector('.player-final-score').value = r.final_score || 0;
+        card.querySelector('.player-rank').value = r.rank || '';
+        card.querySelector('.player-win-count').value = r.win_count || 0;
+        card.querySelector('.player-deal-in-count').value = r.deal_in_count || 0;
+        card.querySelector('.player-discord-id').value = r.discord_user_id || '';
     });
+
     recordModal.show();
 }
 
 async function saveRecordFromForm() {
-    const id = document.getElementById('record-id').value;
-    const fields = [
-        'event_datetime', 'account_name', 'tournament_type', 'team_name',
-        'mahjong_mode', 'match_mode', 'final_score', 'rank',
-        'matches_played', 'win_count', 'deal_in_count', 'discord_user_id'
-    ];
-    const data = {};
-    fields.forEach(field => {
-        const el = document.getElementById(field);
-        if (!el) return;
-        let val = el.value;
-        if (['final_score', 'rank', 'matches_played', 'win_count', 'deal_in_count'].includes(field)) {
-            val = val !== '' ? Number(val) : null;
+    const existingMatchId = document.getElementById('match-id').value;
+    const isNewMatch = !existingMatchId || existingMatchId.startsWith('no-id-');
+
+    // 共通項目
+    const event_datetime = document.getElementById('event_datetime').value;
+    const common = {
+        event_datetime: event_datetime,
+        tournament_type: document.getElementById('tournament_type').value,
+        mahjong_mode: document.getElementById('mahjong_mode').value,
+        match_mode: document.getElementById('match_mode').value,
+        matches_played: Number(document.getElementById('matches_played').value),
+        hand_count: Number(document.getElementById('matches_played').value)
+    };
+
+    if (!event_datetime) {
+        alert('日時は必須です');
+        return;
+    }
+
+    // 記録者IDの取得
+    let submittedBy = null;
+    try {
+        submittedBy = await getEffectiveUserId();
+    } catch (e) { }
+
+    // 新規マッチの場合は match_id を生成
+    const matchId = isNewMatch ? crypto.randomUUID() : existingMatchId;
+
+    const cards = document.querySelectorAll('.player-edit-card');
+    const recordsToUpdate = [];
+    const recordsToInsert = [];
+
+    cards.forEach(card => {
+        if (card.style.display === 'none') return;
+
+        const account_name = card.querySelector('.player-account-name').value;
+        if (!account_name) return; // 名前がない欄はスキップ
+
+        const recordId = card.querySelector('.player-record-id').value;
+        const data = {
+            ...common,
+            match_id: matchId,
+            account_name: account_name,
+            final_score: Number(card.querySelector('.player-final-score').value),
+            rank: Number(card.querySelector('.player-rank').value),
+            win_count: Number(card.querySelector('.player-win-count').value),
+            deal_in_count: Number(card.querySelector('.player-deal-in-count').value),
+            discord_user_id: card.querySelector('.player-discord-id').value || null,
+            submitted_by_discord_user_id: submittedBy
+        };
+
+        if (recordId) {
+            recordsToUpdate.push({ id: recordId, data });
+        } else {
+            recordsToInsert.push(data);
         }
-        data[field] = val;
     });
 
-    if (!data.event_datetime || !data.account_name) {
-        alert('日時とアカウント名は必須です');
+    if (recordsToUpdate.length === 0 && recordsToInsert.length === 0) {
+        alert('プレイヤーデータを入力してください');
         return;
     }
 
     toggleLoading(true);
     try {
-        let error;
-        if (id) {
-            ({ error } = await supabaseClient.from('match_results').update(data).eq('id', id));
-        } else {
-            ({ error } = await supabaseClient.from('match_results').insert([data]));
+        // 更新処理
+        if (recordsToUpdate.length > 0) {
+            const updatePromises = recordsToUpdate.map(u =>
+                supabaseClient.from('match_results').update(u.data).eq('id', u.id)
+            );
+            const results = await Promise.all(updatePromises);
+            const error = results.find(r => r.error)?.error;
+            if (error) throw error;
         }
-        if (error) throw error;
+
+        // 新規作成処理
+        if (recordsToInsert.length > 0) {
+            const { error } = await supabaseClient.from('match_results').insert(recordsToInsert);
+            if (error) throw error;
+        }
+
         recordModal.hide();
         fetchRecords();
     } catch (err) {
@@ -303,11 +422,17 @@ async function saveRecordFromForm() {
     }
 }
 
-async function deleteRecord(id) {
-    if (!confirm('この記録を削除してもよろしいですか？')) return;
+async function deleteMatch(matchId) {
+    if (!confirm('この試合の全プレイヤー記録を削除してもよろしいですか？')) return;
+
+    // match_id が no-id-xxxx 形式の場合は特定のIDのみ削除
+    const isSingleId = matchId.startsWith('no-id-');
+    const filterKey = isSingleId ? 'id' : 'match_id';
+    const filterValue = isSingleId ? matchId.replace('no-id-', '') : matchId;
+
     toggleLoading(true);
     try {
-        const { error } = await supabaseClient.from('match_results').delete().eq('id', id);
+        const { error } = await supabaseClient.from('match_results').delete().eq(filterKey, filterValue);
         if (error) throw error;
         fetchRecords();
     } catch (err) {
