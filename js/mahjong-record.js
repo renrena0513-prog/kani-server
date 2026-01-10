@@ -61,16 +61,13 @@ function changeMatchMode() {
  */
 function updateRuleDisplay() {
     const mode = document.getElementById('form-mode').value;
-    const distType = document.getElementById('opt-dist-points').value;
 
-    let distPoints = (mode === '三麻' ? 30000 : 25000);
-    if (distType === '100000') distPoints = 100000;
-
+    // 全モード配給点 25,000 固定
+    const distPoints = 25000;
     const returnPoints = distPoints + 5000;
     const numPlayers = (mode === '三麻' ? 3 : 4);
     const oka = (returnPoints - distPoints) * numPlayers;
 
-    document.getElementById('opt-dist-default').textContent = `標準 (${distPoints.toLocaleString()}点)`;
     document.getElementById('disp-return-points').textContent = returnPoints.toLocaleString() + '点';
     document.getElementById('disp-uma').textContent = (mode === '三麻' ? '20-20' : '10-30');
     document.getElementById('disp-oka').textContent = '+' + (oka / 1000).toFixed(1);
@@ -86,11 +83,8 @@ function setupPlayerInputs(count) {
     const teamOptions = allTeams.map(t => `<option value="${t.id}">${t.team_name}</option>`).join('');
 
     for (let i = 1; i <= count; i++) {
-        // デフォルト得点を配給点に合わせる
-        const mode = document.getElementById('form-mode').value;
-        const distType = document.getElementById('opt-dist-points').value;
-        let defaultScore = (mode === '三麻' ? 30000 : 25000);
-        if (distType === '100000') defaultScore = 100000;
+        // デフォルト得点を 25,000 点に固定
+        const defaultScore = 25000;
 
         container.innerHTML += `
             <div class="player-entry" id="player-row-${i}">
@@ -325,14 +319,12 @@ async function submitScores() {
     }
 
     // Step 2: final_score 計算
-    // ルール設定の取得
-    const distType = document.getElementById('opt-dist-points').value;
+    // ルール設定の取得 (25k固定)
     const isTobiOn = document.querySelector('input[name="opt-tobi"]:checked').value === 'yes';
     const isYakitoriOn = document.querySelector('input[name="opt-yakitori"]:checked').value === 'yes';
 
-    let distPoints = (mode === '三麻' ? 30000 : 25000);
-    if (distType === '100000') distPoints = 100000;
-    const returnPoints = distPoints + 5000;
+    const distPoints = 25000;
+    const returnPoints = 30000;
     const numPlayers = tempData.length;
     const okaPoints = (returnPoints - distPoints) * numPlayers;
 
@@ -536,10 +528,8 @@ async function sendDiscordNotification(matchData) {
     }).join('\n');
 
     // ルール情報の取得
-    const distType = document.getElementById('opt-dist-points').value;
-    let distPoints = (mode === '三麻' ? 30000 : 25000);
-    if (distType === '100000') distPoints = 100000;
-    const returnPoints = distPoints + 5000;
+    const distPoints = 25000;
+    const returnPoints = 30000;
     const isTobiOn = document.querySelector('input[name="opt-tobi"]:checked').value === 'yes';
     const isYakitoriOn = document.querySelector('input[name="opt-yakitori"]:checked').value === 'yes';
 
