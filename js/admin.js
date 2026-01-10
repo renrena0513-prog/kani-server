@@ -324,7 +324,7 @@ function editMatch(matchId) {
     document.getElementById('tournament_type').value = first.tournament_type || '';
     document.getElementById('mahjong_mode').value = first.mahjong_mode || '';
     document.getElementById('match_mode').value = first.match_mode || '';
-    document.getElementById('matches_played').value = first.hand_count || 1;
+    document.getElementById('hand_count').value = first.hand_count || 1;
 
     // プレイヤー別項目をクリア・リセット
     const cards = document.querySelectorAll('.player-edit-card');
