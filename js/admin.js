@@ -898,6 +898,27 @@ async function revokeBadge(userId, badgeId, badgeName) {
     }
 }
 
+
+// レアリティ名からCSSクラスを取得
+function getRarityClass(rarityName) {
+    if (!rarityName) return '';
+    const map = {
+        '一般': 'rarity-wood',
+        '良質': 'rarity-stone',
+        '希少・Ⅰ': 'rarity-bronze',
+        '希少・Ⅱ': 'rarity-silver',
+        '貴重': 'rarity-gold',
+        '特上': 'rarity-platinum',
+        '極上': 'rarity-gem',
+        '伝説': 'rarity-legend',
+        '幻想': 'rarity-fantasy',
+        '至高': 'rarity-supreme',
+        '神話': 'rarity-mythic',
+        '測定不能': 'rarity-void'
+    };
+    return map[rarityName] || '';
+}
+
 // バッジ一覧取得
 async function fetchBadges() {
     const list = document.getElementById('badges-list');
@@ -919,10 +940,11 @@ async function fetchBadges() {
         }
 
         badges.forEach(badge => {
+            const rarityClass = getRarityClass(badge.fixed_rarity_name);
             const div = document.createElement('div');
             div.className = 'col-md-4 col-lg-3';
             div.innerHTML = `
-                <div class="card h-100 shadow-sm border-0 bg-white">
+                <div class="card h-100 shadow-sm border-0 badge-card ${rarityClass}">
                     <div class="card-body text-center">
                         <img src="${badge.image_url}" class="mb-3 badge-thumb shadow-sm" style="width: 64px; height: 64px; object-fit: contain;">
                         <h6 class="fw-bold mb-1">${badge.name}</h6>
