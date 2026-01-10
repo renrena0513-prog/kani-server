@@ -280,7 +280,7 @@ function displayRecords(records) {
             </td>
             <td>${scoresHtml}</td>
             <td>${ranksHtml}</td>
-            <td>${first.matches_played || first.hand_count || 1}局</td>
+            <td>${first.hand_count || 1}局</td>
             <td>
                 <div class="d-flex flex-column gap-1">
                     <button onclick='editMatch("${mid}")' class="btn btn-sm btn-outline-primary">編集</button>
@@ -309,7 +309,7 @@ function editMatch(matchId) {
     document.getElementById('tournament_type').value = first.tournament_type || '';
     document.getElementById('mahjong_mode').value = first.mahjong_mode || '';
     document.getElementById('match_mode').value = first.match_mode || '';
-    document.getElementById('matches_played').value = first.matches_played || first.hand_count || 1;
+    document.getElementById('matches_played').value = first.hand_count || 1;
 
     // プレイヤー別項目をクリア・リセット
     const cards = document.querySelectorAll('.player-edit-card');
@@ -342,7 +342,6 @@ async function saveRecordFromForm() {
         tournament_type: document.getElementById('tournament_type').value,
         mahjong_mode: document.getElementById('mahjong_mode').value,
         match_mode: document.getElementById('match_mode').value,
-        matches_played: Number(document.getElementById('matches_played').value),
         hand_count: Number(document.getElementById('matches_played').value)
     };
 
