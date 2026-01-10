@@ -1,3 +1,4 @@
+console.log('mahjong-record.js version: 2026-01-11-01');
 // 麻雀スコア記録ページ用ロジック
 let allProfiles = [];
 let allTeams = [];
