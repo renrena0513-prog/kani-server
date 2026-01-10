@@ -939,6 +939,7 @@
         let isViewMode = false;
         let targetId = null;
         let allProfiles = []; // 全ユーザーのプロファイルリスト
+        let rarityThresholds = []; // レアリティ境界データ
 
         /**
          * ページ初期化
@@ -948,10 +949,12 @@
             const urlUserId = urlParams.get('user');
 
             // 全ユーザー情報を取得（名前解決用）
-            const { data: profiles, error: profileError } = await supabaseClient
-                .from('profiles')
-                .select('discord_user_id, account_name, avatar_url');
+            const { data: [profiles, thresholds] } = await Promise.all([
+                supabaseClient.from('profiles').select('discord_user_id, account_name, avatar_url'),
+                supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true })
+            ]);
             if (profiles) allProfiles = profiles;
+            if (thresholds) rarityThresholds = thresholds;
 
             const user = await getCurrentUser();
             const myId = user?.user_metadata?.provider_id;
@@ -1049,7 +1052,7 @@
             // ユーザー情報の取得（バッジ情報・コイン・チーム情報を含む）
             const { data: profile } = await supabaseClient
                 .from('profiles')
-                .select('account_name, avatar_url, coins, equipped_badge_id, team_id, badges!equipped_badge_id(image_url, name), teams!team_id(team_name)')
+                .select('account_name, avatar_url, coins, total_assets, equipped_badge_id, team_id, badges!equipped_badge_id(image_url, name), teams!team_id(team_name)')
                 .eq('discord_user_id', targetId)
                 .maybeSingle();
 
@@ -1087,8 +1090,12 @@
             // コイン表示の更新
             const coinsDisplay = document.getElementById('user-coins-display');
             const coinsValue = document.getElementById('user-coins-value');
+            const totalAssetsValue = document.getElementById('total-assets-value');
             if (coinsDisplay && coinsValue) {
                 coinsValue.textContent = coins.toLocaleString();
+                if (totalAssetsValue) {
+                    totalAssetsValue.textContent = (profile?.total_assets || 0).toLocaleString();
+                }
                 coinsDisplay.style.display = 'block';
             }
 
@@ -1146,8 +1153,12 @@
                 const coins = profile?.coins || 0;
                 const coinsDisplay = document.getElementById('user-coins-display');
                 const coinsValue = document.getElementById('user-coins-value');
+                const totalAssetsValue = document.getElementById('total-assets-value');
                 if (coinsDisplay && coinsValue) {
                     coinsValue.textContent = coins.toLocaleString();
+                    if (totalAssetsValue) {
+                        totalAssetsValue.textContent = (profile?.total_assets || 0).toLocaleString();
+                    }
                     coinsDisplay.style.display = 'block';
                 }
             } else {
@@ -1247,6 +1258,20 @@
         }
 
         // ============ バッジ管理機能 ============
+        // レアリティ判定ヘルパー
+        function getBadgeRarity(assetValue, fixedRarity = null) {
+            if (fixedRarity) return fixedRarity;
+            let current = rarityThresholds[0]?.rarity_name || 'Common';
+            for (const t of rarityThresholds) {
+                if (assetValue >= t.threshold_value) {
+                    current = t.rarity_name;
+                } else {
+                    break;
+                }
+            }
+            return current;
+        }
+
         async function loadOwnedBadges() {
             const section = document.getElementById('badge-collection-section');
             const specialSection = document.getElementById('special-badges-section');
@@ -1254,32 +1279,30 @@
             const purchasableSection = document.getElementById('purchasable-badges-section');
             const purchasableList = document.getElementById('purchasable-badge-list');
             const noBadgesMsg = document.getElementById('no-badges-msg');
-            const totalAssetsEl = document.getElementById('total-assets-value');
+            const netWorthEl = document.getElementById('total-assets-value'); // 総資産ラベルを流用または追加検討。要件は「純資産ランキング」
 
             if (!section) return;
-
-            // 閲覧モードの場合は、装着バッジだけ表示するか、セクション自体隠す（今回はセクション表示）
             section.style.display = 'block';
 
             try {
-                // 所持バッジの取得
-                const { data: owned, error } = await supabaseClient
-                    .from('user_badges')
-                    .select('badge_id, badges(*)')
-                    .eq('user_id', targetId);
+                // 所持バッジ（新・個体管理テーブル）と全バッジの流通数を取得
+                const [ownedRes, marketCountRes, profileRes] = await Promise.all([
+                    supabaseClient.from('user_badges_new').select('*, badges(*)').eq('user_id', targetId),
+                    supabaseClient.from('user_badges_new').select('badge_id'),
+                    supabaseClient.from('profiles').select('coins, equipped_badge_id, total_assets').eq('discord_user_id', targetId).maybeSingle()
+                ]);
 
-                if (error) throw error;
-
-                // ユーザーの所持コインを取得（総資産計算用）
-                const { data: profileData } = await supabaseClient
-                    .from('profiles')
-                    .select('coins, equipped_badge_id')
-                    .eq('discord_user_id', targetId)
-                    .maybeSingle();
-
+                if (ownedRes.error) throw ownedRes.error;
+                const owned = ownedRes.data;
+                const profileData = profileRes.data;
                 const userCoins = profileData?.coins || 0;
                 const equippedId = profileData?.equipped_badge_id;
-                let badgeAssets = 0;
+
+                // 各バッジの現在流通数 n を集計
+                const marketCounts = {};
+                (marketCountRes.data || []).forEach(s => {
+                    marketCounts[s.badge_id] = (marketCounts[s.badge_id] || 0) + 1;
+                });
 
                 // 自分のページなら管理ボタンを表示
                 const badgeBtn = document.getElementById('badge-change-btn');
@@ -1295,92 +1318,94 @@
                     if (specialSection) specialSection.style.display = 'none';
                     if (purchasableSection) purchasableSection.style.display = 'none';
                     if (noBadgesMsg) noBadgesMsg.style.display = 'block';
-                    if (totalAssetsEl) totalAssetsEl.textContent = userCoins.toLocaleString();
+                    // 純資産をプロフィールの数値(現金のみ)で更新
+                    // if (netWorthEl) netWorthEl.textContent = userCoins.toLocaleString();
                     return;
                 }
 
-                // バッジを集計（重複をカウント）
-                const badgeGroups = {};
-                owned.forEach(item => {
-                    const badge = item.badges;
-                    if (!badge) return;
-
-                    if (!badgeGroups[badge.id]) {
-                        badgeGroups[badge.id] = {
-                            badge: badge,
-                            count: 0
-                        };
-                    }
-                    badgeGroups[badge.id].count++;
-                    badgeAssets += (badge.price || 0);
-                });
-
-                // 総資産の表示更新
-                if (totalAssetsEl) {
-                    totalAssetsEl.textContent = (userCoins + badgeAssets).toLocaleString();
-                }
-
-                // バッジを配列に変換してソート (order -> name)
-                const aggregatedBadges = Object.values(badgeGroups).sort((a, b) => {
-                    const orderA = a.badge.order ?? 999;
-                    const orderB = b.badge.order ?? 999;
-                    if (orderA !== orderB) return orderA - orderB;
-                    return a.badge.name.localeCompare(b.badge.name);
-                });
-
-                // 非売品（gacha_weight = 0）と購入可能バッジに分ける
-                const specialBadges = aggregatedBadges.filter(item => item.badge.gacha_weight === 0);
-                const purchasableBadges = aggregatedBadges.filter(item => item.badge.gacha_weight !== 0);
-
-                // バッジHTML生成関数
-                const renderBadge = (item) => {
-                    const badge = item.badge;
-                    const isEquipped = badge.id === equippedId;
-                    return `
-                        <div class="col-4 col-sm-3 col-md-2 text-center mb-3">
-                            <div class="position-relative">
-                                <a href="../badge/index.html?id=${badge.id}" class="text-decoration-none">
-                                    <div class="badge-item ${isEquipped ? 'equipped' : ''}" 
-                                         title="${badge.name}${isEquipped ? ' (装着中)' : ''}"
-                                         style="position: relative;">
-                                        <img src="${badge.image_url}" alt="${badge.name}">
-                                        ${item.count > 1 ? `<span class="badge-count-overlay">${item.count}</span>` : ''}
-                                    </div>
-                                </a>
-                            </div>
-                            <div class="small text-muted text-truncate mt-1" style="font-size: 0.75rem;">${badge.name}</div>
-                        </div>
-                    `;
+                let totalBadgeAssetValue = 0;
+                const rarityColors = {
+                    'Common': '#888', 'Uncommon': '#2ecc71', 'Rare': '#3498db',
+                    'Epic': '#9b59b6', 'Legendary': '#f1c40f', 'Mythic': '#e67e22',
+                    'Divine': '#e74c3c', 'Celestial': '#00d2ff', 'Eternal': '#f80759', 'Cosmic': '#000'
                 };
 
-                // 非売品バッジを表示
-                if (specialBadges.length > 0) {
-                    specialSection.style.display = 'block';
-                    specialList.innerHTML = specialBadges.map(renderBadge).join('');
-                } else {
-                    specialSection.style.display = 'none';
-                }
+                const badgeItemsHtml = owned.map(item => {
+                    const badge = item.badges;
+                    if (!badge) return '';
 
-                // 購入バッジを表示
-                if (purchasableBadges.length > 0) {
-                    purchasableSection.style.display = 'block';
-                    purchasableList.innerHTML = purchasableBadges.map(renderBadge).join('');
-                } else {
-                    purchasableSection.style.display = 'none';
-                }
+                    const n = marketCounts[badge.id] || 0;
+                    // 資産価値 P_value = price * 1.3^(n-1)
+                    let pValue = badge.is_fixed_price ? badge.price : Math.ceil(badge.price * Math.pow(1.3, Math.max(0, n - 1)));
+                    // 売却価格 P_sell = P_value * 0.7 (*3 if mutant)
+                    let pSell = Math.ceil(pValue * 0.7 * (item.is_mutant ? 3 : 1));
+                    let profit = pSell - item.purchased_price;
 
-                // どちらもない場合
-                if (specialBadges.length === 0 && purchasableBadges.length === 0) {
-                    noBadgesMsg.style.display = 'block';
-                } else {
-                    noBadgesMsg.style.display = 'none';
-                }
+                    totalBadgeAssetValue += pValue;
+
+                    const rarity = getBadgeRarity(pValue, badge.fixed_rarity_name);
+                    const color = rarityColors[rarity] || '#888';
+                    const isEquipped = badge.id === equippedId;
+                    const mutantLabel = item.is_mutant ? '<span class="badge bg-warning text-dark" style="font-size:0.6rem;">変異</span>' : '';
+
+                    return `
+                        <div class="col-12 col-sm-6 col-md-4 mb-3">
+                            <div class="card h-100 shadow-sm border-0" style="border-radius: 15px; background: ${item.is_mutant ? 'rgba(255,193,7,0.05)' : '#fff'};">
+                                <div class="card-body p-3">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="position-relative">
+                                            <div class="badge-item ${isEquipped ? 'equipped' : ''}" style="width: 80px; height: 80px; padding: 5px;">
+                                                <img src="${badge.image_url}" alt="${badge.name}" style="width: 100%; height: 100%; object-fit: contain;">
+                                            </div>
+                                            ${isEquipped ? '<span class="badge bg-gold position-absolute top-0 start-0" style="font-size:0.5rem;">装着中</span>' : ''}
+                                        </div>
+                                        <div class="flex-grow-1 overflow-hidden">
+                                            <div class="d-flex align-items-center gap-1">
+                                                <span class="badge" style="background-color: ${color}; font-size: 0.6rem;">${rarity}</span>
+                                                ${mutantLabel}
+                                            </div>
+                                            <div class="fw-bold text-truncate small mt-1">${badge.name}</div>
+                                            <div class="text-muted" style="font-size: 0.7rem;">購入: 🪙${item.purchased_price}</div>
+                                        </div>
+                                    </div>
+                                    <hr class="my-2 opacity-10">
+                                    <div class="row g-0 text-center">
+                                        <div class="col-6 border-end">
+                                            <div class="text-muted" style="font-size: 0.65rem;">評価額</div>
+                                            <div class="fw-bold small">🪙${pValue.toLocaleString()}</div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="text-muted" style="font-size: 0.65rem;">予想損益</div>
+                                            <div class="fw-bold small ${profit >= 0 ? 'text-success' : 'text-danger'}">
+                                                ${profit >= 0 ? '+' : ''}${profit.toLocaleString()}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    ${!isViewMode ? `
+                                        <div class="d-flex gap-2 mt-2">
+                                            <button class="btn btn-sm btn-outline-danger w-100" style="font-size:0.7rem;" onclick="sellBadgeConfirm('${item.uuid}', '${badge.name.replace(/'/g, "\\'")}', ${pSell})">売却</button>
+                                            <button class="btn btn-sm btn-outline-primary w-100" style="font-size:0.7rem;" onclick="openUUIDTransferModal('${item.uuid}', '${badge.name.replace(/'/g, "\\'")}')">譲渡</button>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                // 表示の出し分け (簡略化のため一つに統合)
+                purchasableSection.style.display = 'block';
+                purchasableList.innerHTML = badgeItemsHtml.join('');
+                specialSection.style.display = 'none';
+                noBadgesMsg.style.display = 'none';
+
+                // ※純資産表示の更新が必要な場合はここで更新。現在の要件では profiles.total_assets を「累計」として表示
+                // console.log('Current Net Worth:', userCoins + totalBadgeAssetValue);
 
             } catch (err) {
                 console.error('バッジ取得エラー:', err);
                 if (noBadgesMsg) {
                     noBadgesMsg.textContent = '読み込み中にエラーが発生しました';
-                    noBadgesMsg.className = 'text-center text-danger py-3';
                     noBadgesMsg.style.display = 'block';
                 }
             }
@@ -1624,6 +1649,7 @@
         }
 
         // ============ バッジ譲渡・売却：バッジ選択モーダル ============
+        // ============ バッジ譲渡・売却：バッジ選択モーダル ============
         async function openBadgeSelectionModal(mode) {
             const listEl = document.getElementById('action-badge-list');
             listEl.innerHTML = '<p class="text-center text-muted py-3">読み込み中...</p>';
@@ -1635,389 +1661,119 @@
             modal.show();
 
             try {
-                // 所持バッジの取得 (非売品以外)
+                // 所持バッジの取得（新テーブル user_badges_new を使用）
                 const { data: owned, error } = await supabaseClient
-                    .from('user_badges')
-                    .select('badge_id, badges(*)')
+                    .from('user_badges_new')
+                    .select('*, badges(*)')
                     .eq('user_id', targetId);
 
                 if (error) throw error;
 
-                // 非売品を除外して、同じバッジをまとめる
-                const badgeGroups = {};
-                owned.forEach(item => {
-                    const badge = item.badges;
-                    if (!badge || badge.gacha_weight === 0) return;
-                    if (!badgeGroups[badge.id]) {
-                        badgeGroups[badge.id] = { badge: badge, count: 0 };
-                    }
-                    badgeGroups[badge.id].count++;
+                // 全バッジの流通数を取得（価格計算用）
+                const { data: marketCountRes } = await supabaseClient
+                    .from('user_badges_new')
+                    .select('badge_id');
+
+                const marketCounts = {};
+                (marketCountRes || []).forEach(s => {
+                    marketCounts[s.badge_id] = (marketCounts[s.badge_id] || 0) + 1;
                 });
 
-                const sortedBadges = Object.values(badgeGroups);
-
-                if (sortedBadges.length === 0) {
-                    listEl.innerHTML = '<p class="text-center text-muted py-3">選択可能なバッジがありません</p>';
+                if (!owned || owned.length === 0) {
+                    listEl.innerHTML = '<p class="text-center text-muted py-3">対象のバッジを持っていません</p>';
                     return;
                 }
 
-                listEl.innerHTML = sortedBadges.map(item => {
-                    const badge = item.badge;
-                    const priceInfo = mode === 'sell' ? `<div class="small text-danger fw-bold">🪙${Math.floor(badge.price * 0.5).toLocaleString()}</div>` : '';
-                    return `
-                        <div class="col-4 col-md-3 text-center mb-2">
-                            <div class="badge-item" 
-                                 onclick="onBadgeSelectedForAction('${badge.id}', '${badge.name.replace(/'/g, "\\'")}', ${badge.price}, '${mode}')"
-                                 style="cursor: pointer; position: relative;"
-                                 title="${badge.name}">
-                                <img src="${badge.image_url}" alt="${badge.name}" style="width: 60px; height: 60px; object-fit: contain;">
-                                ${item.count > 1 ? `<span class="badge-count-overlay">${item.count}</span>` : ''}
-                            </div>
-                            <div class="small text-truncate mt-1" style="font-size: 0.7rem;">${badge.name}</div>
-                            ${priceInfo}
-                        </div>
-                    `;
-                }).join('');
+                listEl.innerHTML = owned.map(item => {
+                    const badge = item.badges;
+                    if (!badge) return '';
 
+                    const n = marketCounts[badge.id] || 0;
+                    const pValue = badge.is_fixed_price ? badge.price : Math.ceil(badge.price * Math.pow(1.3, Math.max(0, n - 1)));
+                    const pSell = Math.ceil(pValue * 0.7 * (item.is_mutant ? 3 : 1));
+
+                    if (mode === 'transfer') {
+                        return `
+                            <div class="user-select-item" onclick="openUUIDTransferModal('${item.uuid}', '${badge.name.replace(/'/g, "\\'")}')">
+                                <img src="${badge.image_url}" class="user-select-avatar" style="border-radius: 8px;">
+                                <div class="flex-grow-1">
+                                    <div class="user-select-name">${badge.name}</div>
+                                    <div class="small text-muted">評価額: 🪙${pValue.toLocaleString()} ${item.is_mutant ? '<span class="text-warning fw-bold">(Mutant)</span>' : ''}</div>
+                                </div>
+                                <div class="text-primary fw-bold">選択</div>
+                            </div>
+                        `;
+                    } else {
+                        return `
+                            <div class="user-select-item" onclick="sellBadgeConfirm('${item.uuid}', '${badge.name.replace(/'/g, "\\'")}', ${pSell})">
+                                <img src="${badge.image_url}" class="user-select-avatar" style="border-radius: 8px;">
+                                <div class="flex-grow-1">
+                                    <div class="user-select-name">${badge.name}</div>
+                                    <div class="small text-muted">売却額: 🪙${pSell.toLocaleString()} ${item.is_mutant ? '<span class="text-warning fw-bold">(Mutant)</span>' : ''}</div>
+                                </div>
+                                <div class="text-danger fw-bold">売却</div>
+                            </div>
+                        `;
+                    }
+                }).join('');
             } catch (err) {
-                console.error('バッジ読み込みエラー:', err);
+                console.error('Error loading action badges:', err);
                 listEl.innerHTML = '<p class="text-center text-danger py-3">エラーが発生しました</p>';
             }
         }
 
-        let currentActionBadgeId = null;
+        // ============ 売却・譲渡ロジック (UUIDベース) ============
+        let currentActionUUID = null;
         let currentActionBadgeName = '';
-        let currentActionBadgePrice = 0;
 
-        function onBadgeSelectedForAction(badgeId, badgeName, price, mode) {
-            currentActionBadgeId = badgeId;
-            currentActionBadgeName = badgeName;
-            currentActionBadgePrice = price;
-
+        function sellBadgeConfirm(uuid, name, price) {
+            currentActionUUID = uuid;
+            if (!confirm(`「${name}」を 🪙${price.toLocaleString()} で売却しますか？`)) return;
             // 選択モーダルを閉じる
-            const actionModal = bootstrap.Modal.getInstance(document.getElementById('badgeActionModal'));
-            actionModal.hide();
-
-            if (mode === 'transfer') {
-                openUserSelectModal('badge');
-            } else {
-                executeSell(badgeId, badgeName, price);
-            }
+            const modalEl = document.getElementById('badgeActionModal');
+            bootstrap.Modal.getInstance(modalEl)?.hide();
+            executeSellUUID();
         }
 
-        // ============ 売却実行 ============
-        async function executeSell(badgeId, badgeName, price) {
-            const sellPrice = Math.floor(price * 0.5);
-            if (!confirm(`「${badgeName}」を売却して 🪙${sellPrice.toLocaleString()} を受け取りますか？\n（この操作は取り消せません）`)) {
-                return;
-            }
-
+        async function executeSellUUID() {
+            toggleLoading(true);
             try {
-                toggleLoading(true);
-
-                // 1. バッジを1つ削除
-                const { data: owned, error: fetchError } = await supabaseClient
-                    .from('user_badges')
-                    .select('id')
-                    .eq('user_id', targetId)
-                    .eq('badge_id', badgeId)
-                    .limit(1)
-                    .single();
-
-                if (fetchError) throw new Error('バッジの所持データが見つかりませんでした');
-
-                const { error: deleteError } = await supabaseClient
-                    .from('user_badges')
-                    .delete()
-                    .eq('id', owned.id);
-
-                if (deleteError) throw deleteError;
-
-                // 2. バッジの在庫を戻す（remaining_count が設定されている場合）
-                const { data: badge, error: badgeFetchError } = await supabaseClient
-                    .from('badges')
-                    .select('remaining_count')
-                    .eq('id', badgeId)
-                    .single();
-
-                if (!badgeFetchError && badge && badge.remaining_count !== null) {
-                    await supabaseClient
-                        .from('badges')
-                        .update({ remaining_count: badge.remaining_count + 1 })
-                        .eq('id', badgeId);
-                }
-
-                // 3. コインの加算
-                const { data: profile, error: profileError } = await supabaseClient
-                    .from('profiles')
-                    .select('coins')
-                    .eq('discord_user_id', targetId)
-                    .single();
-
-                if (profileError) throw profileError;
-
-                const { error: updateError } = await supabaseClient
-                    .from('profiles')
-                    .update({ coins: (profile.coins || 0) + sellPrice })
-                    .eq('discord_user_id', targetId);
-
-                if (updateError) throw updateError;
-
-                // 4. 総資産を加算
-                if (typeof addToTotalAssets === 'function') {
-                    await addToTotalAssets(targetId, sellPrice);
-                }
-
-                // 5. 活動ログを記録
-                if (typeof logActivity === 'function') {
-                    await logActivity(targetId, 'badge_sell', {
-                        amount: sellPrice,
-                        badgeId: badgeId,
-                        details: { badge_name: badgeName, original_price: price }
-                    });
-                }
-
-                alert(`${badgeName} を売却しました。🪙${sellPrice} を獲得しました。`);
-                location.reload();
-            } catch (err) {
-                console.error('売却エラー:', err);
-                alert('売却処理に失敗しました: ' + err.message);
-            } finally {
-                toggleLoading(false);
-            }
-        }
-
-        // ============ 譲渡：ユーザー選択 ============
-        let transferType = 'badge'; // 'badge' or 'coin'
-        async function openUserSelectModal(type = 'badge') {
-            transferType = type;
-            const listEl = document.getElementById('transfer-user-list');
-            listEl.innerHTML = '<p class="text-center text-muted py-4">読み込み中...</p>';
-
-            document.getElementById('userSelectModalLabel').textContent = type === 'coin' ? '送金先のユーザーを選択' : '譲渡先のユーザーを選択';
-
-            const modal = new bootstrap.Modal(document.getElementById('userSelectModal'));
-            modal.show();
-
-            try {
-                const { data: users, error } = await supabaseClient
-                    .from('profiles')
-                    .select('discord_user_id, account_name, avatar_url, equipped_badge_id, badges!equipped_badge_id(image_url, name)')
-                    .neq('discord_user_id', targetId) // 自分以外
-                    .order('account_name');
+                const { data, error } = await supabaseClient.rpc('sell_badge_v2', {
+                    p_user_id: targetId,
+                    p_badge_uuid: currentActionUUID
+                });
 
                 if (error) throw error;
+                if (!data.ok) throw new Error(data.error);
 
-                if (!users || users.length === 0) {
-                    listEl.innerHTML = '<p class="text-center text-muted py-4">ユーザーが見つかりません</p>';
-                    return;
-                }
-
-                listEl.innerHTML = users.map(u => {
-                    const avatar = u.avatar_url || 'https://via.placeholder.com/40';
-                    const badgeHtml = u.badges ? `<img src="${u.badges.image_url}" class="user-select-badge" title="${u.badges.name}">` : '';
-                    return `
-                        <div class="user-select-item" onclick="onUserSelectedForTransfer('${u.discord_user_id}', '${u.account_name.replace(/'/g, "\\'")}')">
-                            <img src="${avatar}" class="user-select-avatar" onerror="this.src='https://via.placeholder.com/40'">
-                            <div class="d-flex align-items-center flex-grow-1">
-                                <span class="user-select-name">${u.account_name}</span>
-                                ${badgeHtml}
-                            </div>
-                            <div class="text-muted small">選択 ❯</div>
-                        </div>
-                    `;
-                }).join('');
+                alert(`バッジを 🪙${data.sell_price.toLocaleString()} で売却しました。`);
+                loadOwnedBadges();
+                loadActivityLogs();
+                // 自分の情報を再読み込み
+                const user = await getCurrentUser();
+                if (user) displayMyInfo(user);
             } catch (err) {
-                console.error('ユーザー取得エラー:', err);
-                listEl.innerHTML = '<p class="text-center text-danger py-4">エラーが発生しました</p>';
-            }
-        }
-
-        function onUserSelectedForTransfer(userId, userName) {
-            // ユーザー選択モーダルを閉じる
-            const userModal = bootstrap.Modal.getInstance(document.getElementById('userSelectModal'));
-            userModal.hide();
-
-            if (transferType === 'badge') {
-                executeTransferConfirmation(userId, userName);
-            } else {
-                openCoinAmountModal(userId, userName);
-            }
-        }
-
-        // ============ コイン送金フロー ============
-        let coinTransferTargetId = null;
-        let coinTransferTargetName = '';
-
-        function openCoinTransferModal() {
-            openUserSelectModal('coin');
-        }
-
-        async function openCoinAmountModal(userId, userName) {
-            coinTransferTargetId = userId;
-            coinTransferTargetName = userName;
-
-            document.getElementById('coin-transfer-target-name').textContent = `${userName} さんへ送金`;
-
-            // 自分の今の所持金を表示
-            const { data: profile } = await supabaseClient
-                .from('profiles')
-                .select('coins')
-                .eq('discord_user_id', targetId)
-                .single();
-
-            const currentCoins = profile?.coins || 0;
-            document.getElementById('my-coins-ref').textContent = currentCoins.toLocaleString();
-            document.getElementById('coin-transfer-amount').value = '';
-
-            const modal = new bootstrap.Modal(document.getElementById('coinAmountModal'));
-            modal.show();
-        }
-
-        async function executeCoinTransfer() {
-            const amountInput = document.getElementById('coin-transfer-amount');
-            const amount = parseInt(amountInput.value);
-
-            if (isNaN(amount) || amount <= 0) {
-                alert('有効な金額を入力してください');
-                return;
-            }
-
-            // 最終確認
-            if (!confirm(`${coinTransferTargetName} さんに 🪙${amount.toLocaleString()} を送金しますか？`)) {
-                return;
-            }
-
-            try {
-                toggleLoading(true);
-
-                // 1. 自分の所持金チェック
-                const { data: sender, error: senderError } = await supabaseClient
-                    .from('profiles')
-                    .select('coins')
-                    .eq('discord_user_id', targetId)
-                    .single();
-
-                if (senderError) throw senderError;
-                if ((sender.coins || 0) < amount) {
-                    throw new Error('所持金が足りません');
-                }
-
-                // 2. 相手の存在チェック（念のため）
-                const { data: receiver, error: receiverError } = await supabaseClient
-                    .from('profiles')
-                    .select('coins')
-                    .eq('discord_user_id', coinTransferTargetId)
-                    .single();
-
-                if (receiverError) throw receiverError;
-
-                // 3. 送金処理 (マイナス)
-                const { error: updateSenderError } = await supabaseClient
-                    .from('profiles')
-                    .update({ coins: sender.coins - amount })
-                    .eq('discord_user_id', targetId);
-
-                if (updateSenderError) throw updateSenderError;
-
-                // 4. 入金処理 (プラス)
-                const { error: updateReceiverError } = await supabaseClient
-                    .from('profiles')
-                    .update({ coins: (receiver.coins || 0) + amount })
-                    .eq('discord_user_id', coinTransferTargetId);
-
-                if (updateReceiverError) {
-                    // ロールバック的な処理が必要だが、Supabase RLS/Updateでは難しいのでエラー通知
-                    console.error('入金に失敗しました（送金元は減額済み）:', updateReceiverError);
-                    alert('入金処理に失敗しました。管理者に連絡してください。');
-                    return;
-                }
-
-                // 5. 活動ログを記録（送信側）
-                if (typeof logActivity === 'function') {
-                    await logActivity(targetId, 'transfer_send', {
-                        amount: amount,
-                        targetUserId: coinTransferTargetId,
-                        details: { target_name: coinTransferTargetName }
-                    });
-                    // 活動ログを記録（受信側）
-                    const senderName = document.getElementById('nickname-display')?.textContent || '誰か';
-                    await logActivity(coinTransferTargetId, 'transfer_receive', {
-                        amount: amount,
-                        targetUserId: targetId,
-                        details: { sender_name: senderName }
-                    });
-                }
-
-                alert(`${coinTransferTargetName} さんに 🪙${amount.toLocaleString()} を送金しました！`);
-                location.reload();
-
-            } catch (err) {
-                console.error('送金エラー:', err);
-                alert('送金に失敗しました: ' + err.message);
+                console.error('売却エラー:', err);
+                alert('売却に失敗しました: ' + err.message);
             } finally {
                 toggleLoading(false);
             }
         }
 
-        async function executeTransferConfirmation(toUserId, toUserName) {
-            if (!confirm(`「${currentActionBadgeName}」を ${toUserName} さんに譲渡しますか？\n（あなたの手持ちからは1つなくなります）`)) {
-                return;
-            }
-
-            try {
-                toggleLoading(true);
-
-                // 1. 自分のバッジを1つ削除
-                const { data: owned, error: fetchError } = await supabaseClient
-                    .from('user_badges')
-                    .select('id')
-                    .eq('user_id', targetId)
-                    .eq('badge_id', currentActionBadgeId)
-                    .limit(1)
-                    .single();
-
-                if (fetchError) throw new Error('譲渡するバッジが見つかりません');
-
-                const { error: deleteError } = await supabaseClient
-                    .from('user_badges')
-                    .delete()
-                    .eq('id', owned.id);
-
-                if (deleteError) throw deleteError;
-
-                // 2. 相手に付与
-                const { error: insertError } = await supabaseClient
-                    .from('user_badges')
-                    .insert([{ user_id: toUserId, badge_id: currentActionBadgeId }]);
-
-                if (insertError) throw insertError;
-
-                // 3. 活動ログを記録
-                if (typeof logActivity === 'function') {
-                    const senderName = document.getElementById('nickname-display')?.textContent || '誰か';
-                    await logActivity(targetId, 'badge_transfer', {
-                        badgeId: currentActionBadgeId,
-                        targetUserId: toUserId,
-                        details: { target_name: toUserName, badge_name: currentActionBadgeName }
-                    });
-                    await logActivity(toUserId, 'badge_receive', {
-                        badgeId: currentActionBadgeId,
-                        targetUserId: targetId,
-                        details: { sender_name: senderName, badge_name: currentActionBadgeName }
-                    });
-                }
-
-                alert(`${toUserName} さんにバッジを譲渡しました！`);
-                location.reload();
-            } catch (err) {
-                console.error('譲渡エラー:', err);
-                alert('譲渡に失敗しました: ' + err.message);
-            } finally {
-                toggleLoading(false);
-            }
+        function openUUIDTransferModal(uuid, name) {
+            currentActionUUID = uuid;
+            currentActionBadgeName = name;
+            // 選択モーダルを閉じる
+            const modalEl = document.getElementById('badgeActionModal');
+            bootstrap.Modal.getInstance(modalEl)?.hide();
+            openUserSelectModal('badge_transfer');
         }
 
+        // 譲渡実行のオーバーライド（共有されている openUserSelectModal から呼ばれる）
+        // 既存の executeTransferConfirmation は badge_id ベースの可能性があるため、UUID対応版に差し替えが必要な場合は
+        // ここで再定義するか、グローバルに調整する。mypage/index.html 内に定義されている場合、それを上書きする。
+
+        // ============ バッジ装着 ============
         async function equipBadge(badgeId) {
             if (isViewMode) return;
 
@@ -2041,19 +1797,17 @@
 
                 await loadOwnedBadges(); // リスト更新
                 await loadTargetUserInfo(); // 名前横のバッジ更新
-                displayUserInfo(); // ヘッダー更新
 
                 // モーダルを閉じる
                 const modalEl = document.getElementById('badgeChangeModal');
-                const modal = bootstrap.Modal.getInstance(modalEl);
-                if (modal) modal.hide();
+                bootstrap.Modal.getInstance(modalEl)?.hide();
             } catch (err) {
-                console.error('バッジ変更エラー:', err);
+                console.error('装着エラー:', err);
                 alert('バッジの変更に失敗しました');
             }
         }
 
-        // バッジ変更モーダルを開く
+        // 装着バッジの変更モーダル (badge_id ベースのままでOK：見た目のため)
         async function openBadgeChangeModal() {
             const listEl = document.getElementById('badge-modal-list');
             listEl.innerHTML = '<p class="text-center text-muted py-3">読み込み中...</p>';
@@ -2063,31 +1817,33 @@
             modal.show();
 
             try {
-                // 所持バッジの取得
+                // 所持バッジ（ユニークなIDのみ抽出）
                 const { data: owned, error } = await supabaseClient
-                    .from('user_badges')
+                    .from('user_badges_new')
                     .select('badge_id, badges(*)')
                     .eq('user_id', targetId);
 
                 if (error) throw error;
 
-                // 装着中のバッジID取得
-                const { data: profile } = await supabaseClient
-                    .from('profiles')
-                    .select('equipped_badge_id')
-                    .eq('discord_user_id', targetId)
-                    .maybeSingle();
+                const uniqueBadges = [];
+                const seen = new Set();
+                owned.forEach(item => {
+                    if (item.badges && !seen.has(item.badge_id)) {
+                        uniqueBadges.push(item.badges);
+                        seen.add(item.badge_id);
+                    }
+                });
 
+                const { data: profile } = await supabaseClient
+                    .from('profiles').select('equipped_badge_id').eq('discord_user_id', targetId).maybeSingle();
                 const equippedId = profile?.equipped_badge_id;
 
-                if (!owned || owned.length === 0) {
+                if (uniqueBadges.length === 0) {
                     listEl.innerHTML = '<p class="text-center text-muted py-3">バッジを持っていません</p>';
                     return;
                 }
 
-                listEl.innerHTML = owned.map(item => {
-                    const badge = item.badges;
-                    if (!badge) return '';
+                listEl.innerHTML = uniqueBadges.map(badge => {
                     const isEquipped = badge.id === equippedId;
                     return `
                         <div class="col-4 col-md-3 text-center">
@@ -2100,7 +1856,6 @@
                         </div>
                     `;
                 }).join('');
-
             } catch (err) {
                 console.error('バッジ読み込みエラー:', err);
                 listEl.innerHTML = '<p class="text-center text-danger py-3">エラーが発生しました</p>';
@@ -2114,82 +1869,52 @@
 
         async function loadMahjongStats() {
             try {
-                // URLパラメータから特定ユーザーIDを取得（管理者用）
                 const urlParams = new URLSearchParams(window.location.search);
                 const targetUserId = urlParams.get('user');
 
                 if (targetUserId) {
-                    // 特定ユーザーの統計を表示
                     myAccountName = targetUserId;
                 } else {
-                    // 自分の統計を表示
                     const user = await getCurrentUser();
                     if (!user) return;
                     myAccountName = user.user_metadata.provider_id;
                 }
 
-                // 第二回麻雀大会データ
                 const { data: currentData, error: currentError } = await supabaseClient
                     .from('match_results')
                     .select('*');
 
-                if (currentError) {
-                    console.warn('第二回データ取得エラー:', currentError);
-                }
+                if (currentError) console.warn('第二回データ取得エラー:', currentError);
 
-                // 第一回麻雀大会データ
                 let legacyData = [];
                 try {
                     const { data, error: legacyError } = await supabaseClient
                         .from('tournament_player_stats_snapshot')
                         .select('*');
-
-                    if (legacyError) {
-                        console.warn('第一回データ取得エラー:', legacyError);
-                    } else {
-                        legacyData = data || [];
-                    }
+                    if (!legacyError) legacyData = data || [];
                 } catch (e) {
                     console.warn('第一回データ取得スキップ:', e);
                 }
 
-                // 新データにも tournament_type を保障
-                const taggedCurrentData = (currentData || []).map(r => ({
-                    ...r,
-                    tournament_type: r.tournament_type || '第二回麻雀大会'
-                }));
-
-                // 過去データに tournament_type を保障
-                const taggedLegacyData = (legacyData || []).map(r => ({
-                    ...r,
-                    tournament_type: r.tournament_type || '第一回麻雀大会'
-                }));
+                const taggedCurrentData = (currentData || []).map(r => ({ ...r, tournament_type: r.tournament_type || '第二回麻雀大会' }));
+                const taggedLegacyData = (legacyData || []).map(r => ({ ...r, tournament_type: r.tournament_type || '第一回麻雀大会' }));
 
                 allMahjongRecords = [...taggedCurrentData, ...taggedLegacyData];
-                console.log('📊 取得したレコード数:', allMahjongRecords.length);
-
                 renderTournamentDropdown();
                 displayMahjongStats();
             } catch (err) {
                 console.error('麻雀統計取得エラー:', err);
                 document.getElementById('stats-loading').style.display = 'none';
                 document.getElementById('no-stats-msg').style.display = 'block';
-                document.getElementById('stats-content').style.display = 'block';
             }
         }
 
         function renderTournamentDropdown() {
             const select = document.getElementById('tournament-select');
             if (!select) return;
-
             const tournaments = ['第二回麻雀大会', '第一回麻雀大会'];
-
-            let html = '';
-            tournaments.forEach(t => {
-                html += `<option value="${t}" ${currentMyTournament === t ? 'selected' : ''}>${t}</option>`;
-            });
+            let html = tournaments.map(t => `<option value="${t}" ${currentMyTournament === t ? 'selected' : ''}>${t}</option>`).join('');
             html += `<option value="all" ${currentMyTournament === 'all' ? 'selected' : ''}>全シーズン</option>`;
-
             select.innerHTML = html;
         }
 
@@ -2200,22 +1925,13 @@
         }
 
         function displayMahjongStats() {
-            // 大会フィルタ
             let records = allMahjongRecords;
             if (currentMyTournament !== 'all') {
                 records = allMahjongRecords.filter(r => r.tournament_type === currentMyTournament);
             }
 
-            // 全プレイヤーの統計計算
             const playerStats = calculateAllPlayerStats(records);
-
-            // デバッグ: 全プレイヤー名を表示
-            console.log('🎯 自分のアカウント名:', myAccountName);
-            console.log('📋 全プレイヤー名:', playerStats.map(p => p.name));
-
-            // 自分の統計を取得
             const myStats = playerStats.find(p => p.name === myAccountName);
-            const totalPlayers = playerStats.length;
 
             document.getElementById('stats-loading').style.display = 'none';
             document.getElementById('stats-content').style.display = 'block';
@@ -2231,12 +1947,7 @@
             if (statsGrid) statsGrid.style.display = 'block';
             noStatsMsg.style.display = 'none';
 
-            // 各統計を表示
-            const formatScore = (val) => {
-                if (typeof val !== 'number') return val;
-                // 小数点第1位までに丸めるが、.0 の場合は整数にする
-                return Math.round(val * 10) / 10;
-            };
+            const formatScore = (val) => (typeof val !== 'number') ? val : Math.round(val * 10) / 10;
 
             updateStatCard('total', formatScore(myStats.total), playerStats, 'total', true);
             updateStatCard('sanma', formatScore(myStats.sanma), playerStats, 'sanma', true);
@@ -2252,152 +1963,207 @@
         }
 
         function updateStatCard(id, value, allStats, key, higherIsBetter) {
-            document.getElementById('stat-' + id).textContent = value;
+            const el = document.getElementById('stat-' + id);
+            if (el) el.textContent = value;
 
-            // 順位計算
-            const sorted = [...allStats].filter(p => p.games > 0).sort((a, b) =>
-                higherIsBetter ? b[key] - a[key] : a[key] - b[key]
-            );
+            const sorted = [...allStats].filter(p => p.games > 0).sort((a, b) => higherIsBetter ? b[key] - a[key] : a[key] - b[key]);
             const myRank = sorted.findIndex(p => p.name === myAccountName) + 1;
             const total = sorted.length;
 
             const rankEl = document.getElementById('rank-' + id);
-            if (myRank > 0) {
-                rankEl.textContent = `${myRank}/${total}位`;
-                rankEl.classList.remove('no-data');
-            } else {
-                rankEl.textContent = '-';
-                rankEl.classList.add('no-data');
+            if (rankEl) {
+                if (myRank > 0) {
+                    rankEl.textContent = `${myRank}/${total}位`;
+                    rankEl.classList.remove('no-data');
+                } else {
+                    rankEl.textContent = '-';
+                    rankEl.classList.add('no-data');
+                }
             }
         }
 
         function calculateAllPlayerStats(records) {
             const players = {};
-
             records.forEach(r => {
-                // discord_user_idをキーとして使用（ランキングと同じロジック）
                 let id = r.discord_user_id;
-                if (!id || id === 'null') {
-                    id = r.nickname || r.account_name || 'Unknown';
-                }
+                if (!id || id === 'null') id = r.nickname || r.account_name || 'Unknown';
                 if (!id) return;
 
                 if (!players[id]) {
-                    players[id] = {
-                        name: id,
-                        score: 0, sanma: 0, yonma: 0,
-                        count: 0, win: 0, deal: 0,
-                        r1: 0, r2: 0, r3: 0, r4: 0,
-                        max_score: -Infinity
-                    };
+                    players[id] = { name: id, score: 0, sanma: 0, yonma: 0, count: 0, win: 0, deal: 0, r1: 0, r2: 0, r3: 0, r4: 0, max_score: -Infinity };
                 }
 
                 const p = players[id];
-                const mode = r.mahjong_mode || r.mode || ''; // ランキング画面に合わせて mahjong_mode を優先
+                const mode = r.mahjong_mode || r.mode || '';
 
-                // 第一回大会と第二回大会で異なるカラム名を処理
                 if (r.tournament_type === '第一回麻雀大会') {
                     p.score += Number(r.score_total || 0);
                     p.count += Number(r.matches_played || 0);
-                    p.r1 += Number(r.rank1_count || 0);
-                    p.r2 += Number(r.rank2_count || 0);
-                    p.r3 += Number(r.rank3_count || 0);
-                    p.r4 += Number(r.rank4_count || 0);
+                    p.r1 += Number(r.rank1_count || 0); p.r2 += Number(r.rank2_count || 0); p.r3 += Number(r.rank3_count || 0); p.r4 += Number(r.rank4_count || 0);
                     p.max_score = Math.max(p.max_score, Number(r.score_max || 0));
                 } else {
                     p.score += Number(r.final_score || 0);
                     p.count += 1;
                     const rk = Number(r.rank);
-                    if (rk === 1) p.r1++;
-                    else if (rk === 2) p.r2++;
-                    else if (rk === 3) p.r3++;
-                    else if (rk === 4) p.r4++;
+                    if (rk === 1) p.r1++; else if (rk === 2) p.r2++; else if (rk === 3) p.r3++; else if (rk === 4) p.r4++;
                     p.max_score = Math.max(p.max_score, Number(r.final_score || 0));
                 }
-
                 p.win += Number(r.win_count || r.wins || 0);
                 p.deal += Number(r.deal_in_count || r.deals || 0);
-
-                // モード別スコア（三麻スコア・四麻スコア表示用）
                 if (mode === '三麻') p.sanma += Number(r.final_score || r.score_total || 0);
                 if (mode === '四麻') p.yonma += Number(r.final_score || r.score_total || 0);
             });
 
-            // 統計値を計算
             return Object.values(players).map(p => {
-                const avgWin = p.count > 0 ? (p.win / p.count) : 0;
-                const avgDeal = p.count > 0 ? (p.deal / p.count) : 0;
-                const topRate = p.count > 0 ? (p.r1 / p.count) * 100 : 0;
-                let lastCount = p.r4;
-                if (p.r4 === 0 && p.r3 > 0) lastCount = p.r3;
-                const avoidRate = p.count > 0 ? (1 - (lastCount / p.count)) * 100 : 0;
-                const avgRank = p.count > 0 ? (1 * p.r1 + 2 * p.r2 + 3 * p.r3 + 4 * p.r4) / p.count : 0;
-                const avgScore = p.count > 0 ? p.score / p.count : 0;
-
+                const count = p.count;
                 return {
-                    name: p.name,
-                    total: p.score,
-                    sanma: p.sanma,
-                    yonma: p.yonma,
-                    avgScore: avgScore,
+                    name: p.name, total: p.score, sanma: p.sanma, yonma: p.yonma,
+                    avgScore: count > 0 ? p.score / count : 0,
                     maxScore: p.max_score === -Infinity ? 0 : p.max_score,
-                    winRate: avgWin,
-                    dealRate: avgDeal,
-                    avgRank: avgRank,
-                    topRate: topRate,
-                    avoidRate: avoidRate,
-                    games: p.count
+                    winRate: count > 0 ? p.win / count : 0, dealRate: count > 0 ? p.deal / count : 0,
+                    avgRank: count > 0 ? (1 * p.r1 + 2 * p.r2 + 3 * p.r3 + 4 * p.r4) / count : 0,
+                    topRate: count > 0 ? (p.r1 / count) * 100 : 0,
+                    avoidRate: count > 0 ? (1 - ((p.r4 === 0 && p.r3 > 0 ? p.r3 : p.r4) / count)) * 100 : 0,
+                    games: count
                 };
             });
         }
 
-        // 戻るボタン - 前のページに戻る（履歴がない場合はホームへ）
+        // 戻るボタン
         function goBack() {
-            if (document.referrer && document.referrer.includes(location.hostname)) {
-                history.back();
-            } else {
-                location.href = '../index.html';
-            }
+            if (document.referrer && document.referrer.includes(location.hostname)) history.back();
+            else location.href = '../index.html';
         }
 
         function toggleLoading(show) {
             const overlay = document.getElementById('loading-overlay');
-            if (show) {
-                overlay.classList.add('active');
-            } else {
-                overlay.classList.remove('active');
+            if (overlay) overlay.classList.toggle('active', show);
+        }
+
+        document.addEventListener('DOMContentLoaded', initPage);
+    </script>
+
+    <!-- コイン送金とユーザー検索 -->
+    <script>
+        let currentSelectMode = '';
+        async function openUserSelectModal(mode) {
+            currentSelectMode = mode;
+            const listEl = document.getElementById('user-select-list');
+            listEl.innerHTML = '<p class="text-center text-muted py-3">読み込み中...</p>';
+            new bootstrap.Modal(document.getElementById('userSelectModal')).show();
+
+            try {
+                const { data: profiles, error } = await supabaseClient
+                    .from('profiles')
+                    .select('discord_user_id, account_name, avatar_url, equipped_badge_id, badges!equipped_badge_id(image_url)')
+                    .neq('discord_user_id', targetId)
+                    .order('account_name');
+
+                if (error) throw error;
+                listEl.innerHTML = profiles.map(p => `
+                    <div class="user-select-item" onclick="confirmSelection('${p.discord_user_id}', '${p.account_name.replace(/'/g, "\\'")}')">
+                        <img src="${p.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png'}" class="user-select-avatar">
+                        <span class="user-select-name">${p.account_name}</span>
+                        ${p.badges ? `<img src="${p.badges.image_url}" class="user-select-badge">` : ''}
+                    </div>
+                `).join('');
+            } catch (err) {
+                listEl.innerHTML = '<p class="text-center text-danger py-3">読み込み失敗</p>';
             }
         }
 
+        let selectedToUserId = '';
+        let selectedToUserName = '';
+        function confirmSelection(id, name) {
+            selectedToUserId = id;
+            selectedToUserName = name;
+            bootstrap.Modal.getInstance(document.getElementById('userSelectModal'))?.hide();
+            if (currentSelectMode === 'coin_transfer') {
+                document.getElementById('coin-transfer-target-name').textContent = `${name} さんへ送金`;
+                new bootstrap.Modal(document.getElementById('coinAmountModal')).show();
+            } else if (currentSelectMode === 'badge_transfer') {
+                if (confirm(`「${currentActionBadgeName}」を ${name} さんに譲渡しますか？`)) {
+                    executeBadgeTransfer(id, name);
+                }
+            }
+        }
 
-        document.addEventListener('DOMContentLoaded', initPage);
+        async function executeBadgeTransfer(toUserId, toUserName) {
+            toggleLoading(true);
+            try {
+                // 1. バッジの user_id を変更
+                const { error: updateError } = await supabaseClient
+                    .from('user_badges_new')
+                    .update({ user_id: toUserId })
+                    .eq('uuid', currentActionUUID);
 
+                if (updateError) throw updateError;
+
+                // 2. 活動ログを記録
+                if (typeof logActivity === 'function') {
+                    const sender = allProfiles.find(p => p.discord_user_id === targetId);
+                    const senderName = sender?.account_name || '誰か';
+
+                    await logActivity(targetId, 'badge_transfer', {
+                        badgeId: currentActionUUID,
+                        targetUserId: toUserId,
+                        details: { target_name: toUserName, badge_name: currentActionBadgeName }
+                    });
+                    await logActivity(toUserId, 'badge_receive', {
+                        badgeId: currentActionUUID,
+                        targetUserId: targetId,
+                        details: { sender_name: senderName, badge_name: currentActionBadgeName }
+                    });
+                }
+
+                alert(`${toUserName} さんにバッジを譲渡しました！`);
+                loadOwnedBadges();
+                loadActivityLogs();
+            } catch (err) {
+                console.error('譲渡エラー:', err);
+                alert('譲渡に失敗しました');
+            } finally {
+                toggleLoading(false);
+            }
+        }
+
+        async function executeCoinTransfer() {
+            const amount = parseInt(document.getElementById('coin-transfer-amount').value);
+            if (!amount || amount <= 0) return alert('金額を入力してください');
+
+            toggleLoading(true);
+            try {
+                const { data, error } = await supabaseClient.rpc('transfer_coins', {
+                    p_from_id: targetId,
+                    p_to_id: selectedToUserId,
+                    p_amount: amount
+                });
+
+                if (error) throw error;
+                if (!data.ok) throw new Error(data.error);
+
+                alert(`${selectedToUserName} さんに 🪙${amount.toLocaleString()} 送金しました。`);
+                location.reload();
+            } catch (err) {
+                alert('送金失敗: ' + err.message);
+            } finally {
+                toggleLoading(false);
+            }
+        }
+        function openCoinTransferModal() { openUserSelectModal('coin_transfer'); }
     </script>
+
     <!-- チーム通知バッジ -->
     <script>
         async function checkTeamNotifications() {
             const user = await getCurrentUser();
             if (!user) return;
-
             const discordId = user.user_metadata.provider_id;
-
-            // 自分がリーダーのチームを取得
-            const { data: myTeams } = await supabaseClient
-                .from('teams')
-                .select('id')
-                .eq('creator_discord_id', discordId);
-
+            const { data: myTeams } = await supabaseClient.from('teams').select('id').eq('creator_discord_id', discordId);
             if (!myTeams || myTeams.length === 0) return;
 
             const teamIds = myTeams.map(t => t.id);
-
-            // 保留中の申請（加入・脱退）をカウント
-            const { data: pendingRequests } = await supabaseClient
-                .from('team_join_requests')
-                .select('id')
-                .in('team_id', teamIds)
-                .in('status', ['pending', 'leave_pending']);
-
+            const { data: pendingRequests } = await supabaseClient.from('team_join_requests').select('id').in('team_id', teamIds).in('status', ['pending', 'leave_pending']);
             const count = pendingRequests?.length || 0;
 
             if (count > 0) {
@@ -2408,7 +2174,6 @@
                 }
             }
         }
-
         document.addEventListener('DOMContentLoaded', checkTeamNotifications);
     </script>
 </body>

@@ -214,19 +214,33 @@
     <div class="container py-5">
         <header class="text-center">
             <h1 class="page-header display-4 fw-bold">💰 資産ランキング</h1>
-            <p class="text-white-50">累計獲得金額順</p>
+
+            <div class="d-flex justify-content-center mb-4">
+                <div class="btn-group ranking-tabs" role="group">
+                    <button type="button" class="btn btn-outline-light active" id="tab-networth"
+                        onclick="switchRanking('networth')">
+                        💎 純資産ランキング
+                    </button>
+                    <button type="button" class="btn btn-outline-light" id="tab-totalassets"
+                        onclick="switchRanking('totalassets')">
+                        📊 累計資産ランキング
+                    </button>
+                </div>
+            </div>
+
+            <p id="ranking-description" class="text-white-50">「手持ちコイン ＋ 所持バッジの現在価値」の合計順</p>
         </header>
 
         <div class="ranking-card">
             <div class="table-responsive">
                 <table class="ranking-table">
                     <thead>
-                        <tr>
+                        <tr id="table-header">
                             <th style="width: 60px;">順位</th>
                             <th>名前</th>
-                            <th>総資産（累計）</th>
+                            <th id="main-stat-header">純資産</th>
                             <th>資金（手持ち）</th>
-                            <th>バッジ数</th>
+                            <th>バッジ価値</th>
                         </tr>
                     </thead>
                     <tbody id="ranking-body">
@@ -243,6 +257,20 @@
         </div>
     </div>
 
+    <!-- スタイル追加 -->
+    <style>
+        .ranking-tabs .btn {
+            border-width: 2px;
+            font-weight: bold;
+            padding: 10px 20px;
+        }
+
+        .ranking-tabs .btn.active {
+            background-color: white !important;
+            color: var(--deep-purple) !important;
+        }
+    </style>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../js/supabase-config.js"></script>
@@ -251,45 +279,120 @@
         document.addEventListener('DOMContentLoaded', function () {
             initAccordionNav('../');
         });
-    </script>
-    <script>
+
+        let currentMode = 'networth';
+
+        function switchRanking(mode) {
+            if (currentMode === mode) return;
+            currentMode = mode;
+
+            // UI更新
+            document.getElementById('tab-networth').classList.toggle('active', mode === 'networth');
+            document.getElementById('tab-totalassets').classList.toggle('active', mode === 'totalassets');
+
+            const desc = document.getElementById('ranking-description');
+            const mainHeader = document.getElementById('main-stat-header');
+
+            if (mode === 'networth') {
+                desc.textContent = '「手持ちコイン ＋ 所持バッジの現在価値」の合計順';
+                mainHeader.textContent = '純資産';
+            } else {
+                desc.textContent = '「生涯で獲得した累計金額（売却益・賞金含む）」の合計順';
+                mainHeader.textContent = '累計資産';
+            }
+
+            loadRanking();
+        }
+
         async function loadRanking() {
             const tbody = document.getElementById('ranking-body');
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner-border text-primary"></div></td></tr>';
 
             try {
-                // プロフィール情報を取得
-                const { data: profiles, error } = await supabaseClient
+                // 1. プロフィール情報を取得
+                const { data: profiles, error: pError } = await supabaseClient
                     .from('profiles')
-                    .select('discord_user_id, account_name, avatar_url, coins, total_assets, equipped_badge_id, badges!equipped_badge_id(image_url, name)')
-                    .order('total_assets', { ascending: false, nullsFirst: false });
+                    .select('discord_user_id, account_name, avatar_url, coins, total_assets, equipped_badge_id, badges!equipped_badge_id(image_url, name)');
+                if (pError) throw pError;
 
-                if (error) throw error;
+                // 2. 全バッジ個体データを取得（資産価値計算用）
+                const { data: userBadges, error: bError } = await supabaseClient
+                    .from('user_badges_new')
+                    .select('user_id, badge_id, is_mutant, badges(price, is_fixed_price)');
+                if (bError) throw bError;
 
-                if (!profiles || profiles.length === 0) {
+                // 3. バッジマスター情報を取得（固定価格対応）
+                const { data: masterBadges } = await supabaseClient.from('badges').select('id, price, is_fixed_price');
+
+                // バッジごとの流通数をカウント
+                const marketCounts = {};
+                userBadges.forEach(ub => {
+                    marketCounts[ub.badge_id] = (marketCounts[ub.badge_id] || 0) + 1;
+                });
+
+                // 各バッジの「現在価値(P_value)」を事前に計算
+                const badgeValues = {};
+                masterBadges.forEach(mb => {
+                    const n = marketCounts[mb.id] || 0;
+                    if (mb.is_fixed_price) {
+                        badgeValues[mb.id] = mb.price;
+                    } else {
+                        // P_value = price * 1.3^(n-1) if n > 0 else 0
+                        badgeValues[mb.id] = n > 0 ? Math.ceil(mb.price * Math.pow(1.3, n - 1)) : 0;
+                    }
+                });
+
+                // 各ユーザーのバッジ価値合計と個数を計算
+                const userFinances = {};
+                profiles.forEach(p => {
+                    userFinances[p.discord_user_id] = { badgeCount: 0, badgeValue: 0 };
+                });
+
+                userBadges.forEach(ub => {
+                    const baseValue = badgeValues[ub.badge_id] || 0;
+                    const value = baseValue * (ub.is_mutant ? 1 : 1); // 資産価値としてはミュータントでも基本価値（売却価格とは別）
+                    // ※売却価格は 0.7倍 * mutant(3 or 1) だが、ここでは「資産評価額」として基本価値を採用
+
+                    if (userFinances[ub.user_id]) {
+                        userFinances[ub.user_id].badgeCount++;
+                        userFinances[ub.user_id].badgeValue += value;
+                    }
+                });
+
+                // ランキング用データ構築
+                const rankingData = profiles.map(p => {
+                    const finances = userFinances[p.discord_user_id] || { badgeCount: 0, badgeValue: 0 };
+                    return {
+                        ...p,
+                        badgeCount: finances.badgeCount,
+                        badgeValue: finances.badgeValue,
+                        netWorth: p.coins + finances.badgeValue
+                    };
+                });
+
+                // ソート
+                if (currentMode === 'networth') {
+                    rankingData.sort((a, b) => b.netWorth - a.netWorth);
+                } else {
+                    rankingData.sort((a, b) => (b.total_assets || 0) - (a.total_assets || 0));
+                }
+
+                if (rankingData.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">データがありません</td></tr>';
                     return;
                 }
 
-                // 各ユーザーのバッジ数を取得
-                const badgeCounts = {};
-                const { data: badgeData } = await supabaseClient
-                    .from('user_badges')
-                    .select('user_id');
-
-                if (badgeData) {
-                    badgeData.forEach(b => {
-                        badgeCounts[b.user_id] = (badgeCounts[b.user_id] || 0) + 1;
-                    });
-                }
-
-                tbody.innerHTML = profiles.map((profile, index) => {
+                tbody.innerHTML = rankingData.map((item, index) => {
                     const rank = index + 1;
                     const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
-                    const avatar = profile.avatar_url || 'https://via.placeholder.com/40';
-                    const badgeImg = profile.badges ? `<img src="${profile.badges.image_url}" class="user-badge" title="${profile.badges.name}">` : '';
-                    const badgeCount = badgeCounts[profile.discord_user_id] || 0;
-                    const totalAssets = profile.total_assets || 0;
-                    const coins = profile.coins || 0;
+                    const avatar = item.avatar_url || 'https://via.placeholder.com/40';
+                    const badgeImg = item.badges ? `<img src="${item.badges.image_url}" class="user-badge" title="${item.badges.name}">` : '';
+
+                    const displayStat = currentMode === 'networth'
+                        ? `💎 ${item.netWorth.toLocaleString()}`
+                        : `📊 ${(item.total_assets || 0).toLocaleString()}`;
+
+                    const statColor = currentMode === 'networth' ? '#9b59b6' : '#e67e22';
 
                     return `
                         <tr>
@@ -297,15 +400,15 @@
                             <td>
                                 <div class="user-cell">
                                     <img src="${avatar}" class="user-avatar" onerror="this.src='https://via.placeholder.com/40'">
-                                    <a href="../mypage/index.html?user=${profile.discord_user_id}" class="text-decoration-none text-dark fw-bold">
-                                        ${profile.account_name || '名称未設定'}
+                                    <a href="../mypage/index.html?user=${item.discord_user_id}" class="text-decoration-none text-dark fw-bold">
+                                        ${item.account_name || '名称未設定'}
                                     </a>
                                     ${badgeImg}
                                 </div>
                             </td>
-                            <td class="fw-bold" style="color: #e67e22;">📊 ${totalAssets.toLocaleString()}</td>
-                            <td>🪙 ${coins.toLocaleString()}</td>
-                            <td>📛 ${badgeCount}</td>
+                            <td class="fw-bold" style="color: ${statColor}; font-size: 1.1rem;">${displayStat}</td>
+                            <td>🪙 ${item.coins.toLocaleString()}</td>
+                            <td class="text-muted small">📛 ${item.badgeCount}個 / 📈 ${item.badgeValue.toLocaleString()}</td>
                         </tr>
                     `;
                 }).join('');

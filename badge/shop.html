@@ -389,20 +389,18 @@
         async function fetchShopBadges() {
             const grid = document.getElementById('shop-grid');
             try {
-                // gacha_weight > 0 のものだけをショップに表示
-                const { data: badges, error } = await supabaseClient
-                    .from('badges')
-                    .select('*')
-                    .gt('gacha_weight', 0)
-                    .order('order', { ascending: true })
-                    .order('name');
+                // 最新の各バッジの流通枚数を取得して、価格を計算する
+                const { data: marketStats, error: statsError } = await supabaseClient
+                    .from('user_badges_new')
+                    .select('badge_id');
 
-                if (error) throw error;
+                if (statsError) throw statsError;
 
-                if (!badges || badges.length === 0) {
-                    grid.innerHTML = '<div class="col-12 text-center text-muted py-5">販売中のバッジはありません</div>';
-                    return;
-                }
+                // badge_id ごとのカウントを集計
+                const marketCounts = {};
+                marketStats.forEach(s => {
+                    marketCounts[s.badge_id] = (marketCounts[s.badge_id] || 0) + 1;
+                });
 
                 const rarityColors = {
                     'Normal': '#888',
@@ -413,9 +411,22 @@
                 };
 
                 grid.innerHTML = badges.map(badge => {
-                    const isSoldOut = badge.remaining_count !== null && badge.remaining_count <= 0;
+                    const n = marketCounts[badge.id] || 0;
+
+                    // 価格計算 (1.3^n)
+                    let pBuy, pValue;
+                    if (badge.is_fixed_price) {
+                        pBuy = badge.price;
+                        pValue = badge.price;
+                    } else {
+                        pBuy = Math.ceil(badge.price * Math.pow(1.3, n));
+                        pValue = Math.ceil(badge.price * Math.pow(1.3, Math.max(0, n - 1)));
+                    }
+
                     const rarity = badge.rarity || 'Normal';
                     const color = rarityColors[rarity] || '#888';
+                    const isSoldOut = badge.remaining_count !== null && badge.remaining_count <= 0;
+
                     return `
                         <div class="col-6 col-md-4 col-lg-3">
                             <div class="shop-item position-relative ${isSoldOut ? 'sold-out' : ''}">
@@ -425,10 +436,19 @@
                                     <img src="${badge.image_url}" class="shop-img" alt="${badge.name}">
                                     <div class="shop-name">${badge.name}</div>
                                 </a>
-                                <div class="shop-price">🪙 ${badge.price.toLocaleString()}</div>
-                                <div class="shop-stock">残り: ${badge.remaining_count !== null ? badge.remaining_count : '∞'}個</div>
+                                <div class="w-100 px-2 small mb-2">
+                                    <div class="d-flex justify-content-between text-muted">
+                                        <span>資産価値:</span>
+                                        <span>🪙 ${pValue.toLocaleString()}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between fw-bold text-primary">
+                                        <span>販売価格:</span>
+                                        <span>🪙 ${pBuy.toLocaleString()}</span>
+                                    </div>
+                                    <div class="text-center mt-1 text-muted" style="font-size: 0.7rem;">流通数: ${n} 枚</div>
+                                </div>
                                 <button class="btn btn-buy ${isSoldOut ? 'btn-secondary disabled' : 'btn-primary'}" 
-                                        onclick="buyBadge('${badge.id}', ${badge.price}, '${badge.name.replace(/'/g, "\\'")}', ${badge.remaining_count})"
+                                        onclick="buyBadgeV2('${badge.id}', ${pBuy}, '${badge.name.replace(/'/g, "\\'")}')"
                                         ${isSoldOut ? 'disabled' : ''}>
                                     ${isSoldOut ? '売り切れ' : '購入する'}
                                 </button>
@@ -443,7 +463,7 @@
             }
         }
 
-        async function buyBadge(badgeId, price, name, remaining_count) {
+        async function buyBadgeV2(badgeId, price, name) {
             if (currentUserCoins < price) {
                 alert('コインが足りません');
                 return;
@@ -457,89 +477,23 @@
             overlay.classList.add('active');
 
             try {
-                // 0. バッジの権利者情報を取得
-                const { data: badgeData, error: badgeError } = await supabaseClient
-                    .from('badges')
-                    .select('discord_user_id')
-                    .eq('id', badgeId)
-                    .single();
+                // RPC 関数 purchase_badge_v2 を呼び出し
+                const { data, error } = await supabaseClient.rpc('purchase_badge_v2', {
+                    p_user_id: currentUserId,
+                    p_badge_id: parseInt(badgeId)
+                });
 
-                const creatorId = badgeData?.discord_user_id;
+                if (error) throw error;
+                if (!data.ok) throw new Error(data.error || '購入に失敗しました');
 
-                // 1. 在庫チェックと減算
-                if (remaining_count !== null) {
-                    const { error: stockError } = await supabaseClient
-                        .from('badges')
-                        .update({ remaining_count: remaining_count - 1 })
-                        .eq('id', badgeId)
-                        .gte('remaining_count', 1);
-
-                    if (stockError) throw new Error('在庫の更新に失敗しました（売り切れた可能性があります）');
+                if (data.is_mutant) {
+                    alert('🎉 おめでとうございます！ミュータント（変異種）個体を引き当てました！売却価格が3倍になります。');
+                } else {
+                    alert('購入が完了しました！');
                 }
 
-                // 2. コイン減算
-                const { error: coinError } = await supabaseClient
-                    .from('profiles')
-                    .update({ coins: currentUserCoins - price })
-                    .eq('discord_user_id', currentUserId);
-
-                if (coinError) throw coinError;
-
-                // 3. バッジ付与 (重複許可)
-                const { error: grantError } = await supabaseClient
-                    .from('user_badges')
-                    .insert([{ user_id: currentUserId, badge_id: badgeId }]);
-
-                if (grantError) throw grantError;
-
-                // 4. 売上還元（権利者が設定されている場合、10%切り上げ）
-                if (creatorId && creatorId !== currentUserId) {
-                    const revenueShare = Math.ceil(price * 0.1); // 10%切り上げ
-
-                    // 権利者のコインを取得して加算
-                    const { data: creatorProfile, error: creatorFetchError } = await supabaseClient
-                        .from('profiles')
-                        .select('coins')
-                        .eq('discord_user_id', creatorId)
-                        .maybeSingle();
-
-                    if (!creatorFetchError && creatorProfile) {
-                        await supabaseClient
-                            .from('profiles')
-                            .update({ coins: (creatorProfile.coins || 0) + revenueShare })
-                            .eq('discord_user_id', creatorId);
-
-                        // 権利者の総資産を加算
-                        if (typeof addToTotalAssets === 'function') {
-                            await addToTotalAssets(creatorId, revenueShare);
-                        }
-
-                        // 活動ログを記録（権利者側）
-                        if (typeof logActivity === 'function') {
-                            await logActivity(creatorId, 'revenue_share', {
-                                amount: revenueShare,
-                                badgeId: badgeId,
-                                targetUserId: currentUserId,
-                                details: { badge_name: name, sale_price: price }
-                            });
-                        }
-
-                        console.log(`権利者 ${creatorId} に 🪙${revenueShare} を還元しました`);
-                    }
-                }
-
-                // 5. 購入者の活動ログを記録
-                if (typeof logActivity === 'function') {
-                    await logActivity(currentUserId, 'badge_purchase', {
-                        amount: price,
-                        badgeId: badgeId,
-                        details: { badge_name: name }
-                    });
-                }
-
-                alert('購入が完了しました！');
                 await loadUserCoins();
-                await fetchShopBadges(); // ショップの状態（在庫表示など）を最新にする
+                await fetchShopBadges();
 
             } catch (err) {
                 alert('エラーが発生しました: ' + err.message);
