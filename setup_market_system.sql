@@ -75,15 +75,21 @@ DECLARE
     v_user_coins Int;
     v_is_mutant Boolean;
     v_share_rate Float;
-    v_share_amount Int;
+    v_remaining_count Int;
 BEGIN
     -- バッジ情報取得
-    SELECT price, sales_type, discord_user_id INTO v_base_price, v_sales_type, v_creator_id
+    SELECT price, sales_type, discord_user_id, remaining_count 
+    INTO v_base_price, v_sales_type, v_creator_id, v_remaining_count
     FROM badges WHERE id = p_badge_id;
     
     -- 購入不可（限定品）チェック
     IF v_sales_type = '限定品' THEN
         RETURN jsonb_build_object('ok', false, 'error', 'This badge is not for sale');
+    END IF;
+
+    -- 在庫チェック
+    IF v_remaining_count IS NOT NULL AND v_remaining_count <= 0 THEN
+        RETURN jsonb_build_object('ok', false, 'error', 'Sold out');
     END IF;
 
     -- 流通枚数 $n$
@@ -113,6 +119,11 @@ BEGIN
     -- 2. バッジ付与
     INSERT INTO user_badges_new (user_id, badge_id, purchased_price, is_mutant)
     VALUES (p_user_id, p_badge_id, v_buy_price, v_is_mutant);
+
+    -- 2.5 在庫減算
+    IF v_remaining_count IS NOT NULL THEN
+        UPDATE badges SET remaining_count = remaining_count - 1 WHERE id = p_badge_id;
+    END IF;
     
     -- 3. クリエイター還元
     IF v_creator_id IS NOT NULL AND v_creator_id != p_user_id THEN
@@ -148,6 +159,7 @@ DECLARE
     v_n Int;
     v_asset_value Int;
     v_sell_price Int;
+    v_remaining_count Int;
 BEGIN
     -- 個体情報取得
     SELECT badge_id, purchased_price, is_mutant INTO v_badge_id, v_purchased_price, v_is_mutant
@@ -158,7 +170,7 @@ BEGIN
     END IF;
     
     -- バッジマスター情報
-    SELECT price, sales_type INTO v_base_price, v_sales_type FROM badges WHERE id = v_badge_id;
+    SELECT price, sales_type, remaining_count INTO v_base_price, v_sales_type, v_remaining_count FROM badges WHERE id = v_badge_id;
     
     -- 売却不可（限定品）チェック
     IF v_sales_type = '限定品' THEN
@@ -188,6 +200,11 @@ BEGIN
     
     -- 2. バッジ削除
     DELETE FROM user_badges_new WHERE uuid = p_badge_uuid;
+
+    -- 3. 在庫加算 (無制限でない場合)
+    IF v_remaining_count IS NOT NULL THEN
+        UPDATE badges SET remaining_count = remaining_count + 1 WHERE id = v_badge_id;
+    END IF;
     
     RETURN jsonb_build_object('ok', true, 'sell_price', v_sell_price);
 END;
