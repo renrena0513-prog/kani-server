@@ -37,6 +37,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 記録一覧の取得
     fetchRecords();
+
+    // 編集モーダルの入力変更イベントリスナー
+    const modalInputs = ['mahjong_mode', 'dist_points', 'opt_tobi', 'opt_yakitori'];
+    modalInputs.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', calculateFinalScores);
+    });
+
+    document.querySelectorAll('.player-edit-card').forEach(card => {
+        const inputs = ['.player-raw-points', '.player-win-count', '.player-rank'];
+        inputs.forEach(sel => {
+            const el = card.querySelector(sel);
+            if (el) el.addEventListener('input', calculateFinalScores);
+        });
+    });
 });
 
 // ローディング表示の切り替え
@@ -321,6 +336,7 @@ function editMatch(matchId) {
         card.style.display = 'block';
         card.querySelector('.player-record-id').value = r.id;
         card.querySelector('.player-account-name').value = r.account_name || '';
+        card.querySelector('.player-raw-points').value = r.raw_points || 0;
         card.querySelector('.player-final-score').value = r.final_score || 0;
         card.querySelector('.player-rank').value = r.rank || '';
         card.querySelector('.player-win-count').value = r.win_count || 0;
@@ -328,7 +344,99 @@ function editMatch(matchId) {
         card.querySelector('.player-discord-id').value = r.discord_user_id || '';
     });
 
+    // 初期計算（プレビュー更新）
+    calculateFinalScores();
+
     recordModal.show();
+}
+
+/**
+ * 報酬計算ロジック（1 + スコアボーナス + 順位ボーナス）
+ */
+function calculateReward(finalScore, rank, mode) {
+    if (finalScore === null || rank === null) return 0;
+
+    // スコアボーナス: 切り上げ
+    const scoreBonus = finalScore > 0 ? Math.ceil(finalScore / 10) : 0;
+
+    // 順位ボーナス (四麻のみ)
+    let rankBonus = 0;
+    if (mode === '四麻') {
+        const yonmaRankBonus = { 1: 5, 2: 3, 3: 1, 4: 0 };
+        rankBonus = yonmaRankBonus[rank] || 0;
+    }
+
+    return 1 + scoreBonus + rankBonus;
+}
+
+/**
+ * モーダルの入力値から最終スコアを算出する（リアルタイム更新用）
+ */
+function calculateFinalScores() {
+    const cards = Array.from(document.querySelectorAll('.player-edit-card')).filter(c => c.style.display !== 'none');
+    const mode = document.getElementById('mahjong_mode').value || '四麻';
+    const distPoints = Number(document.getElementById('dist_points').value || 25000);
+    const returnPoints = distPoints + 5000;
+    const isTobiOn = document.getElementById('opt_tobi').checked;
+    const isYakitoriOn = document.getElementById('opt_yakitori').checked;
+
+    const numPlayers = cards.length;
+    if (numPlayers === 0) return;
+
+    const okaPoints = (returnPoints - distPoints) * numPlayers;
+
+    // プレイヤーデータの収集
+    const players = cards.map(card => ({
+        card: card,
+        raw_points: Number(card.querySelector('.player-raw-points').value || 0),
+        win_count: Number(card.querySelector('.player-win-count').value || 0),
+        account_name: card.querySelector('.player-account-name').value
+    }));
+
+    // スコア計算 (mahjong-record.js と同等)
+    // 順位付け (素点降順)
+    const sorted = [...players].sort((a, b) => b.raw_points - a.raw_points);
+    let currentRank = 1;
+    let poolBonus = 0;
+
+    sorted.forEach((p, i) => {
+        if (i > 0 && p.raw_points < sorted[i - 1].raw_points) {
+            currentRank = i + 1;
+        }
+        p.calc_rank = currentRank;
+
+        // ウマ
+        let uma = 0;
+        if (mode === '三麻') {
+            uma = { 1: 20, 2: 0, 3: -20 }[currentRank] || 0;
+        } else {
+            uma = { 1: 30, 2: 10, 3: -10, 4: -30 }[currentRank] || 0;
+        }
+
+        let baseScore = (p.raw_points - returnPoints) / 1000 + uma;
+        let penalty = 0;
+        if (isTobiOn && p.raw_points < 0) { penalty += 10; poolBonus += 10; }
+        if (isYakitoriOn && p.win_count === 0) { penalty += 10; poolBonus += 10; }
+
+        p.final_score = baseScore - penalty;
+    });
+
+    // 1位にオカとプールを加算
+    const topOnes = sorted.filter(p => p.calc_rank === 1);
+    const totalBonus = (okaPoints / 1000) + poolBonus;
+    topOnes.forEach(p => p.final_score += (totalBonus / topOnes.length));
+
+    // 結果を UI に反映
+    players.forEach(p => {
+        const rounded = Math.round(p.final_score * 10) / 10;
+        p.card.querySelector('.player-final-score').value = rounded;
+        // 修正: 順位も自動計算されたものをセット
+        p.card.querySelector('.player-rank').value = p.calc_rank;
+
+        // 報酬プレビューの更新
+        const reward = calculateReward(rounded, p.calc_rank, mode);
+        p.card.querySelector('.player-reward-preview').textContent = `約 ${reward} coins`;
+    });
 }
 
 async function saveRecordFromForm() {
@@ -342,13 +450,16 @@ async function saveRecordFromForm() {
         tournament_type: document.getElementById('tournament_type').value,
         mahjong_mode: document.getElementById('mahjong_mode').value,
         match_mode: document.getElementById('match_mode').value,
-        hand_count: Number(document.getElementById('matches_played').value)
+        hand_count: Number(document.getElementById('hand_count').value)
     };
 
     if (!event_datetime) {
         alert('日時は必須です');
         return;
     }
+
+    // 最終計算を強制実行して最新の計算値（final_score, rank）を取得・UIに反映
+    calculateFinalScores();
 
     // 記録者IDの取得
     let submittedBy = null;
@@ -362,25 +473,48 @@ async function saveRecordFromForm() {
     const cards = document.querySelectorAll('.player-edit-card');
     const recordsToUpdate = [];
     const recordsToInsert = [];
+    const coinAdjustments = {}; // discord_user_id -> diff
 
     cards.forEach(card => {
         if (card.style.display === 'none') return;
 
         const account_name = card.querySelector('.player-account-name').value;
-        if (!account_name) return; // 名前がない欄はスキップ
+        if (!account_name) return;
 
         const recordId = card.querySelector('.player-record-id').value;
+        const discord_id = card.querySelector('.player-discord-id').value || null;
+
+        const finalScore = Number(card.querySelector('.player-final-score').value);
+        const rank = Number(card.querySelector('.player-rank').value);
+
         const data = {
             ...common,
             match_id: matchId,
             account_name: account_name,
-            final_score: Number(card.querySelector('.player-final-score').value),
-            rank: Number(card.querySelector('.player-rank').value),
+            raw_points: Number(card.querySelector('.player-raw-points').value || 0),
+            final_score: finalScore,
+            rank: rank,
             win_count: Number(card.querySelector('.player-win-count').value),
             deal_in_count: Number(card.querySelector('.player-deal-in-count').value),
-            discord_user_id: card.querySelector('.player-discord-id').value || null,
+            discord_user_id: discord_id,
             submitted_by_discord_user_id: submittedBy
         };
+
+        // コイン差分計算
+        if (discord_id) {
+            const newReward = calculateReward(finalScore, rank, common.mahjong_mode);
+            let oldReward = 0;
+            if (recordId) {
+                const oldRecord = allRecords.find(r => String(r.id) === String(recordId));
+                if (oldRecord) {
+                    oldReward = calculateReward(oldRecord.final_score, oldRecord.rank, oldRecord.mahjong_mode);
+                }
+            }
+            const diff = newReward - oldReward;
+            if (diff !== 0) {
+                coinAdjustments[discord_id] = (coinAdjustments[discord_id] || 0) + diff;
+            }
+        }
 
         if (recordId) {
             recordsToUpdate.push({ id: recordId, data });
@@ -396,20 +530,27 @@ async function saveRecordFromForm() {
 
     toggleLoading(true);
     try {
-        // 更新処理
+        // match_results 更新
         if (recordsToUpdate.length > 0) {
-            const updatePromises = recordsToUpdate.map(u =>
+            await Promise.all(recordsToUpdate.map(u =>
                 supabaseClient.from('match_results').update(u.data).eq('id', u.id)
-            );
-            const results = await Promise.all(updatePromises);
-            const error = results.find(r => r.error)?.error;
-            if (error) throw error;
+            ));
+        }
+        if (recordsToInsert.length > 0) {
+            await supabaseClient.from('match_results').insert(recordsToInsert);
         }
 
-        // 新規作成処理
-        if (recordsToInsert.length > 0) {
-            const { error } = await supabaseClient.from('match_results').insert(recordsToInsert);
-            if (error) throw error;
+        // コイン反映 (差分がある場合)
+        for (const uid of Object.keys(coinAdjustments)) {
+            const diff = coinAdjustments[uid];
+            // 現在の値を再取得して更新（安全のため）
+            const { data: profile } = await supabaseClient.from('profiles').select('coins, total_assets').eq('discord_user_id', uid).single();
+            if (profile) {
+                await supabaseClient.from('profiles').update({
+                    coins: (profile.coins || 0) + diff,
+                    total_assets: (profile.total_assets || 0) + diff
+                }).eq('discord_user_id', uid);
+            }
         }
 
         recordModal.hide();
@@ -422,17 +563,43 @@ async function saveRecordFromForm() {
 }
 
 async function deleteMatch(matchId) {
-    if (!confirm('この試合の全プレイヤー記録を削除してもよろしいですか？')) return;
+    if (!confirm('この試合の全記録を削除しますか？付与されたコインも差し引かれます。')) return;
 
-    // match_id が no-id-xxxx 形式の場合は特定のIDのみ削除
     const isSingleId = matchId.startsWith('no-id-');
     const filterKey = isSingleId ? 'id' : 'match_id';
     const filterValue = isSingleId ? matchId.replace('no-id-', '') : matchId;
 
+    // 削除前のデータ取得 (コイン返還用)
+    const targetRecords = allRecords.filter(r => {
+        const mid = r.match_id || `no-id-${r.id}`;
+        return mid === matchId;
+    });
+
     toggleLoading(true);
     try {
+        // コイン返還処理
+        const coinAdjustments = {};
+        targetRecords.forEach(r => {
+            if (r.discord_user_id) {
+                const reward = calculateReward(r.final_score, r.rank, r.mahjong_mode);
+                coinAdjustments[r.discord_user_id] = (coinAdjustments[r.discord_user_id] || 0) - reward;
+            }
+        });
+
+        for (const uid of Object.keys(coinAdjustments)) {
+            const diff = coinAdjustments[uid];
+            const { data: profile } = await supabaseClient.from('profiles').select('coins, total_assets').eq('discord_user_id', uid).single();
+            if (profile) {
+                await supabaseClient.from('profiles').update({
+                    coins: (profile.coins || 0) + diff,
+                    total_assets: (profile.total_assets || 0) + diff
+                }).eq('discord_user_id', uid);
+            }
+        }
+
         const { error } = await supabaseClient.from('match_results').delete().eq(filterKey, filterValue);
         if (error) throw error;
+
         fetchRecords();
     } catch (err) {
         alert('削除エラー: ' + err.message);

@@ -588,15 +588,42 @@
                                         </div>
                                         <div class="col-md-2 mb-3">
                                             <label for="mahjong_mode" class="form-label">麻雀/モード</label>
-                                            <input type="text" class="form-control" id="mahjong_mode" placeholder="四麻">
+                                            <select class="form-select" id="mahjong_mode">
+                                                <option value="四麻">四麻</option>
+                                                <option value="三麻">三麻</option>
+                                            </select>
                                         </div>
                                         <div class="col-md-2 mb-3">
                                             <label for="match_mode" class="form-label">試合方式</label>
                                             <input type="text" class="form-control" id="match_mode" placeholder="個人戦">
                                         </div>
                                         <div class="col-md-2 mb-3">
-                                            <label for="matches_played" class="form-label">局数</label>
-                                            <input type="number" class="form-control" id="matches_played">
+                                            <label for="hand_count" class="form-label">局数</label>
+                                            <input type="number" class="form-control" id="hand_count">
+                                        </div>
+
+                                        <!-- ルール詳細設定 -->
+                                        <div class="col-md-3 mb-3">
+                                            <label for="dist_points" class="form-label">配給点 (初期点)</label>
+                                            <select class="form-select" id="dist_points">
+                                                <option value="25000">25000 (四麻標準)</option>
+                                                <option value="30000">30000 (三麻標準)</option>
+                                                <option value="100000">100000 (インフレ)</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3 mb-3">
+                                            <label class="form-label">飛び賞設定</label>
+                                            <div class="form-check form-switch mt-1">
+                                                <input class="form-check-input" type="checkbox" id="opt_tobi">
+                                                <label class="form-check-label" for="opt_tobi">有効 (アリ)</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3 mb-3">
+                                            <label class="form-label">やきとり設定</label>
+                                            <div class="form-check form-switch mt-1">
+                                                <input class="form-check-input" type="checkbox" id="opt_yakitori">
+                                                <label class="form-check-label" for="opt_yakitori">有効 (アリ)</label>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -620,9 +647,21 @@
                                                             class="form-control form-control-sm player-account-name">
                                                     </div>
                                                     <div class="col-6 mb-2">
+                                                        <label class="small text-muted">素点 (持ち点)</label>
+                                                        <input type="number"
+                                                            class="form-control form-control-sm player-raw-points"
+                                                            placeholder="25000">
+                                                    </div>
+                                                    <div class="col-4 mb-2">
                                                         <label class="small text-muted">最終得点</label>
                                                         <input type="number" step="0.1"
-                                                            class="form-control form-control-sm player-final-score">
+                                                            class="form-control form-control-sm player-final-score"
+                                                            readonly tabindex="-1">
+                                                    </div>
+                                                    <div class="col-4 mb-2">
+                                                        <label class="small text-muted">報酬 (見込み)</label>
+                                                        <div class="form-control form-control-sm bg-light player-reward-preview"
+                                                            style="font-size: 0.75rem;">-</div>
                                                     </div>
                                                     <div class="col-4 mb-2">
                                                         <label class="small text-muted">順位</label>
@@ -640,7 +679,7 @@
                                                         <input type="number"
                                                             class="form-control form-control-sm player-deal-in-count">
                                                     </div>
-                                                    <div class="col-12">
+                                                    <div class="col-8">
                                                         <label class="small text-muted">Discord ID</label>
                                                         <input type="text"
                                                             class="form-control form-control-sm player-discord-id">
@@ -661,9 +700,21 @@
                                                             class="form-control form-control-sm player-account-name">
                                                     </div>
                                                     <div class="col-6 mb-2">
+                                                        <label class="small text-muted">素点 (持ち点)</label>
+                                                        <input type="number"
+                                                            class="form-control form-control-sm player-raw-points"
+                                                            placeholder="25000">
+                                                    </div>
+                                                    <div class="col-4 mb-2">
                                                         <label class="small text-muted">最終得点</label>
                                                         <input type="number" step="0.1"
-                                                            class="form-control form-control-sm player-final-score">
+                                                            class="form-control form-control-sm player-final-score"
+                                                            readonly tabindex="-1">
+                                                    </div>
+                                                    <div class="col-4 mb-2">
+                                                        <label class="small text-muted">報酬 (見込み)</label>
+                                                        <div class="form-control form-control-sm bg-light player-reward-preview"
+                                                            style="font-size: 0.75rem;">-</div>
                                                     </div>
                                                     <div class="col-4 mb-2">
                                                         <label class="small text-muted">順位</label>
@@ -681,7 +732,7 @@
                                                         <input type="number"
                                                             class="form-control form-control-sm player-deal-in-count">
                                                     </div>
-                                                    <div class="col-12">
+                                                    <div class="col-8">
                                                         <label class="small text-muted">Discord ID</label>
                                                         <input type="text"
                                                             class="form-control form-control-sm player-discord-id">
@@ -702,9 +753,21 @@
                                                             class="form-control form-control-sm player-account-name">
                                                     </div>
                                                     <div class="col-6 mb-2">
+                                                        <label class="small text-muted">素点 (持ち点)</label>
+                                                        <input type="number"
+                                                            class="form-control form-control-sm player-raw-points"
+                                                            placeholder="25000">
+                                                    </div>
+                                                    <div class="col-4 mb-2">
                                                         <label class="small text-muted">最終得点</label>
                                                         <input type="number" step="0.1"
-                                                            class="form-control form-control-sm player-final-score">
+                                                            class="form-control form-control-sm player-final-score"
+                                                            readonly tabindex="-1">
+                                                    </div>
+                                                    <div class="col-4 mb-2">
+                                                        <label class="small text-muted">報酬 (見込み)</label>
+                                                        <div class="form-control form-control-sm bg-light player-reward-preview"
+                                                            style="font-size: 0.75rem;">-</div>
                                                     </div>
                                                     <div class="col-4 mb-2">
                                                         <label class="small text-muted">順位</label>
@@ -722,7 +785,7 @@
                                                         <input type="number"
                                                             class="form-control form-control-sm player-deal-in-count">
                                                     </div>
-                                                    <div class="col-12">
+                                                    <div class="col-8">
                                                         <label class="small text-muted">Discord ID</label>
                                                         <input type="text"
                                                             class="form-control form-control-sm player-discord-id">
@@ -743,9 +806,21 @@
                                                             class="form-control form-control-sm player-account-name">
                                                     </div>
                                                     <div class="col-6 mb-2">
+                                                        <label class="small text-muted">素点 (持ち点)</label>
+                                                        <input type="number"
+                                                            class="form-control form-control-sm player-raw-points"
+                                                            placeholder="25000">
+                                                    </div>
+                                                    <div class="col-4 mb-2">
                                                         <label class="small text-muted">最終得点</label>
                                                         <input type="number" step="0.1"
-                                                            class="form-control form-control-sm player-final-score">
+                                                            class="form-control form-control-sm player-final-score"
+                                                            readonly tabindex="-1">
+                                                    </div>
+                                                    <div class="col-4 mb-2">
+                                                        <label class="small text-muted">報酬 (見込み)</label>
+                                                        <div class="form-control form-control-sm bg-light player-reward-preview"
+                                                            style="font-size: 0.75rem;">-</div>
                                                     </div>
                                                     <div class="col-4 mb-2">
                                                         <label class="small text-muted">順位</label>
@@ -763,7 +838,7 @@
                                                         <input type="number"
                                                             class="form-control form-control-sm player-deal-in-count">
                                                     </div>
-                                                    <div class="col-12">
+                                                    <div class="col-8">
                                                         <label class="small text-muted">Discord ID</label>
                                                         <input type="text"
                                                             class="form-control form-control-sm player-discord-id">
