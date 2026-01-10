@@ -1373,8 +1373,8 @@
                     // 左下（個数と重ならないように）または別の場所にミュータント表示
                     const mutantLabel = hasMutant ? '<span class="badge bg-warning text-dark position-absolute bottom-0 start-0 m-1" style="font-size:0.5rem; z-index:4;">変異</span>' : '';
 
-                    // 非売品判定: 購入額が 0 の場合のみ (sort_order 判定は削除)
-                    const isNonSaleable = mainItem.purchased_price === 0;
+                    // 非売品判定: is_fixed_price が null の場合は非売品
+                    const isNonSaleable = (badge.is_fixed_price === null);
 
                     const cardHtml = `
                         <div class="col-4 col-sm-3 col-md-2 mb-3">
@@ -1714,8 +1714,8 @@
                     return;
                 }
 
-                // 非売品（購入額0）を除外
-                const targetBadges = owned.filter(item => item.purchased_price > 0);
+                // 非売品（is_fixed_price が null）を除外
+                const targetBadges = owned.filter(item => item.badges && item.badges.is_fixed_price !== null);
 
                 if (targetBadges.length === 0) {
                     listEl.innerHTML = '<p class="text-center text-muted py-3">譲渡・売却可能なバッジを持っていません</p>';
@@ -2166,6 +2166,12 @@
             bootstrap.Modal.getInstance(document.getElementById('userSelectModal'))?.hide();
             if (currentSelectMode === 'coin_transfer') {
                 document.getElementById('coin-transfer-target-name').textContent = `${name} さんへ送金`;
+                // 所持金を表示に反映
+                const myProfile = allProfiles.find(p => p.discord_user_id === targetId);
+                const currentCoins = myProfile ? myProfile.coins : 0;
+                const coinsRefEl = document.getElementById('my-coins-ref');
+                if (coinsRefEl) coinsRefEl.textContent = currentCoins.toLocaleString();
+
                 new bootstrap.Modal(document.getElementById('coinAmountModal')).show();
             } else if (currentSelectMode === 'badge_transfer') {
                 const msg = `「${currentActionBadgeName}」を ${name} さんに譲渡しますか？\n\n` +
