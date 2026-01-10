@@ -417,9 +417,9 @@
                     return current;
                 };
 
-                grid.innerHTML = badges.map(badge => {
+                // 各バッジの計算値を事前付与
+                const processed = badges.map(badge => {
                     const n = marketCounts[badge.id] || 0;
-
                     let pBuy, pValue;
                     if (badge.sales_type === '固定型') {
                         pBuy = pValue = badge.price;
@@ -427,43 +427,66 @@
                         pBuy = Math.ceil(badge.price * Math.pow(1.3, n));
                         pValue = Math.ceil(badge.price * Math.pow(1.3, Math.max(0, n - 1)));
                     }
-
                     const rarity = getDynamicRarity(pValue, badge.fixed_rarity_name);
-                    const rarityClass = getRarityClass(rarity);
-                    const isSoldOut = badge.remaining_count !== null && badge.remaining_count <= 0;
+                    return { ...badge, pBuy, pValue, n, rarity };
+                });
 
+                // グループ分けとソート（安い順）
+                const variableBadges = processed.filter(b => b.sales_type === '変動型').sort((a, b) => a.pBuy - b.pBuy);
+                const fixedBadges = processed.filter(b => b.sales_type === '固定型').sort((a, b) => a.pBuy - b.pBuy);
+
+                const renderSection = (title, items, icon) => {
+                    if (items.length === 0) return '';
                     return `
-                        <div class="col-6 col-md-4 col-lg-3">
-                            <div class="shop-item position-relative badge-card ${rarityClass} ${isSoldOut ? 'sold-out' : ''}">
-                                ${isSoldOut ? '<div class="sold-out-badge">SOLD OUT</div>' : ''}
-                                <a href="./index.html?id=${badge.id}" class="text-decoration-none d-flex flex-column align-items-center w-100" style="color: inherit;">
-                                    <div class="rarity-pill" style="background: rgba(0,0,0,0.2);">${rarity}</div>
-                                    <img src="${badge.image_url}" class="shop-img" alt="${badge.name}" style="filter: drop-shadow(0 5px 15px rgba(0,0,0,0.2));">
-                                    <div class="shop-name" style="color: inherit;">${badge.name}</div>
-                                </a>
-                                <div class="w-100 px-2 small mb-2 text-start">
-                                    <div class="d-flex justify-content-between opacity-75" style="font-size: 0.7rem;">
-                                        <span>初期価格: 🪙${badge.price.toLocaleString()}</span>
-                                    </div>
-                                    <div class="d-flex justify-content-between opacity-75" style="font-size: 0.7rem;">
-                                        <span>資産価値: 🪙${pValue.toLocaleString()}</span>
-                                    </div>
-                                    <div class="d-flex justify-content-between fw-bold">
-                                        <span>販売価格: 🪙${pBuy.toLocaleString()}</span>
-                                    </div>
-                                    <div class="d-flex justify-content-between mt-1 opacity-75" style="font-size: 0.7rem;">
-                                        <span>流通: ${n} 枚 | 残り: ${badge.remaining_count ?? '∞'}</span>
+                        <div class="col-12 mt-4 mb-2">
+                            <h4 class="d-flex align-items-center fw-bold" style="color: #444; border-left: 5px solid #ffc107; padding-left: 15px;">
+                                <span class="me-2">${icon}</span> ${title}
+                            </h4>
+                        </div>
+                        ${items.map(badge => {
+                        const rarityClass = getRarityClass(badge.rarity);
+                        const isSoldOut = badge.remaining_count !== null && badge.remaining_count <= 0;
+                        return `
+                                <div class="col-6 col-md-4 col-lg-3">
+                                    <div class="shop-item position-relative badge-card ${rarityClass} ${isSoldOut ? 'sold-out' : ''}">
+                                        ${isSoldOut ? '<div class="sold-out-badge">SOLD OUT</div>' : ''}
+                                        <a href="./index.html?id=${badge.id}" class="text-decoration-none d-flex flex-column align-items-center w-100" style="color: inherit;">
+                                            <div class="rarity-pill" style="background: rgba(0,0,0,0.2);">${badge.rarity}</div>
+                                            <img src="${badge.image_url}" class="shop-img" alt="${badge.name}" style="filter: drop-shadow(0 5px 15px rgba(0,0,0,0.2));">
+                                            <div class="shop-name" style="color: inherit;">${badge.name}</div>
+                                        </a>
+                                        <div class="w-100 px-2 small mb-2 text-start">
+                                            ${badge.sales_type === '変動型' ? `
+                                            <div class="d-flex justify-content-between opacity-75" style="font-size: 0.7rem;">
+                                                <span>初期価格: 🪙${badge.price.toLocaleString()}</span>
+                                            </div>
+                                            <div class="d-flex justify-content-between opacity-75" style="font-size: 0.7rem;">
+                                                <span>資産価値: 🪙${badge.pValue.toLocaleString()}</span>
+                                            </div>
+                                            ` : ''}
+                                            <div class="d-flex justify-content-between fw-bold">
+                                                <span>販売価格: 🪙${badge.pBuy.toLocaleString()}</span>
+                                            </div>
+                                            <div class="d-flex justify-content-between mt-1 opacity-75" style="font-size: 0.7rem;">
+                                                <span>流通: ${badge.n} 枚 | 残り: ${badge.remaining_count ?? '∞'}</span>
+                                            </div>
+                                        </div>
+                                        <button class="btn btn-buy ${isSoldOut ? 'btn-secondary' : 'btn-light'}" 
+                                                onclick="buyBadgeV2('${badge.id}', ${badge.pBuy}, '${badge.name.replace(/'/g, "\\'")}')"
+                                                ${isSoldOut ? 'disabled' : ''}>
+                                            ${isSoldOut ? '売り切れ' : '購入する'}
+                                        </button>
                                     </div>
                                 </div>
-                                <button class="btn btn-buy ${isSoldOut ? 'btn-secondary' : 'btn-light'}" 
-                                        onclick="buyBadgeV2('${badge.id}', ${pBuy}, '${badge.name.replace(/'/g, "\\'")}')"
-                                        ${isSoldOut ? 'disabled' : ''}>
-                                    ${isSoldOut ? '売り切れ' : '購入する'}
-                                </button>
-                            </div>
-                        </div>
+                            `;
+                    }).join('')}
                     `;
-                }).join('');
+                };
+
+                grid.innerHTML = `
+                    ${renderSection('変動価格バッジ', variableBadges, '📈')}
+                    ${renderSection('固定価格バッジ', fixedBadges, '🏷️')}
+                `;
 
             } catch (err) {
                 console.error('Error fetching shop badges:', err);
