@@ -132,19 +132,25 @@ BEGIN
             WHEN v_sales_type = '変動型' THEN 0.05 
             ELSE 0 
         END;
-        v_share_amount := Ceil(v_buy_price * v_share_rate);
-        UPDATE profiles 
-        SET coins = coins + v_share_amount, 
-            total_assets = total_assets + v_share_amount 
-        WHERE discord_user_id = v_creator_id;
+        
+        IF v_share_rate > 0 THEN
+            v_share_amount := Ceil(v_buy_price * v_share_rate);
+            UPDATE profiles 
+            SET coins = coins + v_share_amount, 
+                total_assets = total_assets + v_share_amount 
+            WHERE discord_user_id = v_creator_id;
 
-        -- 売上履歴をログに記録（マイページの実績表示用）
-        INSERT INTO activity_logs (user_id, action_type, amount, details)
-        VALUES (v_creator_id, 'revenue_share', v_share_amount, jsonb_build_object(
-            'badge_id', p_badge_id,
-            'buyer_id', p_user_id,
-            'price', v_buy_price
-        ));
+            -- 売上履歴をログに記録（明示的にバッジ名などの情報を付加）
+            INSERT INTO activity_logs (user_id, action_type, amount, details)
+            SELECT v_creator_id, 'revenue_share', v_share_amount, jsonb_build_object(
+                'badge_id', p_badge_id,
+                'badge_name', b.name,
+                'buyer_id', p_user_id,
+                'price', v_buy_price,
+                'rate', v_share_rate
+            )
+            FROM badges b WHERE b.id = p_badge_id;
+        END IF;
     END IF;
     
     RETURN jsonb_build_object('ok', true, 'buy_price', v_buy_price, 'is_mutant', v_is_mutant);
