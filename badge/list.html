@@ -301,12 +301,7 @@
             filterAndRender();
         }
 
-        const rarityOrder = ['Cosmic', 'Eternal', 'Celestial', 'Divine', 'Mythic', 'Legendary', 'Epic', 'Rare', 'Uncommon', 'Common', '-'];
-        const rarityColors = {
-            'Common': '#888', 'Uncommon': '#2ecc71', 'Rare': '#3498db',
-            'Epic': '#9b59b6', 'Legendary': '#f1c40f', 'Mythic': '#e67e22',
-            'Divine': '#00d2ff', 'Celestial': '#00d2ff', 'Eternal': '#f80759', 'Cosmic': '#000'
-        };
+        const rarityOrder = ['測定不能', '神話', '至高', '幻想', '伝説', '極上', '特上', '貴重', '希少・Ⅱ', '希少・Ⅰ', '良質', '一般', '-'];
 
         function filterAndRender() {
             const grid = document.getElementById('badge-list-grid');
@@ -335,10 +330,18 @@
                 filtered.sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
             } else if (sortBy === 'rarity') {
                 filtered.sort((a, b) => {
+                    // 1. fixed_rarity_name があるものは一番下にする
+                    // a にあって b にない場合、a は後ろ（正）
+                    if (a.fixed_rarity_name && !b.fixed_rarity_name) return 1;
+                    // a になくて b にある場合、a は前（負）
+                    if (!a.fixed_rarity_name && b.fixed_rarity_name) return -1;
+
+                    // 2. 両方ある、または両方ない場合は rarityOrder に基づく
                     const idxA = rarityOrder.indexOf(a._rarity);
                     const idxB = rarityOrder.indexOf(b._rarity);
                     if (idxA !== idxB) return idxA - idxB;
-                    // 同じレアリティならナンバー順
+
+                    // 3. 同じレアリティならナンバー順
                     return (a.sort_order ?? 9999) - (b.sort_order ?? 9999);
                 });
             } else if (sortBy === 'name') {

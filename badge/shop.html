@@ -406,12 +406,6 @@
 
                 if (error) throw error;
 
-                const rarityColors = {
-                    'Common': '#888', 'Uncommon': '#2ecc71', 'Rare': '#3498db',
-                    'Epic': '#9b59b6', 'Legendary': '#f1c40f', 'Mythic': '#e67e22',
-                    'Divine': '#00d2ff', 'Celestial': '#00d2ff', 'Eternal': '#f80759', 'Cosmic': '#000'
-                };
-
                 const getDynamicRarity = (assetValue, fixedRarity) => {
                     if (fixedRarity) return fixedRarity;
                     if (!thresholds.length) return '-';
@@ -435,7 +429,7 @@
                     }
 
                     const rarity = getDynamicRarity(pValue, badge.fixed_rarity_name);
-                    const color = rarityColors[rarity] || '#888';
+                    const rarityClass = getRarityClass(rarity);
                     const isSoldOut = badge.remaining_count !== null && badge.remaining_count <= 0;
 
                     return `
