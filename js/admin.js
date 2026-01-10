@@ -1335,10 +1335,13 @@ async function handleBadgeCSVImport(event) {
                             name: badge.name,
                             description: badge.description || '',
                             requirements: badge.requirements || null,
-                            rarity: badge.rarity || 'Normal',
+                            fixed_rarity_name: badge.fixed_rarity_name || null,
+                            sales_type: badge.sales_type || '限定品',
                             image_url: badge.image_url,
                             gacha_weight: badge.gacha_weight,
                             price: badge.price,
+                            remaining_count: badge.remaining_count,
+                            sort_order: badge.sort_order,
                             discord_user_id: badge.discord_user_id || null
                         })
                         .eq('id', badge.id);
@@ -1360,10 +1363,13 @@ async function handleBadgeCSVImport(event) {
                             name: b.name,
                             description: b.description || '',
                             requirements: b.requirements || null,
-                            rarity: b.rarity || 'Normal',
+                            fixed_rarity_name: b.fixed_rarity_name || null,
+                            sales_type: b.sales_type || '限定品',
                             image_url: b.image_url,
                             gacha_weight: b.gacha_weight,
                             price: b.price,
+                            remaining_count: b.remaining_count,
+                            sort_order: b.sort_order,
                             discord_user_id: b.discord_user_id || null
                         })));
 
