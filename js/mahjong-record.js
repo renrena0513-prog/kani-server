@@ -324,18 +324,18 @@ async function submitScores() {
     }
 
     // Step 2: final_score 計算
-    // 四麻 25k/30k, 三麻 35k/40k
-    const distPoints = (mode === '三麻' ? 35000 : 25000);
-    const returnPoints = (mode === '三麻' ? 40000 : 30000);
+    const numPlayers = tempData.length;
+    // 人数ベースでルールを決定 (3人=三麻, 4人=四麻)
+    const distPoints = (numPlayers === 3 ? 35000 : 25000);
+    const returnPoints = (numPlayers === 3 ? 40000 : 30000);
     const isTobiOn = document.querySelector('input[name="opt-tobi"]:checked').value === 'yes';
     const isYakitoriOn = document.querySelector('input[name="opt-yakitori"]:checked').value === 'yes';
 
-    const numPlayers = tempData.length;
     const okaPoints = (returnPoints - distPoints) * numPlayers;
 
     console.log('--- スコア計算開始 ---');
-    console.log('モード:', mode, '人数:', numPlayers);
-    console.log('配給点:', distPoints, '返し点:', returnPoints, 'オカ合計:', okaPoints);
+    console.log('モード(UI):', mode, '人数(実際):', numPlayers);
+    console.log('決定された配給点:', distPoints, '返し点:', returnPoints, 'オカ合計:', okaPoints);
     console.log('オプション - 飛び賞:', isTobiOn, 'やきとり:', isYakitoriOn);
 
     // raw_pointsで降順ソート（同点は同順位）
@@ -353,7 +353,7 @@ async function submitScores() {
 
         // 基本スコア計算: (持ち点 - 返し点) / 1000 + ウマ
         let uma = 0;
-        if (mode === '三麻') {
+        if (numPlayers === 3) {
             const umaMap = { 1: 20, 2: 0, 3: -20 };
             uma = umaMap[currentRank] || 0;
         } else {
@@ -533,10 +533,10 @@ async function sendDiscordNotification(matchData) {
     }).join('\n');
 
     // ルール情報の取得
-    const distPoints = (mode === '三麻' ? 35000 : 25000);
-    const returnPoints = (mode === '三麻' ? 40000 : 30000);
-    const isTobiOn = document.querySelector('input[name="opt-tobi"]:checked').value === 'yes';
-    const isYakitoriOn = document.querySelector('input[name="opt-yakitori"]:checked').value === 'yes';
+    const numPlayers = matchData.length;
+    const distPoints = (numPlayers === 3 ? 35000 : 25000);
+    const returnPoints = (numPlayers === 3 ? 40000 : 30000);
+    const umaDisplay = (numPlayers === 3 ? '0-20' : '10-30');
 
     // 記録者の表示（メンション）
     const reporterMention = first.submitted_by_discord_user_id ? `<@${first.submitted_by_discord_user_id}>` : '不明';
@@ -548,7 +548,7 @@ async function sendDiscordNotification(matchData) {
         fields: [
             {
                 name: '⚙️ ルール設定',
-                value: `配給: ${distPoints.toLocaleString()} / 返し: ${returnPoints.toLocaleString()}\n` +
+                value: `配給: ${distPoints.toLocaleString()} / 返し: ${returnPoints.toLocaleString()} / ウマ: ${umaDisplay}\n` +
                     `飛び賞: ${isTobiOn ? 'あり' : 'なし'} / やきとり: ${isYakitoriOn ? 'あり' : 'なし'}\n` +
                     `合計局数: ${first.hand_count}局\n` +
                     `━━━━━━━━━━━━━━━━`, // ルールと記録者の間に線を追加
