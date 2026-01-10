@@ -481,7 +481,7 @@ async function submitScores() {
 
         // Discord通知を送信
         if (typeof DISCORD_WEBHOOK_URL !== 'undefined' && DISCORD_WEBHOOK_URL) {
-            await sendDiscordNotification(dataToInsert);
+            await sendDiscordNotification(dataToInsert, isTobiOn, isYakitoriOn);
         }
 
         window.location.href = './index.html'; // ランキングに戻る
@@ -495,8 +495,10 @@ async function submitScores() {
 /**
  * Discordに試合結果を通知する
  * @param {Array} matchData 挿入された試合結果データ
+ * @param {boolean} isTobiOn 飛び賞設定
+ * @param {boolean} isYakitoriOn やきとり設定
  */
-async function sendDiscordNotification(matchData) {
+async function sendDiscordNotification(matchData, isTobiOn, isYakitoriOn) {
     if (!matchData || matchData.length === 0) return;
 
     const first = matchData[0];

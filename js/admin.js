@@ -1,3 +1,4 @@
+console.log('admin.js version: 2026-01-11-01');
 // 管理画面用ロジック（大会記録管理版）
 let recordModal;
 
@@ -825,12 +826,17 @@ async function grantMultiBadges() {
         const quantity = parseInt(quantityInput.value) || 1;
 
         for (let i = 0; i < quantity; i++) {
-            grants.push({ user_id: userId, badge_id: badgeId });
+            grants.push({
+                user_id: userId,
+                badge_id: badgeId,
+                purchased_price: 0
+            });
         }
     });
 
     if (!confirm(`${grants.length}個のバッジを付与しますか？`)) return;
 
+    console.log('Granting badges:', grants);
     toggleLoading(true);
     try {
         const { error } = await supabaseClient
@@ -850,11 +856,16 @@ async function grantMultiBadges() {
 async function grantBadge(userId, badgeId, badgeName) {
     if (!confirm(`「${badgeName}」をこのユーザーに付与しますか？`)) return;
 
+    console.log('Granting single badge:', { userId, badgeId, purchased_price: 0 });
     toggleLoading(true);
     try {
         const { error } = await supabaseClient
             .from('user_badges_new')
-            .insert([{ user_id: userId, badge_id: badgeId }]);
+            .insert([{
+                user_id: userId,
+                badge_id: badgeId,
+                purchased_price: 0
+            }]);
 
         if (error) throw error;
         alert('バッジを付与しました');
