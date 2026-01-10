@@ -1242,6 +1242,31 @@ async function exportBadgesToCSV() {
     }
 }
 
+// CSVパース用のヘルパー（引用符や改行に対応）
+function parseCSV(text) {
+    const result = [];
+    let row = [];
+    let field = '';
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        const next = text[i + 1];
+        if (inQuotes) {
+            if (char === '"' && next === '"') { field += '"'; i++; }
+            else if (char === '"') { inQuotes = false; }
+            else { field += char; }
+        } else {
+            if (char === '"') { inQuotes = true; }
+            else if (char === ',') { row.push(field); field = ''; }
+            else if (char === '\r' && next === '\n') { row.push(field); result.push(row); row = []; field = ''; i++; }
+            else if (char === '\n' || char === '\r') { row.push(field); result.push(row); row = []; field = ''; }
+            else { field += char; }
+        }
+    }
+    if (field || row.length > 0) { row.push(field); result.push(row); }
+    return result;
+}
+
 // バッジCSVインポート
 async function handleBadgeCSVImport(event) {
     const file = event.target.files[0];
@@ -1250,57 +1275,68 @@ async function handleBadgeCSVImport(event) {
     const reader = new FileReader();
     reader.onload = async (e) => {
         try {
-            const text = e.target.result;
-            const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
+            let text = e.target.result;
+            // BOMの除去
+            if (text.startsWith('\ufeff')) text = text.slice(1);
+
+            const rows = parseCSV(text).filter(r => r.some(cell => cell.trim() !== ''));
 
             if (rows.length < 2) {
                 alert('有効なデータがありません');
                 return;
             }
 
-            // ヘッダー解析
-            const headers = rows[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+            // ヘッダー解析（小文字化して比較しやすくする）
+            const rawHeaders = rows[0].map(h => h.trim().toLowerCase());
             const dataToProcess = [];
 
             // データ行解析
             for (let i = 1; i < rows.length; i++) {
-                // CSVの引用符内カンマに対応した分割
-                const values = rows[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/)
-                    .map(v => v.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
+                const values = rows[i];
+                const badge = {};
 
-                const obj = {};
-                headers.forEach((h, idx) => {
+                rawHeaders.forEach((h, idx) => {
                     let val = values[idx];
+                    if (val === undefined) return;
+                    val = val.trim();
 
-                    // 数値型のカラム
-                    if (['gacha_weight', 'price', 'remaining_count', 'sort_order'].includes(h)) {
-                        if (val === '' || val === undefined || val === 'null') {
-                            val = (h === 'remaining_count') ? null : 0;
+                    // カラム名マッピング（DBのカラム名に合わせる）
+                    let key = h;
+                    if (key === 'id' || key === 'uuid') key = 'id';
+
+                    // 数値型の変換
+                    if (['gacha_weight', 'price', 'remaining_count', 'sort_order'].includes(key)) {
+                        if (val === '' || val === 'null') {
+                            val = (key === 'remaining_count') ? null : 0;
                         } else {
                             val = Number(val);
                         }
                     }
 
-                    // 空文字列やnullはスキップ（不要なカラム）
-                    if (h === 'created_at') return; // created_atはDBで自動生成
+                    if (key === 'created_at') return;
 
-                    if (val !== undefined && val !== 'null' && val !== '') {
-                        obj[h] = val;
+                    if (val !== 'null') {
+                        badge[key] = val;
                     }
                 });
 
-                // idが空または無効なUUIDなら削除（新規として扱う）
-                if (!obj.id || obj.id === '' || obj.id === 'null' || obj.id.length < 30) {
-                    delete obj.id;
+                // UUIDのバリデーション（UUIDでない場合は新規として扱うか、異常なズレとみなして警告）
+                if (badge.id) {
+                    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                    if (!uuidRegex.test(badge.id)) {
+                        console.warn(`無効なUUIDのためIDを無視します: ${badge.id} (行: ${i + 1})`);
+                        delete badge.id;
+                    }
                 }
 
-                // 必須フィールドのチェック（nameとimage_url）
-                if (obj.name && obj.image_url) {
-                    // デフォルト値の設定
-                    if (obj.gacha_weight === null || obj.gacha_weight === undefined) obj.gacha_weight = 10;
-                    if (obj.price === null || obj.price === undefined) obj.price = 0;
-                    if (!obj.sales_type) obj.sales_type = '限定品';
-                    dataToProcess.push(obj);
+                if (badge.name && (badge.image_url || badge.image)) {
+                    // デフォルト値
+                    if (badge.gacha_weight === undefined) badge.gacha_weight = 10;
+                    if (badge.price === undefined) badge.price = 0;
+                    if (!badge.sales_type) badge.sales_type = '限定品';
+                    if (badge.image && !badge.image_url) badge.image_url = badge.image;
+
+                    dataToProcess.push(badge);
                 }
             }
 
@@ -1309,78 +1345,60 @@ async function handleBadgeCSVImport(event) {
                 return;
             }
 
-            // 確認ダイアログ
-            const updateCount = dataToProcess.filter(d => d.id).length;
-            const insertCount = dataToProcess.length - updateCount;
-            const message = `${dataToProcess.length}件のバッジをインポートしますか？\n` +
-                `・新規追加: ${insertCount}件\n` +
-                `・更新: ${updateCount}件`;
+            const toUpdate = dataToProcess.filter(d => d.id);
+            const toInsert = dataToProcess.filter(d => !d.id);
 
-            if (!confirm(message)) {
+            if (!confirm(`${dataToProcess.length}件を読み込みますか？\n(更新: ${toUpdate.length}件, 新規: ${toInsert.length}件)`)) {
                 event.target.value = '';
                 return;
             }
 
             toggleLoading(true);
-
-            // 更新と新規挿入を分けて処理
-            const toUpdate = dataToProcess.filter(d => d.id);
-            const toInsert = dataToProcess.filter(d => !d.id);
-
             let successCount = 0;
             let errorCount = 0;
 
-            // 更新処理
-            for (const badge of toUpdate) {
+            // 更新
+            for (const b of toUpdate) {
                 try {
-                    const { error } = await supabaseClient
-                        .from('badges')
-                        .update({
-                            name: badge.name,
-                            description: badge.description || '',
-                            requirements: badge.requirements || null,
-                            fixed_rarity_name: badge.fixed_rarity_name || null,
-                            sales_type: badge.sales_type || '限定品',
-                            image_url: badge.image_url,
-                            gacha_weight: badge.gacha_weight,
-                            price: badge.price,
-                            remaining_count: badge.remaining_count,
-                            sort_order: badge.sort_order,
-                            discord_user_id: badge.discord_user_id || null
-                        })
-                        .eq('id', badge.id);
+                    // 存在するフィールドのみをペイロードに含める
+                    const payload = {};
+                    ['name', 'description', 'requirements', 'fixed_rarity_name', 'sales_type', 'image_url', 'gacha_weight', 'price', 'remaining_count', 'sort_order', 'discord_user_id'].forEach(key => {
+                        if (b[key] !== undefined) payload[key] = b[key];
+                    });
 
+                    const { error } = await supabaseClient.from('badges').update(payload).eq('id', b.id);
                     if (error) throw error;
                     successCount++;
                 } catch (err) {
-                    console.error(`バッジ更新エラー (${badge.name}):`, err);
+                    console.error(`更新失敗 (${b.name}):`, err);
                     errorCount++;
                 }
             }
 
-            // 新規挿入処理
+            // 新規
             if (toInsert.length > 0) {
                 try {
-                    const { error } = await supabaseClient
-                        .from('badges')
-                        .insert(toInsert.map(b => ({
+                    const inserts = toInsert.map(b => {
+                        const obj = {
                             name: b.name,
+                            image_url: b.image_url,
                             description: b.description || '',
                             requirements: b.requirements || null,
                             fixed_rarity_name: b.fixed_rarity_name || null,
                             sales_type: b.sales_type || '限定品',
-                            image_url: b.image_url,
-                            gacha_weight: b.gacha_weight,
-                            price: b.price,
-                            remaining_count: b.remaining_count,
-                            sort_order: b.sort_order,
+                            gacha_weight: b.gacha_weight ?? 10,
+                            price: b.price ?? 0,
+                            remaining_count: b.remaining_count ?? null,
+                            sort_order: b.sort_order ?? null,
                             discord_user_id: b.discord_user_id || null
-                        })));
-
+                        };
+                        return obj;
+                    });
+                    const { error } = await supabaseClient.from('badges').insert(inserts);
                     if (error) throw error;
                     successCount += toInsert.length;
                 } catch (err) {
-                    console.error('バッジ挿入エラー:', err);
+                    console.error('挿入失敗:', err);
                     errorCount += toInsert.length;
                 }
             }
