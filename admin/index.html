@@ -1101,6 +1101,8 @@
                     if (ADMIN_DISCORD_IDS.length === 0 || ADMIN_DISCORD_IDS.includes(discordId)) {
                         loading.style.display = 'none';
                         adminContent.style.display = 'flex';
+                        // 活動ログを自動読み込み
+                        fetchActivityLogs();
                     } else {
                         loading.style.display = 'none';
                         accessDenied.style.display = 'block';
