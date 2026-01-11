@@ -55,14 +55,14 @@
             display: inline-block;
         }
 
-        /* ミュータント用オーラ - モアモアした煙エフェクト（強化版） */
+        /* ミュータント用オーラ - モアモアした煙エフェクト */
         .badge-image-container.mutant-active::before {
             content: '';
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 300px;
-            height: 300px;
+            width: 220px;
+            height: 220px;
             transform: translate(-50%, -50%);
             background:
                 radial-gradient(ellipse 80% 60% at 50% 40%, rgba(200, 0, 200, 0.7) 0%, transparent 55%),
@@ -79,8 +79,8 @@
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 350px;
-            height: 350px;
+            width: 250px;
+            height: 250px;
             transform: translate(-50%, -50%);
             background:
                 radial-gradient(ellipse 50% 70% at 25% 25%, rgba(180, 0, 255, 0.5) 0%, transparent 45%),
@@ -97,8 +97,48 @@
             z-index: 1;
             background: transparent;
             box-shadow: none;
-            filter: drop-shadow(0 0 12px rgba(200, 0, 200, 0.8)) drop-shadow(0 0 25px rgba(150, 0, 255, 0.6)) drop-shadow(0 0 40px rgba(255, 0, 150, 0.5)) drop-shadow(0 0 60px rgba(180, 0, 180, 0.3));
+            filter: drop-shadow(0 0 12px rgba(200, 0, 200, 0.8)) drop-shadow(0 0 25px rgba(150, 0, 255, 0.6)) drop-shadow(0 0 40px rgba(255, 0, 150, 0.5));
             animation: badgeFloat 2s ease-in-out infinite, badgePulse 1.5s ease-in-out infinite alternate;
+            overflow: visible;
+        }
+
+        /* キラエフェクト用オーバーレイ */
+        .mutant-shine-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+            overflow: hidden;
+            border-radius: 20px;
+        }
+
+        .mutant-shine-overlay::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg,
+                    transparent 20%,
+                    rgba(255, 255, 255, 0.4) 35%,
+                    rgba(255, 200, 255, 0.6) 50%,
+                    rgba(255, 255, 255, 0.4) 65%,
+                    transparent 80%);
+            animation: mutantShine 2s infinite;
+        }
+
+        @keyframes mutantShine {
+            0% {
+                transform: translateX(-100%) translateY(-100%) rotate(45deg);
+            }
+
+            100% {
+                transform: translateX(100%) translateY(100%) rotate(45deg);
+            }
         }
 
         @keyframes smokeFloat1 {
@@ -355,6 +395,7 @@
                     <!-- バッジ画像 -->
                     <div id="badge-image-container" class="badge-image-container">
                         <img id="badge-image" src="" alt="バッジ" class="badge-image-large">
+                        <div id="mutant-shine" class="mutant-shine-overlay" style="display: none;"></div>
                     </div>
 
                     <!-- 名称 -->
@@ -599,17 +640,17 @@
 
                 if (ownerError) throw ownerError;
 
-                // 通常とミュータントを分離
-                const normalOwners = (owners || []).filter(o => !o.is_mutant);
-                const mutantOwners = (owners || []).filter(o => o.is_mutant);
+                // 全所持者とミュータントのみを保存
+                const allOwners = owners || [];
+                const mutantOwners = allOwners.filter(o => o.is_mutant);
 
                 // ミュータントがいる場合は切り替えボタンを表示
                 if (mutantOwners.length > 0) {
                     document.getElementById('mutant-toggle-area').style.display = 'block';
                 }
 
-                // グローバルに保存
-                window.badgeData = { badgeId, normalOwners, mutantOwners, totalUsers: 0, assetValue };
+                // グローバルに保存（通常表示は全員、ミュータント表示はミュータントのみ）
+                window.badgeData = { badgeId, allOwners, mutantOwners, totalUsers: 0, assetValue };
 
                 // 同じユーザーをグループ化
                 function groupOwners(ownerList) {
@@ -626,7 +667,7 @@
                     return { grouped: Object.values(grouped).sort((a, b) => b.count - a.count), total };
                 }
 
-                const { grouped: sortedOwners, total: totalInCirculation } = groupOwners(normalOwners);
+                const { grouped: sortedOwners, total: totalInCirculation } = groupOwners(allOwners);
 
                 // 全ユーザー数取得（所持率計算用）
                 const { count: totalUsers, error: countError } = await supabaseClient
@@ -640,6 +681,7 @@
                 const ownershipRate = totalUsers > 0 ? ((uniqueOwnerCount / totalUsers) * 100).toFixed(1) : 0;
 
                 document.getElementById('owner-count').textContent = uniqueOwnerCount.toLocaleString();
+                document.getElementById('circulation-count').textContent = totalInCirculation.toLocaleString();
                 document.getElementById('ownership-rate').textContent = ownershipRate + '%';
 
                 // 所持者リスト表示
@@ -727,6 +769,12 @@
             const badgeContainer = document.getElementById('badge-image-container');
             if (badgeContainer) {
                 badgeContainer.classList.toggle('mutant-active', showMutant);
+            }
+
+            // キラエフェクト切り替え
+            const shineOverlay = document.getElementById('mutant-shine');
+            if (shineOverlay) {
+                shineOverlay.style.display = showMutant ? 'block' : 'none';
             }
 
             // タイトル更新
