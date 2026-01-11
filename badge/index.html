@@ -489,7 +489,7 @@
                 }
 
                 // グローバルに保存
-                window.badgeData = { badgeId, normalOwners, mutantOwners, totalUsers: 0 };
+                window.badgeData = { badgeId, normalOwners, mutantOwners, totalUsers: 0, assetValue };
 
                 // 同じユーザーをグループ化
                 function groupOwners(ownerList) {
@@ -596,6 +596,12 @@
             document.getElementById('owner-count').textContent = uniqueOwnerCount.toLocaleString();
             document.getElementById('circulation-count').textContent = total.toLocaleString();
             document.getElementById('ownership-rate').textContent = ownershipRate + '%';
+
+            // 市場価値更新（ミュータントは3倍）
+            if (data.assetValue) {
+                const displayValue = showMutant ? data.assetValue * 3 : data.assetValue;
+                document.getElementById('market-value').textContent = displayValue.toLocaleString() + ' C';
+            }
 
             // タイトル更新
             if (listTitle) {
