@@ -343,6 +343,7 @@ async function editMatch(matchId) {
         document.getElementById('dist_points').value = first.dist_points || 25000;
         document.getElementById('opt_tobi').checked = !!first.opt_tobi;
         document.getElementById('opt_yakitori').checked = !!first.opt_yakitori;
+        document.getElementById('hand_count').value = first.hand_count || '';
 
         const cards = document.querySelectorAll('.player-edit-card');
         cards.forEach(card => card.style.display = 'none');
@@ -408,6 +409,7 @@ async function saveRecord() {
     const distPoints = parseInt(document.getElementById('dist_points').value);
     const optTobi = document.getElementById('opt_tobi').checked;
     const optYakitori = document.getElementById('opt_yakitori').checked;
+    const handCount = parseInt(document.getElementById('hand_count').value) || null;
 
     const cards = Array.from(document.querySelectorAll('.player-edit-card')).filter(c => c.style.display !== 'none');
     const records = cards.map(card => {
@@ -419,6 +421,7 @@ async function saveRecord() {
             mahjong_mode: mahjongMode,
             match_mode: matchMode,
             dist_points: distPoints,
+            hand_count: handCount,
             opt_tobi: optTobi,
             opt_yakitori: optYakitori,
             account_name: card.querySelector('.player-account-name').value,

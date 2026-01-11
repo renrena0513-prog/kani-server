@@ -864,6 +864,11 @@
                                                             class="form-control form-control-sm player-account-name">
                                                     </div>
                                                     <div class="col-6 mb-2">
+                                                        <label class="small text-muted">チーム名</label>
+                                                        <input type="text"
+                                                            class="form-control form-control-sm player-team-name">
+                                                    </div>
+                                                    <div class="col-6 mb-2">
                                                         <label class="small text-muted">素点 (持ち点)</label>
                                                         <input type="number"
                                                             class="form-control form-control-sm player-raw-points"
@@ -911,7 +916,7 @@
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
-                            <button type="button" class="btn btn-primary" onclick="saveRecordFromForm()">保存する</button>
+                            <button type="button" class="btn btn-primary" onclick="saveRecord()">保存する</button>
                         </div>
                     </div>
                 </div>
