@@ -464,32 +464,50 @@ async function fetchUsers() {
             const tr = document.createElement('tr');
             const name = user.account_name || '名前なし';
             const discordId = user.discord_user_id || '';
-            const coins = user.total_coins || 0;
+            const coins = user.coins || 0;
             const teamName = user.team_name || '-';
             const avatarUrl = user.avatar_url || '';
 
             tr.innerHTML = `
                 <td>
                     <div class="d-flex align-items-center gap-2">
-                        <img src="${avatarUrl}" class="rounded-circle border" style="width: 32px; height: 32px;" onerror="this.style.display='none'">
+                        <img src="${escapeHtml(avatarUrl)}" class="rounded-circle border" style="width: 32px; height: 32px;" onerror="this.style.display='none'">
                         <div>
                             <div class="fw-bold">${escapeHtml(name)}</div>
-                            <div class="small text-muted" style="font-size: 0.7rem;">${discordId}</div>
+                            <div class="small text-muted" style="font-size: 0.7rem;">${escapeHtml(discordId)}</div>
                         </div>
                     </div>
                 </td>
-                <td><span class="badge bg-light text-dark border">🪙 ${coins}</span></td>
+                <td><span class="badge bg-light text-dark border">🪙 ${coins.toLocaleString()}</span></td>
                 <td>${escapeHtml(teamName)}</td>
                 <td>
                     <div class="d-flex gap-1 flex-wrap">
-                        <button class="btn btn-sm btn-outline-warning" onclick="openCoinModal('${discordId}', '${escapeHtml(name)}', ${coins})">コイン</button>
-                        <button class="btn btn-sm btn-outline-info" onclick="openBadgeGrantModal('${discordId}', '${escapeHtml(name)}')">バッジ</button>
-                        <button class="btn btn-sm btn-outline-secondary" onclick="impersonateUser('${discordId}', '${escapeHtml(name)}', '${avatarUrl}')">なりすまし</button>
+                        <button class="btn btn-sm btn-outline-warning btn-coin" data-id="${escapeHtml(discordId)}" data-name="${escapeHtml(name)}" data-coins="${coins}">コイン</button>
+                        <button class="btn btn-sm btn-outline-info btn-badge" data-id="${escapeHtml(discordId)}" data-name="${escapeHtml(name)}">バッジ</button>
+                        <button class="btn btn-sm btn-outline-secondary btn-impersonate" data-id="${escapeHtml(discordId)}" data-name="${escapeHtml(name)}" data-avatar="${escapeHtml(avatarUrl)}">なりすまし</button>
                     </div>
                 </td>
             `;
             listBody.appendChild(tr);
         });
+
+        // イベントリスナーを追加
+        listBody.querySelectorAll('.btn-coin').forEach(btn => {
+            btn.addEventListener('click', function () {
+                openCoinModal(this.dataset.id, this.dataset.name, parseInt(this.dataset.coins) || 0);
+            });
+        });
+        listBody.querySelectorAll('.btn-badge').forEach(btn => {
+            btn.addEventListener('click', function () {
+                openBadgeGrantModal(this.dataset.id, this.dataset.name);
+            });
+        });
+        listBody.querySelectorAll('.btn-impersonate').forEach(btn => {
+            btn.addEventListener('click', function () {
+                impersonateUser(this.dataset.id, this.dataset.name, this.dataset.avatar);
+            });
+        });
+
     } catch (err) {
         console.error('ユーザー取得エラー:', err);
         listBody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">エラー: ${err.message}</td></tr>`;
