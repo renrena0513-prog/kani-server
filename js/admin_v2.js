@@ -365,6 +365,7 @@ async function editMatch(matchId) {
 
                 // 旧報酬計算用に記録
                 card.dataset.originalScore = r.final_score || 0;
+                card.dataset.originalRank = r.rank || 1;
                 card.dataset.originalDiscordId = r.discord_user_id || '';
 
                 updateDiscordDisplay(card);
@@ -547,8 +548,14 @@ function calculateLiveScore() {
         p.card.querySelector('.player-final-score-display').textContent = (score > 0 ? '+' : '') + score.toFixed(1);
         p.card.querySelector('.player-final-score').value = score;
 
-        // 報酬（見込み）: スコア * 1000（負数は0）
-        const reward = Math.max(0, Math.floor(score * 1000));
+        // 報酬（見込み）: 1C(参加賞) + スコア10につき1C(端数切り上げ) + 四麻順位ボーナス
+        const scoreBonus = score > 0 ? Math.ceil(score / 10) : 0;
+        let rankBonus = 0;
+        if (!isSanma) {
+            const yonmaRankBonus = { 1: 5, 2: 3, 3: 1, 4: 0 };
+            rankBonus = yonmaRankBonus[p.rank] || 0;
+        }
+        const reward = 1 + scoreBonus + rankBonus;
         p.card.querySelector('.player-reward-preview').textContent = reward.toLocaleString() + ' C';
     });
 }
@@ -584,11 +591,21 @@ async function saveRecord() {
             const dealInCount = parseInt(card.querySelector('.player-deal-in-count').value || 0);
             const discordId = card.querySelector('.player-discord-id').value;
 
-            // 差額の計算
+            // 差額の計算 (1C + 10pts=1C[切上] + 順位ボーナス)
             const oldScore = parseFloat(card.dataset.originalScore || 0);
-            const oldDiscordId = card.dataset.originalDiscordId;
-            const oldReward = Math.max(0, Math.floor(oldScore * 1000));
-            const newReward = Math.max(0, Math.floor(finalScore * 1000));
+            const oldRank = parseInt(card.dataset.originalRank || rank); // 元の順位も必要
+
+            const calcReward = (s, r, isS) => {
+                const sBonus = s > 0 ? Math.ceil(s / 10) : 0;
+                let rBonus = 0;
+                if (!isS) {
+                    rBonus = { 1: 5, 2: 3, 3: 1, 4: 0 }[r] || 0;
+                }
+                return 1 + sBonus + rBonus;
+            };
+
+            const oldReward = calcReward(oldScore, oldRank, isSanma);
+            const newReward = calcReward(finalScore, rank, isSanma);
             const diff = newReward - oldReward;
 
             // レコード更新
