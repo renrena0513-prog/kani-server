@@ -435,54 +435,75 @@ async function submitScores() {
 
         if (error) throw error;
 
-        // コイン報酬の加算処理（切り上げ + 四麻ボーナス）
+        // ガチャチケット報酬の判定・付与
+        const rewardedUsers = [];
+        const rewardDetails = [];
+
         for (const player of dataToInsert) {
             if (!player.discord_user_id) continue;
 
-            // スコアボーナス: 切り上げ（floor → ceil）
-            const scoreBonus = player.final_score > 0 ? Math.ceil(player.final_score / 10) : 0;
+            let ticketReward = 0;
+            let reasons = [];
 
-            // 四麻順位ボーナス（三麻は対象外）
-            let rankBonus = 0;
-            if (mode === '四麻') {
-                const yonmaRankBonus = { 1: 5, 2: 3, 3: 1, 4: 0 };
-                rankBonus = yonmaRankBonus[player.rank] || 0;
+            // 参加者報酬（5%）
+            if (Math.random() < 0.05) {
+                ticketReward += 1;
+                reasons.push('対局参加報酬');
             }
 
-            const reward = 1 + scoreBonus + rankBonus;
+            // 記録者報酬（10%）- 本人が対局に参加している場合
+            if (player.discord_user_id === first.submitted_by_discord_user_id) {
+                if (Math.random() < 0.10) {
+                    ticketReward += 1;
+                    reasons.push('記録者報酬');
+                }
+            }
 
-            try {
-                // 現在の所持金を取得
-                const { data: profile, error: fetchError } = await supabaseClient
-                    .from('profiles')
-                    .select('coins')
-                    .eq('discord_user_id', player.discord_user_id)
-                    .maybeSingle();
+            if (ticketReward > 0) {
+                try {
+                    // プロフィールのガチャチケットを増やす
+                    const { data: profile } = await supabaseClient
+                        .from('profiles')
+                        .select('gacha_tickets')
+                        .eq('discord_user_id', player.discord_user_id)
+                        .single();
 
-                if (!fetchError && profile) {
-                    // 加算して更新
+                    const currentTickets = profile?.gacha_tickets || 0;
                     await supabaseClient
                         .from('profiles')
-                        .update({ coins: (profile.coins || 0) + reward })
+                        .update({ gacha_tickets: currentTickets + ticketReward })
                         .eq('discord_user_id', player.discord_user_id);
 
-                    // 総資産も加算
-                    if (typeof addToTotalAssets === 'function') {
-                        await addToTotalAssets(player.discord_user_id, reward);
-                    }
+                    // 活動ログに記録
+                    await supabaseClient.from('activity_logs').insert({
+                        user_id: player.discord_user_id,
+                        action_type: 'mahjong_reward',
+                        details: {
+                            type: 'gacha_ticket',
+                            amount: ticketReward,
+                            reasons: reasons,
+                            match_id: matchId
+                        }
+                    });
 
-                    console.log(`${player.account_name} にコイン ${reward} 枚を付与しました（スコア:${scoreBonus} + 順位:${rankBonus} + 基本:1）`);
+                    rewardedUsers.push(player.account_name);
+                    rewardDetails.push(`${player.account_name} (+${ticketReward}枚: ${reasons.join(' & ')})`);
+                    console.log(`${player.account_name} にガチャチケット ${ticketReward} 枚を付与しました (${reasons.join(', ')})`);
+                } catch (ticketErr) {
+                    console.error(`チケット付与エラー (${player.account_name}):`, ticketErr);
                 }
-            } catch (coinErr) {
-                console.error(`コイン付与エラー (${player.account_name}):`, coinErr);
             }
         }
 
-        alert('スコアを送信しました！コインが各プレイヤーに付与されました。');
+        let successMsg = 'スコアを送信しました！コインが各プレイヤーに付与されました。';
+        if (rewardedUsers.length > 0) {
+            successMsg += '\n\n🎫 ガチャチケット獲得！\n' + rewardDetails.join('\n');
+        }
+        alert(successMsg);
 
         // Discord通知を送信
         if (typeof DISCORD_WEBHOOK_URL !== 'undefined' && DISCORD_WEBHOOK_URL) {
-            await sendDiscordNotification(dataToInsert, isTobiOn, isYakitoriOn);
+            await sendDiscordNotification(dataToInsert, isTobiOn, isYakitoriOn, rewardDetails);
         }
 
         window.location.href = './index.html'; // ランキングに戻る
@@ -498,8 +519,9 @@ async function submitScores() {
  * @param {Array} matchData 挿入された試合結果データ
  * @param {boolean} isTobiOn 飛び賞設定
  * @param {boolean} isYakitoriOn やきとり設定
+ * @param {Array} rewardedDetails チケット報酬の詳細テキスト
  */
-async function sendDiscordNotification(matchData, isTobiOn, isYakitoriOn) {
+async function sendDiscordNotification(matchData, isTobiOn, isYakitoriOn, rewardedDetails = []) {
     if (!matchData || matchData.length === 0) return;
 
     const first = matchData[0];
@@ -546,7 +568,9 @@ async function sendDiscordNotification(matchData, isTobiOn, isYakitoriOn) {
 
     const embed = {
         title: `🀄 ${matchType} (${mode})　結果`, // 「個人戦 (三麻)　結果」の形式に変更
-        description: scoreDisplay + '\n━━━━━━━━━━━━━━━━',
+        description: scoreDisplay +
+            (rewardedDetails.length > 0 ? '\n🎫 **ガチャチケット獲得！**\n' + rewardedDetails.map(d => `・${d}`).join('\n') : '') +
+            '\n━━━━━━━━━━━━━━━━',
         color: 0x2ecc71, // 鮮やかな緑色
         fields: [
             {
