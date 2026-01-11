@@ -1954,7 +1954,52 @@
                     return;
                 }
 
-                listEl.innerHTML = targetBadges.map(item => {
+                // 換金品と通常バッジを分離
+                const convertibleGroups = new Map();
+                const normalItems = [];
+
+                targetBadges.forEach(item => {
+                    if (!item.badges) return;
+
+                    if (item.badges.sales_type === '換金品') {
+                        const badgeId = item.badges.id;
+                        if (!convertibleGroups.has(badgeId)) {
+                            convertibleGroups.set(badgeId, {
+                                badge: item.badges,
+                                count: 0
+                            });
+                        }
+                        convertibleGroups.get(badgeId).count++;
+                    } else {
+                        normalItems.push(item);
+                    }
+                });
+
+                let htmlParts = [];
+
+                // 換金品のHTML生成（グループ化）
+                convertibleGroups.forEach(group => {
+                    const badge = group.badge;
+                    const count = group.count;
+                    const sellPrice = badge.price;
+                    const totalSell = sellPrice * count;
+
+                    htmlParts.push(`
+                        <div class="user-select-item" onclick="openConvertibleSellModal('${badge.id}', '${badge.name.replace(/'/g, "\\'")}', ${count}, ${sellPrice})">
+                            <img src="${badge.image_url}" class="user-select-avatar" style="border-radius: 8px;">
+                            <div class="flex-grow-1">
+                                <div class="user-select-name">${badge.name} <span class="badge bg-dark">×${count}</span></div>
+                                <div class="small text-muted" style="font-size: 0.75rem;">
+                                    売却: 🪙${sellPrice.toLocaleString()} C × ${count} = 🪙${totalSell.toLocaleString()} C
+                                </div>
+                            </div>
+                            <div class="text-danger fw-bold">売却</div>
+                        </div>
+                    `);
+                });
+
+                // 通常バッジの処理
+                listEl.innerHTML = htmlParts.join('') + normalItems.map(item => {
                     const badge = item.badges;
                     if (!badge) return '';
 
