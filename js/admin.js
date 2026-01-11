@@ -1789,6 +1789,12 @@ function renderActivityLogs(logs) {
                 </div>`;
         }
 
+        // おみくじやガチャの詳細表示
+        if (log.action_type === 'omikuji' && log.details) {
+            const result = log.details.result || '';
+            if (result) detailHtml += `<div class="mt-1"><span class="badge bg-info text-dark" style="font-size: 0.7rem;">結果: ${result}</span></div>`;
+        }
+
         if (log.details && (log.details.method || log.details.ticket_rarity)) {
             const method = log.details.method || (log.details.ticket_rarity ? `${log.details.ticket_rarity}引換券` : '');
             if (method) detailHtml += `<div class="small text-muted mt-1" style="font-size: 0.75rem;">方法: ${method}</div>`;
