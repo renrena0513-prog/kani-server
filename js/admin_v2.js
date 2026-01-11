@@ -1071,11 +1071,14 @@ async function saveBadge() {
             image_url,
             gacha_weight: parseInt(document.getElementById('badge-weight').value) || 0,
             price: parseInt(document.getElementById('badge-price').value) || 0,
-            requirements: document.getElementById('badge-requirements').value || null,
-            remaining_count: parseInt(document.getElementById('badge-stock').value) || null,
+            requirements: document.getElementById('badge-requirements').value.trim() || null,
+            remaining_count: (() => {
+                const val = document.getElementById('badge-stock').value;
+                return val === '' ? null : parseInt(val);
+            })(),
             sort_order: parseInt(document.getElementById('badge-sort-order').value) || 0,
-            discord_user_id: document.getElementById('badge-owner').value || null,
-            fixed_rarity_name: document.getElementById('badge-fixed-rarity').value || null,
+            discord_user_id: document.getElementById('badge-owner').value.trim() || null,
+            fixed_rarity_name: document.getElementById('badge-fixed-rarity').value.trim() || null,
             sales_type: document.getElementById('badge-sales-type').value || null,
             is_gacha_eligible: document.getElementById('badge-gacha-eligible').checked
         };
