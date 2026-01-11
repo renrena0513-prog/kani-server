@@ -475,46 +475,95 @@ async function submitScores() {
             throw error;
         }
 
-        // ガチャチケット報酬の判定・付与
+        // 報酬付与（コイン・チケット）とログ記録
         const ticketRewardsMap = {}; // Discord通知用: { discord_user_id: count }
 
         for (const player of dataToInsert) {
             if (!player.discord_user_id) continue;
 
+            // 1. チケット報酬計算
             let ticketReward = 0;
-
             // 参加者報酬（5%）
             if (Math.random() < 0.05) {
                 ticketReward += 1;
             }
-
             // 記録者報酬（10%）- 本人が対局に参加している場合
             if (player.discord_user_id === submittedBy) {
                 if (Math.random() < 0.10) {
                     ticketReward += 1;
                 }
             }
-
             if (ticketReward > 0) {
                 ticketRewardsMap[player.discord_user_id] = ticketReward;
-                try {
-                    // プロフィールのガチャチケットを増やす
-                    const { data: profile } = await supabaseClient
-                        .from('profiles')
-                        .select('gacha_tickets')
-                        .eq('discord_user_id', player.discord_user_id)
-                        .single();
+            }
 
-                    const currentTickets = profile?.gacha_tickets || 0;
+            // 2. コイン報酬計算 (Discord通知ロジック準拠)
+            // スコアボーナス: 切り上げ (プラスの場合のみ)
+            const scoreBonus = player.final_score > 0 ? Math.ceil(player.final_score / 10) : 0;
+
+            // 四麻順位ボーナス
+            let rankBonus = 0;
+            if (mode === '四麻') {
+                const yonmaRankBonus = { 1: 5, 2: 3, 3: 1, 4: 0 };
+                rankBonus = yonmaRankBonus[player.rank] || 0;
+            }
+
+            // 合計報酬 (基本1 + スコア + 順位)
+            const coinReward = 1 + scoreBonus + rankBonus;
+
+            // 3. DB更新とログ記録
+            try {
+                // プロフィール取得
+                const { data: profile } = await supabaseClient
+                    .from('profiles')
+                    .select('coins, total_assets, gacha_tickets')
+                    .eq('discord_user_id', player.discord_user_id)
+                    .single();
+
+                const updates = {};
+                let updated = false;
+
+                // チケット更新
+                if (ticketReward > 0) {
+                    updates.gacha_tickets = (profile?.gacha_tickets || 0) + ticketReward;
+                    updated = true;
+                }
+
+                // コイン更新
+                if (coinReward > 0) {
+                    updates.coins = (profile?.coins || 0) + coinReward;
+                    updates.total_assets = (profile?.total_assets || 0) + coinReward;
+                    updated = true;
+                }
+
+                // 更新実行
+                if (updated) {
                     await supabaseClient
                         .from('profiles')
-                        .update({ gacha_tickets: currentTickets + ticketReward })
+                        .update(updates)
                         .eq('discord_user_id', player.discord_user_id);
-
-                    console.log(`${player.account_name} にガチャチケット ${ticketReward} 枚を付与しました`);
-                } catch (ticketErr) {
-                    console.error(`チケット付与エラー (${player.account_name}):`, ticketErr);
                 }
+
+                console.log(`${player.account_name} への報酬: コイン=${coinReward}, チケット=${ticketReward}`);
+
+                // 活動ログ記録 (コインまたはチケットの変動がある場合)
+                if (updated) {
+                    await logActivity(player.discord_user_id, 'mahjong', {
+                        amount: coinReward, // メインの変動値としてコインを設定
+                        matchId: matchId,
+                        details: {
+                            rank: player.rank,
+                            score: player.final_score,
+                            team: player.team_name,
+                            coin_reward: coinReward,
+                            ticket_reward: ticketReward,
+                            breakdown: { base: 1, score: scoreBonus, rank: rankBonus }
+                        }
+                    });
+                }
+
+            } catch (err) {
+                console.error(`報酬付与エラー (${player.account_name}):`, err);
             }
         }
 
