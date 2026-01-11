@@ -511,17 +511,6 @@ async function submitScores() {
                         .update({ gacha_tickets: currentTickets + ticketReward })
                         .eq('discord_user_id', player.discord_user_id);
 
-                    // 活動ログに記録
-                    await supabaseClient.from('activity_logs').insert({
-                        user_id: player.discord_user_id,
-                        action_type: 'mahjong_reward',
-                        details: {
-                            type: 'gacha_ticket',
-                            amount: ticketReward,
-                            match_id: matchId
-                        }
-                    });
-
                     console.log(`${player.account_name} にガチャチケット ${ticketReward} 枚を付与しました`);
                 } catch (ticketErr) {
                     console.error(`チケット付与エラー (${player.account_name}):`, ticketErr);
