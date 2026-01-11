@@ -46,6 +46,114 @@
             background: rgba(255, 255, 255, 0.15);
             padding: 15px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            transition: all 0.5s ease;
+        }
+
+        /* ミュータントバッジ用コンテナ */
+        .badge-image-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        /* ミュータント用オーラ */
+        .badge-image-container.mutant-active::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 180px;
+            height: 180px;
+            transform: translate(-50%, -50%);
+            background: radial-gradient(circle,
+                    rgba(139, 0, 139, 0.6) 0%,
+                    rgba(75, 0, 130, 0.4) 30%,
+                    rgba(128, 0, 128, 0.2) 50%,
+                    transparent 70%);
+            border-radius: 50%;
+            animation: mutantPulse 2s ease-in-out infinite, mutantRotate 8s linear infinite;
+            z-index: 0;
+            filter: blur(15px);
+        }
+
+        .badge-image-container.mutant-active::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 200px;
+            height: 200px;
+            transform: translate(-50%, -50%);
+            background:
+                radial-gradient(ellipse at 30% 20%, rgba(255, 0, 100, 0.3) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(100, 0, 255, 0.3) 0%, transparent 50%);
+            border-radius: 50%;
+            animation: mutantWave 3s ease-in-out infinite alternate;
+            z-index: 0;
+            filter: blur(20px);
+        }
+
+        .badge-image-container.mutant-active .badge-image-large {
+            position: relative;
+            z-index: 1;
+            background: rgba(50, 0, 50, 0.3);
+            box-shadow:
+                0 0 20px rgba(139, 0, 139, 0.5),
+                0 0 40px rgba(75, 0, 130, 0.3),
+                0 0 60px rgba(128, 0, 128, 0.2),
+                inset 0 0 20px rgba(255, 0, 100, 0.1);
+            animation: mutantGlow 1.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes mutantPulse {
+
+            0%,
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.8;
+            }
+
+            50% {
+                transform: translate(-50%, -50%) scale(1.15);
+                opacity: 1;
+            }
+        }
+
+        @keyframes mutantRotate {
+            0% {
+                transform: translate(-50%, -50%) rotate(0deg);
+            }
+
+            100% {
+                transform: translate(-50%, -50%) rotate(360deg);
+            }
+        }
+
+        @keyframes mutantWave {
+            0% {
+                transform: translate(-50%, -50%) scale(0.9) rotate(0deg);
+                opacity: 0.6;
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(1.1) rotate(180deg);
+                opacity: 0.9;
+            }
+        }
+
+        @keyframes mutantGlow {
+            0% {
+                box-shadow:
+                    0 0 20px rgba(139, 0, 139, 0.5),
+                    0 0 40px rgba(75, 0, 130, 0.3),
+                    0 0 60px rgba(128, 0, 128, 0.2);
+            }
+
+            100% {
+                box-shadow:
+                    0 0 30px rgba(255, 0, 100, 0.6),
+                    0 0 50px rgba(139, 0, 139, 0.4),
+                    0 0 80px rgba(75, 0, 130, 0.3);
+            }
         }
 
         .badge-name {
@@ -235,7 +343,9 @@
                         style="font-size: 0.9rem; padding: 6px 15px; display: none;">Normal</div>
 
                     <!-- バッジ画像 -->
-                    <img id="badge-image" src="" alt="バッジ" class="badge-image-large">
+                    <div id="badge-image-container" class="badge-image-container">
+                        <img id="badge-image" src="" alt="バッジ" class="badge-image-large">
+                    </div>
 
                     <!-- 名称 -->
                     <h1 id="badge-name" class="badge-name">読み込み中...</h1>
@@ -601,6 +711,12 @@
             if (data.assetValue) {
                 const displayValue = showMutant ? data.assetValue * 3 : data.assetValue;
                 document.getElementById('market-value').textContent = displayValue.toLocaleString() + ' C';
+            }
+
+            // オーラエフェクト切り替え
+            const badgeContainer = document.getElementById('badge-image-container');
+            if (badgeContainer) {
+                badgeContainer.classList.toggle('mutant-active', showMutant);
             }
 
             // タイトル更新
