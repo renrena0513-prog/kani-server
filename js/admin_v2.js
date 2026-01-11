@@ -1152,30 +1152,107 @@ async function handleBadgeCSVImport(event) {
     const reader = new FileReader();
     reader.onload = async (e) => {
         try {
-            const lines = e.target.result.split('\n');
-            const headers = lines[0].split(',').map(h => h.trim().replace(/^\"|\"$/g, ''));
+            const text = e.target.result;
+
+            // RFC4180準拠のCSVパーサー
+            function parseCSV(text) {
+                const rows = [];
+                let currentRow = [];
+                let currentField = '';
+                let inQuotes = false;
+
+                for (let i = 0; i < text.length; i++) {
+                    const char = text[i];
+                    const nextChar = text[i + 1];
+
+                    if (inQuotes) {
+                        if (char === '"' && nextChar === '"') {
+                            // エスケープされたクォート
+                            currentField += '"';
+                            i++;
+                        } else if (char === '"') {
+                            // クォート終了
+                            inQuotes = false;
+                        } else {
+                            currentField += char;
+                        }
+                    } else {
+                        if (char === '"') {
+                            inQuotes = true;
+                        } else if (char === ',') {
+                            currentRow.push(currentField);
+                            currentField = '';
+                        } else if (char === '\n') {
+                            currentRow.push(currentField);
+                            if (currentRow.some(f => f.trim() !== '')) {
+                                rows.push(currentRow);
+                            }
+                            currentRow = [];
+                            currentField = '';
+                        } else if (char === '\r') {
+                            // \r\n の場合、\r はスキップ
+                            if (nextChar !== '\n') {
+                                currentRow.push(currentField);
+                                if (currentRow.some(f => f.trim() !== '')) {
+                                    rows.push(currentRow);
+                                }
+                                currentRow = [];
+                                currentField = '';
+                            }
+                        } else {
+                            currentField += char;
+                        }
+                    }
+                }
+
+                // 最後のフィールドと行を追加
+                if (currentField || currentRow.length > 0) {
+                    currentRow.push(currentField);
+                    if (currentRow.some(f => f.trim() !== '')) {
+                        rows.push(currentRow);
+                    }
+                }
+
+                return rows;
+            }
+
+            const rows = parseCSV(text);
+            if (rows.length === 0) {
+                alert('CSVファイルが空です。');
+                return;
+            }
+
+            const headers = rows[0];
             const items = [];
-            for (let i = 1; i < lines.length; i++) {
-                if (!lines[i].trim()) continue;
-                const values = lines[i].split(',').map(v => v.trim().replace(/^\"|\"$/g, ''));
+
+            for (let i = 1; i < rows.length; i++) {
+                const values = rows[i];
                 const obj = {};
+
                 headers.forEach((h, idx) => {
-                    const value = values[idx] || '';  // undefined を空文字列に変換
+                    const value = values[idx] || '';
                     // 数値型カラムの変換
                     if (['gacha_weight', 'price', 'remaining_count', 'sort_order'].includes(h)) {
                         obj[h] = value ? parseInt(value) : null;
                     }
                     // ブール型カラムの変換
                     else if (h === 'is_gacha_eligible') {
-                        obj[h] = value === 'true' || value === '1';
+                        obj[h] = value.toUpperCase() === 'TRUE' || value === '1';
                     }
                     // その他は文字列
                     else {
                         obj[h] = value || null;
                     }
                 });
+
                 if (obj.name) items.push(obj);
             }
+
+            if (items.length === 0) {
+                alert('インポートするデータがありません。');
+                return;
+            }
+
             await supabaseClient.from('badges').upsert(items);
             alert(`${items.length}件のバッジをインポートしました。`);
             fetchBadges();
