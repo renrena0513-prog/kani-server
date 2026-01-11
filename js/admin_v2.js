@@ -532,12 +532,24 @@ function openCoinModal(userId, userName, currentCoins) {
     new bootstrap.Modal(document.getElementById('coinModal')).show();
 }
 
-async function saveCoins() {
-    const userId = document.getElementById('coin-user-id').value;
-    const amount = parseInt(document.getElementById('coin-amount').value);
-    await supabaseClient.from('profiles').update({ total_coins: amount }).eq('discord_user_id', userId);
-    window.coinModal.hide();
-    fetchUsers();
+async function saveUserCoins() {
+    const userId = document.getElementById('coin-edit-user-id').value;
+    const amount = parseInt(document.getElementById('coin-amount').value) || 0;
+
+    toggleLoading(true);
+    try {
+        const { error } = await supabaseClient.from('profiles').update({ coins: amount }).eq('discord_user_id', userId);
+        if (error) throw error;
+
+        alert('コインを更新しました');
+        bootstrap.Modal.getInstance(document.getElementById('coinModal'))?.hide();
+        fetchUsers();
+    } catch (err) {
+        console.error('コイン更新エラー:', err);
+        alert('エラー: ' + err.message);
+    } finally {
+        toggleLoading(false);
+    }
 }
 
 async function openBadgeGrantModal(userId, userName) {
