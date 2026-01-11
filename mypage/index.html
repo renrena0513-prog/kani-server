@@ -2041,9 +2041,9 @@
                 if (totalPages > 1) {
                     let pagHtml = '';
                     for (let i = 1; i <= totalPages; i++) {
-                        pagHtml += `< li class="page-item ${i === page ? 'active' : ''}" >
+                        pagHtml += `<li class="page-item ${i === page ? 'active' : ''}">
                         <a class="page-link" href="javascript:void(0)" onclick="loadActivityLogs(${i})">${i}</a>
-                        </li > `;
+                        </li>`;
                     }
                     paginationEl.innerHTML = pagHtml;
                     paginationEl.style.display = 'flex';
