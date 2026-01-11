@@ -1083,11 +1083,20 @@ async function saveBadge() {
             is_gacha_eligible: document.getElementById('badge-gacha-eligible').checked
         };
 
-        if (id) await supabaseClient.from('badges').update(badgeData).eq('id', id);
-        else await supabaseClient.from('badges').insert([badgeData]);
+
+        if (id) {
+            const { error } = await supabaseClient.from('badges').update(badgeData).eq('id', id);
+            if (error) throw error;
+        } else {
+            const { error } = await supabaseClient.from('badges').insert([badgeData]);
+            if (error) throw error;
+        }
         window.badgeModal.hide();
         fetchBadges();
-    } catch (err) { alert(err.message); }
+    } catch (err) {
+        console.error('バッジ保存エラー:', err);
+        alert(`保存に失敗しました: ${err.message}\n\n詳細: ${JSON.stringify(err, null, 2)}`);
+    }
     finally { toggleLoading(false); }
 }
 
