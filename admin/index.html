@@ -589,6 +589,14 @@
                                     </tbody>
                                 </table>
                             </div>
+                            <!-- ページネーション -->
+                            <div class="d-flex justify-content-center align-items-center gap-3 mt-3">
+                                <button id="prev-logs-btn" onclick="changeLogsPage(-1)"
+                                    class="btn btn-outline-secondary btn-sm" disabled>◀ 前へ</button>
+                                <span id="logs-page-info" class="fw-bold">1 / -</span>
+                                <button id="next-logs-btn" onclick="changeLogsPage(1)"
+                                    class="btn btn-outline-secondary btn-sm">次へ ▶</button>
+                            </div>
                         </div>
                     </div>
                 </div>

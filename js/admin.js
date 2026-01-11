@@ -1696,45 +1696,80 @@ async function rejectDissolution(requestId) {
 }
 
 // === 活動ログ機能 ===
+let currentLogsPage = 1;
+const LOGS_PER_PAGE = 10;
 
 // 活動ログの取得
-async function fetchActivityLogs() {
+async function fetchActivityLogs(page = 1) {
+    currentLogsPage = page;
     const listBody = document.getElementById('logs-list-body');
     if (!listBody) return;
 
     listBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">読み込み中...</td></tr>';
 
+    // ページネーションボタンの制御
+    const prevBtn = document.getElementById('prev-logs-btn');
+    const nextBtn = document.getElementById('next-logs-btn');
+    const pageInfo = document.getElementById('logs-page-info');
+    if (prevBtn) prevBtn.disabled = true;
+    if (nextBtn) nextBtn.disabled = true;
+
     try {
+        const from = (page - 1) * LOGS_PER_PAGE;
+        const to = from + LOGS_PER_PAGE - 1;
+
         // 1. プロフィール情報を結合して取得を試みる (!カラム名 で明示的にリレーションを指定)
-        const { data: logs, error } = await supabaseClient
+        const { data: logs, error, count } = await supabaseClient
             .from('activity_logs')
             .select(`
                 *,
                 user:profiles!activity_logs_user_id_fkey(account_name, avatar_url, discord_account),
                 target:profiles!activity_logs_target_user_id_fkey(account_name, avatar_url, discord_account),
                 badge:badges!activity_logs_badge_id_fkey(name)
-            `)
+            `, { count: 'exact' })
             .order('created_at', { ascending: false })
-            .limit(200);
+            .range(from, to);
 
         if (error) {
             console.warn('結合によるログ取得に失敗しました。リレーション設定を確認してください。', error);
             // 2. エラー（リレーション不足）が発生した場合は、結合なしで取得する（フォールバック）
-            const { data: basicLogs, error: basicError } = await supabaseClient
+            const { data: basicLogs, error: basicError, count: basicCount } = await supabaseClient
                 .from('activity_logs')
-                .select('*')
+                .select('*', { count: 'exact' })
                 .order('created_at', { ascending: false })
-                .limit(200);
+                .range(from, to);
 
             if (basicError) throw basicError;
             renderActivityLogs(basicLogs);
+            updateLogsPagination(page, basicCount);
         } else {
             renderActivityLogs(logs);
+            updateLogsPagination(page, count);
         }
     } catch (err) {
         console.error('ログ取得エラー:', err);
         listBody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">エラー: ${err.message}</td></tr>`;
     }
+}
+
+// ページネーションUIの更新
+function updateLogsPagination(currentPage, totalCount) {
+    const prevBtn = document.getElementById('prev-logs-btn');
+    const nextBtn = document.getElementById('next-logs-btn');
+    const pageInfo = document.getElementById('logs-page-info');
+
+    const totalPages = Math.ceil((totalCount || 0) / LOGS_PER_PAGE) || 1;
+
+    if (pageInfo) pageInfo.textContent = `${currentPage} / ${totalPages}`;
+    if (prevBtn) prevBtn.disabled = currentPage <= 1;
+    if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
+}
+
+// ページ変更
+function changeLogsPage(delta) {
+    const newPage = currentLogsPage + delta;
+    if (newPage < 1) return;
+    fetchActivityLogs(newPage);
 }
 
 // ログの表示
@@ -1807,7 +1842,7 @@ function renderActivityLogs(logs) {
             <td class="small text-muted">${dateStr}</td>
             <td>
                 <div class="d-flex align-items-center gap-2">
-                    <img src="${userAvatar}" class="rounded-circle border" style="width: 32px; height: 32px;" onerror="this.src='../assets/default-avatar.png'">
+                    <img src="${userAvatar}" class="rounded-circle border" style="width: 32px; height: 32px;" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=random'">
                     <div>
                         <div class="fw-bold text-truncate" style="max-width: 120px;">${userName}</div>
                         <div class="small text-muted" style="font-size: 0.65rem;">${log.user_id}</div>
