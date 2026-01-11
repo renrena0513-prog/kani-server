@@ -764,15 +764,53 @@ async function fetchActivityLogs(page = 1) {
     const listBody = document.getElementById('logs-list-body');
     if (listBody) {
         listBody.innerHTML = logs.map(log => {
-            const u = profilesCache[log.user_id] || { name: '不明' };
-            const color = log.amount > 0 ? 'text-success' : 'text-danger';
+            const u = profilesCache[log.user_id] || { name: '不明', avatar: '' };
+            const target = log.target_user_id ? (profilesCache[log.target_user_id] || { name: '不明' }) : null;
+
+            // アクションタイプのアイコンと日本語名
+            const actionMap = {
+                'badge_purchase': { icon: '🛒', label: 'バッジ購入' },
+                'badge_sell': { icon: '💰', label: 'バッジ売却' },
+                'badge_transfer': { icon: '🎁', label: 'バッジ譲渡' },
+                'badge_receive': { icon: '📥', label: 'バッジ受取' },
+                'gacha_draw': { icon: '🎰', label: 'ガチャ' },
+                'coin_transfer': { icon: '💸', label: 'コイン送金' },
+                'coin_receive': { icon: '📩', label: 'コイン受取' },
+                'omikuji': { icon: '⛩️', label: 'おみくじ' },
+                'ticket_transfer': { icon: '🎟️', label: 'チケット譲渡' },
+                'ticket_receive': { icon: '🎫', label: 'チケット受取' },
+                'admin_coin_adjust': { icon: '🔧', label: '管理者調整' }
+            };
+            const action = actionMap[log.action_type] || { icon: '📋', label: log.action_type };
+
+            // 金額の表示
+            const amountColor = log.amount > 0 ? 'text-success' : (log.amount < 0 ? 'text-danger' : '');
+            const amountPrefix = log.amount > 0 ? '+' : '';
+            const amountDisplay = log.amount !== null ? `${amountPrefix}${log.amount.toLocaleString()}` : '-';
+
+            // 対象者の表示
+            const targetDisplay = target ? `→ ${escapeHtml(target.name)}` : '';
+
             return `
                 <tr>
-                    <td>${new Date(log.created_at).toLocaleString()}</td>
-                    <td>${u.name}</td>
-                    <td>${log.action_type}</td>
-                    <td class="${color}">${log.amount}</td>
-                    <td><button onclick="revertLog('${log.id}')" class="btn btn-sm btn-outline-danger">取消</button></td>
+                    <td>
+                        <div class="small">${new Date(log.created_at).toLocaleDateString('ja-JP')}</div>
+                        <div class="small text-muted">${new Date(log.created_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}</div>
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <img src="${u.avatar || ''}" class="rounded-circle" style="width: 28px; height: 28px;" onerror="this.style.display='none'">
+                            <span class="fw-bold">${escapeHtml(u.name)}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge bg-light text-dark border">
+                            ${action.icon} ${action.label}
+                        </span>
+                    </td>
+                    <td class="small text-muted">${targetDisplay}</td>
+                    <td class="fw-bold ${amountColor}">${amountDisplay}</td>
+                    <td><button onclick="revertLog('${log.id}')" class="btn btn-sm btn-outline-danger">🔄 取消</button></td>
                 </tr>
             `;
         }).join('');
