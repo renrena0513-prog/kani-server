@@ -526,10 +526,10 @@ function escapeHtml(str) {
 }
 
 function openCoinModal(userId, userName, currentCoins) {
-    document.getElementById('coin-user-id').value = userId;
-    document.getElementById('coin-user-name').textContent = userName;
+    document.getElementById('coin-edit-user-id').value = userId;
+    document.getElementById('coin-edit-user-name').textContent = userName;
     document.getElementById('coin-amount').value = currentCoins;
-    window.coinModal.show();
+    new bootstrap.Modal(document.getElementById('coinModal')).show();
 }
 
 async function saveCoins() {
@@ -543,25 +543,31 @@ async function saveCoins() {
 async function openBadgeGrantModal(userId, userName) {
     document.getElementById('badge-grant-user-id').value = userId;
     document.getElementById('badge-grant-user-name').textContent = userName;
-    const currentList = document.getElementById('current-badges-list');
-    const availableList = document.getElementById('available-badges-list');
-    const { data: userBadges } = await supabaseClient.from('user_badges_new').select('*, badge:badges(*)').eq('user_id', userId);
-    const { data: allBadges } = await supabaseClient.from('badges').select('*').order('name');
+    const ownedList = document.getElementById('badge-grant-owned-list');
+    const availableList = document.getElementById('badge-grant-list');
 
-    currentList.innerHTML = userBadges.map(ub => `
-        <div class="d-flex justify-content-between p-1 border-bottom">
-            <span>${ub.badge?.name}</span>
-            <button onclick="revokeBadge('${userId}', '${ub.badge_id}', '${ub.badge?.name}')" class="btn btn-sm btn-outline-danger">-</button>
-        </div>
-    `).join('') || 'なし';
+    try {
+        const { data: userBadges } = await supabaseClient.from('user_badges_new').select('*, badge:badges(*)').eq('user_id', userId);
+        const { data: allBadges } = await supabaseClient.from('badges').select('*').order('name');
 
-    availableList.innerHTML = allBadges.map(b => `
-        <div class="d-flex justify-content-between p-1 border-bottom">
-            <span>${b.name}</span>
-            <button onclick="grantBadge('${userId}', '${b.id}', '${b.name}')" class="btn btn-sm btn-outline-primary">付与</button>
-        </div>
-    `).join('');
-    new bootstrap.Modal(document.getElementById('badgeGrantModal')).show();
+        ownedList.innerHTML = (userBadges || []).map(ub => `
+            <span class="badge bg-secondary">${escapeHtml(ub.badge?.name || '不明')}</span>
+        `).join('') || '<span class="text-muted">なし</span>';
+
+        availableList.innerHTML = (allBadges || []).map(b => `
+            <div class="col-6 col-md-4">
+                <div class="form-check">
+                    <input class="form-check-input badge-grant-checkbox" type="checkbox" value="${b.id}" id="grant-${b.id}">
+                    <label class="form-check-label small" for="grant-${b.id}">${escapeHtml(b.name)}</label>
+                </div>
+            </div>
+        `).join('');
+
+        new bootstrap.Modal(document.getElementById('badgeGrantModal')).show();
+    } catch (err) {
+        console.error('バッジ付与モーダルエラー:', err);
+        alert('エラー: ' + err.message);
+    }
 }
 
 async function grantBadge(userId, badgeId, badgeName) {
@@ -572,6 +578,39 @@ async function grantBadge(userId, badgeId, badgeName) {
         openBadgeGrantModal(userId, document.getElementById('badge-grant-user-name').textContent);
     } catch (err) { alert(err.message); }
     finally { toggleLoading(false); }
+}
+
+async function grantMultiBadges() {
+    const userId = document.getElementById('badge-grant-user-id').value;
+    const userName = document.getElementById('badge-grant-user-name').textContent;
+    const checkboxes = document.querySelectorAll('.badge-grant-checkbox:checked');
+
+    if (checkboxes.length === 0) {
+        alert('付与するバッジを選択してください');
+        return;
+    }
+
+    if (!confirm(`${checkboxes.length}個のバッジを付与しますか？`)) return;
+
+    toggleLoading(true);
+    try {
+        const inserts = Array.from(checkboxes).map(cb => ({
+            user_id: userId,
+            badge_id: cb.value,
+            purchased_price: 0
+        }));
+
+        const { error } = await supabaseClient.from('user_badges_new').insert(inserts);
+        if (error) throw error;
+
+        alert(`${checkboxes.length}個のバッジを付与しました`);
+        bootstrap.Modal.getInstance(document.getElementById('badgeGrantModal'))?.hide();
+    } catch (err) {
+        console.error('バッジ付与エラー:', err);
+        alert('エラー: ' + err.message);
+    } finally {
+        toggleLoading(false);
+    }
 }
 
 async function revokeBadge(userId, badgeId, badgeName) {
