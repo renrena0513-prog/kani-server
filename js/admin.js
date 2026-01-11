@@ -1862,10 +1862,10 @@ function renderActivityLogs(logs) {
 
         if (targetName) {
             detailHtml += `
-                <div class=\"d-flex align-items-center gap-1 mt-1 p-1 rounded\" style=\"background: #f8f9fa; border: 1px solid #eee;\">
-                    <span class=\"small text-muted me-1\">相手:</span>
-                    <img src=\"${targetAvatar}\" class=\"rounded-circle\" style=\"width: 20px; height: 20px;\" onerror=\"this.style.display='none'\">
-                    <span class=\"small fw-bold\">${targetName}</span>
+                <div class="d-flex align-items-center gap-1 mt-1 p-1 rounded" style="background: #f8f9fa; border: 1px solid #eee;">
+                    <span class="small text-muted me-1">相手:</span>
+                    <img src="${targetAvatar}" class="rounded-circle" style="width: 20px; height: 20px;" onerror="this.style.display='none'">
+                    <span class="small fw-bold">${targetName}</span>
                 </div>`;
         }
 
