@@ -655,6 +655,35 @@
                 transform: translate(40%, 40%);
             }
         }
+
+        /* プレミアム・ページネーション */
+        .pagination-premium .page-link {
+            border: none;
+            margin: 0 4px;
+            border-radius: 8px !important;
+            color: var(--deep-purple);
+            background: rgba(255, 255, 255, 0.8);
+            transition: all 0.3s ease;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .pagination-premium .page-item.active .page-link {
+            background: linear-gradient(135deg, var(--deep-purple), var(--soft-purple));
+            color: white !important;
+            box-shadow: 0 4px 10px rgba(106, 17, 203, 0.3);
+        }
+
+        .pagination-premium .page-link:hover {
+            background: var(--gold);
+            color: white !important;
+            transform: translateY(-2px);
+        }
     </style>
 </head>
 
@@ -1006,8 +1035,10 @@
                         <div id="activity-list">
                             <div class="text-center text-muted py-3">読み込み中...</div>
                         </div>
-                        <div id="activity-pagination" class="d-flex justify-content-center gap-2 mt-3"
-                            style="display: none;"></div>
+                        <nav id="activity-pagination-area" class="mt-4" style="display: none;">
+                            <ul id="activity-pagination"
+                                class="pagination pagination-sm justify-content-center pagination-premium"></ul>
+                        </nav>
                     </div>
                 </div>
 
@@ -2038,17 +2069,19 @@
                 }).join('');
 
                 // 6. ページネーションUI
+                const paginationArea = document.getElementById('activity-pagination-area');
                 if (totalPages > 1) {
                     let pagHtml = '';
                     for (let i = 1; i <= totalPages; i++) {
-                        pagHtml += `<li class="page-item ${i === page ? 'active' : ''}">
-                        <a class="page-link" href="javascript:void(0)" onclick="loadActivityLogs(${i})">${i}</a>
+                        pagHtml += `
+                        <li class="page-item ${i === page ? 'active' : ''}">
+                            <a class="page-link shadow-sm" href="javascript:void(0)" onclick="loadActivityLogs(${i})">${i}</a>
                         </li>`;
                     }
                     paginationEl.innerHTML = pagHtml;
-                    paginationEl.style.display = 'flex';
+                    if (paginationArea) paginationArea.style.display = 'block';
                 } else {
-                    paginationEl.style.display = 'none';
+                    if (paginationArea) paginationArea.style.display = 'none';
                 }
 
             } catch (err) {
