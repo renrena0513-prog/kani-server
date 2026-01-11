@@ -1698,6 +1698,30 @@ async function rejectDissolution(requestId) {
 // === 活動ログ機能 ===
 let currentLogsPage = 1;
 const LOGS_PER_PAGE = 10;
+let profilesCache = {}; // ユーザー情報キャッシュ（表示の高速化と結合エラー回避用）
+
+// 全プロフィールの読み込み（マッピング用）
+async function loadProfilesCache() {
+    try {
+        const { data, error } = await supabaseClient
+            .from('profiles')
+            .select('discord_user_id, account_name, avatar_url');
+
+        if (error) throw error;
+
+        profilesCache = {};
+        if (data) {
+            data.forEach(p => {
+                profilesCache[p.discord_user_id] = {
+                    name: p.account_name || '名前なし',
+                    avatar: p.avatar_url || ''
+                };
+            });
+        }
+    } catch (err) {
+        console.error('プロフィールキャッシュ読み込みエラー:', err);
+    }
+}
 
 // 活動ログの取得
 async function fetchActivityLogs(page = 1) {
@@ -1715,37 +1739,47 @@ async function fetchActivityLogs(page = 1) {
     if (nextBtn) nextBtn.disabled = true;
 
     try {
+        // プロフィールキャッシュが空なら読み込む
+        if (Object.keys(profilesCache).length === 0) {
+            await loadProfilesCache();
+        }
+
         const from = (page - 1) * LOGS_PER_PAGE;
         const to = from + LOGS_PER_PAGE - 1;
 
-        // 1. プロフィール情報を結合して取得を試みる (!カラム名 で明示的にリレーションを指定)
+        // DB制約（外部キー）に依存しないよう、結合なしでシンプルに取得
         const { data: logs, error, count } = await supabaseClient
             .from('activity_logs')
-            .select(`
-                *,
-                user:profiles!activity_logs_user_id_fkey(account_name, avatar_url, discord_account),
-                target:profiles!activity_logs_target_user_id_fkey(account_name, avatar_url, discord_account),
-                badge:badges!activity_logs_badge_id_fkey(name)
-            `, { count: 'exact' })
+            .select('*', { count: 'exact' })
             .order('created_at', { ascending: false })
             .range(from, to);
 
-        if (error) {
-            console.warn('結合によるログ取得に失敗しました。リレーション設定を確認してください。', error);
-            // 2. エラー（リレーション不足）が発生した場合は、結合なしで取得する（フォールバック）
-            const { data: basicLogs, error: basicError, count: basicCount } = await supabaseClient
-                .from('activity_logs')
-                .select('*', { count: 'exact' })
-                .order('created_at', { ascending: false })
-                .range(from, to);
+        if (error) throw error;
 
-            if (basicError) throw basicError;
-            renderActivityLogs(basicLogs);
-            updateLogsPagination(page, basicCount);
-        } else {
-            renderActivityLogs(logs);
-            updateLogsPagination(page, count);
+        // バッジ情報が必要な場合は別途取得（必要に応じて）
+        const badgeIds = [...new Set(logs.filter(l => l.badge_id).map(l => l.badge_id))];
+        let badgesMap = {};
+        if (badgeIds.length > 0) {
+            const { data: bData } = await supabaseClient
+                .from('badges')
+                .select('id, name')
+                .in('id', badgeIds);
+            if (bData) {
+                bData.forEach(b => { badgesMap[b.id] = b.name; });
+            }
         }
+
+        // ログに手動でマッピング
+        const mappedLogs = logs.map(log => ({
+            ...log,
+            user: profilesCache[log.user_id],
+            target: profilesCache[log.target_user_id],
+            badge_name: badgesMap[log.badge_id] || (log.details?.badge_name)
+        }));
+
+        renderActivityLogs(mappedLogs);
+        updateLogsPagination(page, count);
+
     } catch (err) {
         console.error('ログ取得エラー:', err);
         listBody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">エラー: ${err.message}</td></tr>`;
@@ -1796,23 +1830,34 @@ function renderActivityLogs(logs) {
             'badge_receive': '🎒 譲渡(受)',
             'badge_sell': '💰 バッジ売却',
             'badge_purchase': '🛒 バッジ購入',
+            'gacha_draw': '🎲 ガチャ',
             'omikuji': '🎋 おみくじ',
             'revenue_share': '🏦 権利者還元'
         };
         const actionLabel = actionMap[log.action_type] || log.action_type;
 
-        // ユーザー表示
-        const userName = log.user?.account_name || '不明';
-        const userAvatar = log.user?.avatar_url || '';
-        const targetName = log.target?.account_name || '';
-        const targetAvatar = log.target?.avatar_url || '';
+        // ユーザー表示 (マッピング済みデータを使用)
+        const userName = log.user?.name || '不明';
+        const userAvatar = log.user?.avatar || '';
+        const targetName = log.target?.name || '';
+        const targetAvatar = log.target?.avatar || '';
 
         // 内容・対象の構築
         let detailHtml = '';
-        if (log.badge) {
-            detailHtml = `<div class="mb-1">バッジ: <strong>${log.badge.name}</strong></div>`;
-        } else if (log.details && log.details.badge_name) {
-            detailHtml = `<div class="mb-1"><strong>${log.details.badge_name}</strong></div>`;
+        if (log.badge_name) {
+            detailHtml = `<div class="mb-1">バッジ: <strong>${log.badge_name}</strong></div>`;
+        }
+
+        // ガチャやおみくじの詳細表示を強化
+        if (log.details) {
+            const d = log.details;
+            if (log.action_type === 'gacha_draw' || log.action_type === 'omikuji') {
+                const item = d.item_name || d.result || d.name || '';
+                if (item) {
+                    const rankHtml = d.rank ? `<span class="badge bg-light text-dark border ms-1" style="font-size:0.6rem;">${d.rank}</span>` : '';
+                    detailHtml += `<div class="mt-1"><span class="badge bg-info text-dark" style="font-size: 0.7rem;">獲得: ${item}</span>${rankHtml}</div>`;
+                }
+            }
         }
 
         if (targetName) {
@@ -1824,12 +1869,6 @@ function renderActivityLogs(logs) {
                 </div>`;
         }
 
-        // おみくじやガチャの詳細表示
-        if (log.action_type === 'omikuji' && log.details) {
-            const result = log.details.result || '';
-            if (result) detailHtml += `<div class="mt-1"><span class="badge bg-info text-dark" style="font-size: 0.7rem;">結果: ${result}</span></div>`;
-        }
-
         if (log.details && (log.details.method || log.details.ticket_rarity)) {
             const method = log.details.method || (log.details.ticket_rarity ? `${log.details.ticket_rarity}引換券` : '');
             if (method) detailHtml += `<div class="small text-muted mt-1" style="font-size: 0.75rem;">方法: ${method}</div>`;
@@ -1838,19 +1877,22 @@ function renderActivityLogs(logs) {
         const amountColor = log.amount > 0 ? 'text-success' : (log.amount < 0 ? 'text-danger' : '');
         const amountStr = log.amount !== null ? `${log.amount > 0 ? '+' : ''}${log.amount.toLocaleString()}` : '-';
 
+        // デフォルトアイコンのフォールバック
+        const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=random&color=fff`;
+
         tr.innerHTML = `
-            <td class="small text-muted">${dateStr}</td>
+            <td class="small text-muted" style="white-space: nowrap;">${dateStr}</td>
             <td>
                 <div class="d-flex align-items-center gap-2">
-                    <img src="${userAvatar}" class="rounded-circle border" style="width: 32px; height: 32px;" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=random'">
+                    <img src="${userAvatar || defaultAvatar}" class="rounded-circle border" style="width: 32px; height: 32px;" onerror="this.src='${defaultAvatar}'">
                     <div>
                         <div class="fw-bold text-truncate" style="max-width: 120px;">${userName}</div>
                         <div class="small text-muted" style="font-size: 0.65rem;">${log.user_id}</div>
                     </div>
                 </div>
             </td>
-            <td><span class="badge bg-secondary font-monospace">${actionLabel}</span></td>
-            <td>${detailHtml}</td>
+            <td><span class="badge bg-secondary font-monospace" style="font-size:0.7rem;">${actionLabel}</span></td>
+            <td><div style="min-width: 150px;">${detailHtml}</div></td>
             <td class="fw-bold fs-6 ${amountColor}">${amountStr}</td>
             <td>
                 <button onclick="revertLog(${log.id})" class="btn btn-sm btn-outline-danger" title="この操作を取り消す">
