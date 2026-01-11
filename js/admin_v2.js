@@ -447,21 +447,64 @@ async function saveRecord() {
 async function fetchUsers() {
     const listBody = document.getElementById('users-list-body');
     if (!listBody) return;
+
+    listBody.innerHTML = '<tr><td colspan="4" class="text-center">読み込み中...</td></tr>';
+
     try {
-        const { data: users } = await supabaseClient.from('profiles').select('*').order('account_name');
-        listBody.innerHTML = users.map(user => `
-            <tr>
-                <td>${user.account_name}</td>
-                <td> ${user.total_coins || 0}</td>
-                <td>${user.team_name || '-'}</td>
+        const { data: users, error } = await supabaseClient.from('profiles').select('*').order('account_name');
+        if (error) throw error;
+
+        if (!users || users.length === 0) {
+            listBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">ユーザーがいません</td></tr>';
+            return;
+        }
+
+        listBody.innerHTML = '';
+        users.forEach(user => {
+            const tr = document.createElement('tr');
+            const name = user.account_name || '名前なし';
+            const discordId = user.discord_user_id || '';
+            const coins = user.total_coins || 0;
+            const teamName = user.team_name || '-';
+            const avatarUrl = user.avatar_url || '';
+
+            tr.innerHTML = `
                 <td>
-                    <button onclick="openCoinModal('${user.discord_user_id}', '${user.account_name}', ${user.total_coins || 0})" class="btn btn-sm btn-outline-warning">コイン</button>
-                    <button onclick="openBadgeGrantModal('${user.discord_user_id}', '${user.account_name}')" class="btn btn-sm btn-outline-info">バッジ</button>
-                    <button onclick="impersonateUser('${user.discord_user_id}', '${user.account_name}', '${user.avatar_url}')" class="btn btn-sm btn-outline-secondary">なりすまし</button>
+                    <div class="d-flex align-items-center gap-2">
+                        <img src="${avatarUrl}" class="rounded-circle border" style="width: 32px; height: 32px;" onerror="this.style.display='none'">
+                        <div>
+                            <div class="fw-bold">${escapeHtml(name)}</div>
+                            <div class="small text-muted" style="font-size: 0.7rem;">${discordId}</div>
+                        </div>
+                    </div>
                 </td>
-            </tr>
-        `).join('');
-    } catch (err) { console.error(err); }
+                <td><span class="badge bg-light text-dark border">🪙 ${coins}</span></td>
+                <td>${escapeHtml(teamName)}</td>
+                <td>
+                    <div class="d-flex gap-1 flex-wrap">
+                        <button class="btn btn-sm btn-outline-warning" onclick="openCoinModal('${discordId}', '${escapeHtml(name)}', ${coins})">コイン</button>
+                        <button class="btn btn-sm btn-outline-info" onclick="openBadgeGrantModal('${discordId}', '${escapeHtml(name)}')">バッジ</button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="impersonateUser('${discordId}', '${escapeHtml(name)}', '${avatarUrl}')">なりすまし</button>
+                    </div>
+                </td>
+            `;
+            listBody.appendChild(tr);
+        });
+    } catch (err) {
+        console.error('ユーザー取得エラー:', err);
+        listBody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">エラー: ${err.message}</td></tr>`;
+    }
+}
+
+// HTMLエスケープ用ヘルパー関数
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 function openCoinModal(userId, userName, currentCoins) {
@@ -745,12 +788,32 @@ function changeLogsPage(delta) {
 
 async function revertLog(logId) {
     if (!confirm('取り消しますか？')) return;
+
+    console.log('=== revertLog called ===');
+    console.log('logId:', logId);
+    console.log('logId type:', typeof logId);
+
     toggleLoading(true);
     try {
         const { data, error } = await supabaseClient.rpc('revert_activity_log', { p_log_id: logId });
-        if (error) throw error;
-        if (data?.ok) { alert('成功'); fetchActivityLogs(); }
-        else { alert('エラー: ' + data?.error); }
-    } catch (err) { alert(err.message); }
+
+        console.log('RPC response - data:', data);
+        console.log('RPC response - error:', error);
+
+        if (error) {
+            console.error('RPC Error details:', JSON.stringify(error, null, 2));
+            throw error;
+        }
+
+        if (data?.ok) {
+            alert('成功');
+            fetchActivityLogs();
+        } else {
+            alert('エラー: ' + (data?.error || '取消に失敗しました'));
+        }
+    } catch (err) {
+        console.error('revertLog exception:', err);
+        alert('エラーが発生しました: ' + err.message);
+    }
     finally { toggleLoading(false); }
 }
