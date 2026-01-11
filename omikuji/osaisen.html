@@ -536,17 +536,7 @@
                 if (error) throw error;
                 if (!data.ok) throw new Error(data.error);
 
-                // 活動ログ記録（ガチャは祈願符消費なのでamountは記録しない）
-                if (typeof logActivity === 'function') {
-                    await logActivity(currentUser.user_metadata.provider_id, 'gacha_draw', {
-                        amount: null,
-                        details: {
-                            result_type: data.type,
-                            result_name: data.name,
-                            rarity: data.rarity
-                        }
-                    });
-                }
+                // 活動ログ記録はRPC側 (draw_gacha) で自動記録されるため、JS側での記録は不要
 
                 showResult(data);
 

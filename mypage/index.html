@@ -1914,7 +1914,8 @@
                     'badge_purchase': '🛒 バッジ購入',
                     'omikuji': '🎋 おみくじ',
                     'revenue_share': '💎 売上還元',
-                    'admin_edit': '⚙️ 管理者修正'
+                    'admin_edit': '⚙️ 管理者修正',
+                    'gacha_draw': '⛩️ お賽銭'
                 };
 
                 listEl.innerHTML = pageItems.map(log => {
@@ -1973,6 +1974,26 @@
                         detailsStr = `💎 「${ log.details?.badge_name || 'バッジ' }」の売買還元 ${ otherId ? `(by ${otherHtml})` : '' } `;
                     } else if (log.action_type === 'admin_edit') {
                         detailsStr = `⚙️ 管理者による${ log.amount >= 0 ? '加算' : '減算' } `;
+                    } else if (log.action_type === 'gacha_draw') {
+                        const badgeId = log.badge_id;
+                        const resultName = log.details?.result_name || log.details?.name || 'アイテム';
+                        const resultType = log.details?.result_type || log.details?.type;
+                        
+                        if (badgeId && badgeMap[badgeId]) {
+                            const badge = badgeMap[badgeId];
+                            detailsStr = `
+                        < div class="d-inline-flex align-items-center gap-1" >
+                            <img src="${badge.image_url}" style="width: 30px; height: 30px; object-fit: contain;" title="${badge.name}">
+                                <span>${badge.name} を獲得</span>
+                            </div>
+                    `;
+                        } else {
+                            let icon = '🎁';
+                            if (resultType === 'exchange_ticket') icon = '🎫';
+                            else if (resultType === 'stone') icon = '💠';
+                            
+                            detailsStr = `${ icon } ${ resultName } を獲得`;
+                        }
                     }
 
                     return `
