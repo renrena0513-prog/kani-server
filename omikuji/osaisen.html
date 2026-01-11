@@ -406,7 +406,7 @@
             try {
                 // レアリティ閾値、バッジ、流通数、ガチャ重みを取得
                 const [badgesRes, thresholdsRes, circulationRes, mainConfigRes] = await Promise.all([
-                    supabaseClient.from('badges').select('id, name, image_url, price, fixed_rarity_name, sales_type, is_gacha_eligible').eq('is_gacha_eligible', true),
+                    supabaseClient.from('badges').select('id, name, image_url, price, fixed_rarity_name, sales_type, is_gacha_eligible, remaining_count').eq('is_gacha_eligible', true),
                     supabaseClient.from('rarity_thresholds').select('rarity_name, threshold_value, gacha_weight').order('threshold_value', { ascending: true }),
                     supabaseClient.from('user_badges_new').select('badge_id'),
                     supabaseClient.from('gacha_configs').select('name, weight').eq('category', 'main')
@@ -415,7 +415,8 @@
                 if (badgesRes.error) throw badgesRes.error;
                 if (thresholdsRes.error) throw thresholdsRes.error;
 
-                const badges = badgesRes.data || [];
+                // remaining_count が 0 のバッジを除外（null は無制限として扱う）
+                const badges = (badgesRes.data || []).filter(b => b.remaining_count === null || b.remaining_count > 0);
                 const thresholds = thresholdsRes.data || [];
                 const mainConfigs = mainConfigRes.data || [];
 
