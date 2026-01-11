@@ -534,14 +534,31 @@ function openCoinModal(userId, userName, currentCoins) {
 
 async function saveUserCoins() {
     const userId = document.getElementById('coin-edit-user-id').value;
-    const amount = parseInt(document.getElementById('coin-amount').value) || 0;
+    const newAmount = parseInt(document.getElementById('coin-amount').value) || 0;
 
     toggleLoading(true);
     try {
-        const { error } = await supabaseClient.from('profiles').update({ coins: amount }).eq('discord_user_id', userId);
+        // 現在の値を取得
+        const { data: profile, error: fetchError } = await supabaseClient
+            .from('profiles')
+            .select('coins, total_assets')
+            .eq('discord_user_id', userId)
+            .single();
+
+        if (fetchError) throw fetchError;
+
+        const currentCoins = profile.coins || 0;
+        const currentAssets = profile.total_assets || 0;
+        const difference = newAmount - currentCoins;
+
+        // coins と total_assets を更新
+        const { error } = await supabaseClient.from('profiles').update({
+            coins: newAmount,
+            total_assets: currentAssets + difference
+        }).eq('discord_user_id', userId);
         if (error) throw error;
 
-        alert('コインを更新しました');
+        alert(`コインを更新しました（差額: ${difference >= 0 ? '+' : ''}${difference}）`);
         bootstrap.Modal.getInstance(document.getElementById('coinModal'))?.hide();
         fetchUsers();
     } catch (err) {
