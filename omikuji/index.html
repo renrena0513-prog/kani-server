@@ -366,22 +366,26 @@
                 // 現在のプロフィールを取得
                 const { data: profile, error: profileError } = await supabaseClient
                     .from('profiles')
-                    .select('coins, total_assets')
+                    .select('coins, total_assets, gacha_tickets')
                     .eq('discord_user_id', currentUserId)
                     .single();
 
                 if (profileError) throw profileError;
 
-                const reward = selected.reward;
-                let newCoins = (profile.coins || 0) + reward;
+                const coinReward = selected.reward || 0;
+                const ticketReward = selected.ticket_reward || 0;
+
+                let newCoins = (profile.coins || 0) + coinReward;
                 let newTotalAssets = profile.total_assets || 0;
+                let newTickets = (profile.gacha_tickets || 0) + ticketReward;
 
                 // マイナスの場合は0以下にしない
                 if (newCoins < 0) newCoins = 0;
+                if (newTickets < 0) newTickets = 0;
 
-                // プラスの場合のみ総資産に加算
-                if (reward > 0) {
-                    newTotalAssets += reward;
+                // コインプラス分を総資産に加算
+                if (coinReward > 0) {
+                    newTotalAssets += coinReward;
                 }
 
                 // プロフィールを更新
@@ -390,6 +394,7 @@
                     .update({
                         coins: newCoins,
                         total_assets: newTotalAssets,
+                        gacha_tickets: newTickets,
                         last_omikuji_at: new Date().toISOString()
                     })
                     .eq('discord_user_id', currentUserId);
@@ -399,8 +404,12 @@
                 // 活動ログを記録
                 if (typeof logActivity === 'function') {
                     await logActivity(currentUserId, 'omikuji', {
-                        amount: reward,
-                        details: { rank: selected.rank, message: message }
+                        amount: coinReward,
+                        details: {
+                            rank: selected.rank,
+                            message: message,
+                            ticket_reward: ticketReward // チケット報酬数を含める
+                        }
                     });
                 }
 
@@ -414,8 +423,16 @@
                 document.getElementById('fortune-rank').textContent = selected.rank;
 
                 const rewardEl = document.getElementById('fortune-reward');
-                rewardEl.textContent = reward >= 0 ? `+${reward} コイン` : `${reward} コイン`;
-                rewardEl.className = 'fortune-reward ' + (reward >= 0 ? 'positive' : 'negative');
+                let rewardHtml = '';
+                if (coinReward !== 0) {
+                    rewardHtml += `<span class="${coinReward > 0 ? 'text-success' : 'text-danger'}">🪙 ${coinReward >= 0 ? '+' : ''}${coinReward.toLocaleString()}</span> `;
+                }
+                if (ticketReward !== 0) {
+                    rewardHtml += `<span style="color: #d4a574;">🎫 ${ticketReward >= 0 ? '+' : ''}${ticketReward}枚</span>`;
+                }
+
+                rewardEl.innerHTML = rewardHtml || '<span class="text-muted">報酬なし</span>';
+                rewardEl.className = 'fortune-reward'; // 個別に色を指定するのでクラスはリセット
 
                 document.getElementById('fortune-message').textContent = message;
 

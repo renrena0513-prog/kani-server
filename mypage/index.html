@@ -1834,7 +1834,8 @@
                         month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                     });
                     const typeName = typeNames[log.action_type] || log.action_type;
-                    const amountStr = log.amount !== null ? `🪙 ${log.amount.toLocaleString()} ` : '';
+                    const isTicketOmikuji = log.action_type === 'omikuji' && log.details?.ticket_reward;
+                    const amountStr = (log.amount !== null && (!isTicketOmikuji || log.amount !== 0)) ? `🪙 ${log.amount.toLocaleString()}` : '';
 
                     // 相手の情報を取得（基本は target_user_id。常に最新のプロフィールを参照）
                     const otherId = log.target_user_id;
@@ -1880,7 +1881,13 @@
                     } else if (log.action_type === 'badge_purchase') {
                         detailsStr = `🛒 「${log.details?.badge_name || 'バッジ'}」を購入`;
                     } else if (log.action_type === 'omikuji') {
-                        detailsStr = `🎋 運勢: <strong>${log.details?.rank || '不明'}</strong>`;
+                        const tr = log.details?.ticket_reward;
+                        const rank = log.details?.rank || '不明';
+                        if (tr) {
+                            detailsStr = `🎋 運勢: <strong>${rank}</strong> <span class="badge bg-warning text-dark ms-1" style="font-size: 0.75rem;">🎫 +${tr}枚 祈願符</span>`;
+                        } else {
+                            detailsStr = `🎋 運勢: <strong>${rank}</strong>`;
+                        }
                     } else if (log.action_type === 'revenue_share') {
                         detailsStr = `💎 「${log.details?.badge_name || 'バッジ'}」の売買還元 ${otherId ? `(by ${otherHtml})` : ''} `;
                     } else if (log.action_type === 'admin_edit') {

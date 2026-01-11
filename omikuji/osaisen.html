@@ -202,10 +202,14 @@
                 <span id="ticket-count" class="fw-bold text-white fs-5">- 枚</span>
             </div>
 
-            <div class="mt-2">
+            <div class="mt-2" id="draw-area">
                 <button id="draw-btn" class="gacha-btn" onclick="handleDraw()">
                     🙏 お賽銭を奉納する
                 </button>
+                <div id="not-started-msg" class="alert alert-warning mt-3 mx-auto"
+                    style="display: none; max-width: 400px;">
+                    ✨ 現在、神事の準備をしています。お賽銭箱はまだ開いていないようです。
+                </div>
             </div>
 
             <!-- 提供割合表示セクション -->
@@ -283,10 +287,6 @@
                 return;
             }
             currentUser = user;
-            const discordId = user.user_metadata.provider_id;
-
-            // 全ユーザーに開放
-
             fetchTicketCount();
         });
 
@@ -508,6 +508,18 @@
 
         async function handleDraw() {
             if (isDrawing) return;
+
+            const discordId = currentUser.user_metadata.provider_id;
+            const isAdmin = ADMIN_DISCORD_IDS.includes(discordId);
+            const notStartedMsg = document.getElementById('not-started-msg');
+
+            if (!isAdmin) {
+                notStartedMsg.style.display = 'block';
+                // 3秒後にメッセージを消す（任意） か、出したままにする
+                setTimeout(() => { notStartedMsg.style.display = 'none'; }, 5000);
+                return;
+            }
+
             isDrawing = true;
 
             const btn = document.getElementById('draw-btn');
