@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 
 <head>
@@ -1891,7 +1891,7 @@
 
                 if (combined.length === 0) {
                     const rlsHint = (allLogs && allLogs.length === 0) ? '<br><small class="text-warning">※送金記録などが1件も表示されない場合、Supabaseの権限設定(RLS)が必要です。</small>' : '';
-                    listEl.innerHTML = `< div class="text-center text-muted py-3" > 活動ログはまだありません${ rlsHint }</div > `;
+                    listEl.innerHTML = `<div class="text-center text-muted py-3" > 活動ログはまだありません${ rlsHint }</div> `;
                     section.style.display = 'block';
                     paginationEl.style.display = 'none';
                     return;
@@ -1930,11 +1930,11 @@
                     const otherProfile = otherId ? allProfiles.find(p => p.discord_user_id === String(otherId)) : null;
 
                     const otherHtml = otherProfile ? `
-                        < div class="d-inline-flex align-items-center gap-1 mx-1" >
+                        <div class="d-inline-flex align-items-center gap-1 mx-1" >
                             <img src="${otherProfile.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png'}"
                                 class="rounded-circle shadow-sm" style="width: 24px; height: 24px; object-fit: cover;">
                                 <span class="fw-bold">${otherProfile.account_name || '誰か'}</span>
-                            </div>` : (otherId ? ` < span class="badge bg-secondary" > ID: ${ otherId }</span > ` : '');
+                            </div>` : (otherId ? ` <span class="badge bg-secondary" > ID: ${ otherId }</span> ` : '');
 
                     let detailsStr = '';
                     if (log.isMatch) {
@@ -1946,15 +1946,15 @@
 
                         // 大会種別の表示用ラベル
                         const tLabel = mMode ? `${ mMode } ` : (tType.includes('個人') ? '個人戦' : (tType.includes('団体') ? '団体戦' : ''));
-                        const tPrefix = tLabel ? `< span class="text-muted small me-1" > [${ tLabel }]</span > ` : '';
+                        const tPrefix = tLabel ? `<span class="text-muted small me-1" > [${ tLabel }]</span> ` : '';
 
                         detailsStr = `
-                        < div class="d-inline-flex align-items-center flex-wrap" >
+                        <div class="d-inline-flex align-items-center flex-wrap" >
                             ${ tPrefix }
                                 <span class="fw-bold text-dark me-2">${mode}</span>
                                 <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 me-2" style="font-size: 0.8rem;">${rank}位</span>
                                 <span class="text-secondary small">(${score >= 0 ? '+' : ''}${score} pts)</span>
-                            </div >
+                            </div>
                         `;
                     } else if (log.action_type === 'transfer_send') {
                         detailsStr = `➡ ${ otherHtml } への送金`;
@@ -1982,7 +1982,7 @@
                         if (badgeId && badgeMap[badgeId]) {
                             const badge = badgeMap[badgeId];
                             detailsStr = `
-                        < div class="d-inline-flex align-items-center gap-1" >
+                        <div class="d-inline-flex align-items-center gap-1" >
                             <img src="${badge.image_url}" style="width: 30px; height: 30px; object-fit: contain;" title="${badge.name}">
                                 <span>${badge.name} を獲得</span>
                             </div>
@@ -1997,7 +1997,7 @@
                     }
 
                     return `
-                        < div class="activity-item-card" >
+                        <div class="activity-item-card" >
                             <span class="activity-date">${date}</span>
                             <div class="row align-items-center g-2">
                                 <div class="col">
@@ -2010,7 +2010,7 @@
                                     <span class="activity-amount ${log.amount > 0 ? 'text-success' : log.amount < 0 ? 'text-danger' : ''}">${amountStr}</span>
                                 </div>
                             </div>
-                        </div >
+                        </div>
                         `;
                 }).join('');
 
@@ -2114,7 +2114,7 @@
                     const totalSell = sellPrice * count;
 
                     htmlParts.push(`
-                        < div class="user-select-item" onclick = "openConvertibleSellModal('${badge.id}', '${badge.name.replace(/'/g, "\\'")}', ${ count }, ${ sellPrice })">
+                        <div class="user-select-item" onclick = "openConvertibleSellModal('${badge.id}', '${badge.name.replace(/'/g, "\\'")}', ${ count }, ${ sellPrice })">
                             < img src = "${badge.image_url}" class="user-select-avatar" style = "border-radius: 8px;" >
                             <div class="flex-grow-1">
                                 <div class="user-select-name">${badge.name} <span class="badge bg-dark">×${count}</span></div>
@@ -2123,7 +2123,7 @@
                                 </div>
                             </div>
                             <div class="text-danger fw-bold">売却</div>
-                        </div >
+                        </div>
                     `);
                 });
 
@@ -2150,7 +2150,7 @@
 
                     if (mode === 'transfer') {
                         return `
-                    < div class="user-select-item" onclick = "openUUIDTransferModal('${item.uuid}', '${badge.name.replace(/'/g, "\\'")}', ${ buyPrice }, ${ pValue }, ${ pSell }) ">
+                    <div class="user-select-item" onclick = "openUUIDTransferModal('${item.uuid}', '${badge.name.replace(/'/g, "\\'")}', ${ buyPrice }, ${ pValue }, ${ pSell }) ">
                         < img src = "${badge.image_url}" class="user-select-avatar" style = "border-radius: 8px;" >
                                 <div class="flex-grow-1">
                                     <div class="user-select-name">${badge.name} ${mutantLabel}</div>
@@ -2161,11 +2161,11 @@
                                     </div>
                                 </div>
                                 <div class="text-primary fw-bold">選択</div>
-                            </div >
+                            </div>
                     `;
                     } else {
                         return `
-                    < div class="user-select-item" onclick = "sellBadgeConfirm('${item.uuid}', '${badge.name.replace(/'/g, "\\'")}', ${ buyPrice }, ${ pValue }, ${ pSell }) ">
+                    <div class="user-select-item" onclick = "sellBadgeConfirm('${item.uuid}', '${badge.name.replace(/'/g, "\\'")}', ${ buyPrice }, ${ pValue }, ${ pSell }) ">
                         < img src = "${badge.image_url}" class="user-select-avatar" style = "border-radius: 8px;" >
                                 <div class="flex-grow-1">
                                     <div class="user-select-name">${badge.name} ${mutantLabel}</div>
@@ -2176,7 +2176,7 @@
                                     </div>
                                 </div>
                                 <div class="text-danger fw-bold">売却</div>
-                            </div >
+                            </div>
                     `;
                     }
                 }).join('');
@@ -2427,7 +2427,7 @@
                 listEl.innerHTML = uniqueBadges.map(badge => {
                     const isEquipped = badge.id === equippedId;
                     return `
-                    < div class="col-4 col-md-3 text-center" >
+                    <div class="col-4 col-md-3 text-center" >
                             <div class="badge-item ${isEquipped ? 'equipped' : ''}"
                                 onclick="equipBadge('${badge.id}')"
                                 style="cursor: pointer;"
@@ -2435,7 +2435,7 @@
                                 <img src="${badge.image_url}" alt="${badge.name}" style="width: 60px; height: 60px; object-fit: contain;">
                             </div>
                             <div class="small text-truncate mt-1" style="font-size: 0.7rem;">${badge.name}</div>
-                        </div >
+                        </div>
                     `;
                 }).join('');
             } catch (err) {
