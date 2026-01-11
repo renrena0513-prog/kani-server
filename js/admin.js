@@ -888,7 +888,6 @@ async function revokeBadge(userId, badgeId, badgeName) {
             .select('uuid')
             .eq('user_id', userId)
             .eq('badge_id', badgeId)
-            .order('created_at', { ascending: false })
             .limit(1);
 
         if (findError) throw findError;
