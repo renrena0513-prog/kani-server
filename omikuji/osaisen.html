@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>お賽銭箱 - かに鯖</title>
+    <link rel="icon" type="image/png" href="../images/favicon.png">
+    <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kosugi+Maru&family=Noto+Sans+JP:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../styles.css">
+    <style>
+        :root {
+            --deep-purple: #5a4a7a;
+            --gold: #d4a574;
+            --crimson: #a11d33;
+            --font-title: 'Kosugi Maru', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #a11d33 0%, #d4a574 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .page-header {
+            color: #fff;
+            font-family: var(--font-title);
+            text-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+        }
+
+        .gacha-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 30px;
+            padding: 50px 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 800px;
+            margin: 0 auto;
+            border: 8px double var(--crimson);
+        }
+
+        .osaisen-box-wrapper {
+            margin: 40px 0;
+            position: relative;
+        }
+
+        .osaisen-box-image {
+            width: 200px;
+            height: auto;
+            filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.2));
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .osaisen-box-image:hover {
+            transform: scale(1.05) rotate(-2deg);
+        }
+
+        .coming-soon-badge {
+            background: var(--crimson);
+            color: white;
+            padding: 10px 30px;
+            border-radius: 50px;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(161, 29, 51, 0.3);
+        }
+
+        .ticket-balance {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 15px 25px;
+            display: inline-flex;
+            align-items: center;
+            gap: 15px;
+            border: 1px solid #dee2e6;
+            margin-bottom: 30px;
+        }
+
+        .ticket-icon {
+            font-size: 1.5rem;
+        }
+
+        .ticket-count {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--crimson);
+        }
+
+        .gacha-btn {
+            background: linear-gradient(135deg, var(--crimson) 0%, #7d1627 100%);
+            color: white;
+            border: none;
+            padding: 18px 60px;
+            font-size: 1.4rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 25px rgba(161, 29, 51, 0.4);
+        }
+
+        .gacha-btn:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 35px rgba(161, 29, 51, 0.5);
+            color: white;
+        }
+
+        .gacha-btn:active:not(:disabled) {
+            transform: translateY(1px);
+        }
+
+        .gacha-btn:disabled {
+            background: #ccc;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        /* 管理者用デバッグ表示 */
+        .admin-debug {
+            margin-top: 50px;
+            padding-top: 30px;
+            border-top: 1px dashed #ccc;
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        /* 既存の共通パーツ用クラス */
+        .nav-dropdown {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- ナビゲーション（JSで挿入） -->
+    <div class="nav-dropdown"></div>
+
+    <div class="container py-5">
+        <header class="text-center">
+            <h1 class="page-header display-4 fw-bold">⛩️ お賽銭箱</h1>
+            <p class="text-white-50">祈願符を捧げて、縁を授かりましょう</p>
+        </header>
+
+        <div class="gacha-container">
+            <div class="coming-soon-badge">現在開発中 (管理者限定公開)</div>
+
+            <div class="osaisen-box-wrapper">
+                <!-- 賽銭箱のイメージ（将来的に動的なイラストにする） -->
+                <div style="font-size: 100px;">🧧</div>
+            </div>
+
+            <div class="mb-4">
+                <p class="lead">所持中の祈願符を使用して、御神石やバッジを獲得できます。</p>
+            </div>
+
+            <div class="ticket-balance">
+                <span class="ticket-icon">🎟️</span>
+                <span>所持祈願符:</span>
+                <span id="ticket-count" class="ticket-count">- 枚</span>
+            </div>
+
+            <div>
+                <button class="gacha-btn" disabled>
+                    🙏 お賽銭を奉納する
+                </button>
+            </div>
+
+            <div class="admin-debug">
+                <p>管理者としてアクセス中</p>
+                <p>※排出ロジックとテーブル拡張の完了後に機能が有効化されます。</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/supabase-config.js"></script>
+    <script src="../js/navigation.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async function () {
+            // ナビゲーション初期化
+            initAccordionNav('../');
+
+            // ユーザー情報の取得と管理者チェック
+            const user = await getCurrentUser();
+            const discordId = user?.user_metadata?.provider_id;
+
+            if (!ADMIN_DISCORD_IDS.includes(discordId)) {
+                // 管理者でない場合はリダイレクト
+                alert('このページは管理者専用です。');
+                window.location.href = '../index.html';
+                return;
+            }
+
+            // 本来はここでチケット枚数などを取得するが、まだカラムがないためプレースホルダ
+            document.getElementById('ticket-count').textContent = '0 枚 (準備中)';
+        });
+    </script>
+</body>
+
+</html>
