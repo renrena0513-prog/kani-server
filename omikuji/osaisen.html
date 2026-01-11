@@ -170,6 +170,39 @@
             margin-bottom: 5px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
+
+        /* 支払い方法選択カード */
+        .payment-option {
+            cursor: pointer;
+        }
+
+        .payment-option input[type="radio"] {
+            display: none;
+        }
+
+        .payment-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            padding: 15px 25px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            color: #fff;
+            transition: all 0.3s ease;
+        }
+
+        .payment-option input:checked+.payment-card {
+            background: rgba(212, 168, 83, 0.3);
+            border-color: var(--gold);
+            box-shadow: 0 0 15px rgba(212, 168, 83, 0.4);
+        }
+
+        .payment-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
     </style>
 </head>
 
@@ -192,14 +225,38 @@
 
             <div class="mb-4">
                 <h3 class="fw-bold" style="color: var(--crimson);">幸運を願って、お賽銭を奉納しましょう</h3>
-                <p class="text-muted">祈願符1枚で1回、お賽銭を投げることができます。</p>
+                <p class="text-muted">祈願符1枚、またはコイン50枚でお賽銭を投げることができます。</p>
             </div>
 
             <div
-                class="ticket-balance d-inline-flex align-items-center bg-dark bg-opacity-25 px-4 py-2 rounded-pill mb-4 border border-secondary border-opacity-25">
+                class="ticket-balance d-inline-flex align-items-center bg-dark bg-opacity-25 px-4 py-2 rounded-pill mb-3 border border-secondary border-opacity-25">
                 <span class="fs-4 me-2">🧧</span>
-                <span class="me-2 text-white-50">所持中の祈願符:</span>
+                <span class="me-2 text-white-50">祈願符:</span>
                 <span id="ticket-count" class="fw-bold text-white fs-5">- 枚</span>
+                <span class="mx-3 text-white-50">|</span>
+                <span class="fs-4 me-2">🪙</span>
+                <span class="me-2 text-white-50">コイン:</span>
+                <span id="coin-count" class="fw-bold text-white fs-5">- C</span>
+            </div>
+
+            <!-- 支払い方法選択 -->
+            <div class="mb-4">
+                <div class="d-flex justify-content-center gap-3">
+                    <label class="payment-option">
+                        <input type="radio" name="payment-type" value="ticket" checked>
+                        <div class="payment-card">
+                            <span class="fs-3">🧧</span>
+                            <span class="fw-bold">祈願符 1枚</span>
+                        </div>
+                    </label>
+                    <label class="payment-option">
+                        <input type="radio" name="payment-type" value="coin">
+                        <div class="payment-card">
+                            <span class="fs-3">🪙</span>
+                            <span class="fw-bold">コイン 50枚</span>
+                        </div>
+                    </label>
+                </div>
             </div>
 
             <div class="mt-2" id="draw-area">
@@ -208,7 +265,7 @@
                 </button>
                 <div id="not-started-msg" class="alert alert-warning mt-3 mx-auto"
                     style="display: none; max-width: 400px;">
-                    ✨ 現在、神事の準備をしています。お賽銭箱はまだ開いていないようです。
+                    ✨ 現在、神事の準備をしています。お賽銭箱はまだ開いていないようです。r
                 </div>
             </div>
 
@@ -294,21 +351,23 @@
             const discordId = currentUser.user_metadata.provider_id;
             const { data, error } = await supabaseClient
                 .from('profiles')
-                .select('gacha_tickets')
+                .select('gacha_tickets, coins')
                 .eq('discord_user_id', discordId)
                 .maybeSingle();
 
             if (error) {
-                console.error('チケット取得エラー:', error);
+                console.error('残高取得エラー:', error);
                 return;
             }
 
-            const count = data?.gacha_tickets || 0;
-            const countEl = document.getElementById('ticket-count');
-            countEl.textContent = `${count.toLocaleString()} 枚`;
+            const ticketCount = data?.gacha_tickets || 0;
+            const coinCount = data?.coins || 0;
 
-            const btn = document.getElementById('draw-btn');
-            btn.disabled = count <= 0;
+            const ticketEl = document.getElementById('ticket-count');
+            const coinEl = document.getElementById('coin-count');
+
+            if (ticketEl) ticketEl.textContent = `${ticketCount.toLocaleString()} 枚`;
+            if (coinEl) coinEl.textContent = `${coinCount.toLocaleString()} C`;
         }
 
         async function fetchProvisionRatio() {
@@ -519,10 +578,12 @@
 
             if (!isAdmin) {
                 notStartedMsg.style.display = 'block';
-                // 3秒後にメッセージを消す（任意） か、出したままにする
                 setTimeout(() => { notStartedMsg.style.display = 'none'; }, 5000);
                 return;
             }
+
+            // 支払い方法を取得
+            const paymentType = document.querySelector('input[name="payment-type"]:checked')?.value || 'ticket';
 
             isDrawing = true;
 
@@ -541,9 +602,10 @@
                     box.classList.add('shaking');
                 }, 400);
 
-                // 3. RPC呼び出し
+                // 3. RPC呼び出し（支払い方法を渡す）
                 const { data, error } = await supabaseClient.rpc('draw_gacha', {
-                    p_user_id: currentUser.user_metadata.provider_id
+                    p_user_id: currentUser.user_metadata.provider_id,
+                    p_payment_type: paymentType
                 });
 
                 // アニメーションを見せるための待機
@@ -551,8 +613,6 @@
 
                 if (error) throw error;
                 if (!data.ok) throw new Error(data.error);
-
-                // 活動ログ記録はRPC側 (draw_gacha) で自動記録されるため、JS側での記録は不要
 
                 showResult(data);
 
