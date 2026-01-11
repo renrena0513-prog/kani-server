@@ -1151,32 +1151,38 @@ async function handleBadgeCSVImport(event) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = async (e) => {
-        const lines = e.target.result.split('\n');
-        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-        const items = [];
-        for (let i = 1; i < lines.length; i++) {
-            if (!lines[i].trim()) continue;
-            const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
-            const obj = {};
-            headers.forEach((h, idx) => {
-                const value = values[idx];
-                // 数値型カラムの変換
-                if (['gacha_weight', 'price', 'remaining_count', 'sort_order'].includes(h)) {
-                    obj[h] = value ? parseInt(value) : null;
-                }
-                // ブール型カラムの変換
-                else if (h === 'is_gacha_eligible') {
-                    obj[h] = value === 'true' || value === '1';
-                }
-                // その他は文字列
-                else {
-                    obj[h] = value || null;
-                }
-            });
-            if (obj.name) items.push(obj);
+        try {
+            const lines = e.target.result.split('\n');
+            const headers = lines[0].split(',').map(h => h.trim().replace(/^\"|\"$/g, ''));
+            const items = [];
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                const values = lines[i].split(',').map(v => v.trim().replace(/^\"|\"$/g, ''));
+                const obj = {};
+                headers.forEach((h, idx) => {
+                    const value = values[idx] || '';  // undefined を空文字列に変換
+                    // 数値型カラムの変換
+                    if (['gacha_weight', 'price', 'remaining_count', 'sort_order'].includes(h)) {
+                        obj[h] = value ? parseInt(value) : null;
+                    }
+                    // ブール型カラムの変換
+                    else if (h === 'is_gacha_eligible') {
+                        obj[h] = value === 'true' || value === '1';
+                    }
+                    // その他は文字列
+                    else {
+                        obj[h] = value || null;
+                    }
+                });
+                if (obj.name) items.push(obj);
+            }
+            await supabaseClient.from('badges').upsert(items);
+            alert(`${items.length}件のバッジをインポートしました。`);
+            fetchBadges();
+        } catch (err) {
+            console.error('CSVインポートエラー:', err);
+            alert(`CSVインポートに失敗しました: ${err.message}`);
         }
-        await supabaseClient.from('badges').upsert(items);
-        fetchBadges();
     };
     reader.readAsText(file);
 }
