@@ -1028,6 +1028,7 @@ async function openBadgeModal(badge = null) {
         document.getElementById('badge-sort-order').value = badge.sort_order || 0;
         document.getElementById('badge-sales-type').value = badge.sales_type || '';
         document.getElementById('badge-gacha-eligible').checked = badge.is_gacha_eligible || false;
+        document.getElementById('badge-shop-listed').checked = badge.is_shop_listed !== false; // デフォルト true
         document.getElementById('badge-owner').value = badge.discord_user_id || '';
 
         // 権利者表示を更新
@@ -1044,6 +1045,7 @@ async function openBadgeModal(badge = null) {
         document.getElementById('badge-sort-order').value = 0;
         document.getElementById('badge-sales-type').value = '';
         document.getElementById('badge-gacha-eligible').checked = false;
+        document.getElementById('badge-shop-listed').checked = true; // 新規作成時はデフォルトで true
     }
     window.badgeModal.show();
 }
@@ -1080,7 +1082,8 @@ async function saveBadge() {
             discord_user_id: document.getElementById('badge-owner').value.trim() || null,
             fixed_rarity_name: document.getElementById('badge-fixed-rarity').value.trim() || null,
             sales_type: document.getElementById('badge-sales-type').value || null,
-            is_gacha_eligible: document.getElementById('badge-gacha-eligible').checked
+            is_gacha_eligible: document.getElementById('badge-gacha-eligible').checked,
+            is_shop_listed: document.getElementById('badge-shop-listed').checked
         };
 
 
@@ -1127,7 +1130,7 @@ async function exportBadgesToCSV() {
     const headers = [
         'id', 'name', 'description', 'image_url', 'gacha_weight', 'price',
         'requirements', 'remaining_count', 'sort_order', 'discord_user_id',
-        'fixed_rarity_name', 'sales_type', 'is_gacha_eligible'
+        'fixed_rarity_name', 'sales_type', 'is_gacha_eligible', 'is_shop_listed'
     ];
     const csvRows = [headers.join(',')];
     badges.forEach(b => csvRows.push(headers.map(h => {
@@ -1236,7 +1239,7 @@ async function handleBadgeCSVImport(event) {
                         obj[h] = value ? parseInt(value) : null;
                     }
                     // ブール型カラムの変換
-                    else if (h === 'is_gacha_eligible') {
+                    else if (h === 'is_gacha_eligible' || h === 'is_shop_listed') {
                         obj[h] = value.toUpperCase() === 'TRUE' || value === '1';
                     }
                     // その他は文字列

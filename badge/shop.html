@@ -454,6 +454,7 @@
                     .from('badges')
                     .select('*')
                     .neq('sales_type', '限定品')
+                    .eq('is_shop_listed', true)  // ショップ掲載が有効なバッジのみ
                     .order('sort_order', { ascending: true });
 
                 if (error) throw error;
