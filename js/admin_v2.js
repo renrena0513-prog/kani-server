@@ -608,7 +608,14 @@ function calculateLiveScore() {
 }
 
 async function saveRecord() {
-    const matchId = document.getElementById('match-id').value;
+    let matchId = document.getElementById('match-id').value;
+    const isNewMatch = !matchId;
+
+    // 新規対局の場合はUUIDを生成
+    if (isNewMatch) {
+        matchId = crypto.randomUUID();
+    }
+
     const datetime = document.getElementById('event_datetime').value;
     const tournamentType = document.getElementById('tournament_type').value;
     const mahjongMode = document.getElementById('mahjong_mode').value;
@@ -617,7 +624,7 @@ async function saveRecord() {
     const handCount = parseInt(document.getElementById('hand_count').value) || 0;
 
     const playerRows = Array.from(document.querySelectorAll('.player-edit-card')).filter(c => c.style.display !== 'none');
-    const updatePromises = [];
+    const logs = [];
     const assetSyncPromises = [];
     const editSummary = [];
 
@@ -626,10 +633,8 @@ async function saveRecord() {
     toggleLoading(true);
 
     try {
+        // 1. 各プレイヤーのデータ準備と資産同期
         for (const card of playerRows) {
-            const recordId = card.querySelector('.player-record-id').value;
-            if (!recordId) continue;
-
             const accountName = card.querySelector('.player-account-name').value;
             const teamName = isIndividual ? null : card.querySelector('.player-team-name').value;
             const rawPoints = parseInt(card.querySelector('.player-raw-points').value || 0);
@@ -639,10 +644,10 @@ async function saveRecord() {
             const dealInCount = parseInt(card.querySelector('.player-deal-in-count').value || 0);
             const discordId = card.querySelector('.player-discord-id').value;
 
-            // 差額の計算 (1C + 10pts=1C[切上] + 順位ボーナス)
-            const oldScore = parseFloat(card.dataset.originalScore || 0);
-            const oldRank = parseInt(card.dataset.originalRank || rank); // 元の順位も必要
-            const oldDiscordId = card.dataset.originalDiscordId;
+            // 報酬計算用
+            const oldScore = isNewMatch ? 0 : parseFloat(card.dataset.originalScore || 0);
+            const oldRank = isNewMatch ? rank : parseInt(card.dataset.originalRank || rank);
+            const oldDiscordId = isNewMatch ? null : card.dataset.originalDiscordId;
 
             const calcReward = (s, r, isS) => {
                 const sBonus = s > 0 ? Math.ceil(s / 10) : 0;
@@ -653,30 +658,29 @@ async function saveRecord() {
                 return 1 + sBonus + rBonus;
             };
 
-            const oldReward = calcReward(oldScore, oldRank, isSanma);
+            const oldReward = isNewMatch ? 0 : calcReward(oldScore, oldRank, isSanma);
             const newReward = calcReward(finalScore, rank, isSanma);
             const diff = newReward - oldReward;
 
-            // レコード更新
-            updatePromises.push(
-                supabaseClient.from('match_results').update({
-                    event_datetime: datetime,
-                    tournament_type: tournamentType,
-                    mahjong_mode: mahjongMode,
-                    match_mode: matchMode,
-                    account_name: accountName,
-                    team_name: teamName,
-                    raw_points: rawPoints,
-                    final_score: finalScore,
-                    rank: rank,
-                    win_count: winCount,
-                    deal_in_count: dealInCount,
-                    hand_count: handCount,
-                    discord_user_id: discordId
-                }).eq('id', recordId)
-            );
+            // インサート用データ
+            logs.push({
+                match_id: matchId,
+                event_datetime: datetime,
+                tournament_type: tournamentType,
+                mahjong_mode: mahjongMode,
+                match_mode: matchMode,
+                account_name: accountName,
+                team_name: teamName,
+                raw_points: rawPoints,
+                final_score: finalScore,
+                rank: rank,
+                win_count: winCount,
+                deal_in_count: dealInCount,
+                hand_count: handCount,
+                discord_user_id: discordId
+            });
 
-            // 資産同期 (discord_user_id がある場合のみ)
+            // 資産同期
             if (discordId) {
                 assetSyncPromises.push(syncUserAssets(discordId, diff));
                 if (oldDiscordId && oldDiscordId !== discordId) {
@@ -686,20 +690,29 @@ async function saveRecord() {
                 assetSyncPromises.push(syncUserAssets(oldDiscordId, -oldReward));
             }
 
-            editSummary.push(`- **${accountName}**: ${oldScore}pts → ${finalScore}pts (差額: ${diff > 0 ? '+' : ''}${diff}C)`);
+            editSummary.push(`- **${accountName}**: ${isNewMatch ? '' : oldScore + ' → '}${finalScore}pts (${rank}位, 報酬: ${newReward}C)`);
         }
 
-        const results = await Promise.all(updatePromises);
-        const errors = results.filter(r => r.error).map(r => r.error);
-        if (errors.length > 0) throw errors[0];
+        // 2. 既存レコードの削除（重複キーエラー回避のため、対局単位で再構築）
+        if (!isNewMatch) {
+            const { error: delError } = await supabaseClient.from('match_results').delete().eq('match_id', matchId);
+            if (delError) throw delError;
+        }
 
+        // 3. バルクインサート
+        const { error: insError } = await supabaseClient.from('match_results').insert(logs);
+        if (insError) throw insError;
+
+        // 4. 資産同期の実行
         await Promise.all(assetSyncPromises);
 
-        alert('記録を更新し、ユーザーの資産・総資産を同期しました。');
+        alert(isNewMatch ? '記録を新規追加しました。' : '記録を更新し、資産を同期しました。');
         recordModal.hide();
         fetchRecords();
 
-        await sendDiscordEditLog(tournamentType, mahjongMode, matchId, editSummary);
+        // 5. Discord通知
+        await sendDiscordEditLog(isNewMatch ? '✨ 大会記録 新規追加' : '📝 大会記録 修正', tournamentType, mahjongMode, matchId, editSummary);
+
     } catch (err) {
         console.error('保存エラー:', err);
         alert('保存に失敗しました: ' + err.message);
@@ -749,11 +762,11 @@ async function syncUserAssets(discordId, amount) {
 /**
  * 編集記録を Discord に送信
  */
-async function sendDiscordEditLog(tournament, mode, matchId, summary) {
-    const webhookUrl = 'https://discord.com/api/webhooks/1326462842407518290/h-sH-rB0N_O3r_H10BfQ80G-g0A_C3m_Dk_E';
+async function sendDiscordEditLog(title, tournament, mode, matchId, summary) {
+    const webhookUrl = DISCORD_WEBHOOK_URL;
 
     const embed = {
-        title: '📝 大会記録 修正通知',
+        title: title,
         description: `**大会:** ${tournament}\n**モード:** ${mode}\n**対局ID:** \`${matchId}\``,
         color: 0x007bff,
         fields: [{ name: '修正サマリー', value: summary.join('\n') }],
@@ -1440,10 +1453,19 @@ async function fetchActivityLogs(page = 1) {
 
     const pageInfo = document.getElementById('logs-page-info');
     if (pageInfo) pageInfo.textContent = `${page} / ${Math.ceil(count / LOGS_PER_PAGE) || 1}`;
+
+    const prevBtn = document.getElementById('prev-logs-btn');
+    const nextBtn = document.getElementById('next-logs-btn');
+    if (prevBtn) prevBtn.disabled = page <= 1;
+    if (nextBtn) nextBtn.disabled = page >= Math.ceil(count / LOGS_PER_PAGE);
 }
 
 function changeLogsPage(delta) {
-    fetchActivityLogs(currentLogsPage + delta);
+    const totalPages = Math.ceil(parseInt(document.getElementById('logs-page-info')?.textContent.split('/')[1]) || 1);
+    const newPage = currentLogsPage + delta;
+    if (newPage >= 1 && newPage <= totalPages) {
+        fetchActivityLogs(newPage);
+    }
 }
 
 async function revertLog(logId) {
