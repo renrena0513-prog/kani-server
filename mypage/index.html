@@ -2342,6 +2342,8 @@
                 if (confirm(msg)) {
                     executeBadgeTransfer(id, name);
                 }
+            } else if (currentSelectMode === 'ticket_transfer') {
+                executeTicketTransfer(id, name);
             }
         }
 
@@ -2438,6 +2440,58 @@
                 toggleLoading(false);
             }
         }
+
+        /**
+         * 引換券の譲渡実行
+         */
+        async function executeTicketTransfer(toUserId, toUserName) {
+            const amountStr = prompt(`「${currentTicketRarity}引換券」を何枚譲渡しますか？ (最大: ${currentTicketMax}枚)`, "1");
+            if (amountStr === null) return; // キャンセル
+            const amount = parseInt(amountStr);
+            if (isNaN(amount) || amount <= 0) return alert('有効な枚数を入力してください');
+            if (amount > currentTicketMax) return alert('所持数以上の枚数は譲渡できません');
+
+            toggleLoading(true);
+            try {
+                const { data, error } = await supabaseClient.rpc('transfer_exchange_tickets', {
+                    p_from_id: targetId,
+                    p_to_id: toUserId,
+                    p_rarity: currentTicketRarity,
+                    p_amount: amount
+                });
+
+                if (error) throw error;
+                if (!data.ok) throw new Error(data.error);
+
+                alert(`${toUserName} さんに ${currentTicketRarity}引換券 を ${amount}枚 譲渡しました！`);
+
+                // 活動ログ記録
+                if (typeof logActivity === 'function') {
+                    const sender = allProfiles.find(p => p.discord_user_id === targetId);
+                    const senderName = sender?.account_name || '誰か';
+
+                    await logActivity(targetId, 'badge_transfer', { // 固定のタイプ流用（適宜追加も可だが既存に近いものを使用）
+                        amount: 0,
+                        targetUserId: toUserId,
+                        details: { target_name: toUserName, badge_name: `${currentTicketRarity}引換券 x${amount}` }
+                    });
+                    await logActivity(toUserId, 'badge_receive', {
+                        amount: 0,
+                        targetUserId: targetId,
+                        details: { sender_name: senderName, badge_name: `${currentTicketRarity}引換券 x${amount}` }
+                    });
+                }
+
+                // UI更新
+                await openPossessionsModal(); // 所持品モーダルの中身を更新
+                await loadActivityLogs();
+            } catch (err) {
+                console.error('引換券譲渡エラー:', err);
+                alert('譲渡に失敗しました: ' + (err.message || '不明なエラー'));
+            } finally {
+                toggleLoading(false);
+            }
+        }
         function openCoinTransferModal() { openUserSelectModal('coin_transfer'); }
 
         /**
@@ -2467,20 +2521,38 @@
                     if (count <= 0) return '';
                     const rarityClass = getRarityClass(rarity);
                     return `
-                        <div class="col-6">
-                            <div class="card shadow-sm border-0 ${rarityClass} p-2 text-center" style="border-radius: 12px; border: 1px solid rgba(0,0,0,0.1) !important;">
+                        <div class="col-6 mb-3">
+                            <div class="card shadow-sm border-0 ${rarityClass} p-2 text-center position-relative" style="border-radius: 12px; border: 1px solid rgba(0,0,0,0.1) !important;">
                                 <div class="small fw-bold opacity-75 mb-1">${rarity}引換券</div>
-                                <div class="d-flex align-items-center justify-content-center gap-2">
+                                <div class="d-flex align-items-center justify-content-center gap-2 mb-2">
                                     <span style="font-size: 1.2rem;">🎫</span>
                                     <div class="fs-5 fw-bold">${count}枚</div>
                                 </div>
+                                ${!isViewMode ? `
+                                    <button class="btn btn-sm btn-outline-dark rounded-pill py-0 px-2" style="font-size: 0.65rem;" 
+                                        onclick="initTicketTransfer('${rarity}', ${count})">
+                                        🎁 譲渡
+                                    </button>
+                                ` : ''}
                             </div>
                         </div>
                     `;
                 }).join('');
             }
 
-            new bootstrap.Modal(document.getElementById('possessionsModal')).show();
+            const modal = new bootstrap.Modal(document.getElementById('possessionsModal'));
+            modal.show();
+        }
+
+        let currentTicketRarity = '';
+        let currentTicketMax = 0;
+        function initTicketTransfer(rarity, count) {
+            currentTicketRarity = rarity;
+            currentTicketMax = count;
+            // 所持品モーダルを閉じる
+            const modalEl = document.getElementById('possessionsModal');
+            bootstrap.Modal.getInstance(modalEl)?.hide();
+            openUserSelectModal('ticket_transfer');
         }
     </script>
 
