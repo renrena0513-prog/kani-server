@@ -1678,7 +1678,6 @@ async function approveDissolution(requestId, teamId) {
         alert('エラーが発生しました');
     }
 }
-
 // 解散申請を却下
 async function rejectDissolution(requestId) {
     if (!confirm('この解散申請を却下しますか？')) return;
@@ -1693,5 +1692,137 @@ async function rejectDissolution(requestId) {
     } catch (err) {
         console.error('却下エラー:', err);
         alert('エラーが発生しました');
+    }
+}
+
+// === 活動ログ機能 ===
+
+// 活動ログの取得
+async function fetchActivityLogs() {
+    const listBody = document.getElementById('logs-list-body');
+    if (!listBody) return;
+
+    listBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">読み込み中...</td></tr>';
+
+    try {
+        // ログとプロフィールの結合（user_id と target_user_id の両方）
+        const { data: logs, error } = await supabaseClient
+            .from('activity_logs')
+            .select(`
+                *,
+                user:profiles!user_id(account_name, discord_account),
+                target:profiles!target_user_id(account_name, discord_account),
+                badge:badges!badge_id(name)
+            `)
+            .order('created_at', { ascending: false })
+            .limit(200);
+
+        if (error) throw error;
+        renderActivityLogs(logs);
+    } catch (err) {
+        console.error('ログ取得エラー:', err);
+        listBody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">エラー: ${err.message}</td></tr>`;
+    }
+}
+
+// ログの表示
+function renderActivityLogs(logs) {
+    const listBody = document.getElementById('logs-list-body');
+    if (!listBody) return;
+
+    listBody.innerHTML = '';
+    if (logs.length === 0) {
+        listBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">ログはありません</td></tr>';
+        return;
+    }
+
+    logs.forEach(log => {
+        const tr = document.createElement('tr');
+        const dateStr = new Date(log.created_at).toLocaleString('ja-JP');
+
+        // アクション名の日本語化
+        const actionMap = {
+            'mahjong': '🀄 麻雀報酬',
+            'transfer_send': '📤 送金(送)',
+            'transfer_receive': '📥 送金(受)',
+            'badge_transfer': '🎁 譲渡(送)',
+            'badge_receive': '🎒 譲渡(受)',
+            'badge_sell': '💰 バッジ売却',
+            'badge_purchase': '🛒 バッジ購入',
+            'omikuji': '🎋 おみくじ',
+            'revenue_share': '🏦 権利者還元'
+        };
+        const actionLabel = actionMap[log.action_type] || log.action_type;
+
+        // ユーザー表示
+        const userName = log.user?.account_name || log.user_id || '不明';
+        const targetName = log.target?.account_name || log.target_user_id || '';
+
+        // 内容・対象の構築
+        let detailHtml = '';
+        if (log.badge) {
+            detailHtml = `<div>バッジ: <strong>${log.badge.name}</strong></div>`;
+        } else if (log.details && log.details.badge_name) {
+            detailHtml = `<div><strong>${log.details.badge_name}</strong></div>`;
+        }
+
+        if (targetName) {
+            detailHtml += `<div class="small text-muted">相手: ${targetName}</div>`;
+        }
+
+        if (log.details && (log.details.method || log.details.ticket_rarity)) {
+            const method = log.details.method || (log.details.ticket_rarity ? `${log.details.ticket_rarity}引換券` : '');
+            if (method) detailHtml += `<div class="small text-muted">方法: ${method}</div>`;
+        }
+
+        const amountColor = log.amount > 0 ? 'text-success' : (log.amount < 0 ? 'text-danger' : '');
+        const amountStr = log.amount !== null ? `${log.amount > 0 ? '+' : ''}${log.amount.toLocaleString()}` : '-';
+
+        tr.innerHTML = `
+            <td class="small">${dateStr}</td>
+            <td>
+                <div class="fw-bold text-truncate" style="max-width: 150px;">${userName}</div>
+                <div class="small text-muted" style="font-size: 0.7rem;">${log.user_id}</div>
+            </td>
+            <td><span class="badge bg-secondary">${actionLabel}</span></td>
+            <td>${detailHtml}</td>
+            <td class="fw-bold ${amountColor}">${amountStr}</td>
+            <td>
+                <button onclick="revertLog(${log.id})" class="btn btn-sm btn-outline-danger" title="この操作を取り消す">
+                    ↩️ 取消
+                </button>
+            </td>
+        `;
+        listBody.appendChild(tr);
+    });
+}
+
+// ログのリバート
+async function revertLog(logId) {
+    if (!confirm('この操作を取り消しますか？\n送金や譲渡の場合、相手側のデータも自動的に修正されます。')) return;
+
+    toggleLoading(true);
+    try {
+        const { data, error } = await supabaseClient.rpc('revert_activity_log', {
+            p_log_id: logId
+        });
+
+        if (error) throw error;
+
+        if (data && data.ok) {
+            alert('操作を取り消しました');
+            fetchActivityLogs();
+            // ユーザー一覧なども更新が必要なら
+            if (document.getElementById('users-pane').classList.contains('active')) {
+                fetchUsers();
+            }
+        } else {
+            alert('制限: ' + (data?.error || '取消に失敗しました'));
+        }
+    } catch (err) {
+        console.error('リバートエラー:', err);
+        alert('エラーが発生しました: ' + err.message);
+    } finally {
+        toggleLoading(false);
     }
 }
