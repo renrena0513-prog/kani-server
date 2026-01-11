@@ -55,6 +55,51 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+// 最終スコアの自動計算
+function calculateFinalScores() {
+    const mode = document.getElementById('mahjong_mode')?.value;
+    const distPoints = parseInt(document.getElementById('dist_points')?.value) || 0;
+    const tobiEnabled = document.getElementById('opt_tobi')?.checked || false;
+    const yakitoriEnabled = document.getElementById('opt_yakitori')?.checked || false;
+
+    document.querySelectorAll('.player-edit-card').forEach(card => {
+        const rawPoints = parseInt(card.querySelector('.player-raw-points')?.value) || 0;
+        const rank = parseInt(card.querySelector('.player-rank')?.value) || 0;
+        const winCount = parseInt(card.querySelector('.player-win-count')?.value) || 0;
+        const finalScoreInput = card.querySelector('.player-final-score');
+
+        if (!finalScoreInput || !rank) return;
+
+        // モードによる順位点設定
+        let uma = [0, 0, 0, 0];
+        if (mode === '三麻') {
+            uma = [20, 0, -20];  // 3麻
+        } else {
+            uma = [20, 10, -10, -20];  // 4麻デフォルト
+        }
+
+        // 素点をスコアに変換
+        let score = (rawPoints - distPoints) / 1000;
+
+        // 順位点を加算
+        if (rank >= 1 && rank <= uma.length) {
+            score += uma[rank - 1];
+        }
+
+        // トビペナルティ
+        if (tobiEnabled && rawPoints < 0) {
+            score -= 20;
+        }
+
+        // 焼き鳥ペナルティ
+        if (yakitoriEnabled && winCount === 0) {
+            score -= 10;
+        }
+
+        finalScoreInput.value = score.toFixed(1);
+    });
+}
+
 // ローディング表示の切り替え
 function toggleLoading(show) {
     const overlay = document.getElementById('loading-overlay');
