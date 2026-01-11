@@ -633,6 +633,14 @@ async function saveRecord() {
     toggleLoading(true);
 
     try {
+        // 操作している管理者の情報を取得
+        const currentUser = await getCurrentUser();
+        const adminDiscordId = currentUser?.user_metadata?.provider_id || currentUser?.id;
+
+        if (!adminDiscordId) {
+            throw new Error('セッションが切れています。再ログインしてください。');
+        }
+
         // 1. 各プレイヤーのデータ準備と資産同期
         for (const card of playerRows) {
             const accountName = card.querySelector('.player-account-name').value;
@@ -677,7 +685,8 @@ async function saveRecord() {
                 win_count: winCount,
                 deal_in_count: dealInCount,
                 hand_count: handCount,
-                discord_user_id: discordId
+                discord_user_id: discordId,
+                submitted_by_discord_user_id: adminDiscordId // 操作者のIDをセット
             });
 
             // 資産同期
