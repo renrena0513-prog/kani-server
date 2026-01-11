@@ -689,6 +689,13 @@ async function syncUserAssets(discordId, amount) {
             .eq('discord_user_id', discordId);
 
         if (uError) throw uError;
+
+        // 内部用活動ログを記録
+        await logActivity(discordId, 'admin_edit', {
+            amount: amount,
+            isInternal: true,
+            details: { context: 'mahjong_edit_sync' }
+        });
     } catch (err) {
         console.error(`資産同期エラー [${discordId}]:`, err);
     }
@@ -833,6 +840,13 @@ async function saveUserCoins() {
             total_assets: currentAssets + difference
         }).eq('discord_user_id', userId);
         if (error) throw error;
+
+        // 内部用活動ログを記録
+        await logActivity(userId, 'admin_edit', {
+            amount: difference,
+            isInternal: true,
+            details: { context: 'admin_coin_adjustment', new_balance: newAmount }
+        });
 
         alert(`コインを更新しました（差額: ${difference >= 0 ? '+' : ''}${difference}）`);
         bootstrap.Modal.getInstance(document.getElementById('coinModal'))?.hide();

@@ -227,6 +227,11 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 async function logActivity(userId, actionType, options = {}) {
     try {
+        const details = options.details || {};
+        if (options.isInternal) {
+            details.is_internal = true;
+        }
+
         const logData = {
             user_id: userId,
             action_type: actionType,
@@ -234,7 +239,7 @@ async function logActivity(userId, actionType, options = {}) {
             badge_id: options.badgeId || null,
             target_user_id: options.targetUserId || null,
             match_id: options.matchId || null,
-            details: options.details || null
+            details: details
         };
 
         const { error } = await supabaseClient

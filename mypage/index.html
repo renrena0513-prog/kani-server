@@ -1671,11 +1671,14 @@
                 // --- フィルタリング ---
                 const logs = (allLogs || []).filter(l => {
                     // 【修正】自分が「主体（user_id）」であるログのみを表示。
-                    // これにより、送受信ペアの重複表示や、購入者が「売上還元」ログを見るのを防ぎます。
                     if (l.user_id !== targetId) return false;
 
-                    // 装着ログは非表示
+                    // 装着ログや内部管理ログは非表示
                     if (l.action_type === 'badge_equip') return false;
+
+                    let details = l.details;
+                    if (typeof details === 'string') { try { details = JSON.parse(details); } catch (e) { } }
+                    if (details?.is_internal) return false;
 
                     return true;
                 });
