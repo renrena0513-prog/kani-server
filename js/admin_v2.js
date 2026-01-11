@@ -240,6 +240,72 @@ function applyFiltersAndSort() {
     displayRecords(filteredRecords);
 }
 
+// 記録の表示
+function displayRecords(records) {
+    const listBody = document.getElementById('records-list-body');
+    if (!listBody) return;
+
+    listBody.innerHTML = '';
+    if (!records || records.length === 0) {
+        listBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">登録されている記録はありません</td></tr>';
+        return;
+    }
+
+    // match_id でグループ化
+    const matches = {};
+    records.forEach(r => {
+        const mid = r.match_id || `no-id-${r.id}`;
+        if (!matches[mid]) matches[mid] = [];
+        matches[mid].push(r);
+    });
+
+    // 試合単位で表示
+    Object.keys(matches).forEach(mid => {
+        const matchRecords = matches[mid];
+        matchRecords.sort((a, b) => (a.rank || 99) - (b.rank || 99));
+
+        const first = matchRecords[0];
+        const tr = document.createElement('tr');
+        const dateStr = new Date(first.event_datetime).toLocaleString('ja-JP', {
+            year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+        });
+
+        const accountsHtml = matchRecords.map(r => `
+            <div class="mb-1">
+                <span class="badge bg-light text-dark" style="min-width: 80px;">${r.account_name}</span>
+            </div>
+        `).join('');
+
+        const scoresHtml = matchRecords.map(r => {
+            const color = (r.final_score > 0) ? 'text-success' : (r.final_score < 0 ? 'text-danger' : '');
+            return `<div class="fw-bold ${color} mb-1">${r.final_score !== null ? (r.final_score > 0 ? '+' : '') + r.final_score.toFixed(1) : '-'}</div>`;
+        }).join('');
+
+        const ranksHtml = matchRecords.map(r => `
+            <div class="mb-1">${r.rank ? `<span class="badge bg-primary">${r.rank}位</span>` : '-'}</div>
+        `).join('');
+
+        tr.innerHTML = `
+            <td>${dateStr}</td>
+            <td>${accountsHtml}</td>
+            <td>
+                <div class="small fw-bold">${first.tournament_type || '-'}</div>
+                <div class="small text-muted">${first.mahjong_mode || ''} / ${first.match_mode || ''}</div>
+            </td>
+            <td>${scoresHtml}</td>
+            <td>${ranksHtml}</td>
+            <td>${first.hand_count || 1}局</td>
+            <td>
+                <div class="d-flex flex-column gap-1">
+                    <button onclick='editMatch("${mid}")' class="btn btn-sm btn-outline-primary">編集</button>
+                    <button onclick='deleteMatch("${mid}")' class="btn btn-sm btn-outline-danger">削除</button>
+                </div>
+            </td>
+        `;
+        listBody.appendChild(tr);
+    });
+}
+
 // 試合の削除
 async function deleteMatch(matchId) {
     if (!confirm('この試合の全記録を削除してもよろしいですか？')) return;
@@ -309,7 +375,7 @@ function calculateFinalScores() {
     const mahjongMode = document.getElementById('mahjong_mode').value;
     const distPoints = parseInt(document.getElementById('dist_points').value) || 25000;
     const cards = Array.from(document.querySelectorAll('.player-edit-card')).filter(c => c.style.display !== 'none');
-    
+
     const players = cards.map(card => ({
         rawPoints: parseInt(card.querySelector('.player-raw-points').value) || 0,
         rankInput: card.querySelector('.player-rank'),
@@ -420,7 +486,7 @@ async function openBadgeGrantModal(userId, userName) {
     const availableList = document.getElementById('available-badges-list');
     const { data: userBadges } = await supabaseClient.from('user_badges_new').select('*, badge:badges(*)').eq('user_id', userId);
     const { data: allBadges } = await supabaseClient.from('badges').select('*').order('name');
-    
+
     currentList.innerHTML = userBadges.map(ub => `
         <div class="d-flex justify-content-between p-1 border-bottom">
             <span>${ub.badge?.name}</span>
@@ -651,7 +717,7 @@ async function fetchActivityLogs(page = 1) {
     const from = (page - 1) * LOGS_PER_PAGE;
     const to = from + LOGS_PER_PAGE - 1;
     const { data: logs, count } = await supabaseClient.from('activity_logs').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(from, to);
-    
+
     const listBody = document.getElementById('logs-list-body');
     if (listBody) {
         listBody.innerHTML = logs.map(log => {
