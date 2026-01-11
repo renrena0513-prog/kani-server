@@ -103,6 +103,7 @@
         }
 
         /* キラエフェクト用オーバーレイ */
+        /* キラエフェクト用オーバーレイ */
         .mutant-shine-overlay {
             position: absolute;
             top: 0;
@@ -118,26 +119,64 @@
         .mutant-shine-overlay::before {
             content: '';
             position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
+            top: -100%;
+            left: -100%;
+            width: 300%;
+            height: 300%;
             background: linear-gradient(45deg,
-                    transparent 20%,
-                    rgba(255, 255, 255, 0.4) 35%,
-                    rgba(255, 200, 255, 0.6) 50%,
-                    rgba(255, 255, 255, 0.4) 65%,
-                    transparent 80%);
-            animation: mutantShine 2s infinite;
+                    transparent 45%,
+                    rgba(255, 255, 255, 0.1) 48%,
+                    rgba(255, 255, 255, 0.8) 50%,
+                    rgba(255, 255, 255, 0.1) 52%,
+                    transparent 55%);
+            filter: blur(10px);
+            animation: mutantShine 3s infinite linear;
+        }
+
+        /* 追加のキラキラ（点） */
+        .mutant-shine-overlay::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                radial-gradient(circle, #fff 10%, transparent 20%),
+                radial-gradient(circle, #fff 10%, transparent 20%),
+                radial-gradient(circle, #fff 10%, transparent 20%);
+            background-size: 15px 15px, 25px 25px, 20px 20px;
+            background-position: 10% 20%, 80% 40%, 40% 70%;
+            opacity: 0;
+            filter: blur(1px);
+            animation: mutantGlitter 2s infinite alternate;
         }
 
         @keyframes mutantShine {
             0% {
-                transform: translateX(-100%) translateY(-100%) rotate(45deg);
+                transform: translate(-30%, -30%) rotate(45deg);
             }
 
             100% {
-                transform: translateX(100%) translateY(100%) rotate(45deg);
+                transform: translate(30%, 30%) rotate(45deg);
+            }
+        }
+
+        @keyframes mutantGlitter {
+            0% {
+                opacity: 0;
+                transform: scale(0.5);
+            }
+
+            50% {
+                opacity: 0.8;
+                transform: scale(1.2);
+            }
+
+            100% {
+                opacity: 0;
+                transform: scale(0.8);
+                background-position: 15% 25%, 75% 45%, 45% 65%;
             }
         }
 
