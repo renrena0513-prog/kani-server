@@ -602,11 +602,10 @@
                     box.classList.add('shaking');
                 }, 400);
 
-                // 3. RPC呼び出し
-                // TODO: draw_gacha RPC更新後に p_payment_type パラメータを有効化
+                // 3. RPC呼び出し（支払い方法を渡す）
                 const { data, error } = await supabaseClient.rpc('draw_gacha', {
-                    p_user_id: currentUser.user_metadata.provider_id
-                    // p_payment_type: paymentType  // RPC更新後に有効化
+                    p_user_id: currentUser.user_metadata.provider_id,
+                    p_payment_type: paymentType
                 });
 
                 // アニメーションを見せるための待機
