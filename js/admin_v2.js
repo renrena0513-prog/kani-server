@@ -597,6 +597,7 @@ async function saveRecord() {
             // 差額の計算 (1C + 10pts=1C[切上] + 順位ボーナス)
             const oldScore = parseFloat(card.dataset.originalScore || 0);
             const oldRank = parseInt(card.dataset.originalRank || rank); // 元の順位も必要
+            const oldDiscordId = card.dataset.originalDiscordId;
 
             const calcReward = (s, r, isS) => {
                 const sBonus = s > 0 ? Math.ceil(s / 10) : 0;
