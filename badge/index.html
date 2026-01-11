@@ -123,14 +123,20 @@
             left: -100%;
             width: 300%;
             height: 300%;
+            /* 2本の光の筋を作る（メインと細いサブ） */
             background: linear-gradient(45deg,
-                    transparent 45%,
-                    rgba(255, 255, 255, 0.1) 48%,
-                    rgba(255, 255, 255, 0.8) 50%,
-                    rgba(255, 255, 255, 0.1) 52%,
+                    transparent 40%,
+                    rgba(255, 255, 255, 0.1) 44%,
+                    rgba(255, 255, 255, 0.9) 45%,
+                    rgba(255, 255, 255, 0.2) 46%,
+                    transparent 48%,
+                    transparent 50%,
+                    rgba(255, 255, 255, 0.1) 51%,
+                    rgba(255, 255, 255, 0.6) 52%,
+                    rgba(255, 255, 255, 0.1) 53%,
                     transparent 55%);
-            filter: blur(8px);
-            animation: mutantShineSimple 3s infinite linear;
+            filter: blur(5px);
+            animation: mutantShineSimple 2s infinite ease-out;
         }
 
         @keyframes bubblesRise {
