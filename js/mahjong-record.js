@@ -257,6 +257,13 @@ function clearPlayer(idx) {
 
 // 送信処理
 async function submitScores() {
+    // 二重送信防止
+    const submitBtn = document.querySelector('.btn-submit');
+    if (submitBtn.disabled) return;
+    submitBtn.disabled = true;
+    const originalBtnText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 送信中...';
+
     const mode = document.getElementById('form-mode').value;
     const match = document.getElementById('form-match').value;
     const hands = Number(document.getElementById('form-hands').value);
@@ -307,19 +314,45 @@ async function submitScores() {
         }
     }
 
+    // --- エラー防止バリデーション ---
+    // 1. 同一Discord IDの重複チェック
+    const discordIds = tempData.filter(p => p.discord_user_id).map(p => p.discord_user_id);
+    if (new Set(discordIds).size !== discordIds.length) {
+        alert('同じユーザーが複数選択されています。');
+        resetSubmitBtn();
+        return;
+    }
+
+    // 2. 同一アカウント名の重複チェック (ゲストプレイヤー含む)
+    const names = tempData.map(p => p.account_name);
+    if (new Set(names).size !== names.length) {
+        alert('アカウント名が重複しています。ゲストプレイヤーの名前も一意にする必要があります。');
+        resetSubmitBtn();
+        return;
+    }
+
+    function resetSubmitBtn() {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
+        document.getElementById('loading-overlay').style.display = 'none';
+    }
+
     // バリデーションチェック
     if (!isAdmin && filledCount < targetCount) {
         alert(`${targetCount}人分のデータ（アカウント名と得点）をすべて入力してください。`);
+        resetSubmitBtn();
         return;
     }
 
     if (tempData.length === 0) {
         alert('データを入力してください');
+        resetSubmitBtn();
         return;
     }
 
     if (isAdmin && filledCount < targetCount) {
         if (!confirm(`${targetCount}人分埋まっていませんが、管理者権限で強制送信しますか？`)) {
+            resetSubmitBtn();
             return;
         }
     }
@@ -433,7 +466,12 @@ async function submitScores() {
             .from('match_results')
             .insert(dataToInsert);
 
-        if (error) throw error;
+        if (error) {
+            if (error.code === '23505') {
+                throw new Error('同一の対局内に同じプレイヤーが既に登録されているか、データが衝突しました。同じユーザーを複数選んでいないか確認してください。');
+            }
+            throw error;
+        }
 
         // ガチャチケット報酬の判定・付与
         const rewardedUsers = [];
@@ -452,7 +490,7 @@ async function submitScores() {
             }
 
             // 記録者報酬（10%）- 本人が対局に参加している場合
-            if (player.discord_user_id === first.submitted_by_discord_user_id) {
+            if (player.discord_user_id === submittedBy) {
                 if (Math.random() < 0.10) {
                     ticketReward += 1;
                     reasons.push('記録者報酬');
@@ -509,6 +547,7 @@ async function submitScores() {
         window.location.href = './index.html'; // ランキングに戻る
     } catch (err) {
         alert('送信エラー: ' + err.message);
+        resetSubmitBtn();
     } finally {
         document.getElementById('loading-overlay').style.display = 'none';
     }
