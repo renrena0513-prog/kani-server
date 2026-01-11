@@ -975,8 +975,30 @@ async function openBadgeModal(badge = null) {
         document.getElementById('badge-name').value = badge.name;
         document.getElementById('badge-description').value = badge.description || '';
         document.getElementById('badge-image-url').value = badge.image_url;
+        document.getElementById('badge-weight').value = badge.gacha_weight || 10;
+        document.getElementById('badge-price').value = badge.price || 0;
+        document.getElementById('badge-fixed-rarity').value = badge.fixed_rarity_name || '';
+        document.getElementById('badge-requirements').value = badge.requirements || '';
+        document.getElementById('badge-stock').value = badge.remaining_count !== null ? badge.remaining_count : 999;
+        document.getElementById('badge-sort-order').value = badge.sort_order || 0;
+        document.getElementById('badge-sales-type').value = badge.sales_type || '';
+        document.getElementById('badge-gacha-eligible').checked = badge.is_gacha_eligible || false;
+        document.getElementById('badge-owner').value = badge.discord_user_id || '';
+
+        // 権利者表示を更新
+        if (badge.discord_user_id) {
+            const ownerLabel = document.getElementById('selected-owner-label');
+            // ユーザー名を取得して表示(簡略化)
+            ownerLabel.textContent = badge.discord_user_id;
+        }
     } else {
         document.getElementById('badge-id').value = '';
+        document.getElementById('badge-weight').value = 10;
+        document.getElementById('badge-price').value = 0;
+        document.getElementById('badge-stock').value = 999;
+        document.getElementById('badge-sort-order').value = 0;
+        document.getElementById('badge-sales-type').value = '';
+        document.getElementById('badge-gacha-eligible').checked = false;
     }
     window.badgeModal.show();
 }
@@ -997,7 +1019,22 @@ async function saveBadge() {
             image_url = data.publicUrl;
         }
 
-        const badgeData = { name, description, image_url };
+        // 全カラムを取得
+        const badgeData = {
+            name,
+            description,
+            image_url,
+            gacha_weight: parseInt(document.getElementById('badge-weight').value) || 0,
+            price: parseInt(document.getElementById('badge-price').value) || 0,
+            requirements: document.getElementById('badge-requirements').value || null,
+            remaining_count: parseInt(document.getElementById('badge-stock').value) || null,
+            sort_order: parseInt(document.getElementById('badge-sort-order').value) || 0,
+            discord_user_id: document.getElementById('badge-owner').value || null,
+            fixed_rarity_name: document.getElementById('badge-fixed-rarity').value || null,
+            sales_type: document.getElementById('badge-sales-type').value || null,
+            is_gacha_eligible: document.getElementById('badge-gacha-eligible').checked
+        };
+
         if (id) await supabaseClient.from('badges').update(badgeData).eq('id', id);
         else await supabaseClient.from('badges').insert([badgeData]);
         window.badgeModal.hide();
@@ -1029,9 +1066,22 @@ async function handleBulkBadgeUpload(event) {
 
 async function exportBadgesToCSV() {
     const { data: badges } = await supabaseClient.from('badges').select('*');
-    const headers = ['id', 'name', 'description', 'image_url'];
+    // 全カラムを含める
+    const headers = [
+        'id', 'name', 'description', 'image_url', 'gacha_weight', 'price',
+        'requirements', 'remaining_count', 'sort_order', 'discord_user_id',
+        'fixed_rarity_name', 'sales_type', 'is_gacha_eligible'
+    ];
     const csvRows = [headers.join(',')];
-    badges.forEach(b => csvRows.push(headers.map(h => `"${String(b[h] || '').replace(/"/g, '""')}"`).join(',')));
+    badges.forEach(b => csvRows.push(headers.map(h => {
+        const value = b[h];
+        // ブール値を文字列化
+        if (typeof value === 'boolean') return value ? 'true' : 'false';
+        // null/undefinedを空文字列に
+        if (value === null || value === undefined) return '';
+        // 文字列のエスケープ
+        return `"${String(value).replace(/"/g, '""')}"`;
+    }).join(',')));
     const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvRows.join('\n')], { type: 'text/csv' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -1051,7 +1101,21 @@ async function handleBadgeCSVImport(event) {
             if (!lines[i].trim()) continue;
             const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
             const obj = {};
-            headers.forEach((h, idx) => obj[h] = values[idx]);
+            headers.forEach((h, idx) => {
+                const value = values[idx];
+                // 数値型カラムの変換
+                if (['gacha_weight', 'price', 'remaining_count', 'sort_order'].includes(h)) {
+                    obj[h] = value ? parseInt(value) : null;
+                }
+                // ブール型カラムの変換
+                else if (h === 'is_gacha_eligible') {
+                    obj[h] = value === 'true' || value === '1';
+                }
+                // その他は文字列
+                else {
+                    obj[h] = value || null;
+                }
+            });
             if (obj.name) items.push(obj);
         }
         await supabaseClient.from('badges').upsert(items);

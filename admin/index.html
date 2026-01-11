@@ -1020,6 +1020,27 @@
                                         <input type="number" class="form-control" id="badge-sort-order" value="0">
                                     </div>
                                 </div>
+                                <div class="row">
+                                    <div class="col-6 mb-3">
+                                        <label for="badge-sales-type" class="form-label">販売タイプ</label>
+                                        <select class="form-select" id="badge-sales-type">
+                                            <option value="">未設定</option>
+                                            <option value="変動型">変動型（流通数で価格変動）</option>
+                                            <option value="固定型">固定型（価格固定）</option>
+                                            <option value="限定品">限定品（売却不可）</option>
+                                            <option value="換金品">換金品（御神石等）</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6 mb-3">
+                                        <label for="badge-gacha-eligible" class="form-label">ガチャ対象</label>
+                                        <div class="form-check form-switch mt-2">
+                                            <input class="form-check-input" type="checkbox" id="badge-gacha-eligible">
+                                            <label class="form-check-label" for="badge-gacha-eligible">
+                                                ガチャから排出する
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
                                 <div class="mb-3">
                                     <label class="form-label">権利者（売上10%還元先）</label>
                                     <div class="dropdown">
