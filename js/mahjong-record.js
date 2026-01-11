@@ -358,17 +358,19 @@ async function submitScores() {
     }
 
     // Step 2: final_score 計算
+    const isSanma = mode === '三麻';
     const numPlayers = tempData.length;
-    // 人数ベースでルールを決定 (3人=三麻, 4人=四麻)
-    const distPoints = (numPlayers === 3 ? 35000 : 25000);
-    const returnPoints = (numPlayers === 3 ? 40000 : 30000);
+    // モードベースでルールを決定
+    const distPoints = (isSanma ? 35000 : 25000);
+    const returnPoints = (isSanma ? 40000 : 30000);
     const isTobiOn = document.querySelector('input[name="opt-tobi"]:checked').value === 'yes';
     const isYakitoriOn = document.querySelector('input[name="opt-yakitori"]:checked').value === 'yes';
 
-    const okaPoints = (returnPoints - distPoints) * numPlayers;
+    // オカ（1位へのボーナスポイント）は、三麻なら(40k-35k)*3=15k, 四麻なら(30k-25k)*4=20k
+    const okaPoints = isSanma ? 15000 : 20000;
 
     console.log('--- スコア計算開始 ---');
-    console.log('モード(UI):', mode, '人数(実際):', numPlayers);
+    console.log('モード:', mode, '人数(実際):', numPlayers);
     console.log('決定された配給点:', distPoints, '返し点:', returnPoints, 'オカ合計:', okaPoints);
     console.log('オプション - 飛び賞:', isTobiOn, 'やきとり:', isYakitoriOn);
 
@@ -387,7 +389,7 @@ async function submitScores() {
 
         // 基本スコア計算: (持ち点 - 返し点) / 1000 + ウマ
         let uma = 0;
-        if (numPlayers === 3) {
+        if (isSanma) {
             const umaMap = { 1: 20, 2: 0, 3: -20 };
             uma = umaMap[currentRank] || 0;
         } else {
@@ -589,10 +591,10 @@ async function sendDiscordNotification(matchData, isTobiOn, isYakitoriOn, ticket
     }).join('\n');
 
     // ルール情報の取得
-    const numPlayers = matchData.length;
-    const distPoints = (numPlayers === 3 ? 35000 : 25000);
-    const returnPoints = (numPlayers === 3 ? 40000 : 30000);
-    const umaDisplay = (numPlayers === 3 ? '0-20' : '10-30');
+    const isSanma = mode === '三麻';
+    const distPoints = (isSanma ? 35000 : 25000);
+    const returnPoints = (isSanma ? 40000 : 30000);
+    const umaDisplay = (isSanma ? '0-20' : '10-30');
 
     // 記録者の表示（メンション）
     const reporterMention = first.submitted_by_discord_user_id ? `<@${first.submitted_by_discord_user_id}>` : '不明';
