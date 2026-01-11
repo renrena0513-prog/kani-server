@@ -1705,14 +1705,14 @@ async function fetchActivityLogs() {
     listBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">読み込み中...</td></tr>';
 
     try {
-        // 1. プロフィール情報を結合して取得を試みる
+        // 1. プロフィール情報を結合して取得を試みる (!カラム名 で明示的にリレーションを指定)
         const { data: logs, error } = await supabaseClient
             .from('activity_logs')
             .select(`
                 *,
-                user:profiles!user_id(account_name, discord_account),
-                target:profiles!target_user_id(account_name, discord_account),
-                badge:badges!badge_id(name)
+                user:profiles!activity_logs_user_id_fkey(account_name, discord_account),
+                target:profiles!activity_logs_target_user_id_fkey(account_name, discord_account),
+                badge:badges!activity_logs_badge_id_fkey(name)
             `)
             .order('created_at', { ascending: false })
             .limit(200);
