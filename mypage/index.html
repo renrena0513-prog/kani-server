@@ -468,6 +468,84 @@
             border-radius: 10px;
             margin-left: auto;
         }
+
+        /* レアリティ別背景色 */
+        .rarity-wood {
+            background: #d7ccc8 !important;
+            color: #5d4037 !important;
+            border-color: #8d6e63 !important;
+        }
+
+        .rarity-stone {
+            background: #cfd8dc !important;
+            color: #455a64 !important;
+            border-color: #90a4ae !important;
+        }
+
+        .rarity-bronze {
+            background: #ffe0b2 !important;
+            color: #e65100 !important;
+            border-color: #ffb74d !important;
+        }
+
+        .rarity-silver {
+            background: #f5f5f5 !important;
+            color: #616161 !important;
+            border-color: #bdbdbd !important;
+        }
+
+        .rarity-gold {
+            background: linear-gradient(135deg, #fff9c4 0%, #fbc02d 100%) !important;
+            color: #f57f17 !important;
+            border-color: #fdd835 !important;
+        }
+
+        .rarity-platinum {
+            background: linear-gradient(135deg, #e1f5fe 0%, #b3e5fc 100%) !important;
+            color: #0277bd !important;
+            border-color: #4fc3f7 !important;
+        }
+
+        .rarity-gem {
+            background: linear-gradient(135deg, #f3e5f5 0%, #ce93d8 100%) !important;
+            color: #7b1fa2 !important;
+            border-color: #ba68c8 !important;
+            box-shadow: 0 0 15px rgba(186, 104, 200, 0.4);
+        }
+
+        .rarity-legend {
+            background: linear-gradient(135deg, #fff9c4 0%, #fbc02d 50%, #f9a825 100%) !important;
+            color: #f57f17 !important;
+            border-color: #ffd700 !important;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .rarity-fantasy {
+            background: linear-gradient(135deg, #e1f5fe 0%, #81d4fa 50%, #4fc3f7 100%) !important;
+            color: #01579b !important;
+            border-color: #00bcd4 !important;
+            box-shadow: 0 0 25px rgba(0, 188, 212, 0.5);
+        }
+
+        .rarity-supreme {
+            background: linear-gradient(135deg, #fce4ec 0%, #f06292 50%, #e91e63 100%) !important;
+            color: #880e4f !important;
+            border-color: #ff4081 !important;
+            box-shadow: 0 0 30px rgba(255, 64, 129, 0.6);
+        }
+
+        .rarity-mythic {
+            background: linear-gradient(135deg, #fffde7 0%, #fff176 50%, #ffd600 100%) !important;
+            color: #f57f17 !important;
+            border-color: #ffea00 !important;
+            box-shadow: 0 0 40px rgba(255, 234, 0, 0.7);
+        }
+
+        .rarity-void {
+            background: #000 !important;
+            color: #fff !important;
+            border-color: #333 !important;
+        }
     </style>
 </head>
 
@@ -589,11 +667,22 @@
                                         style="font-size: 0.85rem; border: 1px solid #17a2b8; padding: 6px 12px;">
                                         総資産: 📊 <span id="total-assets-value">0</span>
                                     </span>
-                                    <button id="coin-transfer-btn" onclick="openCoinTransferModal()"
-                                        class="btn btn-sm btn-outline-primary"
-                                        style="display: none; padding: 2px 8px; font-size: 0.75rem;">
-                                        💸 送金
-                                    </button>
+                                    <span class="badge bg-light text-dark shadow-sm"
+                                        style="font-size: 0.85rem; border: 1px solid #ffc107; padding: 6px 12px;">
+                                        祈願符: 🧧 <span id="user-tickets-value">0</span>
+                                    </span>
+                                    <div class="d-flex gap-2">
+                                        <button id="coin-transfer-btn" onclick="openCoinTransferModal()"
+                                            class="btn btn-sm btn-outline-primary"
+                                            style="display: none; padding: 2px 8px; font-size: 0.75rem;">
+                                            💸 送金
+                                        </button>
+                                        <button id="possessions-btn" onclick="openPossessionsModal()"
+                                            class="btn btn-sm btn-outline-warning"
+                                            style="display: none; padding: 2px 8px; font-size: 0.75rem;">
+                                            🎁 所持品
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <!-- 他人の場合のみ表示する表示エリア -->
@@ -860,6 +949,42 @@
         <div class="spinner-border text-primary" role="status"></div>
     </div>
 
+    <!-- 所持品モーダル -->
+    <div class="modal fade" id="possessionsModal" tabindex="-1" aria-labelledby="possessionsModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="possessionsModalLabel">🎁 あなたの所持品</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-4">
+                        <h6 class="fw-bold border-bottom pb-2">チケット</h6>
+                        <div
+                            class="d-flex align-items-center justify-content-between p-3 bg-light rounded shadow-sm border">
+                            <div class="d-flex align-items-center gap-2">
+                                <span style="font-size: 1.5rem;">🧧</span>
+                                <div>
+                                    <div class="fw-bold" style="color: var(--deep-purple);">祈願符</div>
+                                    <div class="small text-muted">お賽銭（ガチャ）を1回引けます</div>
+                                </div>
+                            </div>
+                            <div class="fs-4 fw-bold text-primary"><span id="modal-tickets-count">0</span> 枚</div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h6 class="fw-bold border-bottom pb-2">引換券</h6>
+                        <div id="exchange-tickets-list" class="row g-3">
+                            <!-- JSで生成 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Supabase -->
@@ -1034,6 +1159,8 @@
                 if (nicknameEditBtn) nicknameEditBtn.style.display = 'inline-block';
                 const coinTransferBtn = document.getElementById('coin-transfer-btn');
                 if (coinTransferBtn) coinTransferBtn.style.display = 'inline-block';
+                const possessionsBtn = document.getElementById('possessions-btn');
+                if (possessionsBtn) possessionsBtn.style.display = 'inline-block';
             }
         }
 
@@ -1052,7 +1179,7 @@
             // ユーザー情報の取得（バッジ情報・コイン・チーム情報を含む）
             const { data: profile } = await supabaseClient
                 .from('profiles')
-                .select('account_name, avatar_url, coins, total_assets, equipped_badge_id, team_id, badges!equipped_badge_id(image_url, name), teams!team_id(team_name)')
+                .select('account_name, avatar_url, coins, total_assets, gacha_tickets, exchange_tickets, equipped_badge_id, team_id, badges!equipped_badge_id(image_url, name), teams!team_id(team_name)')
                 .eq('discord_user_id', targetId)
                 .maybeSingle();
 
@@ -1099,10 +1226,14 @@
             const coinsDisplay = document.getElementById('user-coins-display');
             const coinsValue = document.getElementById('user-coins-value');
             const totalAssetsValue = document.getElementById('total-assets-value');
+            const ticketsValue = document.getElementById('user-tickets-value');
             if (coinsDisplay && coinsValue) {
                 coinsValue.textContent = coins.toLocaleString();
                 if (totalAssetsValue) {
                     totalAssetsValue.textContent = (profile?.total_assets || 0).toLocaleString();
+                }
+                if (ticketsValue) {
+                    ticketsValue.textContent = (profile?.gacha_tickets || 0).toLocaleString();
                 }
                 coinsDisplay.style.display = 'block';
             }
@@ -1170,10 +1301,14 @@
                 const coinsDisplay = document.getElementById('user-coins-display');
                 const coinsValue = document.getElementById('user-coins-value');
                 const totalAssetsValue = document.getElementById('total-assets-value');
+                const ticketsValue = document.getElementById('user-tickets-value');
                 if (coinsDisplay && coinsValue) {
                     coinsValue.textContent = coins.toLocaleString();
                     if (totalAssetsValue) {
                         totalAssetsValue.textContent = (profile?.total_assets || 0).toLocaleString();
+                    }
+                    if (ticketsValue) {
+                        ticketsValue.textContent = (profile?.gacha_tickets || 0).toLocaleString();
                     }
                     coinsDisplay.style.display = 'block';
                 }
@@ -2304,6 +2439,49 @@
             }
         }
         function openCoinTransferModal() { openUserSelectModal('coin_transfer'); }
+
+        /**
+         * 所持品モーダルを開く
+         */
+        async function openPossessionsModal() {
+            const { data: profile, error } = await supabaseClient
+                .from('profiles')
+                .select('gacha_tickets, exchange_tickets')
+                .eq('discord_user_id', targetId)
+                .maybeSingle();
+
+            if (error) {
+                console.error('所持品取得エラー:', error);
+                return;
+            }
+
+            document.getElementById('modal-tickets-count').textContent = (profile?.gacha_tickets || 0).toLocaleString();
+
+            const listEl = document.getElementById('exchange-tickets-list');
+            const exchanges = profile?.exchange_tickets || {};
+
+            if (Object.keys(exchanges).length === 0) {
+                listEl.innerHTML = '<div class="col-12 text-center text-muted py-3">所持している引換券はありません</div>';
+            } else {
+                listEl.innerHTML = Object.entries(exchanges).map(([rarity, count]) => {
+                    if (count <= 0) return '';
+                    const rarityClass = getRarityClass(rarity);
+                    return `
+                        <div class="col-6">
+                            <div class="card shadow-sm border-0 ${rarityClass} p-2 text-center" style="border-radius: 12px; border: 1px solid rgba(0,0,0,0.1) !important;">
+                                <div class="small fw-bold opacity-75 mb-1">${rarity}引換券</div>
+                                <div class="d-flex align-items-center justify-content-center gap-2">
+                                    <span style="font-size: 1.2rem;">🎫</span>
+                                    <div class="fs-5 fw-bold">${count}枚</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            new bootstrap.Modal(document.getElementById('possessionsModal')).show();
+        }
     </script>
 
     <!-- チーム通知バッジ -->

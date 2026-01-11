@@ -11,131 +11,79 @@
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="../styles.css">
-    <style>
-        :root {
-            --deep-purple: #5a4a7a;
-            --gold: #d4a574;
-            --crimson: #a11d33;
-            --font-title: 'Kosugi Maru', sans-serif;
-        }
+    /* ガチャアニメーション */
+    @keyframes shake {
+    0% { transform: translate(1px, 1px) rotate(0deg); }
+    10% { transform: translate(-1px, -2px) rotate(-1deg); }
+    20% { transform: translate(-3px, 0px) rotate(1deg); }
+    30% { transform: translate(3px, 2px) rotate(0deg); }
+    40% { transform: translate(1px, -1px) rotate(1deg); }
+    50% { transform: translate(-1px, 2px) rotate(-1deg); }
+    60% { transform: translate(-3px, 1px) rotate(0deg); }
+    70% { transform: translate(3px, 1px) rotate(-1deg); }
+    80% { transform: translate(-1px, -1px) rotate(1deg); }
+    90% { transform: translate(1px, 2px) rotate(0deg); }
+    100% { transform: translate(1px, -2px) rotate(-1deg); }
+    }
 
-        body {
-            background: linear-gradient(135deg, #a11d33 0%, #d4a574 100%);
-            min-height: 100vh;
-            color: #333;
-        }
+    .shaking {
+    animation: shake 0.5s infinite;
+    }
 
-        .page-header {
-            color: #fff;
-            font-family: var(--font-title);
-            text-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-            margin-bottom: 30px;
-        }
+    @keyframes coin-toss {
+    0% { transform: translateY(0) scale(1); opacity: 1; }
+    50% { transform: translateY(-100px) scale(1.5); opacity: 1; }
+    100% { transform: translateY(150px) scale(0.5); opacity: 0; }
+    }
 
-        .gacha-container {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 30px;
-            padding: 50px 30px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            text-align: center;
-            max-width: 800px;
-            margin: 0 auto;
-            border: 8px double var(--crimson);
-        }
+    .coin-animation {
+    position: absolute;
+    font-size: 2rem;
+    z-index: 10;
+    top: 50%;
+    left: 50%;
+    margin-left: -1rem;
+    pointer-events: none;
+    display: none;
+    }
 
-        .osaisen-box-wrapper {
-            margin: 40px 0;
-            position: relative;
-        }
+    .coin-animation.active {
+    display: block;
+    animation: coin-toss 0.8s ease-in forwards;
+    }
 
-        .osaisen-box-image {
-            width: 200px;
-            height: auto;
-            filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.2));
-            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
+    /* 結果モーダルの装飾 */
+    #resultModal .modal-content {
+    background: radial-gradient(circle at center, #fff 0%, #f0f0f0 100%);
+    border: 5px solid var(--gold);
+    border-radius: 24px;
+    }
 
-        .osaisen-box-image:hover {
-            transform: scale(1.05) rotate(-2deg);
-        }
+    .result-badge-img {
+    width: 150px;
+    height: 150px;
+    object-fit: contain;
+    margin: 20px auto;
+    filter: drop-shadow(0 0 20px rgba(212, 168, 83, 0.4));
+    }
 
-        .coming-soon-badge {
-            background: var(--crimson);
-            color: white;
-            padding: 10px 30px;
-            border-radius: 50px;
-            font-weight: bold;
-            display: inline-block;
-            margin-bottom: 20px;
-            box-shadow: 0 5px 15px rgba(161, 29, 51, 0.3);
-        }
+    .result-rarity {
+    font-weight: bold;
+    padding: 4px 15px;
+    border-radius: 20px;
+    display: inline-block;
+    margin-bottom: 10px;
+    font-size: 0.8rem;
+    }
 
-        .ticket-balance {
-            background: #f8f9fa;
-            border-radius: 15px;
-            padding: 15px 25px;
-            display: inline-flex;
-            align-items: center;
-            gap: 15px;
-            border: 1px solid #dee2e6;
-            margin-bottom: 30px;
-        }
-
-        .ticket-icon {
-            font-size: 1.5rem;
-        }
-
-        .ticket-count {
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: var(--crimson);
-        }
-
-        .gacha-btn {
-            background: linear-gradient(135deg, var(--crimson) 0%, #7d1627 100%);
-            color: white;
-            border: none;
-            padding: 18px 60px;
-            font-size: 1.4rem;
-            font-weight: bold;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 10px 25px rgba(161, 29, 51, 0.4);
-        }
-
-        .gacha-btn:hover:not(:disabled) {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 35px rgba(161, 29, 51, 0.5);
-            color: white;
-        }
-
-        .gacha-btn:active:not(:disabled) {
-            transform: translateY(1px);
-        }
-
-        .gacha-btn:disabled {
-            background: #ccc;
-            box-shadow: none;
-            cursor: not-allowed;
-        }
-
-        /* 管理者用デバッグ表示 */
-        .admin-debug {
-            margin-top: 50px;
-            padding-top: 30px;
-            border-top: 1px dashed #ccc;
-            font-size: 0.8rem;
-            color: #888;
-        }
-
-        /* 既存の共通パーツ用クラス */
-        .nav-dropdown {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
-        }
+    /* レアリティ別背景（styles.cssからコピー/拡張） */
+    .rarity-wood { background: #d7ccc8; color: #5d4037; }
+    .rarity-stone { background: #cfd8dc; color: #455a64; }
+    .rarity-bronze { background: #ffe0b2; color: #e65100; }
+    .rarity-silver { background: #f5f5f5; color: #616161; }
+    .rarity-gold { background: linear-gradient(135deg, #fff9c4 0%, #fbc02d 100%); color: #f57f17; }
+    .rarity-platinum { background: linear-gradient(135deg, #e1f5fe 0%, #b3e5fc 100%); color: #0277bd; }
+    .rarity-gem { background: linear-gradient(135deg, #f3e5f5 0%, #ce93d8 100%); color: #7b1fa2; }
     </style>
 </head>
 
@@ -150,34 +98,54 @@
         </header>
 
         <div class="gacha-container">
-            <div class="coming-soon-badge">現在開発中 (管理者限定公開)</div>
-
-            <div class="osaisen-box-wrapper">
-                <!-- 賽銭箱のイメージ（将来的に動的なイラストにする） -->
-                <div style="font-size: 100px;">🧧</div>
+            <div id="osaisen-box-area" class="osaisen-box-wrapper">
+                <div id="coin" class="coin-animation">🪙</div>
+                <div id="osaisen-box" style="font-size: 100px; cursor: default;">🧧</div>
             </div>
 
             <div class="mb-4">
-                <p class="lead">所持中の祈願符を使用して、御神石やバッジを獲得できます。</p>
+                <h3 class="fw-bold" style="color: var(--crimson);">幸運を願って、お賽銭を奉納しましょう</h3>
+                <p class="text-muted">祈願符1枚で1回、お賽銭を投げることができます。</p>
             </div>
 
             <div class="ticket-balance">
-                <span class="ticket-icon">🎟️</span>
-                <span>所持祈願符:</span>
+                <span class="ticket-icon">🧧</span>
+                <span>所持中の祈願符:</span>
                 <span id="ticket-count" class="ticket-count">- 枚</span>
             </div>
 
-            <div>
-                <button class="gacha-btn" disabled>
+            <div class="mt-3">
+                <button id="draw-btn" class="gacha-btn" onclick="handleDraw()">
                     🙏 お賽銭を奉納する
                 </button>
             </div>
 
             <div class="admin-debug">
                 <p>管理者としてアクセス中</p>
-                <p>※排出ロジックとテーブル拡張の完了後に機能が有効化されます。</p>
+                <p>※排出対象のバッジに <code>is_gacha_eligible = TRUE</code> を設定している必要があります。</p>
             </div>
         </div>
+    </div>
+
+    <!-- 結果モーダル -->
+    <div class="modal fade" id="resultModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content text-center p-4">
+                <div id="result-header" class="mb-2">
+                    <span class="fs-4 fw-bold">⛩️ ご縁がありました</span>
+                </div>
+                <div id="result-rarity-badge" class="result-rarity">レアリティ</div>
+                <div class="result-body">
+                    <img id="result-img" src="" class="result-badge-img" alt="バッジ">
+                    <h3 id="result-name" class="fw-bold mb-3">バッジ名</h3>
+                    <p id="result-msg" class="text-muted mb-4">メッセージ</p>
+                </div>
+                <button type="button" class="btn btn-primary rounded-pill px-5" data-bs-dismiss="modal">
+                    ありがたく受け取る
+                </button>
+            </div>
+        </div>
+    </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -185,24 +153,126 @@
     <script src="../js/supabase-config.js"></script>
     <script src="../js/navigation.js"></script>
     <script>
+        let currentUser = null;
+        let isDrawing = false;
+
         document.addEventListener('DOMContentLoaded', async function () {
-            // ナビゲーション初期化
             initAccordionNav('../');
 
-            // ユーザー情報の取得と管理者チェック
             const user = await getCurrentUser();
-            const discordId = user?.user_metadata?.provider_id;
+            if (!user) {
+                alert('ログインが必要です。');
+                window.location.href = '../index.html';
+                return;
+            }
+            currentUser = user;
+            const discordId = user.user_metadata.provider_id;
 
             if (!ADMIN_DISCORD_IDS.includes(discordId)) {
-                // 管理者でない場合はリダイレクト
                 alert('このページは管理者専用です。');
                 window.location.href = '../index.html';
                 return;
             }
 
-            // 本来はここでチケット枚数などを取得するが、まだカラムがないためプレースホルダ
-            document.getElementById('ticket-count').textContent = '0 枚 (準備中)';
+            fetchTicketCount();
         });
+
+        async function fetchTicketCount() {
+            const discordId = currentUser.user_metadata.provider_id;
+            const { data, error } = await supabaseClient
+                .from('profiles')
+                .select('gacha_tickets')
+                .eq('discord_user_id', discordId)
+                .maybeSingle();
+
+            if (error) {
+                console.error('チケット取得エラー:', error);
+                return;
+            }
+
+            const count = data?.gacha_tickets || 0;
+            const countEl = document.getElementById('ticket-count');
+            countEl.textContent = `${count.toLocaleString()} 枚`;
+
+            const btn = document.getElementById('draw-btn');
+            btn.disabled = count <= 0;
+        }
+
+        async function handleDraw() {
+            if (isDrawing) return;
+            isDrawing = true;
+
+            const btn = document.getElementById('draw-btn');
+            const box = document.getElementById('osaisen-box');
+            const coin = document.getElementById('coin');
+
+            btn.disabled = true;
+
+            try {
+                // 1. コイン投げアニメーション
+                coin.classList.add('active');
+
+                // 2. 賽銭箱の揺れ
+                setTimeout(() => {
+                    box.classList.add('shaking');
+                }, 400);
+
+                // 3. RPC呼び出し（アニメーション中に並行して実行）
+                const { data, error } = await supabaseClient.rpc('draw_gacha', {
+                    p_user_id: currentUser.user_metadata.provider_id
+                });
+
+                // アニメーションを少し見せるために待機
+                await new Promise(resolve => setTimeout(resolve, 1500));
+
+                if (error) throw error;
+                if (!data.ok) throw new Error(data.error);
+
+                // 結果の表示
+                showResult(data);
+
+            } catch (err) {
+                console.error('ガチャエラー:', err);
+                alert('奉納に失敗しました: ' + (err.message || '不明なエラー'));
+            } finally {
+                // リセット
+                isDrawing = false;
+                coin.classList.remove('active');
+                box.classList.remove('shaking');
+                fetchTicketCount();
+            }
+        }
+
+        function showResult(result) {
+            const imgEl = document.getElementById('result-img');
+            const nameEl = document.getElementById('result-name');
+            const msgEl = document.getElementById('result-msg');
+            const rarityEl = document.getElementById('result-rarity-badge');
+            const headerEl = document.getElementById('result-header');
+
+            imgEl.src = result.image_url || '../images/placeholder-badge.png';
+            nameEl.textContent = result.name;
+
+            // レアリティ演出
+            const rarity = result.rarity || '一般';
+            rarityEl.textContent = rarity;
+            rarityEl.className = 'result-rarity ' + getRarityClass(rarity);
+
+            if (result.type === 'stone') {
+                headerEl.innerHTML = '<span class="fs-4 fw-bold">💠 換金できる石を授かりました</span>';
+                msgEl.textContent = '換金用の価値ある石です。所持品から確認・売却できます。';
+            } else if (result.type === 'exchange_ticket') {
+                headerEl.innerHTML = '<span class="fs-4 fw-bold">🎫 引き換え券を獲得しました</span>';
+                msgEl.textContent = `既に「${result.name}」をお持ちのため、${rarity}引換券に変換されました。`;
+                imgEl.src = 'https://cdn-icons-png.flaticon.com/512/812/812328.png'; // チケット用アイコン
+            } else {
+                headerEl.innerHTML = '<span class="fs-4 fw-bold">✨ 新しい縁を授かりました</span>';
+                msgEl.textContent = '新しいバッジを獲得しました！マイページで確認してください。';
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('resultModal'));
+            modal.show();
+        }
     </script>
 </body>
 
