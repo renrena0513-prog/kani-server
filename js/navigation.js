@@ -41,7 +41,7 @@ function generateAccordionNav(basePath = '../') {
                     </div>
                     <ul class="nav-group-items" id="nav-group-fun">
                         <li><a class="dropdown-item sub-item" href="${basePath}omikuji/index.html">🎋 おみくじ</a></li>
-                        <li class="admin-only" style="display:none;"><a class="dropdown-item sub-item" href="${basePath}omikuji/osaisen.html">🧧 お賽銭箱</a></li>
+                        <li><a class="dropdown-item sub-item" href="${basePath}omikuji/osaisen.html">🧧 お賽銭箱</a></li>
                         <li><a class="dropdown-item sub-item" href="${basePath}ranking/index.html">💰 資産ランキング</a></li>
                         <li><a class="dropdown-item sub-item" href="${basePath}badge/list.html">📛 バッジ一覧</a></li>
                         <li><a class="dropdown-item sub-item" href="${basePath}badge/shop.html">🛒 バッジショップ</a></li>
