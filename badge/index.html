@@ -244,6 +244,10 @@
                     <div id="badge-number" class="text-white-50 small mb-2"
                         style="font-family: inherit; font-weight: bold; font-size: 0.9rem;"></div>
 
+                    <!-- 販売タイプバッジ -->
+                    <div id="sales-type-badge" class="badge rounded-pill mb-2"
+                        style="display: none; font-size: 0.8rem;"></div>
+
                     <!-- 説明 -->
                     <p id="badge-description" class="badge-description mb-4"></p>
 
@@ -270,15 +274,37 @@
 
             <!-- コンテンツ -->
             <div class="p-4">
+                <!-- ミュータント切り替えボタン -->
+                <div id="mutant-toggle-area" class="text-center mb-4" style="display: none;">
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-outline-primary active" id="normal-btn"
+                            onclick="toggleMutantView(false)">通常</button>
+                        <button type="button" class="btn btn-outline-warning" id="mutant-btn"
+                            onclick="toggleMutantView(true)">✨ ミュータント</button>
+                    </div>
+                </div>
+
                 <!-- 統計 -->
                 <div class="row g-3 mb-4">
-                    <div class="col-6">
+                    <div class="col-6 col-md-3">
                         <div class="stat-card">
                             <div id="owner-count" class="stat-number">-</div>
                             <div class="stat-label">所持者数</div>
                         </div>
                     </div>
-                    <div class="col-6">
+                    <div class="col-6 col-md-3">
+                        <div class="stat-card">
+                            <div id="circulation-count" class="stat-number">-</div>
+                            <div class="stat-label">流通枚数</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="stat-card">
+                            <div id="market-value" class="stat-number">-</div>
+                            <div class="stat-label">市場価値</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
                         <div class="stat-card">
                             <div id="ownership-rate" class="stat-number">-</div>
                             <div class="stat-label">所持率</div>
@@ -403,6 +429,30 @@
                     document.getElementById('badge-requirements-section').style.display = 'flex';
                 }
 
+                // 販売タイプバッジの表示
+                const salesTypeBadge = document.getElementById('sales-type-badge');
+                if (badge.sales_type) {
+                    salesTypeBadge.textContent = badge.sales_type;
+                    salesTypeBadge.style.display = 'inline-block';
+                    if (badge.sales_type === '変動型') {
+                        salesTypeBadge.style.backgroundColor = '#17a2b8';
+                    } else if (badge.sales_type === '限定' || badge.sales_type === '限定型') {
+                        salesTypeBadge.style.backgroundColor = '#dc3545';
+                    } else {
+                        salesTypeBadge.style.backgroundColor = '#6c757d';
+                    }
+                }
+
+                // 流通枚数の表示
+                document.getElementById('circulation-count').textContent = (n || 0).toLocaleString();
+
+                // 市場価値の表示
+                const marketValueEl = document.getElementById('market-value');
+                marketValueEl.textContent = (assetValue || 0).toLocaleString() + ' C';
+                if (badge.sales_type === '変動型') {
+                    marketValueEl.title = '変動型のため、流通枚数により価値が変動します';
+                }
+
                 // 権利者情報の表示
                 if (badge.discord_user_id) {
                     const { data: ownerProfile } = await supabaseClient
@@ -421,28 +471,42 @@
 
                 document.title = `${badge.name} - バッジ詳細`;
 
-                // 所持者取得
+                // 所持者取得（通常+ミュータント）
                 const { data: owners, error: ownerError } = await supabaseClient
                     .from('user_badges_new')
-                    .select('user_id, profiles!user_id(discord_user_id, account_name, avatar_url, badges!equipped_badge_id(image_url, name))')
+                    .select('user_id, is_mutant, profiles!user_id(discord_user_id, account_name, avatar_url, badges!equipped_badge_id(image_url, name))')
                     .eq('badge_id', badgeId);
 
                 if (ownerError) throw ownerError;
 
-                // 同じユーザーをグループ化
-                let totalInCirculation = 0;
-                const groupedOwners = owners ? owners.reduce((acc, o) => {
-                    const uid = o.user_id;
-                    if (!acc[uid]) {
-                        acc[uid] = { ...o, count: 0 };
-                    }
-                    acc[uid].count++;
-                    totalInCirculation++;
-                    return acc;
-                }, {}) : {};
+                // 通常とミュータントを分離
+                const normalOwners = (owners || []).filter(o => !o.is_mutant);
+                const mutantOwners = (owners || []).filter(o => o.is_mutant);
 
-                // 所持数が多い順にソート
-                const sortedOwners = Object.values(groupedOwners).sort((a, b) => b.count - a.count);
+                // ミュータントがいる場合は切り替えボタンを表示
+                if (mutantOwners.length > 0) {
+                    document.getElementById('mutant-toggle-area').style.display = 'block';
+                }
+
+                // グローバルに保存
+                window.badgeData = { badgeId, normalOwners, mutantOwners, totalUsers: 0 };
+
+                // 同じユーザーをグループ化
+                function groupOwners(ownerList) {
+                    let total = 0;
+                    const grouped = ownerList.reduce((acc, o) => {
+                        const uid = o.user_id;
+                        if (!acc[uid]) {
+                            acc[uid] = { ...o, count: 0 };
+                        }
+                        acc[uid].count++;
+                        total++;
+                        return acc;
+                    }, {});
+                    return { grouped: Object.values(grouped).sort((a, b) => b.count - a.count), total };
+                }
+
+                const { grouped: sortedOwners, total: totalInCirculation } = groupOwners(normalOwners);
 
                 // 全ユーザー数取得（所持率計算用）
                 const { count: totalUsers, error: countError } = await supabaseClient
@@ -450,6 +514,7 @@
                     .select('*', { count: 'exact', head: true });
 
                 if (countError) throw countError;
+                window.badgeData.totalUsers = totalUsers;
 
                 const uniqueOwnerCount = sortedOwners.length;
                 const ownershipRate = totalUsers > 0 ? ((uniqueOwnerCount / totalUsers) * 100).toFixed(1) : 0;
@@ -458,40 +523,88 @@
                 document.getElementById('ownership-rate').textContent = ownershipRate + '%';
 
                 // 所持者リスト表示
-                const listEl = document.getElementById('owner-list');
-                if (uniqueOwnerCount === 0) {
-                    listEl.innerHTML = '<p class="text-center text-muted py-4">まだ誰もこのバッジを持っていません</p>';
-                } else {
-                    listEl.innerHTML = sortedOwners.map(o => {
-                        const profile = o.profiles;
-                        if (!profile) return '';
-                        const avatarUrl = profile.avatar_url || 'https://via.placeholder.com/48';
-                        const name = profile.account_name || '名称未設定';
-                        const badgeIcon = profile.badges;
-                        const badgeHtml = badgeIcon ? `
-                            <img src="${badgeIcon.image_url}" title="${badgeIcon.name}" 
-                                 style="width: 20px; height: 20px; object-fit: contain; margin-left: 8px; border-radius: 4px;">
-                        ` : '';
-
-                        const countText = `x${o.count}`;
-                        const share = totalInCirculation > 0 ? ((o.count / totalInCirculation) * 100).toFixed(1) : 0;
-
-                        return `
-                            <a href="../mypage/index.html?user=${profile.discord_user_id}" class="owner-item text-decoration-none text-dark d-flex align-items-center">
-                                <img src="${avatarUrl}" alt="${name}" class="owner-avatar me-3" onerror="this.src='https://via.placeholder.com/48'">
-                                <span class="fw-bold fs-5">${name}</span>
-                                ${badgeHtml}
-                                <span class="badge bg-dark rounded-pill ms-2" style="font-size: 0.85rem;">${countText}</span>
-                                <span class="ms-2 fw-bold" style="font-size: 0.9rem; color: #555;">(占有率: ${share}%)</span>
-                            </a>
-                        `;
-                    }).join('');
-                }
+                renderOwnerList(sortedOwners, totalInCirculation);
 
             } catch (err) {
                 console.error('バッジ詳細取得エラー:', err);
                 document.getElementById('badge-name').textContent = 'エラーが発生しました';
             }
+        }
+
+        function renderOwnerList(sortedOwners, totalInCirculation) {
+            const listEl = document.getElementById('owner-list');
+            if (sortedOwners.length === 0) {
+                listEl.innerHTML = '<p class="text-center text-muted py-4">まだ誰もこのバッジを持っていません</p>';
+            } else {
+                listEl.innerHTML = sortedOwners.map(o => {
+                    const profile = o.profiles;
+                    if (!profile) return '';
+                    const avatarUrl = profile.avatar_url || 'https://via.placeholder.com/48';
+                    const name = profile.account_name || '名称未設定';
+                    const badgeIcon = profile.badges;
+                    const badgeHtml = badgeIcon ? `
+                        <img src="${badgeIcon.image_url}" title="${badgeIcon.name}" 
+                             style="width: 20px; height: 20px; object-fit: contain; margin-left: 8px; border-radius: 4px;">
+                    ` : '';
+
+                    const countText = `x${o.count}`;
+                    const share = totalInCirculation > 0 ? ((o.count / totalInCirculation) * 100).toFixed(1) : 0;
+
+                    return `
+                        <a href="../mypage/index.html?user=${profile.discord_user_id}" class="owner-item text-decoration-none text-dark d-flex align-items-center">
+                            <img src="${avatarUrl}" alt="${name}" class="owner-avatar me-3" onerror="this.src='https://via.placeholder.com/48'">
+                            <span class="fw-bold fs-5">${name}</span>
+                            ${badgeHtml}
+                            <span class="badge bg-dark rounded-pill ms-2" style="font-size: 0.85rem;">${countText}</span>
+                            <span class="ms-2 fw-bold" style="font-size: 0.9rem; color: #555;">(占有率: ${share}%)</span>
+                        </a>
+                    `;
+                }).join('');
+            }
+        }
+
+        function toggleMutantView(showMutant) {
+            const normalBtn = document.getElementById('normal-btn');
+            const mutantBtn = document.getElementById('mutant-btn');
+            const listTitle = document.querySelector('#owner-list').previousElementSibling;
+
+            normalBtn.classList.toggle('active', !showMutant);
+            mutantBtn.classList.toggle('active', showMutant);
+
+            const data = window.badgeData;
+            if (!data) return;
+
+            const ownerList = showMutant ? data.mutantOwners : data.normalOwners;
+
+            // グループ化
+            let total = 0;
+            const grouped = ownerList.reduce((acc, o) => {
+                const uid = o.user_id;
+                if (!acc[uid]) {
+                    acc[uid] = { ...o, count: 0 };
+                }
+                acc[uid].count++;
+                total++;
+                return acc;
+            }, {});
+            const sortedOwners = Object.values(grouped).sort((a, b) => b.count - a.count);
+
+            // 統計更新
+            const uniqueOwnerCount = sortedOwners.length;
+            const ownershipRate = data.totalUsers > 0 ? ((uniqueOwnerCount / data.totalUsers) * 100).toFixed(1) : 0;
+
+            document.getElementById('owner-count').textContent = uniqueOwnerCount.toLocaleString();
+            document.getElementById('circulation-count').textContent = total.toLocaleString();
+            document.getElementById('ownership-rate').textContent = ownershipRate + '%';
+
+            // タイトル更新
+            if (listTitle) {
+                listTitle.innerHTML = showMutant
+                    ? '✨ このバッジのミュータント所持者'
+                    : '🏆 このバッジの所持者';
+            }
+
+            renderOwnerList(sortedOwners, total);
         }
 
         document.addEventListener('DOMContentLoaded', initPage);
