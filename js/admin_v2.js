@@ -914,15 +914,26 @@ async function openBadgeGrantModal(userId, userName) {
         const { data: userBadges } = await supabaseClient.from('user_badges_new').select('*, badge:badges(*)').eq('user_id', userId);
         const { data: allBadges } = await supabaseClient.from('badges').select('*').order('name');
 
-        ownedList.innerHTML = (userBadges || []).map(ub => `
-            <span class="badge bg-secondary">${escapeHtml(ub.badge?.name || '不明')}</span>
-        `).join('') || '<span class="text-muted">なし</span>';
+        // 所持バッジ（画像付き・剥奪ボタン付き）
+        ownedList.innerHTML = (userBadges || []).map(ub => {
+            const badge = ub.badge;
+            if (!badge) return '';
+            return `
+                <div class="d-flex align-items-center gap-2 bg-light p-2 rounded me-2 mb-2" style="min-width: 150px;">
+                    <img src="${badge.image_url || ''}" alt="${escapeHtml(badge.name)}" style="width: 32px; height: 32px; object-fit: contain; border-radius: 4px;">
+                    <span class="small flex-grow-1">${escapeHtml(badge.name)}</span>
+                    <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="revokeBadge('${userId}', '${badge.id}', '${escapeHtml(badge.name).replace(/'/g, "\\'")}')">×</button>
+                </div>
+            `;
+        }).join('') || '<span class="text-muted">なし</span>';
 
+        // 付与可能なバッジ一覧（画像付き）
         availableList.innerHTML = (allBadges || []).map(b => `
             <div class="col-6 col-md-4">
-                <div class="form-check">
-                    <input class="form-check-input badge-grant-checkbox" type="checkbox" value="${b.id}" id="grant-${b.id}">
-                    <label class="form-check-label small" for="grant-${b.id}">${escapeHtml(b.name)}</label>
+                <div class="form-check d-flex align-items-center gap-2 p-2 border rounded mb-1" style="cursor: pointer;" onclick="this.querySelector('input').click()">
+                    <input class="form-check-input badge-grant-checkbox" type="checkbox" value="${b.id}" id="grant-${b.id}" onclick="event.stopPropagation()">
+                    <img src="${b.image_url || ''}" alt="${escapeHtml(b.name)}" style="width: 28px; height: 28px; object-fit: contain; border-radius: 4px;">
+                    <label class="form-check-label small flex-grow-1 mb-0" for="grant-${b.id}" style="cursor: pointer;">${escapeHtml(b.name)}</label>
                 </div>
             </div>
         `).join('');
