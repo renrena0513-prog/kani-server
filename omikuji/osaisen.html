@@ -226,10 +226,7 @@
                 </div>
             </div>
 
-            <div class="admin-debug mt-5 pt-4 border-top border-dark">
-                <p class="text-white-50">管理者としてアクセス中</p>
-                <p class="small text-white-50">バッジ排出、重複所持の許可、全体提供割合（%）表示に対応済みです。</p>
-            </div>
+
         </div>
     </div>
 
@@ -274,11 +271,7 @@
             currentUser = user;
             const discordId = user.user_metadata.provider_id;
 
-            if (!ADMIN_DISCORD_IDS.includes(discordId)) {
-                alert('このページは管理者専用です。');
-                window.location.href = '../index.html';
-                return;
-            }
+            // 全ユーザーに開放
 
             fetchTicketCount();
         });
