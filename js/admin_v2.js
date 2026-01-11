@@ -475,9 +475,11 @@ function setupAutoCalculation() {
 
     // モード切替で配給点を自動変更
     const modeSelect = document.getElementById('mahjong_mode');
-    const onModeChange = (e) => {
-        const distSelect = document.getElementById('dist_points');
-        distSelect.value = (e.target.value === '三麻' ? '35000' : '25000');
+    const onModeChange = () => {
+        const mode = modeSelect.value;
+        const distInput = document.getElementById('dist_points');
+        if (mode === '三麻') distInput.value = 35000;
+        else distInput.value = 25000;
         calculateLiveScore();
     };
     modeSelect.removeEventListener('change', onModeChange);
@@ -565,6 +567,7 @@ async function saveRecord() {
     const datetime = document.getElementById('event_datetime').value;
     const tournamentType = document.getElementById('tournament_type').value;
     const mahjongMode = document.getElementById('mahjong_mode').value;
+    const isSanma = mahjongMode === '三麻';
     const matchMode = document.getElementById('match_mode').value;
     const handCount = parseInt(document.getElementById('hand_count').value) || 0;
 
