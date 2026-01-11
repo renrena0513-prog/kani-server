@@ -2033,7 +2033,7 @@
 
                     htmlParts.push(`
                         <div class="user-select-item" onclick = "openConvertibleSellModal('${badge.id}', '${badge.name.replace(/'/g, "\\'")}', ${count}, ${sellPrice})">
-                            < img src = "${badge.image_url}" class="user-select-avatar" style = "border-radius: 8px;" >
+                            <img src="${badge.image_url}" class="user-select-avatar" style="border-radius: 8px;">
                             <div class="flex-grow-1">
                                 <div class="user-select-name">${badge.name} <span class="badge bg-dark">×${count}</span></div>
                                 <div class="small text-muted" style="font-size: 0.75rem;">
@@ -2069,7 +2069,7 @@
                     if (mode === 'transfer') {
                         return `
                     <div class="user-select-item" onclick = "openUUIDTransferModal('${item.uuid}', '${badge.name.replace(/'/g, "\\'")}', ${buyPrice}, ${pValue}, ${pSell}) ">
-                        < img src = "${badge.image_url}" class="user-select-avatar" style = "border-radius: 8px;" >
+                        <img src="${badge.image_url}" class="user-select-avatar" style="border-radius: 8px;">
                                 <div class="flex-grow-1">
                                     <div class="user-select-name">${badge.name} ${mutantLabel}</div>
                                     <div class="small text-muted" style="font-size: 0.75rem;">
@@ -2084,7 +2084,7 @@
                     } else {
                         return `
                     <div class="user-select-item" onclick = "sellBadgeConfirm('${item.uuid}', '${badge.name.replace(/'/g, "\\'")}', ${buyPrice}, ${pValue}, ${pSell}) ">
-                        < img src = "${badge.image_url}" class="user-select-avatar" style = "border-radius: 8px;" >
+                        <img src="${badge.image_url}" class="user-select-avatar" style="border-radius: 8px;">
                                 <div class="flex-grow-1">
                                     <div class="user-select-name">${badge.name} ${mutantLabel}</div>
                                     <div class="small text-muted" style="font-size: 0.75rem;">
