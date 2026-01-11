@@ -1544,14 +1544,12 @@
                         const fixedSellPrice = badge.price; // 換金品は固定価格
                         convertibleHtml += `
                             <div class="col-6 col-sm-4 col-md-3 mb-3">
-                                <div class="card h-100 shadow-sm border-0 position-relative" style="border-radius: 12px; overflow: hidden; transition: transform 0.2s; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
+                                <div class="card h-100 shadow-sm border-0" style="border-radius: 12px; overflow: hidden; transition: transform 0.2s; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
                                     <div class="card-body p-2 d-flex flex-column align-items-center justify-content-center text-center">
-                                        <div class="position-relative mb-1">
-                                            <div style="width: 50px; height: 50px; padding: 5px;">
-                                                <img src="${badge.image_url}" alt="${badge.name}" style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.2));">
-                                            </div>
-                                            <span class="badge bg-dark position-absolute bottom-0 end-0 m-1" style="font-size:0.7rem; z-index:4;">x${count}</span>
+                                        <div style="width: 50px; height: 50px; padding: 5px; margin-bottom: 4px;">
+                                            <img src="${badge.image_url}" alt="${badge.name}" style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.2));">
                                         </div>
+                                        <span class="badge bg-dark mb-1" style="font-size:0.7rem;">x${count}</span>
                                         <div class="small fw-bold text-truncate w-100 px-1" style="font-size: 0.7rem; line-height: 1.2;">${badge.name}</div>
                                         <div class="small text-muted mt-1" style="font-size: 0.65rem;">💰 ${fixedSellPrice.toLocaleString()} C</div>
                                     </div>
@@ -2254,14 +2252,15 @@
                 listEl.innerHTML = uniqueBadges.map(badge => {
                     const isEquipped = badge.id === equippedId;
                     return `
-                    < div class="col-4 col-md-3 text-center" >
-                        <div class="badge-item ${isEquipped ? 'equipped' : ''}"
-                            onclick="equipBadge('${badge.id}')"
-                            style="cursor: pointer;"
-                            title="${badge.name}${isEquipped ? ' (装着中)' : ''}">
-                            <img src="${badge.image_url}" alt="${badge.name}" style="width: 60px; height: 60px; object-fit: contain;">
+                        <div class="col-4 col-md-3 text-center">
+                            <div class="badge-item ${isEquipped ? 'equipped' : ''}"
+                                onclick="equipBadge('${badge.id}')"
+                                style="cursor: pointer;"
+                                title="${badge.name}${isEquipped ? ' (装着中)' : ''}">
+                                <img src="${badge.image_url}" alt="${badge.name}" style="width: 60px; height: 60px; object-fit: contain;">
+                            </div>
+                            <div class="small text-truncate mt-1" style="font-size: 0.7rem;">${badge.name}</div>
                         </div>
-                        </div >
                     `;
                 }).join('');
             } catch (err) {
