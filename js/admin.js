@@ -1705,7 +1705,7 @@ async function fetchActivityLogs() {
     listBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">読み込み中...</td></tr>';
 
     try {
-        // ログとプロフィールの結合（user_id と target_user_id の両方）
+        // 1. プロフィール情報を結合して取得を試みる
         const { data: logs, error } = await supabaseClient
             .from('activity_logs')
             .select(`
@@ -1717,8 +1717,20 @@ async function fetchActivityLogs() {
             .order('created_at', { ascending: false })
             .limit(200);
 
-        if (error) throw error;
-        renderActivityLogs(logs);
+        if (error) {
+            console.warn('結合によるログ取得に失敗しました。リレーション設定を確認してください。', error);
+            // 2. エラー（リレーション不足）が発生した場合は、結合なしで取得する（フォールバック）
+            const { data: basicLogs, error: basicError } = await supabaseClient
+                .from('activity_logs')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(200);
+
+            if (basicError) throw basicError;
+            renderActivityLogs(basicLogs);
+        } else {
+            renderActivityLogs(logs);
+        }
     } catch (err) {
         console.error('ログ取得エラー:', err);
         listBody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">エラー: ${err.message}</td></tr>`;
