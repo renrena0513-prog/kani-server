@@ -547,6 +547,114 @@
             color: #fff !important;
             border-color: #333 !important;
         }
+
+        /* --- ミュータント演出 (詳細ページから移植) --- */
+        .badge-image-container {
+            position: relative;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+
+        .badge-image-container.mutant-active::before,
+        .badge-image-container.mutant-active::after {
+            content: '';
+            position: absolute;
+            bottom: -15px;
+            left: 50%;
+            width: 80px;
+            height: 120px;
+            transform: translateX(-50%);
+            z-index: 0;
+            pointer-events: none;
+            border-radius: 50% 50% 0 0;
+            filter: blur(15px);
+        }
+
+        .badge-image-container.mutant-active::before {
+            background-image:
+                radial-gradient(circle at 30% 80%, rgba(180, 0, 180, 0.6) 0%, transparent 40%),
+                radial-gradient(circle at 70% 60%, rgba(120, 0, 255, 0.5) 0%, transparent 45%),
+                radial-gradient(circle at 40% 40%, rgba(200, 0, 255, 0.4) 0%, transparent 50%);
+            animation: bubblesRiseSmall 4s linear infinite;
+        }
+
+        .badge-image-container.mutant-active::after {
+            background-image:
+                radial-gradient(circle at 60% 90%, rgba(255, 0, 150, 0.5) 0%, transparent 40%),
+                radial-gradient(circle at 20% 70%, rgba(180, 0, 255, 0.4) 0%, transparent 45%),
+                radial-gradient(circle at 80% 30%, rgba(120, 0, 255, 0.3) 0%, transparent 50%);
+            animation: bubblesRiseSmall 6s linear infinite reverse;
+            opacity: 0.7;
+        }
+
+        .mutant-shine-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100%;
+            height: 100%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 2;
+            overflow: hidden;
+            border-radius: 50% !important;
+            -webkit-mask-image: radial-gradient(circle, black 65%, transparent 70%);
+            mask-image: radial-gradient(circle, black 65%, transparent 70%);
+        }
+
+        .mutant-shine-overlay::before {
+            content: '';
+            position: absolute;
+            top: -100%;
+            left: -100%;
+            width: 300%;
+            height: 300%;
+            background: linear-gradient(135deg,
+                    transparent 40%,
+                    rgba(255, 255, 255, 0.1) 44%,
+                    rgba(255, 255, 255, 0.9) 45%,
+                    rgba(255, 255, 255, 0.2) 46%,
+                    transparent 48%,
+                    transparent 50%,
+                    rgba(255, 255, 255, 0.1) 51%,
+                    rgba(255, 255, 255, 0.6) 52%,
+                    rgba(255, 255, 255, 0.1) 53%,
+                    transparent 55%);
+            filter: blur(3px);
+            animation: mutantShineDiagonalSmall 2s infinite ease-in-out;
+        }
+
+        @keyframes bubblesRiseSmall {
+            0% {
+                background-position: 0% 100%;
+                transform: translateX(-50%) translateY(10px) scale(0.8);
+                opacity: 0;
+            }
+
+            10% {
+                opacity: 0.8;
+            }
+
+            90% {
+                opacity: 0.8;
+            }
+
+            100% {
+                background-position: 0% -100%;
+                transform: translateX(-50%) translateY(-30px) scale(1.1);
+                opacity: 0;
+            }
+        }
+
+        @keyframes mutantShineDiagonalSmall {
+            0% {
+                transform: translate(-40%, -40%);
+            }
+
+            100% {
+                transform: translate(40%, 40%);
+            }
+        }
     </style>
 </head>
 
@@ -1572,20 +1680,17 @@
                     // 右下に個数を表示するためのラベル
                     const countLabel = count > 1 ? `<span class="badge bg-dark position-absolute bottom-0 end-0 m-1" style="font-size:0.6rem; z-index:4; opacity: 0.9;">x${count}</span>` : '';
 
-                    // 左下（個数と重ならないように）または別の場所にミュータント表示
-                    const mutantLabel = hasMutant ? '<span class="badge bg-warning text-dark position-absolute bottom-0 start-0 m-1" style="font-size:0.5rem; z-index:4;">変異</span>' : '';
-
                     const cardHtml = `
                         <div class="col-4 col-sm-3 col-md-5th mb-3">
                             <div class="card h-100 shadow-sm border-0 position-relative badge-card ${rarityClass}" style="border-radius: 12px; overflow: hidden; transition: transform 0.2s; color: inherit;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
-                                <a href="../badge/index.html?id=${badge.id}" class="text-decoration-none w-100 h-100 d-flex flex-column align-items-center justify-content-center" style="color: inherit;">
+                                <a href="../badge/index.html?id=${badge.id}${hasMutant ? '&view=mutant' : ''}" class="text-decoration-none w-100 h-100 d-flex flex-column align-items-center justify-content-center" style="color: inherit;">
                                     <div class="card-body p-2 d-flex flex-column align-items-center justify-content-center text-center">
                                         <div class="position-relative mb-1">
-                                            <div class="badge-item ${isEquipped ? 'equipped' : ''}" style="width: 70px; height: 70px; padding: 5px; background: transparent; border-width: 2px;">
-                                                <img src="${badge.image_url}" alt="${badge.name}" style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.2));">
+                                            <div class="badge-item ${isEquipped ? 'equipped' : ''} ${hasMutant ? 'badge-image-container mutant-active' : ''}" style="width: 70px; height: 70px; padding: 5px; background: transparent; border-width: 2px; border-radius: 50%;">
+                                                <img src="${badge.image_url}" alt="${badge.name}" style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.2)); ${hasMutant ? 'position: relative; z-index: 1;' : ''}">
+                                                ${hasMutant ? '<div class="mutant-shine-overlay"></div>' : ''}
                                             </div>
                                             ${isEquipped ? '<span class="badge bg-gold position-absolute top-0 start-0" style="font-size:0.4rem; z-index:2;">装着中</span>' : ''}
-                                            ${mutantLabel}
                                             ${countLabel}
                                         </div>
                                         <div class="small opacity-75 text-truncate w-100 px-1" style="font-size: 0.65rem; line-height: 1.2;">${badge.name}</div>

@@ -664,6 +664,13 @@
                 // 所持者リスト表示
                 renderOwnerList(sortedOwners, totalInCirculation);
 
+                // URLパラメータ ?view=mutant がある場合は初期表示をミュータントにする
+                const urlParams = new URLSearchParams(window.location.search);
+                const viewMode = urlParams.get('view');
+                if (viewMode === 'mutant') {
+                    toggleMutantView(true);
+                }
+
             } catch (err) {
                 console.error('バッジ詳細取得エラー:', err);
                 document.getElementById('badge-name').textContent = 'エラーが発生しました';
