@@ -847,6 +847,14 @@
                             </div>
                         </div>
 
+                        <!-- 換金品（御神石など） -->
+                        <div id="convertible-badges-section" style="display: none;">
+                            <h6 class="text-muted mb-2" style="font-size: 0.85rem;">💎 換金品</h6>
+                            <div id="convertible-badge-list" class="row g-3 mb-4">
+                                <!-- JSで生成 -->
+                            </div>
+                        </div>
+
                         <!-- 購入バッジ -->
                         <div id="purchasable-badges-section" style="display: none;">
                             <h6 class="text-muted mb-2" style="font-size: 0.85rem;">🛒 購入バッジ</h6>
@@ -1415,6 +1423,8 @@
             const section = document.getElementById('badge-collection-section');
             const specialSection = document.getElementById('special-badges-section');
             const specialList = document.getElementById('special-badge-list');
+            const convertibleSection = document.getElementById('convertible-badges-section');
+            const convertibleList = document.getElementById('convertible-badge-list');
             const purchasableSection = document.getElementById('purchasable-badges-section');
             const purchasableList = document.getElementById('purchasable-badge-list');
             const noBadgesMsg = document.getElementById('no-badges-msg');
@@ -1471,6 +1481,7 @@
 
                 if (!owned || owned.length === 0) {
                     if (specialSection) specialSection.style.display = 'none';
+                    if (convertibleSection) convertibleSection.style.display = 'none';
                     if (purchasableSection) purchasableSection.style.display = 'none';
                     if (noBadgesMsg) noBadgesMsg.style.display = 'block';
                     return;
@@ -1496,6 +1507,7 @@
                 let totalBadgeAssetValue = 0;
                 let purchasableHtml = '';
                 let specialHtml = '';
+                let convertibleHtml = '';
 
                 // グループ化されたバッジを描画
                 Object.values(groupedOwned).forEach(group => {
@@ -1522,14 +1534,44 @@
                     const isEquipped = group.isEquipped;
                     const hasMutant = group.instances.some(i => i.is_mutant);
 
+                    // 非売品判定: sales_type が '限定品' の場合は非売品
+                    const isNonSaleable = (badge.sales_type === '限定品');
+                    // 換金品判定
+                    const isConvertible = (badge.sales_type === '換金品');
+
+                    // 換金品の場合は簡略表示
+                    if (isConvertible) {
+                        const fixedSellPrice = badge.price; // 換金品は固定価格
+                        convertibleHtml += `
+                            <div class="col-6 col-sm-4 col-md-3 mb-3">
+                                <div class="card h-100 shadow-sm border-0 position-relative" style="border-radius: 12px; overflow: hidden; transition: transform 0.2s; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
+                                    <div class="card-body p-2 d-flex flex-column align-items-center justify-content-center text-center">
+                                        <div class="position-relative mb-1">
+                                            <div style="width: 50px; height: 50px; padding: 5px;">
+                                                <img src="${badge.image_url}" alt="${badge.name}" style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.2));">
+                                            </div>
+                                            <span class="badge bg-dark position-absolute bottom-0 end-0 m-1" style="font-size:0.7rem; z-index:4;">x${count}</span>
+                                        </div>
+                                        <div class="small fw-bold text-truncate w-100 px-1" style="font-size: 0.7rem; line-height: 1.2;">${badge.name}</div>
+                                        <div class="small text-muted mt-1" style="font-size: 0.65rem;">💰 ${fixedSellPrice.toLocaleString()} C</div>
+                                    </div>
+                                    ${!isViewMode ? `
+                                        <button class="btn btn-sm btn-danger w-100 mt-1" style="border-radius: 0 0 12px 12px; font-size: 0.75rem;" onclick="openConvertibleSellModal('${badge.id}', '${badge.name.replace(/'/g, "\\'").replace(/"/g, '&quot;')}', ${count}, ${fixedSellPrice})">
+                                            売却
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        `;
+                        return; // 換金品は通常バッジセクションに含めない
+                    }
+
+                    // 以下、通常バッジの表示ロジック（変更なし）
                     // 右下に個数を表示するためのラベル
                     const countLabel = count > 1 ? `<span class="badge bg-dark position-absolute bottom-0 end-0 m-1" style="font-size:0.6rem; z-index:4; opacity: 0.9;">x${count}</span>` : '';
 
                     // 左下（個数と重ならないように）または別の場所にミュータント表示
                     const mutantLabel = hasMutant ? '<span class="badge bg-warning text-dark position-absolute bottom-0 start-0 m-1" style="font-size:0.5rem; z-index:4;">変異</span>' : '';
-
-                    // 非売品判定: sales_type が '限定品' の場合は非売品
-                    const isNonSaleable = (badge.sales_type === '限定品');
 
                     const cardHtml = `
                         <div class="col-4 col-sm-3 col-md-5th mb-3">
@@ -1584,6 +1626,13 @@
                     specialList.innerHTML = specialHtml;
                 } else {
                     specialSection.style.display = 'none';
+                }
+
+                if (convertibleHtml) {
+                    convertibleSection.style.display = 'block';
+                    convertibleList.innerHTML = convertibleHtml;
+                } else {
+                    convertibleSection.style.display = 'none';
                 }
 
                 noBadgesMsg.style.display = 'none';
@@ -1893,8 +1942,13 @@
                     return;
                 }
 
-                // 非売品（限定品）を除外
-                const targetBadges = owned.filter(item => item.badges && item.badges.sales_type !== '限定品');
+                // 非売品（限定品）と換金品を除外
+                let targetBadges = owned.filter(item => item.badges && item.badges.sales_type !== '限定品' && item.badges.sales_type !== '換金品');
+
+                // 譲渡モードの場合、さらに換金品を除外（二重チェック）
+                if (mode === 'transfer') {
+                    targetBadges = targetBadges.filter(item => item.badges && item.badges.sales_type !== '換金品');
+                }
 
                 if (targetBadges.length === 0) {
                     listEl.innerHTML = '<p class="text-center text-muted py-3">譲渡・売却可能なバッジを持っていません</p>';
@@ -2019,6 +2073,86 @@
                 if (user) displayMyInfo(user);
             } catch (err) {
                 console.error('売却エラー:', err);
+                alert('売却に失敗しました: ' + err.message);
+            } finally {
+                toggleLoading(false);
+            }
+        }
+
+        // ============ 換金品の売却 ============
+        async function openConvertibleSellModal(badgeId, badgeName, totalCount, fixedPrice) {
+            const quantity = prompt(`「${badgeName}」を何個売却しますか？（所持数: ${totalCount}個、売却価格: ${fixedPrice.toLocaleString()} C/個）`, '1');
+
+            if (!quantity) return;
+
+            const count = parseInt(quantity);
+            if (isNaN(count) || count <= 0) {
+                alert('有効な個数を入力してください。');
+                return;
+            }
+
+            if (count > totalCount) {
+                alert(`所持数（${totalCount}個）を超えています。`);
+                return;
+            }
+
+            const totalPrice = fixedPrice * count;
+            if (!confirm(`「${badgeName}」を ${count}個売却しますか？（合計: 💰${totalPrice.toLocaleString()} C）`)) return;
+
+            toggleLoading(true);
+            try {
+                // 所持している換金品の UUID を取得
+                const { data: ownedItems, error: fetchError } = await supabaseClient
+                    .from('user_badges_new')
+                    .select('uuid')
+                    .eq('user_id', targetId)
+                    .eq('badge_id', badgeId)
+                    .limit(count);
+
+                if (fetchError) throw fetchError;
+                if (!ownedItems || ownedItems.length < count) throw new Error('指定した数のバッジが見つかりません。');
+
+                // 一つずつ売却
+                let successCount = 0;
+                for (const item of ownedItems) {
+                    const { data, error } = await supabaseClient.rpc('sell_badge_v2', {
+                        p_user_id: targetId,
+                        p_badge_uuid: item.uuid
+                    });
+
+                    if (error || !data.ok) {
+                        console.error('売却エラー:', error || data.error);
+                        continue;
+                    }
+                    successCount++;
+                }
+
+                if (successCount > 0) {
+                    const actualTotalPrice = fixedPrice * successCount;
+                    alert(`「${badgeName}」を ${successCount}個売却しました。（合計: 💰${actualTotalPrice.toLocaleString()} C）`);
+
+                    // 活動ログ記録
+                    if (typeof logActivity === 'function') {
+                        await logActivity(targetId, 'badge_sell', {
+                            amount: actualTotalPrice,
+                            details: {
+                                badge_id: badgeId,
+                                badge_name: badgeName,
+                                quantity: successCount,
+                                unit_price: fixedPrice
+                            }
+                        });
+                    }
+
+                    loadOwnedBadges();
+                    loadActivityLogs();
+                    const user = await getCurrentUser();
+                    if (user) displayMyInfo(user);
+                } else {
+                    throw new Error('売却に失敗しました。');
+                }
+            } catch (err) {
+                console.error('換金品売却エラー:', err);
                 alert('売却に失敗しました: ' + err.message);
             } finally {
                 toggleLoading(false);
