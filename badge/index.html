@@ -55,41 +55,44 @@
             display: inline-block;
         }
 
-        /* ミュータント用オーラ - モアモアした煙エフェクト */
+        /* ミュータント用オーラ - 下から立ち上る上昇演出（真円型） */
         .badge-image-container.mutant-active::before {
             content: '';
             position: absolute;
-            top: 50%;
+            bottom: -20px;
             left: 50%;
-            width: 220px;
-            height: 220px;
-            transform: translate(-50%, -50%);
-            background:
-                radial-gradient(ellipse 80% 60% at 50% 40%, rgba(200, 0, 200, 0.7) 0%, transparent 55%),
-                radial-gradient(ellipse 60% 80% at 35% 65%, rgba(120, 0, 255, 0.6) 0%, transparent 50%),
-                radial-gradient(ellipse 70% 70% at 65% 45%, rgba(255, 0, 120, 0.6) 0%, transparent 45%);
-            border-radius: 50%;
-            animation: smokeFloat1 2.5s ease-in-out infinite;
+            width: 180px;
+            height: 250px;
+            transform: translateX(-50%);
+            background: linear-gradient(to top,
+                    transparent,
+                    rgba(180, 0, 180, 0.4) 20%,
+                    rgba(120, 0, 255, 0.6) 50%,
+                    rgba(255, 0, 150, 0.4) 80%,
+                    transparent);
+            border-radius: 50% 50% 0 0;
+            filter: blur(25px);
+            animation: auraRise 2s ease-in-out infinite;
             z-index: 0;
-            filter: blur(35px);
+            opacity: 0.8;
         }
 
         .badge-image-container.mutant-active::after {
             content: '';
             position: absolute;
-            top: 50%;
+            bottom: -30px;
             left: 50%;
-            width: 250px;
-            height: 250px;
-            transform: translate(-50%, -50%);
-            background:
-                radial-gradient(ellipse 50% 70% at 25% 25%, rgba(180, 0, 255, 0.5) 0%, transparent 45%),
-                radial-gradient(ellipse 70% 50% at 75% 75%, rgba(255, 0, 180, 0.5) 0%, transparent 45%),
-                radial-gradient(ellipse 60% 60% at 50% 50%, rgba(130, 0, 180, 0.4) 0%, transparent 55%);
+            width: 200px;
+            height: 300px;
+            transform: translateX(-50%);
+            background: radial-gradient(circle at 50% 100%,
+                    rgba(150, 0, 255, 0.5) 0%,
+                    rgba(255, 0, 100, 0.3) 40%,
+                    transparent 70%);
             border-radius: 50%;
-            animation: smokeFloat2 3s ease-in-out infinite reverse;
+            filter: blur(35px);
+            animation: auraPulse 3s ease-in-out infinite alternate;
             z-index: 0;
-            filter: blur(40px);
         }
 
         .badge-image-container.mutant-active .badge-image-large {
@@ -97,23 +100,27 @@
             z-index: 1;
             background: transparent;
             box-shadow: none;
-            filter: drop-shadow(0 0 12px rgba(200, 0, 200, 0.8)) drop-shadow(0 0 25px rgba(150, 0, 255, 0.6)) drop-shadow(0 0 40px rgba(255, 0, 150, 0.5));
-            animation: badgeFloat 2s ease-in-out infinite, badgePulse 1.5s ease-in-out infinite alternate;
-            overflow: visible;
+            border-radius: 50%;
+            /* 画像自体も円形として扱う */
+            filter: drop-shadow(0 0 15px rgba(200, 0, 200, 0.8)) drop-shadow(0 0 30px rgba(150, 0, 255, 0.5));
+            animation: badgeFloatRise 3s ease-in-out infinite;
         }
 
-        /* キラエフェクト用オーバーレイ */
-        /* キラエフェクト用オーバーレイ */
+        /* キラエフェクト用オーバーレイ（真円型） */
         .mutant-shine-overlay {
             position: absolute;
-            top: 0;
-            left: 0;
+            top: 50%;
+            left: 50%;
             width: 100%;
             height: 100%;
+            transform: translate(-50%, -50%);
             pointer-events: none;
             z-index: 2;
             overflow: hidden;
-            border-radius: 20px;
+            border-radius: 50% !important;
+            /* 強制的に円形にする */
+            -webkit-mask-image: radial-gradient(circle, black 60%, transparent 70%);
+            mask-image: radial-gradient(circle, black 60%, transparent 70%);
         }
 
         .mutant-shine-overlay::before {
@@ -126,30 +133,78 @@
             background: linear-gradient(45deg,
                     transparent 45%,
                     rgba(255, 255, 255, 0.1) 48%,
-                    rgba(255, 255, 255, 0.8) 50%,
+                    rgba(255, 255, 255, 0.9) 50%,
                     rgba(255, 255, 255, 0.1) 52%,
                     transparent 55%);
-            filter: blur(10px);
-            animation: mutantShine 3s infinite linear;
+            filter: blur(12px);
+            animation: mutantShine 2.5s infinite linear;
         }
 
-        /* 追加のキラキラ（点） */
+        /* 上昇するキラキラパーティクル */
         .mutant-shine-overlay::after {
             content: '';
             position: absolute;
-            top: 0;
+            bottom: -20px;
             left: 0;
             width: 100%;
-            height: 100%;
+            height: 150%;
             background-image:
                 radial-gradient(circle, #fff 10%, transparent 20%),
                 radial-gradient(circle, #fff 10%, transparent 20%),
                 radial-gradient(circle, #fff 10%, transparent 20%);
-            background-size: 15px 15px, 25px 25px, 20px 20px;
-            background-position: 10% 20%, 80% 40%, 40% 70%;
-            opacity: 0;
-            filter: blur(1px);
-            animation: mutantGlitter 2s infinite alternate;
+            background-size: 10px 10px, 15px 15px, 12px 12px;
+            background-repeat: repeat-y;
+            opacity: 0.6;
+            animation: mutantRiseParticles 4s linear infinite;
+        }
+
+        @keyframes auraRise {
+            0% {
+                transform: translateX(-50%) translateY(10px) scaleY(0.8);
+                opacity: 0.5;
+            }
+
+            50% {
+                transform: translateX(-50%) translateY(-5px) scaleY(1.1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateX(-50%) translateY(-15px) scaleY(1.2);
+                opacity: 0;
+            }
+        }
+
+        @keyframes auraPulse {
+            0% {
+                transform: translateX(-50%) scale(0.9);
+                opacity: 0.4;
+            }
+
+            100% {
+                transform: translateX(-50%) scale(1.1);
+                opacity: 0.8;
+            }
+        }
+
+        @keyframes mutantRiseParticles {
+            0% {
+                background-position: 20% 100%, 80% 90%, 50% 110%;
+                opacity: 0;
+            }
+
+            20% {
+                opacity: 0.8;
+            }
+
+            80% {
+                opacity: 0.8;
+            }
+
+            100% {
+                background-position: 25% -10%, 75% -20%, 45% 0%;
+                opacity: 0;
+            }
         }
 
         @keyframes mutantShine {
@@ -162,45 +217,15 @@
             }
         }
 
-        @keyframes mutantGlitter {
-            0% {
-                opacity: 0;
-                transform: scale(0.5);
-            }
-
-            50% {
-                opacity: 0.8;
-                transform: scale(1.2);
-            }
-
-            100% {
-                opacity: 0;
-                transform: scale(0.8);
-                background-position: 15% 25%, 75% 45%, 45% 65%;
-            }
-        }
-
-        @keyframes smokeFloat1 {
+        @keyframes badgeFloatRise {
 
             0%,
             100% {
-                transform: translate(-50%, -50%) scale(1) rotate(0deg);
-                opacity: 0.85;
-            }
-
-            25% {
-                transform: translate(-46%, -54%) scale(1.12) rotate(8deg);
-                opacity: 1;
+                transform: translateY(0);
             }
 
             50% {
-                transform: translate(-54%, -46%) scale(1.2) rotate(-5deg);
-                opacity: 0.9;
-            }
-
-            75% {
-                transform: translate(-48%, -56%) scale(1.08) rotate(4deg);
-                opacity: 0.95;
+                transform: translateY(-10px);
             }
         }
 
