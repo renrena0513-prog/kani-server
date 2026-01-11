@@ -11,79 +11,165 @@
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="../styles.css">
-    /* ガチャアニメーション */
-    @keyframes shake {
-    0% { transform: translate(1px, 1px) rotate(0deg); }
-    10% { transform: translate(-1px, -2px) rotate(-1deg); }
-    20% { transform: translate(-3px, 0px) rotate(1deg); }
-    30% { transform: translate(3px, 2px) rotate(0deg); }
-    40% { transform: translate(1px, -1px) rotate(1deg); }
-    50% { transform: translate(-1px, 2px) rotate(-1deg); }
-    60% { transform: translate(-3px, 1px) rotate(0deg); }
-    70% { transform: translate(3px, 1px) rotate(-1deg); }
-    80% { transform: translate(-1px, -1px) rotate(1deg); }
-    90% { transform: translate(1px, 2px) rotate(0deg); }
-    100% { transform: translate(1px, -2px) rotate(-1deg); }
-    }
+    <style>
+        /* ガチャアニメーション */
+        @keyframes shake {
+            0% {
+                transform: translate(1px, 1px) rotate(0deg);
+            }
 
-    .shaking {
-    animation: shake 0.5s infinite;
-    }
+            10% {
+                transform: translate(-1px, -2px) rotate(-1deg);
+            }
 
-    @keyframes coin-toss {
-    0% { transform: translateY(0) scale(1); opacity: 1; }
-    50% { transform: translateY(-100px) scale(1.5); opacity: 1; }
-    100% { transform: translateY(150px) scale(0.5); opacity: 0; }
-    }
+            20% {
+                transform: translate(-3px, 0px) rotate(1deg);
+            }
 
-    .coin-animation {
-    position: absolute;
-    font-size: 2rem;
-    z-index: 10;
-    top: 50%;
-    left: 50%;
-    margin-left: -1rem;
-    pointer-events: none;
-    display: none;
-    }
+            30% {
+                transform: translate(3px, 2px) rotate(0deg);
+            }
 
-    .coin-animation.active {
-    display: block;
-    animation: coin-toss 0.8s ease-in forwards;
-    }
+            40% {
+                transform: translate(1px, -1px) rotate(1deg);
+            }
 
-    /* 結果モーダルの装飾 */
-    #resultModal .modal-content {
-    background: radial-gradient(circle at center, #fff 0%, #f0f0f0 100%);
-    border: 5px solid var(--gold);
-    border-radius: 24px;
-    }
+            50% {
+                transform: translate(-1px, 2px) rotate(-1deg);
+            }
 
-    .result-badge-img {
-    width: 150px;
-    height: 150px;
-    object-fit: contain;
-    margin: 20px auto;
-    filter: drop-shadow(0 0 20px rgba(212, 168, 83, 0.4));
-    }
+            60% {
+                transform: translate(-3px, 1px) rotate(0deg);
+            }
 
-    .result-rarity {
-    font-weight: bold;
-    padding: 4px 15px;
-    border-radius: 20px;
-    display: inline-block;
-    margin-bottom: 10px;
-    font-size: 0.8rem;
-    }
+            70% {
+                transform: translate(3px, 1px) rotate(-1deg);
+            }
 
-    /* レアリティ別背景（styles.cssからコピー/拡張） */
-    .rarity-wood { background: #d7ccc8; color: #5d4037; }
-    .rarity-stone { background: #cfd8dc; color: #455a64; }
-    .rarity-bronze { background: #ffe0b2; color: #e65100; }
-    .rarity-silver { background: #f5f5f5; color: #616161; }
-    .rarity-gold { background: linear-gradient(135deg, #fff9c4 0%, #fbc02d 100%); color: #f57f17; }
-    .rarity-platinum { background: linear-gradient(135deg, #e1f5fe 0%, #b3e5fc 100%); color: #0277bd; }
-    .rarity-gem { background: linear-gradient(135deg, #f3e5f5 0%, #ce93d8 100%); color: #7b1fa2; }
+            80% {
+                transform: translate(-1px, -1px) rotate(1deg);
+            }
+
+            90% {
+                transform: translate(1px, 2px) rotate(0deg);
+            }
+
+            100% {
+                transform: translate(1px, -2px) rotate(-1deg);
+            }
+        }
+
+        .shaking {
+            animation: shake 0.5s infinite;
+        }
+
+        @keyframes coin-toss {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: translateY(-100px) scale(1.5);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(150px) scale(0.5);
+                opacity: 0;
+            }
+        }
+
+        .coin-animation {
+            position: absolute;
+            font-size: 2rem;
+            z-index: 10;
+            top: 50%;
+            left: 50%;
+            margin-left: -1rem;
+            pointer-events: none;
+            display: none;
+        }
+
+        .coin-animation.active {
+            display: block;
+            animation: coin-toss 0.8s ease-in forwards;
+        }
+
+        /* 結果モーダルの装飾 */
+        #resultModal .modal-content {
+            background: radial-gradient(circle at center, #fff 0%, #f0f0f0 100%);
+            border: 5px solid var(--gold);
+            border-radius: 24px;
+        }
+
+        .result-badge-img {
+            width: 150px;
+            height: 150px;
+            object-fit: contain;
+            margin: 20px auto;
+            filter: drop-shadow(0 0 20px rgba(212, 168, 83, 0.4));
+        }
+
+        .result-rarity {
+            font-weight: bold;
+            padding: 4px 15px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-bottom: 10px;
+            font-size: 0.8rem;
+        }
+
+        /* レアリティ別背景 */
+        .rarity-wood {
+            background: #d7ccc8;
+            color: #5d4037;
+        }
+
+        .rarity-stone {
+            background: #cfd8dc;
+            color: #455a64;
+        }
+
+        .rarity-bronze {
+            background: #ffe0b2;
+            color: #e65100;
+        }
+
+        .rarity-silver {
+            background: #f5f5f5;
+            color: #616161;
+        }
+
+        .rarity-gold {
+            background: linear-gradient(135deg, #fff9c4 0%, #fbc02d 100%);
+            color: #f57f17;
+        }
+
+        .rarity-platinum {
+            background: linear-gradient(135deg, #e1f5fe 0%, #b3e5fc 100%);
+            color: #0277bd;
+        }
+
+        .rarity-gem {
+            background: linear-gradient(135deg, #f3e5f5 0%, #ce93d8 100%);
+            color: #7b1fa2;
+        }
+
+        .odds-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+        }
+
+        .odds-category {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.5);
+            text-align: left;
+            margin-bottom: 5px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
     </style>
 </head>
 
@@ -97,8 +183,9 @@
             <p class="text-white-50">祈願符を捧げて、縁を授かりましょう</p>
         </header>
 
-        <div class="gacha-container">
-            <div id="osaisen-box-area" class="osaisen-box-wrapper">
+        <div class="gacha-container text-center">
+            <div id="osaisen-box-area" class="osaisen-box-wrapper mx-auto mb-4"
+                style="position: relative; width: fit-content;">
                 <div id="coin" class="coin-animation">🪙</div>
                 <div id="osaisen-box" style="font-size: 100px; cursor: default;">🧧</div>
             </div>
@@ -108,36 +195,40 @@
                 <p class="text-muted">祈願符1枚で1回、お賽銭を投げることができます。</p>
             </div>
 
-            <div class="ticket-balance">
-                <span class="ticket-icon">🧧</span>
-                <span>所持中の祈願符:</span>
-                <span id="ticket-count" class="ticket-count">- 枚</span>
+            <div
+                class="ticket-balance d-inline-flex align-items-center bg-dark bg-opacity-25 px-4 py-2 rounded-pill mb-4 border border-secondary border-opacity-25">
+                <span class="fs-4 me-2">🧧</span>
+                <span class="me-2 text-white-50">所持中の祈願符:</span>
+                <span id="ticket-count" class="fw-bold text-white fs-5">- 枚</span>
             </div>
 
-            <div class="mt-4">
+            <div class="mt-2">
                 <button id="draw-btn" class="gacha-btn" onclick="handleDraw()">
                     🙏 お賽銭を奉納する
                 </button>
             </div>
 
             <!-- 提供割合表示セクション -->
-            <div class="mt-4 text-center">
+            <div class="mt-5 text-center">
                 <a href="javascript:void(0)" class="text-white-50 small text-decoration-none" onclick="toggleOdds()">
-                    <i class="bi bi-info-circle me-1"></i>提供割合を確認する
+                    <i class="bi bi-info-circle me-1"></i> 提供割合を確認する
                 </a>
-                <div id="odds-area" class="mt-3 p-3 rounded" style="background: rgba(0,0,0,0.2); display: none;">
-                    <div id="odds-list" class="row g-2 justify-content-center">
-                        <!-- JSで動的に挿入 -->
+                <div id="odds-area" class="mt-4 p-4 rounded shadow-lg mx-auto"
+                    style="background: rgba(0,0,0,0.3); display: none; max-width: 600px; border: 1px solid rgba(255,255,255,0.1);">
+                    <div id="odds-list-badges" class="row g-2 mb-4">
+                        <div class="col-12 odds-category">📿 バッジ・引換券</div>
+                        <!-- JSでバッジ系を挿入 -->
                     </div>
-                    <div class="mt-2 x-small text-white-50">
-                        ※上記はバッジ抽選（30%）時の内訳です。残り70%は御神石（石）となります。
+                    <div id="odds-list-stones" class="row g-2">
+                        <div class="col-12 odds-category">💠 御神石（石）</div>
+                        <!-- JSで石系を挿入 -->
                     </div>
                 </div>
             </div>
 
-            <div class="admin-debug mt-4">
-                <p>管理者としてアクセス中</p>
-                <p class="small text-white-50">バッジ排出、重複所持の許可、レアリティ別重みに対応済みです。</p>
+            <div class="admin-debug mt-5 pt-4 border-top border-dark">
+                <p class="text-white-50">管理者としてアクセス中</p>
+                <p class="small text-white-50">バッジ排出、重複所持の許可、全体提供割合（%）表示に対応済みです。</p>
             </div>
         </div>
     </div>
@@ -169,6 +260,7 @@
     <script>
         let currentUser = null;
         let isDrawing = false;
+        let provisionData = null;
 
         document.addEventListener('DOMContentLoaded', async function () {
             initAccordionNav('../');
@@ -212,6 +304,85 @@
             btn.disabled = count <= 0;
         }
 
+        async function fetchProvisionRatio() {
+            try {
+                // 1. メイン重み (石 vs バッジ)
+                const { data: mainConfigs } = await supabaseClient.from('gacha_configs').select('name, weight').eq('category', 'main');
+                // 2. 石の内訳
+                const { data: stoneConfigs } = await supabaseClient.from('gacha_configs').select('name, weight').eq('category', 'stone_type');
+                // 3. レアリティの内訳
+                const { data: rarityThresholds } = await supabaseClient.from('rarity_thresholds').select('rarity_name, gacha_weight').gt('gacha_weight', 0);
+
+                const totalMain = mainConfigs.reduce((s, c) => s + c.weight, 0);
+                const badgeTotalWeight = mainConfigs.find(c => c.name === 'badge')?.weight || 0;
+                const stoneTotalWeight = mainConfigs.find(c => c.name === 'stone')?.weight || 0;
+
+                const badgeRatio = badgeTotalWeight / totalMain; // 例: 0.3
+                const stoneRatio = stoneTotalWeight / totalMain; // 例: 0.7
+
+                const totalRarityWeight = rarityThresholds.reduce((s, r) => s + r.gacha_weight, 0);
+                const totalStoneTypeWeight = stoneConfigs.reduce((s, c) => s + c.weight, 0);
+
+                provisionData = {
+                    badges: rarityThresholds.map(r => ({
+                        name: r.rarity_name,
+                        percent: ((r.gacha_weight / totalRarityWeight) * badgeRatio * 100).toFixed(2)
+                    })),
+                    stones: stoneConfigs.map(c => ({
+                        name: c.name,
+                        percent: ((c.weight / totalStoneTypeWeight) * stoneRatio * 100).toFixed(2)
+                    }))
+                };
+
+                renderOdds();
+            } catch (err) {
+                console.error('提供割合取得エラー:', err);
+            }
+        }
+
+        function renderOdds() {
+            if (!provisionData) return;
+
+            const badgeList = document.getElementById('odds-list-badges');
+            const stoneList = document.getElementById('odds-list-stones');
+
+            // 既存のカテゴリラベル以外をクリア
+            Array.from(badgeList.children).slice(1).forEach(el => el.remove());
+            Array.from(stoneList.children).slice(1).forEach(el => el.remove());
+
+            provisionData.badges.forEach(b => {
+                const div = document.createElement('div');
+                div.className = 'col-6 col-md-4';
+                div.innerHTML = `
+                    <div class="odds-item d-flex justify-content-between">
+                        <span class="text-white-50">${b.name}</span>
+                        <span style="color: var(--gold);">${b.percent}%</span>
+                    </div>`;
+                badgeList.appendChild(div);
+            });
+
+            provisionData.stones.forEach(s => {
+                const div = document.createElement('div');
+                div.className = 'col-6 col-md-4';
+                div.innerHTML = `
+                    <div class="odds-item d-flex justify-content-between">
+                        <span class="text-white-50">${s.name}</span>
+                        <span style="color: var(--gold);">${s.percent}%</span>
+                    </div>`;
+                stoneList.appendChild(div);
+            });
+        }
+
+        function toggleOdds() {
+            const area = document.getElementById('odds-area');
+            if (area.style.display === 'none') {
+                area.style.display = 'block';
+                if (!provisionData) fetchProvisionRatio();
+            } else {
+                area.style.display = 'none';
+            }
+        }
+
         async function handleDraw() {
             if (isDrawing) return;
             isDrawing = true;
@@ -231,79 +402,27 @@
                     box.classList.add('shaking');
                 }, 400);
 
-                // 3. RPC呼び出し（アニメーション中に並行して実行）
+                // 3. RPC呼び出し
                 const { data, error } = await supabaseClient.rpc('draw_gacha', {
                     p_user_id: currentUser.user_metadata.provider_id
                 });
 
-                // アニメーションを少し見せるために待機
+                // アニメーションを見せるための待機
                 await new Promise(resolve => setTimeout(resolve, 1500));
 
                 if (error) throw error;
                 if (!data.ok) throw new Error(data.error);
 
-                // 結果の表示
                 showResult(data);
 
             } catch (err) {
                 console.error('ガチャエラー:', err);
                 alert('奉納に失敗しました: ' + (err.message || '不明なエラー'));
             } finally {
-                // リセット
                 isDrawing = false;
                 coin.classList.remove('active');
                 box.classList.remove('shaking');
                 fetchTicketCount();
-            }
-        }
-
-        let rarityOdds = [];
-
-        async function fetchOdds() {
-            const { data, error } = await supabaseClient
-                .from('rarity_thresholds')
-                .select('rarity_name, gacha_weight')
-                .gt('gacha_weight', 0)
-                .order('threshold_value', { ascending: true });
-
-            if (error) {
-                console.error('排出率取得エラー:', error);
-                return;
-            }
-
-            rarityOdds = data;
-            renderOdds();
-        }
-
-        function renderOdds() {
-            const listEl = document.getElementById('odds-list');
-            const totalWeight = rarityOdds.reduce((sum, r) => sum + r.gacha_weight, 0);
-
-            if (totalWeight === 0) {
-                listEl.innerHTML = '<div class="text-white-50">設定なし</div>';
-                return;
-            }
-
-            listEl.innerHTML = rarityOdds.map(r => {
-                const percent = ((r.gacha_weight / totalWeight) * 100).toFixed(1);
-                return `
-                    <div class="col-6 col-md-4">
-                        <div class="d-flex justify-content-between small px-2">
-                            <span class="text-white">${r.rarity_name}</span>
-                            <span style="color: var(--gold);">${percent}%</span>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function toggleOdds() {
-            const area = document.getElementById('odds-area');
-            if (area.style.display === 'none') {
-                area.style.display = 'block';
-                if (rarityOdds.length === 0) fetchOdds();
-            } else {
-                area.style.display = 'none';
             }
         }
 
@@ -317,7 +436,6 @@
             imgEl.src = result.image_url || '../images/placeholder-badge.png';
             nameEl.textContent = result.name;
 
-            // レアリティ演出
             const rarity = result.rarity || '一般';
             rarityEl.textContent = rarity;
             rarityEl.className = 'result-rarity ' + getRarityClass(rarity);
@@ -327,8 +445,8 @@
                 msgEl.textContent = '換金用の価値ある石です。所持品から確認・売却できます。';
             } else if (result.type === 'exchange_ticket') {
                 headerEl.innerHTML = '<span class="fs-4 fw-bold">🎫 引換券を授かりました</span>';
-                msgEl.textContent = `該当レアリティのバッジが不在のため、${rarity}引換券を獲得しました。`;
-                imgEl.src = 'https://cdn-icons-png.flaticon.com/512/812/812328.png'; // チケット用アイコン
+                msgEl.textContent = `該当レアリティのバッジが不在だったため、${rarity}引換券を獲得しました。`;
+                imgEl.src = 'https://cdn-icons-png.flaticon.com/512/812/812328.png';
             } else {
                 headerEl.innerHTML = '<span class="fs-4 fw-bold">✨ 新しい縁を授かりました</span>';
                 msgEl.textContent = '新しいバッジを獲得しました！マイページや所持品から確認してください。';
