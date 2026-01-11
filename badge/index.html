@@ -55,44 +55,39 @@
             display: inline-block;
         }
 
-        /* ミュータント用オーラ - 下から立ち上る上昇演出（真円型） */
-        .badge-image-container.mutant-active::before {
-            content: '';
-            position: absolute;
-            bottom: -20px;
-            left: 50%;
-            width: 180px;
-            height: 250px;
-            transform: translateX(-50%);
-            background: linear-gradient(to top,
-                    transparent,
-                    rgba(180, 0, 180, 0.4) 20%,
-                    rgba(120, 0, 255, 0.6) 50%,
-                    rgba(255, 0, 150, 0.4) 80%,
-                    transparent);
-            border-radius: 50% 50% 0 0;
-            filter: blur(25px);
-            animation: auraRise 2s ease-in-out infinite;
-            z-index: 0;
-            opacity: 0.8;
-        }
-
+        /* ミュータント用オーラ - 背後で大きな泡（バブル）が上昇する演出 */
+        .badge-image-container.mutant-active::before,
         .badge-image-container.mutant-active::after {
             content: '';
             position: absolute;
-            bottom: -30px;
+            bottom: -50px;
             left: 50%;
-            width: 200px;
-            height: 300px;
+            width: 250px;
+            height: 400px;
             transform: translateX(-50%);
-            background: radial-gradient(circle at 50% 100%,
-                    rgba(150, 0, 255, 0.5) 0%,
-                    rgba(255, 0, 100, 0.3) 40%,
-                    transparent 70%);
-            border-radius: 50%;
-            filter: blur(35px);
-            animation: auraPulse 3s ease-in-out infinite alternate;
             z-index: 0;
+            pointer-events: none;
+            border-radius: 50% 50% 0 0;
+            filter: blur(35px);
+        }
+
+        /* オーラバブル・レイヤー1 */
+        .badge-image-container.mutant-active::before {
+            background-image:
+                radial-gradient(circle at 30% 80%, rgba(180, 0, 180, 0.6) 0%, transparent 40%),
+                radial-gradient(circle at 70% 60%, rgba(120, 0, 255, 0.5) 0%, transparent 45%),
+                radial-gradient(circle at 40% 40%, rgba(200, 0, 255, 0.4) 0%, transparent 50%);
+            animation: bubblesRise 4s linear infinite;
+        }
+
+        /* オーラバブル・レイヤー2 */
+        .badge-image-container.mutant-active::after {
+            background-image:
+                radial-gradient(circle at 60% 90%, rgba(255, 0, 150, 0.5) 0%, transparent 40%),
+                radial-gradient(circle at 20% 70%, rgba(180, 0, 255, 0.4) 0%, transparent 45%),
+                radial-gradient(circle at 80% 30%, rgba(120, 0, 255, 0.3) 0%, transparent 50%);
+            animation: bubblesRise 6s linear infinite reverse;
+            opacity: 0.7;
         }
 
         .badge-image-container.mutant-active .badge-image-large {
@@ -101,12 +96,11 @@
             background: transparent;
             box-shadow: none;
             border-radius: 50%;
-            /* 画像自体も円形として扱う */
-            filter: drop-shadow(0 0 15px rgba(200, 0, 200, 0.8)) drop-shadow(0 0 30px rgba(150, 0, 255, 0.5));
-            animation: badgeFloatRise 3s ease-in-out infinite;
+            filter: drop-shadow(0 0 15px rgba(200, 0, 200, 0.8)) drop-shadow(0 0 30px rgba(150, 0, 255, 0.4));
+            animation: badgeFloatSimple 4s ease-in-out infinite;
         }
 
-        /* キラエフェクト用オーバーレイ（真円型） */
+        /* キラエフェクト用オーバーレイ（画像前面：斜め光のみ） */
         .mutant-shine-overlay {
             position: absolute;
             top: 50%;
@@ -118,9 +112,8 @@
             z-index: 2;
             overflow: hidden;
             border-radius: 50% !important;
-            /* 強制的に円形にする */
-            -webkit-mask-image: radial-gradient(circle, black 60%, transparent 70%);
-            mask-image: radial-gradient(circle, black 60%, transparent 70%);
+            -webkit-mask-image: radial-gradient(circle, black 65%, transparent 70%);
+            mask-image: radial-gradient(circle, black 65%, transparent 70%);
         }
 
         .mutant-shine-overlay::before {
@@ -133,81 +126,36 @@
             background: linear-gradient(45deg,
                     transparent 45%,
                     rgba(255, 255, 255, 0.1) 48%,
-                    rgba(255, 255, 255, 0.9) 50%,
+                    rgba(255, 255, 255, 0.8) 50%,
                     rgba(255, 255, 255, 0.1) 52%,
                     transparent 55%);
-            filter: blur(12px);
-            animation: mutantShine 2.5s infinite linear;
+            filter: blur(8px);
+            animation: mutantShineSimple 3s infinite linear;
         }
 
-        /* 上昇するキラキラパーティクル */
-        .mutant-shine-overlay::after {
-            content: '';
-            position: absolute;
-            bottom: -20px;
-            left: 0;
-            width: 100%;
-            height: 150%;
-            background-image:
-                radial-gradient(circle, #fff 10%, transparent 20%),
-                radial-gradient(circle, #fff 10%, transparent 20%),
-                radial-gradient(circle, #fff 10%, transparent 20%);
-            background-size: 10px 10px, 15px 15px, 12px 12px;
-            background-repeat: repeat-y;
-            opacity: 0.6;
-            animation: mutantRiseParticles 4s linear infinite;
-        }
-
-        @keyframes auraRise {
+        @keyframes bubblesRise {
             0% {
-                transform: translateX(-50%) translateY(10px) scaleY(0.8);
-                opacity: 0.5;
-            }
-
-            50% {
-                transform: translateX(-50%) translateY(-5px) scaleY(1.1);
-                opacity: 1;
-            }
-
-            100% {
-                transform: translateX(-50%) translateY(-15px) scaleY(1.2);
-                opacity: 0;
-            }
-        }
-
-        @keyframes auraPulse {
-            0% {
-                transform: translateX(-50%) scale(0.9);
-                opacity: 0.4;
-            }
-
-            100% {
-                transform: translateX(-50%) scale(1.1);
-                opacity: 0.8;
-            }
-        }
-
-        @keyframes mutantRiseParticles {
-            0% {
-                background-position: 20% 100%, 80% 90%, 50% 110%;
+                background-position: 0% 100%;
+                transform: translateX(-50%) translateY(20px) scale(0.8);
                 opacity: 0;
             }
 
-            20% {
+            10% {
                 opacity: 0.8;
             }
 
-            80% {
+            90% {
                 opacity: 0.8;
             }
 
             100% {
-                background-position: 25% -10%, 75% -20%, 45% 0%;
+                background-position: 0% -100%;
+                transform: translateX(-50%) translateY(-100px) scale(1.2);
                 opacity: 0;
             }
         }
 
-        @keyframes mutantShine {
+        @keyframes mutantShineSimple {
             0% {
                 transform: translate(-30%, -30%) rotate(45deg);
             }
@@ -217,7 +165,7 @@
             }
         }
 
-        @keyframes badgeFloatRise {
+        @keyframes badgeFloatSimple {
 
             0%,
             100% {
@@ -225,48 +173,7 @@
             }
 
             50% {
-                transform: translateY(-10px);
-            }
-        }
-
-        @keyframes smokeFloat2 {
-
-            0%,
-            100% {
-                transform: translate(-50%, -50%) scale(1) rotate(0deg);
-                opacity: 0.75;
-            }
-
-            33% {
-                transform: translate(-55%, -44%) scale(1.15) rotate(-7deg);
-                opacity: 0.95;
-            }
-
-            66% {
-                transform: translate(-45%, -55%) scale(0.92) rotate(10deg);
-                opacity: 0.85;
-            }
-        }
-
-        @keyframes badgePulse {
-            0% {
-                filter: drop-shadow(0 0 12px rgba(200, 0, 200, 0.8)) drop-shadow(0 0 25px rgba(150, 0, 255, 0.6)) drop-shadow(0 0 40px rgba(255, 0, 150, 0.5));
-            }
-
-            100% {
-                filter: drop-shadow(0 0 18px rgba(255, 0, 200, 0.9)) drop-shadow(0 0 35px rgba(200, 0, 255, 0.7)) drop-shadow(0 0 55px rgba(255, 0, 180, 0.6));
-            }
-        }
-
-        @keyframes badgeFloat {
-
-            0%,
-            100% {
-                transform: translateY(0);
-            }
-
-            50% {
-                transform: translateY(-5px);
+                transform: translateY(-8px);
             }
         }
 
