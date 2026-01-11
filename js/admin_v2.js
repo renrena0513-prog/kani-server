@@ -364,6 +364,19 @@ async function editMatch(matchId) {
             }
         });
 
+        // 試合方式に応じたチーム名入力欄の表示切替
+        const tournamentTypeField = document.getElementById('tournament_type');
+        const updateTeamVisibility = () => {
+            const isPersonal = tournamentTypeField.value.includes('個人');
+            document.querySelectorAll('.player-team-name').forEach(input => {
+                const col = input.closest('.mb-2');
+                if (col) col.style.display = isPersonal ? 'none' : 'block';
+            });
+        };
+        tournamentTypeField.removeEventListener('change', updateTeamVisibility);
+        tournamentTypeField.addEventListener('change', updateTeamVisibility);
+        updateTeamVisibility();
+
         recordModal.show();
     } catch (err) {
         alert('データ取得エラー: ' + err.message);
@@ -414,6 +427,7 @@ async function saveRecord() {
     const cards = Array.from(document.querySelectorAll('.player-edit-card')).filter(c => c.style.display !== 'none');
     const records = cards.map(card => {
         const id = card.querySelector('.player-record-id').value;
+        const isPersonal = tournamentType.includes('個人');
         const data = {
             match_id: matchId,
             event_datetime: eventDatetime,
@@ -425,7 +439,7 @@ async function saveRecord() {
             opt_tobi: optTobi,
             opt_yakitori: optYakitori,
             account_name: card.querySelector('.player-account-name').value,
-            team_name: card.querySelector('.player-team-name').value,
+            team_name: isPersonal ? null : card.querySelector('.player-team-name').value,
             raw_points: parseInt(card.querySelector('.player-raw-points').value) || 0,
             final_score: parseFloat(card.querySelector('.player-final-score').value) || 0,
             rank: parseInt(card.querySelector('.player-rank').value) || null,
