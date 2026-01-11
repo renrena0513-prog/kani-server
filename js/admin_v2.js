@@ -763,6 +763,31 @@ async function fetchActivityLogs(page = 1) {
 
     const listBody = document.getElementById('logs-list-body');
     if (listBody) {
+        // テーブルヘッダーにチェックボックスを追加
+        const thead = listBody.closest('table')?.querySelector('thead tr');
+        if (thead && !thead.querySelector('.log-select-all')) {
+            const th = document.createElement('th');
+            th.innerHTML = `<input type="checkbox" class="form-check-input log-select-all" onchange="toggleAllLogs(this)">`;
+            thead.insertBefore(th, thead.firstChild);
+        }
+
+        // 一括操作ボタンを追加
+        const container = listBody.closest('.card-body') || listBody.parentElement;
+        let bulkActions = document.getElementById('bulk-log-actions');
+        if (!bulkActions) {
+            bulkActions = document.createElement('div');
+            bulkActions.id = 'bulk-log-actions';
+            bulkActions.className = 'd-flex gap-2 mb-3 align-items-center';
+            bulkActions.innerHTML = `
+                <span class="text-muted small" id="selected-logs-count">0件選択中</span>
+                <button class="btn btn-sm btn-danger" onclick="revertSelectedLogs()" id="bulk-revert-btn" disabled>
+                    🗑️ 選択を一括取消
+                </button>
+            `;
+            const table = listBody.closest('table');
+            if (table) table.parentElement.insertBefore(bulkActions, table);
+        }
+
         listBody.innerHTML = logs.map(log => {
             const u = profilesCache[log.user_id] || { name: '不明', avatar: '' };
             const target = log.target_user_id ? (profilesCache[log.target_user_id] || { name: '不明' }) : null;
@@ -794,6 +819,9 @@ async function fetchActivityLogs(page = 1) {
             return `
                 <tr>
                     <td>
+                        <input type="checkbox" class="form-check-input log-checkbox" value="${log.id}" onchange="updateSelectedCount()">
+                    </td>
+                    <td>
                         <div class="small">${new Date(log.created_at).toLocaleDateString('ja-JP')}</div>
                         <div class="small text-muted">${new Date(log.created_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}</div>
                     </td>
@@ -810,7 +838,7 @@ async function fetchActivityLogs(page = 1) {
                     </td>
                     <td class="small text-muted">${targetDisplay}</td>
                     <td class="fw-bold ${amountColor}">${amountDisplay}</td>
-                    <td><button onclick="revertLog('${log.id}')" class="btn btn-sm btn-outline-danger">🔄 取消</button></td>
+                    <td><button onclick="revertLog('${log.id}')" class="btn btn-sm btn-outline-danger">🔄</button></td>
                 </tr>
             `;
         }).join('');
@@ -854,4 +882,55 @@ async function revertLog(logId) {
         alert('エラーが発生しました: ' + err.message);
     }
     finally { toggleLoading(false); }
+}
+
+// 全選択/全解除
+function toggleAllLogs(selectAllCheckbox) {
+    const checkboxes = document.querySelectorAll('.log-checkbox');
+    checkboxes.forEach(cb => cb.checked = selectAllCheckbox.checked);
+    updateSelectedCount();
+}
+
+// 選択件数の更新
+function updateSelectedCount() {
+    const checkboxes = document.querySelectorAll('.log-checkbox:checked');
+    const count = checkboxes.length;
+    const countEl = document.getElementById('selected-logs-count');
+    const btn = document.getElementById('bulk-revert-btn');
+
+    if (countEl) countEl.textContent = `${count}件選択中`;
+    if (btn) btn.disabled = count === 0;
+}
+
+// 選択したログを一括取り消し
+async function revertSelectedLogs() {
+    const checkboxes = document.querySelectorAll('.log-checkbox:checked');
+    const logIds = Array.from(checkboxes).map(cb => cb.value);
+
+    if (logIds.length === 0) {
+        alert('取り消すログを選択してください');
+        return;
+    }
+
+    if (!confirm(`${logIds.length}件のログを取り消しますか？\nこの操作は元に戻せません。`)) return;
+
+    toggleLoading(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const logId of logIds) {
+        try {
+            const { data, error } = await supabaseClient.rpc('revert_activity_log', { p_log_id: logId });
+            if (error) throw error;
+            if (data?.ok) successCount++;
+            else errorCount++;
+        } catch (err) {
+            console.error('一括取消エラー:', logId, err);
+            errorCount++;
+        }
+    }
+
+    toggleLoading(false);
+    alert(`完了: ${successCount}件成功、${errorCount}件失敗`);
+    fetchActivityLogs();
 }
