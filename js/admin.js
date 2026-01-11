@@ -1710,8 +1710,8 @@ async function fetchActivityLogs() {
             .from('activity_logs')
             .select(`
                 *,
-                user:profiles!activity_logs_user_id_fkey(account_name, discord_account),
-                target:profiles!activity_logs_target_user_id_fkey(account_name, discord_account),
+                user:profiles!activity_logs_user_id_fkey(account_name, avatar_url, discord_account),
+                target:profiles!activity_logs_target_user_id_fkey(account_name, avatar_url, discord_account),
                 badge:badges!activity_logs_badge_id_fkey(name)
             `)
             .order('created_at', { ascending: false })
@@ -1767,38 +1767,50 @@ function renderActivityLogs(logs) {
         const actionLabel = actionMap[log.action_type] || log.action_type;
 
         // ユーザー表示
-        const userName = log.user?.account_name || log.user_id || '不明';
-        const targetName = log.target?.account_name || log.target_user_id || '';
+        const userName = log.user?.account_name || '不明';
+        const userAvatar = log.user?.avatar_url || '';
+        const targetName = log.target?.account_name || '';
+        const targetAvatar = log.target?.avatar_url || '';
 
         // 内容・対象の構築
         let detailHtml = '';
         if (log.badge) {
-            detailHtml = `<div>バッジ: <strong>${log.badge.name}</strong></div>`;
+            detailHtml = `<div class="mb-1">バッジ: <strong>${log.badge.name}</strong></div>`;
         } else if (log.details && log.details.badge_name) {
-            detailHtml = `<div><strong>${log.details.badge_name}</strong></div>`;
+            detailHtml = `<div class="mb-1"><strong>${log.details.badge_name}</strong></div>`;
         }
 
         if (targetName) {
-            detailHtml += `<div class="small text-muted">相手: ${targetName}</div>`;
+            detailHtml += `
+                <div class=\"d-flex align-items-center gap-1 mt-1 p-1 rounded\" style=\"background: #f8f9fa; border: 1px solid #eee;\">
+                    <span class=\"small text-muted me-1\">相手:</span>
+                    <img src=\"${targetAvatar}\" class=\"rounded-circle\" style=\"width: 20px; height: 20px;\" onerror=\"this.style.display='none'\">
+                    <span class=\"small fw-bold\">${targetName}</span>
+                </div>`;
         }
 
         if (log.details && (log.details.method || log.details.ticket_rarity)) {
             const method = log.details.method || (log.details.ticket_rarity ? `${log.details.ticket_rarity}引換券` : '');
-            if (method) detailHtml += `<div class="small text-muted">方法: ${method}</div>`;
+            if (method) detailHtml += `<div class="small text-muted mt-1" style="font-size: 0.75rem;">方法: ${method}</div>`;
         }
 
         const amountColor = log.amount > 0 ? 'text-success' : (log.amount < 0 ? 'text-danger' : '');
         const amountStr = log.amount !== null ? `${log.amount > 0 ? '+' : ''}${log.amount.toLocaleString()}` : '-';
 
         tr.innerHTML = `
-            <td class="small">${dateStr}</td>
+            <td class="small text-muted">${dateStr}</td>
             <td>
-                <div class="fw-bold text-truncate" style="max-width: 150px;">${userName}</div>
-                <div class="small text-muted" style="font-size: 0.7rem;">${log.user_id}</div>
+                <div class="d-flex align-items-center gap-2">
+                    <img src="${userAvatar}" class="rounded-circle border" style="width: 32px; height: 32px;" onerror="this.src='../assets/default-avatar.png'">
+                    <div>
+                        <div class="fw-bold text-truncate" style="max-width: 120px;">${userName}</div>
+                        <div class="small text-muted" style="font-size: 0.65rem;">${log.user_id}</div>
+                    </div>
+                </div>
             </td>
-            <td><span class="badge bg-secondary">${actionLabel}</span></td>
+            <td><span class="badge bg-secondary font-monospace">${actionLabel}</span></td>
             <td>${detailHtml}</td>
-            <td class="fw-bold ${amountColor}">${amountStr}</td>
+            <td class="fw-bold fs-6 ${amountColor}">${amountStr}</td>
             <td>
                 <button onclick="revertLog(${log.id})" class="btn btn-sm btn-outline-danger" title="この操作を取り消す">
                     ↩️ 取消
