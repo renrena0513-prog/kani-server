@@ -55,24 +55,23 @@
             display: inline-block;
         }
 
-        /* ミュータント用オーラ */
+        /* ミュータント用オーラ - モアモアした煙エフェクト */
         .badge-image-container.mutant-active::before {
             content: '';
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 180px;
-            height: 180px;
+            width: 220px;
+            height: 220px;
             transform: translate(-50%, -50%);
-            background: radial-gradient(circle,
-                    rgba(139, 0, 139, 0.6) 0%,
-                    rgba(75, 0, 130, 0.4) 30%,
-                    rgba(128, 0, 128, 0.2) 50%,
-                    transparent 70%);
+            background:
+                radial-gradient(ellipse 80% 60% at 50% 40%, rgba(180, 0, 180, 0.5) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 80% at 40% 60%, rgba(100, 0, 200, 0.4) 0%, transparent 55%),
+                radial-gradient(ellipse 70% 70% at 60% 50%, rgba(200, 0, 100, 0.4) 0%, transparent 50%);
             border-radius: 50%;
-            animation: mutantPulse 2s ease-in-out infinite, mutantRotate 8s linear infinite;
+            animation: smokeFloat1 4s ease-in-out infinite;
             z-index: 0;
-            filter: blur(15px);
+            filter: blur(25px);
         }
 
         .badge-image-container.mutant-active::after {
@@ -80,79 +79,80 @@
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 200px;
-            height: 200px;
+            width: 250px;
+            height: 250px;
             transform: translate(-50%, -50%);
             background:
-                radial-gradient(ellipse at 30% 20%, rgba(255, 0, 100, 0.3) 0%, transparent 50%),
-                radial-gradient(ellipse at 70% 80%, rgba(100, 0, 255, 0.3) 0%, transparent 50%);
+                radial-gradient(ellipse 50% 70% at 30% 30%, rgba(150, 0, 255, 0.35) 0%, transparent 50%),
+                radial-gradient(ellipse 70% 50% at 70% 70%, rgba(255, 0, 150, 0.35) 0%, transparent 50%),
+                radial-gradient(ellipse 60% 60% at 50% 50%, rgba(100, 0, 150, 0.25) 0%, transparent 60%);
             border-radius: 50%;
-            animation: mutantWave 3s ease-in-out infinite alternate;
+            animation: smokeFloat2 5s ease-in-out infinite reverse;
             z-index: 0;
-            filter: blur(20px);
+            filter: blur(30px);
         }
 
         .badge-image-container.mutant-active .badge-image-large {
             position: relative;
             z-index: 1;
-            background: rgba(50, 0, 50, 0.3);
-            box-shadow:
-                0 0 20px rgba(139, 0, 139, 0.5),
-                0 0 40px rgba(75, 0, 130, 0.3),
-                0 0 60px rgba(128, 0, 128, 0.2),
-                inset 0 0 20px rgba(255, 0, 100, 0.1);
-            animation: mutantGlow 1.5s ease-in-out infinite alternate;
+            background: transparent;
+            box-shadow: none;
+            filter: drop-shadow(0 0 8px rgba(180, 0, 180, 0.6)) drop-shadow(0 0 15px rgba(100, 0, 200, 0.4)) drop-shadow(0 0 25px rgba(200, 0, 100, 0.3));
+            animation: badgeFloat 3s ease-in-out infinite;
         }
 
-        @keyframes mutantPulse {
+        @keyframes smokeFloat1 {
 
             0%,
             100% {
-                transform: translate(-50%, -50%) scale(1);
-                opacity: 0.8;
+                transform: translate(-50%, -50%) scale(1) rotate(0deg);
+                opacity: 0.7;
+            }
+
+            25% {
+                transform: translate(-48%, -52%) scale(1.05) rotate(5deg);
+                opacity: 0.9;
             }
 
             50% {
-                transform: translate(-50%, -50%) scale(1.15);
-                opacity: 1;
+                transform: translate(-52%, -48%) scale(1.1) rotate(-3deg);
+                opacity: 0.8;
+            }
+
+            75% {
+                transform: translate(-50%, -53%) scale(1.02) rotate(2deg);
+                opacity: 0.85;
             }
         }
 
-        @keyframes mutantRotate {
-            0% {
-                transform: translate(-50%, -50%) rotate(0deg);
-            }
+        @keyframes smokeFloat2 {
 
+            0%,
             100% {
-                transform: translate(-50%, -50%) rotate(360deg);
-            }
-        }
-
-        @keyframes mutantWave {
-            0% {
-                transform: translate(-50%, -50%) scale(0.9) rotate(0deg);
+                transform: translate(-50%, -50%) scale(1) rotate(0deg);
                 opacity: 0.6;
             }
 
-            100% {
-                transform: translate(-50%, -50%) scale(1.1) rotate(180deg);
-                opacity: 0.9;
+            33% {
+                transform: translate(-52%, -47%) scale(1.08) rotate(-4deg);
+                opacity: 0.8;
+            }
+
+            66% {
+                transform: translate(-48%, -52%) scale(0.95) rotate(6deg);
+                opacity: 0.7;
             }
         }
 
-        @keyframes mutantGlow {
-            0% {
-                box-shadow:
-                    0 0 20px rgba(139, 0, 139, 0.5),
-                    0 0 40px rgba(75, 0, 130, 0.3),
-                    0 0 60px rgba(128, 0, 128, 0.2);
+        @keyframes badgeFloat {
+
+            0%,
+            100% {
+                transform: translateY(0);
             }
 
-            100% {
-                box-shadow:
-                    0 0 30px rgba(255, 0, 100, 0.6),
-                    0 0 50px rgba(139, 0, 139, 0.4),
-                    0 0 80px rgba(75, 0, 130, 0.3);
+            50% {
+                transform: translateY(-5px);
             }
         }
 
