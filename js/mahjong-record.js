@@ -474,30 +474,27 @@ async function submitScores() {
         }
 
         // ガチャチケット報酬の判定・付与
-        const rewardedUsers = [];
-        const rewardDetails = [];
+        const ticketRewardsMap = {}; // Discord通知用: { discord_user_id: count }
 
         for (const player of dataToInsert) {
             if (!player.discord_user_id) continue;
 
             let ticketReward = 0;
-            let reasons = [];
 
             // 参加者報酬（5%）
             if (Math.random() < 0.05) {
                 ticketReward += 1;
-                reasons.push('対局参加報酬');
             }
 
             // 記録者報酬（10%）- 本人が対局に参加している場合
             if (player.discord_user_id === submittedBy) {
                 if (Math.random() < 0.10) {
                     ticketReward += 1;
-                    reasons.push('記録者報酬');
                 }
             }
 
             if (ticketReward > 0) {
+                ticketRewardsMap[player.discord_user_id] = ticketReward;
                 try {
                     // プロフィールのガチャチケットを増やす
                     const { data: profile } = await supabaseClient
@@ -519,29 +516,22 @@ async function submitScores() {
                         details: {
                             type: 'gacha_ticket',
                             amount: ticketReward,
-                            reasons: reasons,
                             match_id: matchId
                         }
                     });
 
-                    rewardedUsers.push(player.account_name);
-                    rewardDetails.push(`${player.account_name} (+${ticketReward}枚: ${reasons.join(' & ')})`);
-                    console.log(`${player.account_name} にガチャチケット ${ticketReward} 枚を付与しました (${reasons.join(', ')})`);
+                    console.log(`${player.account_name} にガチャチケット ${ticketReward} 枚を付与しました`);
                 } catch (ticketErr) {
                     console.error(`チケット付与エラー (${player.account_name}):`, ticketErr);
                 }
             }
         }
 
-        let successMsg = 'スコアを送信しました！コインが各プレイヤーに付与されました。';
-        if (rewardedUsers.length > 0) {
-            successMsg += '\n\n🎫 ガチャチケット獲得！\n' + rewardDetails.join('\n');
-        }
-        alert(successMsg);
+        alert('スコアを送信しました！コインが各プレイヤーに付与されました。');
 
         // Discord通知を送信
         if (typeof DISCORD_WEBHOOK_URL !== 'undefined' && DISCORD_WEBHOOK_URL) {
-            await sendDiscordNotification(dataToInsert, isTobiOn, isYakitoriOn, rewardDetails);
+            await sendDiscordNotification(dataToInsert, isTobiOn, isYakitoriOn, ticketRewardsMap);
         }
 
         window.location.href = './index.html'; // ランキングに戻る
@@ -558,9 +548,9 @@ async function submitScores() {
  * @param {Array} matchData 挿入された試合結果データ
  * @param {boolean} isTobiOn 飛び賞設定
  * @param {boolean} isYakitoriOn やきとり設定
- * @param {Array} rewardedDetails チケット報酬の詳細テキスト
+ * @param {Object} ticketRewardsMap チケット獲得情報のマップ { discordUserId: count }
  */
-async function sendDiscordNotification(matchData, isTobiOn, isYakitoriOn, rewardedDetails = []) {
+async function sendDiscordNotification(matchData, isTobiOn, isYakitoriOn, ticketRewardsMap = {}) {
     if (!matchData || matchData.length === 0) return;
 
     const first = matchData[0];
@@ -591,9 +581,11 @@ async function sendDiscordNotification(matchData, isTobiOn, isYakitoriOn, reward
         }
 
         const reward = 1 + scoreBonus + rankBonus;
+        const tickets = ticketRewardsMap[p.discord_user_id] || 0;
+        const rewardText = `💰+${reward}${tickets > 0 ? ` 🎫+${tickets}` : ''}`;
 
         return `${medal} **${p.rank}位**: ${nameDisplay}${teamInfo}\n` +
-            `　　 \`${p.raw_points.toLocaleString()}点\` ➡ **${scoreStr} pts** (💰+${reward})\n`; // 報酬コインを表示
+            `　　 \`${p.raw_points.toLocaleString()}点\` ➡ **${scoreStr} pts** (${rewardText})\n`; // 報酬を表示
     }).join('\n');
 
     // ルール情報の取得
@@ -607,9 +599,7 @@ async function sendDiscordNotification(matchData, isTobiOn, isYakitoriOn, reward
 
     const embed = {
         title: `🀄 ${matchType} (${mode})　結果`, // 「個人戦 (三麻)　結果」の形式に変更
-        description: scoreDisplay +
-            (rewardedDetails.length > 0 ? '\n🎫 **ガチャチケット獲得！**\n' + rewardedDetails.map(d => `・${d}`).join('\n') : '') +
-            '\n━━━━━━━━━━━━━━━━',
+        description: scoreDisplay + '\n━━━━━━━━━━━━━━━━',
         color: 0x2ecc71, // 鮮やかな緑色
         fields: [
             {
