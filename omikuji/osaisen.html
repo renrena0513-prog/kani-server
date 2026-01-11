@@ -114,15 +114,30 @@
                 <span id="ticket-count" class="ticket-count">- 枚</span>
             </div>
 
-            <div class="mt-3">
+            <div class="mt-4">
                 <button id="draw-btn" class="gacha-btn" onclick="handleDraw()">
                     🙏 お賽銭を奉納する
                 </button>
             </div>
 
-            <div class="admin-debug">
+            <!-- 提供割合表示セクション -->
+            <div class="mt-4 text-center">
+                <a href="javascript:void(0)" class="text-white-50 small text-decoration-none" onclick="toggleOdds()">
+                    <i class="bi bi-info-circle me-1"></i>提供割合を確認する
+                </a>
+                <div id="odds-area" class="mt-3 p-3 rounded" style="background: rgba(0,0,0,0.2); display: none;">
+                    <div id="odds-list" class="row g-2 justify-content-center">
+                        <!-- JSで動的に挿入 -->
+                    </div>
+                    <div class="mt-2 x-small text-white-50">
+                        ※上記はバッジ抽選（30%）時の内訳です。残り70%は御神石（石）となります。
+                    </div>
+                </div>
+            </div>
+
+            <div class="admin-debug mt-4">
                 <p>管理者としてアクセス中</p>
-                <p>※排出対象のバッジに <code>is_gacha_eligible = TRUE</code> を設定している必要があります。</p>
+                <p class="small text-white-50">バッジ排出、重複所持の許可、レアリティ別重みに対応済みです。</p>
             </div>
         </div>
     </div>
@@ -145,7 +160,6 @@
                 </button>
             </div>
         </div>
-    </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -243,6 +257,56 @@
             }
         }
 
+        let rarityOdds = [];
+
+        async function fetchOdds() {
+            const { data, error } = await supabaseClient
+                .from('rarity_thresholds')
+                .select('rarity_name, gacha_weight')
+                .gt('gacha_weight', 0)
+                .order('threshold_value', { ascending: true });
+
+            if (error) {
+                console.error('排出率取得エラー:', error);
+                return;
+            }
+
+            rarityOdds = data;
+            renderOdds();
+        }
+
+        function renderOdds() {
+            const listEl = document.getElementById('odds-list');
+            const totalWeight = rarityOdds.reduce((sum, r) => sum + r.gacha_weight, 0);
+
+            if (totalWeight === 0) {
+                listEl.innerHTML = '<div class="text-white-50">設定なし</div>';
+                return;
+            }
+
+            listEl.innerHTML = rarityOdds.map(r => {
+                const percent = ((r.gacha_weight / totalWeight) * 100).toFixed(1);
+                return `
+                    <div class="col-6 col-md-4">
+                        <div class="d-flex justify-content-between small px-2">
+                            <span class="text-white">${r.rarity_name}</span>
+                            <span style="color: var(--gold);">${percent}%</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleOdds() {
+            const area = document.getElementById('odds-area');
+            if (area.style.display === 'none') {
+                area.style.display = 'block';
+                if (rarityOdds.length === 0) fetchOdds();
+            } else {
+                area.style.display = 'none';
+            }
+        }
+
         function showResult(result) {
             const imgEl = document.getElementById('result-img');
             const nameEl = document.getElementById('result-name');
@@ -262,12 +326,12 @@
                 headerEl.innerHTML = '<span class="fs-4 fw-bold">💠 換金できる石を授かりました</span>';
                 msgEl.textContent = '換金用の価値ある石です。所持品から確認・売却できます。';
             } else if (result.type === 'exchange_ticket') {
-                headerEl.innerHTML = '<span class="fs-4 fw-bold">🎫 引き換え券を獲得しました</span>';
-                msgEl.textContent = `既に「${result.name}」をお持ちのため、${rarity}引換券に変換されました。`;
+                headerEl.innerHTML = '<span class="fs-4 fw-bold">🎫 引換券を授かりました</span>';
+                msgEl.textContent = `該当レアリティのバッジが不在のため、${rarity}引換券を獲得しました。`;
                 imgEl.src = 'https://cdn-icons-png.flaticon.com/512/812/812328.png'; // チケット用アイコン
             } else {
                 headerEl.innerHTML = '<span class="fs-4 fw-bold">✨ 新しい縁を授かりました</span>';
-                msgEl.textContent = '新しいバッジを獲得しました！マイページで確認してください。';
+                msgEl.textContent = '新しいバッジを獲得しました！マイページや所持品から確認してください。';
             }
 
             const modal = new bootstrap.Modal(document.getElementById('resultModal'));
