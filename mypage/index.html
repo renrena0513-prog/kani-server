@@ -1704,7 +1704,13 @@
                     combined.push({
                         action_type: 'mahjong', amount: null, match_id: m.match_id,
                         timestamp: new Date(m.event_datetime),
-                        details: { rank: m.rank, final_score: m.final_score, mode: m.mahjong_mode },
+                        details: {
+                            rank: m.rank,
+                            final_score: m.final_score,
+                            mode: m.mahjong_mode,
+                            tournament_type: m.tournament_type,
+                            match_mode: m.match_mode
+                        },
                         isMatch: true
                     });
                 });
@@ -1774,7 +1780,21 @@
                         const rank = log.details?.rank || '-';
                         const score = log.details?.final_score || '0';
                         const mode = log.details?.mode || '';
-                        detailsStr = `<span class="badge bg-light text-dark shadow-sm">${mode} ${rank}位 (${score}pts)</span>`;
+                        const tType = log.details?.tournament_type || '';
+                        const mMode = log.details?.match_mode || '';
+
+                        // 大会種別の表示用ラベル
+                        const tLabel = mMode ? `${mMode}` : (tType.includes('個人') ? '個人戦' : (tType.includes('団体') ? '団体戦' : ''));
+                        const tPrefix = tLabel ? `<span class="text-muted small me-1">[${tLabel}]</span>` : '';
+
+                        detailsStr = `
+                            <div class="d-inline-flex align-items-center flex-wrap">
+                                ${tPrefix}
+                                <span class="fw-bold text-dark me-2">${mode}</span>
+                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 me-2" style="font-size: 0.8rem;">${rank}位</span>
+                                <span class="text-secondary small">(${score >= 0 ? '+' : ''}${score} pts)</span>
+                            </div>
+                        `;
                     } else if (log.action_type === 'transfer_send') {
                         detailsStr = `➡ ${otherHtml} への送金`;
                     } else if (log.action_type === 'transfer_receive') {
