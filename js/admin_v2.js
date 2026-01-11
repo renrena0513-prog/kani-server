@@ -335,12 +335,15 @@ async function editMatch(matchId) {
         document.getElementById('recordModalLabel').textContent = '大会記録 編集';
         document.getElementById('match-id').value = matchId;
 
+        // ドロップダウンの初期化
+        await populateDropdowns();
+
         const first = records[0];
         document.getElementById('event_datetime').value = new Date(first.event_datetime).toISOString().slice(0, 16);
         document.getElementById('tournament_type').value = first.tournament_type || '';
         document.getElementById('mahjong_mode').value = first.mahjong_mode || '四麻';
         document.getElementById('match_mode').value = first.match_mode || '東風戦';
-        document.getElementById('dist_points').value = first.dist_points || 25000;
+        document.getElementById('dist_points').value = first.raw_points || 25000;
         document.getElementById('opt_tobi').checked = !!first.opt_tobi;
         document.getElementById('opt_yakitori').checked = !!first.opt_yakitori;
         document.getElementById('hand_count').value = first.hand_count || '';
@@ -356,11 +359,15 @@ async function editMatch(matchId) {
                 card.querySelector('.player-account-name').value = r.account_name || '';
                 card.querySelector('.player-team-name').value = r.team_name || '';
                 card.querySelector('.player-raw-points').value = r.raw_points || 0;
-                card.querySelector('.player-final-score').value = r.final_score || 0;
-                card.querySelector('.player-rank').value = r.rank || '';
                 card.querySelector('.player-win-count').value = r.win_count || 0;
                 card.querySelector('.player-deal-in-count').value = r.deal_in_count || 0;
                 card.querySelector('.player-discord-id').value = r.discord_user_id || '';
+
+                // 旧報酬計算用に記録
+                card.dataset.originalScore = r.final_score || 0;
+                card.dataset.originalDiscordId = r.discord_user_id || '';
+
+                updateDiscordDisplay(card);
             }
         });
 
@@ -368,14 +375,18 @@ async function editMatch(matchId) {
         const tournamentTypeField = document.getElementById('tournament_type');
         const updateTeamVisibility = () => {
             const isPersonal = tournamentTypeField.value.includes('個人');
-            document.querySelectorAll('.player-team-name').forEach(input => {
-                const col = input.closest('.mb-2');
+            document.querySelectorAll('.player-team-name').forEach(select => {
+                const col = select.closest('.col-6');
                 if (col) col.style.display = isPersonal ? 'none' : 'block';
+                if (isPersonal) select.value = "";
             });
         };
-        tournamentTypeField.removeEventListener('change', updateTeamVisibility);
         tournamentTypeField.addEventListener('change', updateTeamVisibility);
         updateTeamVisibility();
+
+        // リアルタイム計算のセットアップ
+        setupAutoCalculation();
+        calculateLiveScore();
 
         recordModal.show();
     } catch (err) {
@@ -385,80 +396,307 @@ async function editMatch(matchId) {
     }
 }
 
-function calculateFinalScores() {
-    const mahjongMode = document.getElementById('mahjong_mode').value;
-    const distPoints = parseInt(document.getElementById('dist_points').value) || 25000;
-    const cards = Array.from(document.querySelectorAll('.player-edit-card')).filter(c => c.style.display !== 'none');
+/**
+ * ユーザーとチームのプルダウンを初期化
+ */
+async function populateDropdowns() {
+    try {
+        const [pRes, tRes] = await Promise.all([
+            supabaseClient.from('profiles').select('account_name, discord_user_id').order('account_name'),
+            supabaseClient.from('teams').select('team_name').order('team_name')
+        ]);
 
-    const players = cards.map(card => ({
-        rawPoints: parseInt(card.querySelector('.player-raw-points').value) || 0,
-        rankInput: card.querySelector('.player-rank'),
-        scoreEl: card.querySelector('.player-final-score')
-    }));
+        if (pRes.error) throw pRes.error;
+        if (tRes.error) throw tRes.error;
 
-    const sorted = players.slice().sort((a, b) => b.rawPoints - a.rawPoints);
-    players.forEach(p => {
-        p.tempRank = sorted.indexOf(p) + 1;
-        p.rankInput.value = p.tempRank;
+        const profiles = pRes.data;
+        const teams = tRes.data;
+
+        document.querySelectorAll('.player-edit-card').forEach(card => {
+            const accSelect = card.querySelector('.player-account-name');
+            const teamSelect = card.querySelector('.player-team-name');
+
+            const currentAcc = accSelect.value;
+            accSelect.innerHTML = '<option value="">選択...</option>';
+            profiles.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.account_name;
+                opt.textContent = p.account_name;
+                opt.dataset.discordId = p.discord_user_id;
+                accSelect.appendChild(opt);
+            });
+            accSelect.value = currentAcc;
+
+            const currentTeam = teamSelect.value;
+            teamSelect.innerHTML = '<option value="">(なし)</option>';
+            teams.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t.team_name;
+                opt.textContent = t.team_name;
+                teamSelect.appendChild(opt);
+            });
+            teamSelect.value = currentTeam;
+
+            accSelect.onchange = () => {
+                const selected = accSelect.options[accSelect.selectedIndex];
+                card.querySelector('.player-discord-id').value = selected?.dataset.discordId || "";
+                updateDiscordDisplay(card);
+            };
+        });
+    } catch (err) {
+        console.error('プルダウン初期化エラー:', err);
+    }
+}
+
+function updateDiscordDisplay(card) {
+    const id = card.querySelector('.player-discord-id').value;
+    const display = card.querySelector('.player-discord-id-display');
+    if (display) display.textContent = id ? `ID: ${id}` : 'ID: -';
+}
+
+/**
+ * 自動計算のリスナー登録
+ */
+function setupAutoCalculation() {
+    const inputs = [
+        '#dist_points', '#opt_tobi', '#opt_yakitori', '#mahjong_mode',
+        '.player-raw-points', '.player-win-count', '.player-deal-in-count'
+    ];
+
+    inputs.forEach(selector => {
+        document.querySelectorAll(selector).forEach(el => {
+            el.removeEventListener('input', calculateLiveScore);
+            el.addEventListener('input', calculateLiveScore);
+            el.removeEventListener('change', calculateLiveScore);
+            el.addEventListener('change', calculateLiveScore);
+        });
     });
 
-    let uma = [20, 10, -10, -20];
-    if (mahjongMode === '三麻') uma = [20, 0, -20];
-    else if (distPoints >= 30000) uma = [30, 10, -10, -30];
+    // モード切替で配給点を自動変更
+    const modeSelect = document.getElementById('mahjong_mode');
+    const onModeChange = (e) => {
+        const distSelect = document.getElementById('dist_points');
+        distSelect.value = (e.target.value === '三麻' ? '35000' : '25000');
+        calculateLiveScore();
+    };
+    modeSelect.removeEventListener('change', onModeChange);
+    modeSelect.addEventListener('change', onModeChange);
+}
 
+/**
+ * リアルタイムスコア計算
+ */
+function calculateLiveScore() {
+    const mode = document.getElementById('mahjong_mode').value;
+    const isSanma = mode === '三麻';
+    const distPoints = parseInt(document.getElementById('dist_points').value || 25000);
+    const returnPoints = isSanma ? 40000 : 30000;
+    const numPlayers = isSanma ? 3 : 4;
+    const okaTotal = (returnPoints - distPoints) * numPlayers;
+
+    const isTobiOn = document.getElementById('opt_tobi').checked;
+    const isYakitoriOn = document.getElementById('opt_yakitori').checked;
+
+    const cards = Array.from(document.querySelectorAll('.player-edit-card')).filter(c => c.style.display !== 'none');
+    const players = cards.map(card => ({
+        card: card,
+        raw: parseInt(card.querySelector('.player-raw-points').value || 0),
+        wins: parseInt(card.querySelector('.player-win-count').value || 0),
+        final: 0,
+        rank: 0
+    }));
+
+    // 順位出し
+    const sorted = [...players].sort((a, b) => b.raw - a.raw);
+    let currentRank = 1;
+    sorted.forEach((p, i) => {
+        if (i > 0 && p.raw < sorted[i - 1].raw) currentRank = i + 1;
+        p.rank = currentRank;
+    });
+
+    let poolBonus = 0;
+
+    // 基本スコア + ウマ + ペナルティ
     players.forEach(p => {
-        const u = uma[p.tempRank - 1] || 0;
-        let final = (p.rawPoints - distPoints) / 1000 + u;
-        p.scoreEl.value = final.toFixed(1);
+        let uma = 0;
+        if (isSanma) {
+            uma = { 1: 20, 2: 0, 3: -20 }[p.rank] || 0;
+        } else {
+            uma = { 1: 30, 2: 10, 3: -10, 4: -30 }[p.rank] || 0;
+        }
+
+        let penalty = 0;
+        if (isTobiOn && p.raw < 0) { penalty += 10; poolBonus += 10; }
+        if (isYakitoriOn && p.wins === 0) { penalty += 10; poolBonus += 10; }
+
+        p.final = (p.raw - returnPoints) / 1000 + uma - penalty;
+    });
+
+    // オカ加算
+    const winners = players.filter(p => p.rank === 1);
+    if (winners.length > 0) {
+        const bonus = (okaTotal / 1000 + poolBonus) / winners.length;
+        winners.forEach(p => p.final += bonus);
+    }
+
+    // 反映
+    players.forEach(p => {
+        const score = Math.round(p.final * 10) / 10;
+        p.card.querySelector('.player-rank-display').textContent = p.rank;
+        p.card.querySelector('.player-rank').value = p.rank;
+        p.card.querySelector('.player-final-score-display').textContent = (score > 0 ? '+' : '') + score.toFixed(1);
+        p.card.querySelector('.player-final-score').value = score;
+
+        // 報酬（見込み）: スコア * 1000（負数は0）
+        const reward = Math.max(0, Math.floor(score * 1000));
+        p.card.querySelector('.player-reward-preview').textContent = reward.toLocaleString() + ' C';
     });
 }
 
 async function saveRecord() {
-    const matchId = document.getElementById('match-id').value || crypto.randomUUID();
-    const eventDatetime = document.getElementById('event_datetime').value;
+    const matchId = document.getElementById('match-id').value;
+    const datetime = document.getElementById('event_datetime').value;
     const tournamentType = document.getElementById('tournament_type').value;
     const mahjongMode = document.getElementById('mahjong_mode').value;
     const matchMode = document.getElementById('match_mode').value;
-    const distPoints = parseInt(document.getElementById('dist_points').value);
-    const optTobi = document.getElementById('opt_tobi').checked;
-    const optYakitori = document.getElementById('opt_yakitori').checked;
-    const handCount = parseInt(document.getElementById('hand_count').value) || null;
+    const handCount = parseInt(document.getElementById('hand_count').value) || 0;
 
-    const cards = Array.from(document.querySelectorAll('.player-edit-card')).filter(c => c.style.display !== 'none');
-    const records = cards.map(card => {
-        const id = card.querySelector('.player-record-id').value;
-        const isPersonal = tournamentType.includes('個人');
-        const data = {
-            match_id: matchId,
-            event_datetime: eventDatetime,
-            tournament_type: tournamentType,
-            mahjong_mode: mahjongMode,
-            match_mode: matchMode,
-            dist_points: distPoints,
-            hand_count: handCount,
-            opt_tobi: optTobi,
-            opt_yakitori: optYakitori,
-            account_name: card.querySelector('.player-account-name').value,
-            team_name: isPersonal ? null : card.querySelector('.player-team-name').value,
-            raw_points: parseInt(card.querySelector('.player-raw-points').value) || 0,
-            final_score: parseFloat(card.querySelector('.player-final-score').value) || 0,
-            rank: parseInt(card.querySelector('.player-rank').value) || null,
-            win_count: parseInt(card.querySelector('.player-win-count').value) || 0,
-            deal_in_count: parseInt(card.querySelector('.player-deal-in-count').value) || 0,
-            discord_user_id: card.querySelector('.player-discord-id').value.trim() || null
-        };
-        if (id) data.id = id;
-        return data;
-    });
+    const playerRows = Array.from(document.querySelectorAll('.player-edit-card')).filter(c => c.style.display !== 'none');
+    const updatePromises = [];
+    const assetSyncPromises = [];
+    const editSummary = [];
+
+    const isIndividual = tournamentType.includes('個人');
 
     toggleLoading(true);
+
     try {
-        const { error } = await supabaseClient.from('match_results').upsert(records);
-        if (error) throw error;
+        for (const card of playerRows) {
+            const recordId = card.querySelector('.player-record-id').value;
+            if (!recordId) continue;
+
+            const accountName = card.querySelector('.player-account-name').value;
+            const teamName = isIndividual ? null : card.querySelector('.player-team-name').value;
+            const rawPoints = parseInt(card.querySelector('.player-raw-points').value || 0);
+            const finalScore = parseFloat(card.querySelector('.player-final-score').value || 0);
+            const rank = parseInt(card.querySelector('.player-rank').value || 1);
+            const winCount = parseInt(card.querySelector('.player-win-count').value || 0);
+            const dealInCount = parseInt(card.querySelector('.player-deal-in-count').value || 0);
+            const discordId = card.querySelector('.player-discord-id').value;
+
+            // 差額の計算
+            const oldScore = parseFloat(card.dataset.originalScore || 0);
+            const oldDiscordId = card.dataset.originalDiscordId;
+            const oldReward = Math.max(0, Math.floor(oldScore * 1000));
+            const newReward = Math.max(0, Math.floor(finalScore * 1000));
+            const diff = newReward - oldReward;
+
+            // レコード更新
+            updatePromises.push(
+                supabaseClient.from('match_results').update({
+                    event_datetime: datetime,
+                    tournament_type: tournamentType,
+                    mahjong_mode: mahjongMode,
+                    match_mode: matchMode,
+                    account_name: accountName,
+                    team_name: teamName,
+                    raw_points: rawPoints,
+                    final_score: finalScore,
+                    rank: rank,
+                    win_count: winCount,
+                    deal_in_count: dealInCount,
+                    hand_count: handCount,
+                    discord_user_id: discordId
+                }).eq('id', recordId)
+            );
+
+            // 資産同期 (discord_user_id がある場合のみ)
+            if (discordId) {
+                assetSyncPromises.push(syncUserAssets(discordId, diff));
+                if (oldDiscordId && oldDiscordId !== discordId) {
+                    assetSyncPromises.push(syncUserAssets(oldDiscordId, -oldReward));
+                }
+            } else if (oldDiscordId) {
+                assetSyncPromises.push(syncUserAssets(oldDiscordId, -oldReward));
+            }
+
+            editSummary.push(`- **${accountName}**: ${oldScore}pts → ${finalScore}pts (差額: ${diff > 0 ? '+' : ''}${diff}C)`);
+        }
+
+        const results = await Promise.all(updatePromises);
+        const errors = results.filter(r => r.error).map(r => r.error);
+        if (errors.length > 0) throw errors[0];
+
+        await Promise.all(assetSyncPromises);
+
+        alert('記録を更新し、ユーザーの資産・総資産を同期しました。');
         recordModal.hide();
         fetchRecords();
-    } catch (err) { alert(err.message); }
-    finally { toggleLoading(false); }
+
+        await sendDiscordEditLog(tournamentType, mahjongMode, matchId, editSummary);
+    } catch (err) {
+        console.error('保存エラー:', err);
+        alert('保存に失敗しました: ' + err.message);
+    } finally {
+        toggleLoading(false);
+    }
+}
+
+/**
+ * ユーザーの coins と total_assets を同時に更新
+ */
+async function syncUserAssets(discordId, amount) {
+    if (amount === 0) return;
+    try {
+        const { data, error: fError } = await supabaseClient
+            .from('profiles')
+            .select('coins, total_assets')
+            .eq('discord_user_id', discordId)
+            .single();
+
+        if (fError) {
+            console.warn(`プロフィール非存在 [${discordId}], 資産同期スキップ`);
+            return;
+        }
+
+        const { error: uError } = await supabaseClient
+            .from('profiles')
+            .update({
+                coins: (data.coins || 0) + amount,
+                total_assets: (data.total_assets || 0) + amount
+            })
+            .eq('discord_user_id', discordId);
+
+        if (uError) throw uError;
+    } catch (err) {
+        console.error(`資産同期エラー [${discordId}]:`, err);
+    }
+}
+
+/**
+ * 編集記録を Discord に送信
+ */
+async function sendDiscordEditLog(tournament, mode, matchId, summary) {
+    const webhookUrl = 'https://discord.com/api/webhooks/1326462842407518290/h-sH-rB0N_O3r_H10BfQ80G-g0A_C3m_Dk_E';
+
+    const embed = {
+        title: '📝 大会記録 修正通知',
+        description: `**大会:** ${tournament}\n**モード:** ${mode}\n**対局ID:** \`${matchId}\``,
+        color: 0x007bff,
+        fields: [{ name: '修正サマリー', value: summary.join('\n') }],
+        timestamp: new Date().toISOString()
+    };
+
+    try {
+        if (!webhookUrl || webhookUrl.includes('placeholder')) return;
+        await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ embeds: [embed] })
+        });
+    } catch (err) {
+        console.warn('Discord通知失敗:', err);
+    }
 }
 
 async function fetchUsers() {
