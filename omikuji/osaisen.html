@@ -224,7 +224,7 @@
                         <!-- JSでバッジ系を挿入 -->
                     </div>
                     <div id="odds-list-stones" class="row g-2">
-                        <div class="col-12 odds-category">💠 御神石（石）</div>
+                        <div class="col-12 odds-category">💠 御神石（換金用バッジ）</div>
                         <!-- JSで石系を挿入 -->
                     </div>
                 </div>
@@ -335,10 +335,14 @@
                         name: r.rarity_name,
                         percent: ((r.gacha_weight / totalRarityWeight) * badgeRatio * 100).toFixed(2)
                     })),
-                    stones: stoneConfigs.map(c => ({
-                        name: c.name,
-                        percent: ((c.weight / totalStoneTypeWeight) * stoneRatio * 100).toFixed(2)
-                    }))
+                    stones: stoneConfigs
+                        .map(c => ({
+                            name: c.name,
+                            percent: ((c.weight / totalStoneTypeWeight) * stoneRatio * 100).toFixed(2),
+                            // ソート用の優先度
+                            order: c.name.includes('銅') ? 1 : c.name.includes('銀') ? 2 : c.name.includes('金') ? 3 : 4
+                        }))
+                        .sort((a, b) => a.order - b.order)
                 };
 
                 renderOdds();
