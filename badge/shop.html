@@ -696,6 +696,44 @@
                     }
                 });
 
+                // 権利者への売買還元（10%）- コイン購入時のみ
+                if (!isTicket && price > 0) {
+                    const { data: badgeInfo } = await supabaseClient
+                        .from('badges')
+                        .select('discord_user_id')
+                        .eq('id', params.p_badge_id)
+                        .single();
+
+                    if (badgeInfo?.discord_user_id) {
+                        const royalty = Math.floor(price * 0.1);
+                        if (royalty > 0) {
+                            // 権利者のcoinsとtotal_assetsを更新
+                            const { data: ownerProfile } = await supabaseClient
+                                .from('profiles')
+                                .select('coins, total_assets')
+                                .eq('discord_user_id', badgeInfo.discord_user_id)
+                                .single();
+
+                            if (ownerProfile) {
+                                await supabaseClient.from('profiles').update({
+                                    coins: (ownerProfile.coins || 0) + royalty,
+                                    total_assets: (ownerProfile.total_assets || 0) + royalty
+                                }).eq('discord_user_id', badgeInfo.discord_user_id);
+
+                                // 権利者への還元ログを記録
+                                await logActivity(badgeInfo.discord_user_id, 'royalty_receive', {
+                                    amount: royalty,
+                                    badgeId: params.p_badge_id,
+                                    details: {
+                                        badge_name: name,
+                                        buyer: currentUserId
+                                    }
+                                });
+                            }
+                        }
+                    }
+                }
+
                 await refreshMarketContext();
 
             } catch (err) {
