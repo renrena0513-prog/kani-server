@@ -1639,6 +1639,11 @@
                     if (convertibleSection) convertibleSection.style.display = 'none';
                     if (purchasableSection) purchasableSection.style.display = 'none';
                     if (noBadgesMsg) noBadgesMsg.style.display = 'block';
+                    // バッジがない場合は所持金のみを総資産として表示
+                    const totalAssetsEl = document.getElementById('total-assets-value');
+                    if (totalAssetsEl) {
+                        totalAssetsEl.textContent = userCoins.toLocaleString();
+                    }
                     return;
                 }
 
