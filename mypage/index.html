@@ -1464,8 +1464,10 @@
                 const ticketsValue = document.getElementById('user-tickets-value');
                 if (coinsDisplay && coinsValue) {
                     coinsValue.textContent = coins.toLocaleString();
+                    // 総資産は loadBadgeCollection で計算後に更新される
+                    // 初期値として所持金を表示しておく
                     if (totalAssetsValue) {
-                        totalAssetsValue.textContent = (profile?.total_assets || 0).toLocaleString();
+                        totalAssetsValue.textContent = coins.toLocaleString();
                     }
                     if (ticketsValue) {
                         ticketsValue.textContent = (profile?.gacha_tickets || 0).toLocaleString();
@@ -1786,6 +1788,13 @@
                 }
 
                 noBadgesMsg.style.display = 'none';
+
+                // 総資産（所持金 + バッジ価値）を更新
+                const calculatedTotalAssets = userCoins + totalBadgeAssetValue;
+                const totalAssetsEl = document.getElementById('total-assets-value');
+                if (totalAssetsEl) {
+                    totalAssetsEl.textContent = calculatedTotalAssets.toLocaleString();
+                }
 
             } catch (err) {
                 console.error('バッジ取得エラー:', err);
