@@ -218,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
 /**
  * 活動ログを記録する
  * @param {string} userId - ユーザーID
- * @param {string} actionType - アクションタイプ ('mahjong', 'transfer_send', 'transfer_receive', 'badge_transfer', 'badge_receive', 'badge_sell', 'badge_purchase', 'omikuji', 'revenue_share')
+ * @param {string} actionType - アクションタイプ ('mahjong', 'transfer_send', 'transfer_receive', 'badge_transfer', 'badge_receive', 'badge_sell', 'badge_purchase', 'omikuji', 'royalty_receive')
  * @param {Object} options - オプション
  * @param {number} options.amount - 金額または数量
  * @param {string} options.badgeId - バッジID（バッジ関連の場合）

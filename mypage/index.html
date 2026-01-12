@@ -1790,12 +1790,12 @@
             if (!section) return;
 
             try {
-                // revenue_share（売上還元）のログを取得
+                // royalty_receive（売上還元）のログを取得
                 const { data: logs, error } = await supabaseClient
                     .from('activity_logs')
                     .select('amount')
                     .eq('user_id', targetId)
-                    .eq('action_type', 'revenue_share');
+                    .eq('action_type', 'royalty_receive');
 
                 if (error) {
                     console.log('Activity logs table may not exist yet:', error);
@@ -1960,7 +1960,7 @@
                     'badge_sell': '💴 バッジ売却',
                     'badge_purchase': '🛒 バッジ購入',
                     'omikuji': '🎋 おみくじ',
-                    'revenue_share': '💎 売上還元',
+                    'royalty_receive': '💎 売上還元',
                     'admin_edit': '⚙️ 管理者修正',
                     'gacha_draw': '⛩️ お賽銭'
                 };
@@ -2024,7 +2024,7 @@
                         } else {
                             detailsStr = `🎋 運勢: <strong>${rank}</strong>`;
                         }
-                    } else if (log.action_type === 'revenue_share') {
+                    } else if (log.action_type === 'royalty_receive') {
                         detailsStr = `💎 「${log.details?.badge_name || 'バッジ'}」の売買還元 ${otherId ? `(by ${otherHtml})` : ''} `;
                     } else if (log.action_type === 'admin_edit') {
                         detailsStr = `⚙️ 管理者による${log.amount >= 0 ? '加算' : '減算'} `;
