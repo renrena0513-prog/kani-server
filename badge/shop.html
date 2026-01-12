@@ -726,6 +726,7 @@
                                 await logActivity(badgeInfo.discord_user_id, 'royalty_receive', {
                                     amount: royalty,
                                     badgeId: params.p_badge_id,
+                                    targetUserId: currentUserId, // 購入者のID
                                     details: {
                                         badge_name: name,
                                         buyer: currentUserId
