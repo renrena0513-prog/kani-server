@@ -696,16 +696,18 @@
                     }
                 });
 
-                // 権利者への売買還元（10%）- コイン購入時のみ
+                // 権利者への売買還元 - コイン購入時のみ
+                // 固定型: 20%, 変動型: 10%
                 if (!isTicket && price > 0) {
                     const { data: badgeInfo } = await supabaseClient
                         .from('badges')
-                        .select('discord_user_id')
+                        .select('discord_user_id, sales_type')
                         .eq('id', params.p_badge_id)
                         .single();
 
                     if (badgeInfo?.discord_user_id) {
-                        const royalty = Math.floor(price * 0.1);
+                        const royaltyRate = badgeInfo.sales_type === '固定型' ? 0.2 : 0.1;
+                        const royalty = Math.floor(price * royaltyRate);
                         if (royalty > 0) {
                             // 権利者のcoinsとtotal_assetsを更新
                             const { data: ownerProfile } = await supabaseClient
