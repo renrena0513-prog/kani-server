@@ -483,15 +483,10 @@ async function submitScores() {
 
             // 1. チケット報酬計算
             let ticketReward = 0;
-            // 参加者報酬（5%）
-            if (Math.random() < 0.05) {
+            // 記録者が参加している場合は10%、そうでなければ5%
+            const ticketChance = (player.discord_user_id === submittedBy) ? 0.10 : 0.05;
+            if (Math.random() < ticketChance) {
                 ticketReward += 1;
-            }
-            // 記録者報酬（10%）- 本人が対局に参加している場合
-            if (player.discord_user_id === submittedBy) {
-                if (Math.random() < 0.10) {
-                    ticketReward += 1;
-                }
             }
             if (ticketReward > 0) {
                 ticketRewardsMap[player.discord_user_id] = ticketReward;
