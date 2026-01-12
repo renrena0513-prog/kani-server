@@ -1486,10 +1486,10 @@ async function fetchActivityLogs(page = 1) {
                         <div class="small text-muted">${new Date(log.created_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}</div>
                     </td>
                     <td>
-                        <div class="d-flex align-items-center gap-2">
+                        <a href="../mypage/index.html?user=${log.user_id}" class="d-flex align-items-center gap-2 text-decoration-none">
                             <img src="${u.avatar || ''}" class="rounded-circle" style="width: 28px; height: 28px;" onerror="this.style.display='none'">
-                            <span class="fw-bold">${escapeHtml(u.name)}</span>
-                        </div>
+                            <span class="fw-bold text-primary">${escapeHtml(u.name)}</span>
+                        </a>
                     </td>
                     <td>
                         <span class="badge bg-light text-dark border">
