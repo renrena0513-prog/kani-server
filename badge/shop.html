@@ -698,17 +698,16 @@
 
                 // 権利者への売買還元
                 // 固定型: 20%, 変動型: 10%
-                // コイン購入: 購入価格を基に計算
-                // 引換券購入: バッジの資産価値を基に計算
+                // コイン購入・引換券購入ともに販売価格から計算
                 const { data: badgeInfo } = await supabaseClient
                     .from('badges')
-                    .select('discord_user_id, sales_type, price')
+                    .select('discord_user_id, sales_type')
                     .eq('id', params.p_badge_id)
                     .single();
 
                 if (badgeInfo?.discord_user_id) {
-                    // 引換券購入の場合はバッジの初期価格を基準にする
-                    const basePrice = isTicket ? (badgeInfo.price || 0) : price;
+                    // 引換券購入の場合も販売価格を基準にする
+                    const basePrice = isTicket ? (currentSelectedBadge?.pValue || currentSelectedBadge?.price || 0) : price;
                     const royaltyRate = badgeInfo.sales_type === '固定型' ? 0.2 : 0.1;
                     const royalty = Math.floor(basePrice * royaltyRate);
 
