@@ -482,9 +482,11 @@ async function submitScores() {
             if (!player.discord_user_id) continue;
 
             // 1. チケット報酬計算
+            // 参加者: 10%, 記録者（参加している場合）: 20%
+            // 各ユーザーで個別に判定するため、複数人に同時付与されることがある
             let ticketReward = 0;
-            // 記録者が参加している場合は10%、そうでなければ5%
-            const ticketChance = (player.discord_user_id === submittedBy) ? 0.10 : 0.05;
+            const isRecorder = player.discord_user_id === submittedBy;
+            const ticketChance = isRecorder ? 0.20 : 0.10;
             if (Math.random() < ticketChance) {
                 ticketReward += 1;
             }
