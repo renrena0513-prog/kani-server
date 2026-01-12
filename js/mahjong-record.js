@@ -505,8 +505,10 @@ async function submitScores() {
                 rankBonus = yonmaRankBonus[player.rank] || 0;
             }
 
-            // 合計報酬 (基本1 + スコア + 順位)
-            const coinReward = 1 + scoreBonus + rankBonus;
+            // 参加ボーナス: 三麻3, 四麻5
+            const baseReward = (mode === '三麻') ? 3 : 5;
+            // 合計報酬 (参加ボーナス + スコア + 順位)
+            const coinReward = baseReward + scoreBonus + rankBonus;
 
             // 3. DB更新とログ記録
             try {
@@ -617,7 +619,9 @@ async function sendDiscordNotification(matchData, isTobiOn, isYakitoriOn, ticket
             rankBonus = yonmaRankBonus[p.rank] || 0;
         }
 
-        const reward = 1 + scoreBonus + rankBonus;
+        // 参加ボーナス: 三麻3, 四麻5
+        const baseReward = (mode === '三麻') ? 3 : 5;
+        const reward = baseReward + scoreBonus + rankBonus;
         const tickets = ticketRewardsMap[p.discord_user_id] || 0;
         const rewardText = `💰+${reward}${tickets > 0 ? ` 🎫+${tickets}` : ''}`;
 
