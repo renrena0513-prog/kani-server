@@ -696,43 +696,47 @@
                     }
                 });
 
-                // 権利者への売買還元 - コイン購入時のみ
+                // 権利者への売買還元
                 // 固定型: 20%, 変動型: 10%
-                if (!isTicket && price > 0) {
-                    const { data: badgeInfo } = await supabaseClient
-                        .from('badges')
-                        .select('discord_user_id, sales_type')
-                        .eq('id', params.p_badge_id)
-                        .single();
+                // コイン購入: 購入価格を基に計算
+                // 引換券購入: バッジの資産価値を基に計算
+                const { data: badgeInfo } = await supabaseClient
+                    .from('badges')
+                    .select('discord_user_id, sales_type, price')
+                    .eq('id', params.p_badge_id)
+                    .single();
 
-                    if (badgeInfo?.discord_user_id) {
-                        const royaltyRate = badgeInfo.sales_type === '固定型' ? 0.2 : 0.1;
-                        const royalty = Math.floor(price * royaltyRate);
-                        if (royalty > 0) {
-                            // 権利者のcoinsとtotal_assetsを更新
-                            const { data: ownerProfile } = await supabaseClient
-                                .from('profiles')
-                                .select('coins, total_assets')
-                                .eq('discord_user_id', badgeInfo.discord_user_id)
-                                .single();
+                if (badgeInfo?.discord_user_id) {
+                    // 引換券購入の場合はバッジの初期価格を基準にする
+                    const basePrice = isTicket ? (badgeInfo.price || 0) : price;
+                    const royaltyRate = badgeInfo.sales_type === '固定型' ? 0.2 : 0.1;
+                    const royalty = Math.floor(basePrice * royaltyRate);
 
-                            if (ownerProfile) {
-                                await supabaseClient.from('profiles').update({
-                                    coins: (ownerProfile.coins || 0) + royalty,
-                                    total_assets: (ownerProfile.total_assets || 0) + royalty
-                                }).eq('discord_user_id', badgeInfo.discord_user_id);
+                    if (royalty > 0) {
+                        // 権利者のcoinsとtotal_assetsを更新
+                        const { data: ownerProfile } = await supabaseClient
+                            .from('profiles')
+                            .select('coins, total_assets')
+                            .eq('discord_user_id', badgeInfo.discord_user_id)
+                            .single();
 
-                                // 権利者への還元ログを記録
-                                await logActivity(badgeInfo.discord_user_id, 'royalty_receive', {
-                                    amount: royalty,
-                                    badgeId: params.p_badge_id,
-                                    targetUserId: currentUserId, // 購入者のID
-                                    details: {
-                                        badge_name: name,
-                                        buyer: currentUserId
-                                    }
-                                });
-                            }
+                        if (ownerProfile) {
+                            await supabaseClient.from('profiles').update({
+                                coins: (ownerProfile.coins || 0) + royalty,
+                                total_assets: (ownerProfile.total_assets || 0) + royalty
+                            }).eq('discord_user_id', badgeInfo.discord_user_id);
+
+                            // 権利者への還元ログを記録
+                            await logActivity(badgeInfo.discord_user_id, 'royalty_receive', {
+                                amount: royalty,
+                                badgeId: params.p_badge_id,
+                                targetUserId: currentUserId, // 購入者のID
+                                details: {
+                                    badge_name: name,
+                                    buyer: currentUserId,
+                                    method: isTicket ? `${ticketRarity}引換券` : 'コイン'
+                                }
+                            });
                         }
                     }
                 }
