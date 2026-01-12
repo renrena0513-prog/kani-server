@@ -351,8 +351,8 @@
 
                 userBadges.forEach(ub => {
                     const baseValue = badgeValues[ub.badge_id] || 0;
-                    const value = baseValue * (ub.is_mutant ? 1 : 1); // 資産価値としてはミュータントでも基本価値（売却価格とは別）
-                    // ※売却価格は 0.7倍 * mutant(3 or 1) だが、ここでは「資産評価額」として基本価値を採用
+                    // ミュータントは資産価値3倍
+                    const value = baseValue * (ub.is_mutant ? 3 : 1);
 
                     if (userFinances[ub.user_id]) {
                         userFinances[ub.user_id].badgeCount++;

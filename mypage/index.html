@@ -1465,9 +1465,9 @@
                 if (coinsDisplay && coinsValue) {
                     coinsValue.textContent = coins.toLocaleString();
                     // 総資産は loadBadgeCollection で計算後に更新される
-                    // 初期値として所持金を表示しておく
+                    // 読み込み前は「-」を表示
                     if (totalAssetsValue) {
-                        totalAssetsValue.textContent = coins.toLocaleString();
+                        totalAssetsValue.textContent = '-';
                     }
                     if (ticketsValue) {
                         ticketsValue.textContent = (profile?.gacha_tickets || 0).toLocaleString();
@@ -1681,7 +1681,11 @@
                     }
                     const pSell = Math.ceil(pValue * 0.7 * (mainItem.is_mutant ? 3 : 1));
 
-                    totalBadgeAssetValue += (pValue * count);
+                    // ミュータントは価値3倍で計算、各個体ごとに判定
+                    group.instances.forEach(inst => {
+                        const multiplier = inst.is_mutant ? 3 : 1;
+                        totalBadgeAssetValue += (pValue * multiplier);
+                    });
 
                     const rarity = getDynamicRarity(pValue, badge.fixed_rarity_name);
                     const rarityClass = getRarityClass(rarity);
