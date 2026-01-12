@@ -705,7 +705,8 @@
                     .eq('id', params.p_badge_id)
                     .single();
 
-                if (badgeInfo?.discord_user_id) {
+                if (badgeInfo?.discord_user_id && badgeInfo.discord_user_id !== currentUserId) {
+                    // 購入者と権利者が異なる場合のみロイヤリティ付与
                     // 引換券購入の場合も販売価格を基準にする
                     const basePrice = isTicket ? (currentSelectedBadge?.pValue || currentSelectedBadge?.price || 0) : price;
                     const royaltyRate = badgeInfo.sales_type === '固定型' ? 0.2 : 0.1;
