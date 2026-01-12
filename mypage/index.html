@@ -1921,9 +1921,11 @@
                     m.discord_user_id === targetId || (targetName && (m.account_name === targetName || m.nickname === targetName || m.player_name === targetName))
                 ) : [];
 
-                const legacy = (legacyMatches || []).filter(m =>
+                // 過去大会（legacy）は「すべて」と「麻雀」フィルターのみに表示
+                const showLegacy = actionFilter === 'all' || actionFilter === 'mahjong';
+                const legacy = showLegacy ? (legacyMatches || []).filter(m =>
                     m.discord_user_id === targetId || (targetName && (m.account_name === targetName || m.nickname === targetName || m.player_name === targetName))
-                );
+                ) : [];
 
                 console.log('Filtered (Subjective Only):', { logs: logs.length, matches: matches.length, legacy: legacy.length });
 
@@ -1957,8 +1959,10 @@
                         action_type: 'mahjong', amount: null, match_id: 'legacy-' + Math.random(),
                         timestamp: new Date(m.created_at || m.updated_at || '2024-01-01'),
                         details: {
-                            rank: m.rank1_count > 0 ? 1 : (m.rank2_count > 0 ? 2 : (m.rank3_count > 0 ? 3 : 4)),
-                            final_score: m.score_total, mode: '過去大会', is_legacy: true
+                            rank: null, // 過去大会は順位非表示
+                            final_score: m.score_total,
+                            mode: '【第一回麻雀大会】',
+                            is_legacy: true
                         },
                         isMatch: true
                     });
@@ -2001,7 +2005,9 @@
                     });
                     const typeName = typeNames[log.action_type] || log.action_type;
                     const isTicketOmikuji = log.action_type === 'omikuji' && log.details?.ticket_reward;
-                    const amountStr = (log.amount !== null && (!isTicketOmikuji || log.amount !== 0)) ? `🪙 ${log.amount.toLocaleString()}` : '';
+                    // ガチャでコイン0の場合は祈願符（チケット）使用なので🎫-1表示
+                    const isTicketGacha = log.action_type === 'gacha_draw' && log.amount === 0;
+                    const amountStr = isTicketGacha ? '🎫 -1' : (log.amount !== null && (!isTicketOmikuji || log.amount !== 0)) ? `🪙 ${log.amount.toLocaleString()}` : '';
 
                     // 相手の情報を取得（基本は target_user_id。常に最新のプロフィールを参照）
                     const otherId = log.target_user_id;
@@ -2026,11 +2032,13 @@
                         const tLabel = mMode ? `${mMode} ` : (tType.includes('個人') ? '個人戦' : (tType.includes('団体') ? '団体戦' : ''));
                         const tPrefix = tLabel ? `<span class="text-muted small me-1" > [${tLabel}]</span> ` : '';
 
+                        // 過去大会（legacy）の場合は順位を非表示
+                        const showRank = !log.details?.is_legacy && rank !== null;
                         detailsStr = `
                         <div class="d-inline-flex align-items-center flex-wrap" >
                             ${tPrefix}
                                 <span class="fw-bold text-dark me-2">${mode}</span>
-                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 me-2" style="font-size: 0.8rem;">${rank}位</span>
+                                ${showRank ? `<span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 me-2" style="font-size: 0.8rem;">${rank}位</span>` : ''}
                                 <span class="text-secondary small">(${score >= 0 ? '+' : ''}${score} pts)</span>
                             </div>
                         `;
