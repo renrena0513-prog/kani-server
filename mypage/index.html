@@ -1389,8 +1389,9 @@
             const ticketsValue = document.getElementById('user-tickets-value');
             if (coinsDisplay && coinsValue) {
                 coinsValue.textContent = coins.toLocaleString();
+                // 総資産は loadBadgeCollection で計算後に更新される（ここでは設定しない）
                 if (totalAssetsValue) {
-                    totalAssetsValue.textContent = (profile?.total_assets || 0).toLocaleString();
+                    totalAssetsValue.textContent = '-';
                 }
                 if (ticketsValue) {
                     ticketsValue.textContent = (profile?.gacha_tickets || 0).toLocaleString();
