@@ -376,8 +376,8 @@
                 const { data: mainConfigs } = await supabaseClient.from('gacha_configs').select('name, weight').eq('category', 'main');
                 // 2. 石の内訳
                 const { data: stoneConfigs } = await supabaseClient.from('gacha_configs').select('name, weight').eq('category', 'stone_type');
-                // 3. レアリティの内訳
-                const { data: rarityThresholds } = await supabaseClient.from('rarity_thresholds').select('rarity_name, gacha_weight').gt('gacha_weight', 0);
+                // 3. レアリティの内訳（閾値順でソート済み）
+                const { data: rarityThresholds } = await supabaseClient.from('rarity_thresholds').select('rarity_name, gacha_weight, threshold_value').gt('gacha_weight', 0).order('threshold_value', { ascending: true });
 
                 const totalMain = mainConfigs.reduce((s, c) => s + c.weight, 0);
                 const badgeTotalWeight = mainConfigs.find(c => c.name === 'badge')?.weight || 0;
