@@ -572,15 +572,15 @@
         async function handleDraw() {
             if (isDrawing) return;
 
-            const discordId = currentUser.user_metadata.provider_id;
-            const isAdmin = ADMIN_DISCORD_IDS.includes(discordId);
-            const notStartedMsg = document.getElementById('not-started-msg');
-
-            if (!isAdmin) {
-                notStartedMsg.style.display = 'block';
-                setTimeout(() => { notStartedMsg.style.display = 'none'; }, 5000);
-                return;
-            }
+            // お賽銭の制限を解除 - 全員がガチャを回せるように
+            // const discordId = currentUser.user_metadata.provider_id;
+            // const isAdmin = ADMIN_DISCORD_IDS.includes(discordId);
+            // const notStartedMsg = document.getElementById('not-started-msg');
+            // if (!isAdmin) {
+            //     notStartedMsg.style.display = 'block';
+            //     setTimeout(() => { notStartedMsg.style.display = 'none'; }, 5000);
+            //     return;
+            // }
 
             // 支払い方法を取得
             const paymentType = document.querySelector('input[name="payment-type"]:checked')?.value || 'ticket';
