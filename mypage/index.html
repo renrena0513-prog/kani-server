@@ -1029,9 +1029,21 @@
 
                     <!-- 最近の活動セクション -->
                     <div class="profile-card mb-4" id="activity-section" style="display: none;">
-                        <h4 style="font-family: var(--font-title); color: var(--deep-purple); margin: 0 0 15px 0;">
-                            📋 最近の活動
-                        </h4>
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                            <h4 style="font-family: var(--font-title); color: var(--deep-purple); margin: 0;">
+                                📋 最近の活動
+                            </h4>
+                            <select id="activity-action-filter" class="form-select form-select-sm"
+                                style="width: auto; font-size: 0.8rem;" onchange="loadActivityLogs(1)">
+                                <option value="all">🔍 すべて</option>
+                                <option value="mahjong">🀄 麻雀</option>
+                                <option value="transfer">💸 送金</option>
+                                <option value="badge">🎁 バッジ</option>
+                                <option value="gacha_draw">⛩️ お賽銭</option>
+                                <option value="omikuji">🎋 おみくじ</option>
+                                <option value="royalty_receive">💎 売上還元</option>
+                            </select>
+                        </div>
                         <div id="activity-list">
                             <div class="text-center text-muted py-3">読み込み中...</div>
                         </div>
@@ -1870,13 +1882,15 @@
                     .limit(500);
 
                 // --- フィルタリング ---
+                const actionFilter = document.getElementById('activity-action-filter')?.value || 'all';
+
                 const logs = (allLogs || []).filter(l => {
                     // 【修正】自分が「主体（user_id）」であるログのみを表示。
                     if (l.user_id !== targetId) return false;
 
                     // 装着ログや内部管理ログは非表示
                     if (l.action_type === 'badge_equip') return false;
-                    // 麻雀報酬ログは下に別途「対局履歴」として表示されるため、ここには出さない
+                    // 麻雀報酬ログは下に「対局履歴」として別途表示されるため除外
                     if (l.action_type === 'mahjong') return false;
                     if (l.action_type === 'admin_edit') return false; // 管理者編集ログも非表示
 
@@ -1884,12 +1898,28 @@
                     if (typeof details === 'string') { try { details = JSON.parse(details); } catch (e) { } }
                     if (details?.is_internal) return false;
 
+                    // フィルター適用
+                    if (actionFilter !== 'all') {
+                        if (actionFilter === 'transfer') {
+                            if (!['transfer_send', 'transfer_receive'].includes(l.action_type)) return false;
+                        } else if (actionFilter === 'badge') {
+                            if (!['badge_transfer', 'badge_receive', 'badge_sell', 'badge_purchase'].includes(l.action_type)) return false;
+                        } else if (actionFilter === 'mahjong') {
+                            return false; // 麻雀はマッチ専用なのでログからは全除外
+                        } else {
+                            if (l.action_type !== actionFilter) return false;
+                        }
+                    }
+
                     return true;
                 });
 
-                const matches = (allMatches || []).filter(m =>
+                // 麻雀フィルター時はマッチを表示、それ以外はログと合流
+                const showMatchesOnly = actionFilter === 'mahjong';
+
+                const matches = showMatchesOnly || actionFilter === 'all' ? (allMatches || []).filter(m =>
                     m.discord_user_id === targetId || (targetName && (m.account_name === targetName || m.nickname === targetName || m.player_name === targetName))
-                );
+                ) : [];
 
                 const legacy = (legacyMatches || []).filter(m =>
                     m.discord_user_id === targetId || (targetName && (m.account_name === targetName || m.nickname === targetName || m.player_name === targetName))
