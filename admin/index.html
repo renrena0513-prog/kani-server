@@ -565,11 +565,23 @@
 
                         <!-- 活動ログタブ -->
                         <div class="tab-pane fade show active" id="logs-pane" role="tabpanel" tabindex="0">
-                            <div class="d-flex justify-content-between align-items-center mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-4 gap-3 flex-wrap">
                                 <h2 class="mb-0" style="font-family: var(--font-title); color: var(--deep-gray);">📝
                                     全ユーザー活動ログ</h2>
-                                <button onclick="fetchActivityLogs()" class="btn btn-outline-primary btn-sm">🔄
-                                    更新</button>
+                                <div class="d-flex gap-2">
+                                    <select id="log-action-filter" class="form-select form-select-sm"
+                                        style="width: auto;" onchange="handleLogActionFilterChange()">
+                                        <option value="all">🔍 すべてのアクション</option>
+                                        <option value="gacha_draw">🎰 ガチャ</option>
+                                        <option value="coin_transfer">💸 コイン送金・受取</option>
+                                        <option value="badge_purchase">🛒 バッジ購入・売却</option>
+                                        <option value="badge_transfer">🎁 バッジ譲渡・受取</option>
+                                        <option value="omikuji">⛩️ おみくじ</option>
+                                        <option value="admin_edit">🔧 管理者調整</option>
+                                    </select>
+                                    <button onclick="fetchActivityLogs()" class="btn btn-outline-primary btn-sm">🔄
+                                        更新</button>
+                                </div>
                             </div>
                             <div class="table-responsive">
                                 <table class="table table-hover align-middle" style="font-size: 0.9rem;">

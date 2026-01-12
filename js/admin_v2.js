@@ -1363,6 +1363,7 @@ async function approveDissolution(id, teamId) {
 let currentLogsPage = 1;
 const LOGS_PER_PAGE = 10;
 let profilesCache = {};
+let badgesCache = {};
 
 async function loadProfilesCache() {
     const { data } = await supabaseClient.from('profiles').select('discord_user_id, account_name, avatar_url');
@@ -1370,16 +1371,47 @@ async function loadProfilesCache() {
     if (data) data.forEach(p => profilesCache[p.discord_user_id] = { name: p.account_name, avatar: p.avatar_url });
 }
 
+async function loadBadgesCache() {
+    const { data } = await supabaseClient.from('badges').select('id, name, image_url');
+    badgesCache = {};
+    if (data) data.forEach(b => badgesCache[b.id] = { name: b.name, image: b.image_url });
+}
+
+function handleLogActionFilterChange() {
+    fetchActivityLogs(1); // フィルター変更時は1ページ目に戻す
+}
+
 async function fetchActivityLogs(page = 1) {
     currentLogsPage = page;
     if (Object.keys(profilesCache).length === 0) await loadProfilesCache();
+    if (Object.keys(badgesCache).length === 0) await loadBadgesCache();
+
     const from = (page - 1) * LOGS_PER_PAGE;
     const to = from + LOGS_PER_PAGE - 1;
-    const { data: logs, count } = await supabaseClient.from('activity_logs').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(from, to);
+
+    // フィルターの取得
+    const actionFilter = document.getElementById('log-action-filter')?.value || 'all';
+
+    let query = supabaseClient.from('activity_logs').select('*', { count: 'exact' });
+
+    // アクションフィルターの適用
+    if (actionFilter !== 'all') {
+        if (actionFilter === 'coin_transfer') {
+            query = query.in('action_type', ['coin_transfer', 'coin_receive', 'transfer_send', 'transfer_receive']);
+        } else if (actionFilter === 'badge_purchase') {
+            query = query.in('action_type', ['badge_purchase', 'badge_sell']);
+        } else if (actionFilter === 'badge_transfer') {
+            query = query.in('action_type', ['badge_transfer', 'badge_receive']);
+        } else {
+            query = query.eq('action_type', actionFilter);
+        }
+    }
+
+    const { data: logs, count } = await query.order('created_at', { ascending: false }).range(from, to);
 
     const listBody = document.getElementById('logs-list-body');
     if (listBody) {
-        // テーブルヘッダーにチェックボックスを追加
+        // ... (前のチェックボックス管理ロジック)
         const thead = listBody.closest('table')?.querySelector('thead tr');
         if (thead && !thead.querySelector('.log-select-all')) {
             const th = document.createElement('th');
@@ -1387,8 +1419,6 @@ async function fetchActivityLogs(page = 1) {
             thead.insertBefore(th, thead.firstChild);
         }
 
-        // 一括操作ボタンを追加
-        const container = listBody.closest('.card-body') || listBody.parentElement;
         let bulkActions = document.getElementById('bulk-log-actions');
         if (!bulkActions) {
             bulkActions = document.createElement('div');
@@ -1417,9 +1447,12 @@ async function fetchActivityLogs(page = 1) {
                 'gacha_draw': { icon: '🎰', label: 'ガチャ' },
                 'coin_transfer': { icon: '💸', label: 'コイン送金' },
                 'coin_receive': { icon: '📩', label: 'コイン受取' },
+                'transfer_send': { icon: '💸', label: '送金' },
+                'transfer_receive': { icon: '📩', label: '受取' },
                 'omikuji': { icon: '⛩️', label: 'おみくじ' },
                 'ticket_transfer': { icon: '🎟️', label: 'チケット譲渡' },
                 'ticket_receive': { icon: '🎫', label: 'チケット受取' },
+                'admin_edit': { icon: '🔧', label: '管理者調整' },
                 'admin_coin_adjust': { icon: '🔧', label: '管理者調整' }
             };
             const action = actionMap[log.action_type] || { icon: '📋', label: log.action_type };
@@ -1429,8 +1462,19 @@ async function fetchActivityLogs(page = 1) {
             const amountPrefix = log.amount > 0 ? '+' : '';
             const amountDisplay = log.amount !== null ? `${amountPrefix}${log.amount.toLocaleString()}` : '-';
 
-            // 対象者の表示
-            const targetDisplay = target ? `→ ${escapeHtml(target.name)}` : '';
+            // 対象者・バッジの表示
+            let targetDisplay = target ? `→ ${escapeHtml(target.name)}` : '';
+
+            // バッジ表示の追加
+            if (log.badge_id && badgesCache[log.badge_id]) {
+                const b = badgesCache[log.badge_id];
+                targetDisplay += `
+                    <div class="d-flex align-items-center gap-1 mt-1 bg-white border rounded px-1 py-0" style="width: fit-content;">
+                        <img src="${b.image || ''}" style="width: 16px; height: 16px; object-fit: contain;">
+                        <span style="font-size: 0.75rem;">${escapeHtml(b.name)}</span>
+                    </div>
+                `;
+            }
 
             return `
                 <tr>
