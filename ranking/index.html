@@ -334,12 +334,11 @@
                 const badgeValues = {};
                 masterBadges.forEach(mb => {
                     const n = marketCounts[mb.id] || 0;
-                    if (mb.sales_type === '固定型') {
-                        badgeValues[mb.id] = mb.price;
+                    // 変動型のみ変動計算、それ以外（固定型、換金品、限定品等）は固定価格
+                    if (mb.sales_type === '変動型') {
+                        badgeValues[mb.id] = n > 0 ? Math.ceil(mb.price * Math.pow(1.3, n - 1)) : mb.price;
                     } else {
-                        // 変動型または限定品
-                        // P_value = price * 1.3^(n-1) if n > 0 else 0
-                        badgeValues[mb.id] = n > 0 ? Math.ceil(mb.price * Math.pow(1.3, n - 1)) : 0;
+                        badgeValues[mb.id] = mb.price;
                     }
                 });
 
