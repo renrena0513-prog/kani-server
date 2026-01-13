@@ -482,11 +482,17 @@ async function submitScores() {
             if (!player.discord_user_id) continue;
 
             // 1. チケット報酬計算
-            // 参加者: 10%, 記録者（参加している場合）: 20%
+            // 三麻: 参加者10%, 記録者20%
+            // 四麻: 参加者13%, 記録者26%
             // 各ユーザーで個別に判定するため、複数人に同時付与されることがある
             let ticketReward = 0;
             const isRecorder = player.discord_user_id === submittedBy;
-            const ticketChance = isRecorder ? 0.20 : 0.10;
+            let ticketChance;
+            if (mode === '四麻') {
+                ticketChance = isRecorder ? 0.26 : 0.13;
+            } else {
+                ticketChance = isRecorder ? 0.20 : 0.10;
+            }
             if (Math.random() < ticketChance) {
                 ticketReward += 1;
             }
