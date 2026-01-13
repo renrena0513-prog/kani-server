@@ -1339,11 +1339,81 @@ async function handleCSVImport(event) {
 }
 
 async function fetchTeamRequests() {
+    const kickList = document.getElementById('kick-requests-list');
+    const dissList = document.getElementById('dissolution-requests-list');
+
     const { data: kicks } = await supabaseClient.from('team_admin_requests').select('*').eq('type', 'kick').eq('status', 'pending');
     const { data: diss } = await supabaseClient.from('team_admin_requests').select('*').eq('type', 'dissolution').eq('status', 'pending');
+
+    // バッジカウント更新
     const badge = document.getElementById('team-requests-badge');
     const count = (kicks?.length || 0) + (diss?.length || 0);
     if (badge) { badge.textContent = count; badge.style.display = count > 0 ? 'inline' : 'none'; }
+
+    // プロフィールとチーム情報を取得
+    if (Object.keys(profilesCache).length === 0) await loadProfilesCache();
+    const { data: teams } = await supabaseClient.from('teams').select('id, name');
+    const teamsMap = {};
+    if (teams) teams.forEach(t => teamsMap[t.id] = t.name);
+
+    // 追放申請リスト
+    if (kickList) {
+        if (!kicks || kicks.length === 0) {
+            kickList.innerHTML = '<p class="text-muted">申請はありません</p>';
+        } else {
+            kickList.innerHTML = kicks.map(req => {
+                const requester = profilesCache[req.requester_discord_id] || { name: '不明', avatar: '' };
+                const target = profilesCache[req.target_discord_id] || { name: '不明', avatar: '' };
+                return `
+                    <div class="card mb-2 p-3">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <div class="small text-muted mb-1">申請者: ${escapeHtml(requester.name)}</div>
+                                <div><strong>対象:</strong> ${escapeHtml(target.name)}</div>
+                                ${req.reason ? `<div class="small text-muted mt-1">理由: ${escapeHtml(req.reason)}</div>` : ''}
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-success btn-sm" onclick="approveKick('${req.id}')">承認</button>
+                                <button class="btn btn-outline-secondary btn-sm" onclick="rejectRequest('${req.id}')">却下</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+
+    // 解散申請リスト
+    if (dissList) {
+        if (!diss || diss.length === 0) {
+            dissList.innerHTML = '<p class="text-muted">申請はありません</p>';
+        } else {
+            dissList.innerHTML = diss.map(req => {
+                const requester = profilesCache[req.requester_discord_id] || { name: '不明', avatar: '' };
+                const teamName = teamsMap[req.team_id] || '不明なチーム';
+                return `
+                    <div class="card mb-2 p-3">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <div class="small text-muted mb-1">申請者: ${escapeHtml(requester.name)}</div>
+                                <div><strong>チーム:</strong> ${escapeHtml(teamName)}</div>
+                                ${req.reason ? `<div class="small text-muted mt-1">理由: ${escapeHtml(req.reason)}</div>` : ''}
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-danger btn-sm" onclick="approveDissolution('${req.id}', '${req.team_id}')">承認（解散）</button>
+                                <button class="btn btn-outline-secondary btn-sm" onclick="rejectRequest('${req.id}')">却下</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+}
+
+async function rejectRequest(id) {
+    await supabaseClient.from('team_admin_requests').update({ status: 'rejected' }).eq('id', id);
+    fetchTeamRequests();
 }
 
 async function approveKick(id) {
