@@ -2352,6 +2352,12 @@
                         details: { badge_uuid: currentActionUUID, badge_name: currentActionBadgeName }
                     });
                 }
+                // モーダルを閉じる
+                const modalEl = document.getElementById('badgeActionModal');
+                if (modalEl) {
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                }
                 loadOwnedBadges();
                 loadActivityLogs();
                 // 自分の情報を再読み込み
@@ -2430,6 +2436,12 @@
                         });
                     }
 
+                    // モーダルを閉じる
+                    const modalEl = document.getElementById('badgeActionModal');
+                    if (modalEl) {
+                        const modal = bootstrap.Modal.getInstance(modalEl);
+                        if (modal) modal.hide();
+                    }
                     loadOwnedBadges();
                     loadActivityLogs();
                     const user = await getCurrentUser();
