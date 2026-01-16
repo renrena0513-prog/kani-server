@@ -229,8 +229,11 @@
                 <!-- カテゴリタブ -->
                 <div class="category-tabs" id="category-tabs">
                     <button class="tab-btn active" onclick="setCategory('all', this)">全件</button>
-                    <button class="tab-btn" onclick="setCategory('purchasable', this)">販売中</button>
-                    <button class="tab-btn" onclick="setCategory('special', this)">限定品</button>
+                    <button class="tab-btn" onclick="setCategory('shop', this)">ショップ販売中</button>
+                    <button class="tab-btn" onclick="setCategory('gacha', this)">ガチャ排出バッジ</button>
+                    <button class="tab-btn" onclick="setCategory('exchange', this)">換金アイテム</button>
+                    <button class="tab-btn" onclick="setCategory('limited', this)">限定品</button>
+                    <button class="tab-btn" onclick="setCategory('not_for_sale', this)">非売品</button>
                 </div>
             </div>
 
@@ -323,9 +326,33 @@
                 // 名前検索
                 if (searchVal && !b.name.toLowerCase().includes(searchVal)) return false;
 
-                // カテゴリ
-                if (currentCategory === 'purchasable' && b.sales_type === '限定品') return false;
-                if (currentCategory === 'special' && b.sales_type !== '限定品') return false;
+                // カテゴリフィルター
+                switch (currentCategory) {
+                    case 'shop':
+                        // ショップ販売中: is_shop_listed = true
+                        if (!b.is_shop_listed) return false;
+                        break;
+                    case 'gacha':
+                        // ガチャ排出バッジ: is_gacha_eligible = true
+                        if (!b.is_gacha_eligible) return false;
+                        break;
+                    case 'exchange':
+                        // 換金アイテム: sales_type = '換金品'
+                        if (b.sales_type !== '換金品') return false;
+                        break;
+                    case 'limited':
+                        // 限定品: sales_type = '限定品'
+                        if (b.sales_type !== '限定品') return false;
+                        break;
+                    case 'not_for_sale':
+                        // 非売品: is_shop_listed = false AND is_gacha_eligible = false
+                        if (b.is_shop_listed || b.is_gacha_eligible) return false;
+                        break;
+                    case 'all':
+                    default:
+                        // 全件: フィルタなし
+                        break;
+                }
 
                 return true;
             });
