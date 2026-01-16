@@ -345,8 +345,9 @@
                         if (b.sales_type !== '限定品') return false;
                         break;
                     case 'not_for_sale':
-                        // 非売品: is_shop_listed = false AND is_gacha_eligible = false
+                        // 非売品: is_shop_listed = false AND is_gacha_eligible = false AND 限定品・換金品以外
                         if (b.is_shop_listed || b.is_gacha_eligible) return false;
+                        if (b.sales_type === '限定品' || b.sales_type === '換金品') return false;
                         break;
                     case 'all':
                     default:
