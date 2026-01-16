@@ -1003,7 +1003,7 @@
                                 <div class="row">
                                     <div class="col-6 mb-3">
                                         <label for="badge-weight" class="form-label">ガチャ重み (非表示用)</label>
-                                        <input type="number" class="form-control" id="badge-weight" value="10">
+                                        <input type="number" class="form-control" id="badge-weight" placeholder="任意">
                                         <small class="text-muted">0に設定すると「非売品」扱いになります</small>
                                     </div>
                                     <div class="col-6 mb-3">
@@ -1021,15 +1021,9 @@
                                     <textarea class="form-control" id="badge-requirements" rows="2"
                                         placeholder="例：大会で優勝する、等"></textarea>
                                 </div>
-                                <div class="row">
-                                    <div class="col-6 mb-3">
-                                        <label for="badge-stock" class="form-label">残り個数 (在庫)</label>
-                                        <input type="number" class="form-control" id="badge-stock" value="999">
-                                    </div>
-                                    <div class="col-6 mb-3">
-                                        <label for="badge-sort-order" class="form-label">表示順 (小さい順)</label>
-                                        <input type="number" class="form-control" id="badge-sort-order" value="0">
-                                    </div>
+                                <div class="mb-3">
+                                    <label for="badge-sort-order" class="form-label">表示順 (小さい順)</label>
+                                    <input type="number" class="form-control" id="badge-sort-order" value="0">
                                 </div>
                                 <div class="row">
                                     <div class="col-6 mb-3">
@@ -1063,20 +1057,11 @@
                                     </div>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label">権利者（売上10%還元先）</label>
-                                    <div class="dropdown">
-                                        <button
-                                            class="btn btn-outline-secondary w-100 text-start d-flex align-items-center justify-content-between dropdown-toggle"
-                                            type="button" id="badge-owner-dropdown" data-bs-toggle="dropdown"
-                                            aria-expanded="false">
-                                            <span id="selected-owner-label">なし（権利者なし）</span>
-                                        </button>
-                                        <ul class="dropdown-menu w-100" id="badge-owner-list"
-                                            style="max-height: 300px; overflow-y: auto;">
-                                            <!-- JSでユーザー一覧を生成 -->
-                                        </ul>
-                                        <input type="hidden" id="badge-owner" value="">
-                                    </div>
+                                    <label for="badge-owner" class="form-label">権利者（売上10%還元先）</label>
+                                    <select class="form-select" id="badge-owner">
+                                        <option value="">なし（権利者なし）</option>
+                                        <!-- JSでユーザー一覧を生成 -->
+                                    </select>
                                     <small class="text-muted">選択したユーザーにバッジ売上の10%が還元されます</small>
                                 </div>
                             </form>

@@ -1048,39 +1048,67 @@ async function fetchBadges() {
 async function openBadgeModal(badge = null) {
     const form = document.getElementById('badge-form');
     form.reset();
+
+    // 権利者セレクトボックスにユーザー一覧を生成
+    await populateBadgeOwnerSelect(badge?.discord_user_id || '');
+
     if (badge) {
         document.getElementById('badge-id').value = badge.id;
         document.getElementById('badge-name').value = badge.name;
         document.getElementById('badge-description').value = badge.description || '';
         document.getElementById('badge-image-url').value = badge.image_url;
-        document.getElementById('badge-weight').value = badge.gacha_weight || 10;
+        document.getElementById('badge-weight').value = badge.gacha_weight || '';
         document.getElementById('badge-price').value = badge.price || 0;
         document.getElementById('badge-fixed-rarity').value = badge.fixed_rarity_name || '';
         document.getElementById('badge-requirements').value = badge.requirements || '';
-        document.getElementById('badge-stock').value = badge.remaining_count !== null ? badge.remaining_count : 999;
         document.getElementById('badge-sort-order').value = badge.sort_order || 0;
         document.getElementById('badge-sales-type').value = badge.sales_type || '';
         document.getElementById('badge-gacha-eligible').checked = badge.is_gacha_eligible || false;
         document.getElementById('badge-shop-listed').checked = badge.is_shop_listed !== false; // デフォルト true
         document.getElementById('badge-owner').value = badge.discord_user_id || '';
-
-        // 権利者表示を更新
-        if (badge.discord_user_id) {
-            const ownerLabel = document.getElementById('selected-owner-label');
-            // ユーザー名を取得して表示(簡略化)
-            ownerLabel.textContent = badge.discord_user_id;
-        }
     } else {
         document.getElementById('badge-id').value = '';
-        document.getElementById('badge-weight').value = 10;
+        document.getElementById('badge-weight').value = '';
         document.getElementById('badge-price').value = 0;
-        document.getElementById('badge-stock').value = 999;
         document.getElementById('badge-sort-order').value = 0;
         document.getElementById('badge-sales-type').value = '';
         document.getElementById('badge-gacha-eligible').checked = false;
         document.getElementById('badge-shop-listed').checked = true; // 新規作成時はデフォルトで true
     }
     window.badgeModal.show();
+}
+
+/**
+ * 権利者セレクトボックスにユーザー一覧を動的生成
+ */
+async function populateBadgeOwnerSelect(selectedValue = '') {
+    const select = document.getElementById('badge-owner');
+    if (!select) return;
+
+    try {
+        const { data: profiles, error } = await supabaseClient
+            .from('profiles')
+            .select('discord_user_id, account_name, avatar_url')
+            .order('account_name');
+
+        if (error) throw error;
+
+        // 既存のオプションをクリア（最初の「なし」を残す）
+        select.innerHTML = '<option value="">なし（権利者なし）</option>';
+
+        // ユーザー一覧を追加
+        profiles.forEach(p => {
+            const option = document.createElement('option');
+            option.value = p.discord_user_id;
+            option.textContent = p.account_name || p.discord_user_id;
+            if (p.discord_user_id === selectedValue) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+    } catch (err) {
+        console.error('権利者リスト取得エラー:', err);
+    }
 }
 
 async function saveBadge() {
@@ -1104,15 +1132,14 @@ async function saveBadge() {
             name,
             description,
             image_url,
-            gacha_weight: parseInt(document.getElementById('badge-weight').value) || 0,
-            price: parseInt(document.getElementById('badge-price').value) || 0,
-            requirements: document.getElementById('badge-requirements').value.trim() || null,
-            remaining_count: (() => {
-                const val = document.getElementById('badge-stock').value;
+            gacha_weight: (() => {
+                const val = document.getElementById('badge-weight').value;
                 return val === '' ? null : parseInt(val);
             })(),
+            price: parseInt(document.getElementById('badge-price').value) || 0,
+            requirements: document.getElementById('badge-requirements').value.trim() || null,
             sort_order: parseInt(document.getElementById('badge-sort-order').value) || 0,
-            discord_user_id: document.getElementById('badge-owner').value.trim() || null,
+            discord_user_id: document.getElementById('badge-owner').value || null,
             fixed_rarity_name: document.getElementById('badge-fixed-rarity').value.trim() || null,
             sales_type: document.getElementById('badge-sales-type').value || null,
             is_gacha_eligible: document.getElementById('badge-gacha-eligible').checked,
