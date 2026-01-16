@@ -557,6 +557,23 @@
                                     <button onclick="openBadgeModal()" class="btn btn-primary">新規バッジ登録</button>
                                 </div>
                             </div>
+                            <!-- フィルタータブ -->
+                            <div class="mb-3">
+                                <div class="d-flex flex-wrap gap-2" id="admin-badge-filter-tabs">
+                                    <button class="btn btn-sm btn-outline-secondary active"
+                                        onclick="setAdminBadgeFilter('all', this)">全件</button>
+                                    <button class="btn btn-sm btn-outline-secondary"
+                                        onclick="setAdminBadgeFilter('shop', this)">ショップ販売中</button>
+                                    <button class="btn btn-sm btn-outline-secondary"
+                                        onclick="setAdminBadgeFilter('gacha', this)">ガチャ排出バッジ</button>
+                                    <button class="btn btn-sm btn-outline-secondary"
+                                        onclick="setAdminBadgeFilter('exchange', this)">換金アイテム</button>
+                                    <button class="btn btn-sm btn-outline-secondary"
+                                        onclick="setAdminBadgeFilter('limited', this)">限定品</button>
+                                    <button class="btn btn-sm btn-outline-secondary"
+                                        onclick="setAdminBadgeFilter('not_for_sale', this)">非売品</button>
+                                </div>
+                            </div>
                             <div class="row g-3" id="badges-list">
                                 <!-- バッジカードがここに表示される -->
                                 <p class="text-center text-muted py-5">読み込み中...</p>

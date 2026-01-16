@@ -1023,26 +1023,70 @@ async function revokeBadge(userId, badgeId, badgeName) {
     finally { toggleLoading(false); }
 }
 
+let allAdminBadges = [];
+let currentAdminBadgeFilter = 'all';
+
 async function fetchBadges() {
     const list = document.getElementById('badges-list');
     if (!list) return;
     try {
         const { data: badges } = await supabaseClient.from('badges').select('*').order('sort_order', { ascending: true });
-        list.innerHTML = badges.map(badge => `
-            <div class="col-md-4 col-lg-3">
-                <div class="card h-100 shadow-sm border-0 badge-card">
-                    <div class="card-body text-center">
-                        <img src="${badge.image_url}" class="mb-3 badge-thumb shadow-sm" style="width: 64px; height: 64px; object-fit: contain;">
-                        <h6 class="fw-bold mb-1">${badge.name}</h6>
-                        <div class="mt-3 d-flex gap-1 justify-content-center">
-                            <button onclick='openBadgeModal(${JSON.stringify(badge).replace(/'/g, "&apos;")})' class="btn btn-sm btn-outline-primary">編集</button>
-                            <button onclick="deleteBadge('${badge.id}')" class="btn btn-sm btn-outline-danger">削除</button>
-                        </div>
+        allAdminBadges = badges || [];
+        renderAdminBadges();
+    } catch (err) { console.error(err); }
+}
+
+function setAdminBadgeFilter(filter, btn) {
+    currentAdminBadgeFilter = filter;
+    // ボタンのアクティブ状態を更新
+    document.querySelectorAll('#admin-badge-filter-tabs button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderAdminBadges();
+}
+
+function renderAdminBadges() {
+    const list = document.getElementById('badges-list');
+    if (!list) return;
+
+    // フィルタリング
+    const filtered = allAdminBadges.filter(b => {
+        switch (currentAdminBadgeFilter) {
+            case 'shop':
+                return b.is_shop_listed === true;
+            case 'gacha':
+                return b.is_gacha_eligible === true;
+            case 'exchange':
+                return b.sales_type === '換金品';
+            case 'limited':
+                return b.sales_type === '限定品';
+            case 'not_for_sale':
+                // 非売品: ショップにもガチャにも出ない、かつ限定品・換金品以外
+                return !b.is_shop_listed && !b.is_gacha_eligible && b.sales_type !== '限定品' && b.sales_type !== '換金品';
+            case 'all':
+            default:
+                return true;
+        }
+    });
+
+    if (filtered.length === 0) {
+        list.innerHTML = '<div class="col-12 text-center text-muted py-5">該当するバッジがありません</div>';
+        return;
+    }
+
+    list.innerHTML = filtered.map(badge => `
+        <div class="col-md-4 col-lg-3">
+            <div class="card h-100 shadow-sm border-0 badge-card">
+                <div class="card-body text-center">
+                    <img src="${badge.image_url}" class="mb-3 badge-thumb shadow-sm" style="width: 64px; height: 64px; object-fit: contain;">
+                    <h6 class="fw-bold mb-1">${badge.name}</h6>
+                    <div class="mt-3 d-flex gap-1 justify-content-center">
+                        <button onclick='openBadgeModal(${JSON.stringify(badge).replace(/'/g, "&apos;")})' class="btn btn-sm btn-outline-primary">編集</button>
+                        <button onclick="deleteBadge('${badge.id}')" class="btn btn-sm btn-outline-danger">削除</button>
                     </div>
                 </div>
             </div>
-        `).join('');
-    } catch (err) { console.error(err); }
+        </div>
+    `).join('');
 }
 
 async function openBadgeModal(badge = null) {
