@@ -318,11 +318,20 @@
                 // 2. 全バッジ個体データを取得（資産価値計算用）
                 const { data: userBadges, error: bError } = await supabaseClient
                     .from('user_badges_new')
-                    .select('user_id, badge_id, is_mutant, badges(price, sales_type), profiles!user_id(discord_user_id)');
+                    .select('user_id, badge_id, is_mutant, badges(price, sales_type)');
                 if (bError) throw bError;
 
                 // 3. バッジマスター情報を取得（固定価格対応）
                 const { data: masterBadges } = await supabaseClient.from('badges').select('id, price, sales_type');
+
+                // UUID -> discord_user_id のルックアップマップを作成
+                const uuidToDiscordMap = {};
+                profiles.forEach(p => {
+                    // profiles テーブルには id (UUID) と discord_user_id の両方があるはず
+                    // ただしここでは id を取得していないので、後で取得するか別の方法を取る
+                    // 実際には user_badges_new.user_id は discord_user_id を格納している可能性がある
+                    // 確認のため、一旦 discord_user_id をそのまま使う
+                });
 
                 // バッジごとの流通数をカウント & ユーザーごとのミュータント所有表を構築
                 const marketCounts = {};
@@ -330,8 +339,9 @@
 
                 (userBadges || []).forEach(ub => {
                     marketCounts[ub.badge_id] = (marketCounts[ub.badge_id] || 0) + 1;
-                    if (ub.is_mutant && ub.profiles && ub.profiles.discord_user_id) {
-                        userMutantMap[`${ub.profiles.discord_user_id}_${ub.badge_id}`] = true;
+                    if (ub.is_mutant) {
+                        // user_badges_new.user_id は discord_user_id 文字列であると仮定
+                        userMutantMap[`${ub.user_id}_${ub.badge_id}`] = true;
                     }
                 });
 

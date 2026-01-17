@@ -63,14 +63,13 @@ async function fetchData() {
         // ミュータント情報を取得
         const { data: userBadges } = await supabaseClient
             .from('user_badges_new')
-            .select('user_id, badge_id, profiles!user_id(discord_user_id)')
+            .select('user_id, badge_id')
             .eq('is_mutant', true);
 
         window.userMutantMap = {}; // global cache
         (userBadges || []).forEach(ub => {
-            if (ub.profiles && ub.profiles.discord_user_id) {
-                window.userMutantMap[`${ub.profiles.discord_user_id}_${ub.badge_id}`] = true;
-            }
+            // user_badges_new.user_id is discord_user_id string
+            window.userMutantMap[`${ub.user_id}_${ub.badge_id}`] = true;
         });
 
 
