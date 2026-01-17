@@ -217,9 +217,8 @@
                 opacity: 0.7;
             }
 
-            /* 各項目のラベル追加 */
             .ranking-table td:nth-child(3)::before {
-                content: "得点: ";
+                content: attr(data-label) ": ";
                 color: #888;
                 font-size: 0.8rem;
             }
@@ -397,10 +396,12 @@
                 </div>
                 <!-- 詳細指標 -->
                 <div class="d-flex flex-wrap justify-content-center gap-2">
+                    <button class="btn btn-outline-success btn-sm" onclick="showRanking('match_count')">試合数</button>
                     <button class="btn btn-outline-success btn-sm" onclick="showRanking('avg_score')">平均スコア</button>
                     <button class="btn btn-outline-success btn-sm" onclick="showRanking('max_score')">最大スコア</button>
                     <button class="btn btn-outline-success btn-sm" onclick="showRanking('deal')">放銃率</button>
                     <button class="btn btn-outline-success btn-sm" onclick="showRanking('win')">和了率</button>
+                    <button class="btn btn-outline-success btn-sm" onclick="showRanking('skill')">バランス雀力</button>
                     <button class="btn btn-outline-success btn-sm" onclick="showRanking('avg_rank')">平均順位</button>
                     <button class="btn btn-outline-success btn-sm" onclick="showRanking('top')">トップ率</button>
                     <button class="btn btn-outline-success btn-sm" onclick="showRanking('avoid')">ラス回避</button>
