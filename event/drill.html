@@ -87,17 +87,181 @@
 
     <div class="container py-5 mt-5">
         <div class="drill-container">
-            <span class="drill-icon">🏗️</span>
-            <h1 class="page-header">ほりほりドリル</h1>
-            <p class="coming-soon">COMING SOON</p>
-            <hr class="my-4 border-secondary">
-            <p>このページは現在開発中の新イベント「ほりほりドリル」のプレースホルダーです。</p>
-            <p class="text-muted small">管理者のみがこのページにアクセスできます。</p>
-            <div class="mt-4">
+            <h1 class="page-header">🏗️ ほりほりドリル</h1>
+
+            <!-- ルール説明 -->
+            <div class="card bg-dark bg-opacity-50 border-secondary mb-4 text-start">
+                <div class="card-body">
+                    <h5 class="card-title text-warning">📜 ルール説明</h5>
+                    <ul class="mb-0 small">
+                        <li>1日最大 <span class="badge bg-warning text-dark">100回</span> 掘ることができます。</li>
+                        <li>掘るたびに <span class="text-info">コイン</span>、<span class="text-info">引換券</span>、<span
+                                class="text-info">限定バッジ</span> が出現するかも！？</li>
+                        <li>カウントは毎日 <span class="text-warning">午前0時 (JST)</span> にリセットされます。</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- ステータス表示 -->
+            <div class="row g-3 mb-4">
+                <div class="col-6">
+                    <div class="p-3 rounded bg-white bg-opacity-10">
+                        <div class="small text-white-50">今日の残り</div>
+                        <div id="daily-remaining" class="h3 mb-0 fw-bold">-</div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="p-3 rounded bg-white bg-opacity-10">
+                        <div class="small text-white-50">累計タップ</div>
+                        <div id="total-taps" class="h3 mb-0 fw-bold">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 掘削セクション -->
+            <div class="dig-area my-5">
+                <div id="drill-visual" class="drill-visual">
+                    <span class="drill-emoji">🏗️</span>
+                    <div id="dirt-effect" class="dirt-effect"></div>
+                </div>
+
+                <button id="dig-button" class="btn btn-warning btn-lg rounded-pill px-5 py-3 fw-bold shadow-lg mt-4"
+                    onclick="handleDig()">
+                    掘る！
+                </button>
+            </div>
+
+            <div id="result-message" class="mt-3 h5 fw-bold" style="min-height: 1.5rem;"></div>
+
+            <div class="mt-5 pt-4 border-top border-secondary">
                 <a href="../index.html" class="btn btn-outline-light rounded-pill px-4">ホームに戻る</a>
             </div>
         </div>
     </div>
+
+    <!-- 報酬ポップアップ -->
+    <div id="reward-modal" class="modal fade" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark border-warning">
+                <div class="modal-body text-center py-5">
+                    <h2 class="text-warning mb-4">✨ お宝発見！ ✨</h2>
+                    <div id="reward-content" class="h3 mb-4"></div>
+                    <button type="button" class="btn btn-warning rounded-pill px-4"
+                        data-bs-dismiss="modal">やったー！</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .drill-visual {
+            font-size: 6rem;
+            position: relative;
+            height: 120px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .drill-emoji {
+            display: inline-block;
+            transition: transform 0.1s;
+        }
+
+        /* 掘削中の振動と下降アニメーション */
+        .digging .drill-emoji {
+            animation: vibrate 0.1s infinite, descend 1s ease-in-out;
+        }
+
+        @keyframes vibrate {
+            0% {
+                transform: translate(1px, 1px) rotate(0deg);
+            }
+
+            10% {
+                transform: translate(-1px, -2px) rotate(-1deg);
+            }
+
+            20% {
+                transform: translate(-3px, 0px) rotate(1deg);
+            }
+
+            30% {
+                transform: translate(3px, 2px) rotate(0deg);
+            }
+
+            40% {
+                transform: translate(1px, -1px) rotate(1deg);
+            }
+
+            50% {
+                transform: translate(-1px, 2px) rotate(-1deg);
+            }
+
+            60% {
+                transform: translate(-3px, 1px) rotate(0deg);
+            }
+
+            70% {
+                transform: translate(3px, 1px) rotate(-1deg);
+            }
+
+            80% {
+                transform: translate(-1px, -1px) rotate(1deg);
+            }
+
+            90% {
+                transform: translate(1px, 2px) rotate(0deg);
+            }
+
+            100% {
+                transform: translate(1px, -2px) rotate(-1deg);
+            }
+        }
+
+        @keyframes descend {
+            0% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(20px);
+            }
+
+            100% {
+                transform: translateY(0);
+            }
+        }
+
+        .dirt-effect {
+            position: absolute;
+            bottom: 0;
+            width: 100px;
+            height: 20px;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            background: #8b4513;
+            border-radius: 50%;
+            opacity: 0;
+            animation: particle-fly 0.5s ease-out forwards;
+        }
+
+        @keyframes particle-fly {
+            0% {
+                transform: translate(0, 0);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translate(var(--tx), var(--ty));
+                opacity: 0;
+            }
+        }
+    </style>
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -105,6 +269,9 @@
     <script src="../js/supabase-config.js"></script>
     <script src="../js/navigation.js"></script>
     <script>
+        let currentUserId = null;
+        let isDigging = false;
+
         // 管理者チェック
         async function checkAdmin() {
             const { data: { user } } = await supabaseClient.auth.getUser();
@@ -115,10 +282,9 @@
                 return;
             }
 
-            const discordId = user.user_metadata.provider_id;
+            currentUserId = user.user_metadata.provider_id;
 
-            // supabase-config.js で定義されている ADMIN_DISCORD_IDS を使用
-            if (!ADMIN_DISCORD_IDS.includes(discordId)) {
+            if (!ADMIN_DISCORD_IDS.includes(currentUserId)) {
                 alert('管理者権限がありません。');
                 window.location.href = '../index.html';
                 return;
@@ -127,6 +293,130 @@
             // 管理者なら表示
             overlay.style.display = 'none';
             initAccordionNav('../');
+            loadStats();
+        }
+
+        // 統計読み込み
+        async function loadStats() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('event_drill_user_stats')
+                    .select('*')
+                    .eq('user_id', currentUserId)
+                    .maybeSingle();
+
+                if (error) throw error;
+
+                if (data) {
+                    // JSTでの最終タップ日確認
+                    const lastTap = new Date(data.last_tap_at);
+                    const now = new Date();
+                    const yesterdayJST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+                    yesterdayJST.setHours(0, 0, 0, 0);
+
+                    const dailyTaps = (lastTap < yesterdayJST) ? 0 : data.daily_taps;
+
+                    document.getElementById('daily-remaining').textContent = (100 - dailyTaps);
+                    document.getElementById('total-taps').textContent = data.total_taps.toLocaleString();
+                } else {
+                    document.getElementById('daily-remaining').textContent = '100';
+                    document.getElementById('total-taps').textContent = '0';
+                }
+            } catch (err) {
+                console.error('Stats load error:', err);
+            }
+        }
+
+        // 掘るアクション
+        async function handleDig() {
+            if (isDigging) return;
+            isDigging = true;
+
+            const btn = document.getElementById('dig-button');
+            const visual = document.getElementById('drill-visual');
+            const resultMsg = document.getElementById('result-message');
+
+            btn.disabled = true;
+            visual.classList.add('digging');
+            resultMsg.textContent = '掘削中...';
+            createParticles();
+
+            try {
+                const { data, error } = await supabaseClient.rpc('process_drill_tap', {
+                    target_user_id: currentUserId
+                });
+
+                if (error) throw error;
+
+                // 2秒間待機（アニメーション用）
+                await new Promise(r => setTimeout(r, 1000));
+
+                if (data.success) {
+                    // UI更新
+                    document.getElementById('daily-remaining').textContent = (100 - data.new_daily_taps);
+                    document.getElementById('total-taps').textContent = data.total_taps.toLocaleString();
+
+                    if (data.reward.type === 'nothing') {
+                        resultMsg.innerHTML = '<span class="text-white-50">何も見つからなかった...</span>';
+                    } else {
+                        showReward(data.reward);
+                        resultMsg.innerHTML = `<span class="text-warning">「${data.reward.name}」をゲット！</span>`;
+                    }
+                } else {
+                    if (data.error === 'DAILY_LIMIT_REACHED') {
+                        resultMsg.innerHTML = '<span class="text-danger">今日の限界（100回）に達しました！</span>';
+                    } else {
+                        resultMsg.textContent = 'エラーが発生しました。';
+                    }
+                }
+            } catch (err) {
+                console.error('Dig error:', err);
+                resultMsg.textContent = 'エラーが発生しました。';
+            } finally {
+                visual.classList.remove('digging');
+                btn.disabled = false;
+                isDigging = false;
+            }
+        }
+
+        // 報酬表示
+        function showReward(reward) {
+            const content = document.getElementById('reward-content');
+            let rewardHtml = '';
+
+            if (reward.type === 'coin') {
+                rewardHtml = `<div class="display-4">💰</div><div>${reward.amount} コイン</div>`;
+            } else if (reward.type === 'ticket') {
+                rewardHtml = `<div class="display-4">🎫</div><div>${reward.name}</div>`;
+            } else if (reward.type === 'badge') {
+                rewardHtml = `<div class="display-4">📛</div><div>${reward.name} (限定バッジ)</div>`;
+            }
+
+            content.innerHTML = rewardHtml;
+            const modal = new bootstrap.Modal(document.getElementById('reward-modal'));
+            modal.show();
+        }
+
+        // 土煙エフェクト
+        function createParticles() {
+            const container = document.getElementById('dirt-effect');
+            for (let i = 0; i < 15; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                const size = Math.random() * 8 + 4;
+                p.style.width = size + 'px';
+                p.style.height = size + 'px';
+                p.style.left = '50%';
+
+                // 飛び散る方向をランダムに
+                const tx = (Math.random() - 0.5) * 200;
+                const ty = -Math.random() * 100 - 50;
+                p.style.setProperty('--tx', tx + 'px');
+                p.style.setProperty('--ty', ty + 'px');
+
+                container.appendChild(p);
+                setTimeout(() => p.remove(), 600);
+            }
         }
 
         document.addEventListener('DOMContentLoaded', checkAdmin);
