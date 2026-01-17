@@ -2510,6 +2510,7 @@
                     }
                     loadOwnedBadges();
                     loadActivityLogs();
+                    loadTargetUserInfo(); // 装着バッジが売却された場合自動で外す
                     const user = await getCurrentUser();
                     if (user) displayMyInfo(user);
                 } else {
@@ -2925,15 +2926,14 @@
                 }
 
                 alert(`${toUserName} さんにバッジを譲渡しました！`);
-                // ヘッダーの所持金・バッジ情報も更新するために全体をリロード
-                if (isViewMode) {
-                    await loadTargetUserInfo();
-                } else {
+                // ヘッダーの所持金・バッジ情報も更新
+                await loadOwnedBadges();
+                await loadTargetUserInfo(); // 装着バッジが譲渡された場合自動で外す
+                await loadActivityLogs();
+                if (!isViewMode) {
                     const user = await getCurrentUser();
                     if (user) await displayMyInfo(user);
                 }
-                await loadOwnedBadges();
-                await loadActivityLogs();
             } catch (err) {
                 console.error('譲渡エラー:', err);
                 alert('譲渡に失敗しました');
