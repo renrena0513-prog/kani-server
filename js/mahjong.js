@@ -168,13 +168,13 @@ function showRanking() {
     const nameHeader = document.getElementById('name-header');
 
     // ボタンのスタイル更新 (サブフィルターのみ)
-    const subButtons = document.querySelectorAll('#sub-filter-nav .btn');
+    const subButtons = document.querySelectorAll('#sub-filter-nav .sub-filter-btn');
     const subTypeMap = {
         'all': 0, 'avg_score': 1, 'max_score': 2, 'match_count': 3, 'win': 4, 'deal': 5, 'skill': 6, 'avg_rank': 7, 'top': 8, 'avoid': 9
     };
 
-    subButtons.forEach(btn => btn.classList.replace('btn-success', 'btn-outline-success'));
-    if (subButtons[subTypeMap[type]]) subButtons[subTypeMap[type]].classList.replace('btn-outline-success', 'btn-success');
+    subButtons.forEach(btn => btn.classList.remove('active'));
+    if (subButtons[subTypeMap[type]]) subButtons[subTypeMap[type]].classList.add('active');
 
     // 大会フィルタリング
     let seasonFiltered = allRecords;
