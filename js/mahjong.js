@@ -378,12 +378,34 @@ function renderRanking(records, groupKey, type = 'all') {
             let profile = null;
             let displayName = 'Unknown';
             let avatarUrl = '';
+            let canLink = false;
+            let badgeHtmlLeft = '';
+            let badgeHtmlRight = '';
 
             if (!s.isTeam) {
-                profile = allProfiles.find(p => p.discord_user_id === s.discord_user_id) ||
-                    allProfiles.find(p => p.account_name === s.nickname);
-                displayName = profile?.account_name || s.nickname || 'Unknown';
-                avatarUrl = profile?.avatar_url;
+                if (s.discord_user_id) {
+                    profile = allProfiles.find(p => p.discord_user_id === s.discord_user_id);
+                    displayName = profile?.account_name || s.nickname || s.discord_user_id;
+                    avatarUrl = profile?.avatar_url;
+                    canLink = true;
+                } else {
+                    displayName = s.nickname || 'Unknown';
+                    profile = allProfiles.find(p => p.account_name === displayName);
+                    avatarUrl = profile?.avatar_url;
+                }
+
+                const badge = profile?.badges;
+                const badgeRight = profile?.badges_right;
+                badgeHtmlLeft = badge ? `
+                    <div style="width: 24px; height: 24px;" class="ms-1">
+                        <img src="${badge.image_url}" title="${badge.name}" 
+                             style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
+                    </div>` : '';
+                badgeHtmlRight = badgeRight ? `
+                    <div style="width: 24px; height: 24px;" class="ms-1">
+                        <img src="${badgeRight.image_url}" title="${badgeRight.name}" 
+                             style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
+                    </div>` : '';
             } else {
                 displayName = s.nickname || 'Unknown';
             }
@@ -403,6 +425,9 @@ function renderRanking(records, groupKey, type = 'all') {
 
             const statLabel = document.getElementById('stat-header')?.textContent || '指標';
 
+            const linkUrl = canLink ? `../mypage/index.html?user=${s.discord_user_id}` : '#';
+            const linkClass = canLink ? '' : 'pe-none text-dark';
+
             return `
                 <div class="col-12">
                     <div class="podium-card ${rankClass}">
@@ -411,10 +436,18 @@ function renderRanking(records, groupKey, type = 'all') {
                                 ${crown}
                                 <div class="podium-rank">${rank}</div>
                             </div>
-                            <div class="podium-player-info">
-                                <img src="${avatarUrl || '../img/default-avatar.png'}" class="podium-avatar">
-                                <div class="podium-name">${displayName}</div>
-                            </div>
+                            <a href="${linkUrl}" class="text-decoration-none podium-player-info ${linkClass}">
+                                <div class="d-flex align-items-center gap-1">
+                                    <div style="width: 64px; height: 64px;" class="flex-shrink-0 d-flex align-items-center justify-content-center">
+                                        ${avatarUrl ?
+                    `<img src="${avatarUrl}" alt="${displayName}" class="podium-avatar">` :
+                    (s.isTeam ? `<span style="font-size: 2rem;">🏅</span>` : `<img src="../img/default-avatar.png" class="podium-avatar">`)}
+                                    </div>
+                                    ${badgeHtmlLeft}
+                                </div>
+                                <div class="podium-name ${canLink ? 'hover-underline' : ''}">${displayName}</div>
+                                ${badgeHtmlRight}
+                            </a>
                         </div>
                         <div class="podium-card-right">
                             <div class="podium-stat-grid">
