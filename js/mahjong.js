@@ -321,7 +321,9 @@ function renderRanking(records, groupKey, type = 'all') {
             summary[key].r3 += Number(r.rank3_count || 0);
             summary[key].r4 += Number(r.rank4_count || 0);
             summary[key].max_score = Math.max(summary[key].max_score, Number(r.score_max || 0));
-            summary[key].hand_total += Number(r.total_hands || 0); // 第一回に列があれば
+            summary[key].hand_total += Number(r.hands_played || 0);
+            summary[key].win += Number(r.win_count || 0);
+            summary[key].deal += Number(r.deal_in_count || 0);
             // 第一回は四麻メインと想定
             summary[key].yonma_count += Number(r.matches_played || 0);
         } else {
