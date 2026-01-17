@@ -222,8 +222,10 @@ function showRanking() {
         'match_count': '試合数', 'win': '和了率', 'deal': '放銃率',
         'skill': 'バランス雀力', 'avg_rank': '平均順位', 'top': 'トップ率', 'avoid': 'ラス回避'
     };
-    statHeader.style.display = (category === 'team') ? 'none' : '';
-    statHeader.textContent = subTitleMap[type] || '合計スコア';
+    if (statHeader) {
+        statHeader.style.display = ''; // チーム戦でも表示するように
+        statHeader.textContent = subTitleMap[type] || '合計スコア';
+    }
 
     // 以前の注釈ロジックを削除
     const noticeId = 'ranking-notice';
@@ -240,7 +242,7 @@ function showRanking() {
     const headerContent = `
             <th style="width: 80px;">順位</th>
             <th id="name-header">${nameHeader.textContent}</th>
-            <th id="stat-header" style="width: 180px;${category === 'team' ? ' display: none;' : ''}">${statHeader.textContent}</th>
+            <th id="stat-header" style="width: 180px;">${statHeader.textContent}</th>
             <th style="width: 120px;">${type === 'match_count' ? '局数' : '試合数'}</th>
         `;
 
@@ -625,7 +627,7 @@ function renderRanking(records, groupKey, type = 'all') {
                             ${badgeHtmlRight}
                         </a>
                     </td>
-                    <td class="fw-bold ${statColorClass}" data-label="${labelText}" style="font-size: 1.1rem;${groupKey === 'team_name' ? ' display: none;' : ''}">
+                    <td class="fw-bold ${statColorClass}" data-label="${labelText}" style="font-size: 1.1rem;">
                         ${statValue}
                     </td>
                     <td data-label="${type === 'match_count' ? '局数' : '試合数'}">${type === 'match_count' ? s.hand_total : s.count}</td>
