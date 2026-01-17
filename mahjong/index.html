@@ -490,7 +490,22 @@
                 .podium-player-info {
                     display: flex;
                     align-items: center;
-                    gap: 15px;
+                    gap: 25px;
+                }
+
+                .podium-avatar-wrapper {
+                    width: 64px;
+                    height: 64px;
+                    flex-shrink: 0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+
+                .podium-identity-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
                 }
 
                 .podium-name {
@@ -498,6 +513,7 @@
                     font-size: 1.4rem;
                     color: #222;
                     margin: 0;
+                    line-height: 1.2;
                 }
 
                 .podium-crown {
@@ -541,20 +557,33 @@
 
                 @media (max-width: 768px) {
                     .podium-card {
-                        padding: 15px;
+                        padding: 20px 15px;
                         flex-direction: column;
                         text-align: center;
-                        gap: 15px;
+                        gap: 20px;
                     }
 
                     .podium-card-left {
                         flex-direction: column;
-                        gap: 10px;
+                        gap: 15px;
+                        width: 100%;
                     }
 
                     .podium-player-info {
                         flex-direction: column;
-                        gap: 5px;
+                        gap: 15px;
+                        width: 100%;
+                    }
+
+                    .podium-identity-row {
+                        justify-content: center;
+                        width: 100%;
+                        flex-wrap: wrap;
+                        gap: 8px;
+                    }
+
+                    .podium-name {
+                        font-size: 1.2rem;
                     }
 
                     .podium-card-right {
@@ -562,8 +591,9 @@
                         width: 100%;
                     }
 
-                    .podium-stat-row {
+                    .podium-stat-grid {
                         justify-content: center;
+                        gap: 30px;
                     }
                 }
             </style>
