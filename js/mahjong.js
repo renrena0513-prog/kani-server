@@ -397,14 +397,14 @@ function renderRanking(records, groupKey, type = 'all') {
                 const badge = profile?.badges;
                 const badgeRight = profile?.badges_right;
                 badgeHtmlLeft = badge ? `
-                    <div style="width: 24px; height: 24px;" class="ms-1">
+                    <div style="width: 40px; height: 40px;" class="ms-1">
                         <img src="${badge.image_url}" title="${badge.name}" 
-                             style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
+                             style="width: 40px; height: 40px; object-fit: contain; border-radius: 6px;">
                     </div>` : '';
                 badgeHtmlRight = badgeRight ? `
-                    <div style="width: 24px; height: 24px;" class="ms-1">
+                    <div style="width: 40px; height: 40px;" class="ms-1">
                         <img src="${badgeRight.image_url}" title="${badgeRight.name}" 
-                             style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
+                             style="width: 40px; height: 40px; object-fit: contain; border-radius: 6px;">
                     </div>` : '';
             } else {
                 displayName = s.nickname || 'Unknown';
