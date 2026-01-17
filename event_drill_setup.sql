@@ -17,16 +17,18 @@ CREATE TABLE IF NOT EXISTS event_drill_rewards (
     reward_name TEXT            -- 表示用の名前
 );
 
--- 3. 初期報酬データ投入 (例)
-INSERT INTO event_drill_rewards (reward_type, reward_name, amount, probability_weight) VALUES 
-('nothing', 'ハズレ', 0, 700),
-('coin', '10コイン', 10, 200),
-('coin', '50コイン', 50, 50),
-('ticket', '引換券(普通)', 1, 30),
-('coin', '100コイン', 100, 15),
-('ticket', '引換券(レア)', 1, 5);
+-- 3. 初期報酬データ投入 (修正版)
+TRUNCATE event_drill_rewards;
+INSERT INTO event_drill_rewards (reward_type, reward_name, reward_id, amount, probability_weight) VALUES 
+('nothing', 'ハズレ', NULL, 0, 700),
+('coin', '10コイン', NULL, 10, 200),
+('coin', '50コイン', NULL, 50, 50),
+('gacha_ticket', '祈願符(1枚)', NULL, 1, 30),
+('coin', '100コイン', NULL, 100, 15),
+('exchange_ticket', '一般引換券', '一般', 1, 5),
+('badge', '限定バッジ', '1', 0, 1); -- TODO: 実際の限定バッジIDが決まれば更新
 
--- 4. 掘削ロジック (RPC)
+-- 4. 掘削ロジック (RPC修正版)
 CREATE OR REPLACE FUNCTION process_drill_tap(target_user_id TEXT)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -77,7 +79,10 @@ BEGIN
     -- ユーザー情報の更新 (コイン等)
     IF v_reward.reward_type = 'coin' THEN
         UPDATE profiles SET coins = coins + v_reward.amount, total_assets = total_assets + v_reward.amount WHERE discord_user_id = target_user_id;
-    ELSIF v_reward.reward_type = 'ticket' THEN
+    ELSIF v_reward.reward_type = 'gacha_ticket' THEN
+        -- 祈願符の更新
+        UPDATE profiles SET gacha_tickets = COALESCE(gacha_tickets, 0) + v_reward.amount WHERE discord_user_id = target_user_id;
+    ELSIF v_reward.reward_type = 'exchange_ticket' THEN
         -- exchange_tickets (jsonb) の更新
         UPDATE profiles 
         SET exchange_tickets = jsonb_set(
@@ -105,10 +110,11 @@ BEGIN
         VALUES (
             target_user_id, 
             'drill_reward', 
-            v_reward.amount, 
-            CASE WHEN v_reward.reward_type = 'badge' THEN v_reward.reward_id ELSE NULL END, 
+            CASE WHEN v_reward.reward_type = 'coin' THEN v_reward.amount ELSE NULL END, 
+            CASE WHEN v_reward.reward_type = 'badge' THEN v_reward.reward_id::int ELSE NULL END, 
             jsonb_build_object(
                 'reward_name', v_reward.reward_name,
+                'reward_type', v_reward.reward_type,
                 'depth', v_stats.total_taps + 1
             )
         );

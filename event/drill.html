@@ -540,8 +540,10 @@
 
             if (reward.type === 'coin') {
                 rewardHtml = `<div class="display-4">💰</div><div>${reward.amount} コイン</div>`;
-            } else if (reward.type === 'ticket') {
+            } else if (reward.type === 'gacha_ticket') {
                 rewardHtml = `<div class="display-4">🎫</div><div>${reward.name}</div>`;
+            } else if (reward.type === 'exchange_ticket') {
+                rewardHtml = `<div class="display-4">🏷️</div><div>${reward.name}</div>`;
             } else if (reward.type === 'badge') {
                 rewardHtml = `<div class="display-4">📛</div><div>${reward.name} (限定バッジ)</div>`;
             }
