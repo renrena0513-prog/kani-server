@@ -2055,8 +2055,8 @@
                     .order('created_at', { ascending: false });
 
                 // 不要なログを除外（queryで除外できるものはここでする）
-                logsQuery = logsQuery.not('action_type', 'eq', 'badge_equip')
-                    .not('action_type', 'eq', 'admin_edit');
+                // mahjong(DB用), admin_edit は表示しない
+                logsQuery = logsQuery.not('action_type', 'in', '("mahjong","admin_edit","badge_equip")');
 
                 // フィルター適用
                 if (actionFilter !== 'all') {
@@ -2166,7 +2166,6 @@
                     'badge_purchase': '🛒 バッジ購入',
                     'omikuji': '🎋 おみくじ',
                     'royalty_receive': '💎 売上還元',
-                    'admin_edit': '⚙️ 管理者修正',
                     'gacha_draw': '⛩️ お賽銭'
                 };
 
@@ -2175,10 +2174,20 @@
                         month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                     });
                     const typeName = typeNames[log.action_type] || log.action_type;
-                    const isTicketOmikuji = log.action_type === 'omikuji' && log.details?.ticket_reward;
-                    // ガチャでコイン0の場合は祈願符（チケット）使用なので🎫-1表示
-                    const isTicketGacha = log.action_type === 'gacha_draw' && log.amount === 0;
-                    const amountStr = isTicketGacha ? '🎫 -1' : (log.amount !== null && (!isTicketOmikuji || log.amount !== 0)) ? `🪙 ${log.amount.toLocaleString()}` : '';
+
+                    // 金額表示の構築
+                    let amountStr = '';
+                    if (log.isMatch) {
+                        // 麻雀の場合はスコアを右側に表示
+                        const score = log.details?.final_score || 0;
+                        const scoreFormatted = Number(score) >= 0 ? `+${score}` : `${score}`;
+                        amountStr = `<span class="text-secondary">${scoreFormatted} pts</span>`;
+                    } else {
+                        const isTicketOmikuji = log.action_type === 'omikuji' && log.details?.ticket_reward;
+                        // ガチャでコイン0の場合は祈願符（チケット）使用なので🎫-1表示
+                        const isTicketGacha = log.action_type === 'gacha_draw' && log.amount === 0;
+                        amountStr = isTicketGacha ? '🎫 -1' : (log.amount !== null && (!isTicketOmikuji || log.amount !== 0)) ? `🪙 ${log.amount.toLocaleString()}` : '';
+                    }
 
                     // 相手の情報を取得（基本は target_user_id。常に最新のプロフィールを参照）
                     const otherId = log.target_user_id;
@@ -2193,25 +2202,24 @@
 
                     let detailsStr = '';
                     if (log.isMatch) {
-                        const rank = log.details?.rank || '-';
-                        const score = log.details?.final_score || '0';
-                        const mode = log.details?.mode || '';
+                        const rank = log.details?.rank;
+                        const mode = log.details?.mode || ''; // mahjong_mode
                         const tType = log.details?.tournament_type || '';
                         const mMode = log.details?.match_mode || '';
 
                         // 大会種別の表示用ラベル
-                        const tLabel = mMode ? `${mMode} ` : (tType.includes('個人') ? '個人戦' : (tType.includes('団体') ? '団体戦' : ''));
+                        const tLabel = mMode ? `${mMode} ` : (tType.includes('個人') ? '個人戦' : (tType.includes('団体') ? '団体戦' : tType));
                         const tPrefix = tLabel ? `<span class="text-muted small me-1" > [${tLabel}]</span> ` : '';
 
                         // 過去大会（legacy）の場合は順位を非表示
-                        const showRank = !log.details?.is_legacy && rank !== null;
+                        const showRank = !log.details?.is_legacy && rank !== null && rank !== undefined;
+
                         detailsStr = `
                         <div class="d-inline-flex align-items-center flex-wrap" >
                             ${tPrefix}
-                                <span class="fw-bold text-dark me-2">${mode}</span>
-                                ${showRank ? `<span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 me-2" style="font-size: 0.8rem;">${rank}位</span>` : ''}
-                                <span class="text-secondary small">(${score >= 0 ? '+' : ''}${score} pts)</span>
-                            </div>
+                            <span class="fw-bold text-dark me-2">${mode}</span>
+                            ${showRank ? `<span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 me-2" style="font-size: 0.8rem;">${rank}位</span>` : ''}
+                        </div>
                         `;
                     } else if (log.action_type === 'transfer_send') {
                         detailsStr = `➡ ${otherHtml} への送金`;
