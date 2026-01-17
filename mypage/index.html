@@ -2952,6 +2952,17 @@
             const total = sorted.length;
 
             const rankEl = document.getElementById('rank-' + id);
+            const cardEl = el ? el.closest('.stat-card-mini') : null;
+
+            if (cardEl) {
+                // 既存のランククラスを削除
+                cardEl.classList.remove('rank-1', 'rank-2', 'rank-3');
+                // 10試合以上かつ3位以内の場合にクラスを付与
+                if (myGames >= 10 && myRank >= 1 && myRank <= 3) {
+                    cardEl.classList.add(`rank-${myRank}`);
+                }
+            }
+
             if (rankEl) {
                 // 自分が10試合未満の場合はランク外
                 if (myGames < 10) {
