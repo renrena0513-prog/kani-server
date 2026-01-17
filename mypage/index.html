@@ -896,9 +896,10 @@
                                     <label class="filter-label-mini">🀄 形式</label>
                                     <select id="mode-select" class="mahjong-filter-select"
                                         onchange="handleModeChange()">
-                                        <option value="all">総合</option>
-                                        <option value="yonma">四麻</option>
-                                        <option value="sanma">三麻</option>
+                                        <option value="all">個人戦（総合）</option>
+                                        <option value="individual_yonma">個人戦（四麻）</option>
+                                        <option value="individual_sanma">個人戦（三麻）</option>
+                                        <option value="team">チーム戦</option>
                                     </select>
                                 </div>
                             </div>
@@ -916,37 +917,19 @@
                                 <div class="row g-3 mb-3">
                                     <div class="col-6 col-md-4">
                                         <div class="stat-card-mini">
-                                            <div class="stat-label-mini">総合スコア</div>
+                                            <div class="stat-label-mini">合計スコア</div>
                                             <div class="stat-value-mini" id="stat-total">-</div>
                                             <div class="stat-rank" id="rank-total">-</div>
                                         </div>
                                     </div>
                                     <div class="col-6 col-md-4">
                                         <div class="stat-card-mini">
-                                            <div class="stat-label-mini">三麻スコア</div>
-                                            <div class="stat-value-mini" id="stat-sanma">-</div>
-                                            <div class="stat-rank" id="rank-sanma">-</div>
-                                        </div>
-                                    </div>
-                                    <div class="col-6 col-md-4">
-                                        <div class="stat-card-mini">
-                                            <div class="stat-label-mini">四麻スコア</div>
-                                            <div class="stat-value-mini" id="stat-yonma">-</div>
-                                            <div class="stat-rank" id="rank-yonma">-</div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- 平均・最大スコア -->
-                                <div class="row g-3 mb-3">
-                                    <div class="col-6">
-                                        <div class="stat-card-mini">
                                             <div class="stat-label-mini">平均スコア</div>
                                             <div class="stat-value-mini" id="stat-avg-score">-</div>
                                             <div class="stat-rank" id="rank-avg-score">-</div>
                                         </div>
                                     </div>
-                                    <div class="col-6">
+                                    <div class="col-6 col-md-4">
                                         <div class="stat-card-mini">
                                             <div class="stat-label-mini">最大スコア</div>
                                             <div class="stat-value-mini" id="stat-max-score">-</div>
@@ -2880,11 +2863,15 @@
                 records = records.filter(r => r.tournament_type === currentMyTournament);
             }
 
-            // 試合形式フィルター
-            if (currentMahjongMode !== 'all') {
-                const modeValue = currentMahjongMode === 'yonma' ? '四麻' : '三麻';
-                records = records.filter(r => (r.mahjong_mode || r.mode) === modeValue);
+            // メインフィルター（対戦形式）
+            if (currentMahjongMode === 'team') {
+                // チーム戦対応（現状チームデータがない場合はスキップ）
+            } else if (currentMahjongMode === 'individual_yonma') {
+                records = records.filter(r => (r.mahjong_mode || r.mode) === '四麻');
+            } else if (currentMahjongMode === 'individual_sanma') {
+                records = records.filter(r => (r.mahjong_mode || r.mode) === '三麻');
             }
+            // 'all' の場合は全ての個人戦データ
 
             const playerStats = calculateAllPlayerStats(records);
             const myStats = playerStats.find(p => p.name === myAccountName);
@@ -2906,8 +2893,6 @@
             const formatScore = (val) => (typeof val !== 'number') ? val : Math.round(val * 10) / 10;
 
             updateStatCard('total', formatScore(myStats.total), playerStats, 'total', true);
-            updateStatCard('sanma', formatScore(myStats.sanma), playerStats, 'sanma', true);
-            updateStatCard('yonma', formatScore(myStats.yonma), playerStats, 'yonma', true);
             updateStatCard('avg-score', formatScore(myStats.avgScore), playerStats, 'avgScore', true);
             updateStatCard('max-score', formatScore(myStats.maxScore), playerStats, 'maxScore', true);
             updateStatCard('win-rate', myStats.winRate.toFixed(1) + '%', playerStats, 'winRate', true);
