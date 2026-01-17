@@ -28,7 +28,13 @@ async function fetchProfiles() {
         const { data, error } = await supabaseClient
             .from('profiles')
             .select('*, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name)');
-        if (!error) allProfiles = data;
+        if (!error) {
+            allProfiles = data.sort((a, b) => {
+                const nameA = a.account_name || "";
+                const nameB = b.account_name || "";
+                return nameA.localeCompare(nameB, 'ja');
+            });
+        }
     } catch (err) {
         console.error('プロフィール取得エラー:', err);
     }

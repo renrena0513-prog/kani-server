@@ -499,15 +499,15 @@ async function editMatch(matchId) {
 async function populateDropdowns() {
     try {
         const [pRes, tRes] = await Promise.all([
-            supabaseClient.from('profiles').select('account_name, discord_user_id').order('account_name').limit(10000),
-            supabaseClient.from('teams').select('team_name').order('team_name').limit(1000)
+            supabaseClient.from('profiles').select('account_name, discord_user_id').limit(10000),
+            supabaseClient.from('teams').select('team_name').limit(1000)
         ]);
 
         if (pRes.error) throw pRes.error;
         if (tRes.error) throw tRes.error;
 
-        const profiles = pRes.data;
-        const teams = tRes.data;
+        const profiles = (pRes.data || []).sort((a, b) => (a.account_name || "").localeCompare(b.account_name || "", 'ja'));
+        const teams = (tRes.data || []).sort((a, b) => (a.team_name || "").localeCompare(b.team_name || "", 'ja'));
 
         document.querySelectorAll('.player-edit-card').forEach(card => {
             const accSelect = card.querySelector('.player-account-name');
