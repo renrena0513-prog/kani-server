@@ -386,25 +386,29 @@
             <div id="tournament-filter-container" class="mb-3"></div>
 
             <!-- ランキング種別切り替え -->
-            <div class="ranking-nav d-flex flex-column gap-2">
-                <!-- メイン項目 -->
-                <div class="d-flex flex-wrap justify-content-center gap-2">
-                    <button class="btn btn-outline-success" onclick="showRanking('team')">チーム</button>
-                    <button class="btn btn-success" onclick="showRanking('all')">総合</button>
-                    <button class="btn btn-outline-success" onclick="showRanking('sanma')">三麻</button>
-                    <button class="btn btn-outline-success" onclick="showRanking('yonma')">四麻</button>
+            <div class="ranking-nav d-flex flex-column gap-3">
+                <!-- メインフィルター（対戦形式） -->
+                <div id="main-filter-nav" class="d-flex flex-wrap justify-content-center gap-2">
+                    <button class="btn btn-success" onclick="updateMainFilter('all')">総合</button>
+                    <button class="btn btn-outline-success" onclick="updateMainFilter('team_yonma')">チーム戦（四麻）</button>
+                    <button class="btn btn-outline-success" onclick="updateMainFilter('team_sanma')">チーム戦（三麻）</button>
+                    <button class="btn btn-outline-success"
+                        onclick="updateMainFilter('individual_yonma')">個人戦（四麻）</button>
+                    <button class="btn btn-outline-success"
+                        onclick="updateMainFilter('individual_sanma')">個人戦（三麻）</button>
                 </div>
-                <!-- 詳細指標 -->
-                <div class="d-flex flex-wrap justify-content-center gap-2">
-                    <button class="btn btn-outline-success btn-sm" onclick="showRanking('match_count')">試合数</button>
-                    <button class="btn btn-outline-success btn-sm" onclick="showRanking('avg_score')">平均スコア</button>
-                    <button class="btn btn-outline-success btn-sm" onclick="showRanking('max_score')">最大スコア</button>
-                    <button class="btn btn-outline-success btn-sm" onclick="showRanking('deal')">放銃率</button>
-                    <button class="btn btn-outline-success btn-sm" onclick="showRanking('win')">和了率</button>
-                    <button class="btn btn-outline-success btn-sm" onclick="showRanking('skill')">バランス雀力</button>
-                    <button class="btn btn-outline-success btn-sm" onclick="showRanking('avg_rank')">平均順位</button>
-                    <button class="btn btn-outline-success btn-sm" onclick="showRanking('top')">トップ率</button>
-                    <button class="btn btn-outline-success btn-sm" onclick="showRanking('avoid')">ラス回避</button>
+                <!-- サブフィルター（ランキング指標） -->
+                <div id="sub-filter-nav" class="d-flex flex-wrap justify-content-center gap-2">
+                    <button class="btn btn-success btn-sm" onclick="updateSubFilter('all')">合計スコア</button>
+                    <button class="btn btn-outline-success btn-sm" onclick="updateSubFilter('avg_score')">平均スコア</button>
+                    <button class="btn btn-outline-success btn-sm" onclick="updateSubFilter('max_score')">最大スコア</button>
+                    <button class="btn btn-outline-success btn-sm" onclick="updateSubFilter('match_count')">試合数</button>
+                    <button class="btn btn-outline-success btn-sm" onclick="updateSubFilter('win')">和了率</button>
+                    <button class="btn btn-outline-success btn-sm" onclick="updateSubFilter('deal')">放銃率</button>
+                    <button class="btn btn-outline-success btn-sm" onclick="updateSubFilter('skill')">バランス雀力</button>
+                    <button class="btn btn-outline-success btn-sm" onclick="updateSubFilter('avg_rank')">平均順位</button>
+                    <button class="btn btn-outline-success btn-sm" onclick="updateSubFilter('top')">トップ率</button>
+                    <button class="btn btn-outline-success btn-sm" onclick="updateSubFilter('avoid')">ラス回避</button>
                 </div>
             </div>
         </header>

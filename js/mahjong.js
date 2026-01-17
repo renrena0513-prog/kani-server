@@ -1,7 +1,8 @@
-// 麻雀ページ用ロジック
 let allRecords = [];
 let allProfiles = []; // プロフィール情報（アイコン付き）
 let currentTournament = '第二回麻雀大会'; // 初期表示は第二回
+let currentMainFilter = 'all'; // 総合, チーム戦(三/四), 個人戦(三/四)
+let currentSubFilter = 'all';  // 合計スコア, 平均スコア, 最大スコア, etc.
 
 document.addEventListener('DOMContentLoaded', () => {
     fetchData();
@@ -60,7 +61,7 @@ async function fetchData() {
         }
 
 
-        showRanking('all'); // 初期表示は総合個人ランキング
+        showRanking(); // 初期表示
     } catch (err) {
         console.error('データ取得エラー:', err);
     }
@@ -110,37 +111,42 @@ function setTournament(type) {
     }
 
     renderTournamentButtons();
+    showRanking();
+}
 
-    // 現在表示中のランキングタイプを保持して再表示
-    const activeBtn = document.querySelector('.ranking-nav .btn-success');
-    let rankingType = 'all';
-    if (activeBtn) {
-        const text = activeBtn.textContent;
-        if (text === 'チーム') rankingType = 'team';
-        else if (text === '総合') rankingType = 'all';
-        else if (text === '三麻') rankingType = 'sanma';
-        else if (text === '四麻') rankingType = 'yonma';
-        else if (text === '試合数') rankingType = 'match_count';
-        else if (text === '平均順位') rankingType = 'avg_rank';
-        else if (text === '最大スコア') rankingType = 'max_score';
-        else if (text === '平均スコア') rankingType = 'avg_score';
-        else if (text === '和了率') rankingType = 'win';
-        else if (text === '放銃率') rankingType = 'deal';
-        else if (text === 'バランス雀力') rankingType = 'skill';
-        else if (text === 'トップ率') rankingType = 'top';
-        else if (text === 'ラス回避') rankingType = 'avoid';
-    }
-    showRanking(rankingType);
+function updateMainFilter(type) {
+    currentMainFilter = type;
+    showRanking();
+}
+
+function updateSubFilter(type) {
+    currentSubFilter = type;
+    showRanking();
 }
 
 // ランキング切り替え
-function showRanking(type) {
+function showRanking() {
+    const type = currentSubFilter;
+    const category = currentMainFilter;
     const title = document.getElementById('ranking-title');
     const nameHeader = document.getElementById('name-header');
-    const buttons = document.querySelectorAll('.ranking-nav .btn');
 
     // ボタンのスタイル更新
-    buttons.forEach(btn => btn.classList.replace('btn-success', 'btn-outline-success'));
+    const mainButtons = document.querySelectorAll('#main-filter-nav .btn');
+    const subButtons = document.querySelectorAll('#sub-filter-nav .btn');
+
+    const mainTypeMap = {
+        'all': 0, 'team_yonma': 1, 'team_sanma': 2, 'individual_yonma': 3, 'individual_sanma': 4
+    };
+    const subTypeMap = {
+        'all': 0, 'avg_score': 1, 'max_score': 2, 'match_count': 3, 'win': 4, 'deal': 5, 'skill': 6, 'avg_rank': 7, 'top': 8, 'avoid': 9
+    };
+
+    mainButtons.forEach(btn => btn.classList.replace('btn-success', 'btn-outline-success'));
+    if (mainButtons[mainTypeMap[category]]) mainButtons[mainTypeMap[category]].classList.replace('btn-outline-success', 'btn-success');
+
+    subButtons.forEach(btn => btn.classList.replace('btn-success', 'btn-outline-success'));
+    if (subButtons[subTypeMap[type]]) subButtons[subTypeMap[type]].classList.replace('btn-outline-success', 'btn-success');
 
     // 大会フィルタリング
     let seasonFiltered = allRecords;
@@ -148,103 +154,43 @@ function showRanking(type) {
         seasonFiltered = allRecords.filter(r => r.tournament_type === currentTournament);
     }
 
-    let filtered = [];
+    // レコード抽出ロジック
+    let filtered = seasonFiltered;
     let groupKey = 'account_name';
 
-    const statHeader = document.getElementById('stat-header');
-
-    if (type === 'team') {
-        title.textContent = 'チームランキング';
-        nameHeader.textContent = 'チーム名';
-        statHeader.style.display = 'none'; // チームランキングでは代表指標列を非表示
-        // 個人戦以外のデータを抽出し、チーム名があるものを対象にする
-        filtered = seasonFiltered.filter(r => r.match_mode !== '個人戦' && r.team_name);
+    if (category === 'team_yonma') {
+        title.textContent = 'チーム戦（四麻）ランキング';
+        filtered = seasonFiltered.filter(r => r.match_mode !== '個人戦' && r.mahjong_mode === '四麻');
         groupKey = 'team_name';
-        buttons[0].classList.replace('btn-outline-success', 'btn-success');
-    } else if (type === 'all') {
-        title.textContent = '総合個人ランキング';
+        nameHeader.textContent = 'チーム名';
+    } else if (category === 'team_sanma') {
+        title.textContent = 'チーム戦（三麻）ランキング';
+        filtered = seasonFiltered.filter(r => r.match_mode !== '個人戦' && r.mahjong_mode === '三麻');
+        groupKey = 'team_name';
+        nameHeader.textContent = 'チーム名';
+    } else if (category === 'individual_yonma') {
+        title.textContent = '個人戦（四麻）ランキング';
+        filtered = seasonFiltered.filter(r => r.match_mode === '個人戦' && r.mahjong_mode === '四麻');
         nameHeader.textContent = '名前';
-        statHeader.style.display = '';
-        statHeader.textContent = '得点合計';
-        filtered = seasonFiltered; // 全集計
-        buttons[1].classList.replace('btn-outline-success', 'btn-success');
-    } else if (type === 'sanma') {
-        title.textContent = '個人ランキング (三麻)';
+    } else if (category === 'individual_sanma') {
+        title.textContent = '個人戦（三麻）ランキング';
+        filtered = seasonFiltered.filter(r => r.match_mode === '個人戦' && r.mahjong_mode === '三麻');
         nameHeader.textContent = '名前';
-        statHeader.style.display = '';
-        statHeader.textContent = '得点合計';
-        filtered = seasonFiltered.filter(r => r.mahjong_mode === '三麻');
-        buttons[2].classList.replace('btn-outline-success', 'btn-success');
-    } else if (type === 'yonma') {
-        title.textContent = '個人ランキング (四麻)';
+    } else {
+        title.textContent = '総合ランキング';
         nameHeader.textContent = '名前';
-        statHeader.style.display = '';
-        statHeader.textContent = '得点合計';
-        filtered = seasonFiltered.filter(r => r.mahjong_mode === '四麻');
-        buttons[3].classList.replace('btn-outline-success', 'btn-success');
-    } else if (type === 'match_count') {
-        title.textContent = '試合数ランキング';
-        nameHeader.textContent = '名前';
-        statHeader.style.display = '';
-        statHeader.textContent = '試合数';
-        filtered = seasonFiltered;
-        buttons[4].classList.replace('btn-outline-success', 'btn-success');
-    } else if (type === 'avg_score') {
-        title.textContent = '平均スコアランキング';
-        nameHeader.textContent = '名前';
-        statHeader.style.display = '';
-        statHeader.textContent = '平均スコア';
-        filtered = seasonFiltered;
-        buttons[5].classList.replace('btn-outline-success', 'btn-success');
-    } else if (type === 'max_score') {
-        title.textContent = '最大スコアランキング (最高得点)';
-        nameHeader.textContent = '名前';
-        statHeader.style.display = '';
-        statHeader.textContent = '最大スコア';
-        filtered = seasonFiltered;
-        buttons[6].classList.replace('btn-outline-success', 'btn-success');
-    } else if (type === 'deal') {
-        title.textContent = '放銃率ランキング';
-        nameHeader.textContent = '名前';
-        statHeader.style.display = '';
-        statHeader.textContent = '放銃率';
-        filtered = seasonFiltered;
-        buttons[7].classList.replace('btn-outline-success', 'btn-success');
-    } else if (type === 'win') {
-        title.textContent = '和了率ランキング';
-        nameHeader.textContent = '名前';
-        statHeader.style.display = '';
-        statHeader.textContent = '和了率';
-        filtered = seasonFiltered;
-        buttons[8].classList.replace('btn-outline-success', 'btn-success');
-    } else if (type === 'skill') {
-        title.textContent = 'バランス雀力ランキング';
-        nameHeader.textContent = '名前';
-        statHeader.style.display = '';
-        statHeader.textContent = 'バランス雀力';
-        filtered = seasonFiltered;
-        buttons[9].classList.replace('btn-outline-success', 'btn-success');
-    } else if (type === 'avg_rank') {
-        title.textContent = '平均順位ランキング';
-        nameHeader.textContent = '名前';
-        statHeader.style.display = '';
-        statHeader.textContent = '平均順位';
-        filtered = seasonFiltered;
-        buttons[10].classList.replace('btn-outline-success', 'btn-success');
-    } else if (type === 'top') {
-        title.textContent = 'トップ率ランキング';
-        nameHeader.textContent = '名前';
-        statHeader.style.display = '';
-        statHeader.textContent = 'トップ率';
-        filtered = seasonFiltered;
-        buttons[11].classList.replace('btn-outline-success', 'btn-success');
-    } else if (type === 'avoid') {
-        title.textContent = 'ラス回避率ランキング';
-        nameHeader.textContent = '名前';
-        statHeader.style.display = '';
-        statHeader.textContent = 'ラス回避率';
-        filtered = seasonFiltered;
-        buttons[12].classList.replace('btn-outline-success', 'btn-success');
+    }
+
+    const statHeader = document.getElementById('stat-header');
+    const subTitleMap = {
+        'all': '合計スコア', 'avg_score': '平均スコア', 'max_score': '最大スコア',
+        'match_count': '試合数', 'win': '和了率', 'deal': '放銃率',
+        'skill': 'バランス雀力', 'avg_rank': '平均順位', 'top': 'トップ率', 'avoid': 'ラス回避'
+    };
+    statHeader.style.display = (category.startsWith('team')) ? 'none' : '';
+    statHeader.textContent = subTitleMap[type] || '合計スコア';
+    if (category.startsWith('team')) {
+        statHeader.style.display = 'none';
     }
 
     // 以前の注釈ロジックを削除
@@ -252,26 +198,17 @@ function showRanking(type) {
     const oldNotice = document.getElementById(noticeId);
     if (oldNotice) oldNotice.remove();
 
-    // テーブルヘッダーの動的調整 (メインと圏外の両方を更新)
-    let tableHeaderRow = document.querySelector('.ranking-table thead tr#table-header-row'); // IDを付与して特定
+    // テーブルヘッダーの取得または作成
+    let tableHeaderRow = document.getElementById('table-header-row');
     if (!tableHeaderRow) {
-        // IDがない場合は現在のthead trを対象にする
-        const head = document.querySelector('.ranking-table thead tr');
-        if (head) {
-            head.id = 'table-header-row';
-            tableHeaderRow = head;
-        }
+        tableHeaderRow = document.querySelector('.ranking-table thead tr');
+        if (tableHeaderRow) tableHeaderRow.id = 'table-header-row';
     }
-    const headerContent = (type === 'match_count') ? `
+
+    const headerContent = `
             <th style="width: 80px;">順位</th>
-            <th id="name-header">名前</th>
-            <th id="stat-header" style="width: 100px;">試合数</th>
-            <th style="width: 100px;">四麻</th>
-            <th style="width: 100px;">三麻</th>
-        ` : `
-            <th style="width: 80px;">順位</th>
-            <th id="name-header">${type === 'team' ? 'チーム名' : '名前'}</th>
-            <th id="stat-header" style="width: 150px;${type === 'team' ? ' display: none;' : ''}">${statHeader.textContent}</th>
+            <th id="name-header">${nameHeader.textContent}</th>
+            <th id="stat-header" style="width: 150px;${category.startsWith('team') ? ' display: none;' : ''}">${statHeader.textContent}</th>
             <th style="width: 100px;">試合数</th>
         `;
 
@@ -504,24 +441,6 @@ function renderRanking(records, groupKey, type = 'all') {
 
             const labelText = document.getElementById('stat-header')?.textContent || '指標';
 
-            if (type === 'match_count') {
-                return `
-                    <tr>
-                        <td>${rankValue}</td>
-                        <td class="ps-4 text-start">
-                            <a href="${linkUrl}" 
-                               class="text-decoration-none d-flex align-items-center justify-content-start gap-2 ${linkClass}">
-                                ${avatarHtml}
-                                <span class="${canLink ? 'hover-underline' : ''} fw-bold">${displayName}</span>
-                                ${badgeHtmlRight}
-                            </a>
-                        </td>
-                        <td class="fw-bold" data-label="試合数">${s.count}</td>
-                        <td data-label="四麻">${s.yonma_count}</td>
-                        <td data-label="三麻">${s.sanma_count}</td>
-                    </tr>
-                `;
-            }
 
             return `
                 <tr>
