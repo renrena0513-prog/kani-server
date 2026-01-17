@@ -1454,7 +1454,7 @@
             try {
                 const { data } = await supabaseClient
                     .from('user_badges_new')
-                    .select('id')
+                    .select('uuid')
                     .eq('user_id', userId)
                     .eq('badge_id', badgeId)
                     .eq('is_mutant', true)
