@@ -287,11 +287,6 @@ function showRanking(type) {
     }
 
     console.log(`🎯 ランキングタイプ: ${type}, 大会: ${currentTournament}`);
-    console.log(`フィルター後のレコード数: ${filtered.length}`);
-    if (filtered.length > 0) {
-        console.log('サンプルレコード:', filtered[0]);
-    }
-
     renderRanking(filtered, groupKey, type);
 }
 
@@ -374,24 +369,13 @@ function renderRanking(records, groupKey, type = 'all') {
     Object.values(summary).forEach(s => {
         s.avg_win = s.count > 0 ? (s.win / s.count) : 0;
         s.avg_deal = s.count > 0 ? (s.deal / s.count) : 0;
-
         s.top_rate = s.count > 0 ? (s.r1 / s.count) * 100 : 0;
-
-        // ラス回避率
-        // 四麻なら4位率、三麻なら3位率を算出
-        // ただしデータが混ざっている場合は「全試合中の最大順位」をラスとみなすか
-        // ここでは三麻/四麻がフィルタリングされている可能性も考慮
-        // シンプルに「4位回数 / 試合数」または「3位回数 / 試合数」で計算
-        // 混在している場合は4位を優先
         let lastCount = s.r4;
-        if (s.r4 === 0 && s.r3 > 0) lastCount = s.r3; // 三麻のみの場合の考慮
+        if (s.r4 === 0 && s.r3 > 0) lastCount = s.r3;
         s.avoid_rate = s.count > 0 ? (1 - (lastCount / s.count)) * 100 : 0;
-
         s.avg_rank = s.count > 0 ? (1 * s.r1 + 2 * s.r2 + 3 * s.r3 + 4 * s.r4) / s.count : 0;
         s.avg_score = s.count > 0 ? s.score / s.count : 0;
         if (s.max_score === -Infinity) s.max_score = 0;
-
-        // 雀力: (和了 - 放銃) / 局数 * 100
         s.skill = s.hand_total > 0 ? ((s.win - s.deal) / s.hand_total * 100) : 0;
     });
 
@@ -433,12 +417,11 @@ function renderRanking(records, groupKey, type = 'all') {
 
             let avatarHtml = '';
             let canLink = false;
-            let badgeHtmlRight = ''; // スコープ外で初期化
-            let displayName = ''; // Define displayName here
-            let avatarUrl = ''; // Define avatarUrl here
+            let badgeHtmlRight = '';
+            let displayName = '';
+            let avatarUrl = '';
 
             if (!s.isTeam) {
-                // 個人ランキングの場合のみプロフィール/アイコン処理
                 let profile = null;
                 if (s.discord_user_id) {
                     profile = allProfiles.find(p => p.discord_user_id === s.discord_user_id);
@@ -476,7 +459,6 @@ function renderRanking(records, groupKey, type = 'all') {
                         ${badgeHtmlLeft}
                     </div>`;
             } else {
-                // チームの場合はそのままアイコンなしまたは別のアイコン
                 avatarHtml = `
                     <div style="width: 32px; height: 32px;" class="flex-shrink-0 d-flex align-items-center justify-content-center">
                         <span style="font-size: 1.2rem;">🏅</span>
@@ -486,7 +468,6 @@ function renderRanking(records, groupKey, type = 'all') {
             const linkUrl = canLink ? `../mypage/index.html?user=${s.discord_user_id}` : '#';
             const linkClass = canLink ? '' : 'pe-none text-dark';
 
-            // 別列に表示するための数値
             let statValue = '';
             let statColorClass = 'text-primary';
 
@@ -517,14 +498,12 @@ function renderRanking(records, groupKey, type = 'all') {
                 statValue = `${(s.skill > 0 ? '+' : '') + s.skill.toFixed(1)}%`;
                 statColorClass = s.skill > 0 ? 'text-success' : (s.skill < 0 ? 'text-danger' : '');
             } else if (type === 'all' || type === 'sanma' || type === 'yonma') {
-                // 得点合計
                 statValue = `${(s.score > 0 ? '+' : '') + s.score.toFixed(1)}`;
                 statColorClass = s.score > 0 ? 'text-success' : (s.score < 0 ? 'text-danger' : '');
             }
 
             const labelText = document.getElementById('stat-header')?.textContent || '指標';
 
-            // 試合数ランキング（5列）とそれ以外（4列）で分岐
             if (type === 'match_count') {
                 return `
                     <tr>
@@ -561,4 +540,15 @@ function renderRanking(records, groupKey, type = 'all') {
                     <td data-label="試合数">${s.count}</td>
                 </tr>
             `;
+        }).join('');
+    };
 
+    mainBody.innerHTML = renderRows(rankedPlayers);
+    if (outBody) {
+        outBody.innerHTML = renderRows(rankOutPlayers, 0);
+    }
+
+    if (rankedPlayers.length === 0) {
+        mainBody.innerHTML = '<tr><td colspan="5" class="text-muted py-4">該当するデータがありません</td></tr>';
+    }
+}
