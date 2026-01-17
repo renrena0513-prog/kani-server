@@ -318,7 +318,7 @@
                 // 2. 全バッジ個体データを取得（資産価値計算用）
                 const { data: userBadges, error: bError } = await supabaseClient
                     .from('user_badges_new')
-                    .select('user_id, badge_id, is_mutant, badges(price, sales_type)');
+                    .select('user_id, badge_id, is_mutant, badges(price, sales_type), profiles!user_id(discord_user_id)');
                 if (bError) throw bError;
 
                 // 3. バッジマスター情報を取得（固定価格対応）
@@ -326,11 +326,12 @@
 
                 // バッジごとの流通数をカウント & ユーザーごとのミュータント所有表を構築
                 const marketCounts = {};
-                const userMutantMap = {}; // (userId_badgeId) -> boolean
-                userBadges.forEach(ub => {
+                const userMutantMap = {}; // (discordUserId_badgeId) -> boolean
+
+                (userBadges || []).forEach(ub => {
                     marketCounts[ub.badge_id] = (marketCounts[ub.badge_id] || 0) + 1;
-                    if (ub.is_mutant) {
-                        userMutantMap[`${ub.user_id}_${ub.badge_id}`] = true;
+                    if (ub.is_mutant && ub.profiles && ub.profiles.discord_user_id) {
+                        userMutantMap[`${ub.profiles.discord_user_id}_${ub.badge_id}`] = true;
                     }
                 });
 
