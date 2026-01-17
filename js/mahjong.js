@@ -493,8 +493,8 @@ function renderRanking(records, groupKey, type = 'all') {
                                     <div class="podium-stat-value">${statValue}</div>
                                 </div>
                                 <div class="podium-stat-item">
-                                    <div class="podium-stat-label">試合数</div>
-                                    <div class="podium-stat-value podium-match-count">${s.count}</div>
+                                    <div class="podium-stat-label">${type === 'match_count' ? '局数' : '試合数'}</div>
+                                    <div class="podium-stat-value podium-match-count">${type === 'match_count' ? s.hand_total : s.count}</div>
                                 </div>
                             </div>
                         </div>
