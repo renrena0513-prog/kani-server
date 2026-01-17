@@ -432,6 +432,30 @@
             </div>
         </div>
 
+        <!-- ランク外セクション（10試合未満） -->
+        <div id="rank-out-section" style="display: none;" class="mt-5">
+            <div class="content-card border-warning">
+                <div class="d-flex align-items-center justify-content-between mb-4">
+                    <h3 class="mb-0 d-flex align-items-center text-warning">
+                        ⚠️ <span class="ms-2">記録対象外 (10試合未満)</span>
+                    </h3>
+                    <span class="badge bg-warning text-dark">圏外</span>
+                </div>
+                <p class="text-muted small mb-4">※規定試合数（10試合）に満たないため、ランキング集計から除外されています。</p>
+                <div class="table-responsive">
+                    <table class="table ranking-table align-middle text-center mb-0">
+                        <thead>
+                            <tr id="rank-out-header">
+                                <!-- JSで動的に生成（メインテーブルと同期） -->
+                            </tr>
+                        </thead>
+                        <tbody id="rank-out-body">
+                            <!-- JSで生成 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Loading Overlay -->

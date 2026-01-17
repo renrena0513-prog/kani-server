@@ -247,42 +247,43 @@ function showRanking(type) {
         buttons[12].classList.replace('btn-outline-success', 'btn-success');
     }
 
-    // 注釈の表示・非表示 (10試合ルール対象)
+    // 以前の注釈ロジックを削除
     const noticeId = 'ranking-notice';
-    let noticeCell = document.getElementById(noticeId);
-    const targetTypes = ['avg_score', 'max_score', 'deal', 'win', 'skill', 'avg_rank', 'top', 'avoid'];
+    const oldNotice = document.getElementById(noticeId);
+    if (oldNotice) oldNotice.remove();
 
-    if (targetTypes.includes(type)) {
-        if (!noticeCell) {
-            noticeCell = document.createElement('p');
-            noticeCell.id = noticeId;
-            noticeCell.className = 'text-warning small mb-3';
-            noticeCell.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i> ※10試合未満はランキング集計対象外となります';
-            const body = document.getElementById('ranking-body');
-            body.parentNode.insertBefore(noticeCell, body.parentNode.firstChild);
+    // テーブルヘッダーの動的調整 (メインと圏外の両方を更新)
+    let tableHeaderRow = document.querySelector('.ranking-table thead tr#table-header-row'); // IDを付与して特定
+    if (!tableHeaderRow) {
+        // IDがない場合は現在のthead trを対象にする
+        const head = document.querySelector('.ranking-table thead tr');
+        if (head) {
+            head.id = 'table-header-row';
+            tableHeaderRow = head;
         }
-        noticeCell.style.display = 'block';
-    } else if (noticeCell) {
-        noticeCell.style.display = 'none';
     }
-
-    // テーブルヘッダーの動的調整 (試合数ランキング時のみ5列)
-    const tableHeaderRow = document.querySelector('.ranking-table thead tr');
-    if (type === 'match_count') {
-        tableHeaderRow.innerHTML = `
+    const headerContent = (type === 'match_count') ? `
             <th style="width: 80px;">順位</th>
             <th id="name-header">名前</th>
             <th id="stat-header" style="width: 100px;">試合数</th>
             <th style="width: 100px;">四麻</th>
             <th style="width: 100px;">三麻</th>
-        `;
-    } else {
-        tableHeaderRow.innerHTML = `
+        ` : `
             <th style="width: 80px;">順位</th>
             <th id="name-header">${type === 'team' ? 'チーム名' : '名前'}</th>
             <th id="stat-header" style="width: 150px;${type === 'team' ? ' display: none;' : ''}">${statHeader.textContent}</th>
             <th style="width: 100px;">試合数</th>
         `;
+
+    if (tableHeaderRow) tableHeaderRow.innerHTML = headerContent;
+    const rankOutHeader = document.getElementById('rank-out-header');
+    if (rankOutHeader) rankOutHeader.innerHTML = headerContent;
+
+    // 圏外セクションの表示制御
+    const rankOutSection = document.getElementById('rank-out-section');
+    const targetTypes = ['avg_score', 'max_score', 'deal', 'win', 'skill', 'avg_rank', 'top', 'avoid'];
+    if (rankOutSection) {
+        rankOutSection.style.display = targetTypes.includes(type) ? 'block' : 'none';
     }
 
     console.log(`🎯 ランキングタイプ: ${type}, 大会: ${currentTournament}`);
@@ -398,138 +399,154 @@ function renderRanking(records, groupKey, type = 'all') {
     const targetTypes = ['avg_score', 'max_score', 'deal', 'win', 'skill', 'avg_rank', 'top', 'avoid'];
     const isTargetType = targetTypes.includes(type);
 
-    const sorted = Object.values(summary).sort((a, b) => {
-        // 10試合ルールの適用: 10試合未満は常に下位へ
-        if (isTargetType) {
-            const aValid = a.count >= 10;
-            const bValid = b.count >= 10;
-            if (aValid && !bValid) return -1;
-            if (!aValid && bValid) return 1;
-        }
-
-        if (type === 'win') return b.avg_win - a.avg_win; // 和了率は高い順
-        if (type === 'deal') return a.avg_deal - b.avg_deal; // 放銃率は低い順
-        if (type === 'top') return b.top_rate - a.top_rate; // トップ率は高い順
-        if (type === 'avoid') return b.avoid_rate - a.avoid_rate; // ラス回避は高い順
-        if (type === 'avg_rank') return (a.avg_rank || 4) - (b.avg_rank || 4); // 平均順位は低い（1に近い）順
-        if (type === 'max_score') return b.max_score - a.max_score; // 最大スコアは高い順
-        if (type === 'avg_score') return b.avg_score - a.avg_score; // 平均スコアは高い順
-        if (type === 'match_count') return b.count - a.count; // 試合数は多い順
-        if (type === 'skill') return b.skill - a.skill; // 雀力は高い順
-        return b.score - a.score; // その他はスコア順
+    const fullSortedList = Object.values(summary).sort((a, b) => {
+        if (type === 'win') return b.avg_win - a.avg_win;
+        if (type === 'deal') return a.avg_deal - b.avg_deal;
+        if (type === 'top') return b.top_rate - a.top_rate;
+        if (type === 'avoid') return b.avoid_rate - a.avoid_rate;
+        if (type === 'avg_rank') return (a.avg_rank || 4) - (b.avg_rank || 4);
+        if (type === 'max_score') return b.max_score - a.max_score;
+        if (type === 'avg_score') return b.avg_score - a.avg_score;
+        if (type === 'match_count') return b.count - a.count;
+        if (type === 'skill') return b.skill - a.skill;
+        return b.score - a.score;
     });
 
-    const body = document.getElementById('ranking-body');
-    let rankCounter = 0;
-    body.innerHTML = sorted.map((s, idx) => {
-        // 順位表示の決定
-        let rankDisplay = '-';
-        if (isTargetType) {
-            if (s.count >= 10) {
-                rankCounter++;
-                rankDisplay = rankCounter;
-            }
-        } else {
-            rankDisplay = idx + 1;
-        }
+    // ランク内と圏外に分離
+    let rankedPlayers = [];
+    let rankOutPlayers = [];
 
-        let displayName = s.display;
-        let avatarHtml = '';
-        let canLink = false;
-        let badgeHtmlRight = ''; // スコープ外で初期化
+    if (isTargetType) {
+        rankedPlayers = fullSortedList.filter(s => s.count >= 10);
+        rankOutPlayers = fullSortedList.filter(s => s.count < 10);
+    } else {
+        rankedPlayers = fullSortedList;
+    }
 
-        if (!s.isTeam) {
-            // 個人ランキングの場合のみプロフィール/アイコン処理
-            let profile = null;
-            if (s.discord_user_id) {
-                profile = allProfiles.find(p => p.discord_user_id === s.discord_user_id);
-                displayName = profile?.account_name || s.nickname || s.discord_user_id;
-                avatarUrl = profile?.avatar_url;
-                canLink = true;
+    const mainBody = document.getElementById('ranking-body');
+    const outBody = document.getElementById('rank-out-body');
+
+    const renderRows = (list, startRank = 1) => {
+        let currentRank = startRank;
+        return list.map((s, idx) => {
+            let rankValue = (startRank === 0) ? '-' : currentRank++;
+
+            let avatarHtml = '';
+            let canLink = false;
+            let badgeHtmlRight = ''; // スコープ外で初期化
+            let displayName = ''; // Define displayName here
+            let avatarUrl = ''; // Define avatarUrl here
+
+            if (!s.isTeam) {
+                // 個人ランキングの場合のみプロフィール/アイコン処理
+                let profile = null;
+                if (s.discord_user_id) {
+                    profile = allProfiles.find(p => p.discord_user_id === s.discord_user_id);
+                    displayName = profile?.account_name || s.nickname || s.discord_user_id;
+                    avatarUrl = profile?.avatar_url;
+                    canLink = true;
+                } else {
+                    displayName = s.nickname || 'Unknown';
+                    profile = allProfiles.find(p => p.account_name === displayName);
+                    avatarUrl = profile?.avatar_url;
+                }
+
+                const badge = profile?.badges;
+                const badgeRight = profile?.badges_right;
+                const badgeHtmlLeft = badge ? `
+                    <div style="width: 24px; height: 24px;" class="ms-1">
+                        <img src="${badge.image_url}" title="${badge.name}" 
+                             style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
+                    </div>` : '';
+                badgeHtmlRight = badgeRight ? `
+                    <div style="width: 24px; height: 24px;" class="ms-1">
+                        <img src="${badgeRight.image_url}" title="${badgeRight.name}" 
+                             style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
+                    </div>` : '';
+
+                avatarHtml = `
+                    <div class="d-flex align-items-center gap-1">
+                        <div style="width: 32px; height: 32px;" class="flex-shrink-0 d-flex align-items-center justify-content-center">
+                            ${avatarUrl ?
+                        `<img src="${avatarUrl}" 
+                                   alt="${displayName}" 
+                                   class="rounded-circle" 
+                                   style="width: 32px; height: 32px; object-fit: cover;">` : ''}
+                        </div>
+                        ${badgeHtmlLeft}
+                    </div>`;
             } else {
-                displayName = s.nickname || 'Unknown';
-                profile = allProfiles.find(p => p.account_name === displayName);
-                avatarUrl = profile?.avatar_url;
+                // チームの場合はそのままアイコンなしまたは別のアイコン
+                avatarHtml = `
+                    <div style="width: 32px; height: 32px;" class="flex-shrink-0 d-flex align-items-center justify-content-center">
+                        <span style="font-size: 1.2rem;">🏅</span>
+                    </div>`;
             }
 
-            const badge = profile?.badges;
-            const badgeRight = profile?.badges_right;
-            const badgeHtmlLeft = badge ? `
-                <div style="width: 24px; height: 24px;" class="ms-1">
-                    <img src="${badge.image_url}" title="${badge.name}" 
-                         style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
-                </div>` : '';
-            badgeHtmlRight = badgeRight ? `
-                <div style="width: 24px; height: 24px;" class="ms-1">
-                    <img src="${badgeRight.image_url}" title="${badgeRight.name}" 
-                         style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
-                </div>` : '';
+            const linkUrl = canLink ? `../mypage/index.html?user=${s.discord_user_id}` : '#';
+            const linkClass = canLink ? '' : 'pe-none text-dark';
 
-            avatarHtml = `
-                <div class="d-flex align-items-center gap-1">
-                    <div style="width: 32px; height: 32px;" class="flex-shrink-0 d-flex align-items-center justify-content-center">
-                        ${avatarUrl ?
-                    `<img src="${avatarUrl}" 
-                              alt="${displayName}" 
-                              class="rounded-circle" 
-                              style="width: 32px; height: 32px; object-fit: cover;">` : ''}
-                    </div>
-                    ${badgeHtmlLeft}
-                </div>`;
-        } else {
-            // チームの場合はそのままアイコンなしまたは別のアイコン
-            avatarHtml = `
-                <div style="width: 32px; height: 32px;" class="flex-shrink-0 d-flex align-items-center justify-content-center">
-                    <span style="font-size: 1.2rem;">🏅</span>
-                </div>`;
-        }
+            // 別列に表示するための数値
+            let statValue = '';
+            let statColorClass = 'text-primary';
 
-        const linkUrl = canLink ? `../mypage/index.html?user=${s.discord_user_id}` : '#';
-        const linkClass = canLink ? '' : 'pe-none text-dark';
+            if (type === 'win') {
+                statValue = `${s.avg_win.toFixed(2)} / 試合`;
+                statColorClass = 'text-success';
+            } else if (type === 'deal') {
+                statValue = `${s.avg_deal.toFixed(2)} / 試合`;
+                statColorClass = 'text-danger';
+            } else if (type === 'top') {
+                statValue = `${s.top_rate.toFixed(1)}%`;
+            } else if (type === 'avoid') {
+                statValue = `${s.avoid_rate.toFixed(1)}%`;
+                statColorClass = 'text-info';
+            } else if (type === 'avg_rank') {
+                statValue = `${s.avg_rank.toFixed(2)}`;
+                statColorClass = 'text-secondary';
+            } else if (type === 'max_score') {
+                statValue = `${(s.max_score > 0 ? '+' : '') + s.max_score.toFixed(1)}`;
+                statColorClass = 'text-warning';
+            } else if (type === 'avg_score') {
+                statValue = `${(s.avg_score > 0 ? '+' : '') + s.avg_score.toFixed(1)}`;
+                statColorClass = 'text-muted';
+            } else if (type === 'match_count') {
+                statValue = `${s.count}`;
+                statColorClass = 'text-dark';
+            } else if (type === 'skill') {
+                statValue = `${(s.skill > 0 ? '+' : '') + s.skill.toFixed(1)}%`;
+                statColorClass = s.skill > 0 ? 'text-success' : (s.skill < 0 ? 'text-danger' : '');
+            } else if (type === 'all' || type === 'sanma' || type === 'yonma') {
+                // 得点合計
+                statValue = `${(s.score > 0 ? '+' : '') + s.score.toFixed(1)}`;
+                statColorClass = s.score > 0 ? 'text-success' : (s.score < 0 ? 'text-danger' : '');
+            }
 
-        // 別列に表示するための数値
-        let statValue = '';
-        let statColorClass = 'text-primary';
+            const labelText = document.getElementById('stat-header')?.textContent || '指標';
 
-        if (type === 'win') {
-            statValue = `${s.avg_win.toFixed(2)} / 試合`;
-            statColorClass = 'text-success';
-        } else if (type === 'deal') {
-            statValue = `${s.avg_deal.toFixed(2)} / 試合`;
-            statColorClass = 'text-danger';
-        } else if (type === 'top') {
-            statValue = `${s.top_rate.toFixed(1)}%`;
-        } else if (type === 'avoid') {
-            statValue = `${s.avoid_rate.toFixed(1)}%`;
-            statColorClass = 'text-info';
-        } else if (type === 'avg_rank') {
-            statValue = `${s.avg_rank.toFixed(2)}`;
-            statColorClass = 'text-secondary';
-        } else if (type === 'max_score') {
-            statValue = `${(s.max_score > 0 ? '+' : '') + s.max_score.toFixed(1)}`;
-            statColorClass = 'text-warning';
-        } else if (type === 'avg_score') {
-            statValue = `${(s.avg_score > 0 ? '+' : '') + s.avg_score.toFixed(1)}`;
-            statColorClass = 'text-muted';
-        } else if (type === 'match_count') {
-            statValue = `${s.count}`;
-            statColorClass = 'text-dark';
-        } else if (type === 'skill') {
-            statValue = `${(s.skill > 0 ? '+' : '') + s.skill.toFixed(1)}%`;
-            statColorClass = s.skill > 0 ? 'text-success' : (s.skill < 0 ? 'text-danger' : '');
-        } else if (type === 'all' || type === 'sanma' || type === 'yonma') {
-            // 得点合計
-            statValue = `${(s.score > 0 ? '+' : '') + s.score.toFixed(1)}`;
-            statColorClass = s.score > 0 ? 'text-success' : (s.score < 0 ? 'text-danger' : '');
-        }
+            // 試合数ランキング（5列）とそれ以外（4列）で分岐
+            if (type === 'match_count') {
+                return `
+                    <tr>
+                        <td>${rankValue}</td>
+                        <td class="ps-4 text-start">
+                            <a href="${linkUrl}" 
+                               class="text-decoration-none d-flex align-items-center justify-content-start gap-2 ${linkClass}">
+                                ${avatarHtml}
+                                <span class="${canLink ? 'hover-underline' : ''} fw-bold">${displayName}</span>
+                                ${badgeHtmlRight}
+                            </a>
+                        </td>
+                        <td class="fw-bold" data-label="試合数">${s.count}</td>
+                        <td data-label="四麻">${s.yonma_count}</td>
+                        <td data-label="三麻">${s.sanma_count}</td>
+                    </tr>
+                `;
+            }
 
-        const labelText = document.getElementById('stat-header')?.textContent || '指標';
-
-        // 試合数ランキング（5列）とそれ以外（4列）で分岐
-        if (type === 'match_count') {
             return `
                 <tr>
-                    <td>${idx + 1}</td>
+                    <td>${rankValue}</td>
                     <td class="ps-4 text-start">
                         <a href="${linkUrl}" 
                            class="text-decoration-none d-flex align-items-center justify-content-start gap-2 ${linkClass}">
@@ -538,38 +555,10 @@ function renderRanking(records, groupKey, type = 'all') {
                             ${badgeHtmlRight}
                         </a>
                     </td>
-                    <td class="fw-bold" data-label="試合数">${s.count}</td>
-                    <td data-label="四麻">${s.yonma_count}</td>
-                    <td data-label="三麻">${s.sanma_count}</td>
+                    <td class="fw-bold ${statColorClass}" data-label="${labelText}" style="font-size: 1.1rem;${s.isTeam ? ' display: none;' : ''}">
+                        ${statValue}
+                    </td>
+                    <td data-label="試合数">${s.count}</td>
                 </tr>
             `;
-        }
-
-        return `
-            <tr>
-                <td>${rankDisplay}</td>
-                <td class="ps-4 text-start">
-                    <a href="${linkUrl}" 
-                       class="text-decoration-none d-flex align-items-center justify-content-start gap-2 ${linkClass}">
-                        ${avatarHtml}
-                        <span class="${canLink ? 'hover-underline' : ''} fw-bold">${displayName}</span>
-                        ${badgeHtmlRight}
-                    </a>
-                </td>
-                <td class="fw-bold ${statColorClass}" data-label="${labelText}" style="font-size: 1.1rem;${s.isTeam ? ' display: none;' : ''}">
-                    ${statValue}
-                </td>
-                <td data-label="試合数">${s.count}</td>
-            </tr>
-        `;
-    }).join('');
-
-    if (sorted.length === 0) {
-        body.innerHTML = '<tr><td colspan="4" class="text-muted py-4">該当するデータがありません</td></tr>';
-    }
-}
-
-
-
-// フォーム生成や送信、ドロップダウン制御などのロジックは js/mahjong-record.js に移行されました。
 
