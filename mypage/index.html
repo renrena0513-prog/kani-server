@@ -1438,6 +1438,43 @@
         }
 
         /**
+         * 装備中バッジにミュータントエフェクトを適用
+         */
+        async function applyMutantEffect(containerId, badgeId, userId) {
+            const container = document.getElementById(containerId);
+            const shine = container ? container.querySelector('.mutant-badge-shine') : null;
+            if (!container || !shine) return;
+
+            if (!badgeId || !userId) {
+                container.classList.remove('active');
+                shine.style.display = 'none';
+                return;
+            }
+
+            try {
+                const { data } = await supabaseClient
+                    .from('user_badges_new')
+                    .select('id')
+                    .eq('user_id', userId)
+                    .eq('badge_id', badgeId)
+                    .eq('is_mutant', true)
+                    .limit(1);
+
+                const isMutant = data && data.length > 0;
+
+                if (isMutant) {
+                    container.classList.add('active');
+                    shine.style.display = 'block';
+                } else {
+                    container.classList.remove('active');
+                    shine.style.display = 'none';
+                }
+            } catch (err) {
+                console.error('Mutant effect check failed:', err);
+            }
+        }
+
+        /**
          * 自分（またはなりすましユーザー）の情報を表示
          */
         async function displayMyInfo(user) {
@@ -1481,7 +1518,7 @@
                 badgeImg.src = badge.image_url;
                 badgeImg.title = badge.name;
                 badgeImg.style.display = 'block';
-                applyMutantEffect('badge-container-left', profile.equipped_badge_id, discordId);
+                applyMutantEffect('badge-container-left', profile.equipped_badge_id, targetId);
             } else if (badgeImg) {
                 badgeImg.style.display = 'none';
                 applyMutantEffect('badge-container-left', null, null);
@@ -1494,7 +1531,7 @@
                 badgeImgRight.src = badgeRight.image_url;
                 badgeImgRight.title = badgeRight.name;
                 badgeImgRight.style.display = 'block';
-                applyMutantEffect('badge-container-right', profile.equipped_badge_id_right, discordId);
+                applyMutantEffect('badge-container-right', profile.equipped_badge_id_right, targetId);
             } else if (badgeImgRight) {
                 badgeImgRight.style.display = 'none';
                 applyMutantEffect('badge-container-right', null, null);
