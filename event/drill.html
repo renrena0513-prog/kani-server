@@ -375,9 +375,8 @@
                     supabaseClient.from('event_drill_user_stats').select('*').eq('user_id', currentUserId).maybeSingle(),
                     supabaseClient.from('event_drill_user_stats').select('total_taps'),
                     supabaseClient.from('event_drill_rewards').select('*').eq('is_active', true).order('probability_weight', { ascending: false }),
-                    supabaseClient.from('activity_logs')
-                        .select('created_at, details, profiles!user_id(account_name)')
-                        .eq('action_type', 'drill_reward')
+                    supabaseClient.from('event_drill_logs')
+                        .select('created_at, reward_name, depth, profiles!user_id(account_name)')
                         .order('created_at', { ascending: false })
                         .limit(20)
                 ]);
@@ -448,8 +447,8 @@
 
             container.innerHTML = logs.map(log => {
                 const name = log.profiles?.account_name || '不明なユーザー';
-                const reward = log.details?.reward_name || 'アイテム';
-                const depth = log.details?.depth || '?';
+                const reward = log.reward_name || 'アイテム';
+                const depth = log.depth || '?';
                 const time = new Date(log.created_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
 
                 return `
