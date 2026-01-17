@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 
 <head>
@@ -321,9 +321,15 @@
         }
 
         .badge-item.equipped {
-            border-color: var(--gold);
+            border-color: rgba(212, 165, 116, 0.4);
             background: #fff9e6;
-            box-shadow: 0 0 0 2px rgba(212, 165, 116, 0.3);
+        }
+
+        .badge-item.selected {
+            border-color: var(--gold) !important;
+            background: #fff !important;
+            box-shadow: 0 0 0 3px rgba(211, 168, 83, 0.5) !important;
+            transform: scale(1.05);
         }
 
         .badge-item img {
@@ -1071,7 +1077,7 @@
                 </div>
                 <div class="modal-body">
                     <div class="text-center mb-3">
-                        <span class="badge bg-primary me-2" id="badge-position-indicator">左に装着</span>
+                        <span class="badge bg-primary me-2" id="badge-position-indicator">◀ 左に装着</span>
                         <div class="btn-group" role="group">
                             <input type="radio" class="btn-check" name="badge-position" id="pos-left" value="left"
                                 checked>
@@ -1083,13 +1089,18 @@
                     <div id="badge-modal-list" class="row g-2">
                         <!-- JSで生成 -->
                     </div>
-                    <div class="text-center mt-3 d-flex justify-content-center gap-2">
-                        <button class="btn btn-outline-danger btn-sm" onclick="equipBadge(null, 'left')">左を外す</button>
-                        <button class="btn btn-outline-danger btn-sm" onclick="equipBadge(null, 'right')">右を外す</button>
-                    </div>
+                </div>
+                <div class="text-center mt-3 d-grid gap-2">
+                    <button class="btn btn-primary" id="btn-execute-equip" onclick="executeSelectedEquip()"
+                        disabled>選択したバッジを装着</button>
+                </div>
+                <div class="text-center mt-3 d-flex justify-content-center gap-2">
+                    <button class="btn btn-outline-danger btn-sm" onclick="equipBadge(null, 'left')">左を外す</button>
+                    <button class="btn btn-outline-danger btn-sm" onclick="equipBadge(null, 'right')">右を外す</button>
                 </div>
             </div>
         </div>
+    </div>
     </div>
 
     <!-- ニックネーム編集モーダル -->
@@ -2547,6 +2558,32 @@
         // ここで再定義するか、グローバルに調整する。mypage/index.html 内に定義されている場合、それを上書きする。
 
         // ============ バッジ装着 ============
+        let selectedBadgeIdForEquip = null;
+
+        function selectBadgeInModal(badgeId) {
+            selectedBadgeIdForEquip = badgeId;
+            document.querySelectorAll('#badge-modal-list .badge-item').forEach(el => {
+                el.classList.remove('selected');
+            });
+            const targetEl = document.querySelector(`.badge-item[data-badge-id="${badgeId}"]`);
+            if (targetEl) targetEl.classList.add('selected');
+            
+            const btn = document.getElementById('btn-execute-equip');
+            if (btn) btn.disabled = false;
+        }
+
+        async function executeSelectedEquip() {
+            if (!selectedBadgeIdForEquip) return;
+            const posRadio = document.querySelector('input[name="badge-position"]:checked');
+            const position = posRadio ? posRadio.value : 'left';
+            
+            toggleLoading(true);
+            await equipBadge(selectedBadgeIdForEquip, position);
+            toggleLoading(false);
+            
+            selectedBadgeIdForEquip = null;
+        }
+
         async function equipBadge(badgeId, position = null) {
             if (isViewMode) return;
 
@@ -2569,9 +2606,9 @@
             const currentBadgeId = position === 'right' ? current?.equipped_badge_id_right : current?.equipped_badge_id;
             const oppositeBadgeId = position === 'right' ? current?.equipped_badge_id : current?.equipped_badge_id_right;
             const oppositeColumn = position === 'right' ? 'equipped_badge_id' : 'equipped_badge_id_right';
-
+            
             const newBadgeId = (currentBadgeId === badgeId) ? null : badgeId;
-
+            
             // 反対側のスロットに同じバッジが装着されている場合は移動（反対側を外す）
             let updateData = { [columnName]: newBadgeId };
             if (badgeId && badgeId === oppositeBadgeId) {
@@ -2598,10 +2635,39 @@
             }
         }
 
-        // 装着バッジの変更モーダル (badge_id ベースのままでOK：見た目のため)
+        // 装着バッジの変更モーダル
         async function openBadgeChangeModal() {
+            selectedBadgeIdForEquip = null;
+            const btnExec = document.getElementById('btn-execute-equip');
+            if (btnExec) btnExec.disabled = true;
+
             const listEl = document.getElementById('badge-modal-list');
             listEl.innerHTML = '<p class="text-center text-muted py-3">読み込み中...</p>';
+
+            // ラジオボタンのイベントリスナー（1回だけ設定）
+            const posRadios = document.querySelectorAll('input[name="badge-position"]');
+            posRadios.forEach(radio => {
+                if (!radio.dataset.listenerAdded) {
+                    radio.addEventListener('change', (e) => {
+                        const indicator = document.getElementById('badge-position-indicator');
+                        if (indicator) {
+                            indicator.textContent = e.target.value === 'left' ? '◀ 左に装着' : '右に装着 ▶';
+                        }
+                    });
+                    radio.dataset.listenerAdded = "true";
+                }
+            });
+
+            // 初期化
+            const leftRadio = document.getElementById('pos-left');
+            const indicator = document.getElementById('badge-position-indicator');
+            if (indicator) {
+                if (leftRadio && leftRadio.checked) {
+                     indicator.textContent = '◀ 左に装着';
+                } else {
+                     indicator.textContent = '右に装着 ▶';
+                }
+            }
 
             const modalEl = document.getElementById('badgeChangeModal');
             const modal = new bootstrap.Modal(modalEl);
@@ -2639,15 +2705,21 @@
                     const isEquippedLeft = badge.id === equippedLeftId;
                     const isEquippedRight = badge.id === equippedRightId;
                     const isEquipped = isEquippedLeft || isEquippedRight;
-                    const posLabel = isEquippedLeft ? '◀左' : (isEquippedRight ? '右▶' : '');
+                    
+                    let posLabel = '';
+                    if (isEquippedLeft) posLabel = '◀左';
+                    if (isEquippedRight) posLabel = '右▶';
+                    if (isEquippedLeft && isEquippedRight) posLabel = '◀左右▶';
+
                     return `
                     <div class="col-4 col-md-3 text-center" >
                             <div class="badge-item ${isEquipped ? 'equipped' : ''}"
-                                onclick="equipBadge('${badge.id}')"
+                                data-badge-id="${badge.id}"
+                                onclick="selectBadgeInModal('${badge.id}')"
                                 style="cursor: pointer; position: relative;"
                                 title="${badge.name}${isEquipped ? ' (装着中)' : ''}">
                                 <img src="${badge.image_url}" alt="${badge.name}" style="width: 60px; height: 60px; object-fit: contain;">
-                                ${isEquipped ? `<span class="position-absolute top-0 start-50 translate-middle badge bg-primary" style="font-size: 0.6rem;">${posLabel}</span>` : ''}
+                                ${isEquipped ? `<span class="position-absolute top-0 start-50 translate-middle badge bg-primary" style="font-size: 0.6rem; z-index: 10;">${posLabel}</span>` : ''}
                             </div>
                             <div class="small text-truncate mt-1" style="font-size: 0.7rem;">${badge.name}</div>
                         </div>
