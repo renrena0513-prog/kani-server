@@ -1459,6 +1459,33 @@
                 if (pIdx !== -1) {
                     allProfiles[pIdx] = { ...allProfiles[pIdx], ...profile };
                 }
+
+                // 装着バッジが所持されているか確認（所持していなければ自動で外す）
+                if (!isViewMode && (profile.equipped_badge_id || profile.equipped_badge_id_right)) {
+                    const { data: ownedBadges } = await supabaseClient
+                        .from('user_badges_new')
+                        .select('badge_id')
+                        .eq('user_id', targetId);
+
+                    const ownedIds = (ownedBadges || []).map(b => b.badge_id);
+                    let updateNeeded = {};
+
+                    if (profile.equipped_badge_id && !ownedIds.includes(profile.equipped_badge_id)) {
+                        updateNeeded.equipped_badge_id = null;
+                    }
+                    if (profile.equipped_badge_id_right && !ownedIds.includes(profile.equipped_badge_id_right)) {
+                        updateNeeded.equipped_badge_id_right = null;
+                    }
+
+                    if (Object.keys(updateNeeded).length > 0) {
+                        await supabaseClient
+                            .from('profiles')
+                            .update(updateNeeded)
+                            .eq('discord_user_id', targetId);
+                        // 更新したらプロフィールを再取得
+                        return loadTargetUserInfo();
+                    }
+                }
             }
 
             if (profile) {
