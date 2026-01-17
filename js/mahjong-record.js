@@ -632,10 +632,11 @@ async function sendDiscordNotification(matchData, isTobiOn, isYakitoriOn, ticket
         const rewardText = `💰+${reward}${tickets > 0 ? ` 🎫+${tickets}` : ''}`;
 
         // 和了数と放銃数を表示
-        const winDeal = `🀄${p.win_count || 0}/${p.deal_in_count || 0}`;
+        const winDealLine = `🀄和了${p.win_count || 0}　🔫放銃${p.deal_in_count || 0}`;
 
         return `${medal} **${p.rank}位**: ${nameDisplay}${teamInfo}\n` +
-            `　　 \`${p.raw_points.toLocaleString()}点\` ➡ **${scoreStr} pts** (${winDeal}, ${rewardText})\n`; // 報酬を表示
+            `　　 \`${p.raw_points.toLocaleString()}点\` ➡ **${scoreStr} pts**\n` +
+            `　　 ${winDealLine}　(${rewardText})\n`;
     }).join('\n');
 
     // ルール情報の取得
