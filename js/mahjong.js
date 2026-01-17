@@ -337,10 +337,10 @@ function renderRanking(records, groupKey, type = 'all') {
         }
     });
 
-    // 平均値・各種率の計算
     Object.values(summary).forEach(s => {
-        s.avg_win = s.count > 0 ? (s.win / s.count) : 0;
-        s.avg_deal = s.count > 0 ? (s.deal / s.count) : 0;
+        // 和了率・放銃率は局数（hand_total）で計算
+        s.avg_win = s.hand_total > 0 ? (s.win / s.hand_total * 100) : 0;   // 和了率（%）
+        s.avg_deal = s.hand_total > 0 ? (s.deal / s.hand_total * 100) : 0; // 放銃率（%）
         s.top_rate = s.count > 0 ? (s.r1 / s.count) * 100 : 0;
         let lastCount = s.r4;
         if (s.r4 === 0 && s.r3 > 0) lastCount = s.r3;
@@ -449,8 +449,8 @@ function renderRanking(records, groupKey, type = 'all') {
 
             // 指標値のフォーマット
             let statValue = '';
-            if (type === 'win') statValue = `${s.avg_win.toFixed(2)}`;
-            else if (type === 'deal') statValue = `${s.avg_deal.toFixed(2)}`;
+            if (type === 'win') statValue = `${s.avg_win.toFixed(1)}%`;
+            else if (type === 'deal') statValue = `${s.avg_deal.toFixed(1)}%`;
             else if (type === 'avg_rank') statValue = `${s.avg_rank.toFixed(2)}`;
             else if (type === 'top') statValue = `${s.top_rate.toFixed(1)}%`;
             else if (type === 'avoid') statValue = `${s.avoid_rate.toFixed(1)}%`;
@@ -586,10 +586,10 @@ function renderRanking(records, groupKey, type = 'all') {
             let statColorClass = 'text-primary';
 
             if (type === 'win') {
-                statValue = `${s.avg_win.toFixed(2)} / 試合`;
+                statValue = `${s.avg_win.toFixed(1)}%`;
                 statColorClass = 'text-success';
             } else if (type === 'deal') {
-                statValue = `${s.avg_deal.toFixed(2)} / 試合`;
+                statValue = `${s.avg_deal.toFixed(1)}%`;
                 statColorClass = 'text-danger';
             } else if (type === 'top') {
                 statValue = `${s.top_rate.toFixed(1)}%`;
