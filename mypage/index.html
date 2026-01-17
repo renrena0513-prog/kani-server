@@ -3061,14 +3061,21 @@
 
             if (!section || !topList || !bestMatchup || !worstMatchup) return;
 
-            // 自分が参加した試合のmatch_idを取得
-            // calculateAllPlayerStatsと同様のID抽出ロジックを使用
+            // プレイヤーID特定ロジック（discord_user_idがあれば優先、なければ名前）
             const getPlayerId = (r) => {
                 let id = r.discord_user_id;
-                if (!id || id === 'null') id = r.nickname || r.account_name || 'Unknown';
-                return id;
+                if (!id || id === 'null') id = r.nickname || r.account_name || r.name || 'Unknown';
+                return String(id);
             };
 
+            // 表示名特定ロジック（プロフィールの名前を優先）
+            const getDisplayName = (id, fallbackName) => {
+                const profile = allProfiles.find(p => p.discord_user_id === String(id));
+                return profile ? profile.account_name : (fallbackName || id);
+            };
+
+            // 自分が参加した試合のmatch_idを取得
+            // calculateAllPlayerStatsと同様のID抽出ロジックを使用
             const myMatches = records.filter(r => getPlayerId(r) === myId);
             const myMatchIds = [...new Set(myMatches.map(r => r.match_id).filter(id => id))];
 
@@ -3096,7 +3103,7 @@
                             count: 0,
                             myScoreSum: 0,
                             opponentScoreSum: 0,
-                            name: r.nickname || r.account_name || r.name || oppId
+                            fallbackName: r.nickname || r.account_name || r.name || oppId
                         };
                     }
                     opponentData[oppId].count++;
@@ -3107,7 +3114,7 @@
 
             const opponents = Object.entries(opponentData).map(([id, data]) => ({
                 id,
-                name: data.name,
+                name: getDisplayName(id, data.fallbackName),
                 count: data.count,
                 scoreDiff: data.myScoreSum - data.opponentScoreSum
             }));
