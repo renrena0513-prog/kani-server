@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 
 <head>
@@ -1670,7 +1670,7 @@
                 const [ownedRes, marketCountRes, profileRes, thresholdsRes] = await Promise.all([
                     supabaseClient.from('user_badges_new').select('*, badges(*)').eq('user_id', targetId),
                     supabaseClient.from('user_badges_new').select('badge_id'),
-                    supabaseClient.from('profiles').select('coins, equipped_badge_id, total_assets').eq('discord_user_id', targetId).maybeSingle(),
+                    supabaseClient.from('profiles').select('coins, equipped_badge_id, equipped_badge_id_right, total_assets').eq('discord_user_id', targetId).maybeSingle(),
                     supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true })
                 ]);
 
@@ -1694,6 +1694,7 @@
                 const profileData = profileRes.data;
                 const userCoins = profileData?.coins || 0;
                 const equippedId = profileData?.equipped_badge_id;
+                const equippedRightId = profileData?.equipped_badge_id_right;
 
                 // 各バッジの現在流通数 n を集計
                 const marketCounts = {};
@@ -1732,12 +1733,16 @@
                         groupedOwned[bid] = {
                             badge: item.badges,
                             instances: [],
-                            isEquipped: false
+                            isEquippedLeft: false,
+                            isEquippedRight: false
                         };
                     }
                     groupedOwned[bid].instances.push(item);
                     if (item.badge_id === equippedId) {
-                        groupedOwned[bid].isEquipped = true;
+                        groupedOwned[bid].isEquippedLeft = true;
+                    }
+                    if (item.badge_id === equippedRightId) {
+                        groupedOwned[bid].isEquippedRight = true;
                     }
                 });
 
@@ -1772,7 +1777,9 @@
 
                     const rarity = getDynamicRarity(pValue, badge.fixed_rarity_name);
                     const rarityClass = getRarityClass(rarity);
-                    const isEquipped = group.isEquipped;
+                    const isEquippedLeft = group.isEquippedLeft;
+                    const isEquippedRight = group.isEquippedRight;
+                    const isEquipped = isEquippedLeft || isEquippedRight;
                     const hasMutant = group.instances.some(i => i.is_mutant);
 
                     // 非売品判定: sales_type が '限定品' の場合は非売品
@@ -1822,7 +1829,10 @@
                                                 <img src="${badge.image_url}" alt="${badge.name}" style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.2)); ${hasMutant ? 'position: relative; z-index: 1;' : ''}">
                                                 ${hasMutant ? '<div class="mutant-shine-overlay"></div>' : ''}
                                             </div>
-                                            ${isEquipped ? '<span class="badge bg-gold position-absolute top-0 start-0" style="font-size:0.4rem; z-index:2;">装着中</span>' : ''}
+                                            ${isEquipped ? `
+                                                <span class="badge bg-gold position-absolute top-0 start-0 d-flex align-items-center justify-content-center" style="font-size:0.4rem; z-index:2; min-width: 45px; height: 16px; transform: translate(-10%, -10%);">
+                                                    ${isEquippedLeft && isEquippedRight ? '◀左右▶' : (isEquippedLeft ? '◀左 装着' : '右 装着▶')}
+                                                </span>` : ''}
                                             ${countLabel}
                                         </div>
                                         <div class="small opacity-75 text-truncate w-100 px-1" style="font-size: 0.65rem; line-height: 1.2;">${badge.name}</div>
@@ -2567,7 +2577,7 @@
             });
             const targetEl = document.querySelector(`.badge-item[data-badge-id="${badgeId}"]`);
             if (targetEl) targetEl.classList.add('selected');
-            
+
             const btn = document.getElementById('btn-execute-equip');
             if (btn) btn.disabled = false;
         }
@@ -2576,11 +2586,11 @@
             if (!selectedBadgeIdForEquip) return;
             const posRadio = document.querySelector('input[name="badge-position"]:checked');
             const position = posRadio ? posRadio.value : 'left';
-            
+
             toggleLoading(true);
             await equipBadge(selectedBadgeIdForEquip, position);
             toggleLoading(false);
-            
+
             selectedBadgeIdForEquip = null;
         }
 
@@ -2606,9 +2616,9 @@
             const currentBadgeId = position === 'right' ? current?.equipped_badge_id_right : current?.equipped_badge_id;
             const oppositeBadgeId = position === 'right' ? current?.equipped_badge_id : current?.equipped_badge_id_right;
             const oppositeColumn = position === 'right' ? 'equipped_badge_id' : 'equipped_badge_id_right';
-            
+
             const newBadgeId = (currentBadgeId === badgeId) ? null : badgeId;
-            
+
             // 反対側のスロットに同じバッジが装着されている場合は移動（反対側を外す）
             let updateData = { [columnName]: newBadgeId };
             if (badgeId && badgeId === oppositeBadgeId) {
@@ -2663,9 +2673,9 @@
             const indicator = document.getElementById('badge-position-indicator');
             if (indicator) {
                 if (leftRadio && leftRadio.checked) {
-                     indicator.textContent = '◀ 左に装着';
+                    indicator.textContent = '◀ 左に装着';
                 } else {
-                     indicator.textContent = '右に装着 ▶';
+                    indicator.textContent = '右に装着 ▶';
                 }
             }
 
@@ -2705,7 +2715,7 @@
                     const isEquippedLeft = badge.id === equippedLeftId;
                     const isEquippedRight = badge.id === equippedRightId;
                     const isEquipped = isEquippedLeft || isEquippedRight;
-                    
+
                     let posLabel = '';
                     if (isEquippedLeft) posLabel = '◀左';
                     if (isEquippedRight) posLabel = '右▶';
