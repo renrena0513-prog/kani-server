@@ -235,7 +235,27 @@ function handleFilterChange(category, checkbox) {
 function clearFilters() {
     filterState = { accounts: [], tournaments: [], teams: [], modes: [], match_modes: [] };
     document.querySelectorAll('#filter-panel input[type="checkbox"]').forEach(chk => chk.checked = false);
+    const searchInput = document.getElementById('filter-account-search');
+    if (searchInput) {
+        searchInput.value = '';
+        searchFilterAccounts();
+    }
     applyFiltersAndSort();
+}
+
+/**
+ * アカウントフィルターの検索
+ */
+function searchFilterAccounts() {
+    const query = document.getElementById('filter-account-search').value.toLowerCase();
+    const labels = document.querySelectorAll('#filter-accounts .filter-checkbox-label');
+    labels.forEach(label => {
+        const text = label.textContent.toLowerCase();
+        const container = label.closest('.form-check');
+        if (container) {
+            container.style.display = text.includes(query) ? 'block' : 'none';
+        }
+    });
 }
 
 // ソート関数
@@ -258,7 +278,8 @@ function sortRecords(key) {
 
 // フィルターとソートを統合して適用
 function applyFiltersAndSort() {
-    filteredRecords = allRecords.filter(record => {
+    // 1. 各レコードが個別にフィルター条件に合致するか判定
+    const matchingRecords = allRecords.filter(record => {
         const matchAccount = filterState.accounts.length === 0 || filterState.accounts.includes(record.account_name);
         const matchTournament = filterState.tournaments.length === 0 || filterState.tournaments.includes(record.tournament_type);
         const matchTeam = filterState.teams.length === 0 || filterState.teams.includes(record.team_name);
@@ -267,6 +288,13 @@ function applyFiltersAndSort() {
         return matchAccount && matchTournament && matchTeam && matchMode && matchMethod;
     });
 
+    // 2. 合致したレコードが含まれる「対局(match_id)」を特定
+    const matchingMatchIds = new Set(matchingRecords.map(r => r.match_id));
+
+    // 3. その対局に含まれる「全レコード」を抽出対象とする
+    filteredRecords = allRecords.filter(r => matchingMatchIds.has(r.match_id));
+
+    // 4. ソート設定の適用
     const { key, direction } = sortConfig;
     filteredRecords.sort((a, b) => {
         let valA = a[key];
@@ -282,11 +310,11 @@ function applyFiltersAndSort() {
         return 0;
     });
 
-    displayRecords(filteredRecords);
+    displayRecords(filteredRecords, matchingRecords.map(r => r.id));
 }
 
 // 記録の表示
-function displayRecords(records) {
+function displayRecords(records, highlightingIds = []) {
     const listBody = document.getElementById('records-list-body');
     if (!listBody) return;
 
@@ -296,17 +324,23 @@ function displayRecords(records) {
         return;
     }
 
-    // match_id でグループ化
+    // match_id でグループ化 (メタデータ保持のため)
     const matches = {};
+    const matchOrder = [];
+
     records.forEach(r => {
         const mid = r.match_id || `no-id-${r.id}`;
-        if (!matches[mid]) matches[mid] = [];
+        if (!matches[mid]) {
+            matches[mid] = [];
+            matchOrder.push(mid);
+        }
         matches[mid].push(r);
     });
 
     // 試合単位で表示
-    Object.keys(matches).forEach(mid => {
+    matchOrder.forEach(mid => {
         const matchRecords = matches[mid];
+        // 同卓内は順位順で固定
         matchRecords.sort((a, b) => (a.rank || 99) - (b.rank || 99));
 
         const first = matchRecords[0];
@@ -315,11 +349,16 @@ function displayRecords(records) {
             year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
         });
 
-        const accountsHtml = matchRecords.map(r => `
+        const accountsHtml = matchRecords.map(r => {
+            const isHighlighted = highlightingIds.includes(r.id);
+            const badgeClass = isHighlighted ? 'bg-primary text-white shadow-sm' : 'bg-light text-dark';
+            const borderStyle = isHighlighted ? 'border: 2px solid var(--gold);' : '';
+            return `
             <div class="mb-1">
-                <span class="badge bg-light text-dark" style="min-width: 80px;">${r.account_name}</span>
+                <span class="badge ${badgeClass}" style="min-width: 80px; ${borderStyle}">${r.account_name}</span>
             </div>
-        `).join('');
+            `;
+        }).join('');
 
         const scoresHtml = matchRecords.map(r => {
             const color = (r.final_score > 0) ? 'text-success' : (r.final_score < 0 ? 'text-danger' : '');
