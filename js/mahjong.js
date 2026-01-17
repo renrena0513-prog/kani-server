@@ -136,7 +136,7 @@ function showRanking() {
     const subButtons = document.querySelectorAll('#sub-filter-nav .btn');
 
     const mainTypeMap = {
-        'all': 0, 'team_yonma': 1, 'team_sanma': 2, 'individual_yonma': 3, 'individual_sanma': 4
+        'all': 0, 'team_yonma': 1, 'individual_yonma': 2, 'individual_sanma': 3
     };
     const subTypeMap = {
         'all': 0, 'avg_score': 1, 'max_score': 2, 'match_count': 3, 'win': 4, 'deal': 5, 'skill': 6, 'avg_rank': 7, 'top': 8, 'avoid': 9
@@ -161,11 +161,6 @@ function showRanking() {
     if (category === 'team_yonma') {
         title.textContent = 'チーム戦（四麻）ランキング';
         filtered = seasonFiltered.filter(r => r.match_mode !== '個人戦' && r.mahjong_mode === '四麻');
-        groupKey = 'team_name';
-        nameHeader.textContent = 'チーム名';
-    } else if (category === 'team_sanma') {
-        title.textContent = 'チーム戦（三麻）ランキング';
-        filtered = seasonFiltered.filter(r => r.match_mode !== '個人戦' && r.mahjong_mode === '三麻');
         groupKey = 'team_name';
         nameHeader.textContent = 'チーム名';
     } else if (category === 'individual_yonma') {
