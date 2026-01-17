@@ -508,6 +508,22 @@
                     gap: 10px;
                 }
 
+                /* バッジスタイル */
+                .podium-badge-left,
+                .podium-badge-right {
+                    width: 40px;
+                    height: 40px;
+                    flex-shrink: 0;
+                }
+
+                .podium-badge-left img,
+                .podium-badge-right img {
+                    width: 40px;
+                    height: 40px;
+                    object-fit: contain;
+                    border-radius: 6px;
+                }
+
                 .podium-name {
                     font-weight: 800;
                     font-size: 1.4rem;
@@ -560,25 +576,33 @@
                         padding: 20px 15px;
                         flex-direction: column;
                         text-align: center;
-                        gap: 20px;
+                        gap: 15px;
                     }
 
                     .podium-card-left {
                         flex-direction: column;
-                        gap: 15px;
+                        gap: 10px;
                         width: 100%;
                     }
 
                     .podium-player-info {
                         flex-direction: column;
-                        gap: 15px;
+                        gap: 10px;
                         width: 100%;
                     }
 
+                    /* アバターのみ中央配置 */
+                    .podium-avatar-wrapper {
+                        margin: 0 auto;
+                    }
+
+                    /* バッジ＋名前のレイアウト：名前の左右にバッジ */
                     .podium-identity-row {
+                        display: flex;
                         justify-content: center;
+                        align-items: center;
                         width: 100%;
-                        flex-wrap: wrap;
+                        flex-wrap: nowrap;
                         gap: 8px;
                     }
 
@@ -586,14 +610,40 @@
                         font-size: 1.2rem;
                     }
 
+                    /* モバイルでのバッジサイズ調整 */
+                    .podium-badge-left,
+                    .podium-badge-right {
+                        width: 28px;
+                        height: 28px;
+                    }
+
+                    .podium-badge-left img,
+                    .podium-badge-right img {
+                        width: 28px;
+                        height: 28px;
+                    }
+
+                    /* 統計情報をカード内に収める */
                     .podium-card-right {
                         text-align: center;
                         width: 100%;
+                        background: rgba(255, 255, 255, 0.3);
+                        border-radius: 12px;
+                        padding: 12px;
+                        margin-top: 5px;
                     }
 
                     .podium-stat-grid {
                         justify-content: center;
                         gap: 30px;
+                    }
+
+                    .podium-stat-label {
+                        font-size: 0.75rem;
+                    }
+
+                    .podium-stat-value {
+                        font-size: 1.3rem;
                     }
                 }
             </style>

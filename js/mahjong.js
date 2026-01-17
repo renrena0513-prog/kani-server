@@ -436,14 +436,12 @@ function renderRanking(records, groupKey, type = 'all') {
                 const badge = profile?.badges;
                 const badgeRight = profile?.badges_right;
                 badgeHtmlLeft = badge ? `
-                    <div style="width: 40px; height: 40px;" class="ms-2">
-                        <img src="${badge.image_url}" title="${badge.name}" 
-                             style="width: 40px; height: 40px; object-fit: contain; border-radius: 6px;">
+                    <div class="podium-badge-left">
+                        <img src="${badge.image_url}" title="${badge.name}">
                     </div>` : '';
                 badgeHtmlRight = badgeRight ? `
-                    <div style="width: 40px; height: 40px;" class="ms-2">
-                        <img src="${badgeRight.image_url}" title="${badgeRight.name}" 
-                             style="width: 40px; height: 40px; object-fit: contain; border-radius: 6px;">
+                    <div class="podium-badge-right">
+                        <img src="${badgeRight.image_url}" title="${badgeRight.name}">
                     </div>` : '';
             } else {
                 displayName = s.nickname || 'Unknown';
@@ -482,8 +480,9 @@ function renderRanking(records, groupKey, type = 'all') {
                     `<img src="${avatarUrl}" alt="${displayName}" class="podium-avatar">` :
                     (s.isTeam ? `<span style="font-size: 2rem;">🏅</span>` : `<img src="../img/default-avatar.png" class="podium-avatar">`)}
                                     </div>
-                                    ${badgeHtmlLeft}
                                 </div>
+                                <div class="podium-identity-row">
+                                    ${badgeHtmlLeft}
                                     <div class="podium-name ${canLink ? 'hover-underline' : ''}">${displayName}</div>
                                     ${badgeHtmlRight}
                                 </div>
