@@ -317,6 +317,7 @@
         let currentUserCoins = 0;
         let currentUserTickets = {};
         let cachedMarketCounts = {};
+        let cachedMyCounts = {};
         let cachedThresholds = [];
 
         // ページ初期化
@@ -335,10 +336,11 @@
         // 市場データとユーザー財産の再取得
         async function refreshMarketContext() {
             try {
-                const [statsRes, thresholdsRes, profileRes] = await Promise.all([
+                const [statsRes, thresholdsRes, profileRes, myBadgesRes] = await Promise.all([
                     supabaseClient.from('user_badges_new').select('badge_id'),
                     supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true }),
-                    supabaseClient.from('profiles').select('coins, exchange_tickets').eq('discord_user_id', currentUserId).single()
+                    supabaseClient.from('profiles').select('coins, exchange_tickets').eq('discord_user_id', currentUserId).single(),
+                    supabaseClient.from('user_badges_new').select('badge_id').eq('discord_user_id', currentUserId)
                 ]);
 
                 if (statsRes.error) throw statsRes.error;
@@ -356,7 +358,14 @@
                 marketStats.forEach(s => {
                     newCounts[s.badge_id] = (newCounts[s.badge_id] || 0) + 1;
                 });
-                cachedMarketCounts = newCounts; // 一括更新
+                cachedMarketCounts = newCounts;
+
+                // 自分の所持数のカウント
+                const myCounts = {};
+                (myBadgesRes.data || []).forEach(b => {
+                    myCounts[b.badge_id] = (myCounts[b.badge_id] || 0) + 1;
+                });
+                cachedMyCounts = myCounts;
 
                 // 各セクションの描画
                 await loadMyRightsBadges();
@@ -370,6 +379,7 @@
         // 自分の権利バッジを読み込む
         async function loadMyRightsBadges() {
             const marketCounts = cachedMarketCounts || {};
+            const myCounts = cachedMyCounts || {};
             const thresholds = cachedThresholds || [];
             try {
                 const { data: badges, error } = await supabaseClient
@@ -432,7 +442,7 @@
                                 <div class="mt-2" style="font-size: 0.75rem;">
                                     <div class="opacity-75 text-truncate">現在: 🪙${pBuy.toLocaleString()}</div>
                                     <div class="fw-bold">利益: 🪙${profit.toLocaleString()}</div>
-                                    <div class="">残り: ${badge.remaining_count ?? '∞'}</div>
+                                    <div class="">残り: ${badge.remaining_count ?? '∞'} | 所持: ${myCounts[badge.id] || 0}</div>
                                 </div>
                             </div>
                         </div>
@@ -447,6 +457,7 @@
         // ショップアイテム一覧の読み込み
         async function fetchShopBadges() {
             const marketCounts = cachedMarketCounts || {};
+            const myCounts = cachedMyCounts || {};
             const thresholds = cachedThresholds || [];
             const grid = document.getElementById('shop-grid');
             try {
@@ -522,7 +533,7 @@
                                                 <span>販売価格: 🪙${badge.pBuy.toLocaleString()}</span>
                                             </div>
                                             <div class="d-flex justify-content-between mt-1 opacity-75" style="font-size: 0.7rem;">
-                                                <span>流通: ${badge.n} 枚 | 残り: ${badge.remaining_count ?? '∞'}</span>
+                                                <span>流通: ${badge.n} 枚 | 残り: ${badge.remaining_count ?? '∞'} | 所持: ${myCounts[badge.id] || 0}</span>
                                             </div>
                                         </div>
                                         <button class="btn btn-buy ${isSoldOut ? 'btn-secondary' : 'btn-light'}" 
