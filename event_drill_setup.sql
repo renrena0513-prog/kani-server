@@ -102,7 +102,16 @@ BEGIN
     -- 活動ログの記録
     IF v_reward.reward_type != 'nothing' THEN
         INSERT INTO activity_logs (user_id, action_type, amount, badge_id, details)
-        VALUES (target_user_id, 'drill_reward', v_reward.amount, CASE WHEN v_reward.reward_type = 'badge' THEN v_reward.reward_id ELSE NULL END, jsonb_build_object('reward_name', v_reward.reward_name));
+        VALUES (
+            target_user_id, 
+            'drill_reward', 
+            v_reward.amount, 
+            CASE WHEN v_reward.reward_type = 'badge' THEN v_reward.reward_id ELSE NULL END, 
+            jsonb_build_object(
+                'reward_name', v_reward.reward_name,
+                'depth', v_stats.total_taps + 1
+            )
+        );
     END IF;
 
     RETURN jsonb_build_object(

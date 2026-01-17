@@ -42,7 +42,7 @@
             border-radius: 20px;
             padding: 40px;
             border: 1px solid rgba(255, 255, 255, 0.1);
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
             text-align: center;
         }
@@ -74,6 +74,50 @@
             align-items: center;
             color: white;
         }
+
+        /* ログ・確率セクション */
+        .info-panel {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: left;
+            font-size: 0.9rem;
+            height: 100%;
+        }
+
+        .log-item {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 6px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .log-item:last-child {
+            border-bottom: none;
+        }
+
+        .reward-table {
+            width: 100%;
+            font-size: 0.85rem;
+        }
+
+        .reward-table td {
+            padding: 4px 0;
+        }
+
+        .prob-bar-container {
+            background: rgba(255, 255, 255, 0.1);
+            height: 8px;
+            border-radius: 4px;
+            flex-grow: 1;
+        }
+
+        .prob-bar {
+            height: 100%;
+            border-radius: 4px;
+            background: #ffc107;
+        }
     </style>
 </head>
 
@@ -85,35 +129,57 @@
         </div>
     </div>
 
+    <!-- 右上のナビゲーションドロップダウン用エリア -->
+    <div class="nav-dropdown"></div>
+
     <div class="container py-5 mt-5">
         <div class="drill-container">
             <h1 class="page-header">🏗️ ほりほりドリル</h1>
 
-            <!-- ルール説明 -->
-            <div class="card bg-dark bg-opacity-50 border-secondary mb-4 text-start">
-                <div class="card-body">
-                    <h5 class="card-title text-warning">📜 ルール説明</h5>
-                    <ul class="mb-0 small">
-                        <li>1日最大 <span class="badge bg-warning text-dark">100回</span> 掘ることができます。</li>
-                        <li>掘るたびに <span class="text-info">コイン</span>、<span class="text-info">引換券</span>、<span
-                                class="text-info">限定バッジ</span> が出現するかも！？</li>
-                        <li>カウントは毎日 <span class="text-warning">午前0時 (JST)</span> にリセットされます。</li>
-                    </ul>
+            <div class="row g-4 mb-4">
+                <div class="col-md-8">
+                    <!-- ルール説明 -->
+                    <div class="card bg-dark bg-opacity-50 border-secondary mb-3 text-start h-100">
+                        <div class="card-body">
+                            <h5 class="card-title text-warning">📜 ルール説明</h5>
+                            <ul class="mb-0 small">
+                                <li>1日最大 <span class="badge bg-warning text-dark">100回</span> 掘ることができます。</li>
+                                <li>掘るたびに <span class="text-info">コイン</span>、<span class="text-info">引換券</span>、<span
+                                        class="text-info">限定バッジ</span> が出現するかも！？</li>
+                                <li>カウントは毎日 <span class="text-warning">午前0時 (JST)</span> にリセットされます。</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <!-- 提供割合 -->
+                    <div class="info-panel h-100">
+                        <h6 class="text-warning mb-2">📊 提供割合</h6>
+                        <table id="probability-table" class="reward-table">
+                            <!-- JSで生成 -->
+                        </table>
+                    </div>
                 </div>
             </div>
 
-            <!-- ステータス表示 -->
+            <!-- 全体・個人ステータス -->
             <div class="row g-3 mb-4">
-                <div class="col-6">
+                <div class="col-md-4">
+                    <div class="p-3 rounded bg-warning bg-opacity-20 border border-warning border-opacity-50">
+                        <div class="small text-warning">全ユーザー合計</div>
+                        <div id="global-total-meters" class="h3 mb-0 fw-bold">- m</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
                     <div class="p-3 rounded bg-white bg-opacity-10">
                         <div class="small text-white-50">今日の残り</div>
                         <div id="daily-remaining" class="h3 mb-0 fw-bold">-</div>
                     </div>
                 </div>
-                <div class="col-6">
+                <div class="col-md-4">
                     <div class="p-3 rounded bg-white bg-opacity-10">
-                        <div class="small text-white-50">累計タップ</div>
-                        <div id="total-taps" class="h3 mb-0 fw-bold">-</div>
+                        <div class="small text-white-50">現在の深さ</div>
+                        <div id="total-taps" class="h3 mb-0 fw-bold">- m</div>
                     </div>
                 </div>
             </div>
@@ -133,8 +199,13 @@
 
             <div id="result-message" class="mt-3 h5 fw-bold" style="min-height: 1.5rem;"></div>
 
-            <div class="mt-5 pt-4 border-top border-secondary">
-                <a href="../index.html" class="btn btn-outline-light rounded-pill px-4">ホームに戻る</a>
+            <!-- 最近のログ -->
+            <div class="mt-5 text-start">
+                <h6 class="text-white-50 mb-3">📍 最近の掘り出しログ</h6>
+                <div id="recent-logs" class="info-panel"
+                    style="min-height: 200px; max-height: 300px; overflow-y: auto;">
+                    <p class="text-center text-muted py-5">ログを読み込み中...</p>
+                </div>
             </div>
         </div>
     </div>
@@ -299,32 +370,100 @@
         // 統計読み込み
         async function loadStats() {
             try {
-                const { data, error } = await supabaseClient
-                    .from('event_drill_user_stats')
-                    .select('*')
-                    .eq('user_id', currentUserId)
-                    .maybeSingle();
+                // 自分と全体の統計を並列取得
+                const [userRes, globalRes, rewardsRes, logsRes] = await Promise.all([
+                    supabaseClient.from('event_drill_user_stats').select('*').eq('user_id', currentUserId).maybeSingle(),
+                    supabaseClient.from('event_drill_user_stats').select('total_taps'),
+                    supabaseClient.from('event_drill_rewards').select('*').eq('is_active', true).order('probability_weight', { ascending: false }),
+                    supabaseClient.from('activity_logs')
+                        .select('created_at, details, profiles!user_id(account_name)')
+                        .eq('action_type', 'drill_reward')
+                        .order('created_at', { ascending: false })
+                        .limit(20)
+                ]);
 
-                if (error) throw error;
+                if (userRes.error) throw userRes.error;
+                if (globalRes.error) throw globalRes.error;
+                if (rewardsRes.error) throw rewardsRes.error;
 
-                if (data) {
-                    // JSTでの最終タップ日確認
-                    const lastTap = new Date(data.last_tap_at);
+                // 自分の統計
+                if (userRes.data) {
+                    const lastTap = new Date(userRes.data.last_tap_at);
                     const now = new Date();
-                    const yesterdayJST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
-                    yesterdayJST.setHours(0, 0, 0, 0);
+                    const midnightJST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+                    midnightJST.setHours(0, 0, 0, 0);
 
-                    const dailyTaps = (lastTap < yesterdayJST) ? 0 : data.daily_taps;
+                    const dailyTaps = (lastTap < midnightJST) ? 0 : userRes.data.daily_taps;
 
                     document.getElementById('daily-remaining').textContent = (100 - dailyTaps);
-                    document.getElementById('total-taps').textContent = data.total_taps.toLocaleString();
+                    document.getElementById('total-taps').textContent = userRes.data.total_taps.toLocaleString() + ' m';
                 } else {
                     document.getElementById('daily-remaining').textContent = '100';
-                    document.getElementById('total-taps').textContent = '0';
+                    document.getElementById('total-taps').textContent = '0 m';
                 }
+
+                // 全体の統計
+                const globalTotal = (globalRes.data || []).reduce((acc, curr) => acc + (parseInt(curr.total_taps) || 0), 0);
+                document.getElementById('global-total-meters').textContent = globalTotal.toLocaleString() + ' m';
+
+                // 提供割合
+                renderProbabilities(rewardsRes.data || []);
+
+                // ログ
+                renderLogs(logsRes.data || []);
+
             } catch (err) {
                 console.error('Stats load error:', err);
             }
+        }
+
+        // 提供割合の描画
+        function renderProbabilities(rewards) {
+            const table = document.getElementById('probability-table');
+            const totalWeight = rewards.reduce((acc, r) => acc + r.probability_weight, 0);
+
+            table.innerHTML = rewards.map(r => {
+                const prob = ((r.probability_weight / totalWeight) * 100).toFixed(1);
+                return `
+                    <tr>
+                        <td style="width: 35%">${r.reward_name}</td>
+                        <td style="width: 20%; text-align: right; padding-right: 15px;">${prob}%</td>
+                        <td>
+                            <div class="prob-bar-container">
+                                <div class="prob-bar" style="width: ${prob}%"></div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // ログの描画
+        function renderLogs(logs) {
+            const container = document.getElementById('recent-logs');
+            if (!logs || logs.length === 0) {
+                container.innerHTML = '<p class="text-center text-muted py-5">まだ掘り出し物はありません</p>';
+                return;
+            }
+
+            container.innerHTML = logs.map(log => {
+                const name = log.profiles?.account_name || '不明なユーザー';
+                const reward = log.details?.reward_name || 'アイテム';
+                const depth = log.details?.depth || '?';
+                const time = new Date(log.created_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+
+                return `
+                    <div class="log-item">
+                        <span class="text-white-50 small">${time}</span>
+                        <span class="fw-bold text-warning">${name}</span>
+                        <span>が</span>
+                        <span class="text-info">${depth}m</span>
+                        <span>で</span>
+                        <span class="fw-bold">${reward}</span>
+                        <span>を掘り当てた！</span>
+                    </div>
+                `;
+            }).join('');
         }
 
         // 掘るアクション
@@ -348,20 +487,26 @@
 
                 if (error) throw error;
 
-                // 2秒間待機（アニメーション用）
+                // 演出待ち
                 await new Promise(r => setTimeout(r, 1000));
 
                 if (data.success) {
                     // UI更新
                     document.getElementById('daily-remaining').textContent = (100 - data.new_daily_taps);
-                    document.getElementById('total-taps').textContent = data.total_taps.toLocaleString();
+                    document.getElementById('total-taps').textContent = data.total_taps.toLocaleString() + ' m';
 
                     if (data.reward.type === 'nothing') {
                         resultMsg.innerHTML = '<span class="text-white-50">何も見つからなかった...</span>';
                     } else {
                         showReward(data.reward);
                         resultMsg.innerHTML = `<span class="text-warning">「${data.reward.name}」をゲット！</span>`;
+                        // ログを即取得
+                        setTimeout(loadStats, 500);
                     }
+
+                    // 全体の統計のみ更新
+                    loadGlobalStatsOnly();
+
                 } else {
                     if (data.error === 'DAILY_LIMIT_REACHED') {
                         resultMsg.innerHTML = '<span class="text-danger">今日の限界（100回）に達しました！</span>';
@@ -377,6 +522,15 @@
                 btn.disabled = false;
                 isDigging = false;
             }
+        }
+
+        // 全体の統計のみ更新（軽量）
+        async function loadGlobalStatsOnly() {
+            try {
+                const { data } = await supabaseClient.from('event_drill_user_stats').select('total_taps');
+                const globalTotal = (data || []).reduce((acc, curr) => acc + (parseInt(curr.total_taps) || 0), 0);
+                document.getElementById('global-total-meters').textContent = globalTotal.toLocaleString() + ' m';
+            } catch (e) { }
         }
 
         // 報酬表示
