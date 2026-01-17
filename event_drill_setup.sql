@@ -40,7 +40,7 @@ INSERT INTO event_drill_rewards (reward_type, reward_name, reward_id, amount, pr
 ('exchange_ticket', '一般引換券', '一般', 1, 5),
 ('badge', '【不屈の求道者】', 'c5b275e6-036b-49ef-9796-4b95ce46c53e', 0, 1);
 
--- 5. 掘削ロジック (RPC修正版3: イベント専用ログ対応)
+-- 5. 掘削ロジック (RPC修正版4: ログを合計の深さに変更)
 CREATE OR REPLACE FUNCTION process_drill_tap(target_user_id TEXT)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -56,7 +56,7 @@ DECLARE
     v_total_weight INT;
     v_random_val INT;
     v_cumulative_weight INT := 0;
-    v_result JSONB;
+    v_global_depth BIGINT;
 BEGIN
     -- 現在の統計を取得 (なければ作成)
     INSERT INTO event_drill_user_stats (user_id)
@@ -116,6 +116,9 @@ BEGIN
         last_tap_at = v_now
     WHERE user_id = target_user_id;
 
+    -- 合計の深さを計算
+    SELECT SUM(total_taps) INTO v_global_depth FROM event_drill_user_stats;
+
     -- 活動ログの記録 (イベント専用テーブル)
     IF v_reward.reward_type != 'nothing' THEN
         INSERT INTO event_drill_logs (user_id, reward_type, reward_name, reward_id, amount, depth)
@@ -125,7 +128,7 @@ BEGIN
             v_reward.reward_name,
             v_reward.reward_id,
             v_reward.amount,
-            v_stats.total_taps + 1
+            v_global_depth
         );
     END IF;
 
@@ -138,7 +141,8 @@ BEGIN
             'reward_id', v_reward.reward_id
         ),
         'new_daily_taps', v_stats.daily_taps + 1,
-        'total_taps', v_stats.total_taps + 1
+        'total_taps', v_stats.total_taps + 1,
+        'global_total_meters', v_global_depth
     );
 END;
 $$;

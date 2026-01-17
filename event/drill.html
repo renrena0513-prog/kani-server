@@ -195,6 +195,7 @@
             <div class="row g-3 mb-4">
                 <div class="col-md-4">
                     <div class="stat-card primary">
+                        <div class="stat-label">合計の深さ</div>
                         <div id="global-total-meters" class="stat-value">- M</div>
                     </div>
                 </div>
@@ -206,7 +207,7 @@
                 </div>
                 <div class="col-md-4">
                     <div class="stat-card">
-                        <div class="stat-label">現在の深さ</div>
+                        <div class="stat-label">自分が掘った深さ</div>
                         <div id="total-taps" class="stat-value">- M</div>
                     </div>
                 </div>
@@ -484,7 +485,7 @@
                         <span class="text-white-50 small">${time}</span>
                         <span class="fw-bold text-warning">${name}</span>
                         <span>が</span>
-                        <span class="text-info">${depth}m</span>
+                        <span class="text-info">${depth}M</span>
                         <span>で</span>
                         <span class="fw-bold">${reward}</span>
                         <span>を掘り当てた！</span>
@@ -531,8 +532,12 @@
                         setTimeout(loadStats, 500);
                     }
 
-                    // 全体の統計のみ更新
-                    loadGlobalStatsOnly();
+                    // 全体の統計を戻り値で更新 (サーバー負荷削減)
+                    if (data.global_total_meters !== undefined) {
+                        document.getElementById('global-total-meters').textContent = data.global_total_meters.toLocaleString() + ' M';
+                    } else {
+                        loadGlobalStatsOnly();
+                    }
 
                 } else {
                     if (data.error === 'DAILY_LIMIT_REACHED') {
