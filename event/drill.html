@@ -97,6 +97,35 @@
             border-bottom: none;
         }
 
+        .stat-card {
+            background: #333;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            border: none;
+        }
+
+        .stat-card.primary {
+            background: #f6b253;
+            color: #222;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+            opacity: 0.8;
+        }
+
         .reward-table {
             width: 100%;
             font-size: 0.85rem;
@@ -165,21 +194,20 @@
             <!-- 全体・個人ステータス -->
             <div class="row g-3 mb-4">
                 <div class="col-md-4">
-                    <div class="p-3 rounded bg-warning bg-opacity-20 border border-warning border-opacity-50">
-                        <div class="small text-warning">全ユーザー合計</div>
-                        <div id="global-total-meters" class="h3 mb-0 fw-bold">- m</div>
+                    <div class="stat-card primary">
+                        <div id="global-total-meters" class="stat-value">- M</div>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="p-3 rounded bg-white bg-opacity-10">
-                        <div class="small text-white-50">今日の残り</div>
-                        <div id="daily-remaining" class="h3 mb-0 fw-bold">-</div>
+                    <div class="stat-card">
+                        <div class="stat-label">今日の残り</div>
+                        <div id="daily-remaining" class="stat-value">-</div>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="p-3 rounded bg-white bg-opacity-10">
-                        <div class="small text-white-50">現在の深さ</div>
-                        <div id="total-taps" class="h3 mb-0 fw-bold">- m</div>
+                    <div class="stat-card">
+                        <div class="stat-label">現在の深さ</div>
+                        <div id="total-taps" class="stat-value">- M</div>
                     </div>
                 </div>
             </div>
@@ -395,15 +423,15 @@
                     const dailyTaps = (lastTap < midnightJST) ? 0 : userRes.data.daily_taps;
 
                     document.getElementById('daily-remaining').textContent = (100 - dailyTaps);
-                    document.getElementById('total-taps').textContent = userRes.data.total_taps.toLocaleString() + ' m';
+                    document.getElementById('total-taps').textContent = userRes.data.total_taps.toLocaleString() + ' M';
                 } else {
                     document.getElementById('daily-remaining').textContent = '100';
-                    document.getElementById('total-taps').textContent = '0 m';
+                    document.getElementById('total-taps').textContent = '0 M';
                 }
 
                 // 全体の統計
                 const globalTotal = (globalRes.data || []).reduce((acc, curr) => acc + (parseInt(curr.total_taps) || 0), 0);
-                document.getElementById('global-total-meters').textContent = globalTotal.toLocaleString() + ' m';
+                document.getElementById('global-total-meters').textContent = globalTotal.toLocaleString() + ' M';
 
                 // 提供割合
                 renderProbabilities(rewardsRes.data || []);
@@ -492,7 +520,7 @@
                 if (data.success) {
                     // UI更新
                     document.getElementById('daily-remaining').textContent = (100 - data.new_daily_taps);
-                    document.getElementById('total-taps').textContent = data.total_taps.toLocaleString() + ' m';
+                    document.getElementById('total-taps').textContent = data.total_taps.toLocaleString() + ' M';
 
                     if (data.reward.type === 'nothing') {
                         resultMsg.innerHTML = '<span class="text-white-50">何も見つからなかった...</span>';
@@ -528,7 +556,7 @@
             try {
                 const { data } = await supabaseClient.from('event_drill_user_stats').select('total_taps');
                 const globalTotal = (data || []).reduce((acc, curr) => acc + (parseInt(curr.total_taps) || 0), 0);
-                document.getElementById('global-total-meters').textContent = globalTotal.toLocaleString() + ' m';
+                document.getElementById('global-total-meters').textContent = globalTotal.toLocaleString() + ' M';
             } catch (e) { }
         }
 
