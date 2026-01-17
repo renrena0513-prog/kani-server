@@ -367,8 +367,6 @@ function renderRanking(records, groupKey, type = 'all') {
                               style="width: 32px; height: 32px; object-fit: cover;">` : ''}
                     </div>
                     ${badgeHtmlLeft}
-                    <span class="fw-bold">${displayName}</span>
-                    ${badgeHtmlRight}
                 </div>`;
         } else {
             // チームの場合はそのままアイコンなしまたは別のアイコン
@@ -415,6 +413,7 @@ function renderRanking(records, groupKey, type = 'all') {
                        class="text-decoration-none d-flex align-items-center justify-content-start gap-2 ${linkClass}">
                         ${avatarHtml}
                         <span class="${canLink ? 'hover-underline' : ''} fw-bold">${displayName}</span>
+                        ${badgeHtmlRight}
                     </a>
                 </td>
                 <td class="fw-bold ${statColorClass}" style="font-size: 1.1rem;${s.isTeam ? ' display: none;' : ''}">

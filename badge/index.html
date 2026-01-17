@@ -691,24 +691,24 @@
                     const badgeIconRight = profile.badges_right;
                     const badgeHtmlLeft = badgeIcon ? `
                         <img src="${badgeIcon.image_url}" title="${badgeIcon.name}" 
-                             style="width: 20px; height: 20px; object-fit: contain; margin-left: 8px; border-radius: 4px;">
+                             style="width: 20px; height: 20px; object-fit: contain; border-radius: 4px;">
                     ` : '';
                     const badgeHtmlRight = badgeIconRight ? `
                         <img src="${badgeIconRight.image_url}" title="${badgeIconRight.name}" 
-                             style="width: 20px; height: 20px; object-fit: contain; margin-left: 8px; border-radius: 4px;">
+                             style="width: 20px; height: 20px; object-fit: contain; border-radius: 4px;">
                     ` : '';
 
                     const countText = `x${o.count}`;
                     const share = totalInCirculation > 0 ? ((o.count / totalInCirculation) * 100).toFixed(1) : 0;
 
                     return `
-                        <a href="../mypage/index.html?user=${profile.discord_user_id}" class="owner-item text-decoration-none text-dark d-flex align-items-center">
-                            <img src="${avatarUrl}" alt="${name}" class="owner-avatar me-3" onerror="this.src='https://via.placeholder.com/48'">
+                        <a href="../mypage/index.html?user=${profile.discord_user_id}" class="owner-item text-decoration-none text-dark d-flex align-items-center" style="gap: 8px;">
+                            <img src="${avatarUrl}" alt="${name}" class="owner-avatar" onerror="this.src='https://via.placeholder.com/48'">
                             ${badgeHtmlLeft}
                             <span class="fw-bold fs-5">${name}</span>
                             ${badgeHtmlRight}
-                            <span class="badge bg-dark rounded-pill ms-2" style="font-size: 0.85rem;">${countText}</span>
-                            <span class="ms-2 fw-bold" style="font-size: 0.9rem; color: #555;">(占有率: ${share}%)</span>
+                            <span class="badge bg-dark rounded-pill" style="font-size: 0.85rem;">${countText}</span>
+                            <span class="fw-bold" style="font-size: 0.9rem; color: #555;">(占有率: ${share}%)</span>
                         </a>
                     `;
                 }).join('');
