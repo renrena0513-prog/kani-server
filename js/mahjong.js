@@ -484,8 +484,9 @@ function renderRanking(records, groupKey, type = 'all') {
                                     </div>
                                     ${badgeHtmlLeft}
                                 </div>
-                                <div class="podium-name ${canLink ? 'hover-underline' : ''}">${displayName}</div>
-                                ${badgeHtmlRight}
+                                    <div class="podium-name ${canLink ? 'hover-underline' : ''}">${displayName}</div>
+                                    ${badgeHtmlRight}
+                                </div>
                             </a>
                         </div>
                         <div class="podium-card-right">
