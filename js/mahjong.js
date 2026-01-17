@@ -361,11 +361,70 @@ function renderRanking(records, groupKey, type = 'all') {
 
     const mainBody = document.getElementById('ranking-body');
     const outBody = document.getElementById('rank-out-body');
+    const podiumContainer = document.getElementById('ranking-podium');
 
-    const renderRows = (list, startRank = 1) => {
-        let currentRank = startRank;
+    // 表彰台のレンダリング
+    const renderPodium = (top3, type) => {
+        if (!top3 || top3.length === 0) return '';
+
+        // 1位を中央に配置するための並べ替え (2位, 1位, 3位)
+        const order = [1, 0, 2];
+        const podiumHtml = order.map(i => {
+            const s = top3[i];
+            if (!s) return '<div class="col-md-4"></div>'; // 空枠
+
+            const rank = i + 1;
+            const rankClass = rank === 1 ? 'podium-first' : (rank === 2 ? 'podium-second' : 'podium-third');
+            const crown = rank === 1 ? '<div class="podium-crown">👑</div>' : '';
+
+            // プロフィール・アイコン取得
+            let profile = null;
+            let displayName = 'Unknown';
+            let avatarUrl = '';
+
+            if (!s.isTeam) {
+                profile = allProfiles.find(p => p.discord_user_id === s.discord_user_id) ||
+                    allProfiles.find(p => p.account_name === s.nickname);
+                displayName = profile?.account_name || s.nickname || 'Unknown';
+                avatarUrl = profile?.avatar_url;
+            } else {
+                displayName = s.nickname || 'Unknown';
+            }
+
+            // 指標値のフォーマット
+            let statValue = '';
+            if (type === 'win' || type === 'deal' || type === 'avg_rank') {
+                statValue = `${(s.avg_win || s.avg_deal || s.avg_rank).toFixed(2)}`;
+            } else if (type === 'top' || type === 'avoid') {
+                statValue = `${(s.top_rate || s.avoid_rate).toFixed(1)}%`;
+            } else if (type === 'skill') {
+                statValue = `${s.skill.toFixed(1)}%`;
+            } else {
+                statValue = `${s.score.toFixed(1)}`;
+            }
+
+            const statLabel = document.getElementById('stat-header')?.textContent || '指標';
+
+            return `
+                <div class="col-md-4">
+                    <div class="podium-card ${rankClass}">
+                        ${crown}
+                        <div class="podium-rank">${rank}</div>
+                        <img src="${avatarUrl || '../img/default-avatar.png'}" class="podium-avatar">
+                        <div class="podium-name">${displayName}</div>
+                        <p class="podium-stat-label">${statLabel}</p>
+                        <div class="podium-stat-value">${statValue}</div>
+                        <div class="podium-match-count">${s.count} 試合</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        return podiumHtml;
+    };
+
+    const renderRows = (list, offset = 0) => {
         return list.map((s, idx) => {
-            let rankValue = (startRank === 0) ? '-' : currentRank++;
+            let rankValue = (offset === -1) ? '-' : (idx + 1 + offset);
 
             let avatarHtml = '';
             let canLink = false;
@@ -449,13 +508,12 @@ function renderRanking(records, groupKey, type = 'all') {
             } else if (type === 'skill') {
                 statValue = `${(s.skill > 0 ? '+' : '') + s.skill.toFixed(1)}%`;
                 statColorClass = s.skill > 0 ? 'text-success' : (s.skill < 0 ? 'text-danger' : '');
-            } else if (type === 'all' || type === 'sanma' || type === 'yonma') {
+            } else if (type === 'all' || type === 'individual_yonma' || type === 'individual_sanma') {
                 statValue = `${(s.score > 0 ? '+' : '') + s.score.toFixed(1)}`;
                 statColorClass = s.score > 0 ? 'text-success' : (s.score < 0 ? 'text-danger' : '');
             }
 
             const labelText = document.getElementById('stat-header')?.textContent || '指標';
-
 
             return `
                 <tr>
@@ -468,7 +526,7 @@ function renderRanking(records, groupKey, type = 'all') {
                             ${badgeHtmlRight}
                         </a>
                     </td>
-                    <td class="fw-bold ${statColorClass}" data-label="${labelText}" style="font-size: 1.1rem;${s.isTeam ? ' display: none;' : ''}">
+                    <td class="fw-bold ${statColorClass}" data-label="${labelText}" style="font-size: 1.1rem;${groupKey === 'team_name' ? ' display: none;' : ''}">
                         ${statValue}
                     </td>
                     <td data-label="${type === 'match_count' ? '局数' : '試合数'}">${type === 'match_count' ? s.hand_total : s.count}</td>
@@ -477,12 +535,22 @@ function renderRanking(records, groupKey, type = 'all') {
         }).join('');
     };
 
-    mainBody.innerHTML = renderRows(rankedPlayers);
+    // 表彰台とテーブルの振り分け
+    const top3 = rankedPlayers.slice(0, 3);
+    const others = rankedPlayers.slice(3);
+
+    if (podiumContainer) {
+        podiumContainer.innerHTML = renderPodium(top3, type);
+    }
+
+    mainBody.innerHTML = renderRows(others, 3);
+
     if (outBody) {
-        outBody.innerHTML = renderRows(rankOutPlayers, 0);
+        outBody.innerHTML = renderRows(rankOutPlayers, -1);
     }
 
     if (rankedPlayers.length === 0) {
+        if (podiumContainer) podiumContainer.innerHTML = '';
         mainBody.innerHTML = '<tr><td colspan="4" class="text-muted py-4">該当するデータがありません</td></tr>';
     }
 }
