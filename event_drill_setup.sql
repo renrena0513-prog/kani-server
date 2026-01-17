@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS event_drill_rewards (
     reward_name TEXT            -- 表示用の名前
 );
 
--- 3. 初期報酬データ投入 (修正版)
+-- 3. 初期報酬データ投入 (UUID対応版)
 TRUNCATE event_drill_rewards;
 INSERT INTO event_drill_rewards (reward_type, reward_name, reward_id, amount, probability_weight) VALUES 
 ('nothing', 'ハズレ', NULL, 0, 700),
@@ -26,9 +26,9 @@ INSERT INTO event_drill_rewards (reward_type, reward_name, reward_id, amount, pr
 ('gacha_ticket', '祈願符(1枚)', NULL, 1, 30),
 ('coin', '100コイン', NULL, 100, 15),
 ('exchange_ticket', '一般引換券', '一般', 1, 5),
-('badge', '限定バッジ', '1', 0, 1); -- TODO: 実際の限定バッジIDが決まれば更新
+('badge', '【不屈の求道者】', 'c5b275e6-036b-49ef-9796-4b95ce46c53e', 0, 1);
 
--- 4. 掘削ロジック (RPC修正版)
+-- 4. 掘削ロジック (RPC修正版2: UUID対応)
 CREATE OR REPLACE FUNCTION process_drill_tap(target_user_id TEXT)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -92,9 +92,9 @@ BEGIN
         )
         WHERE discord_user_id = target_user_id;
     ELSIF v_reward.reward_type = 'badge' THEN
-        -- バッジの付与
+        -- バッジの付与 (UUIDにキャスト)
         INSERT INTO user_badges_new (user_id, badge_id, purchased_price)
-        VALUES (target_user_id, v_reward.reward_id::int, 0);
+        VALUES (target_user_id, v_reward.reward_id::uuid, 0);
     END IF;
 
     -- 統計の更新
@@ -111,7 +111,7 @@ BEGIN
             target_user_id, 
             'drill_reward', 
             CASE WHEN v_reward.reward_type = 'coin' THEN v_reward.amount ELSE NULL END, 
-            CASE WHEN v_reward.reward_type = 'badge' THEN v_reward.reward_id::int ELSE NULL END, 
+            CASE WHEN v_reward.reward_type = 'badge' THEN v_reward.reward_id::uuid ELSE NULL END, 
             jsonb_build_object(
                 'reward_name', v_reward.reward_name,
                 'reward_type', v_reward.reward_type,
