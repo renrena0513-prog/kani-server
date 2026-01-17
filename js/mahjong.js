@@ -224,8 +224,8 @@ function showRanking() {
     const headerContent = `
             <th style="width: 80px;">順位</th>
             <th id="name-header">${nameHeader.textContent}</th>
-            <th id="stat-header" style="width: 150px;${category === 'team' ? ' display: none;' : ''}">${statHeader.textContent}</th>
-            <th style="width: 100px;">${type === 'match_count' ? '局数' : '試合数'}</th>
+            <th id="stat-header" style="width: 180px;${category === 'team' ? ' display: none;' : ''}">${statHeader.textContent}</th>
+            <th style="width: 120px;">${type === 'match_count' ? '局数' : '試合数'}</th>
         `;
 
     if (tableHeaderRow) tableHeaderRow.innerHTML = headerContent;
