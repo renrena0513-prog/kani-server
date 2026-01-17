@@ -417,13 +417,15 @@ function renderRanking(records, groupKey, type = 'all') {
                             </div>
                         </div>
                         <div class="podium-card-right">
-                            <div class="podium-stat-row">
-                                <span class="podium-stat-label">${statLabel}</span>
-                                <span class="podium-stat-value">${statValue}</span>
-                            </div>
-                            <div class="podium-stat-row">
-                                <span class="podium-stat-label">試合数</span>
-                                <span class="podium-stat-value podium-match-count">${s.count}</span>
+                            <div class="podium-stat-grid">
+                                <div class="podium-stat-item">
+                                    <div class="podium-stat-label">${statLabel}</div>
+                                    <div class="podium-stat-value">${statValue}</div>
+                                </div>
+                                <div class="podium-stat-item">
+                                    <div class="podium-stat-label">試合数</div>
+                                    <div class="podium-stat-value podium-match-count">${s.count}</div>
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -505,31 +505,38 @@
                     margin-top: -10px;
                 }
 
-                .podium-stat-row {
+                .podium-stat-grid {
                     display: flex;
-                    justify-content: space-between;
-                    align-items: baseline;
-                    gap: 15px;
-                    margin-bottom: 5px;
+                    gap: 40px;
+                    justify-content: flex-end;
+                    align-items: center;
+                }
+
+                .podium-stat-item {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    text-align: center;
                 }
 
                 .podium-stat-label {
-                    font-size: 0.9rem;
+                    font-size: 0.8rem;
                     color: rgba(0, 0, 0, 0.6);
-                    font-weight: 600;
+                    font-weight: 700;
+                    margin-bottom: 2px;
                     white-space: nowrap;
                 }
 
                 .podium-stat-value {
-                    font-size: 1.5rem;
+                    font-size: 1.6rem;
                     font-weight: 900;
                     color: #000;
                     line-height: 1;
                 }
 
                 .podium-match-count {
-                    font-size: 1.2rem;
-                    color: rgba(0, 0, 0, 0.6);
+                    color: rgba(0, 0, 0, 0.7);
+                    font-size: 1.4rem;
                 }
 
                 @media (max-width: 768px) {
