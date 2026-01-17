@@ -329,6 +329,7 @@ function renderRanking(records, groupKey, type = 'all') {
         let displayName = s.display;
         let avatarHtml = '';
         let canLink = false;
+        let badgeHtmlRight = ''; // スコープ外で初期化
 
         if (!s.isTeam) {
             // 個人ランキングの場合のみプロフィール/アイコン処理
@@ -351,7 +352,7 @@ function renderRanking(records, groupKey, type = 'all') {
                     <img src="${badge.image_url}" title="${badge.name}" 
                          style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
                 </div>` : '';
-            const badgeHtmlRight = badgeRight ? `
+            badgeHtmlRight = badgeRight ? `
                 <div style="width: 24px; height: 24px;" class="ms-1">
                     <img src="${badgeRight.image_url}" title="${badgeRight.name}" 
                          style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
