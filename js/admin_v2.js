@@ -154,7 +154,9 @@ async function fetchRecords() {
     try {
         const { data: records, error } = await supabaseClient
             .from('match_results')
-            .select('*');
+            .select('*')
+            .order('event_datetime', { ascending: false })
+            .limit(10000); // 取得上限を10,000件に増加
 
         if (error) throw error;
 
@@ -487,8 +489,8 @@ async function editMatch(matchId) {
 async function populateDropdowns() {
     try {
         const [pRes, tRes] = await Promise.all([
-            supabaseClient.from('profiles').select('account_name, discord_user_id').order('account_name'),
-            supabaseClient.from('teams').select('team_name').order('team_name')
+            supabaseClient.from('profiles').select('account_name, discord_user_id').order('account_name').limit(10000),
+            supabaseClient.from('teams').select('team_name').order('team_name').limit(1000)
         ]);
 
         if (pRes.error) throw pRes.error;
@@ -510,6 +512,15 @@ async function populateDropdowns() {
                 opt.dataset.discordId = p.discord_user_id;
                 accSelect.appendChild(opt);
             });
+
+            // もし記録のアカウント名がリストにない場合でも表示できるようにする
+            if (currentAcc && !profiles.some(p => p.account_name === currentAcc)) {
+                const opt = document.createElement('option');
+                opt.value = currentAcc;
+                opt.textContent = `${currentAcc} (不明なユーザー)`;
+                opt.disabled = true;
+                accSelect.appendChild(opt);
+            }
             accSelect.value = currentAcc;
 
             const currentTeam = teamSelect.value;
