@@ -61,6 +61,7 @@ async function fetchData() {
         }
 
 
+        renderMainFilters();
         showRanking(); // 初期表示
     } catch (err) {
         console.error('データ取得エラー:', err);
