@@ -147,6 +147,66 @@
             border-radius: 4px;
             background: #ffc107;
         }
+
+        /* ユーザー情報の表示セット */
+        .user-cell {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            vertical-align: middle;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .user-badge {
+            width: 20px;
+            height: 20px;
+            object-fit: contain;
+        }
+
+        .mutant-badge-container.mini {
+            position: relative;
+            width: 20px;
+            height: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mutant-badge-shine {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background: linear-gradient(135deg,
+                    rgba(255, 255, 255, 0) 0%,
+                    rgba(255, 255, 255, 0) 30%,
+                    rgba(255, 255, 255, 0.8) 50%,
+                    rgba(255, 255, 255, 0) 70%,
+                    rgba(255, 255, 255, 0) 100%);
+            background-size: 200% 200%;
+            animation: mutant-shine 3s infinite linear;
+            border-radius: 50%;
+            z-index: 1;
+        }
+
+        @keyframes mutant-shine {
+            0% {
+                background-position: -200% -200%;
+            }
+
+            100% {
+                background-position: 200% 200%;
+            }
+        }
     </style>
 </head>
 
@@ -400,15 +460,31 @@
         async function loadStats() {
             try {
                 // 自分と全体の統計を並列取得
-                const [userRes, globalRes, rewardsRes, logsRes] = await Promise.all([
+                const [userRes, globalRes, rewardsRes, logsRes, mutantRes] = await Promise.all([
                     supabaseClient.from('event_drill_user_stats').select('*').eq('user_id', currentUserId).maybeSingle(),
                     supabaseClient.from('event_drill_user_stats').select('total_taps'),
                     supabaseClient.from('event_drill_rewards').select('*').eq('is_active', true).order('probability_weight', { ascending: false }),
                     supabaseClient.from('event_drill_logs')
-                        .select('created_at, reward_name, depth, profiles!user_id(account_name)')
+                        .select(`
+                            created_at, reward_name, depth, 
+                            profiles!user_id(
+                                discord_user_id, account_name, avatar_url, 
+                                equipped_badge_id, equipped_badge_id_right,
+                                badges!equipped_badge_id(image_url, name),
+                                badges_right:badges!equipped_badge_id_right(image_url, name)
+                            )
+                        `)
                         .order('created_at', { ascending: false })
-                        .limit(20)
+                        .limit(20),
+                    supabaseClient.from('user_badges_new').select('user_id, badge_id, is_mutant').eq('is_mutant', true)
                 ]);
+
+                // ミュータント情報のマップ作成
+                const mutantMap = {};
+                (mutantRes.data || []).forEach(m => {
+                    mutantMap[`${m.user_id}_${m.badge_id}`] = true;
+                });
+                window.drillMutantMap = mutantMap;
 
                 if (userRes.error) throw userRes.error;
                 if (globalRes.error) throw globalRes.error;
@@ -475,20 +551,43 @@
             }
 
             container.innerHTML = logs.map(log => {
-                const name = log.profiles?.account_name || '不明なユーザー';
+                const profile = log.profiles;
+                const name = profile?.account_name || '不明なユーザー';
+                const avatar = profile?.avatar_url || 'https://via.placeholder.com/32';
                 const reward = log.reward_name || 'アイテム';
                 const depth = log.depth || '?';
                 const time = new Date(log.created_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
 
+                // バッジ表示の生成
+                const renderBadge = (badge, id, userId) => {
+                    if (!badge) return '';
+                    const isMutant = window.drillMutantMap[`${userId}_${id}`];
+                    return `
+                        <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}">
+                            <img src="${badge.image_url}" class="user-badge" title="${badge.name}">
+                            <div class="mutant-badge-shine" style="display: ${isMutant ? 'block' : 'none'};"></div>
+                        </div>`;
+                };
+
+                const badgeLeft = renderBadge(profile?.badges, profile?.equipped_badge_id, profile?.discord_user_id);
+                const badgeRight = renderBadge(profile?.badges_right, profile?.equipped_badge_id_right, profile?.discord_user_id);
+
                 return `
-                    <div class="log-item">
-                        <span class="text-white-50 small">${time}</span>
-                        <span class="fw-bold text-warning">${name}</span>
-                        <span>が</span>
-                        <span class="text-info">${depth}M</span>
-                        <span>で</span>
-                        <span class="fw-bold">${reward}</span>
-                        <span>を掘り当てた！</span>
+                    <div class="log-item d-flex align-items-center gap-2 py-2 border-bottom border-white border-opacity-10">
+                        <span class="text-white-50 small" style="min-width: 45px;">${time}</span>
+                        <div class="user-cell">
+                            <img src="${avatar}" class="user-avatar" onerror="this.src='https://via.placeholder.com/32'">
+                            ${badgeLeft}
+                            <span class="fw-bold text-warning">${name}</span>
+                            ${badgeRight}
+                        </div>
+                        <div class="ms-1">
+                            <span>が</span>
+                            <span class="text-info">${depth}M</span>
+                            <span>で</span>
+                            <span class="fw-bold">${reward}</span>
+                            <span>を掘り当てた！</span>
+                        </div>
                     </div>
                 `;
             }).join('');
