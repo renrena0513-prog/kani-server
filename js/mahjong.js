@@ -60,6 +60,17 @@ async function fetchData() {
             allProfiles = names.map(n => ({ account_name: n, avatar_url: '' }));
         }
 
+        // ミュータント情報を取得
+        const { data: userBadges } = await supabaseClient
+            .from('user_badges_new')
+            .select('user_id, badge_id')
+            .eq('is_mutant', true);
+
+        window.userMutantMap = {}; // global cache
+        (userBadges || []).forEach(ub => {
+            window.userMutantMap[`${ub.user_id}_${ub.badge_id}`] = true;
+        });
+
 
         renderMainFilters();
 
@@ -464,14 +475,28 @@ function renderRanking(records, groupKey, type = 'all') {
 
                 const badge = profile?.badges;
                 const badgeRight = profile?.badges_right;
-                badgeHtmlLeft = badge ? `
-                    <div class="podium-badge-left">
-                        <img src="${badge.image_url}" title="${badge.name}">
-                    </div>` : '';
-                badgeHtmlRight = badgeRight ? `
-                    <div class="podium-badge-right">
-                        <img src="${badgeRight.image_url}" title="${badgeRight.name}">
-                    </div>` : '';
+
+                if (badge) {
+                    const isMutant = window.userMutantMap?.[`${profile.discord_user_id}_${profile.equipped_badge_id}`];
+                    badgeHtmlLeft = `
+                        <div class="mutant-badge-container ${isMutant ? 'active' : ''}">
+                            <div class="podium-badge-left">
+                                <img src="${badge.image_url}" title="${badge.name}">
+                            </div>
+                            <div class="mutant-badge-shine" style="display: ${isMutant ? 'block' : 'none'};"></div>
+                        </div>`;
+                }
+
+                if (badgeRight) {
+                    const isMutant = window.userMutantMap?.[`${profile.discord_user_id}_${profile.equipped_badge_id_right}`];
+                    badgeHtmlRight = `
+                        <div class="mutant-badge-container ${isMutant ? 'active' : ''}">
+                            <div class="podium-badge-right">
+                                <img src="${badgeRight.image_url}" title="${badgeRight.name}">
+                            </div>
+                            <div class="mutant-badge-shine" style="display: ${isMutant ? 'block' : 'none'};"></div>
+                        </div>`;
+                }
             } else {
                 displayName = s.nickname || 'Unknown';
             }
@@ -574,16 +599,26 @@ function renderRanking(records, groupKey, type = 'all') {
 
                 const badge = profile?.badges;
                 const badgeRight = profile?.badges_right;
-                badgeHtmlLeft = badge ? `
-                    <div style="width: 24px; height: 24px;">
-                        <img src="${badge.image_url}" title="${badge.name}" 
-                             style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
-                    </div>` : '';
-                badgeHtmlRight = badgeRight ? `
-                    <div style="width: 24px; height: 24px;">
-                        <img src="${badgeRight.image_url}" title="${badgeRight.name}" 
-                             style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
-                    </div>` : '';
+
+                if (badge) {
+                    const isMutant = window.userMutantMap?.[`${profile.discord_user_id}_${profile.equipped_badge_id}`];
+                    badgeHtmlLeft = `
+                        <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}">
+                            <img src="${badge.image_url}" title="${badge.name}" 
+                                 style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
+                            <div class="mutant-badge-shine" style="display: ${isMutant ? 'block' : 'none'};"></div>
+                        </div>`;
+                }
+
+                if (badgeRight) {
+                    const isMutant = window.userMutantMap?.[`${profile.discord_user_id}_${profile.equipped_badge_id_right}`];
+                    badgeHtmlRight = `
+                        <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}">
+                            <img src="${badgeRight.image_url}" title="${badgeRight.name}" 
+                                 style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
+                            <div class="mutant-badge-shine" style="display: ${isMutant ? 'block' : 'none'};"></div>
+                        </div>`;
+                }
             } else {
                 displayName = s.nickname || 'Unknown';
             }

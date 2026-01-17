@@ -553,3 +553,152 @@ body.user-impersonating .title-image {
         box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
     }
 }
+
+/* ========================================
+   Mutant Badge Effects (Shared)
+   ======================================== */
+.mutant-badge-container {
+    position: relative;
+    display: inline-block;
+    transition: all 0.3s ease;
+}
+
+/* Rising Bubble Aura */
+.mutant-badge-container.active::before,
+.mutant-badge-container.active::after {
+    content: '';
+    position: absolute;
+    bottom: -15px;
+    left: 50%;
+    width: 80px;
+    height: 120px;
+    transform: translateX(-50%);
+    z-index: 0;
+    pointer-events: none;
+    border-radius: 50% 50% 0 0;
+    filter: blur(15px);
+}
+
+.mutant-badge-container.active::before {
+    background: radial-gradient(circle at center, rgba(180, 0, 255, 0.4) 0%, transparent 70%);
+    animation: bubblesRiseSmall 3s infinite ease-in;
+}
+
+.mutant-badge-container.active::after {
+    background: radial-gradient(circle at center, rgba(0, 200, 255, 0.3) 0%, transparent 70%);
+    animation: bubblesRiseSmall 4s infinite ease-out;
+    animation-delay: 1.5s;
+}
+
+/* Floating Animation for the Badge itself */
+.mutant-badge-container.active img {
+    position: relative;
+    z-index: 1;
+    filter: drop-shadow(0 0 10px rgba(200, 0, 255, 0.6));
+    animation: badgeFloatSmall 4s ease-in-out infinite !important;
+}
+
+/* Shine Overlay */
+.mutant-badge-shine {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 2;
+    overflow: hidden;
+    border-radius: inherit;
+    -webkit-mask-image: radial-gradient(circle, black 65%, transparent 70%);
+    mask-image: radial-gradient(circle, black 65%, transparent 70%);
+}
+
+.mutant-badge-shine::before {
+    content: '';
+    position: absolute;
+    top: -100%;
+    left: -100%;
+    width: 300%;
+    height: 300%;
+    background: linear-gradient(135deg,
+            transparent 40%,
+            rgba(255, 255, 255, 0.1) 44%,
+            rgba(255, 255, 255, 0.9) 45%,
+            rgba(255, 255, 255, 0.2) 46%,
+            transparent 48%,
+            transparent 50%,
+            rgba(255, 255, 255, 0.1) 51%,
+            rgba(255, 255, 255, 0.6) 52%,
+            rgba(255, 255, 255, 0.1) 53%,
+            transparent 55%);
+    filter: blur(3px);
+    animation: mutantShineDiagonalSmall 2s infinite ease-in-out;
+}
+
+@keyframes bubblesRiseSmall {
+    0% {
+        transform: translateX(-50%) translateY(0) scale(0.8);
+        opacity: 0;
+    }
+
+    20% {
+        opacity: 0.6;
+    }
+
+    80% {
+        opacity: 0.4;
+    }
+
+    100% {
+        transform: translateX(-50%) translateY(-100px) scale(1.2);
+        opacity: 0;
+    }
+}
+
+@keyframes mutantShineDiagonalSmall {
+    0% {
+        transform: translate(-30%, -30%);
+    }
+
+    100% {
+        transform: translate(10%, 10%);
+    }
+}
+
+@keyframes badgeFloatSmall {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-5px);
+    }
+}
+
+/* Mini version for Ranking Tables (24px badges) */
+.mutant-badge-container.mini.active::before,
+.mutant-badge-container.mini.active::after {
+    width: 40px;
+    height: 60px;
+    bottom: -8px;
+    filter: blur(8px);
+}
+
+.mutant-badge-container.mini.active img {
+    filter: drop-shadow(0 0 5px rgba(200, 0, 255, 0.8));
+    animation: badgeFloatMini 4s ease-in-out infinite !important;
+}
+
+@keyframes badgeFloatMini {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-2px);
+    }
+}

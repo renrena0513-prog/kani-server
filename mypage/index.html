@@ -823,14 +823,20 @@
                         <!-- 上段: バッジ + 名前 + バッジ + 編集ボタン -->
                         <div class="d-flex align-items-center justify-content-between mb-3">
                             <div class="d-flex align-items-center gap-2 flex-grow-1" style="min-width: 0;">
-                                <img id="user-equipped-badge" src="" alt=""
-                                    style="width: 36px; height: 36px; border-radius: 8px; display: none;" title="">
+                                <div id="badge-container-left" class="mutant-badge-container">
+                                    <img id="user-equipped-badge" src="" alt=""
+                                        style="width: 36px; height: 36px; border-radius: 8px; display: none;" title="">
+                                    <div class="mutant-badge-shine" style="display: none;"></div>
+                                </div>
                                 <h2 id="user-name" class="mb-0 text-truncate"
                                     style="font-family: var(--font-title); color: var(--deep-purple); font-size: 1.4rem;">
                                     ユーザー名
                                 </h2>
-                                <img id="user-equipped-badge-right" src="" alt=""
-                                    style="width: 36px; height: 36px; border-radius: 8px; display: none;" title="">
+                                <div id="badge-container-right" class="mutant-badge-container">
+                                    <img id="user-equipped-badge-right" src="" alt=""
+                                        style="width: 36px; height: 36px; border-radius: 8px; display: none;" title="">
+                                    <div class="mutant-badge-shine" style="display: none;"></div>
+                                </div>
                             </div>
                             <button id="nickname-edit-btn" onclick="openNicknameModal()"
                                 class="btn btn-sm btn-outline-secondary flex-shrink-0" title="ニックネームを変更"
@@ -1475,8 +1481,10 @@
                 badgeImg.src = badge.image_url;
                 badgeImg.title = badge.name;
                 badgeImg.style.display = 'block';
+                applyMutantEffect('badge-container-left', profile.equipped_badge_id, discordId);
             } else if (badgeImg) {
                 badgeImg.style.display = 'none';
+                applyMutantEffect('badge-container-left', null, null);
             }
 
             // 右バッジ画像を設定
@@ -1486,8 +1494,10 @@
                 badgeImgRight.src = badgeRight.image_url;
                 badgeImgRight.title = badgeRight.name;
                 badgeImgRight.style.display = 'block';
+                applyMutantEffect('badge-container-right', profile.equipped_badge_id_right, discordId);
             } else if (badgeImgRight) {
                 badgeImgRight.style.display = 'none';
+                applyMutantEffect('badge-container-right', null, null);
             }
 
             // チーム名を設定
@@ -1590,8 +1600,10 @@
                     badgeImg.src = badge.image_url;
                     badgeImg.title = badge.name;
                     badgeImg.style.display = 'block';
+                    applyMutantEffect('badge-container-left', profile.equipped_badge_id, targetId);
                 } else if (badgeImg) {
                     badgeImg.style.display = 'none';
+                    applyMutantEffect('badge-container-left', null, null);
                 }
 
                 // 右バッジ画像を設定
@@ -1601,8 +1613,10 @@
                     badgeImgRight.src = badgeRight.image_url;
                     badgeImgRight.title = badgeRight.name;
                     badgeImgRight.style.display = 'block';
+                    applyMutantEffect('badge-container-right', profile.equipped_badge_id_right, targetId);
                 } else if (badgeImgRight) {
                     badgeImgRight.style.display = 'none';
+                    applyMutantEffect('badge-container-right', null, null);
                 }
 
                 // チーム名を設定

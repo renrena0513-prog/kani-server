@@ -621,6 +621,33 @@
                 const allOwners = owners || [];
                 const mutantOwners = allOwners.filter(o => o.is_mutant);
 
+                // オーナーたちの装備中バッジのミュータント情報を取得
+                const ownerIds = allOwners.map(o => o.user_id);
+                const equippedBadgeIds = [];
+
+                allOwners.forEach(o => {
+                    if (o.profiles?.badges) equippedBadgeIds.push(o.profiles.equipped_badge_id);
+                    if (o.profiles?.badges_right) equippedBadgeIds.push(o.profiles.equipped_badge_id_right);
+                });
+
+                window.equippedMutantMap = {};
+                if (ownerIds.length > 0 && equippedBadgeIds.length > 0) {
+                    // ユニーク化
+                    const uniqueOwnerIds = [...new Set(ownerIds)];
+                    const uniqueBadgeIds = [...new Set(equippedBadgeIds)];
+
+                    const { data: equippedMutants } = await supabaseClient
+                        .from('user_badges_new')
+                        .select('user_id, badge_id')
+                        .in('user_id', uniqueOwnerIds)
+                        .in('badge_id', uniqueBadgeIds)
+                        .eq('is_mutant', true);
+
+                    (equippedMutants || []).forEach(em => {
+                        window.equippedMutantMap[`${em.user_id}_${em.badge_id}`] = true;
+                    });
+                }
+
                 // ミュータントがいる場合は切り替えボタンを表示
                 if (mutantOwners.length > 0) {
                     document.getElementById('mutant-toggle-area').style.display = 'block';
@@ -689,14 +716,51 @@
                     const name = profile.account_name || '名称未設定';
                     const badgeIcon = profile.badges;
                     const badgeIconRight = profile.badges_right;
-                    const badgeHtmlLeft = badgeIcon ? `
-                        <img src="${badgeIcon.image_url}" title="${badgeIcon.name}" 
-                             style="width: 20px; height: 20px; object-fit: contain; border-radius: 4px;">
-                    ` : '';
-                    const badgeHtmlRight = badgeIconRight ? `
-                        <img src="${badgeIconRight.image_url}" title="${badgeIconRight.name}" 
-                             style="width: 20px; height: 20px; object-fit: contain; border-radius: 4px;">
-                    ` : '';
+
+                    let badgeHtmlLeft = '';
+                    if (badgeIcon) {
+                        const isMutant = window.equippedMutantMap?.[`${profile.discord_user_id}_${profile.equipped_badge_id}`]; // profile has discord_user_id but table uses user_id (uuid) ?? 
+                        // Wait, profiles table: id(uuid), discord_user_id(text). user_badges_new: user_id(text, discord_id linked).
+                        // Let's check schema. profiles.discord_user_id IS the ID used in user_badges_new.user_id usually?
+                        // Actually checking schema... 
+                        // In loadRanking (ranking/index.html), I used `${item.discord_user_id}_${item.equipped_badge_id}` and matched against `user_badges_new` `user_id`.
+                        // So `user_badges_new.user_id` stores the discord_user_id string.
+                        // Here `o.user_id` from `user_badges_new` is likely the discord id string.
+                        // Let's verify `o` comes from `user_badges_new`.
+                        // `owners` query: .from('user_badges_new').select('user_id, ...')
+                        // So `o.user_id` IS `user_badges_new.user_id`.
+                        // And `profile.discord_user_id` should match it.
+
+                        // Using o.user_id is safer as it is directly from the owner record.
+                        const userId = o.user_id;
+
+                        // But wait, the equipped badge might belong to `profile.discord_user_id`?
+                        // `o.profiles` is joined on `user_id`.
+                        // So `o.user_id` === `profile.discord_user_id` (if relation handles it correctly).
+                        // Let's use `o.user_id`.
+
+                        const isMutantLeft = window.equippedMutantMap?.[`${userId}_${profile.equipped_badge_id}`];
+                        badgeHtmlLeft = `
+                            <div class="mutant-badge-container mini ${isMutantLeft ? 'active' : ''}" style="margin-right: -4px;">
+                                <img src="${badgeIcon.image_url}" title="${badgeIcon.name}" 
+                                     style="width: 20px; height: 20px; object-fit: contain; border-radius: 4px;">
+                                <div class="mutant-badge-shine" style="display: ${isMutantLeft ? 'block' : 'none'};"></div>
+                            </div>
+                        `;
+                    }
+
+                    let badgeHtmlRight = '';
+                    if (badgeIconRight) {
+                        const userId = o.user_id;
+                        const isMutantRight = window.equippedMutantMap?.[`${userId}_${profile.equipped_badge_id_right}`];
+                        badgeHtmlRight = `
+                            <div class="mutant-badge-container mini ${isMutantRight ? 'active' : ''}" style="margin-left: -4px;">
+                                <img src="${badgeIconRight.image_url}" title="${badgeIconRight.name}" 
+                                     style="width: 20px; height: 20px; object-fit: contain; border-radius: 4px;">
+                                <div class="mutant-badge-shine" style="display: ${isMutantRight ? 'block' : 'none'};"></div>
+                            </div>
+                        `;
+                    }
 
                     const countText = `x${o.count}`;
                     const share = totalInCirculation > 0 ? ((o.count / totalInCirculation) * 100).toFixed(1) : 0;

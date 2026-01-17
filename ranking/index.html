@@ -324,10 +324,14 @@
                 // 3. バッジマスター情報を取得（固定価格対応）
                 const { data: masterBadges } = await supabaseClient.from('badges').select('id, price, sales_type');
 
-                // バッジごとの流通数をカウント
+                // バッジごとの流通数をカウント & ユーザーごとのミュータント所有表を構築
                 const marketCounts = {};
+                const userMutantMap = {}; // (userId_badgeId) -> boolean
                 userBadges.forEach(ub => {
                     marketCounts[ub.badge_id] = (marketCounts[ub.badge_id] || 0) + 1;
+                    if (ub.is_mutant) {
+                        userMutantMap[`${ub.user_id}_${ub.badge_id}`] = true;
+                    }
                 });
 
                 // 各バッジの「現在価値(P_value)」を事前に計算
@@ -386,8 +390,28 @@
                     const rank = index + 1;
                     const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
                     const avatar = item.avatar_url || 'https://via.placeholder.com/40';
-                    const badgeImgLeft = item.badges ? `<img src="${item.badges.image_url}" class="user-badge" title="${item.badges.name}">` : '';
-                    const badgeImgRight = item.badges_right ? `<img src="${item.badges_right.image_url}" class="user-badge" title="${item.badges_right.name}">` : '';
+
+                    // 左バッジのミュータント判定とHTML生成
+                    let badgeImgLeft = '';
+                    if (item.badges) {
+                        const isMutant = userMutantMap[`${item.discord_user_id}_${item.equipped_badge_id}`];
+                        badgeImgLeft = `
+                            <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}">
+                                <img src="${item.badges.image_url}" class="user-badge" title="${item.badges.name}">
+                                <div class="mutant-badge-shine" style="display: ${isMutant ? 'block' : 'none'};"></div>
+                            </div>`;
+                    }
+
+                    // 右バッジのミュータント判定とHTML生成
+                    let badgeImgRight = '';
+                    if (item.badges_right) {
+                        const isMutant = userMutantMap[`${item.discord_user_id}_${item.equipped_badge_id_right}`];
+                        badgeImgRight = `
+                            <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}">
+                                <img src="${item.badges_right.image_url}" class="user-badge" title="${item.badges_right.name}">
+                                <div class="mutant-badge-shine" style="display: ${isMutant ? 'block' : 'none'};"></div>
+                            </div>`;
+                    }
 
                     const displayStat = currentMode === 'networth'
                         ? `💎 ${item.netWorth.toLocaleString()}`
