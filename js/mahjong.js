@@ -101,13 +101,12 @@ function renderMainFilters() {
 
     let filters = [];
     if (currentTournament === '第一回麻雀大会') {
-        filters = [{ id: 'all', label: '総合' }];
-        currentMainFilter = 'all'; // 第一回は強制的に総合
+        filters = [{ id: 'all', label: '個人戦（総合）' }];
+        currentMainFilter = 'all'; // 第一回は強制的に個人戦（総合）
     } else {
         filters = [
-            { id: 'all', label: '総合' },
-            { id: 'team_yonma', label: 'チーム戦（四麻）' },
-            { id: 'team_sanma', label: 'チーム戦（三麻）' },
+            { id: 'team', label: 'チーム戦' },
+            { id: 'all', label: '個人戦（総合）' },
             { id: 'individual_yonma', label: '個人戦（四麻）' },
             { id: 'individual_sanma', label: '個人戦（三麻）' }
         ];
@@ -179,14 +178,9 @@ function showRanking() {
     let filtered = seasonFiltered;
     let groupKey = 'account_name';
 
-    if (category === 'team_yonma') {
-        title.textContent = 'チーム戦（四麻）ランキング';
-        filtered = seasonFiltered.filter(r => r.match_mode !== '個人戦' && r.mahjong_mode === '四麻');
-        groupKey = 'team_name';
-        nameHeader.textContent = 'チーム名';
-    } else if (category === 'team_sanma') {
-        title.textContent = 'チーム戦（三麻）ランキング';
-        filtered = seasonFiltered.filter(r => r.match_mode !== '個人戦' && r.mahjong_mode === '三麻');
+    if (category === 'team') {
+        title.textContent = 'チーム戦ランキング';
+        filtered = seasonFiltered.filter(r => r.match_mode !== '個人戦' && r.team_name);
         groupKey = 'team_name';
         nameHeader.textContent = 'チーム名';
     } else if (category === 'individual_yonma') {
@@ -198,9 +192,11 @@ function showRanking() {
         filtered = seasonFiltered.filter(r => r.match_mode === '個人戦' && r.mahjong_mode === '三麻');
         nameHeader.textContent = '名前';
     } else {
-        title.textContent = '総合ランキング';
+        // デフォルト: 個人戦（総合）
+        title.textContent = '個人戦（総合）ランキング';
         nameHeader.textContent = '名前';
-        filtered = seasonFiltered;
+        // 第一回大会などは match_mode がない場合があるため、チーム名がないもの or 個人戦を対象
+        filtered = seasonFiltered.filter(r => r.match_mode === '個人戦' || !r.team_name);
     }
 
     const statHeader = document.getElementById('stat-header');
@@ -209,7 +205,7 @@ function showRanking() {
         'match_count': '試合数', 'win': '和了率', 'deal': '放銃率',
         'skill': 'バランス雀力', 'avg_rank': '平均順位', 'top': 'トップ率', 'avoid': 'ラス回避'
     };
-    statHeader.style.display = (category.startsWith('team_')) ? 'none' : '';
+    statHeader.style.display = (category === 'team') ? 'none' : '';
     statHeader.textContent = subTitleMap[type] || '合計スコア';
 
     // 以前の注釈ロジックを削除
@@ -227,7 +223,7 @@ function showRanking() {
     const headerContent = `
             <th style="width: 80px;">順位</th>
             <th id="name-header">${nameHeader.textContent}</th>
-            <th id="stat-header" style="width: 150px;${category.startsWith('team_') ? ' display: none;' : ''}">${statHeader.textContent}</th>
+            <th id="stat-header" style="width: 150px;${category === 'team' ? ' display: none;' : ''}">${statHeader.textContent}</th>
             <th style="width: 100px;">${type === 'match_count' ? '局数' : '試合数'}</th>
         `;
 
