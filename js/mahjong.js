@@ -287,6 +287,8 @@ function renderRanking(records, groupKey, type = 'all') {
                 r1: 0, r2: 0, r3: 0, r4: 0,
                 max_score: -Infinity,
                 hand_total: 0,
+                sanma_count: 0,
+                yonma_count: 0,
                 isTeam: (groupKey === 'team_name')
             };
         }
@@ -301,6 +303,8 @@ function renderRanking(records, groupKey, type = 'all') {
             summary[key].r4 += Number(r.rank4_count || 0);
             summary[key].max_score = Math.max(summary[key].max_score, Number(r.score_max || 0));
             summary[key].hand_total += Number(r.total_hands || 0); // 第一回に列があれば
+            // 第一回は四麻メインと想定
+            summary[key].yonma_count += Number(r.matches_played || 0);
         } else {
             summary[key].score += Number(r.final_score || 0);
             summary[key].count += 1;
@@ -312,6 +316,13 @@ function renderRanking(records, groupKey, type = 'all') {
             else if (rk === 4) summary[key].r4++;
             summary[key].max_score = Math.max(summary[key].max_score, Number(r.final_score || 0));
             summary[key].hand_total += Number(r.hand_count || 0);
+
+            // モード別カウント
+            if (r.mahjong_mode === '三麻') {
+                summary[key].sanma_count++;
+            } else {
+                summary[key].yonma_count++;
+            }
         }
 
         summary[key].win += (r.win_count || 0);
@@ -438,7 +449,8 @@ function renderRanking(records, groupKey, type = 'all') {
             statValue = `${(s.avg_score > 0 ? '+' : '') + s.avg_score.toFixed(1)}`;
             statColorClass = 'text-muted';
         } else if (type === 'match_count') {
-            statValue = `${s.count} 試合`;
+            statValue = `<span style="font-size: 0.8rem;">四:${s.yonma_count} / 三:${s.sanma_count}</span>`;
+            statColorClass = 'text-dark';
         } else if (type === 'skill') {
             statValue = `${(s.skill > 0 ? '+' : '') + s.skill.toFixed(1)}%`;
             statColorClass = s.skill > 0 ? 'text-success' : (s.skill < 0 ? 'text-danger' : '');
