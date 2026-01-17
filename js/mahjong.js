@@ -247,6 +247,25 @@ function showRanking(type) {
         buttons[12].classList.replace('btn-outline-success', 'btn-success');
     }
 
+    // 注釈の表示・非表示 (10試合ルール対象)
+    const noticeId = 'ranking-notice';
+    let noticeCell = document.getElementById(noticeId);
+    const targetTypes = ['avg_score', 'max_score', 'deal', 'win', 'skill', 'avg_rank', 'top', 'avoid'];
+
+    if (targetTypes.includes(type)) {
+        if (!noticeCell) {
+            noticeCell = document.createElement('p');
+            noticeCell.id = noticeId;
+            noticeCell.className = 'text-warning small mb-3';
+            noticeCell.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i> ※10試合未満はランキング集計対象外となります';
+            const body = document.getElementById('ranking-body');
+            body.parentNode.insertBefore(noticeCell, body.parentNode.firstChild);
+        }
+        noticeCell.style.display = 'block';
+    } else if (noticeCell) {
+        noticeCell.style.display = 'none';
+    }
+
     // テーブルヘッダーの動的調整 (試合数ランキング時のみ5列)
     const tableHeaderRow = document.querySelector('.ranking-table thead tr');
     if (type === 'match_count') {
@@ -376,7 +395,18 @@ function renderRanking(records, groupKey, type = 'all') {
     });
 
     // ソート
+    const targetTypes = ['avg_score', 'max_score', 'deal', 'win', 'skill', 'avg_rank', 'top', 'avoid'];
+    const isTargetType = targetTypes.includes(type);
+
     const sorted = Object.values(summary).sort((a, b) => {
+        // 10試合ルールの適用: 10試合未満は常に下位へ
+        if (isTargetType) {
+            const aValid = a.count >= 10;
+            const bValid = b.count >= 10;
+            if (aValid && !bValid) return -1;
+            if (!aValid && bValid) return 1;
+        }
+
         if (type === 'win') return b.avg_win - a.avg_win; // 和了率は高い順
         if (type === 'deal') return a.avg_deal - b.avg_deal; // 放銃率は低い順
         if (type === 'top') return b.top_rate - a.top_rate; // トップ率は高い順
@@ -390,7 +420,19 @@ function renderRanking(records, groupKey, type = 'all') {
     });
 
     const body = document.getElementById('ranking-body');
+    let rankCounter = 0;
     body.innerHTML = sorted.map((s, idx) => {
+        // 順位表示の決定
+        let rankDisplay = '-';
+        if (isTargetType) {
+            if (s.count >= 10) {
+                rankCounter++;
+                rankDisplay = rankCounter;
+            }
+        } else {
+            rankDisplay = idx + 1;
+        }
+
         let displayName = s.display;
         let avatarHtml = '';
         let canLink = false;
@@ -505,7 +547,7 @@ function renderRanking(records, groupKey, type = 'all') {
 
         return `
             <tr>
-                <td>${idx + 1}</td>
+                <td>${rankDisplay}</td>
                 <td class="ps-4 text-start">
                     <a href="${linkUrl}" 
                        class="text-decoration-none d-flex align-items-center justify-content-start gap-2 ${linkClass}">
