@@ -209,7 +209,7 @@ function showRanking() {
             <th style="width: 80px;">順位</th>
             <th id="name-header">${nameHeader.textContent}</th>
             <th id="stat-header" style="width: 150px;${category.startsWith('team') ? ' display: none;' : ''}">${statHeader.textContent}</th>
-            <th style="width: 100px;">試合数</th>
+            <th style="width: 100px;">${type === 'match_count' ? '局数' : '試合数'}</th>
         `;
 
     if (tableHeaderRow) tableHeaderRow.innerHTML = headerContent;
@@ -289,6 +289,8 @@ function renderRanking(records, groupKey, type = 'all') {
             else if (rk === 4) summary[key].r4++;
             summary[key].max_score = Math.max(summary[key].max_score, Number(r.final_score || 0));
             summary[key].hand_total += Number(r.hand_count || 0);
+            summary[key].win += Number(r.win_count || 0);
+            summary[key].deal += Number(r.deal_in_count || 0);
 
             // モード別カウント
             if (r.mahjong_mode === '三麻') {
@@ -297,9 +299,6 @@ function renderRanking(records, groupKey, type = 'all') {
                 summary[key].yonma_count++;
             }
         }
-
-        summary[key].win += (r.win_count || 0);
-        summary[key].deal += (r.deal_in_count || 0);
     });
 
     // 平均値・各種率の計算
@@ -456,7 +455,7 @@ function renderRanking(records, groupKey, type = 'all') {
                     <td class="fw-bold ${statColorClass}" data-label="${labelText}" style="font-size: 1.1rem;${s.isTeam ? ' display: none;' : ''}">
                         ${statValue}
                     </td>
-                    <td data-label="試合数">${s.count}</td>
+                    <td data-label="${type === 'match_count' ? '局数' : '試合数'}">${type === 'match_count' ? s.hand_total : s.count}</td>
                 </tr>
             `;
         }).join('');
