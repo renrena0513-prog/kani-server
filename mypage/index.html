@@ -2539,12 +2539,21 @@
 
             // 同じバッジをクリックした場合は外す
             const currentBadgeId = position === 'right' ? current?.equipped_badge_id_right : current?.equipped_badge_id;
+            const oppositeBadgeId = position === 'right' ? current?.equipped_badge_id : current?.equipped_badge_id_right;
+            const oppositeColumn = position === 'right' ? 'equipped_badge_id' : 'equipped_badge_id_right';
+
             const newBadgeId = (currentBadgeId === badgeId) ? null : badgeId;
+
+            // 反対側のスロットに同じバッジが装着されている場合は移動（反対側を外す）
+            let updateData = { [columnName]: newBadgeId };
+            if (badgeId && badgeId === oppositeBadgeId) {
+                updateData[oppositeColumn] = null; // 反対側を外す
+            }
 
             try {
                 const { error } = await supabaseClient
                     .from('profiles')
-                    .update({ [columnName]: newBadgeId })
+                    .update(updateData)
                     .eq('discord_user_id', targetId);
 
                 if (error) throw error;
