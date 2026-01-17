@@ -281,7 +281,7 @@ function renderRanking(records, groupKey, type = 'all') {
             summary[key] = {
                 key: key,
                 discord_user_id: groupKey === 'team_name' ? null : (r.discord_user_id || null),
-                nickname: r.nickname || r.account_name || key,
+                nickname: groupKey === 'team_name' ? key : (r.nickname || r.account_name || key),
                 display: key,
                 score: 0,
                 count: 0,
