@@ -688,7 +688,7 @@
 
                 await logActivity(currentUserId, 'badge_purchase', {
                     amount: isTicket ? 0 : -price,
-                    badgeId: params.p_badge_id,
+                    badgeId: params.p_badge_id || badgeId, // 確実に整数IDを渡す
                     details: {
                         badge_name: name,
                         is_mutant: data.is_mutant,

@@ -2056,7 +2056,6 @@
 
                 // 不要なログを除外（queryで除外できるものはここでする）
                 logsQuery = logsQuery.not('action_type', 'eq', 'badge_equip')
-                    .not('action_type', 'eq', 'mahjong')
                     .not('action_type', 'eq', 'admin_edit');
 
                 // フィルター適用
@@ -2239,12 +2238,12 @@
                     } else if (log.action_type === 'admin_edit') {
                         detailsStr = `⚙️ 管理者による${log.amount >= 0 ? '加算' : '減算'} `;
                     } else if (log.action_type === 'gacha_draw') {
-                        const badgeId = log.badge_id;
+                        const bId = log.badge_id;
                         const resultName = log.details?.result_name || log.details?.name || 'アイテム';
                         const resultType = log.details?.result_type || log.details?.type;
 
-                        if (badgeId && badgeMap[badgeId]) {
-                            const badge = badgeMap[badgeId];
+                        if (bId && badgeMap[bId]) {
+                            const badge = badgeMap[bId];
                             detailsStr = `
                         <div class="d-inline-flex align-items-center gap-1" >
                             <img src="${badge.image_url}" style="width: 30px; height: 30px; object-fit: contain;" title="${badge.name}">
@@ -2258,6 +2257,19 @@
 
                             detailsStr = `${icon} ${resultName} を獲得`;
                         }
+                    }
+
+                    // バッジ関連のログで、detailsにbadge_idがないがlog本体にある場合のアイコン表示
+                    const bId = log.badge_id;
+                    if (['badge_transfer', 'badge_receive', 'badge_sell', 'badge_purchase'].includes(log.action_type) && bId && badgeMap[bId]) {
+                        const badge = badgeMap[bId];
+                        const originalDetails = detailsStr;
+                        detailsStr = `
+                            <div class="d-inline-flex align-items-center gap-1">
+                                <img src="${badge.image_url}" style="width: 24px; height: 24px; object-fit: contain;" title="${badge.name}">
+                                <span>${originalDetails}</span>
+                            </div>
+                        `;
                     }
 
                     return `
@@ -2500,8 +2512,13 @@
                 alert(`バッジを 🪙${data.sell_price.toLocaleString()} で売却しました。`);
                 // 活動ログ記録
                 if (typeof logActivity === 'function') {
+                    // バッジID(整数)を取得
+                    const { data: bInfo } = await supabaseClient.from('user_badges_new').select('badge_id').eq('uuid', currentActionUUID).single();
+                    const bId = bInfo?.badge_id;
+
                     await logActivity(targetId, 'badge_sell', {
                         amount: data.sell_price,
+                        badgeId: bId, // 整数IDを追加
                         details: { badge_uuid: currentActionUUID, badge_name: currentActionBadgeName }
                     });
                 }
@@ -3130,15 +3147,19 @@
                     const sender = allProfiles.find(p => p.discord_user_id === targetId);
                     const senderName = sender?.account_name || '誰か';
 
+                    // バッジID(整数)を取得
+                    const { data: bInfo } = await supabaseClient.from('user_badges_new').select('badge_id').eq('uuid', currentActionUUID).single();
+                    const bId = bInfo?.badge_id;
+
                     await logActivity(targetId, 'badge_transfer', {
-                        badgeId: currentActionUUID,
+                        badgeId: bId, // UUIDではなく整数IDを渡す
                         targetUserId: toUserId,
-                        details: { target_name: toUserName, badge_name: currentActionBadgeName }
+                        details: { target_name: toUserName, badge_name: currentActionBadgeName, badge_uuid: currentActionUUID }
                     });
                     await logActivity(toUserId, 'badge_receive', {
-                        badgeId: currentActionUUID,
+                        badgeId: bId, // UUIDではなく整数IDを渡す
                         targetUserId: targetId,
-                        details: { sender_name: senderName, badge_name: currentActionBadgeName }
+                        details: { sender_name: senderName, badge_name: currentActionBadgeName, badge_uuid: currentActionUUID }
                     });
                 }
 
