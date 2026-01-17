@@ -913,23 +913,23 @@
 
                         <div id="stats-content" style="display: none;">
                             <div id="stats-grid">
-                                <!-- スコア系 -->
+                                <!-- Row 1: 合計スコア　平均スコア　最大スコア -->
                                 <div class="row g-3 mb-3">
-                                    <div class="col-6 col-md-4">
+                                    <div class="col-4">
                                         <div class="stat-card-mini">
                                             <div class="stat-label-mini">合計スコア</div>
                                             <div class="stat-value-mini" id="stat-total">-</div>
                                             <div class="stat-rank" id="rank-total">-</div>
                                         </div>
                                     </div>
-                                    <div class="col-6 col-md-4">
+                                    <div class="col-4">
                                         <div class="stat-card-mini">
                                             <div class="stat-label-mini">平均スコア</div>
                                             <div class="stat-value-mini" id="stat-avg-score">-</div>
                                             <div class="stat-rank" id="rank-avg-score">-</div>
                                         </div>
                                     </div>
-                                    <div class="col-6 col-md-4">
+                                    <div class="col-4">
                                         <div class="stat-card-mini">
                                             <div class="stat-label-mini">最大スコア</div>
                                             <div class="stat-value-mini" id="stat-max-score">-</div>
@@ -938,41 +938,23 @@
                                     </div>
                                 </div>
 
-                                <!-- 率系 -->
+                                <!-- Row 2: 和了率　放銃率　バランス雀力 -->
                                 <div class="row g-3 mb-3">
-                                    <div class="col-6 col-md-3">
+                                    <div class="col-4">
                                         <div class="stat-card-mini">
                                             <div class="stat-label-mini">和了率</div>
                                             <div class="stat-value-mini" id="stat-win-rate">-</div>
                                             <div class="stat-rank" id="rank-win-rate">-</div>
                                         </div>
                                     </div>
-                                    <div class="col-6 col-md-3">
+                                    <div class="col-4">
                                         <div class="stat-card-mini">
                                             <div class="stat-label-mini">放銃率</div>
                                             <div class="stat-value-mini" id="stat-deal-rate">-</div>
                                             <div class="stat-rank" id="rank-deal-rate">-</div>
                                         </div>
                                     </div>
-                                    <div class="col-6 col-md-3">
-                                        <div class="stat-card-mini">
-                                            <div class="stat-label-mini">トップ率</div>
-                                            <div class="stat-value-mini" id="stat-top-rate">-</div>
-                                            <div class="stat-rank" id="rank-top-rate">-</div>
-                                        </div>
-                                    </div>
-                                    <div class="col-6 col-md-3">
-                                        <div class="stat-card-mini">
-                                            <div class="stat-label-mini">ラス回避</div>
-                                            <div class="stat-value-mini" id="stat-avoid-rate">-</div>
-                                            <div class="stat-rank" id="rank-avoid-rate">-</div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- バランス雀力 -->
-                                <div class="row g-3 mb-3">
-                                    <div class="col-12">
+                                    <div class="col-4">
                                         <div class="stat-card-mini"
                                             style="background: linear-gradient(135deg, #e8f5e9, #fff);">
                                             <div class="stat-label-mini">⚖️ バランス雀力</div>
@@ -982,20 +964,51 @@
                                     </div>
                                 </div>
 
-                                <!-- 順位系 -->
-                                <div class="row g-3">
-                                    <div class="col-6">
+                                <!-- Row 3: 平均順位　トップ率　ラス回避率 -->
+                                <div class="row g-3 mb-3">
+                                    <div class="col-4">
                                         <div class="stat-card-mini">
                                             <div class="stat-label-mini">平均順位</div>
                                             <div class="stat-value-mini" id="stat-avg-rank">-</div>
                                             <div class="stat-rank" id="rank-avg-rank">-</div>
                                         </div>
                                     </div>
-                                    <div class="col-6">
+                                    <div class="col-4">
                                         <div class="stat-card-mini">
-                                            <div class="stat-label-mini">対局数</div>
+                                            <div class="stat-label-mini">トップ率</div>
+                                            <div class="stat-value-mini" id="stat-top-rate">-</div>
+                                            <div class="stat-rank" id="rank-top-rate">-</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="stat-card-mini">
+                                            <div class="stat-label-mini">ラス回避率</div>
+                                            <div class="stat-value-mini" id="stat-avoid-rate">-</div>
+                                            <div class="stat-rank" id="rank-avoid-rate">-</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Row 4: 試合数　局数　レーティング -->
+                                <div class="row g-3">
+                                    <div class="col-4">
+                                        <div class="stat-card-mini">
+                                            <div class="stat-label-mini">試合数</div>
                                             <div class="stat-value-mini" id="stat-games">-</div>
                                             <div class="stat-rank" id="rank-games">-</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="stat-card-mini">
+                                            <div class="stat-label-mini">局数</div>
+                                            <div class="stat-value-mini" id="stat-hands">-</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="stat-card-mini"
+                                            style="background: linear-gradient(135deg, #f3e5f5, #fff);">
+                                            <div class="stat-label-mini">📊 レーティング</div>
+                                            <div class="stat-value-mini" id="stat-rating">-</div>
                                         </div>
                                     </div>
                                 </div>
@@ -2865,7 +2878,8 @@
 
             // メインフィルター（対戦形式）
             if (currentMahjongMode === 'team') {
-                // チーム戦対応（現状チームデータがない場合はスキップ）
+                // チーム戦はまだデータがないので空配列にする
+                records = [];
             } else if (currentMahjongMode === 'individual_yonma') {
                 records = records.filter(r => (r.mahjong_mode || r.mode) === '四麻');
             } else if (currentMahjongMode === 'individual_sanma') {
@@ -2897,11 +2911,18 @@
             updateStatCard('max-score', formatScore(myStats.maxScore), playerStats, 'maxScore', true);
             updateStatCard('win-rate', myStats.winRate.toFixed(1) + '%', playerStats, 'winRate', true);
             updateStatCard('deal-rate', myStats.dealRate.toFixed(1) + '%', playerStats, 'dealRate', false);
-            updateStatCard('top-rate', myStats.topRate.toFixed(1) + '%', playerStats, 'topRate', true);
-            updateStatCard('avoid-rate', myStats.avoidRate.toFixed(1) + '%', playerStats, 'avoidRate', true);
             updateStatCard('skill', myStats.skill.toFixed(1) + '%', playerStats, 'skill', true);
             updateStatCard('avg-rank', myStats.avgRank.toFixed(2), playerStats, 'avgRank', false);
+            updateStatCard('top-rate', myStats.topRate.toFixed(1) + '%', playerStats, 'topRate', true);
+            updateStatCard('avoid-rate', myStats.avoidRate.toFixed(1) + '%', playerStats, 'avoidRate', true);
             updateStatCard('games', myStats.games, playerStats, 'games', true);
+
+            // 局数とレーティング（順位なし）
+            const handsEl = document.getElementById('stat-hands');
+            if (handsEl) handsEl.textContent = myStats.hands || 0;
+
+            const ratingEl = document.getElementById('stat-rating');
+            if (ratingEl) ratingEl.textContent = '-'; // 未実装
         }
 
         function updateStatCard(id, value, allStats, key, higherIsBetter) {
