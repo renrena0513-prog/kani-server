@@ -187,12 +187,10 @@ function showRanking() {
 
     if (category === 'team') {
         title.textContent = 'チーム戦ランキング';
-        if (currentTournament === '第一回麻雀大会') {
-            // 第一回（Snapshot）は team_name があれば対象
-            filtered = seasonFiltered.filter(r => r.team_name);
-        } else {
-            filtered = seasonFiltered.filter(r => r.match_mode !== '個人戦' && r.team_name);
-        }
+        filtered = seasonFiltered.filter(r => {
+            if (r.tournament_type === '第一回麻雀大会') return !!r.team_name;
+            return r.match_mode !== '個人戦' && r.team_name;
+        });
         groupKey = 'team_name';
         nameHeader.textContent = 'チーム名';
     } else if (category === 'individual_yonma') {
@@ -207,13 +205,10 @@ function showRanking() {
         // デフォルト: 個人戦（総合）
         title.textContent = '個人戦（総合）ランキング';
         nameHeader.textContent = '名前';
-        if (currentTournament === '第一回麻雀大会') {
-            // 第一回（Snapshot）は全レコードが個人成績の集成
-            filtered = seasonFiltered;
-        } else {
-            // 第二回以降
-            filtered = seasonFiltered.filter(r => r.match_mode === '個人戦' || !r.team_name);
-        }
+        filtered = seasonFiltered.filter(r => {
+            if (r.tournament_type === '第一回麻雀大会') return true;
+            return r.match_mode === '個人戦' || !r.team_name;
+        });
     }
 
     const statHeader = document.getElementById('stat-header');
