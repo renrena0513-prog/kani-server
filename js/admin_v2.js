@@ -699,7 +699,7 @@ async function saveRecord() {
                 assetSyncPromises.push(syncUserAssets(oldDiscordId, -oldReward));
             }
 
-            editSummary.push(`- **${accountName}**: ${isNewMatch ? '' : oldScore + ' → '}${finalScore}pts (${rank}位, 報酬: ${newReward}C)`);
+            editSummary.push(`- **${accountName}**: ${isNewMatch ? '' : oldScore + ' → '}${finalScore}pts (${rank}位, 和了${winCount}/放銃${dealInCount}, 報酬: ${newReward}C)`);
         }
 
         // 2. 既存レコードの削除（重複キーエラー回避のため、対局単位で再構築）
