@@ -298,17 +298,38 @@
 
         /* 統計ミニカード */
         .stat-card-mini {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            background: #fff;
             border-radius: 12px;
             padding: 15px;
             text-align: center;
             transition: all 0.3s ease;
             border: 1px solid #dee2e6;
+            cursor: pointer;
+            height: 100%;
         }
 
         .stat-card-mini:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-color: var(--gold);
+        }
+
+        .stat-card-mini.rank-1 {
+            background: linear-gradient(135deg, #fff7ad 0%, #ffa700 100%) !important;
+            border-left: 8px solid #ffd700 !important;
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3) !important;
+        }
+
+        .stat-card-mini.rank-2 {
+            background: linear-gradient(135deg, #f0f0f0 0%, #a0a0a0 100%) !important;
+            border-left: 8px solid #c0c0c0 !important;
+            box-shadow: 0 4px 15px rgba(192, 192, 192, 0.3) !important;
+        }
+
+        .stat-card-mini.rank-3 {
+            background: linear-gradient(135deg, #f5d4b5 0%, #b87333 100%) !important;
+            border-left: 8px solid #cd7f32 !important;
+            box-shadow: 0 4px 15px rgba(205, 127, 50, 0.3) !important;
         }
 
         .stat-label-mini {
@@ -332,6 +353,7 @@
             border-radius: 10px;
             margin-top: 5px;
             display: inline-block;
+            border: 1px solid rgba(255, 255, 255, 0.5);
         }
 
         .stat-rank.no-data {
