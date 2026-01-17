@@ -476,7 +476,7 @@ function renderRanking(records, groupKey, type = 'all') {
                                 <div class="podium-rank">${rank}</div>
                             </div>
                             <a href="${linkUrl}" class="text-decoration-none podium-player-info ${linkClass}">
-                                <div class="d-flex align-items-center gap-3">
+                                <div class="podium-avatar-wrapper">
                                     <div style="width: 64px; height: 64px;" class="flex-shrink-0 d-flex align-items-center justify-content-center">
                                         ${avatarUrl ?
                     `<img src="${avatarUrl}" alt="${displayName}" class="podium-avatar">` :
