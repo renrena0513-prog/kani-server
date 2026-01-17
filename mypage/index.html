@@ -2055,9 +2055,10 @@
                     .order('created_at', { ascending: false });
 
                 // 不要なログを除外（queryで除外できるものはここでする）
-                // mahjong(DB用), admin_edit は表示しない
-                // supabase-jsの .not('in', ...) は括弧が必要な場合があるため文字列で指定
-                logsQuery = logsQuery.not('action_type', 'in', '(mahjong,admin_edit,badge_equip)');
+                // mahjong(DB用), admin_edit, badge_equip は表示しない
+                logsQuery = logsQuery.not('action_type', 'eq', 'mahjong')
+                    .not('action_type', 'eq', 'admin_edit')
+                    .not('action_type', 'eq', 'badge_equip');
 
                 // フィルター適用
                 if (actionFilter !== 'all') {
@@ -2073,23 +2074,21 @@
                     }
                 }
 
-                const tName = targetName || '';
-
-                // 2. 麻雀記録
+                // 2. 麻雀記録 (discord_user_id でフィルタ)
                 let matchesQuery = supabaseClient
                     .from('match_results')
                     .select('*', { count: 'exact' })
-                    .or(`discord_user_id.eq.${targetId}${tName ? `,account_name.eq.${tName}` : ''}`)
+                    .eq('discord_user_id', targetId)
                     .order('event_datetime', { ascending: false });
 
                 // 麻雀フィルター時はログを取得しない
                 const showMatches = actionFilter === 'all' || actionFilter === 'mahjong';
 
-                // 3. 過去大会データ
+                // 3. 過去大会データ (discord_user_id でフィルタ)
                 let legacyQuery = supabaseClient
                     .from('tournament_player_stats_snapshot')
                     .select('*', { count: 'exact' })
-                    .or(`discord_user_id.eq.${targetId}${tName ? `,account_name.eq.${tName},nickname.eq.${tName}` : ''}`);
+                    .eq('discord_user_id', targetId);
 
                 // 同時実行して結果をマージするが、ページネーションのためにある程度多めに取得する。
                 // 複数のテーブルをマージする場合、正確なページネーションは難しいが、
