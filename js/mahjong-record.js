@@ -27,7 +27,7 @@ async function fetchProfiles() {
     try {
         const { data, error } = await supabaseClient
             .from('profiles')
-            .select('*, badges!equipped_badge_id(image_url, name)');
+            .select('*, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name)');
         if (!error) allProfiles = data;
     } catch (err) {
         console.error('プロフィール取得エラー:', err);
@@ -198,16 +198,22 @@ function renderDropdownItems(idx, profiles) {
         const display = p.account_name || p.discord_user_id;
         const avatarUrl = p.avatar_url || 'https://via.placeholder.com/24';
         const badge = p.badges;
-        const badgeHtml = badge ? `
+        const badgeRight = p.badges_right;
+        const badgeHtmlLeft = badge ? `
             <img src="${badge.image_url}" title="${badge.name}" 
+                 style="width: 18px; height: 18px; object-fit: contain; margin-left: 5px; border-radius: 2px;">
+        ` : '';
+        const badgeHtmlRight = badgeRight ? `
+            <img src="${badgeRight.image_url}" title="${badgeRight.name}" 
                  style="width: 18px; height: 18px; object-fit: contain; margin-left: 5px; border-radius: 2px;">
         ` : '';
 
         return `
             <div class="dropdown-item-flex" onclick="selectPlayer(${idx}, '${p.discord_user_id}', '${(p.account_name || '').replace(/'/g, "\\'")}')">
                 <img src="${avatarUrl}" class="dropdown-avatar" onerror="this.src='https://via.placeholder.com/24'">
+                ${badgeHtmlLeft}
                 <span class="small">${display}</span>
-                ${badgeHtml}
+                ${badgeHtmlRight}
             </div>
         `;
     }).join('');

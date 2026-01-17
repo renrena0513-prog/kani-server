@@ -348,7 +348,7 @@
                 // プロフィールデータ取得
                 const { data: profiles, error: profilesError } = await supabaseClient
                     .from('profiles')
-                    .select('*, badges!equipped_badge_id(image_url, name)')
+                    .select('*, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name)')
                     .order('account_name');
 
                 if (profilesError) throw profilesError;
@@ -433,16 +433,22 @@
             const avatarUrl = user.avatar_url || 'https://via.placeholder.com/48';
             const name = user.account_name || '名称未設定';
             const badge = user.badges;
-            const badgeHtml = badge ? `
+            const badgeRight = user.badges_right;
+            const badgeHtmlLeft = badge ? `
 <img src="${badge.image_url}" title="${badge.name}"
+    style="width: 24px; height: 24px; object-fit: contain; margin-left: 8px; border-radius: 4px;">
+` : '';
+            const badgeHtmlRight = badgeRight ? `
+<img src="${badgeRight.image_url}" title="${badgeRight.name}"
     style="width: 24px; height: 24px; object-fit: contain; margin-left: 8px; border-radius: 4px;">
 ` : '';
 
             return `
 <a href="../../mypage/index.html?user=${user.discord_user_id}" class="user-card text-decoration-none">
     <img src="${avatarUrl}" alt="${name}" class="user-avatar" onerror="this.src='https://via.placeholder.com/48'">
+    ${badgeHtmlLeft}
     <span class="user-name">${name}</span>
-    ${badgeHtml}
+    ${badgeHtmlRight}
 </a>
 `;
         }

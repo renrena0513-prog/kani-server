@@ -612,7 +612,7 @@
                 // 所持者取得（通常+ミュータント）
                 const { data: owners, error: ownerError } = await supabaseClient
                     .from('user_badges_new')
-                    .select('user_id, is_mutant, profiles!user_id(discord_user_id, account_name, avatar_url, badges!equipped_badge_id(image_url, name))')
+                    .select('user_id, is_mutant, profiles!user_id(discord_user_id, account_name, avatar_url, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name))')
                     .eq('badge_id', badgeId);
 
                 if (ownerError) throw ownerError;
@@ -688,8 +688,13 @@
                     const avatarUrl = profile.avatar_url || 'https://via.placeholder.com/48';
                     const name = profile.account_name || '名称未設定';
                     const badgeIcon = profile.badges;
-                    const badgeHtml = badgeIcon ? `
+                    const badgeIconRight = profile.badges_right;
+                    const badgeHtmlLeft = badgeIcon ? `
                         <img src="${badgeIcon.image_url}" title="${badgeIcon.name}" 
+                             style="width: 20px; height: 20px; object-fit: contain; margin-left: 8px; border-radius: 4px;">
+                    ` : '';
+                    const badgeHtmlRight = badgeIconRight ? `
+                        <img src="${badgeIconRight.image_url}" title="${badgeIconRight.name}" 
                              style="width: 20px; height: 20px; object-fit: contain; margin-left: 8px; border-radius: 4px;">
                     ` : '';
 
@@ -699,8 +704,9 @@
                     return `
                         <a href="../mypage/index.html?user=${profile.discord_user_id}" class="owner-item text-decoration-none text-dark d-flex align-items-center">
                             <img src="${avatarUrl}" alt="${name}" class="owner-avatar me-3" onerror="this.src='https://via.placeholder.com/48'">
+                            ${badgeHtmlLeft}
                             <span class="fw-bold fs-5">${name}</span>
-                            ${badgeHtml}
+                            ${badgeHtmlRight}
                             <span class="badge bg-dark rounded-pill ms-2" style="font-size: 0.85rem;">${countText}</span>
                             <span class="ms-2 fw-bold" style="font-size: 0.9rem; color: #555;">(占有率: ${share}%)</span>
                         </a>

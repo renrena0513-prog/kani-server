@@ -312,7 +312,7 @@
                 // 1. プロフィール情報を取得
                 const { data: profiles, error: pError } = await supabaseClient
                     .from('profiles')
-                    .select('discord_user_id, account_name, avatar_url, coins, total_assets, equipped_badge_id, badges!equipped_badge_id(image_url, name)');
+                    .select('discord_user_id, account_name, avatar_url, coins, total_assets, equipped_badge_id, equipped_badge_id_right, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name)');
                 if (pError) throw pError;
 
                 // 2. 全バッジ個体データを取得（資産価値計算用）
@@ -386,7 +386,8 @@
                     const rank = index + 1;
                     const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
                     const avatar = item.avatar_url || 'https://via.placeholder.com/40';
-                    const badgeImg = item.badges ? `<img src="${item.badges.image_url}" class="user-badge" title="${item.badges.name}">` : '';
+                    const badgeImgLeft = item.badges ? `<img src="${item.badges.image_url}" class="user-badge" title="${item.badges.name}">` : '';
+                    const badgeImgRight = item.badges_right ? `<img src="${item.badges_right.image_url}" class="user-badge" title="${item.badges_right.name}">` : '';
 
                     const displayStat = currentMode === 'networth'
                         ? `💎 ${item.netWorth.toLocaleString()}`
@@ -400,10 +401,11 @@
                             <td>
                                 <div class="user-cell">
                                     <img src="${avatar}" class="user-avatar" onerror="this.src='https://via.placeholder.com/40'">
+                                    ${badgeImgLeft}
                                     <a href="../mypage/index.html?user=${item.discord_user_id}" class="text-decoration-none text-dark fw-bold">
                                         ${item.account_name || '名称未設定'}
                                     </a>
-                                    ${badgeImg}
+                                    ${badgeImgRight}
                                 </div>
                             </td>
                             <td class="fw-bold" style="color: ${statColor}; font-size: 1.1rem;">${displayStat}</td>

@@ -755,15 +755,17 @@
                 <!-- ログイン済み（または閲覧モード） -->
                 <div id="profile-content" style="display: none;">
                     <div class="profile-card mb-4">
-                        <!-- 上段: バッジ + 名前 + 編集ボタン -->
+                        <!-- 上段: バッジ + 名前 + バッジ + 編集ボタン -->
                         <div class="d-flex align-items-center justify-content-between mb-3">
                             <div class="d-flex align-items-center gap-2 flex-grow-1" style="min-width: 0;">
                                 <img id="user-equipped-badge" src="" alt=""
-                                    style="width: 36px; height: 36px; border-radius: 8px; display: none;">
+                                    style="width: 36px; height: 36px; border-radius: 8px; display: none;" title="">
                                 <h2 id="user-name" class="mb-0 text-truncate"
                                     style="font-family: var(--font-title); color: var(--deep-purple); font-size: 1.4rem;">
                                     ユーザー名
                                 </h2>
+                                <img id="user-equipped-badge-right" src="" alt=""
+                                    style="width: 36px; height: 36px; border-radius: 8px; display: none;" title="">
                             </div>
                             <button id="nickname-edit-btn" onclick="openNicknameModal()"
                                 class="btn btn-sm btn-outline-secondary flex-shrink-0" title="ニックネームを変更"
@@ -1068,11 +1070,22 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
+                    <div class="text-center mb-3">
+                        <span class="badge bg-primary me-2" id="badge-position-indicator">左に装着</span>
+                        <div class="btn-group" role="group">
+                            <input type="radio" class="btn-check" name="badge-position" id="pos-left" value="left"
+                                checked>
+                            <label class="btn btn-outline-primary btn-sm" for="pos-left">◀ 左</label>
+                            <input type="radio" class="btn-check" name="badge-position" id="pos-right" value="right">
+                            <label class="btn btn-outline-primary btn-sm" for="pos-right">右 ▶</label>
+                        </div>
+                    </div>
                     <div id="badge-modal-list" class="row g-2">
                         <!-- JSで生成 -->
                     </div>
-                    <div class="text-center mt-3">
-                        <button class="btn btn-outline-danger btn-sm" onclick="equipBadge(null)">バッジを外す</button>
+                    <div class="text-center mt-3 d-flex justify-content-center gap-2">
+                        <button class="btn btn-outline-danger btn-sm" onclick="equipBadge(null, 'left')">左を外す</button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="equipBadge(null, 'right')">右を外す</button>
                     </div>
                 </div>
             </div>
@@ -1339,7 +1352,7 @@
             // ユーザー情報の取得（バッジ情報・コイン・チーム情報を含む）
             const { data: profile } = await supabaseClient
                 .from('profiles')
-                .select('account_name, avatar_url, coins, total_assets, gacha_tickets, exchange_tickets, equipped_badge_id, team_id, badges!equipped_badge_id(image_url, name), teams!team_id(team_name)')
+                .select('account_name, avatar_url, coins, total_assets, gacha_tickets, exchange_tickets, equipped_badge_id, equipped_badge_id_right, team_id, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name), teams!team_id(team_name)')
                 .eq('discord_user_id', targetId)
                 .maybeSingle();
 
@@ -1366,13 +1379,26 @@
             // 名前のみ表示（バッジは別要素）
             document.getElementById('user-name').textContent = name;
 
-            // バッジ画像を設定
+            // 左バッジ画像を設定
             const badgeImg = document.getElementById('user-equipped-badge');
             const badge = profile?.badges;
             if (badgeImg && badge) {
                 badgeImg.src = badge.image_url;
                 badgeImg.title = badge.name;
                 badgeImg.style.display = 'block';
+            } else if (badgeImg) {
+                badgeImg.style.display = 'none';
+            }
+
+            // 右バッジ画像を設定
+            const badgeImgRight = document.getElementById('user-equipped-badge-right');
+            const badgeRight = profile?.badges_right;
+            if (badgeImgRight && badgeRight) {
+                badgeImgRight.src = badgeRight.image_url;
+                badgeImgRight.title = badgeRight.name;
+                badgeImgRight.style.display = 'block';
+            } else if (badgeImgRight) {
+                badgeImgRight.style.display = 'none';
             }
 
             // チーム名を設定
@@ -1423,7 +1449,7 @@
         async function loadTargetUserInfo() {
             const { data: profile, error } = await supabaseClient
                 .from('profiles')
-                .select('*, badges!equipped_badge_id(image_url, name), teams!team_id(team_name)')
+                .select('*, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name), teams!team_id(team_name)')
                 .eq('discord_user_id', targetId)
                 .maybeSingle();
 
@@ -1441,13 +1467,26 @@
                 // 名前を設定
                 document.getElementById('user-name').textContent = profile.account_name || '名称未設定';
 
-                // バッジ画像を設定
+                // 左バッジ画像を設定
                 const badgeImg = document.getElementById('user-equipped-badge');
                 const badge = profile?.badges;
                 if (badgeImg && badge) {
                     badgeImg.src = badge.image_url;
                     badgeImg.title = badge.name;
                     badgeImg.style.display = 'block';
+                } else if (badgeImg) {
+                    badgeImg.style.display = 'none';
+                }
+
+                // 右バッジ画像を設定
+                const badgeImgRight = document.getElementById('user-equipped-badge-right');
+                const badgeRight = profile?.badges_right;
+                if (badgeImgRight && badgeRight) {
+                    badgeImgRight.src = badgeRight.image_url;
+                    badgeImgRight.title = badgeRight.name;
+                    badgeImgRight.style.display = 'block';
+                } else if (badgeImgRight) {
+                    badgeImgRight.style.display = 'none';
                 }
 
                 // チーム名を設定
@@ -2480,23 +2519,32 @@
         // ここで再定義するか、グローバルに調整する。mypage/index.html 内に定義されている場合、それを上書きする。
 
         // ============ バッジ装着 ============
-        async function equipBadge(badgeId) {
+        async function equipBadge(badgeId, position = null) {
             if (isViewMode) return;
+
+            // positionが指定されていない場合はラジオボタンの値を取得
+            if (!position) {
+                const posRadio = document.querySelector('input[name="badge-position"]:checked');
+                position = posRadio ? posRadio.value : 'left';
+            }
+
+            const columnName = position === 'right' ? 'equipped_badge_id_right' : 'equipped_badge_id';
 
             // 現在の装着状況を確認
             const { data: current } = await supabaseClient
                 .from('profiles')
-                .select('equipped_badge_id')
+                .select('equipped_badge_id, equipped_badge_id_right')
                 .eq('discord_user_id', targetId)
                 .maybeSingle();
 
-            // 同じバッジをクリックした場合は外す（任意：今回は「外す」機能も兼ねる）
-            const newBadgeId = (current?.equipped_badge_id === badgeId) ? null : badgeId;
+            // 同じバッジをクリックした場合は外す
+            const currentBadgeId = position === 'right' ? current?.equipped_badge_id_right : current?.equipped_badge_id;
+            const newBadgeId = (currentBadgeId === badgeId) ? null : badgeId;
 
             try {
                 const { error } = await supabaseClient
                     .from('profiles')
-                    .update({ equipped_badge_id: newBadgeId })
+                    .update({ [columnName]: newBadgeId })
                     .eq('discord_user_id', targetId);
 
                 if (error) throw error;
@@ -2541,8 +2589,9 @@
                 });
 
                 const { data: profile } = await supabaseClient
-                    .from('profiles').select('equipped_badge_id').eq('discord_user_id', targetId).maybeSingle();
-                const equippedId = profile?.equipped_badge_id;
+                    .from('profiles').select('equipped_badge_id, equipped_badge_id_right').eq('discord_user_id', targetId).maybeSingle();
+                const equippedLeftId = profile?.equipped_badge_id;
+                const equippedRightId = profile?.equipped_badge_id_right;
 
                 if (uniqueBadges.length === 0) {
                     listEl.innerHTML = '<p class="text-center text-muted py-3">バッジを持っていません</p>';
@@ -2550,14 +2599,18 @@
                 }
 
                 listEl.innerHTML = uniqueBadges.map(badge => {
-                    const isEquipped = badge.id === equippedId;
+                    const isEquippedLeft = badge.id === equippedLeftId;
+                    const isEquippedRight = badge.id === equippedRightId;
+                    const isEquipped = isEquippedLeft || isEquippedRight;
+                    const posLabel = isEquippedLeft ? '◀左' : (isEquippedRight ? '右▶' : '');
                     return `
                     <div class="col-4 col-md-3 text-center" >
                             <div class="badge-item ${isEquipped ? 'equipped' : ''}"
                                 onclick="equipBadge('${badge.id}')"
-                                style="cursor: pointer;"
+                                style="cursor: pointer; position: relative;"
                                 title="${badge.name}${isEquipped ? ' (装着中)' : ''}">
                                 <img src="${badge.image_url}" alt="${badge.name}" style="width: 60px; height: 60px; object-fit: contain;">
+                                ${isEquipped ? `<span class="position-absolute top-0 start-50 translate-middle badge bg-primary" style="font-size: 0.6rem;">${posLabel}</span>` : ''}
                             </div>
                             <div class="small text-truncate mt-1" style="font-size: 0.7rem;">${badge.name}</div>
                         </div>

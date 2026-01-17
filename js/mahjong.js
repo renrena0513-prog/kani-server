@@ -49,7 +49,7 @@ async function fetchData() {
         // 全プロフィール取得（アイコン・バッジ用）
         const { data: profiles, error: pError } = await supabaseClient
             .from('profiles')
-            .select('*, badges!equipped_badge_id(image_url, name)');
+            .select('*, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name)');
         if (!pError && profiles.length > 0) {
             allProfiles = profiles;
         } else {
@@ -345,9 +345,15 @@ function renderRanking(records, groupKey, type = 'all') {
             }
 
             const badge = profile?.badges;
-            const badgeHtml = badge ? `
+            const badgeRight = profile?.badges_right;
+            const badgeHtmlLeft = badge ? `
                 <div style="width: 24px; height: 24px;" class="ms-1">
                     <img src="${badge.image_url}" title="${badge.name}" 
+                         style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
+                </div>` : '';
+            const badgeHtmlRight = badgeRight ? `
+                <div style="width: 24px; height: 24px;" class="ms-1">
+                    <img src="${badgeRight.image_url}" title="${badgeRight.name}" 
                          style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
                 </div>` : '';
 
@@ -356,11 +362,13 @@ function renderRanking(records, groupKey, type = 'all') {
                     <div style="width: 32px; height: 32px;" class="flex-shrink-0 d-flex align-items-center justify-content-center">
                         ${avatarUrl ?
                     `<img src="${avatarUrl}" 
-                                  alt="${displayName}" 
-                                  class="rounded-circle" 
-                                  style="width: 32px; height: 32px; object-fit: cover;">` : ''}
+                              alt="${displayName}" 
+                              class="rounded-circle" 
+                              style="width: 32px; height: 32px; object-fit: cover;">` : ''}
                     </div>
-                    ${badgeHtml}
+                    ${badgeHtmlLeft}
+                    <span class="fw-bold">${displayName}</span>
+                    ${badgeHtmlRight}
                 </div>`;
         } else {
             // チームの場合はそのままアイコンなしまたは別のアイコン
