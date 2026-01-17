@@ -398,16 +398,35 @@ function renderRanking(records, groupKey, type = 'all') {
             let badgeHtmlLeft = '';
             let badgeHtmlRight = '';
 
+            // 過去ログ用の名前マッピング（必要に応じて追加）
+            const legacyNameMap = {
+                'Yellow': 'Yellow', // もしprofilesに'Yellow'がいればそのまま、いなければID等で紐付け
+                // 例: '旧名': '新名' または '旧名': 'discord_id'
+            };
+
             if (!s.isTeam) {
+                // 1. まずはIDで検索
                 if (s.discord_user_id) {
                     profile = allProfiles.find(p => p.discord_user_id === s.discord_user_id);
-                    displayName = profile?.account_name || s.nickname || s.discord_user_id;
-                    avatarUrl = profile?.avatar_url;
-                    canLink = true;
+                }
+
+                // 2. IDでヒットしない場合は名前で検索
+                if (!profile) {
+                    const searchName = legacyNameMap[s.nickname] || s.nickname || s.account_name;
+                    profile = allProfiles.find(p => p.account_name === searchName);
+                }
+
+                if (profile) {
+                    displayName = profile.account_name;
+                    avatarUrl = profile.avatar_url;
+                    if (profile.discord_user_id) {
+                        canLink = true;
+                        // s に ID がない場合のために補完（リンク用）
+                        s.discord_user_id = profile.discord_user_id;
+                    }
                 } else {
-                    displayName = s.nickname || 'Unknown';
-                    profile = allProfiles.find(p => p.account_name === displayName);
-                    avatarUrl = profile?.avatar_url;
+                    displayName = s.nickname || s.account_name || 'Unknown';
+                    avatarUrl = '';
                 }
 
                 const badge = profile?.badges;
@@ -488,38 +507,56 @@ function renderRanking(records, groupKey, type = 'all') {
         return list.map((s, idx) => {
             let rankValue = (offset === -1) ? '-' : (idx + 1 + offset);
 
-            let avatarHtml = '';
-            let canLink = false;
-            let badgeHtmlRight = '';
-            let displayName = '';
+            let profile = null;
+            let displayName = 'Unknown';
             let avatarUrl = '';
+            let canLink = false;
+            let badgeHtmlLeft = '';
+            let badgeHtmlRight = '';
+
+            // 過去ログ用の名前マッピング（必要に応じて追加）
+            const legacyNameMap = {
+                'Yellow': 'Yellow',
+            };
 
             if (!s.isTeam) {
-                let profile = null;
                 if (s.discord_user_id) {
                     profile = allProfiles.find(p => p.discord_user_id === s.discord_user_id);
-                    displayName = profile?.account_name || s.nickname || s.discord_user_id;
-                    avatarUrl = profile?.avatar_url;
-                    canLink = true;
+                }
+                if (!profile) {
+                    const searchName = legacyNameMap[s.nickname] || s.nickname || s.account_name;
+                    profile = allProfiles.find(p => p.account_name === searchName);
+                }
+
+                if (profile) {
+                    displayName = profile.account_name;
+                    avatarUrl = profile.avatar_url;
+                    if (profile.discord_user_id) {
+                        canLink = true;
+                        s.discord_user_id = profile.discord_user_id;
+                    }
                 } else {
-                    displayName = s.nickname || 'Unknown';
-                    profile = allProfiles.find(p => p.account_name === displayName);
-                    avatarUrl = profile?.avatar_url;
+                    displayName = s.nickname || s.account_name || 'Unknown';
                 }
 
                 const badge = profile?.badges;
                 const badgeRight = profile?.badges_right;
-                const badgeHtmlLeft = badge ? `
-                    <div style="width: 24px; height: 24px;" class="ms-1">
+                badgeHtmlLeft = badge ? `
+                    <div style="width: 24px; height: 24px;">
                         <img src="${badge.image_url}" title="${badge.name}" 
                              style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
                     </div>` : '';
                 badgeHtmlRight = badgeRight ? `
-                    <div style="width: 24px; height: 24px;" class="ms-1">
+                    <div style="width: 24px; height: 24px;">
                         <img src="${badgeRight.image_url}" title="${badgeRight.name}" 
                              style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
                     </div>` : '';
+            } else {
+                displayName = s.nickname || 'Unknown';
+            }
 
+            let avatarHtml = '';
+            if (!s.isTeam) {
                 avatarHtml = `
                     <div class="d-flex align-items-center gap-1">
                         <div style="width: 32px; height: 32px;" class="flex-shrink-0 d-flex align-items-center justify-content-center">
