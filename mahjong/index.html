@@ -420,99 +420,146 @@
 
             <style>
                 .podium-card {
-                    border-radius: 15px;
-                    padding: 20px;
-                    text-align: center;
+                    border-radius: 20px;
+                    padding: 15px 30px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
                     position: relative;
                     transition: transform 0.3s ease;
-                    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+                    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
                     border: none;
-                    height: 100%;
+                    margin-bottom: 20px;
+                    width: 100%;
                 }
 
                 .podium-card:hover {
-                    transform: translateY(-10px);
+                    transform: scale(1.02);
                 }
 
                 .podium-first {
-                    background: linear-gradient(135deg, #fff7ad 0%, #ffa700 100%);
-                    border: 3px solid #ffd700;
-                    z-index: 2;
+                    background: linear-gradient(90deg, #fff7ad 0%, #ffa700 100%);
+                    border-left: 10px solid #ffd700;
                 }
 
                 .podium-second {
-                    background: linear-gradient(135deg, #f0f0f0 0%, #a0a0a0 100%);
-                    border: 3px solid #c0c0c0;
+                    background: linear-gradient(90deg, #f0f0f0 0%, #a0a0a0 100%);
+                    border-left: 10px solid #c0c0c0;
                 }
 
                 .podium-third {
-                    background: linear-gradient(135deg, #f5d4b5 0%, #b87333 100%);
-                    border: 3px solid #cd7f32;
+                    background: linear-gradient(90deg, #f5d4b5 0%, #b87333 100%);
+                    border-left: 10px solid #cd7f32;
+                }
+
+                .podium-card-left {
+                    display: flex;
+                    align-items: center;
+                    gap: 30px;
+                    flex: 1;
+                }
+
+                .podium-card-right {
+                    text-align: right;
+                    min-width: 150px;
+                }
+
+                .podium-rank-box {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    min-width: 60px;
                 }
 
                 .podium-rank {
-                    font-size: 2rem;
+                    font-size: 2.5rem;
                     font-weight: 900;
-                    margin-bottom: 5px;
                     font-family: 'Inter', sans-serif;
+                    line-height: 1;
                 }
 
                 .podium-avatar {
-                    width: 80px;
-                    height: 80px;
+                    width: 64px;
+                    height: 64px;
                     border-radius: 50%;
                     border: 3px solid #fff;
-                    margin: 0 auto 15px;
                     object-fit: cover;
-                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+                    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
                 }
 
-                .podium-crown {
-                    position: absolute;
-                    top: -20px;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    font-size: 2.5rem;
+                .podium-player-info {
+                    display: flex;
+                    align-items: center;
+                    gap: 15px;
                 }
 
                 .podium-name {
                     font-weight: 800;
-                    font-size: 1.25rem;
-                    margin-bottom: 5px;
-                    color: #333;
+                    font-size: 1.4rem;
+                    color: #222;
+                    margin: 0;
+                }
+
+                .podium-crown {
+                    font-size: 1.5rem;
+                    margin-top: -10px;
                 }
 
                 .podium-stat-label {
-                    font-size: 0.85rem;
+                    font-size: 0.9rem;
                     color: rgba(0, 0, 0, 0.6);
                     margin-bottom: 0;
+                    font-weight: 600;
                 }
 
                 .podium-stat-value {
-                    font-size: 1.5rem;
-                    font-weight: 800;
+                    font-size: 1.8rem;
+                    font-weight: 900;
                     color: #000;
+                    line-height: 1.1;
                 }
 
                 .podium-match-count {
-                    font-size: 0.9rem;
+                    font-size: 1rem;
                     color: rgba(0, 0, 0, 0.5);
+                    font-weight: 600;
+                }
+
+                @media (max-width: 768px) {
+                    .podium-card {
+                        padding: 15px;
+                        flex-direction: column;
+                        text-align: center;
+                        gap: 15px;
+                    }
+
+                    .podium-card-left {
+                        flex-direction: column;
+                        gap: 10px;
+                    }
+
+                    .podium-player-info {
+                        flex-direction: column;
+                        gap: 5px;
+                    }
+
+                    .podium-card-right {
+                        text-align: center;
+                    }
                 }
             </style>
 
             <div class="table-responsive">
-                <table class="table ranking-table align-middle text-center">
-                    <thead>
-                        <tr>
-                            <th style="width: 80px;">順位</th>
-                            <th id="name-header">名前</th>
-                            <th id="stat-header" style="width: 150px;">得点合計</th>
-                            <th style="width: 100px;">試合数</th>
-                        </tr>
-                    </thead>
-                    <tbody id="ranking-body">
-                        <!-- JSで生成 -->
-                    </tbody>
+                <tr>
+                    <th style="width: 80px;">順位</th>
+                    <th id="name-header">名前</th>
+                    <th id="stat-header" style="width: 150px;">得点合計</th>
+                    <th style="width: 100px;">試合数</th>
+                </tr>
+                </thead>
+                <tbody id="ranking-body">
+                    <!-- JSで生成 -->
+                </tbody>
                 </table>
             </div>
         </div>

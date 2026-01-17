@@ -367,11 +367,8 @@ function renderRanking(records, groupKey, type = 'all') {
     const renderPodium = (top3, type) => {
         if (!top3 || top3.length === 0) return '';
 
-        // 1位を中央に配置するための並べ替え (2位, 1位, 3位)
-        const order = [1, 0, 2];
-        const podiumHtml = order.map(i => {
-            const s = top3[i];
-            if (!s) return '<div class="col-md-4"></div>'; // 空枠
+        const podiumHtml = top3.map((s, i) => {
+            if (!s) return '';
 
             const rank = i + 1;
             const rankClass = rank === 1 ? 'podium-first' : (rank === 2 ? 'podium-second' : 'podium-third');
@@ -393,28 +390,37 @@ function renderRanking(records, groupKey, type = 'all') {
 
             // 指標値のフォーマット
             let statValue = '';
-            if (type === 'win' || type === 'deal' || type === 'avg_rank') {
-                statValue = `${(s.avg_win || s.avg_deal || s.avg_rank).toFixed(2)}`;
-            } else if (type === 'top' || type === 'avoid') {
-                statValue = `${(s.top_rate || s.avoid_rate).toFixed(1)}%`;
-            } else if (type === 'skill') {
-                statValue = `${s.skill.toFixed(1)}%`;
-            } else {
-                statValue = `${s.score.toFixed(1)}`;
-            }
+            if (type === 'win') statValue = `${s.avg_win.toFixed(2)}`;
+            else if (type === 'deal') statValue = `${s.avg_deal.toFixed(2)}`;
+            else if (type === 'avg_rank') statValue = `${s.avg_rank.toFixed(2)}`;
+            else if (type === 'top') statValue = `${s.top_rate.toFixed(1)}%`;
+            else if (type === 'avoid') statValue = `${s.avoid_rate.toFixed(1)}%`;
+            else if (type === 'skill') statValue = `${s.skill.toFixed(1)}%`;
+            else if (type === 'max_score') statValue = `${s.max_score.toFixed(1)}`;
+            else if (type === 'avg_score') statValue = `${s.avg_score.toFixed(1)}`;
+            else if (type === 'match_count') statValue = `${s.count}`;
+            else statValue = `${s.score.toFixed(1)}`;
 
             const statLabel = document.getElementById('stat-header')?.textContent || '指標';
 
             return `
-                <div class="col-md-4">
+                <div class="col-12">
                     <div class="podium-card ${rankClass}">
-                        ${crown}
-                        <div class="podium-rank">${rank}</div>
-                        <img src="${avatarUrl || '../img/default-avatar.png'}" class="podium-avatar">
-                        <div class="podium-name">${displayName}</div>
-                        <p class="podium-stat-label">${statLabel}</p>
-                        <div class="podium-stat-value">${statValue}</div>
-                        <div class="podium-match-count">${s.count} 試合</div>
+                        <div class="podium-card-left">
+                            <div class="podium-rank-box">
+                                ${crown}
+                                <div class="podium-rank">${rank}</div>
+                            </div>
+                            <div class="podium-player-info">
+                                <img src="${avatarUrl || '../img/default-avatar.png'}" class="podium-avatar">
+                                <div class="podium-name">${displayName}</div>
+                            </div>
+                        </div>
+                        <div class="podium-card-right">
+                            <p class="podium-stat-label">${statLabel}</p>
+                            <div class="podium-stat-value">${statValue}</div>
+                            <div class="podium-match-count">${s.count} 試合</div>
+                        </div>
                     </div>
                 </div>
             `;
