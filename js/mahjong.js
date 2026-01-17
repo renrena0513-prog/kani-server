@@ -247,6 +247,25 @@ function showRanking(type) {
         buttons[12].classList.replace('btn-outline-success', 'btn-success');
     }
 
+    // テーブルヘッダーの動的調整 (試合数ランキング時のみ5列)
+    const tableHeaderRow = document.querySelector('.ranking-table thead tr');
+    if (type === 'match_count') {
+        tableHeaderRow.innerHTML = `
+            <th style="width: 80px;">順位</th>
+            <th id="name-header">名前</th>
+            <th id="stat-header" style="width: 100px;">試合数</th>
+            <th style="width: 100px;">四麻</th>
+            <th style="width: 100px;">三麻</th>
+        `;
+    } else {
+        tableHeaderRow.innerHTML = `
+            <th style="width: 80px;">順位</th>
+            <th id="name-header">${type === 'team' ? 'チーム名' : '名前'}</th>
+            <th id="stat-header" style="width: 150px;${type === 'team' ? ' display: none;' : ''}">${statHeader.textContent}</th>
+            <th style="width: 100px;">試合数</th>
+        `;
+    }
+
     console.log(`🎯 ランキングタイプ: ${type}, 大会: ${currentTournament}`);
     console.log(`フィルター後のレコード数: ${filtered.length}`);
     if (filtered.length > 0) {
@@ -449,7 +468,7 @@ function renderRanking(records, groupKey, type = 'all') {
             statValue = `${(s.avg_score > 0 ? '+' : '') + s.avg_score.toFixed(1)}`;
             statColorClass = 'text-muted';
         } else if (type === 'match_count') {
-            statValue = `<span style="font-size: 0.8rem;">四:${s.yonma_count} / 三:${s.sanma_count}</span>`;
+            statValue = `${s.count}`;
             statColorClass = 'text-dark';
         } else if (type === 'skill') {
             statValue = `${(s.skill > 0 ? '+' : '') + s.skill.toFixed(1)}%`;
@@ -461,6 +480,26 @@ function renderRanking(records, groupKey, type = 'all') {
         }
 
         const labelText = document.getElementById('stat-header')?.textContent || '指標';
+
+        // 試合数ランキング（5列）とそれ以外（4列）で分岐
+        if (type === 'match_count') {
+            return `
+                <tr>
+                    <td>${idx + 1}</td>
+                    <td class="ps-4 text-start">
+                        <a href="${linkUrl}" 
+                           class="text-decoration-none d-flex align-items-center justify-content-start gap-2 ${linkClass}">
+                            ${avatarHtml}
+                            <span class="${canLink ? 'hover-underline' : ''} fw-bold">${displayName}</span>
+                            ${badgeHtmlRight}
+                        </a>
+                    </td>
+                    <td class="fw-bold" data-label="試合数">${s.count}</td>
+                    <td data-label="四麻">${s.yonma_count}</td>
+                    <td data-label="三麻">${s.sanma_count}</td>
+                </tr>
+            `;
+        }
 
         return `
             <tr>
