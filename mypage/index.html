@@ -1484,7 +1484,7 @@
             // ユーザー情報の取得（バッジ情報・コイン・チーム情報を含む）
             const { data: profile } = await supabaseClient
                 .from('profiles')
-                .select('account_name, avatar_url, coins, total_assets, gacha_tickets, exchange_tickets, equipped_badge_id, equipped_badge_id_right, team_id, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name), teams!team_id(team_name)')
+                .select('id, account_name, avatar_url, coins, total_assets, gacha_tickets, exchange_tickets, equipped_badge_id, equipped_badge_id_right, team_id, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name), teams!team_id(team_name)')
                 .eq('discord_user_id', targetId)
                 .maybeSingle();
 
@@ -1518,7 +1518,7 @@
                 badgeImg.src = badge.image_url;
                 badgeImg.title = badge.name;
                 badgeImg.style.display = 'block';
-                applyMutantEffect('badge-container-left', profile.equipped_badge_id, targetId);
+                applyMutantEffect('badge-container-left', profile.equipped_badge_id, profile.id);
             } else if (badgeImg) {
                 badgeImg.style.display = 'none';
                 applyMutantEffect('badge-container-left', null, null);
@@ -1531,7 +1531,7 @@
                 badgeImgRight.src = badgeRight.image_url;
                 badgeImgRight.title = badgeRight.name;
                 badgeImgRight.style.display = 'block';
-                applyMutantEffect('badge-container-right', profile.equipped_badge_id_right, targetId);
+                applyMutantEffect('badge-container-right', profile.equipped_badge_id_right, profile.id);
             } else if (badgeImgRight) {
                 badgeImgRight.style.display = 'none';
                 applyMutantEffect('badge-container-right', null, null);
@@ -1585,7 +1585,7 @@
         async function loadTargetUserInfo() {
             const { data: profile, error } = await supabaseClient
                 .from('profiles')
-                .select('*, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name), teams!team_id(team_name)')
+                .select('id, discord_user_id, account_name, avatar_url, coins, total_assets, gacha_tickets, exchange_tickets, equipped_badge_id, equipped_badge_id_right, team_id, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name), teams!team_id(team_name)')
                 .eq('discord_user_id', targetId)
                 .maybeSingle();
 
@@ -1637,7 +1637,7 @@
                     badgeImg.src = badge.image_url;
                     badgeImg.title = badge.name;
                     badgeImg.style.display = 'block';
-                    applyMutantEffect('badge-container-left', profile.equipped_badge_id, targetId);
+                    applyMutantEffect('badge-container-left', profile.equipped_badge_id, profile.id);
                 } else if (badgeImg) {
                     badgeImg.style.display = 'none';
                     applyMutantEffect('badge-container-left', null, null);
@@ -1650,7 +1650,7 @@
                     badgeImgRight.src = badgeRight.image_url;
                     badgeImgRight.title = badgeRight.name;
                     badgeImgRight.style.display = 'block';
-                    applyMutantEffect('badge-container-right', profile.equipped_badge_id_right, targetId);
+                    applyMutantEffect('badge-container-right', profile.equipped_badge_id_right, profile.id);
                 } else if (badgeImgRight) {
                     badgeImgRight.style.display = 'none';
                     applyMutantEffect('badge-container-right', null, null);
