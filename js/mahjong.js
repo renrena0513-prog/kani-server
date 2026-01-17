@@ -111,11 +111,13 @@ function setTournament(type) {
     }
 
     renderTournamentButtons();
+    renderMainFilters(); // メインフィルターを再生成
     showRanking();
 }
 
 function updateMainFilter(type) {
     currentMainFilter = type;
+    renderMainFilters(); // ボタンの状態更新
     showRanking();
 }
 
@@ -131,19 +133,11 @@ function showRanking() {
     const title = document.getElementById('ranking-title');
     const nameHeader = document.getElementById('name-header');
 
-    // ボタンのスタイル更新
-    const mainButtons = document.querySelectorAll('#main-filter-nav .btn');
+    // ボタンのスタイル更新 (サブフィルターのみ)
     const subButtons = document.querySelectorAll('#sub-filter-nav .btn');
-
-    const mainTypeMap = {
-        'all': 0, 'team_yonma': 1, 'individual_yonma': 2, 'individual_sanma': 3
-    };
     const subTypeMap = {
         'all': 0, 'avg_score': 1, 'max_score': 2, 'match_count': 3, 'win': 4, 'deal': 5, 'skill': 6, 'avg_rank': 7, 'top': 8, 'avoid': 9
     };
-
-    mainButtons.forEach(btn => btn.classList.replace('btn-success', 'btn-outline-success'));
-    if (mainButtons[mainTypeMap[category]]) mainButtons[mainTypeMap[category]].classList.replace('btn-outline-success', 'btn-success');
 
     subButtons.forEach(btn => btn.classList.replace('btn-success', 'btn-outline-success'));
     if (subButtons[subTypeMap[type]]) subButtons[subTypeMap[type]].classList.replace('btn-outline-success', 'btn-success');
@@ -158,22 +152,24 @@ function showRanking() {
     let filtered = seasonFiltered;
     let groupKey = 'account_name';
 
-    if (category === 'team_yonma') {
-        title.textContent = 'チーム戦（四麻）ランキング';
-        filtered = seasonFiltered.filter(r => r.match_mode !== '個人戦' && r.mahjong_mode === '四麻');
-        groupKey = 'team_name';
+    if (category === 'team') {
+        title.textContent = 'チームランキング';
         nameHeader.textContent = 'チーム名';
-    } else if (category === 'individual_yonma') {
-        title.textContent = '個人戦（四麻）ランキング';
-        filtered = seasonFiltered.filter(r => r.match_mode === '個人戦' && r.mahjong_mode === '四麻');
-        nameHeader.textContent = '名前';
-    } else if (category === 'individual_sanma') {
-        title.textContent = '個人戦（三麻）ランキング';
-        filtered = seasonFiltered.filter(r => r.match_mode === '個人戦' && r.mahjong_mode === '三麻');
-        nameHeader.textContent = '名前';
-    } else {
+        // 個人戦以外のデータを抽出し、チーム名があるものを対象にする
+        filtered = seasonFiltered.filter(r => r.match_mode !== '個人戦' && r.team_name);
+        groupKey = 'team_name';
+    } else if (category === 'all') {
         title.textContent = '総合ランキング';
         nameHeader.textContent = '名前';
+        filtered = seasonFiltered;
+    } else if (category === 'sanma') {
+        title.textContent = 'ランキング (三麻)';
+        nameHeader.textContent = '名前';
+        filtered = seasonFiltered.filter(r => r.mahjong_mode === '三麻');
+    } else if (category === 'yonma') {
+        title.textContent = 'ランキング (四麻)';
+        nameHeader.textContent = '名前';
+        filtered = seasonFiltered.filter(r => r.mahjong_mode === '四麻');
     }
 
     const statHeader = document.getElementById('stat-header');
@@ -182,11 +178,8 @@ function showRanking() {
         'match_count': '試合数', 'win': '和了率', 'deal': '放銃率',
         'skill': 'バランス雀力', 'avg_rank': '平均順位', 'top': 'トップ率', 'avoid': 'ラス回避'
     };
-    statHeader.style.display = (category.startsWith('team')) ? 'none' : '';
+    statHeader.style.display = (category === 'team') ? 'none' : '';
     statHeader.textContent = subTitleMap[type] || '合計スコア';
-    if (category.startsWith('team')) {
-        statHeader.style.display = 'none';
-    }
 
     // 以前の注釈ロジックを削除
     const noticeId = 'ranking-notice';
@@ -203,7 +196,7 @@ function showRanking() {
     const headerContent = `
             <th style="width: 80px;">順位</th>
             <th id="name-header">${nameHeader.textContent}</th>
-            <th id="stat-header" style="width: 150px;${category.startsWith('team') ? ' display: none;' : ''}">${statHeader.textContent}</th>
+            <th id="stat-header" style="width: 150px;${category === 'team' ? ' display: none;' : ''}">${statHeader.textContent}</th>
             <th style="width: 100px;">${type === 'match_count' ? '局数' : '試合数'}</th>
         `;
 
