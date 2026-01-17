@@ -104,10 +104,11 @@ function renderMainFilters() {
     if (currentTournament === '第一回麻雀大会') {
         filters = [
             { id: 'team', label: 'チーム戦' },
-            { id: 'all', label: '個人戦（総合）' }
+            { id: 'all', label: '個人戦（総合）' },
+            { id: 'individual_yonma', label: '個人戦（四麻）' }
         ];
         // 第一回で現在のフィルタが不正な場合はデフォルトへ
-        if (currentMainFilter !== 'team' && currentMainFilter !== 'all') {
+        if (currentMainFilter !== 'team' && currentMainFilter !== 'all' && currentMainFilter !== 'individual_yonma') {
             currentMainFilter = 'all';
         }
     } else {
@@ -195,11 +196,17 @@ function showRanking() {
         nameHeader.textContent = 'チーム名';
     } else if (category === 'individual_yonma') {
         title.textContent = '個人戦（四麻）ランキング';
-        filtered = seasonFiltered.filter(r => r.match_mode === '個人戦' && r.mahjong_mode === '四麻');
+        filtered = seasonFiltered.filter(r => {
+            if (r.tournament_type === '第一回麻雀大会') return true; // 第一回は四麻扱い
+            return r.match_mode === '個人戦' && r.mahjong_mode === '四麻';
+        });
         nameHeader.textContent = '名前';
     } else if (category === 'individual_sanma') {
         title.textContent = '個人戦（三麻）ランキング';
-        filtered = seasonFiltered.filter(r => r.match_mode === '個人戦' && r.mahjong_mode === '三麻');
+        filtered = seasonFiltered.filter(r => {
+            if (r.tournament_type === '第一回麻雀大会') return false; // 第一回に三麻はない
+            return r.match_mode === '個人戦' && r.mahjong_mode === '三麻';
+        });
         nameHeader.textContent = '名前';
     } else {
         // デフォルト: 個人戦（総合）
