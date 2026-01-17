@@ -955,9 +955,8 @@
                                         </div>
                                     </div>
                                     <div class="col-4">
-                                        <div class="stat-card-mini"
-                                            style="background: linear-gradient(135deg, #e8f5e9, #fff);">
-                                            <div class="stat-label-mini">⚖️ バランス雀力</div>
+                                        <div class="stat-card-mini">
+                                            <div class="stat-label-mini">バランス雀力</div>
                                             <div class="stat-value-mini" id="stat-skill">-</div>
                                             <div class="stat-rank" id="rank-skill">-</div>
                                         </div>
@@ -2905,17 +2904,18 @@
             noStatsMsg.style.display = 'none';
 
             const formatScore = (val) => (typeof val !== 'number') ? val : Math.round(val * 10) / 10;
+            const games = myStats.games;
 
-            updateStatCard('total', formatScore(myStats.total), playerStats, 'total', true);
-            updateStatCard('avg-score', formatScore(myStats.avgScore), playerStats, 'avgScore', true);
-            updateStatCard('max-score', formatScore(myStats.maxScore), playerStats, 'maxScore', true);
-            updateStatCard('win-rate', myStats.winRate.toFixed(1) + '%', playerStats, 'winRate', true);
-            updateStatCard('deal-rate', myStats.dealRate.toFixed(1) + '%', playerStats, 'dealRate', false);
-            updateStatCard('skill', myStats.skill.toFixed(1) + '%', playerStats, 'skill', true);
-            updateStatCard('avg-rank', myStats.avgRank.toFixed(2), playerStats, 'avgRank', false);
-            updateStatCard('top-rate', myStats.topRate.toFixed(1) + '%', playerStats, 'topRate', true);
-            updateStatCard('avoid-rate', myStats.avoidRate.toFixed(1) + '%', playerStats, 'avoidRate', true);
-            updateStatCard('games', myStats.games, playerStats, 'games', true);
+            updateStatCard('total', formatScore(myStats.total), playerStats, 'total', true, games);
+            updateStatCard('avg-score', formatScore(myStats.avgScore), playerStats, 'avgScore', true, games);
+            updateStatCard('max-score', formatScore(myStats.maxScore), playerStats, 'maxScore', true, games);
+            updateStatCard('win-rate', myStats.winRate.toFixed(1) + '%', playerStats, 'winRate', true, games);
+            updateStatCard('deal-rate', myStats.dealRate.toFixed(1) + '%', playerStats, 'dealRate', false, games);
+            updateStatCard('skill', myStats.skill.toFixed(1) + '%', playerStats, 'skill', true, games);
+            updateStatCard('avg-rank', myStats.avgRank.toFixed(2), playerStats, 'avgRank', false, games);
+            updateStatCard('top-rate', myStats.topRate.toFixed(1) + '%', playerStats, 'topRate', true, games);
+            updateStatCard('avoid-rate', myStats.avoidRate.toFixed(1) + '%', playerStats, 'avoidRate', true, games);
+            updateStatCard('games', myStats.games, playerStats, 'games', true, games);
 
             // 局数とレーティング（順位なし）
             const handsEl = document.getElementById('stat-hands');
@@ -2925,17 +2925,23 @@
             if (ratingEl) ratingEl.textContent = '-'; // 未実装
         }
 
-        function updateStatCard(id, value, allStats, key, higherIsBetter) {
+        function updateStatCard(id, value, allStats, key, higherIsBetter, myGames) {
             const el = document.getElementById('stat-' + id);
             if (el) el.textContent = value;
 
-            const sorted = [...allStats].filter(p => p.games > 0).sort((a, b) => higherIsBetter ? b[key] - a[key] : a[key] - b[key]);
+            // 10試合以上のプレイヤーのみをランキング対象にする
+            const qualified = [...allStats].filter(p => p.games >= 10);
+            const sorted = qualified.sort((a, b) => higherIsBetter ? b[key] - a[key] : a[key] - b[key]);
             const myRank = sorted.findIndex(p => p.name === myAccountName) + 1;
             const total = sorted.length;
 
             const rankEl = document.getElementById('rank-' + id);
             if (rankEl) {
-                if (myRank > 0) {
+                // 自分が10試合未満の場合はランク外
+                if (myGames < 10) {
+                    rankEl.textContent = 'ランク外';
+                    rankEl.classList.add('no-data');
+                } else if (myRank > 0) {
                     rankEl.textContent = `${myRank}/${total}位`;
                     rankEl.classList.remove('no-data');
                 } else {
