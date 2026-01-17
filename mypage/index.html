@@ -3061,8 +3061,15 @@
             if (!section || !topList || !bestMatchup || !worstMatchup) return;
 
             // 自分が参加した試合のmatch_idを取得
-            const myMatches = records.filter(r => r.player_id === myId || r.name === myId);
-            const myMatchIds = [...new Set(myMatches.map(r => r.match_id))];
+            // calculateAllPlayerStatsと同様のID抽出ロジックを使用
+            const getPlayerId = (r) => {
+                let id = r.discord_user_id;
+                if (!id || id === 'null') id = r.nickname || r.account_name || 'Unknown';
+                return id;
+            };
+
+            const myMatches = records.filter(r => getPlayerId(r) === myId);
+            const myMatchIds = [...new Set(myMatches.map(r => r.match_id).filter(id => id))];
 
             if (myMatchIds.length === 0) {
                 section.style.display = 'none';
@@ -3070,25 +3077,30 @@
             }
 
             // 同じmatch_idの他プレイヤーを集計
-            const opponentData = {}; // { opponentId: { count: n, myScoreSum: x, opponentScoreSum: y, name: '' } }
+            const opponentData = {};
 
             myMatchIds.forEach(matchId => {
                 const matchRecords = records.filter(r => r.match_id === matchId);
-                const myRecord = matchRecords.find(r => r.player_id === myId || r.name === myId);
+                const myRecord = matchRecords.find(r => getPlayerId(r) === myId);
                 if (!myRecord) return;
 
-                const myScore = myRecord.final_score || myRecord.score || 0;
+                const myScore = Number(myRecord.final_score || myRecord.score_total || 0);
 
                 matchRecords.forEach(r => {
-                    const oppId = r.player_id || r.name;
-                    if (oppId === myId || r.name === myId) return; // 自分は除外
+                    const oppId = getPlayerId(r);
+                    if (oppId === myId) return; // 自分は除外
 
                     if (!opponentData[oppId]) {
-                        opponentData[oppId] = { count: 0, myScoreSum: 0, opponentScoreSum: 0, name: r.name || oppId };
+                        opponentData[oppId] = {
+                            count: 0,
+                            myScoreSum: 0,
+                            opponentScoreSum: 0,
+                            name: r.nickname || r.account_name || r.name || oppId
+                        };
                     }
                     opponentData[oppId].count++;
                     opponentData[oppId].myScoreSum += myScore;
-                    opponentData[oppId].opponentScoreSum += (r.final_score || r.score || 0);
+                    opponentData[oppId].opponentScoreSum += Number(r.final_score || r.score_total || 0);
                 });
             });
 
