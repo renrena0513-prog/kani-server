@@ -505,24 +505,31 @@
                     margin-top: -10px;
                 }
 
+                .podium-stat-row {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: baseline;
+                    gap: 15px;
+                    margin-bottom: 5px;
+                }
+
                 .podium-stat-label {
                     font-size: 0.9rem;
                     color: rgba(0, 0, 0, 0.6);
-                    margin-bottom: 0;
                     font-weight: 600;
+                    white-space: nowrap;
                 }
 
                 .podium-stat-value {
-                    font-size: 1.8rem;
+                    font-size: 1.5rem;
                     font-weight: 900;
                     color: #000;
-                    line-height: 1.1;
+                    line-height: 1;
                 }
 
                 .podium-match-count {
-                    font-size: 1rem;
-                    color: rgba(0, 0, 0, 0.5);
-                    font-weight: 600;
+                    font-size: 1.2rem;
+                    color: rgba(0, 0, 0, 0.6);
                 }
 
                 @media (max-width: 768px) {
@@ -545,6 +552,11 @@
 
                     .podium-card-right {
                         text-align: center;
+                        width: 100%;
+                    }
+
+                    .podium-stat-row {
+                        justify-content: center;
                     }
                 }
             </style>
