@@ -550,16 +550,18 @@
             </style>
 
             <div class="table-responsive">
-                <tr>
-                    <th style="width: 80px;">順位</th>
-                    <th id="name-header">名前</th>
-                    <th id="stat-header" style="width: 150px;">得点合計</th>
-                    <th style="width: 100px;">試合数</th>
-                </tr>
-                </thead>
-                <tbody id="ranking-body">
-                    <!-- JSで生成 -->
-                </tbody>
+                <table class="table ranking-table align-middle text-center">
+                    <thead>
+                        <tr>
+                            <th style="width: 80px;">順位</th>
+                            <th id="name-header">名前</th>
+                            <th id="stat-header" style="width: 180px;">指標</th>
+                            <th style="width: 120px;">試合数</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ranking-body">
+                        <!-- JSで生成 -->
+                    </tbody>
                 </table>
             </div>
         </div>
