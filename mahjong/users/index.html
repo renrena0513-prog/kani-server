@@ -357,12 +357,14 @@
                 // ミュータント情報を取得
                 const { data: userBadges } = await supabaseClient
                     .from('user_badges_new')
-                    .select('user_id, badge_id')
+                    .select('user_id, badge_id, profiles!user_id(discord_user_id)')
                     .eq('is_mutant', true);
 
                 window.userMutantMap = {}; // global cache
                 (userBadges || []).forEach(ub => {
-                    window.userMutantMap[`${ub.user_id}_${ub.badge_id}`] = true;
+                    if (ub.profiles && ub.profiles.discord_user_id) {
+                        window.userMutantMap[`${ub.profiles.discord_user_id}_${ub.badge_id}`] = true;
+                    }
                 });
 
                 renderUsers();
