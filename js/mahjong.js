@@ -163,60 +163,69 @@ function showRanking(type) {
         title.textContent = '総合個人ランキング';
         nameHeader.textContent = '名前';
         statHeader.style.display = '';
-        statHeader.textContent = '平均スコア';
+        statHeader.textContent = '得点合計';
         filtered = seasonFiltered; // 全集計
         buttons[1].classList.replace('btn-outline-success', 'btn-success');
     } else if (type === 'sanma') {
         title.textContent = '個人ランキング (三麻)';
         nameHeader.textContent = '名前';
-        statHeader.textContent = '平均スコア';
+        statHeader.style.display = '';
+        statHeader.textContent = '得点合計';
         filtered = seasonFiltered.filter(r => r.mahjong_mode === '三麻');
         buttons[2].classList.replace('btn-outline-success', 'btn-success');
     } else if (type === 'yonma') {
         title.textContent = '個人ランキング (四麻)';
         nameHeader.textContent = '名前';
-        statHeader.textContent = '平均スコア';
+        statHeader.style.display = '';
+        statHeader.textContent = '得点合計';
         filtered = seasonFiltered.filter(r => r.mahjong_mode === '四麻');
         buttons[3].classList.replace('btn-outline-success', 'btn-success');
     } else if (type === 'avg_score') {
         title.textContent = '平均スコアランキング';
         nameHeader.textContent = '名前';
+        statHeader.style.display = '';
         statHeader.textContent = '平均スコア';
         filtered = seasonFiltered;
         buttons[4].classList.replace('btn-outline-success', 'btn-success');
     } else if (type === 'max_score') {
         title.textContent = '最大スコアランキング (最高得点)';
         nameHeader.textContent = '名前';
+        statHeader.style.display = '';
         statHeader.textContent = '最大スコア';
         filtered = seasonFiltered;
         buttons[5].classList.replace('btn-outline-success', 'btn-success');
     } else if (type === 'deal') {
         title.textContent = '放銃率ランキング';
         nameHeader.textContent = '名前';
+        statHeader.style.display = '';
         statHeader.textContent = '放銃率';
         filtered = seasonFiltered;
         buttons[6].classList.replace('btn-outline-success', 'btn-success');
     } else if (type === 'win') {
         title.textContent = '和了率ランキング';
         nameHeader.textContent = '名前';
+        statHeader.style.display = '';
         statHeader.textContent = '和了率';
         filtered = seasonFiltered;
         buttons[7].classList.replace('btn-outline-success', 'btn-success');
     } else if (type === 'avg_rank') {
         title.textContent = '平均順位ランキング';
         nameHeader.textContent = '名前';
+        statHeader.style.display = '';
         statHeader.textContent = '平均順位';
         filtered = seasonFiltered;
         buttons[8].classList.replace('btn-outline-success', 'btn-success');
     } else if (type === 'top') {
         title.textContent = 'トップ率ランキング';
         nameHeader.textContent = '名前';
+        statHeader.style.display = '';
         statHeader.textContent = 'トップ率';
         filtered = seasonFiltered;
         buttons[9].classList.replace('btn-outline-success', 'btn-success');
     } else if (type === 'avoid') {
         title.textContent = 'ラス回避率ランキング';
         nameHeader.textContent = '名前';
+        statHeader.style.display = '';
         statHeader.textContent = 'ラス回避率';
         filtered = seasonFiltered;
         buttons[10].classList.replace('btn-outline-success', 'btn-success');
@@ -401,9 +410,13 @@ function renderRanking(records, groupKey, type = 'all') {
         } else if (type === 'max_score') {
             statValue = `${(s.max_score > 0 ? '+' : '') + s.max_score.toFixed(1)}`;
             statColorClass = 'text-warning';
-        } else if (type === 'avg_score' || type === 'all' || type === 'sanma' || type === 'yonma') {
+        } else if (type === 'avg_score') {
             statValue = `${(s.avg_score > 0 ? '+' : '') + s.avg_score.toFixed(1)}`;
             statColorClass = 'text-muted';
+        } else if (type === 'all' || type === 'sanma' || type === 'yonma') {
+            // 得点合計
+            statValue = `${(s.score > 0 ? '+' : '') + s.score.toFixed(1)}`;
+            statColorClass = s.score > 0 ? 'text-success' : (s.score < 0 ? 'text-danger' : '');
         }
 
         return `
@@ -420,17 +433,13 @@ function renderRanking(records, groupKey, type = 'all') {
                 <td class="fw-bold ${statColorClass}" style="font-size: 1.1rem;${s.isTeam ? ' display: none;' : ''}">
                     ${statValue}
                 </td>
-                <td class="fw-bold ${s.score > 0 ? 'text-success' : (s.score < 0 ? 'text-danger' : '')}">
-                    ${(s.score > 0 ? '+' : '') + s.score.toFixed(1)}
-                </td>
                 <td>${s.count}</td>
-                <td><small class="text-success">${s.win}和</small> / <small class="text-danger">${s.deal}放</small></td>
             </tr>
         `;
     }).join('');
 
     if (sorted.length === 0) {
-        body.innerHTML = '<tr><td colspan="6" class="text-muted py-4">該当するデータがありません</td></tr>';
+        body.innerHTML = '<tr><td colspan="4" class="text-muted py-4">該当するデータがありません</td></tr>';
     }
 }
 

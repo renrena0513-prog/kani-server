@@ -225,20 +225,13 @@
             }
 
             .ranking-table td:nth-child(4)::before {
-                content: "対局数: ";
-                color: #888;
-                font-size: 0.8rem;
-            }
-
-            .ranking-table td:nth-child(5)::before {
-                content: "和了/放銃: ";
+                content: "試合数: ";
                 color: #888;
                 font-size: 0.8rem;
             }
 
             .ranking-table td:nth-child(3),
-            .ranking-table td:nth-child(4),
-            .ranking-table td:nth-child(5) {
+            .ranking-table td:nth-child(4) {
                 display: inline-block;
                 width: auto;
                 margin-right: 15px;
@@ -427,10 +420,8 @@
                         <tr>
                             <th style="width: 80px;">順位</th>
                             <th id="name-header">名前</th>
-                            <th id="stat-header" style="width: 151px;">記録</th>
-                            <th>得点合計</th>
-                            <th>対局数</th>
-                            <th>和了/放銃</th>
+                            <th id="stat-header" style="width: 150px;">得点合計</th>
+                            <th style="width: 100px;">試合数</th>
                         </tr>
                     </thead>
                     <tbody id="ranking-body">
