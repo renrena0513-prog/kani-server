@@ -183,21 +183,27 @@ function toggleFilterPanel() {
 
 // フィルター選択肢の動的生成
 function updateFilterOptions() {
-    const accountSet = new Set();
+    const accountMap = {}; // ID (DiscordID or Name) -> Label
     const tournamentSet = new Set();
     const teamSet = new Set();
     const modeSet = new Set();
     const matchModeSet = new Set();
 
     allRecords.forEach(r => {
-        if (r.account_name) accountSet.add(r.account_name);
+        const aid = r.discord_user_id || r.account_name;
+        if (aid && !accountMap[aid]) {
+            accountMap[aid] = r.account_name || '不明';
+        }
+
         if (r.tournament_type) tournamentSet.add(r.tournament_type);
         if (r.team_name) teamSet.add(r.team_name);
         if (r.mahjong_mode) modeSet.add(r.mahjong_mode);
         if (r.match_mode) matchModeSet.add(r.match_mode);
     });
 
-    renderCheckboxes('filter-accounts', Array.from(accountSet), 'accounts');
+    const accountOptions = Object.entries(accountMap).map(([id, name]) => ({ value: id, label: name }));
+    renderCheckboxes('filter-accounts', accountOptions, 'accounts');
+
     renderCheckboxes('filter-tournaments', Array.from(tournamentSet), 'tournaments');
     renderCheckboxes('filter-teams', Array.from(teamSet), 'teams');
     renderCheckboxes('filter-modes', Array.from(modeSet), 'modes');
@@ -213,11 +219,14 @@ function renderCheckboxes(containerId, options, category) {
         return;
     }
 
-    container.innerHTML = options.sort().map(opt => `
+    // 文字列配列の場合はオブジェクト配列に変換
+    const formattedOptions = options.map(opt => typeof opt === 'string' ? { value: opt, label: opt } : opt);
+
+    container.innerHTML = formattedOptions.sort((a, b) => a.label.localeCompare(b.label, 'ja')).map(opt => `
         <div class="form-check p-0">
-            <input type="checkbox" id="chk-${category}-${opt}" class="btn-check" 
-                   value="${opt}" onchange="handleFilterChange('${category}', this)">
-            <label class="filter-checkbox-label" for="chk-${category}-${opt}">${opt}</label>
+            <input type="checkbox" id="chk-${category}-${opt.value}" class="btn-check" 
+                   value="${opt.value}" onchange="handleFilterChange('${category}', this)">
+            <label class="filter-checkbox-label" for="chk-${category}-${opt.value}">${opt.label}</label>
         </div>
     `).join('');
 }
@@ -282,7 +291,8 @@ function sortRecords(key) {
 function applyFiltersAndSort() {
     // 1. 各レコードが個別にフィルター条件に合致するか判定
     const matchingRecords = allRecords.filter(record => {
-        const matchAccount = filterState.accounts.length === 0 || filterState.accounts.includes(record.account_name);
+        const recordId = record.discord_user_id || record.account_name;
+        const matchAccount = filterState.accounts.length === 0 || filterState.accounts.includes(recordId);
         const matchTournament = filterState.tournaments.length === 0 || filterState.tournaments.includes(record.tournament_type);
         const matchTeam = filterState.teams.length === 0 || filterState.teams.includes(record.team_name);
         const matchMode = filterState.modes.length === 0 || filterState.modes.includes(record.mahjong_mode);
