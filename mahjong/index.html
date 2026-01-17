@@ -217,6 +217,23 @@
             border-radius: 15px;
         }
 
+        /* ハイライト表示用 */
+        .highlight-row {
+            animation: highlight-animation 3s ease-out;
+        }
+
+        @keyframes highlight-animation {
+            0% {
+                background-color: rgba(212, 168, 83, 0.4);
+                box-shadow: 0 0 20px rgba(212, 168, 83, 0.6);
+            }
+
+            100% {
+                background-color: transparent;
+                box-shadow: none;
+            }
+        }
+
 
         /* モバイル向けテーブル調整 */
         @media (max-width: 768px) {

@@ -916,21 +916,21 @@
                                 <!-- Row 1: 合計スコア　平均スコア　最大スコア -->
                                 <div class="row g-3 mb-3">
                                     <div class="col-4">
-                                        <div class="stat-card-mini">
+                                        <div class="stat-card-mini" onclick="redirectToRanking('all')">
                                             <div class="stat-label-mini">合計スコア</div>
                                             <div class="stat-value-mini" id="stat-total">-</div>
                                             <div class="stat-rank" id="rank-total">-</div>
                                         </div>
                                     </div>
                                     <div class="col-4">
-                                        <div class="stat-card-mini">
+                                        <div class="stat-card-mini" onclick="redirectToRanking('avg_score')">
                                             <div class="stat-label-mini">平均スコア</div>
                                             <div class="stat-value-mini" id="stat-avg-score">-</div>
                                             <div class="stat-rank" id="rank-avg-score">-</div>
                                         </div>
                                     </div>
                                     <div class="col-4">
-                                        <div class="stat-card-mini">
+                                        <div class="stat-card-mini" onclick="redirectToRanking('max_score')">
                                             <div class="stat-label-mini">最大スコア</div>
                                             <div class="stat-value-mini" id="stat-max-score">-</div>
                                             <div class="stat-rank" id="rank-max-score">-</div>
@@ -941,21 +941,21 @@
                                 <!-- Row 2: 和了率　放銃率　バランス雀力 -->
                                 <div class="row g-3 mb-3">
                                     <div class="col-4">
-                                        <div class="stat-card-mini">
+                                        <div class="stat-card-mini" onclick="redirectToRanking('win')">
                                             <div class="stat-label-mini">和了率</div>
                                             <div class="stat-value-mini" id="stat-win-rate">-</div>
                                             <div class="stat-rank" id="rank-win-rate">-</div>
                                         </div>
                                     </div>
                                     <div class="col-4">
-                                        <div class="stat-card-mini">
+                                        <div class="stat-card-mini" onclick="redirectToRanking('deal')">
                                             <div class="stat-label-mini">放銃率</div>
                                             <div class="stat-value-mini" id="stat-deal-rate">-</div>
                                             <div class="stat-rank" id="rank-deal-rate">-</div>
                                         </div>
                                     </div>
                                     <div class="col-4">
-                                        <div class="stat-card-mini">
+                                        <div class="stat-card-mini" onclick="redirectToRanking('skill')">
                                             <div class="stat-label-mini">バランス雀力</div>
                                             <div class="stat-value-mini" id="stat-skill">-</div>
                                             <div class="stat-rank" id="rank-skill">-</div>
@@ -966,21 +966,21 @@
                                 <!-- Row 3: 平均順位　トップ率　ラス回避率 -->
                                 <div class="row g-3 mb-3">
                                     <div class="col-4">
-                                        <div class="stat-card-mini">
+                                        <div class="stat-card-mini" onclick="redirectToRanking('avg_rank')">
                                             <div class="stat-label-mini">平均順位</div>
                                             <div class="stat-value-mini" id="stat-avg-rank">-</div>
                                             <div class="stat-rank" id="rank-avg-rank">-</div>
                                         </div>
                                     </div>
                                     <div class="col-4">
-                                        <div class="stat-card-mini">
+                                        <div class="stat-card-mini" onclick="redirectToRanking('top')">
                                             <div class="stat-label-mini">トップ率</div>
                                             <div class="stat-value-mini" id="stat-top-rate">-</div>
                                             <div class="stat-rank" id="rank-top-rate">-</div>
                                         </div>
                                     </div>
                                     <div class="col-4">
-                                        <div class="stat-card-mini">
+                                        <div class="stat-card-mini" onclick="redirectToRanking('avoid')">
                                             <div class="stat-label-mini">ラス回避率</div>
                                             <div class="stat-value-mini" id="stat-avoid-rate">-</div>
                                             <div class="stat-rank" id="rank-avoid-rate">-</div>
@@ -991,21 +991,21 @@
                                 <!-- Row 4: 試合数　局数　レーティング -->
                                 <div class="row g-3">
                                     <div class="col-4">
-                                        <div class="stat-card-mini">
+                                        <div class="stat-card-mini" onclick="redirectToRanking('match_count')">
                                             <div class="stat-label-mini">試合数</div>
                                             <div class="stat-value-mini" id="stat-games">-</div>
                                             <div class="stat-rank" id="rank-games">-</div>
                                         </div>
                                     </div>
                                     <div class="col-4">
-                                        <div class="stat-card-mini">
+                                        <div class="stat-card-mini" style="cursor: default;">
                                             <div class="stat-label-mini">局数</div>
                                             <div class="stat-value-mini" id="stat-hands">-</div>
                                         </div>
                                     </div>
                                     <div class="col-4">
                                         <div class="stat-card-mini"
-                                            style="background: linear-gradient(135deg, #f3e5f5, #fff);">
+                                            style="background: linear-gradient(135deg, #f3e5f5, #fff); cursor: default;">
                                             <div class="stat-label-mini">📊 レーティング</div>
                                             <div class="stat-value-mini" id="stat-rating">-</div>
                                         </div>
@@ -2923,6 +2923,22 @@
 
             const ratingEl = document.getElementById('stat-rating');
             if (ratingEl) ratingEl.textContent = '-'; // 未実装
+        }
+
+        function redirectToRanking(subFilter) {
+            // 現在のフィルター設定を取得
+            const tournament = currentMyTournament;
+            const main = currentMahjongMode;
+
+            // 自分のIDを取得（アンカー用）
+            // myAccountName は DiscordID または ニックネームが入っている
+            const anchor = `#rank-player-${myAccountName}`;
+
+            // URL構築
+            const url = `../mahjong/index.html?tournament=${encodeURIComponent(tournament)}&main=${encodeURIComponent(main)}&sub=${encodeURIComponent(subFilter)}${anchor}`;
+
+            // 遷移
+            window.location.href = url;
         }
 
         function updateStatCard(id, value, allStats, key, higherIsBetter, myGames) {

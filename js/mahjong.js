@@ -62,7 +62,36 @@ async function fetchData() {
 
 
         renderMainFilters();
+
+        // URLパラメータの処理
+        const params = new URLSearchParams(window.location.search);
+        const t = params.get('tournament');
+        const m = params.get('main');
+        const s_filter = params.get('sub');
+
+        if (t) currentTournament = t;
+        if (m) currentMainFilter = m;
+        if (s_filter) currentSubFilter = s_filter;
+
+        if (t || m || s_filter) {
+            renderTournamentButtons();
+            renderMainFilters();
+        }
+
         showRanking(); // 初期表示
+
+        // アンカーへのスクロール処理
+        const hash = window.location.hash;
+        if (hash.startsWith('#rank-player-')) {
+            setTimeout(() => {
+                const target = document.querySelector(hash);
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    target.classList.add('highlight-row');
+                    setTimeout(() => target.classList.remove('highlight-row'), 3000);
+                }
+            }, 500);
+        }
     } catch (err) {
         console.error('データ取得エラー:', err);
     }
@@ -466,7 +495,7 @@ function renderRanking(records, groupKey, type = 'all') {
             const linkClass = canLink ? '' : 'pe-none text-dark';
 
             return `
-                <div class="col-12">
+                <div class="col-12" id="rank-player-${s.discord_user_id || 'unknown'}">
                     <div class="podium-card ${rankClass}">
                         <div class="podium-card-left">
                             <div class="podium-rank-box">
@@ -619,7 +648,7 @@ function renderRanking(records, groupKey, type = 'all') {
             const labelText = document.getElementById('stat-header')?.textContent || '指標';
 
             return `
-                <tr>
+                <tr id="rank-player-${s.discord_user_id || 'unknown'}">
                     <td>${rankValue}</td>
                     <td class="ps-4 text-start">
                         <a href="${linkUrl}" 
