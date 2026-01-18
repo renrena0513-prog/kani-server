@@ -48,14 +48,14 @@ function generateAccordionNav(basePath = '../') {
                     </ul>
                 </li>
                 
-                <!-- 期間限定イベント（管理者のみ） -->
-                <li class="nav-group admin-only" style="display:none;">
+                <!-- 期間限定イベント -->
+                <li class="nav-group">
                     <div class="nav-group-header" onclick="toggleNavGroup(this, event)" data-group="event">
                         <span>⌛ 期間限定イベント</span>
                         <span class="nav-chevron">▼</span>
                     </div>
                     <ul class="nav-group-items" id="nav-group-event">
-                        <li><a class="dropdown-item sub-item" href="${basePath}event/drill.html">🚧 ほりほりドリル</a></li>
+                        <li><a class="dropdown-item sub-item" href="${basePath}event/drill.html">🏗️ ほりほりドリル</a></li>
                     </ul>
                 </li>
                 

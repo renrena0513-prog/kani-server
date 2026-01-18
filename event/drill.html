@@ -218,10 +218,10 @@
 </head>
 
 <body>
-    <div id="admin-check-overlay">
+    <div id="loading-overlay">
         <div class="text-center">
             <div class="spinner-border text-warning mb-3"></div>
-            <div>管理者権限を確認中...</div>
+            <div>読み込み中...</div>
         </div>
     </div>
 
@@ -471,7 +471,7 @@
 
         async function checkAuth() {
             const { data: { user } } = await supabaseClient.auth.getUser();
-            const overlay = document.getElementById('admin-check-overlay');
+            const overlay = document.getElementById('loading-overlay');
             if (!user) { window.location.href = '../index.html'; return; }
             currentUserId = user.user_metadata.provider_id;
             overlay.style.display = 'none';
