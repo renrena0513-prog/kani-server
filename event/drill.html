@@ -469,12 +469,11 @@
         let isDigging = false;
         let currentLuckLevel = 0;
 
-        async function checkAdmin() {
+        async function checkAuth() {
             const { data: { user } } = await supabaseClient.auth.getUser();
             const overlay = document.getElementById('admin-check-overlay');
             if (!user) { window.location.href = '../index.html'; return; }
             currentUserId = user.user_metadata.provider_id;
-            if (!ADMIN_DISCORD_IDS.includes(currentUserId)) { alert('管理者権限がありません。'); window.location.href = '../index.html'; return; }
             overlay.style.display = 'none';
             initAccordionNav('../');
             loadStats();
@@ -690,7 +689,7 @@
             }
         }
 
-        document.addEventListener('DOMContentLoaded', checkAdmin);
+        document.addEventListener('DOMContentLoaded', checkAuth);
     </script>
 </body>
 
