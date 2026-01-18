@@ -22,8 +22,9 @@ CREATE TABLE IF NOT EXISTS event_drill_logs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 3. 報酬テーブル (レベル別管理)
-CREATE TABLE IF NOT EXISTS event_drill_rewards (
+-- 3. 報酬テーブル (レベル別管理) - 古いテーブルを削除して再作成
+DROP TABLE IF EXISTS event_drill_rewards;
+CREATE TABLE event_drill_rewards (
     id SERIAL PRIMARY KEY,
     level_id INT NOT NULL,           -- 0-10 (地盤レベル)
     reward_type TEXT NOT NULL,       -- 'nothing', 'coin', 'gacha_ticket', 'exchange_ticket', 'badge'
@@ -40,9 +41,6 @@ CREATE TABLE IF NOT EXISTS event_drill_rewards (
 -- TRUNCATE event_drill_user_stats CASCADE;
 -- TRUNCATE event_drill_logs CASCADE;
 -- ============================================
-
--- 報酬データ初期化
-TRUNCATE event_drill_rewards;
 
 -- =============================================
 -- レベル別報酬データ投入 (Lv0 ~ Lv10)
