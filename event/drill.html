@@ -33,6 +33,18 @@
             font-family: var(--font-title);
             color: #fff;
             text-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+            margin-bottom: 0.5rem;
+        }
+
+        .luck-level-badge {
+            display: inline-block;
+            background: linear-gradient(90deg, #ffc107, #ff8c00);
+            color: #000;
+            padding: 4px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 1rem;
+            box-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
             margin-bottom: 2rem;
         }
 
@@ -42,37 +54,9 @@
             border-radius: 20px;
             padding: 40px;
             border: 1px solid rgba(255, 255, 255, 0.1);
-            max-width: 900px;
+            max-width: 1000px;
             margin: 0 auto;
             text-align: center;
-        }
-
-        .drill-icon {
-            font-size: 5rem;
-            margin-bottom: 20px;
-            display: block;
-        }
-
-        .coming-soon {
-            font-size: 1.5rem;
-            color: #ffc107;
-            font-weight: bold;
-            letter-spacing: 2px;
-        }
-
-        /* 管理者チェック中の表示 */
-        #admin-check-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #000;
-            z-index: 9999;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: white;
         }
 
         /* ログ・確率セクション */
@@ -87,10 +71,18 @@
 
         .log-item {
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 6px 0;
+            padding: 8px 0;
             display: flex;
             align-items: center;
             gap: 10px;
+        }
+
+        .log-item.milestone {
+            background: rgba(255, 193, 7, 0.1);
+            border-radius: 8px;
+            padding: 10px;
+            margin: 4px 0;
+            border: 1px solid rgba(255, 193, 7, 0.3);
         }
 
         .log-item:last-child {
@@ -115,7 +107,7 @@
         }
 
         .stat-value {
-            font-size: 2.5rem;
+            font-size: 2.2rem;
             font-weight: 700;
             line-height: 1.2;
         }
@@ -207,6 +199,21 @@
                 background-position: 200% 200%;
             }
         }
+
+        .rank-gold {
+            color: #ffd700;
+            text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+        }
+
+        .rank-silver {
+            color: #c0c0c0;
+            text-shadow: 0 0 5px rgba(192, 192, 192, 0.5);
+        }
+
+        .rank-bronze {
+            color: #cd7f32;
+            text-shadow: 0 0 5px rgba(205, 127, 50, 0.5);
+        }
     </style>
 </head>
 
@@ -218,35 +225,38 @@
         </div>
     </div>
 
-    <!-- 右上のナビゲーションドロップダウン用エリア -->
     <div class="nav-dropdown"></div>
 
     <div class="container py-5 mt-5">
         <div class="drill-container">
             <h1 class="page-header">🏗️ ほりほりドリル</h1>
+            <div id="luck-level-display" class="luck-level-badge">現在の地盤レベル: Lv0 (通常)</div>
 
             <div class="row g-4 mb-4">
-                <div class="col-md-8">
+                <div class="col-md-7">
                     <!-- ルール説明 -->
                     <div class="card bg-dark bg-opacity-50 border-secondary mb-3 text-start h-100">
                         <div class="card-body">
                             <h5 class="card-title text-warning">📜 ルール説明</h5>
-                            <ul class="mb-0 small">
-                                <li>1日最大 <span class="badge bg-warning text-dark">100回</span> 掘ることができます。</li>
-                                <li>掘るたびに <span class="text-info">コイン</span>、<span class="text-info">引換券</span>、<span
-                                        class="text-info">限定バッジ</span> が出現するかも！？</li>
-                                <li>カウントは毎日 <span class="text-warning">午前0時 (JST)</span> にリセットされます。</li>
+                            <ul class="mb-0 small" style="line-height: 1.6;">
+                                <li>1日最大 <span class="badge bg-warning text-dark">100回</span>。壊れたら <span
+                                        class="text-info">100コイン</span> で修理可能！</li>
+                                <li>合計の深さが深くなるほど **「地盤レベル」** が上がり、アタリ確率が上昇！</li>
+                                <li><span class="text-warning fw-bold">100Mの倍数</span> : 祈願符 1枚確定！</li>
+                                <li><span class="text-warning fw-bold">1,000Mの倍数</span> : 祈願符 5枚確定！</li>
+                                <li><span class="text-warning fw-bold">10,000M到達者</span> : 限定バッジ確定！</li>
+                                <li class="text-white-50 mt-1">※上位の報酬が優先されます。0時に回数はリセットされます。</li>
                             </ul>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <!-- 提供割合 -->
+                <div class="col-md-5">
+                    <!-- 掘った深さランキング -->
                     <div class="info-panel h-100">
-                        <h6 class="text-warning mb-2">📊 提供割合</h6>
-                        <table id="probability-table" class="reward-table">
-                            <!-- JSで生成 -->
-                        </table>
+                        <h6 class="text-warning mb-3">🏆 掘削王ランキング (TOP 3)</h6>
+                        <div id="user-ranking-list">
+                            <div class="text-center text-muted py-4">データ取得中...</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -255,14 +265,21 @@
             <div class="row g-3 mb-4">
                 <div class="col-md-4">
                     <div class="stat-card primary">
-                        <div class="stat-label">合計の深さ</div>
+                        <div class="stat-label">全ユーザーの合計</div>
                         <div id="global-total-meters" class="stat-value">- M</div>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="stat-card">
                         <div class="stat-label">今日の残り</div>
-                        <div id="daily-remaining" class="stat-value">-</div>
+                        <div id="daily-remaining-container">
+                            <span id="daily-remaining" class="stat-value">-</span>
+                        </div>
+                        <div id="repair-area" class="mt-2" style="display: none;">
+                            <button class="btn btn-outline-info btn-sm rounded-pill" onclick="handleRepair()">
+                                🛠️ ドリルを修理 (100🪙)
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <div class="col-md-4">
@@ -288,12 +305,19 @@
 
             <div id="result-message" class="mt-3 h5 fw-bold" style="min-height: 1.5rem;"></div>
 
-            <!-- 最近のログ -->
-            <div class="mt-5 text-start">
-                <h6 class="text-white-50 mb-3">📍 最近の掘り出しログ</h6>
-                <div id="recent-logs" class="info-panel"
-                    style="min-height: 200px; max-height: 300px; overflow-y: auto;">
-                    <p class="text-center text-muted py-5">ログを読み込み中...</p>
+            <div class="row mt-5 text-start">
+                <div class="col-md-8">
+                    <h6 class="text-white-50 mb-3">📍 最近の掘り出しログ</h6>
+                    <div id="recent-logs" class="info-panel"
+                        style="min-height: 300px; max-height: 400px; overflow-y: auto;">
+                        <p class="text-center text-muted py-5">ログを読み込み中...</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <h6 class="text-white-50 mb-3">📊 提供割合 (現在)</h6>
+                    <div class="info-panel">
+                        <table id="probability-table" class="reward-table"></table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -313,6 +337,7 @@
         </div>
     </div>
 
+    <!-- 共通演出スタイル -->
     <style>
         .drill-visual {
             font-size: 6rem;
@@ -329,7 +354,6 @@
             transition: transform 0.1s;
         }
 
-        /* 掘削中の振動と下降アニメーション */
         .digging .drill-emoji {
             animation: vibrate 0.1s infinite, descend 1s ease-in-out;
         }
@@ -431,278 +455,210 @@
     <script>
         let currentUserId = null;
         let isDigging = false;
+        let currentLuckLevel = 0;
 
-        // 管理者チェック
         async function checkAdmin() {
             const { data: { user } } = await supabaseClient.auth.getUser();
             const overlay = document.getElementById('admin-check-overlay');
-
-            if (!user) {
-                window.location.href = '../index.html';
-                return;
-            }
-
+            if (!user) { window.location.href = '../index.html'; return; }
             currentUserId = user.user_metadata.provider_id;
-
-            if (!ADMIN_DISCORD_IDS.includes(currentUserId)) {
-                alert('管理者権限がありません。');
-                window.location.href = '../index.html';
-                return;
-            }
-
-            // 管理者なら表示
+            if (!ADMIN_DISCORD_IDS.includes(currentUserId)) { alert('管理者権限がありません。'); window.location.href = '../index.html'; return; }
             overlay.style.display = 'none';
             initAccordionNav('../');
             loadStats();
         }
 
-        // 統計読み込み
         async function loadStats() {
             try {
-                // 自分と全体の統計を並列取得
-                const [userRes, globalRes, rewardsRes, logsRes, mutantRes] = await Promise.all([
+                const [userRes, globalUsersRes, rewardsRes, logsRes, mutantRes] = await Promise.all([
                     supabaseClient.from('event_drill_user_stats').select('*').eq('user_id', currentUserId).maybeSingle(),
-                    supabaseClient.from('event_drill_user_stats').select('total_taps'),
+                    supabaseClient.from('event_drill_user_stats').select('total_taps, user_id, profiles(account_name, avatar_url, discord_user_id, equipped_badge_id, equipped_badge_id_right, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name))').order('total_taps', { ascending: false }),
                     supabaseClient.from('event_drill_rewards').select('*').eq('is_active', true).order('probability_weight', { ascending: false }),
-                    supabaseClient.from('event_drill_logs')
-                        .select(`
-                            created_at, reward_name, depth, 
-                            profiles!user_id(
-                                discord_user_id, account_name, avatar_url, 
-                                equipped_badge_id, equipped_badge_id_right,
-                                badges!equipped_badge_id(image_url, name),
-                                badges_right:badges!equipped_badge_id_right(image_url, name)
-                            )
-                        `)
-                        .order('created_at', { ascending: false })
-                        .limit(20),
+                    supabaseClient.from('event_drill_logs').select(`created_at, reward_type, reward_name, depth, profiles!user_id(discord_user_id, account_name, avatar_url, equipped_badge_id, equipped_badge_id_right, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name))`).order('created_at', { ascending: false }).limit(30),
                     supabaseClient.from('user_badges_new').select('user_id, badge_id, is_mutant').eq('is_mutant', true)
                 ]);
 
                 // ミュータント情報のマップ作成
                 const mutantMap = {};
-                (mutantRes.data || []).forEach(m => {
-                    mutantMap[`${m.user_id}_${m.badge_id}`] = true;
-                });
+                (mutantRes.data || []).forEach(m => { mutantMap[`${m.user_id}_${m.badge_id}`] = true; });
                 window.drillMutantMap = mutantMap;
 
-                if (userRes.error) throw userRes.error;
-                if (globalRes.error) throw globalRes.error;
-                if (rewardsRes.error) throw rewardsRes.error;
+                // 全体の統計計算
+                const globalData = globalUsersRes.data || [];
+                const globalTotal = globalData.reduce((acc, curr) => acc + (parseInt(curr.total_taps) || 0), 0);
+                document.getElementById('global-total-meters').textContent = globalTotal.toLocaleString() + ' M';
 
-                // 自分の統計
+                // 地盤レベル更新
+                currentLuckLevel = Math.min(Math.floor(globalTotal / 1000), 10);
+                document.getElementById('luck-level-display').textContent = `現在の地盤レベル: Lv${currentLuckLevel} ${currentLuckLevel === 10 ? '(最大)' : ''}`;
+
+                // 自分の統計更新
                 if (userRes.data) {
                     const lastTap = new Date(userRes.data.last_tap_at);
-                    const now = new Date();
                     const midnightJST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
                     midnightJST.setHours(0, 0, 0, 0);
-
                     const dailyTaps = (lastTap < midnightJST) ? 0 : userRes.data.daily_taps;
-
-                    document.getElementById('daily-remaining').textContent = (100 - dailyTaps);
+                    document.getElementById('daily-remaining').textContent = Math.max(0, 100 - dailyTaps);
                     document.getElementById('total-taps').textContent = userRes.data.total_taps.toLocaleString() + ' M';
+                    document.getElementById('repair-area').style.display = (dailyTaps >= 100) ? 'block' : 'none';
                 } else {
                     document.getElementById('daily-remaining').textContent = '100';
                     document.getElementById('total-taps').textContent = '0 M';
+                    document.getElementById('repair-area').style.display = 'none';
                 }
 
-                // 全体の統計
-                const globalTotal = (globalRes.data || []).reduce((acc, curr) => acc + (parseInt(curr.total_taps) || 0), 0);
-                document.getElementById('global-total-meters').textContent = globalTotal.toLocaleString() + ' M';
-
-                // 提供割合
+                renderRanking(globalData.slice(0, 3));
                 renderProbabilities(rewardsRes.data || []);
-
-                // ログ
                 renderLogs(logsRes.data || []);
 
-            } catch (err) {
-                console.error('Stats load error:', err);
-            }
+            } catch (err) { console.error('Stats load error:', err); }
         }
 
-        // 提供割合の描画
-        function renderProbabilities(rewards) {
-            const table = document.getElementById('probability-table');
-            const totalWeight = rewards.reduce((acc, r) => acc + r.probability_weight, 0);
+        function renderRanking(topUsers) {
+            const container = document.getElementById('user-ranking-list');
+            if (!topUsers || topUsers.length === 0) { container.innerHTML = '<div class="text-center text-muted">データなし</div>'; return; }
+            const rankClasses = ['rank-gold', 'rank-silver', 'rank-bronze'];
+            const rankEmojis = ['🥇', '🥈', '🥉'];
 
-            table.innerHTML = rewards.map(r => {
-                const prob = ((r.probability_weight / totalWeight) * 100).toFixed(1);
+            container.innerHTML = topUsers.map((u, i) => {
+                const profile = u.profiles;
                 return `
-                    <tr>
-                        <td style="width: 35%">${r.reward_name}</td>
-                        <td style="width: 20%; text-align: right; padding-right: 15px;">${prob}%</td>
-                        <td>
-                            <div class="prob-bar-container">
-                                <div class="prob-bar" style="width: ${prob}%"></div>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        // ログの描画
-        function renderLogs(logs) {
-            const container = document.getElementById('recent-logs');
-            if (!logs || logs.length === 0) {
-                container.innerHTML = '<p class="text-center text-muted py-5">まだ掘り出し物はありません</p>';
-                return;
-            }
-
-            container.innerHTML = logs.map(log => {
-                const profile = log.profiles;
-                const name = profile?.account_name || '不明なユーザー';
-                const avatar = profile?.avatar_url || 'https://via.placeholder.com/32';
-                const reward = log.reward_name || 'アイテム';
-                const depth = log.depth || '?';
-                const time = new Date(log.created_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
-
-                // バッジ表示の生成
-                const renderBadge = (badge, id, userId) => {
-                    if (!badge) return '';
-                    const isMutant = window.drillMutantMap[`${userId}_${id}`];
-                    return `
-                        <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}">
-                            <img src="${badge.image_url}" class="user-badge" title="${badge.name}">
-                            <div class="mutant-badge-shine" style="display: ${isMutant ? 'block' : 'none'};"></div>
-                        </div>`;
-                };
-
-                const badgeLeft = renderBadge(profile?.badges, profile?.equipped_badge_id, profile?.discord_user_id);
-                const badgeRight = renderBadge(profile?.badges_right, profile?.equipped_badge_id_right, profile?.discord_user_id);
-
-                return `
-                    <div class="log-item d-flex align-items-center gap-2 py-2 border-bottom border-white border-opacity-10">
-                        <span class="text-white-50 small" style="min-width: 45px;">${time}</span>
-                        <div class="user-cell">
-                            <img src="${avatar}" class="user-avatar" onerror="this.src='https://via.placeholder.com/32'">
-                            ${badgeLeft}
-                            <span class="fw-bold text-warning">${name}</span>
-                            ${badgeRight}
-                        </div>
-                        <div class="ms-1">
-                            <span>が</span>
-                            <span class="text-info">${depth}M</span>
-                            <span>で</span>
-                            <span class="fw-bold">${reward}</span>
-                            <span>を掘り当てた！</span>
-                        </div>
+                    <div class="d-flex align-items-center mb-2 p-2 rounded bg-white bg-opacity-5 overflow-hidden">
+                        <span class="me-2 fw-bold ${rankClasses[i]}">${rankEmojis[i]}</span>
+                        <img src="${profile?.avatar_url || 'https://via.placeholder.com/32'}" class="user-avatar" style="width:24px; height:24px;">
+                        <span class="ms-2 small text-truncate" style="flex-grow:1;">${profile?.account_name || '不明'}</span>
+                        <span class="small fw-bold text-info">${u.total_taps}M</span>
                     </div>
                 `;
             }).join('');
         }
 
-        // 掘るアクション
+        function renderProbabilities(rewards) {
+            const table = document.getElementById('probability-table');
+            const reduction = currentLuckLevel * 50;
+            const updatedWeights = rewards.map(r => ({
+                ...r,
+                weight: (r.reward_type === 'nothing') ? Math.max(r.probability_weight - reduction, 50) : r.probability_weight
+            }));
+            const totalWeight = updatedWeights.reduce((acc, r) => acc + r.weight, 0);
+
+            table.innerHTML = updatedWeights.map(r => {
+                const prob = ((r.weight / totalWeight) * 100).toFixed(1);
+                return `<tr><td style="width:40%">${r.reward_name}</td><td style="width:20%; text-align:right; padding-right:10px;">${prob}%</td>
+                    <td><div class="prob-bar-container"><div class="prob-bar" style="width: ${prob}%"></div></div></td></tr>`;
+            }).join('');
+        }
+
+        function renderLogs(logs) {
+            const container = document.getElementById('recent-logs');
+            if (!logs || logs.length === 0) { container.innerHTML = '<p class="text-center text-muted py-5">まだ掘り出し物はありません</p>'; return; }
+
+            container.innerHTML = logs.map(log => {
+                const profile = log.profiles;
+                const name = profile?.account_name || '不明なユーザー';
+                const avatar = profile?.avatar_url || 'https://via.placeholder.com/32';
+                const time = new Date(log.created_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+
+                const renderBadge = (badge, id, userId) => {
+                    if (!badge) return '';
+                    const isMutant = window.drillMutantMap[`${userId}_${id}`];
+                    return `<div class="mutant-badge-container mini ${isMutant ? 'active' : ''}"><img src="${badge.image_url}" class="user-badge" title="${badge.name}"><div class="mutant-badge-shine" style="display:${isMutant ? 'block' : 'none'};"></div></div>`;
+                };
+
+                const badgeLeft = renderBadge(profile?.badges, profile?.equipped_badge_id, profile?.discord_user_id);
+                const badgeRight = renderBadge(profile?.badges_right, profile?.equipped_badge_id_right, profile?.discord_user_id);
+
+                if (log.reward_type === 'milestone') {
+                    return `<div class="log-item milestone d-flex align-items-center gap-2">
+                        <span class="text-white-50 small">${time}</span>
+                        <div class="user-cell"><img src="${avatar}" class="user-avatar">${badgeLeft}<span class="fw-bold text-warning">${name}</span>${badgeRight}</div>
+                        <div class="ms-1 fw-bold text-info">🎉 ${log.reward_name}</div>
+                    </div>`;
+                }
+
+                return `<div class="log-item d-flex align-items-center gap-2 py-2">
+                    <span class="text-white-50 small" style="min-width:45px;">${time}</span>
+                    <div class="user-cell"><img src="${avatar}" class="user-avatar">${badgeLeft}<span class="fw-bold text-warning">${name}</span>${badgeRight}</div>
+                    <div class="ms-1"><span>が</span><span class="text-info">${log.depth}M</span><span>で</span><span class="fw-bold">${log.reward_name}</span><span>をゲット！</span></div>
+                </div>`;
+            }).join('');
+        }
+
         async function handleDig() {
             if (isDigging) return;
             isDigging = true;
-
             const btn = document.getElementById('dig-button');
             const visual = document.getElementById('drill-visual');
             const resultMsg = document.getElementById('result-message');
-
-            btn.disabled = true;
-            visual.classList.add('digging');
-            resultMsg.textContent = '掘削中...';
-            createParticles();
+            btn.disabled = true; visual.classList.add('digging');
+            resultMsg.textContent = '掘削中...'; createParticles();
 
             try {
-                const { data, error } = await supabaseClient.rpc('process_drill_tap', {
-                    target_user_id: currentUserId
-                });
-
+                const { data, error } = await supabaseClient.rpc('process_drill_tap', { target_user_id: currentUserId });
                 if (error) throw error;
-
-                // 演出待ち
                 await new Promise(r => setTimeout(r, 1000));
 
                 if (data.success) {
-                    // UI更新
                     document.getElementById('daily-remaining').textContent = (100 - data.new_daily_taps);
                     document.getElementById('total-taps').textContent = data.total_taps.toLocaleString() + ' M';
+                    document.getElementById('global-total-meters').textContent = data.global_total_meters.toLocaleString() + ' M';
+
+                    if (data.new_daily_taps >= 100) document.getElementById('repair-area').style.display = 'block';
 
                     if (data.reward.type === 'nothing') {
                         resultMsg.innerHTML = '<span class="text-white-50">何も見つからなかった...</span>';
+                    } else if (data.reward.type === 'milestone') {
+                        resultMsg.innerHTML = `<span class="text-info fw-bold">🎁 ${data.reward.name}</span>`;
+                        setTimeout(loadStats, 500);
                     } else {
                         showReward(data.reward);
                         resultMsg.innerHTML = `<span class="text-warning">「${data.reward.name}」をゲット！</span>`;
-                        // ログを即取得
                         setTimeout(loadStats, 500);
                     }
-
-                    // 全体の統計を戻り値で更新 (サーバー負荷削減)
-                    if (data.global_total_meters !== undefined) {
-                        document.getElementById('global-total-meters').textContent = data.global_total_meters.toLocaleString() + ' M';
-                    } else {
-                        loadGlobalStatsOnly();
-                    }
-
                 } else {
                     if (data.error === 'DAILY_LIMIT_REACHED') {
-                        resultMsg.innerHTML = '<span class="text-danger">今日の限界（100回）に達しました！</span>';
-                    } else {
-                        resultMsg.textContent = 'エラーが発生しました。';
-                    }
+                        resultMsg.innerHTML = '<span class="text-danger">ドリルが壊れました！修理が必要です。</span>';
+                    } else { resultMsg.textContent = 'エラーが発生しました。'; }
                 }
             } catch (err) {
-                console.error('Dig error:', err);
-                resultMsg.textContent = 'エラーが発生しました。';
-            } finally {
-                visual.classList.remove('digging');
-                btn.disabled = false;
-                isDigging = false;
-            }
+                console.error('Dig error:', err); resultMsg.textContent = 'エラーが発生しました。';
+            } finally { visual.classList.remove('digging'); btn.disabled = false; isDigging = false; }
         }
 
-        // 全体の統計のみ更新（軽量）
-        async function loadGlobalStatsOnly() {
+        async function handleRepair() {
+            if (!confirm('100コインを支払ってドリルを修理しますか？')) return;
             try {
-                const { data } = await supabaseClient.from('event_drill_user_stats').select('total_taps');
-                const globalTotal = (data || []).reduce((acc, curr) => acc + (parseInt(curr.total_taps) || 0), 0);
-                document.getElementById('global-total-meters').textContent = globalTotal.toLocaleString() + ' M';
-            } catch (e) { }
+                const { data, error } = await supabaseClient.rpc('repair_drill', { target_user_id: currentUserId });
+                if (error) throw error;
+                if (data.success) {
+                    alert('修理が完了しました！(残り 100回)');
+                    loadStats();
+                } else {
+                    if (data.error === 'INSUFFICIENT_COINS') alert('コインが足りません！');
+                    else alert('修理に失敗しました。');
+                }
+            } catch (err) { console.error('Repair error:', err); alert('エラーが発生しました。'); }
         }
 
-        // 報酬表示
         function showReward(reward) {
             const content = document.getElementById('reward-content');
             let rewardHtml = '';
-
-            if (reward.type === 'coin') {
-                rewardHtml = `<div class="display-4">💰</div><div>${reward.amount} コイン</div>`;
-            } else if (reward.type === 'gacha_ticket') {
-                rewardHtml = `<div class="display-4">🎫</div><div>${reward.name}</div>`;
-            } else if (reward.type === 'exchange_ticket') {
-                rewardHtml = `<div class="display-4">🏷️</div><div>${reward.name}</div>`;
-            } else if (reward.type === 'badge') {
-                rewardHtml = `<div class="display-4">📛</div><div>${reward.name} (限定バッジ)</div>`;
-            }
-
+            if (reward.type === 'coin') rewardHtml = `<div class="display-4">💰</div><div>${reward.amount} コイン</div>`;
+            else if (reward.type === 'gacha_ticket') rewardHtml = `<div class="display-4">🎫</div><div>${reward.name}</div>`;
+            else if (reward.type === 'exchange_ticket') rewardHtml = `<div class="display-4">🏷️</div><div>${reward.name}</div>`;
+            else if (reward.type === 'badge') rewardHtml = `<div class="display-4">📛</div><div>${reward.name} (限定バッジ)</div>`;
             content.innerHTML = rewardHtml;
-            const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('reward-modal'));
-            modal.show();
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('reward-modal')).show();
         }
 
-        // 土煙エフェクト
         function createParticles() {
             const container = document.getElementById('dirt-effect');
             for (let i = 0; i < 15; i++) {
-                const p = document.createElement('div');
-                p.className = 'particle';
-                const size = Math.random() * 8 + 4;
-                p.style.width = size + 'px';
-                p.style.height = size + 'px';
-                p.style.left = '50%';
-
-                // 飛び散る方向をランダムに
-                const tx = (Math.random() - 0.5) * 200;
-                const ty = -Math.random() * 100 - 50;
-                p.style.setProperty('--tx', tx + 'px');
-                p.style.setProperty('--ty', ty + 'px');
-
-                container.appendChild(p);
-                setTimeout(() => p.remove(), 600);
+                const p = document.createElement('div'); p.className = 'particle';
+                const size = Math.random() * 8 + 4; p.style.width = size + 'px'; p.style.height = size + 'px'; p.style.left = '50%';
+                const tx = (Math.random() - 0.5) * 200; const ty = -Math.random() * 100 - 50;
+                p.style.setProperty('--tx', tx + 'px'); p.style.setProperty('--ty', ty + 'px');
+                container.appendChild(p); setTimeout(() => p.remove(), 600);
             }
         }
 
