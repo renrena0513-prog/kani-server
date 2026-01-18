@@ -611,6 +611,7 @@
                         resultMsg.innerHTML = '<span class="text-white-50">何も見つからなかった...</span>';
                     } else if (data.reward.type === 'milestone') {
                         resultMsg.innerHTML = `<span class="text-info fw-bold">🎁 ${data.reward.name}</span>`;
+                        showReward(data.reward);
                         setTimeout(loadStats, 500);
                     } else {
                         showReward(data.reward);
@@ -642,13 +643,26 @@
             } catch (err) { console.error('Repair error:', err); alert('エラーが発生しました。'); }
         }
 
-        function showReward(reward) {
+        async function showReward(reward) {
             const content = document.getElementById('reward-content');
             let rewardHtml = '';
-            if (reward.type === 'coin') rewardHtml = `<div class="display-4">💰</div><div>${reward.amount} コイン</div>`;
-            else if (reward.type === 'gacha_ticket') rewardHtml = `<div class="display-4">🎫</div><div>${reward.name}</div>`;
-            else if (reward.type === 'exchange_ticket') rewardHtml = `<div class="display-4">🏷️</div><div>${reward.name}</div>`;
-            else if (reward.type === 'badge') rewardHtml = `<div class="display-4">📛</div><div>${reward.name} (限定バッジ)</div>`;
+            if (reward.type === 'coin') {
+                rewardHtml = `<div class="display-4">💰</div><div>${reward.amount} コイン</div>`;
+            } else if (reward.type === 'gacha_ticket') {
+                rewardHtml = `<div class="display-4">🎫</div><div>${reward.name}</div>`;
+            } else if (reward.type === 'exchange_ticket') {
+                rewardHtml = `<div class="display-4">🏷️</div><div>${reward.name}</div>`;
+            } else if (reward.type === 'badge' || reward.type === 'milestone') {
+                // バッジ画像を取得
+                let badgeImage = '';
+                if (reward.reward_id) {
+                    const { data: badge } = await supabaseClient.from('badges').select('image_url, name').eq('id', reward.reward_id).maybeSingle();
+                    if (badge) {
+                        badgeImage = `<img src="${badge.image_url}" style="width:100px; height:100px; object-fit:contain; margin-bottom:10px;">`;
+                    }
+                }
+                rewardHtml = `${badgeImage}<div class="fw-bold text-warning">${reward.name}</div><div class="small text-info">(限定バッジ)</div>`;
+            }
             content.innerHTML = rewardHtml;
             bootstrap.Modal.getOrCreateInstance(document.getElementById('reward-modal')).show();
         }

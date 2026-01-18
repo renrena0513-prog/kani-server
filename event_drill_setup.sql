@@ -53,7 +53,7 @@ INSERT INTO event_drill_rewards (level_id, reward_type, reward_name, reward_id, 
 (0, 'coin', '10コイン', NULL, 10, 50),
 (0, 'exchange_ticket', '一般引換券(1枚)', '一般', 1, 50),
 (0, 'gacha_ticket', '祈願符(1枚)', NULL, 1, 100),
-(0, 'badge', '【不屈の求道者】', 'c5b275e6-036b-49ef-9796-4b95ce46c53e', 0, 1);
+(0, 'badge', '※テスト用※', 'e861b297-f5d1-458e-91ab-bbd4c75ae8cb', 0, 1);
 
 -- Lv1 (1000-1999M): ハズレ8800, コイン1/6/20
 INSERT INTO event_drill_rewards (level_id, reward_type, reward_name, reward_id, amount, probability_weight) VALUES
@@ -63,7 +63,7 @@ INSERT INTO event_drill_rewards (level_id, reward_type, reward_name, reward_id, 
 (1, 'coin', '20コイン', NULL, 20, 50),
 (1, 'exchange_ticket', '一般引換券(1枚)', '一般', 1, 50),
 (1, 'gacha_ticket', '祈願符(1枚)', NULL, 1, 100),
-(1, 'badge', '【不屈の求道者】', 'c5b275e6-036b-49ef-9796-4b95ce46c53e', 0, 1);
+(1, 'badge', '※テスト用※', 'e861b297-f5d1-458e-91ab-bbd4c75ae8cb', 0, 1);
 
 -- Lv2 (2000-2999M): ハズレ8600, コイン2/9/30, +良質
 INSERT INTO event_drill_rewards (level_id, reward_type, reward_name, reward_id, amount, probability_weight) VALUES
@@ -74,7 +74,7 @@ INSERT INTO event_drill_rewards (level_id, reward_type, reward_name, reward_id, 
 (2, 'exchange_ticket', '一般引換券(1枚)', '一般', 1, 50),
 (2, 'exchange_ticket', '良質引換券(1枚)', '良質', 1, 30),
 (2, 'gacha_ticket', '祈願符(1枚)', NULL, 1, 100),
-(2, 'badge', '【不屈の求道者】', 'c5b275e6-036b-49ef-9796-4b95ce46c53e', 0, 1);
+(2, 'badge', '※テスト用※', 'e861b297-f5d1-458e-91ab-bbd4c75ae8cb', 0, 1);
 
 -- Lv3 (3000-3999M): ハズレ8400, コイン2/12/40, +良質
 INSERT INTO event_drill_rewards (level_id, reward_type, reward_name, reward_id, amount, probability_weight) VALUES
@@ -85,7 +85,7 @@ INSERT INTO event_drill_rewards (level_id, reward_type, reward_name, reward_id, 
 (3, 'exchange_ticket', '一般引換券(1枚)', '一般', 1, 50),
 (3, 'exchange_ticket', '良質引換券(1枚)', '良質', 1, 30),
 (3, 'gacha_ticket', '祈願符(1枚)', NULL, 1, 100),
-(3, 'badge', '【不屈の求道者】', 'c5b275e6-036b-49ef-9796-4b95ce46c53e', 0, 1);
+(3, 'badge', '※テスト用※', 'e861b297-f5d1-458e-91ab-bbd4c75ae8cb', 0, 1);
 
 -- Lv4 (4000-4999M): ハズレ8200, コイン3/15/50, +良質+希少Ⅰ
 INSERT INTO event_drill_rewards (level_id, reward_type, reward_name, reward_id, amount, probability_weight) VALUES
@@ -97,7 +97,7 @@ INSERT INTO event_drill_rewards (level_id, reward_type, reward_name, reward_id, 
 (4, 'exchange_ticket', '良質引換券(1枚)', '良質', 1, 30),
 (4, 'exchange_ticket', '希少・Ⅰ引換券(1枚)', '希少・Ⅰ', 1, 20),
 (4, 'gacha_ticket', '祈願符(1枚)', NULL, 1, 100),
-(4, 'badge', '【不屈の求道者】', 'c5b275e6-036b-49ef-9796-4b95ce46c53e', 0, 1);
+(4, 'badge', '※テスト用※', 'e861b297-f5d1-458e-91ab-bbd4c75ae8cb', 0, 1);
 
 -- Lv5 (5000-5999M): ハズレ8000, コイン3/18/60, 一般2枚, +祈願符3枚
 INSERT INTO event_drill_rewards (level_id, reward_type, reward_name, reward_id, amount, probability_weight) VALUES
@@ -110,7 +110,7 @@ INSERT INTO event_drill_rewards (level_id, reward_type, reward_name, reward_id, 
 (5, 'exchange_ticket', '希少・Ⅰ引換券(1枚)', '希少・Ⅰ', 1, 20),
 (5, 'gacha_ticket', '祈願符(1枚)', NULL, 1, 100),
 (5, 'gacha_ticket', '祈願符(3枚)', NULL, 3, 30),
-(5, 'badge', '【不屈の求道者】', 'c5b275e6-036b-49ef-9796-4b95ce46c53e', 0, 1);
+(5, 'badge', '※テスト用※', 'e861b297-f5d1-458e-91ab-bbd4c75ae8cb', 0, 1);
 
 -- Lv6 (6000-6999M): ハズレ7800, コイン4/21/70, +希少Ⅱ
 INSERT INTO event_drill_rewards (level_id, reward_type, reward_name, reward_id, amount, probability_weight) VALUES
@@ -124,7 +124,7 @@ INSERT INTO event_drill_rewards (level_id, reward_type, reward_name, reward_id, 
 (6, 'exchange_ticket', '希少・Ⅱ引換券(1枚)', '希少・Ⅱ', 1, 15),
 (6, 'gacha_ticket', '祈願符(1枚)', NULL, 1, 100),
 (6, 'gacha_ticket', '祈願符(3枚)', NULL, 3, 30),
-(6, 'badge', '【不屈の求道者】', 'c5b275e6-036b-49ef-9796-4b95ce46c53e', 0, 1);
+(6, 'badge', '※テスト用※', 'e861b297-f5d1-458e-91ab-bbd4c75ae8cb', 0, 1);
 
 -- Lv7 (7000-7999M): ハズレ7600, コイン4/24/80
 INSERT INTO event_drill_rewards (level_id, reward_type, reward_name, reward_id, amount, probability_weight) VALUES
@@ -138,7 +138,7 @@ INSERT INTO event_drill_rewards (level_id, reward_type, reward_name, reward_id, 
 (7, 'exchange_ticket', '希少・Ⅱ引換券(1枚)', '希少・Ⅱ', 1, 15),
 (7, 'gacha_ticket', '祈願符(1枚)', NULL, 1, 100),
 (7, 'gacha_ticket', '祈願符(3枚)', NULL, 3, 30),
-(7, 'badge', '【不屈の求道者】', 'c5b275e6-036b-49ef-9796-4b95ce46c53e', 0, 1);
+(7, 'badge', '※テスト用※', 'e861b297-f5d1-458e-91ab-bbd4c75ae8cb', 0, 1);
 
 -- Lv8 (8000-8999M): ハズレ7400, コイン5/27/90, +貴重
 INSERT INTO event_drill_rewards (level_id, reward_type, reward_name, reward_id, amount, probability_weight) VALUES
@@ -153,7 +153,7 @@ INSERT INTO event_drill_rewards (level_id, reward_type, reward_name, reward_id, 
 (8, 'exchange_ticket', '貴重引換券(1枚)', '貴重', 1, 10),
 (8, 'gacha_ticket', '祈願符(1枚)', NULL, 1, 100),
 (8, 'gacha_ticket', '祈願符(3枚)', NULL, 3, 30),
-(8, 'badge', '【不屈の求道者】', 'c5b275e6-036b-49ef-9796-4b95ce46c53e', 0, 1);
+(8, 'badge', '※テスト用※', 'e861b297-f5d1-458e-91ab-bbd4c75ae8cb', 0, 1);
 
 -- Lv9 (9000-9999M): ハズレ7200, コイン5/30/100
 INSERT INTO event_drill_rewards (level_id, reward_type, reward_name, reward_id, amount, probability_weight) VALUES
@@ -168,7 +168,7 @@ INSERT INTO event_drill_rewards (level_id, reward_type, reward_name, reward_id, 
 (9, 'exchange_ticket', '貴重引換券(1枚)', '貴重', 1, 10),
 (9, 'gacha_ticket', '祈願符(1枚)', NULL, 1, 100),
 (9, 'gacha_ticket', '祈願符(3枚)', NULL, 3, 30),
-(9, 'badge', '【不屈の求道者】', 'c5b275e6-036b-49ef-9796-4b95ce46c53e', 0, 1);
+(9, 'badge', '※テスト用※', 'e861b297-f5d1-458e-91ab-bbd4c75ae8cb', 0, 1);
 
 -- Lv10 (10000M+): ハズレ7000, コイン5/30/100, +特上
 INSERT INTO event_drill_rewards (level_id, reward_type, reward_name, reward_id, amount, probability_weight) VALUES
@@ -184,7 +184,7 @@ INSERT INTO event_drill_rewards (level_id, reward_type, reward_name, reward_id, 
 (10, 'exchange_ticket', '特上引換券(1枚)', '特上', 1, 4),
 (10, 'gacha_ticket', '祈願符(1枚)', NULL, 1, 100),
 (10, 'gacha_ticket', '祈願符(3枚)', NULL, 3, 30),
-(10, 'badge', '【不屈の求道者】', 'c5b275e6-036b-49ef-9796-4b95ce46c53e', 0, 1);
+(10, 'badge', '※テスト用※', 'e861b297-f5d1-458e-91ab-bbd4c75ae8cb', 0, 1);
 
 -- =============================================
 -- 4. 掘削ロジック (データベース駆動版)
@@ -212,7 +212,7 @@ DECLARE
     v_res_amount INT;
     v_is_milestone BOOLEAN := FALSE;
     v_milestone_msg TEXT;
-    v_badge_uuid UUID := 'c5b275e6-036b-49ef-9796-4b95ce46c53e';
+    v_badge_uuid UUID := 'e861b297-f5d1-458e-91ab-bbd4c75ae8cb';
 BEGIN
     -- 統計取得/作成
     INSERT INTO event_drill_user_stats (user_id) VALUES (target_user_id) ON CONFLICT (user_id) DO NOTHING;
@@ -234,7 +234,7 @@ BEGIN
     -- 確定報酬判定
     IF v_global_depth % 10000 = 0 THEN
         v_is_milestone := TRUE;
-        v_res_type := 'badge'; v_res_name := '【不屈の求道者】';
+        v_res_type := 'badge'; v_res_name := '※テスト用※';
         v_res_id := v_badge_uuid::text; v_res_amount := 0;
         v_milestone_msg := '10,000M到達！【限定バッジ】を掘り当てた！';
     ELSIF v_global_depth % 1000 = 0 THEN
