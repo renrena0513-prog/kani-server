@@ -18,6 +18,15 @@ CREATE TABLE IF NOT EXISTS event_drill_logs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- ============================================
+-- 初期化セクション (新規イベント開始時に実行)
+-- ※ 既存データを全て削除して初期状態に戻します
+-- ============================================
+-- TRUNCATE event_drill_user_stats CASCADE;
+-- TRUNCATE event_drill_logs CASCADE;
+-- ============================================
+
+
 -- 3. 掘削ロジック (RPC修正版7: 動的報酬スケーリング)
 CREATE OR REPLACE FUNCTION process_drill_tap(target_user_id TEXT)
 RETURNS JSONB
