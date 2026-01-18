@@ -542,10 +542,10 @@
             container.innerHTML = topUsers.map((u, i) => {
                 const profile = u.profiles;
                 return `
-                    <div class="d-flex align-items-center mb-2 p-2 rounded bg-white bg-opacity-5 overflow-hidden">
+                    <div class="d-flex align-items-center mb-2 p-2 rounded overflow-hidden" style="background: rgba(255,255,255,0.05);">
                         <span class="me-2 fw-bold ${rankClasses[i]}">${rankEmojis[i] || (i + 1)}</span>
                         <img src="${profile?.avatar_url || 'https://via.placeholder.com/32'}" class="user-avatar" style="width:24px; height:24px;">
-                        <span class="ms-2 small text-truncate text-light fw-bold" style="flex-grow:1;">${profile?.account_name || '不明'}</span>
+                        <span class="ms-2 small text-truncate text-warning fw-bold" style="flex-grow:1;">${profile?.account_name || '不明'}</span>
                         <span class="small fw-bold text-info">${u.total_taps}M</span>
                     </div>
                 `;
