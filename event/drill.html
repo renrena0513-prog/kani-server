@@ -475,6 +475,7 @@
     <script src="../js/navigation.js"></script>
     <script>
         let currentUserId = null;
+        let isAdmin = false;
         let isDigging = false;
         let currentLuckLevel = 0;
         let viewLuckLevel = 0; // プレビュー中のレベル
@@ -484,7 +485,16 @@
             const overlay = document.getElementById('loading-overlay');
             if (!user) { window.location.href = '../index.html'; return; }
             currentUserId = user.user_metadata.provider_id;
+            isAdmin = ADMIN_DISCORD_IDS.includes(currentUserId);
             overlay.style.display = 'none';
+
+            if (!isAdmin) {
+                const notice = document.createElement('div');
+                notice.className = 'alert alert-danger text-center fw-bold mb-4';
+                notice.innerHTML = '🔥 皆さんの尽力で岩盤を貫き、ドリルはオーバーヒートしました。<br>修理されるまでしばらくお待ちください。';
+                document.querySelector('.drill-container').insertBefore(notice, document.querySelector('.page-header').nextSibling);
+            }
+
             initAccordionNav('../');
             loadStats();
         }
@@ -649,6 +659,10 @@
         }
 
         async function handleDig() {
+            if (!isAdmin) {
+                alert('皆さんの尽力で岩盤を貫き、ドリルはオーバーヒートしました。\n修理されるまでしばらくお待ちください。');
+                return;
+            }
             if (isDigging) return;
             isDigging = true;
             const btn = document.getElementById('dig-button');
@@ -691,6 +705,10 @@
         }
 
         async function handleRepair() {
+            if (!isAdmin) {
+                alert('皆さんの尽力で岩盤を貫き、ドリルはオーバーヒートしました。\n修理されるまでしばらくお待ちください。');
+                return;
+            }
             const repairCost = 100 + (currentLuckLevel * 20);
             if (!confirm(`修理しますか？\n(費用: ${repairCost} コイン)`)) return;
 
