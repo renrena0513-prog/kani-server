@@ -490,13 +490,13 @@
 
         async function loadStats() {
             try {
-                const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+                const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000).toISOString();
 
                 const [userRes, globalUsersRes, logsRes, delayedDepthRes, mutantRes] = await Promise.all([
                     supabaseClient.from('event_drill_user_stats').select('*').eq('user_id', currentUserId).maybeSingle(),
                     supabaseClient.from('event_drill_user_stats').select('total_taps, user_id, profiles(account_name, avatar_url, discord_user_id, equipped_badge_id, equipped_badge_id_right, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name))').order('total_taps', { ascending: false }),
-                    supabaseClient.from('event_drill_logs').select(`created_at, reward_type, reward_name, depth, profiles!user_id(discord_user_id, account_name, avatar_url, equipped_badge_id, equipped_badge_id_right, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name))`).neq('reward_type', 'nothing').order('created_at', { ascending: false }).limit(50),
-                    supabaseClient.from('event_drill_logs').select('depth').lte('created_at', fiveMinutesAgo).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+                    supabaseClient.from('event_drill_logs').select(`created_at, reward_type, reward_name, depth, profiles!user_id(discord_user_id, account_name, avatar_url, equipped_badge_id, equipped_badge_id_right, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name))`).neq('reward_type', 'nothing').lte('created_at', threeMinutesAgo).order('created_at', { ascending: false }).limit(50),
+                    supabaseClient.from('event_drill_logs').select('depth').lte('created_at', threeMinutesAgo).order('created_at', { ascending: false }).limit(1).maybeSingle(),
                     supabaseClient.from('user_badges_new').select('user_id, badge_id, is_mutant').eq('is_mutant', true)
                 ]);
 
@@ -650,7 +650,7 @@
                 if (data.success) {
                     document.getElementById('daily-remaining').textContent = (100 - data.new_daily_taps);
                     document.getElementById('total-taps').textContent = data.total_taps.toLocaleString() + ' M';
-                    document.getElementById('global-total-meters').textContent = data.global_total_meters.toLocaleString() + ' M';
+                    // document.getElementById('global-total-meters').textContent = data.global_total_meters.toLocaleString() + ' M'; // 遅延表示のため即時更新しない
 
                     if (data.new_daily_taps >= 100) document.getElementById('repair-area').style.display = 'block';
 
