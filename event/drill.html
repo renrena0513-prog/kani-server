@@ -245,7 +245,7 @@
                             <ul class="mb-2 small" style="line-height: 1.8;">
                                 <li>ボタンを押すと <span class="badge bg-secondary">1M (メートル)</span> 掘れます</li>
                                 <li>1日最大 <span class="badge bg-warning text-dark">100回</span> まで無料</li>
-                                <li>上限に達したら <span class="text-info">100コイン</span> で修理可能</li>
+                                <li>上限に達したら <span class="text-info">コインで修理</span> 可能 (地盤レベルに応じて変動)</li>
                                 <li>毎日0時にリセット</li>
                             </ul>
                             <h6 class="text-info small">🎁 キリ番ボーナス</h6>
@@ -265,7 +265,7 @@
                 <div class="col-md-5">
                     <!-- 掘った深さランキング -->
                     <div class="info-panel h-100">
-                        <h6 class="text-warning mb-3">🏆 掘削王ランキング (TOP 5)</h6>
+                        <h6 class="text-warning mb-3">🏆 掘削王ランキング (TOP 10)</h6>
                         <div id="user-ranking-list">
                             <div class="text-center text-muted py-4">データ取得中...</div>
                         </div>
@@ -522,7 +522,7 @@
                     document.getElementById('repair-area').style.display = 'none';
                 }
 
-                renderRanking(globalData.slice(0, 5));
+                renderRanking(globalData.slice(0, 10));
 
                 viewLuckLevel = currentLuckLevel;
                 updatePreviewUI();
@@ -536,16 +536,16 @@
         function renderRanking(topUsers) {
             const container = document.getElementById('user-ranking-list');
             if (!topUsers || topUsers.length === 0) { container.innerHTML = '<div class="text-center text-muted">データなし</div>'; return; }
-            const rankClasses = ['rank-gold', 'rank-silver', 'rank-bronze', '', ''];
-            const rankEmojis = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
+            const rankClasses = ['rank-gold', 'rank-silver', 'rank-bronze', '', '', '', '', '', '', ''];
+            const rankEmojis = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
 
             container.innerHTML = topUsers.map((u, i) => {
                 const profile = u.profiles;
                 return `
                     <div class="d-flex align-items-center mb-2 p-2 rounded bg-white bg-opacity-5 overflow-hidden">
-                        <span class="me-2 fw-bold ${rankClasses[i]}">${rankEmojis[i]}</span>
+                        <span class="me-2 fw-bold ${rankClasses[i]}">${rankEmojis[i] || (i + 1)}</span>
                         <img src="${profile?.avatar_url || 'https://via.placeholder.com/32'}" class="user-avatar" style="width:24px; height:24px;">
-                        <span class="ms-2 small text-truncate" style="flex-grow:1;">${profile?.account_name || '不明'}</span>
+                        <span class="ms-2 small text-truncate text-light fw-bold" style="flex-grow:1;">${profile?.account_name || '不明'}</span>
                         <span class="small fw-bold text-info">${u.total_taps}M</span>
                     </div>
                 `;
@@ -669,18 +669,20 @@
         }
 
         async function handleRepair() {
-            if (!confirm('100コインを支払ってドリルを修理しますか？')) return;
+            const repairCost = 100 + (currentLuckLevel * 20);
+            if (!confirm(`修理しますか？\n(費用: ${repairCost} コイン)`)) return;
+
             try {
                 const { data, error } = await supabaseClient.rpc('repair_drill', { target_user_id: currentUserId });
                 if (error) throw error;
-                if (data.success) {
-                    alert('修理が完了しました！(残り 100回)');
-                    loadStats();
-                } else {
-                    if (data.error === 'INSUFFICIENT_COINS') alert('コインが足りません！');
+                if (!data.success) {
+                    if (data.error === 'INSUFFICIENT_COINS') alert(`コインが足りません。\n(必要: ${data.cost || repairCost} コイン)`);
                     else alert('修理に失敗しました。');
+                    return;
                 }
-            } catch (err) { console.error('Repair error:', err); alert('エラーが発生しました。'); }
+                alert(`修理完了！\n(消費: ${data.cost} コイン)`);
+                loadStats();
+            } catch (err) { console.error('Repair error:', err); }
         }
 
         async function showReward(reward) {
