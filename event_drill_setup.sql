@@ -279,11 +279,16 @@ BEGIN
     UPDATE event_drill_user_stats SET total_taps = total_taps + 1, daily_taps = v_stats.daily_taps + 1, last_tap_at = v_now WHERE user_id = target_user_id;
     
     -- ログ記録
-    IF v_is_milestone THEN
-        INSERT INTO event_drill_logs (user_id, reward_type, reward_name, reward_id, amount, depth) VALUES (target_user_id, 'milestone', v_milestone_msg, v_res_id, v_res_amount, v_global_depth);
-    ELSIF v_res_type != 'nothing' THEN
-        INSERT INTO event_drill_logs (user_id, reward_type, reward_name, reward_id, amount, depth) VALUES (target_user_id, v_res_type, v_res_name, v_res_id, v_res_amount, v_global_depth);
-    END IF;
+    -- 遅延表示（過去の合計値取得）のため、ハズレ(nothing)の場合も必ず記録する
+    INSERT INTO event_drill_logs (user_id, reward_type, reward_name, reward_id, amount, depth) 
+    VALUES (
+        target_user_id, 
+        CASE WHEN v_is_milestone THEN 'milestone' ELSE v_res_type END, 
+        CASE WHEN v_is_milestone THEN v_milestone_msg ELSE v_res_name END, 
+        v_res_id, 
+        v_res_amount, 
+        v_global_depth
+    );
     
     RETURN jsonb_build_object(
         'success', true,

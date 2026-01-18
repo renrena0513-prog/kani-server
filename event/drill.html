@@ -490,10 +490,13 @@
 
         async function loadStats() {
             try {
-                const [userRes, globalUsersRes, logsRes, mutantRes] = await Promise.all([
+                const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+
+                const [userRes, globalUsersRes, logsRes, delayedDepthRes, mutantRes] = await Promise.all([
                     supabaseClient.from('event_drill_user_stats').select('*').eq('user_id', currentUserId).maybeSingle(),
                     supabaseClient.from('event_drill_user_stats').select('total_taps, user_id, profiles(account_name, avatar_url, discord_user_id, equipped_badge_id, equipped_badge_id_right, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name))').order('total_taps', { ascending: false }),
-                    supabaseClient.from('event_drill_logs').select(`created_at, reward_type, reward_name, depth, profiles!user_id(discord_user_id, account_name, avatar_url, equipped_badge_id, equipped_badge_id_right, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name))`).order('created_at', { ascending: false }).limit(100),
+                    supabaseClient.from('event_drill_logs').select(`created_at, reward_type, reward_name, depth, profiles!user_id(discord_user_id, account_name, avatar_url, equipped_badge_id, equipped_badge_id_right, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name))`).neq('reward_type', 'nothing').order('created_at', { ascending: false }).limit(50),
+                    supabaseClient.from('event_drill_logs').select('depth').lte('created_at', fiveMinutesAgo).order('created_at', { ascending: false }).limit(1).maybeSingle(),
                     supabaseClient.from('user_badges_new').select('user_id, badge_id, is_mutant').eq('is_mutant', true)
                 ]);
 
@@ -502,17 +505,11 @@
                 window.drillMutantMap = mutantMap;
 
                 const globalData = globalUsersRes.data || [];
-                const realGlobalTotal = globalData.reduce((acc, curr) => acc + (parseInt(curr.total_taps) || 0), 0);
+                // const realGlobalTotal = globalData.reduce((acc, curr) => acc + (parseInt(curr.total_taps) || 0), 0);
 
                 // 5分間の遅延を適用
-                const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-                // 最新のログデータ（logsRes.data）から直近5分間の掘削分を集計
-                // ログ取得件数を増やしておく（Promise.all内）
-                const recentTapsIn5Min = (logsRes.data || [])
-                    .filter(log => new Date(log.created_at) > fiveMinutesAgo)
-                    .length; // 各タップは1Mなので件数がそのままM数になる
-
-                const displayedGlobalTotal = Math.max(0, realGlobalTotal - recentTapsIn5Min);
+                // 5分以上前の最新のログの depth を表示用合計値として採用する
+                const displayedGlobalTotal = delayedDepthRes.data?.depth || 0;
                 document.getElementById('global-total-meters').textContent = displayedGlobalTotal.toLocaleString() + ' M';
 
                 currentLuckLevel = Math.min(Math.floor(displayedGlobalTotal / 1000), 10);
