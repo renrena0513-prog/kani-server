@@ -337,6 +337,8 @@ function renderRanking(records, groupKey, type = 'all') {
                 hand_total: 0,
                 sanma_count: 0,
                 yonma_count: 0,
+                sanma_last: 0,
+                yonma_last: 0,
                 isTeam: (groupKey === 'team_name')
             };
         }
@@ -369,11 +371,13 @@ function renderRanking(records, groupKey, type = 'all') {
             summary[key].win += Number(r.win_count || 0);
             summary[key].deal += Number(r.deal_in_count || 0);
 
-            // モード別カウント
+            // モード別カウント＆ラスカウント
             if (r.mahjong_mode === '三麻') {
                 summary[key].sanma_count++;
+                if (rk === 3) summary[key].sanma_last++;  // 三麻は3位がラス
             } else {
                 summary[key].yonma_count++;
+                if (rk === 4) summary[key].yonma_last++;  // 四麻は4位がラス
             }
         }
     });
@@ -383,8 +387,8 @@ function renderRanking(records, groupKey, type = 'all') {
         s.avg_win = s.hand_total > 0 ? (s.win / s.hand_total * 100) : 0;   // 和了率（%）
         s.avg_deal = s.hand_total > 0 ? (s.deal / s.hand_total * 100) : 0; // 放銃率（%）
         s.top_rate = s.count > 0 ? (s.r1 / s.count) * 100 : 0;
-        let lastCount = s.r4;
-        if (s.r4 === 0 && s.r3 > 0) lastCount = s.r3;
+        // ラス回避率：三麻の3位 + 四麻の4位 の合計をラスとしてカウント
+        const lastCount = s.sanma_last + s.yonma_last;
         s.avoid_rate = s.count > 0 ? (1 - (lastCount / s.count)) * 100 : 0;
         s.avg_rank = s.count > 0 ? (1 * s.r1 + 2 * s.r2 + 3 * s.r3 + 4 * s.r4) / s.count : 0;
         s.avg_score = s.count > 0 ? s.score / s.count : 0;
