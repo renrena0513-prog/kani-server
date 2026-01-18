@@ -40,7 +40,7 @@ INSERT INTO event_drill_rewards (reward_type, reward_name, reward_id, amount, pr
 ('exchange_ticket', '一般引換券', '一般', 1, 5),
 ('badge', '【不屈の求道者】', 'c5b275e6-036b-49ef-9796-4b95ce46c53e', 0, 1);
 
--- 5. 掘削ロジック (RPC修正版5: 確定報酬、確率変動、修理機能)
+-- 5. 掘削ロジック (RPC修正版6: 変数初期化エラーの修正)
 CREATE OR REPLACE FUNCTION process_drill_tap(target_user_id TEXT)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -62,6 +62,12 @@ DECLARE
     v_is_milestone BOOLEAN := FALSE;
     v_milestone_msg TEXT;
     v_badge_uuid UUID := 'c5b275e6-036b-49ef-9796-4b95ce46c53e'; -- 【不屈の求道者】
+    
+    -- 結果格納用変数 (RECORD未初期化エラー対策)
+    v_res_type TEXT;
+    v_res_name TEXT;
+    v_res_id TEXT;
+    v_res_amount INT;
 BEGIN
     -- 現在の統計を取得 (なければ作成)
     INSERT INTO event_drill_user_stats (user_id)
@@ -88,24 +94,24 @@ BEGIN
     -- 確定報酬判定 (優先度: 10000 > 1000 > 100)
     IF v_global_depth % 10000 = 0 THEN
         v_is_milestone := TRUE;
-        v_reward.reward_type := 'badge';
-        v_reward.reward_name := '【不屈の求道者】';
-        v_reward.reward_id := v_badge_uuid::text;
-        v_reward.amount := 0;
+        v_res_type := 'badge';
+        v_res_name := '【不屈の求道者】';
+        v_res_id := v_badge_uuid::text;
+        v_res_amount := 0;
         v_milestone_msg := '10,000M到達！【限定バッジ】を掘り当てた！';
     ELSIF v_global_depth % 1000 = 0 THEN
         v_is_milestone := TRUE;
-        v_reward.reward_type := 'gacha_ticket';
-        v_reward.reward_name := '祈願符(5枚)';
-        v_reward.reward_id := NULL;
-        v_reward.amount := 5;
+        v_res_type := 'gacha_ticket';
+        v_res_name := '祈願符(5枚)';
+        v_res_id := NULL;
+        v_res_amount := 5;
         v_milestone_msg := v_global_depth::text || 'M到達！祈願符5枚を掘り当てた！';
     ELSIF v_global_depth % 100 = 0 THEN
         v_is_milestone := TRUE;
-        v_reward.reward_type := 'gacha_ticket';
-        v_reward.reward_name := '祈願符(1枚)';
-        v_reward.reward_id := NULL;
-        v_reward.amount := 1;
+        v_res_type := 'gacha_ticket';
+        v_res_name := '祈願符(1枚)';
+        v_res_id := NULL;
+        v_res_amount := 1;
         v_milestone_msg := v_global_depth::text || 'M到達！祈願符1枚を掘り当てた！';
     ELSE
         -- 通常の抽選ロジック (確率変動あり)
@@ -125,27 +131,31 @@ BEGIN
             
             v_cumulative_weight := v_cumulative_weight + v_reward.current_weight;
             IF v_random_val < v_cumulative_weight THEN
+                v_res_type := v_reward.reward_type;
+                v_res_name := v_reward.reward_name;
+                v_res_id := v_reward.reward_id;
+                v_res_amount := v_reward.amount;
                 EXIT;
             END IF;
         END LOOP;
     END IF;
 
     -- ユーザー情報の更新 (コイン等)
-    IF v_reward.reward_type = 'coin' THEN
-        UPDATE profiles SET coins = coins + v_reward.amount, total_assets = total_assets + v_reward.amount WHERE discord_user_id = target_user_id;
-    ELSIF v_reward.reward_type = 'gacha_ticket' THEN
-        UPDATE profiles SET gacha_tickets = COALESCE(gacha_tickets, 0) + v_reward.amount WHERE discord_user_id = target_user_id;
-    ELSIF v_reward.reward_type = 'exchange_ticket' THEN
+    IF v_res_type = 'coin' THEN
+        UPDATE profiles SET coins = coins + v_res_amount, total_assets = total_assets + v_res_amount WHERE discord_user_id = target_user_id;
+    ELSIF v_res_type = 'gacha_ticket' THEN
+        UPDATE profiles SET gacha_tickets = COALESCE(gacha_tickets, 0) + v_res_amount WHERE discord_user_id = target_user_id;
+    ELSIF v_res_type = 'exchange_ticket' THEN
         UPDATE profiles 
         SET exchange_tickets = jsonb_set(
             COALESCE(exchange_tickets, '{}'::jsonb),
-            ARRAY[v_reward.reward_id],
-            (COALESCE((exchange_tickets->>v_reward.reward_id)::int, 0) + v_reward.amount)::text::jsonb
+            ARRAY[v_res_id],
+            (COALESCE((exchange_tickets->>v_res_id)::int, 0) + v_res_amount)::text::jsonb
         )
         WHERE discord_user_id = target_user_id;
-    ELSIF v_reward.reward_type = 'badge' THEN
+    ELSIF v_res_type = 'badge' THEN
         INSERT INTO user_badges_new (user_id, badge_id, purchased_price)
-        VALUES (target_user_id, v_reward.reward_id::uuid, 0);
+        VALUES (target_user_id, v_res_id::uuid, 0);
     END IF;
 
     -- 統計の更新
@@ -158,19 +168,19 @@ BEGIN
     -- 活動ログの記録
     IF v_is_milestone THEN
         INSERT INTO event_drill_logs (user_id, reward_type, reward_name, reward_id, amount, depth)
-        VALUES (target_user_id, 'milestone', v_milestone_msg, v_reward.reward_id, v_reward.amount, v_global_depth);
-    ELSIF v_reward.reward_type != 'nothing' THEN
+        VALUES (target_user_id, 'milestone', v_milestone_msg, v_res_id, v_res_amount, v_global_depth);
+    ELSIF v_res_type != 'nothing' THEN
         INSERT INTO event_drill_logs (user_id, reward_type, reward_name, reward_id, amount, depth)
-        VALUES (target_user_id, v_reward.reward_type, v_reward.reward_name, v_reward.reward_id, v_reward.amount, v_global_depth);
+        VALUES (target_user_id, v_res_type, v_res_name, v_res_id, v_res_amount, v_global_depth);
     END IF;
 
     RETURN jsonb_build_object(
         'success', true,
         'reward', jsonb_build_object(
-            'type', CASE WHEN v_is_milestone THEN 'milestone' ELSE v_reward.reward_type END,
-            'name', CASE WHEN v_is_milestone THEN v_milestone_msg ELSE v_reward.reward_name END,
-            'amount', v_reward.amount,
-            'reward_id', v_reward.reward_id
+            'type', CASE WHEN v_is_milestone THEN 'milestone' ELSE v_res_type END,
+            'name', CASE WHEN v_is_milestone THEN v_milestone_msg ELSE v_res_name END,
+            'amount', v_res_amount,
+            'reward_id', v_res_id
         ),
         'new_daily_taps', v_stats.daily_taps + 1,
         'total_taps', v_stats.total_taps + 1,
