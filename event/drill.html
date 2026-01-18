@@ -326,7 +326,15 @@
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <h6 class="text-white-50 mb-3">📊 提供割合 (現在)</h6>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="text-white-50 m-0">📊 提供割合 (<span id="preview-level-label">現在</span>)</h6>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-warning" onclick="changePreviewLevel(-1)">◀</button>
+                            <span id="preview-level-number" class="btn btn-outline-warning disabled fw-bold"
+                                style="min-width: 60px;">Lv-</span>
+                            <button class="btn btn-outline-warning" onclick="changePreviewLevel(1)">▶</button>
+                        </div>
+                    </div>
                     <div class="info-panel">
                         <table id="probability-table" class="reward-table"></table>
                     </div>
@@ -468,6 +476,7 @@
         let currentUserId = null;
         let isDigging = false;
         let currentLuckLevel = 0;
+        let viewLuckLevel = 0; // プレビュー中のレベル
 
         async function checkAuth() {
             const { data: { user } } = await supabaseClient.auth.getUser();
@@ -515,14 +524,9 @@
 
                 renderRanking(globalData.slice(0, 5));
 
-                // データベースから該当レベルの報酬を取得
-                const { data: rewardsData } = await supabaseClient
-                    .from('event_drill_rewards')
-                    .select('reward_name, probability_weight')
-                    .eq('level_id', currentLuckLevel)
-                    .eq('is_active', true)
-                    .order('id');
-                renderProbabilities(rewardsData || []);
+                viewLuckLevel = currentLuckLevel;
+                updatePreviewUI();
+                await fetchProbabilities(viewLuckLevel);
 
                 renderLogs(logsRes.data || []);
 
@@ -595,6 +599,31 @@
                     <div class="ms-1"><span>が</span><span class="text-info">${log.depth}M</span><span>で</span><span class="fw-bold">${log.reward_name}</span><span>をゲット！</span></div>
                 </div>`;
             }).join('');
+        }
+
+        async function changePreviewLevel(delta) {
+            const next = viewLuckLevel + delta;
+            if (next < 0 || next > 10) return;
+            viewLuckLevel = next;
+            updatePreviewUI();
+            await fetchProbabilities(viewLuckLevel);
+        }
+
+        function updatePreviewUI() {
+            document.getElementById('preview-level-number').textContent = `Lv${viewLuckLevel}`;
+            document.getElementById('preview-level-label').textContent = (viewLuckLevel === currentLuckLevel) ? '現在' : '確認用';
+        }
+
+        async function fetchProbabilities(level) {
+            try {
+                const { data: rewardsData } = await supabaseClient
+                    .from('event_drill_rewards')
+                    .select('reward_name, probability_weight')
+                    .eq('level_id', level)
+                    .eq('is_active', true)
+                    .order('id');
+                renderProbabilities(rewardsData || []);
+            } catch (err) { console.error('Fetch probabilities error:', err); }
         }
 
         async function handleDig() {
