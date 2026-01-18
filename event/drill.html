@@ -504,8 +504,13 @@
 
                 renderRanking(globalData.slice(0, 3));
 
-                // 動的報酬プレビューをRPCで取得
-                const { data: rewardsData } = await supabaseClient.rpc('get_drill_rewards_preview', { current_depth: globalTotal });
+                // データベースから該当レベルの報酬を取得
+                const { data: rewardsData } = await supabaseClient
+                    .from('event_drill_rewards')
+                    .select('reward_name, probability_weight')
+                    .eq('level_id', currentLuckLevel)
+                    .eq('is_active', true)
+                    .order('id');
                 renderProbabilities(rewardsData || []);
 
                 renderLogs(logsRes.data || []);
@@ -536,12 +541,12 @@
             const table = document.getElementById('probability-table');
             if (!rewards || rewards.length === 0) { table.innerHTML = '<tr><td>データなし</td></tr>'; return; }
 
-            const totalWeight = rewards.reduce((acc, r) => acc + (r.weight || 0), 0);
+            const totalWeight = rewards.reduce((acc, r) => acc + (r.probability_weight || 0), 0);
 
             table.innerHTML = rewards.map(r => {
-                const prob = ((r.weight / totalWeight) * 100);
+                const prob = ((r.probability_weight / totalWeight) * 100);
                 const probStr = prob < 0.01 ? prob.toFixed(5) : prob < 1 ? prob.toFixed(3) : prob.toFixed(2);
-                return `<tr><td style="width:45%">${r.name}</td><td style="width:18%; text-align:right; padding-right:8px;">${probStr}%</td>
+                return `<tr><td style="width:45%">${r.reward_name}</td><td style="width:18%; text-align:right; padding-right:8px;">${probStr}%</td>
                     <td><div class="prob-bar-container"><div class="prob-bar" style="width: ${Math.min(prob, 100)}%"></div></div></td></tr>`;
             }).join('');
         }
