@@ -470,29 +470,24 @@
 
         async function loadStats() {
             try {
-                const [userRes, globalUsersRes, rewardsRes, logsRes, mutantRes] = await Promise.all([
+                const [userRes, globalUsersRes, logsRes, mutantRes] = await Promise.all([
                     supabaseClient.from('event_drill_user_stats').select('*').eq('user_id', currentUserId).maybeSingle(),
                     supabaseClient.from('event_drill_user_stats').select('total_taps, user_id, profiles(account_name, avatar_url, discord_user_id, equipped_badge_id, equipped_badge_id_right, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name))').order('total_taps', { ascending: false }),
-                    supabaseClient.from('event_drill_rewards').select('*').eq('is_active', true).order('probability_weight', { ascending: false }),
                     supabaseClient.from('event_drill_logs').select(`created_at, reward_type, reward_name, depth, profiles!user_id(discord_user_id, account_name, avatar_url, equipped_badge_id, equipped_badge_id_right, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name))`).order('created_at', { ascending: false }).limit(30),
                     supabaseClient.from('user_badges_new').select('user_id, badge_id, is_mutant').eq('is_mutant', true)
                 ]);
 
-                // ミュータント情報のマップ作成
                 const mutantMap = {};
                 (mutantRes.data || []).forEach(m => { mutantMap[`${m.user_id}_${m.badge_id}`] = true; });
                 window.drillMutantMap = mutantMap;
 
-                // 全体の統計計算
                 const globalData = globalUsersRes.data || [];
                 const globalTotal = globalData.reduce((acc, curr) => acc + (parseInt(curr.total_taps) || 0), 0);
                 document.getElementById('global-total-meters').textContent = globalTotal.toLocaleString() + ' M';
 
-                // 地盤レベル更新
                 currentLuckLevel = Math.min(Math.floor(globalTotal / 1000), 10);
                 document.getElementById('luck-level-display').textContent = `現在の地盤レベル: Lv${currentLuckLevel} ${currentLuckLevel === 10 ? '(最大)' : ''}`;
 
-                // 自分の統計更新
                 if (userRes.data) {
                     const lastTap = new Date(userRes.data.last_tap_at);
                     const midnightJST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
@@ -508,7 +503,11 @@
                 }
 
                 renderRanking(globalData.slice(0, 3));
-                renderProbabilities(rewardsRes.data || []);
+
+                // 動的報酬プレビューをRPCで取得
+                const { data: rewardsData } = await supabaseClient.rpc('get_drill_rewards_preview', { current_depth: globalTotal });
+                renderProbabilities(rewardsData || []);
+
                 renderLogs(logsRes.data || []);
 
             } catch (err) { console.error('Stats load error:', err); }
@@ -535,17 +534,15 @@
 
         function renderProbabilities(rewards) {
             const table = document.getElementById('probability-table');
-            const reduction = currentLuckLevel * 50;
-            const updatedWeights = rewards.map(r => ({
-                ...r,
-                weight: (r.reward_type === 'nothing') ? Math.max(r.probability_weight - reduction, 50) : r.probability_weight
-            }));
-            const totalWeight = updatedWeights.reduce((acc, r) => acc + r.weight, 0);
+            if (!rewards || rewards.length === 0) { table.innerHTML = '<tr><td>データなし</td></tr>'; return; }
 
-            table.innerHTML = updatedWeights.map(r => {
-                const prob = ((r.weight / totalWeight) * 100).toFixed(1);
-                return `<tr><td style="width:40%">${r.reward_name}</td><td style="width:20%; text-align:right; padding-right:10px;">${prob}%</td>
-                    <td><div class="prob-bar-container"><div class="prob-bar" style="width: ${prob}%"></div></div></td></tr>`;
+            const totalWeight = rewards.reduce((acc, r) => acc + (r.weight || 0), 0);
+
+            table.innerHTML = rewards.map(r => {
+                const prob = ((r.weight / totalWeight) * 100);
+                const probStr = prob < 0.01 ? prob.toFixed(5) : prob < 1 ? prob.toFixed(3) : prob.toFixed(2);
+                return `<tr><td style="width:45%">${r.name}</td><td style="width:18%; text-align:right; padding-right:8px;">${probStr}%</td>
+                    <td><div class="prob-bar-container"><div class="prob-bar" style="width: ${Math.min(prob, 100)}%"></div></div></td></tr>`;
             }).join('');
         }
 
