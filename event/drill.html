@@ -248,10 +248,15 @@
                                 <li>毎日0時にリセット</li>
                             </ul>
                             <h6 class="text-info small">🎁 キリ番ボーナス</h6>
-                            <ul class="mb-0 small" style="line-height: 1.8;">
+                            <ul class="mb-2 small" style="line-height: 1.8;">
                                 <li><span class="text-warning fw-bold">100Mごと</span> → 祈願符 1枚</li>
                                 <li><span class="text-warning fw-bold">1,000Mごと</span> → 祈願符 5枚</li>
                                 <li><span class="text-warning fw-bold">10,000M到達</span> → 限定バッジ！</li>
+                            </ul>
+                            <h6 class="text-info small">📈 地盤レベル</h6>
+                            <ul class="mb-0 small" style="line-height: 1.8;">
+                                <li>合計 <span class="text-warning">1,000M</span> ごとにレベルUP！</li>
+                                <li>レベルが上がると報酬が豪華に（最大 <span class="badge bg-warning text-dark">Lv10</span>）</li>
                             </ul>
                         </div>
                     </div>
@@ -259,7 +264,7 @@
                 <div class="col-md-5">
                     <!-- 掘った深さランキング -->
                     <div class="info-panel h-100">
-                        <h6 class="text-warning mb-3">🏆 掘削王ランキング (TOP 3)</h6>
+                        <h6 class="text-warning mb-3">🏆 掘削王ランキング (TOP 5)</h6>
                         <div id="user-ranking-list">
                             <div class="text-center text-muted py-4">データ取得中...</div>
                         </div>
@@ -508,7 +513,7 @@
                     document.getElementById('repair-area').style.display = 'none';
                 }
 
-                renderRanking(globalData.slice(0, 3));
+                renderRanking(globalData.slice(0, 5));
 
                 // データベースから該当レベルの報酬を取得
                 const { data: rewardsData } = await supabaseClient
@@ -527,8 +532,8 @@
         function renderRanking(topUsers) {
             const container = document.getElementById('user-ranking-list');
             if (!topUsers || topUsers.length === 0) { container.innerHTML = '<div class="text-center text-muted">データなし</div>'; return; }
-            const rankClasses = ['rank-gold', 'rank-silver', 'rank-bronze'];
-            const rankEmojis = ['🥇', '🥈', '🥉'];
+            const rankClasses = ['rank-gold', 'rank-silver', 'rank-bronze', '', ''];
+            const rankEmojis = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
 
             container.innerHTML = topUsers.map((u, i) => {
                 const profile = u.profiles;
