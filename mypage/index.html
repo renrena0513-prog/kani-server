@@ -360,6 +360,35 @@
             background: #adb5bd;
         }
 
+        @media (max-width: 767px) {
+            .stat-card-mini {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 10px 15px;
+                text-align: left;
+            }
+
+            .stat-label-mini {
+                margin-bottom: 0;
+                flex: 1;
+            }
+
+            .stat-value-mini {
+                font-size: 1.1rem;
+                margin: 0 10px;
+                flex: 1;
+                text-align: right;
+            }
+
+            .stat-rank {
+                margin-top: 0;
+                font-size: 0.65rem;
+                min-width: 60px;
+                text-align: center;
+            }
+        }
+
         /* バッジ一覧のスタイル */
         .badge-item {
             cursor: pointer;
