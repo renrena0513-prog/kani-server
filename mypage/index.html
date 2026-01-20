@@ -1270,7 +1270,7 @@
                             <h4 style="font-family: var(--font-title); color: var(--deep-purple); margin: 0;">
                                 📛 バッジコレクション
                             </h4>
-                            <div class="text-muted small d-none d-md-block">
+                            <div class="text-muted small">
                                 バッジの総資産: <span class="fw-bold text-warning" id="total-assets-value">0</span> C
                             </div>
                         </div>
@@ -1351,9 +1351,8 @@
                                             <option value="acquired_desc" selected>入手順（新→古）</option>
                                             <option value="acquired_asc">入手順（古→新）</option>
                                             <option value="number">ナンバー順</option>
-                                            <option value="rarity">レアリティ順</option>
-                                            <option value="price_desc">価格（高→低）</option>
-                                            <option value="price_asc">価格（低→高）</option>
+                                            <option value="price_desc">価格順（高→低）</option>
+                                            <option value="price_asc">価格順（低→高）</option>
                                             <option value="count">所持数</option>
                                             <option value="circulation">流通数</option>
                                         </select>
@@ -1371,9 +1370,10 @@
                                     </div>
 
                                     <!-- ミュータントフィルター -->
-                                    <div class="col-12 col-md-3">
+                                    <div class="col-12 col-md-2">
                                         <button id="filter-mutant-btn" class="btn btn-sm w-100 btn-mutant-filter py-1"
-                                            onclick="toggleMutantFilter()" style="min-width: 110px;">
+                                            onclick="toggleMutantFilter()"
+                                            style="font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                             ✨ ミュータント
                                         </button>
                                     </div>
@@ -2461,16 +2461,17 @@
             filtered.sort((a, b) => {
                 const valA = a;
                 const valB = b;
+
+                // 入手順のためのID取得 (user_badges_newテーブルの主キーカラム名に対応)
+                const getSortId = (item) => Number(item.user_badges_new || item.id) || 0;
+
                 switch (sortBy) {
                     case 'acquired_desc':
-                        return (Number(valB.mainItem.id) || 0) - (Number(valA.mainItem.id) || 0);
+                        return getSortId(valB.mainItem) - getSortId(valA.mainItem);
                     case 'acquired_asc':
-                        return (Number(valA.mainItem.id) || 0) - (Number(valB.mainItem.id) || 0);
+                        return getSortId(valA.mainItem) - getSortId(valB.mainItem);
                     case 'number':
                         return (Number(valA.badge.id) || 0) - (Number(valB.badge.id) || 0);
-                    case 'rarity':
-                        const rarityOrder = { '神話': 6, '伝説': 5, '希少': 4, '良質': 3, '一般': 2, '-': 1 };
-                        return (rarityOrder[valB.rarity] || 0) - (rarityOrder[valA.rarity] || 0);
                     case 'price_desc':
                         return (Number(valB.pValue) || 0) - (Number(valA.pValue) || 0);
                     case 'price_asc':
