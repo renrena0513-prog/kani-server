@@ -1266,32 +1266,27 @@
                     <!-- バッジコレクション -->
                     <div class="profile-card mb-4" id="badge-collection-section" style="display: none;">
                         <!-- タイトル行 -->
-                        <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                             <h4 style="font-family: var(--font-title); color: var(--deep-purple); margin: 0;">
                                 📛 バッジコレクション
                             </h4>
-                            <div class="text-muted small">
-                                バッジの総資産: <span class="fw-bold text-warning" id="total-assets-value">0</span> C
+                            <div class="d-flex gap-2" id="badge-header-actions">
+                                <button id="badge-change-btn" onclick="openBadgeChangeModal()"
+                                    class="btn-badge-action btn-badge-equip" style="display: none;">
+                                    <i class="bi bi-award"></i>
+                                    <span>装着</span>
+                                </button>
+                                <button id="badge-transfer-btn" onclick="openBadgeSelectionModal('transfer')"
+                                    class="btn-badge-action btn-badge-transfer" style="display: none;">
+                                    <i class="bi bi-gift"></i>
+                                    <span>譲渡</span>
+                                </button>
+                                <button id="badge-sell-btn" onclick="openBadgeSelectionModal('sell')"
+                                    class="btn-badge-action btn-badge-sell" style="display: none;">
+                                    <i class="bi bi-cash-coin"></i>
+                                    <span>売却</span>
+                                </button>
                             </div>
-                        </div>
-
-                        <!-- ボタン行 -->
-                        <div class="d-flex gap-2 mb-3 flex-wrap">
-                            <button id="badge-transfer-btn" onclick="openBadgeSelectionModal('transfer')"
-                                class="btn-badge-action btn-badge-transfer" style="display: none;">
-                                <i class="bi bi-gift"></i>
-                                <span>譲渡</span>
-                            </button>
-                            <button id="badge-sell-btn" onclick="openBadgeSelectionModal('sell')"
-                                class="btn-badge-action btn-badge-sell" style="display: none;">
-                                <i class="bi bi-cash-coin"></i>
-                                <span>売却</span>
-                            </button>
-                            <button id="badge-change-btn" onclick="openBadgeChangeModal()"
-                                class="btn-badge-action btn-badge-equip" style="display: none;">
-                                <i class="bi bi-award"></i>
-                                <span>装着</span>
-                            </button>
                         </div>
 
                         <!-- 限定バッジ（折り畳み） -->
