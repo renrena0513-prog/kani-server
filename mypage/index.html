@@ -871,6 +871,59 @@
             content: "⭐ ";
         }
 
+        /* ページネーションのプレミアムスタイル */
+        .pagination-premium {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 4px;
+            margin-bottom: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .pagination-premium .page-item {
+            margin: 0 !important;
+        }
+
+        .pagination-premium .page-link {
+            border: none;
+            background: white;
+            color: var(--deep-purple);
+            border-radius: 8px !important;
+            min-width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .pagination-premium .page-item.active .page-link {
+            background: var(--primary-gradient) !important;
+            color: white !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .pagination-premium .page-item.disabled .page-link {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        @media (max-width: 576px) {
+            .pagination-premium {
+                gap: 2px;
+            }
+
+            .pagination-premium .page-link {
+                min-width: 28px;
+                height: 28px;
+                font-size: 0.75rem;
+            }
+        }
+
         /* レスポンシブ調整 */
         @media (max-width: 767px) {
             .badge-control-panel {
@@ -1386,7 +1439,7 @@
                                     <div class="text-muted small">
                                         <span id="badge-showing-info"></span>
                                     </div>
-                                    <ul id="badge-pagination" class="pagination pagination-sm mb-0">
+                                    <ul id="badge-pagination" class="pagination pagination-sm mb-0 pagination-premium">
                                         <!-- JSで生成 -->
                                     </ul>
                                 </div>
@@ -2908,10 +2961,12 @@
                 // 6. ページネーションUI（改善版）
                 const paginationArea = document.getElementById('activity-pagination-area');
                 if (totalPages > 1) {
-                    // ページ範囲を計算（5ページごとのグループ）
-                    const pageGroup = Math.ceil(page / 5);
-                    const startPage = (pageGroup - 1) * 5 + 1;
-                    const endPage = Math.min(startPage + 4, totalPages);
+                    // 画面幅に応じてボタン表示数を切り替え (モバイル:3, 中間:4, PC:5+)
+                    const width = window.innerWidth;
+                    const groupSize = width < 576 ? 3 : (width < 992 ? 4 : 5);
+                    const pageGroup = Math.ceil(page / groupSize);
+                    const startPage = (pageGroup - 1) * groupSize + 1;
+                    const endPage = Math.min(startPage + (groupSize - 1), totalPages);
 
                     let pagHtml = '';
 
@@ -2921,11 +2976,11 @@
                             <a class="page-link shadow-sm" href="javascript:void(0)" onclick="loadActivityLogs(1)">«</a>
                         </li>`;
 
-                    // 「前の5ページ」ボタン
+                    // 「前のグループ」ボタン
                     if (startPage > 1) {
                         pagHtml += `
                         <li class="page-item">
-                            <a class="page-link shadow-sm" href="javascript:void(0)" onclick="loadActivityLogs(${startPage - 1})">‹‹</a>
+                            <a class="page-link shadow-sm" href="javascript:void(0)" onclick="loadActivityLogs(${startPage - 1})">‹</a>
                         </li>`;
                     }
 
@@ -2937,11 +2992,11 @@
                         </li>`;
                     }
 
-                    // 「次の5ページ」ボタン
+                    // 「次のグループ」ボタン
                     if (endPage < totalPages) {
                         pagHtml += `
                         <li class="page-item">
-                            <a class="page-link shadow-sm" href="javascript:void(0)" onclick="loadActivityLogs(${endPage + 1})">››</a>
+                            <a class="page-link shadow-sm" href="javascript:void(0)" onclick="loadActivityLogs(${endPage + 1})">›</a>
                         </li>`;
                     }
 
@@ -2951,14 +3006,15 @@
                             <a class="page-link shadow-sm" href="javascript:void(0)" onclick="loadActivityLogs(${totalPages})">»</a>
                         </li>`;
 
-                    // プルダウンによるページ選択
+                    // プルダウンによるページ選択 (モバイルではコンパクトに)
+                    const selectWidth = width < 576 ? '100px' : 'auto';
                     pagHtml += `
-                        <li class="page-item ms-2">
-                            <select class="form-select form-select-sm shadow-sm" onchange="if(this.value) loadActivityLogs(parseInt(this.value))" style="width: auto; display: inline-block;">
-                                <option value="">ページを選択...</option>`;
+                        <li class="page-item ms-sm-2">
+                            <select class="form-select form-select-sm shadow-sm" onchange="if(this.value) loadActivityLogs(parseInt(this.value))" style="width: ${selectWidth}; display: inline-block; font-size: 0.75rem;">
+                                <option value="">ページ...</option>`;
 
                     for (let i = 1; i <= totalPages; i++) {
-                        pagHtml += `<option value="${i}" ${i === page ? 'selected' : ''}>ページ ${i}</option>`;
+                        pagHtml += `<option value="${i}" ${i === page ? 'selected' : ''}>${i}ページ</option>`;
                     }
 
                     pagHtml += `
