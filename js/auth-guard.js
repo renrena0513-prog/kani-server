@@ -1,7 +1,10 @@
 // 認証ガード - 全ページで認証状態をチェック
 (async function () {
-    // ログインページ自体は除外
-    if (window.location.pathname.includes('/login')) {
+    // 認証不要のページを除外
+    const publicPages = ['/login', '/mahjong/index.html'];
+    const isPublicPage = publicPages.some(page => window.location.pathname.includes(page));
+
+    if (isPublicPage) {
         return;
     }
 

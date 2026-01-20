@@ -12,10 +12,28 @@ document.addEventListener('DOMContentLoaded', () => {
 async function fetchData() {
     try {
         // 第二回麻雀大会のデータを取得（match_resultsテーブル）
-        const { data: currentData, error: currentError } = await supabaseClient
-            .from('match_results')
-            .select('*');
-        if (currentError) throw currentError;
+        // Supabaseのデフォルト1000件制限を回避するため、すべてのデータを明示的に取得
+        let allCurrentData = [];
+        let page = 0;
+        const pageSize = 1000;
+
+        while (true) {
+            const { data, error } = await supabaseClient
+                .from('match_results')
+                .select('*')
+                .range(page * pageSize, (page + 1) * pageSize - 1);
+
+            if (error) throw error;
+            if (!data || data.length === 0) break;
+
+            allCurrentData = allCurrentData.concat(data);
+
+            // データが pageSize より少なければ、これが最後のページ
+            if (data.length < pageSize) break;
+            page++;
+        }
+
+        console.log('✅ match_results取得完了:', allCurrentData.length, '件');
 
         // 第一回麻雀大会のデータを取得（tournament_player_stats_snapshotテーブル）
         const { data: legacyData, error: legacyError } = await supabaseClient
@@ -27,7 +45,7 @@ async function fetchData() {
         }
 
         // 新データにも tournament_type を保障（初期データ等で抜けている場合のため）
-        const taggedCurrentData = (currentData || []).map(r => ({
+        const taggedCurrentData = (allCurrentData || []).map(r => ({
             ...r,
             tournament_type: r.tournament_type || '第二回麻雀大会'
         }));

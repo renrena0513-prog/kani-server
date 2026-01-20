@@ -1,6 +1,6 @@
 // Supabase 設定
 const SUPABASE_URL = 'https://hbkacwpvnyqzsdzqphmy.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_938ml0_pzLebwIZ2eZckTw_bzu1eu4A';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhia2Fjd3B2bnlxenNkenFwaG15Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc1MTU4MzQsImV4cCI6MjA4MzA5MTgzNH0.lQs77d4F3H7oBTe9jl2BnqU0pqPLYClTIm-cKkozQkE';
 
 // ===== 管理者設定 =====
 const ADMIN_DISCORD_IDS = [
