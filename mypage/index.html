@@ -2388,21 +2388,73 @@
                         `;
                 }).join('');
 
-                // 6. ページネーションUI
+
+                // 6. ページネーションUI（改善版）
                 const paginationArea = document.getElementById('activity-pagination-area');
                 if (totalPages > 1) {
+                    // ページ範囲を計算（5ページごとのグループ）
+                    const pageGroup = Math.ceil(page / 5);
+                    const startPage = (pageGroup - 1) * 5 + 1;
+                    const endPage = Math.min(startPage + 4, totalPages);
+
                     let pagHtml = '';
-                    for (let i = 1; i <= totalPages; i++) {
+
+                    // 「最初へ」ボタン
+                    pagHtml += `
+                        <li class="page-item ${page === 1 ? 'disabled' : ''}">
+                            <a class="page-link shadow-sm" href="javascript:void(0)" onclick="loadActivityLogs(1)">«</a>
+                        </li>`;
+
+                    // 「前の5ページ」ボタン
+                    if (startPage > 1) {
+                        pagHtml += `
+                        <li class="page-item">
+                            <a class="page-link shadow-sm" href="javascript:void(0)" onclick="loadActivityLogs(${startPage - 1})">‹‹</a>
+                        </li>`;
+                    }
+
+                    // 現在のグループのページ番号（最大5個）
+                    for (let i = startPage; i <= endPage; i++) {
                         pagHtml += `
                         <li class="page-item ${i === page ? 'active' : ''}">
                             <a class="page-link shadow-sm" href="javascript:void(0)" onclick="loadActivityLogs(${i})">${i}</a>
                         </li>`;
                     }
+
+                    // 「次の5ページ」ボタン
+                    if (endPage < totalPages) {
+                        pagHtml += `
+                        <li class="page-item">
+                            <a class="page-link shadow-sm" href="javascript:void(0)" onclick="loadActivityLogs(${endPage + 1})">››</a>
+                        </li>`;
+                    }
+
+                    // 「最後へ」ボタン
+                    pagHtml += `
+                        <li class="page-item ${page === totalPages ? 'disabled' : ''}">
+                            <a class="page-link shadow-sm" href="javascript:void(0)" onclick="loadActivityLogs(${totalPages})">»</a>
+                        </li>`;
+
+                    // プルダウンによるページ選択
+                    pagHtml += `
+                        <li class="page-item ms-2">
+                            <select class="form-select form-select-sm shadow-sm" onchange="if(this.value) loadActivityLogs(parseInt(this.value))" style="width: auto; display: inline-block;">
+                                <option value="">ページを選択...</option>`;
+
+                    for (let i = 1; i <= totalPages; i++) {
+                        pagHtml += `<option value="${i}" ${i === page ? 'selected' : ''}>ページ ${i}</option>`;
+                    }
+
+                    pagHtml += `
+                            </select>
+                        </li>`;
+
                     paginationEl.innerHTML = pagHtml;
                     if (paginationArea) paginationArea.style.display = 'block';
                 } else {
                     if (paginationArea) paginationArea.style.display = 'none';
                 }
+
 
             } catch (err) {
                 console.error('Activity logs error:', err);
