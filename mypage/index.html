@@ -2124,7 +2124,7 @@
 
             try {
                 const [ownedRes, marketCountRes, profileRes, thresholdsRes] = await Promise.all([
-                    supabaseClient.from('user_badges_new').select('*, badges(*)').eq('user_id', targetId).order('user_badges_new', { ascending: false }),
+                    supabaseClient.from('user_badges_new').select('*, badges(*)').eq('user_id', targetId),
                     supabaseClient.from('user_badges_new').select('badge_id'),
                     supabaseClient.from('profiles').select('coins, equipped_badge_id, equipped_badge_id_right, total_assets').eq('discord_user_id', targetId).maybeSingle(),
                     supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true })
@@ -2146,7 +2146,13 @@
                     }
                     return current;
                 }
-                const owned = ownedRes.data;
+                const owned = ownedRes.data || [];
+                // 入手順（acquired_atの降順）でソート
+                owned.sort((a, b) => {
+                    const dateA = new Date(a.acquired_at || 0);
+                    const dateB = new Date(b.acquired_at || 0);
+                    return dateB - dateA;
+                });
                 const profileData = profileRes.data;
                 const userCoins = profileData?.coins || 0;
                 const equippedId = profileData?.equipped_badge_id;
@@ -2192,14 +2198,14 @@
                             instances: [],
                             isEquippedLeft: false,
                             isEquippedRight: false,
-                            maxId: itemId // ソート基準用の最大ID
+                            latestAcquiredAt: item.acquired_at || '' // ソート基準用の最新日時
                         };
                     }
                     groupedOwned[bid].instances.push(item);
 
-                    // 最新の取得個体を基準にする
-                    if (itemId > groupedOwned[bid].maxId) {
-                        groupedOwned[bid].maxId = itemId;
+                    // 最新の取得日時を基準にする
+                    if (!groupedOwned[bid].latestAcquiredAt || new Date(item.acquired_at) > new Date(groupedOwned[bid].latestAcquiredAt)) {
+                        groupedOwned[bid].latestAcquiredAt = item.acquired_at;
                     }
 
                     if (item.badge_id === equippedId) {
@@ -2210,9 +2216,9 @@
                     }
                 });
 
-                // 各グループの mainItem を最新（maxId）の個体に設定
+                // 各グループの mainItem を最新（latestAcquiredAt）の個体に設定
                 Object.values(groupedOwned).forEach(group => {
-                    group.mainItem = group.instances.find(inst => (Number(inst.user_badges_new || inst.id) || 0) === group.maxId) || group.instances[0];
+                    group.mainItem = group.instances.find(inst => inst.acquired_at === group.latestAcquiredAt) || group.instances[0];
                 });
 
                 let totalBadgeAssetValue = 0;
@@ -2475,14 +2481,14 @@
                 const valA = a;
                 const valB = b;
 
-                // 入手順のためのID取得 (user_badges_newテーブルの主キーカラム名に対応)
-                const getSortId = (item) => Number(item.user_badges_new || item.id) || 0;
+                // 入手順のための取得日時
+                const getAcquiredTime = (item) => new Date(item.acquired_at || 0).getTime();
 
                 switch (sortBy) {
                     case 'acquired_desc':
-                        return getSortId(valB.mainItem) - getSortId(valA.mainItem);
+                        return getAcquiredTime(valB.mainItem) - getAcquiredTime(valA.mainItem);
                     case 'acquired_asc':
-                        return getSortId(valA.mainItem) - getSortId(valB.mainItem);
+                        return getAcquiredTime(valA.mainItem) - getAcquiredTime(valB.mainItem);
                     case 'number':
                         return (Number(valA.badge.id) || 0) - (Number(valB.badge.id) || 0);
                     case 'price_desc':
