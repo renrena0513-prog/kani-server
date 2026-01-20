@@ -1371,9 +1371,9 @@
                                     </div>
 
                                     <!-- ミュータントフィルター -->
-                                    <div class="col-12 col-md-2">
+                                    <div class="col-12 col-md-3">
                                         <button id="filter-mutant-btn" class="btn btn-sm w-100 btn-mutant-filter py-1"
-                                            onclick="toggleMutantFilter()">
+                                            onclick="toggleMutantFilter()" style="min-width: 110px;">
                                             ✨ ミュータント
                                         </button>
                                     </div>
@@ -2440,7 +2440,8 @@
                 // 形式フィルター
                 if (typeFilter) {
                     if (typeFilter === 'ガチャ限定') {
-                        if (!badge.is_gacha_eligible) return false;
+                        // is_gacha_eligible が真（true, 1, "true"など）かどうか
+                        if (!badge.is_gacha_eligible || badge.is_gacha_eligible === 'false') return false;
                     } else if (typeFilter === '変動型') {
                         if (badge.sales_type !== '変動型') return false;
                     } else if (typeFilter === '固定型') {
@@ -2458,28 +2459,26 @@
 
             // ソート適用
             filtered.sort((a, b) => {
+                const valA = a;
+                const valB = b;
                 switch (sortBy) {
                     case 'acquired_desc':
-                        // 新しい順 (user_badges_new.id)
-                        return (b.mainItem.id || 0) - (a.mainItem.id || 0);
+                        return (Number(valB.mainItem.id) || 0) - (Number(valA.mainItem.id) || 0);
                     case 'acquired_asc':
-                        // 古い順
-                        return (a.mainItem.id || 0) - (b.mainItem.id || 0);
+                        return (Number(valA.mainItem.id) || 0) - (Number(valB.mainItem.id) || 0);
                     case 'number':
-                        // バッジID順
-                        return (a.badge.id || 0) - (b.badge.id || 0);
+                        return (Number(valA.badge.id) || 0) - (Number(valB.badge.id) || 0);
                     case 'rarity':
-                        // レアリティ順
                         const rarityOrder = { '神話': 6, '伝説': 5, '希少': 4, '良質': 3, '一般': 2, '-': 1 };
-                        return (rarityOrder[b.rarity] || 0) - (rarityOrder[a.rarity] || 0);
+                        return (rarityOrder[valB.rarity] || 0) - (rarityOrder[valA.rarity] || 0);
                     case 'price_desc':
-                        return (b.pValue || 0) - (a.pValue || 0);
+                        return (Number(valB.pValue) || 0) - (Number(valA.pValue) || 0);
                     case 'price_asc':
-                        return (a.pValue || 0) - (b.pValue || 0);
+                        return (Number(valA.pValue) || 0) - (Number(valB.pValue) || 0);
                     case 'count':
-                        return (b.count || 0) - (a.count || 0);
+                        return (Number(valB.count) || 0) - (Number(valA.count) || 0);
                     case 'circulation':
-                        return (b.n || 0) - (a.n || 0);
+                        return (Number(valB.n) || 0) - (Number(valA.n) || 0);
                     default:
                         return 0;
                 }
