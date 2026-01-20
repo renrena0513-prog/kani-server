@@ -842,38 +842,33 @@
             outline: none;
         }
 
-        /* ミュータントチェックボックス */
-        .badge-control-panel .form-check {
+        /* ミュータントフィルターボタン */
+        .btn-mutant-filter {
             background: white;
+            border: 2px solid #dee2e6;
+            color: #333;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             border-radius: 8px;
-            padding: 8px 12px;
-            border: 2px solid #dee2e6;
-            transition: all 0.3s ease;
+            white-space: nowrap;
         }
 
-        .badge-control-panel .form-check:hover {
+        .btn-mutant-filter:hover {
             border-color: var(--deep-purple);
-            background: rgba(106, 17, 203, 0.02);
+            background: rgba(106, 17, 203, 0.05);
+            transform: translateY(-1px);
         }
 
-        .badge-control-panel .form-check-input {
-            width: 1.2rem;
-            height: 1.2rem;
-            margin-top: 0;
-            border: 2px solid #dee2e6;
-            cursor: pointer;
+        .btn-mutant-filter.active {
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%) !important;
+            color: #2d3436 !important;
+            border-color: transparent !important;
+            box-shadow: 0 4px 15px rgba(255, 165, 0, 0.4);
+            transform: scale(1.02);
         }
 
-        .badge-control-panel .form-check-input:checked {
-            background-color: var(--deep-purple);
-            border-color: var(--deep-purple);
-        }
-
-        .badge-control-panel .form-check-label {
-            margin-left: 8px;
-            cursor: pointer;
-            font-weight: 500;
-            user-select: none;
+        .btn-mutant-filter.active::before {
+            content: "⭐ ";
         }
 
         /* レスポンシブ調整 */
@@ -1351,7 +1346,7 @@
 
                                     <!-- ソート -->
                                     <div class="col-6 col-md-3">
-                                        <select id="badge-sort" class="form-select form-select-sm"
+                                        <select id="badge-sort" class="form-select form-select-sm h-100"
                                             onchange="filterAndRenderBadges()">
                                             <option value="acquired_desc" selected>入手順（新→古）</option>
                                             <option value="acquired_asc">入手順（古→新）</option>
@@ -1366,7 +1361,7 @@
 
                                     <!-- 形式フィルター -->
                                     <div class="col-6 col-md-3">
-                                        <select id="badge-type-filter" class="form-select form-select-sm"
+                                        <select id="badge-type-filter" class="form-select form-select-sm h-100"
                                             onchange="filterAndRenderBadges()">
                                             <option value="">形式: すべて</option>
                                             <option value="変動型">変動型</option>
@@ -1377,13 +1372,10 @@
 
                                     <!-- ミュータントフィルター -->
                                     <div class="col-12 col-md-2">
-                                        <div class="form-check" style="padding-top: 0.25rem;">
-                                            <input class="form-check-input" type="checkbox" id="filter-mutant"
-                                                onchange="filterAndRenderBadges()">
-                                            <label class="form-check-label small" for="filter-mutant">
-                                                ✨ ミュータント
-                                            </label>
-                                        </div>
+                                        <button id="filter-mutant-btn" class="btn btn-sm w-100 btn-mutant-filter py-1"
+                                            onclick="toggleMutantFilter()">
+                                            ✨ ミュータント
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -2098,7 +2090,29 @@
         let convertibleBadges = [];
         let purchasableBadges = [];
         let currentBadgePage = 1;
+        let isMutantFilterActive = false;
         const BADGES_PER_PAGE = 12; // 4x3グリッド
+
+        function toggleMutantFilter() {
+            isMutantFilterActive = !isMutantFilterActive;
+            const btn = document.getElementById('filter-mutant-btn');
+            if (btn) {
+                if (isMutantFilterActive) {
+                    btn.classList.add('active');
+                    btn.classList.replace('btn-outline-secondary', 'btn-primary'); // 初期時用
+                    btn.style.background = 'linear-gradient(135deg, var(--deep-purple), var(--soft-purple))';
+                    btn.style.color = 'white';
+                    btn.style.borderColor = 'transparent';
+                } else {
+                    btn.classList.remove('active');
+                    btn.style.background = 'white';
+                    btn.style.color = '#333';
+                    btn.style.borderColor = '#dee2e6';
+                }
+            }
+            currentBadgePage = 1;
+            filterAndRenderBadges();
+        }
 
 
         async function loadOwnedBadges() {
@@ -2203,10 +2217,11 @@
 
                     const n = marketCounts[badge.id] || 0;
                     let pValue;
+                    const basePrice = Number(badge.price) || 0;
                     if (badge.sales_type === '変動型') {
-                        pValue = Math.ceil(badge.price * Math.pow(1.3, Math.max(0, n - 1)));
+                        pValue = Math.ceil(basePrice * Math.pow(1.3, Math.max(0, n - 1)));
                     } else {
-                        pValue = badge.price;
+                        pValue = basePrice;
                     }
 
                     // ミュータントは価値3倍で計算
@@ -2404,10 +2419,14 @@
 
         // フィルター・ソート・ページネーション機能
         function filterAndRenderBadges() {
-            const searchTerm = document.getElementById('badge-search')?.value.toLowerCase() || '';
-            const sortBy = document.getElementById('badge-sort')?.value || 'acquired_desc';
-            const typeFilter = document.getElementById('badge-type-filter')?.value || '';
-            const mutantOnly = document.getElementById('filter-mutant')?.checked || false;
+            const searchInput = document.getElementById('badge-search');
+            const sortSelect = document.getElementById('badge-sort');
+            const typeSelect = document.getElementById('badge-type-filter');
+
+            const searchTerm = searchInput?.value.toLowerCase() || '';
+            const sortBy = sortSelect?.value || 'acquired_desc';
+            const typeFilter = typeSelect?.value || '';
+            const mutantOnly = isMutantFilterActive;
 
             // フィルター適用
             let filtered = purchasableBadges.filter(badgeInfo => {
@@ -2420,9 +2439,13 @@
 
                 // 形式フィルター
                 if (typeFilter) {
-                    if (typeFilter === 'ガチャ限定' && badge.sales_type !== 'ガチャ限定') return false;
-                    if (typeFilter === '変動型' && badge.sales_type !== '変動型') return false;
-                    if (typeFilter === '固定型' && badge.sales_type !== '固定型') return false;
+                    if (typeFilter === 'ガチャ限定') {
+                        if (!badge.is_gacha_eligible) return false;
+                    } else if (typeFilter === '変動型') {
+                        if (badge.sales_type !== '変動型') return false;
+                    } else if (typeFilter === '固定型') {
+                        if (badge.sales_type !== '固定型') return false;
+                    }
                 }
 
                 // ミュータントフィルター
@@ -2437,22 +2460,24 @@
             filtered.sort((a, b) => {
                 switch (sortBy) {
                     case 'acquired_desc':
-                        // 新しい順（IDが大きい方が新しいと仮定）
+                        // 新しい順 (user_badges_new.id)
                         return (b.mainItem.id || 0) - (a.mainItem.id || 0);
                     case 'acquired_asc':
                         // 古い順
                         return (a.mainItem.id || 0) - (b.mainItem.id || 0);
                     case 'number':
+                        // バッジID順
                         return (a.badge.id || 0) - (b.badge.id || 0);
                     case 'rarity':
+                        // レアリティ順
                         const rarityOrder = { '神話': 6, '伝説': 5, '希少': 4, '良質': 3, '一般': 2, '-': 1 };
                         return (rarityOrder[b.rarity] || 0) - (rarityOrder[a.rarity] || 0);
                     case 'price_desc':
-                        return b.pValue - a.pValue;
+                        return (b.pValue || 0) - (a.pValue || 0);
                     case 'price_asc':
-                        return a.pValue - b.pValue;
+                        return (a.pValue || 0) - (b.pValue || 0);
                     case 'count':
-                        return b.count - a.count;
+                        return (b.count || 0) - (a.count || 0);
                     case 'circulation':
                         return (b.n || 0) - (a.n || 0);
                     default:
