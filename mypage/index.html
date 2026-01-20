@@ -2940,11 +2940,32 @@
                     myAccountName = user.user_metadata.provider_id;
                 }
 
-                const { data: currentData, error: currentError } = await supabaseClient
-                    .from('match_results')
-                    .select('*');
+                // 第二回麻雀大会のデータを取得（match_resultsテーブル）
+                // Supabaseのデフォルト1000件制限を回避するため、すべてのデータを明示的に取得
+                let allCurrentData = [];
+                let page = 0;
+                const pageSize = 1000;
 
-                if (currentError) console.warn('第二回データ取得エラー:', currentError);
+                while (true) {
+                    const { data, error } = await supabaseClient
+                        .from('match_results')
+                        .select('*')
+                        .range(page * pageSize, (page + 1) * pageSize - 1);
+
+                    if (error) {
+                        console.warn('第二回データ取得エラー:', error);
+                        break;
+                    }
+                    if (!data || data.length === 0) break;
+
+                    allCurrentData = allCurrentData.concat(data);
+
+                    if (data.length < pageSize) break;
+                    page++;
+                }
+
+                console.log('✅ マイページ: match_results取得完了:', allCurrentData.length, '件');
+                const currentData = allCurrentData;
 
                 let legacyData = [];
                 try {
