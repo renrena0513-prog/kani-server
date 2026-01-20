@@ -744,10 +744,119 @@
             box-shadow: 0 4px 10px rgba(106, 17, 203, 0.3);
         }
 
-        .pagination-premium .page-link:hover {
-            background: var(--gold);
-            color: white !important;
+        /* バッジアクションボタン（改善デザイン） */
+        .btn-badge-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border: 2px solid;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .btn-badge-action i {
+            font-size: 1.1rem;
+        }
+
+        .btn-badge-transfer {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: #667eea;
+            color: white;
+        }
+
+        .btn-badge-transfer:hover {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+            border-color: #764ba2;
             transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            color: white;
+        }
+
+        .btn-badge-sell {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-color: #f5576c;
+            color: white;
+        }
+
+        .btn-badge-sell:hover {
+            background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+            border-color: #f093fb;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(245, 87, 108, 0.4);
+            color: white;
+        }
+
+        .btn-badge-equip {
+            background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+            border-color: #fdcb6e;
+            color: #2d3436;
+        }
+
+        .btn-badge-equip:hover {
+            background: linear-gradient(135deg, #fdcb6e 0%, #ffeaa7 100%);
+            border-color: #fdcb6e;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(253, 203, 110, 0.4);
+        }
+
+        /* セクションヘッダー */
+        .badge-section-header {
+            cursor: pointer;
+            padding: 8px 0;
+            transition: all 0.2s;
+        }
+
+        .badge-section-header:hover {
+            opacity: 0.7;
+        }
+
+        /* フィルターコントロールパネル */
+        .badge-control-panel {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid #e9ecef;
+        }
+
+        /* モバイル対応のグリッド */
+        @media (max-width: 767px) {
+
+            /* バッジコレクションのグリッド: 2列固定 */
+            #special-badge-list>div,
+            #convertible-badge-list>div,
+            #purchasable-badge-list>div {
+                flex: 0 0 50% !important;
+                max-width: 50% !important;
+            }
+
+            /* ボタンを縦並びに */
+            .btn-badge-action {
+                flex: 1;
+                min-width: 0;
+                justify-content: center;
+            }
+
+            /* フィルターコントロールをモバイル最適化 */
+            .badge-control-panel .row>div {
+                margin-bottom: 8px;
+            }
+
+            .badge-control-panel select,
+            .badge-control-panel input {
+                font-size: 0.85rem;
+            }
+        }
+
+        /* PC版では4列 */
+        @media (min-width: 768px) {
+            #purchasable-badge-list>div {
+                flex: 0 0 25% !important;
+                max-width: 25% !important;
+            }
         }
     </style>
 </head>
@@ -1086,48 +1195,140 @@
 
                     <!-- バッジコレクション -->
                     <div class="profile-card mb-4" id="badge-collection-section" style="display: none;">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <!-- タイトル行 -->
+                        <div class="d-flex justify-content-between align-items-center mb-2">
                             <h4 style="font-family: var(--font-title); color: var(--deep-purple); margin: 0;">
                                 📛 バッジコレクション
                             </h4>
-                            <div class="d-flex gap-2">
-                                <button id="badge-transfer-btn" onclick="openBadgeSelectionModal('transfer')"
-                                    class="btn btn-sm btn-outline-primary" style="display: none;">
-                                    譲渡
-                                </button>
-                                <button id="badge-sell-btn" onclick="openBadgeSelectionModal('sell')"
-                                    class="btn btn-sm btn-outline-danger" style="display: none;">
-                                    売却
-                                </button>
-                                <button id="badge-change-btn" onclick="openBadgeChangeModal()"
-                                    class="btn btn-sm btn-outline-secondary" style="display: none;">
-                                    装着
-                                </button>
+                            <div class="text-muted small d-none d-md-block">
+                                総資産: <span class="fw-bold text-warning" id="total-assets-value">0</span> C
                             </div>
                         </div>
 
-                        <!-- 非売品バッジ -->
-                        <div id="special-badges-section" style="display: none;">
-                            <h6 class="text-muted mb-2" style="font-size: 0.85rem;">🏆 限定バッジ</h6>
-                            <div id="special-badge-list" class="row g-3 mb-4">
-                                <!-- JSで生成 -->
+                        <!-- ボタン行 -->
+                        <div class="d-flex gap-2 mb-3 flex-wrap">
+                            <button id="badge-transfer-btn" onclick="openBadgeSelectionModal('transfer')"
+                                class="btn-badge-action btn-badge-transfer" style="display: none;">
+                                <i class="bi bi-gift"></i>
+                                <span>譲渡</span>
+                            </button>
+                            <button id="badge-sell-btn" onclick="openBadgeSelectionModal('sell')"
+                                class="btn-badge-action btn-badge-sell" style="display: none;">
+                                <i class="bi bi-cash-coin"></i>
+                                <span>売却</span>
+                            </button>
+                            <button id="badge-change-btn" onclick="openBadgeChangeModal()"
+                                class="btn-badge-action btn-badge-equip" style="display: none;">
+                                <i class="bi bi-award"></i>
+                                <span>装着</span>
+                            </button>
+                        </div>
+
+                        <!-- 限定バッジ（折り畳み） -->
+                        <div id="special-badges-section" class="mb-3" style="display: none;">
+                            <div class="d-flex justify-content-between align-items-center mb-2 badge-section-header"
+                                onclick="toggleBadgeSection('special')" style="cursor: pointer;">
+                                <h6 class="text-muted mb-0" style="font-size: 0.9rem;">
+                                    <span id="special-toggle-icon">▶</span> 🏆 限定バッジ
+                                    <span id="special-count" class="badge bg-secondary ms-2">0</span>
+                                </h6>
+                            </div>
+                            <div id="special-badge-content" style="display: none;">
+                                <div id="special-badge-list" class="row g-3 mb-4">
+                                    <!-- JSで生成 -->
+                                </div>
                             </div>
                         </div>
 
-                        <!-- 換金品（御神石など） -->
-                        <div id="convertible-badges-section" style="display: none;">
-                            <h6 class="text-muted mb-2" style="font-size: 0.85rem;">💎 換金品</h6>
-                            <div id="convertible-badge-list" class="row g-3 mb-4">
-                                <!-- JSで生成 -->
+                        <!-- 換金品（折り畳み） -->
+                        <div id="convertible-badges-section" class="mb-3" style="display: none;">
+                            <div class="d-flex justify-content-between align-items-center mb-2 badge-section-header"
+                                onclick="toggleBadgeSection('convertible')" style="cursor: pointer;">
+                                <h6 class="text-muted mb-0" style="font-size: 0.9rem;">
+                                    <span id="convertible-toggle-icon">▶</span> 💎 換金品
+                                    <span id="convertible-count" class="badge bg-secondary ms-2">0</span>
+                                </h6>
+                            </div>
+                            <div id="convertible-badge-content" style="display: none;">
+                                <div id="convertible-badge-list" class="row g-3 mb-4">
+                                    <!-- JSで生成 -->
+                                </div>
                             </div>
                         </div>
 
                         <!-- 購入バッジ -->
                         <div id="purchasable-badges-section" style="display: none;">
-                            <h6 class="text-muted mb-2" style="font-size: 0.85rem;">🛒 購入バッジ</h6>
+                            <h6 class="text-muted mb-3" style="font-size: 0.9rem;">🛒 購入バッジ</h6>
+
+                            <!-- フィルター＆ソートUI -->
+                            <div class="badge-control-panel mb-3">
+                                <div class="row g-2">
+                                    <!-- 検索バー -->
+                                    <div class="col-12 col-md-4">
+                                        <div class="position-relative">
+                                            <i class="bi bi-search"
+                                                style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #aaa;"></i>
+                                            <input type="text" id="badge-search" class="form-control form-control-sm"
+                                                style="padding-left: 35px;" placeholder="バッジ名で検索..."
+                                                oninput="filterAndRenderBadges()">
+                                        </div>
+                                    </div>
+
+                                    <!-- ソート -->
+                                    <div class="col-6 col-md-3">
+                                        <select id="badge-sort" class="form-select form-select-sm"
+                                            onchange="filterAndRenderBadges()">
+                                            <option value="acquired_desc" selected>入手順（新→古）</option>
+                                            <option value="acquired_asc">入手順（古→新）</option>
+                                            <option value="number">ナンバー順</option>
+                                            <option value="rarity">レアリティ順</option>
+                                            <option value="price_desc">価格（高→低）</option>
+                                            <option value="price_asc">価格（低→高）</option>
+                                            <option value="count">所持数</option>
+                                            <option value="circulation">流通数</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- 形式フィルター -->
+                                    <div class="col-6 col-md-3">
+                                        <select id="badge-type-filter" class="form-select form-select-sm"
+                                            onchange="filterAndRenderBadges()">
+                                            <option value="">形式: すべて</option>
+                                            <option value="変動型">変動型</option>
+                                            <option value="固定型">固定型</option>
+                                            <option value="ガチャ限定">ガチャ限定</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- ミュータントフィルター -->
+                                    <div class="col-12 col-md-2">
+                                        <div class="form-check" style="padding-top: 0.25rem;">
+                                            <input class="form-check-input" type="checkbox" id="filter-mutant"
+                                                onchange="filterAndRenderBadges()">
+                                            <label class="form-check-label small" for="filter-mutant">
+                                                ✨ ミュータント
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- バッジグリッド -->
                             <div id="purchasable-badge-list" class="row g-3">
                                 <!-- JSで生成 -->
                             </div>
+
+                            <!-- ページネーション -->
+                            <nav id="badge-pagination-area" class="mt-4" style="display: none;">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                    <div class="text-muted small">
+                                        <span id="badge-showing-info"></span>
+                                    </div>
+                                    <ul id="badge-pagination" class="pagination pagination-sm mb-0">
+                                        <!-- JSで生成 -->
+                                    </ul>
+                                </div>
+                            </nav>
                         </div>
 
                         <div id="no-badges-msg" class="text-center text-muted py-3" style="display: none;">
