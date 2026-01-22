@@ -51,9 +51,11 @@ async function fetchData() {
         }));
 
         // 過去データに tournament_type を付与（タグ付けされていない場合）
+        // また、discord_user_idに含まれる改行コードを除去
         const taggedLegacyData = (legacyData || []).map(r => ({
             ...r,
-            tournament_type: r.tournament_type || '第一回麻雀大会'
+            tournament_type: r.tournament_type || '第一回麻雀大会',
+            discord_user_id: r.discord_user_id ? r.discord_user_id.trim() : null
         }));
 
         // 両方のデータを結合
