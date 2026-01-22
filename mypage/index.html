@@ -1185,8 +1185,7 @@
                                     <label class="filter-label-mini">🀄 形式</label>
                                     <select id="mode-select" class="mahjong-filter-select"
                                         onchange="handleModeChange()">
-                                        <option value="all">個人戦（総合）</option>
-                                        <option value="individual_yonma">個人戦（四麻）</option>
+                                        <option value="individual_yonma" selected>個人戦（四麻）</option>
                                         <option value="individual_sanma">個人戦（三麻）</option>
                                         <option value="team">チーム戦</option>
                                     </select>
@@ -3660,7 +3659,7 @@
             displayMahjongStats();
         }
 
-        let currentMahjongMode = 'all'; // 総合/四麻/三麻
+        let currentMahjongMode = 'individual_yonma'; // 四麻/三麻/チーム
 
         function handleModeChange() {
             const select = document.getElementById('mode-select');
@@ -3685,7 +3684,6 @@
             } else if (currentMahjongMode === 'individual_sanma') {
                 records = records.filter(r => (r.mahjong_mode || r.mode) === '三麻');
             }
-            // 'all' の場合は全ての個人戦データ
 
             const playerStats = calculateAllPlayerStats(records);
             const myStats = playerStats.find(p => p.name === myAccountName);

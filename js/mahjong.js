@@ -1,7 +1,7 @@
 let allRecords = [];
 let allProfiles = []; // プロフィール情報（アイコン付き）
 let currentTournament = '第二回麻雀大会'; // 初期表示は第二回
-let currentMainFilter = 'all'; // 総合, チーム戦(三/四), 個人戦(三/四)
+let currentMainFilter = 'individual_yonma'; // チーム戦, 個人戦(四麻), 個人戦(三麻)
 let currentSubFilter = 'all';  // 合計スコア, 平均スコア, 最大スコア, etc.
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -163,17 +163,15 @@ function renderMainFilters() {
     if (currentTournament === '第一回麻雀大会') {
         filters = [
             { id: 'team', label: 'チーム戦' },
-            { id: 'all', label: '個人戦（総合）' },
             { id: 'individual_yonma', label: '個人戦（四麻）' }
         ];
         // 第一回で現在のフィルタが不正な場合はデフォルトへ
-        if (currentMainFilter !== 'team' && currentMainFilter !== 'all' && currentMainFilter !== 'individual_yonma') {
-            currentMainFilter = 'all';
+        if (currentMainFilter !== 'team' && currentMainFilter !== 'individual_yonma') {
+            currentMainFilter = 'individual_yonma';
         }
     } else {
         filters = [
             { id: 'team', label: 'チーム戦' },
-            { id: 'all', label: '個人戦（総合）' },
             { id: 'individual_yonma', label: '個人戦（四麻）' },
             { id: 'individual_sanma', label: '個人戦（三麻）' }
         ];
@@ -268,12 +266,12 @@ function showRanking() {
         });
         nameHeader.textContent = '名前';
     } else {
-        // デフォルト: 個人戦（総合）
-        title.textContent = '個人戦（総合）ランキング';
+        // デフォルト: 個人戦（四麻）
+        title.textContent = '個人戦（四麻）ランキング';
         nameHeader.textContent = '名前';
         filtered = seasonFiltered.filter(r => {
             if (r.tournament_type === '第一回麻雀大会') return true;
-            return r.match_mode === '個人戦' || !r.team_name;
+            return r.match_mode === '個人戦' && r.mahjong_mode === '四麻';
         });
     }
 
