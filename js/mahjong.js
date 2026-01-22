@@ -382,6 +382,7 @@ function renderRanking(records, groupKey, type = 'all') {
             summary[key].deal += Number(r.deal_in_count || 0);
             // 第一回は四麻メインと想定
             summary[key].yonma_count += Number(r.matches_played || 0);
+            summary[key].yonma_last += Number(r.rank4_count || 0);  // 四麻のラス回数
         } else {
             summary[key].score += Number(r.final_score || 0);
             summary[key].count += 1;
