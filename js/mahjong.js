@@ -331,8 +331,15 @@ function renderRanking(records, groupKey, type = 'all') {
         } else {
             key = r.discord_user_id;
             if (!key || key === 'null') {
-                // 過去データの場合、nicknameまたはaccount_nameを使用
-                key = r.nickname || r.account_name || 'Unknown';
+                // 過去データの場合、account_nameからprofilesでdiscord_user_idを逆引き
+                const playerName = r.nickname || r.account_name;
+                const matchedProfile = allProfiles.find(p => p.account_name === playerName);
+                if (matchedProfile && matchedProfile.discord_user_id) {
+                    key = matchedProfile.discord_user_id;
+                } else {
+                    // プロフィールが見つからない場合は名前をキーにする
+                    key = playerName || 'Unknown';
+                }
             }
         }
 
