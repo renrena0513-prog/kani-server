@@ -270,14 +270,6 @@ function showSurveyModal(discordId) {
                 .update({ gacha_tickets: newTickets })
                 .eq('discord_user_id', discordId);
 
-            // 活動ログ
-            if (typeof logActivity === 'function') {
-                await logActivity(discordId, 'survey_reward', {
-                    amount: 2,
-                    details: { survey: 'team_sanma_202502', choice: selectedChoice }
-                });
-            }
-
             // モーダルを閉じる
             overlay.remove();
             style.remove();
