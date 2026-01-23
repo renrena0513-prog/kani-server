@@ -720,12 +720,36 @@ async function submitScores() {
             await sendDiscordNotification(dataToInsert, isTobiOn, isYakitoriOn, ticketRewardsMap);
         }
 
-        window.location.href = './index.html'; // ランキングに戻る\r\n        // ⑨送信後、チーム名とアカウント名以外をクリア（効率的な連続送信のため）\r\n        // clearFormExceptTeamAndAccount();\r\n        // resetSubmitBtn();", "StartLine": 723, "TargetContent": "        window.location.href = './index.html'; // ランキングに戻る
+        // ⑨送信後、チーム名とアカウント名以外をクリア（効率的な連続送信のため）
+        clearFormExceptTeamAndAccount();
+        resetSubmitBtn();
     } catch (err) {
         alert('送信エラー: ' + err.message);
         resetSubmitBtn();
     } finally {
         document.getElementById('loading-overlay').style.display = 'none';
+    }
+}
+
+/**
+ * ⑨送信後、チーム名とアカウント名以外をクリアする関数
+ */
+function clearFormExceptTeamAndAccount() {
+    const mode = document.getElementById('form-mode').value;
+    const count = mode === '三麻' ? 3 : 4;
+
+    // 対局数をクリア
+    document.getElementById('form-hands').value = '';
+
+    // 各プレイヤーの得点・和了数・放銃数をクリア
+    for (let i = 1; i <= count; i++) {
+        const scoreInput = document.querySelector(`#player-row-${i} .player-score`);
+        const winInput = document.querySelector(`#player-row-${i} .player-win`);
+        const dealInput = document.querySelector(`#player-row-${i} .player-deal`);
+
+        if (scoreInput) scoreInput.value = '';
+        if (winInput) winInput.value = '';
+        if (dealInput) dealInput.value = '';
     }
 }
 
