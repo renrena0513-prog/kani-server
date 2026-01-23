@@ -1,8 +1,9 @@
-console.log('mahjong-record.js version: 2026-01-11-01');
+console.log('mahjong-record.js version: 2026-01-24-01');
 // 麻雀スコア記録ページ用ロジック
 let allProfiles = [];
 let allTeams = [];
 let isAdmin = false;
+let userMutantMap = {}; // ミュータント情報を格納
 
 document.addEventListener('DOMContentLoaded', async () => {
     await checkAdminStatus();
@@ -25,9 +26,10 @@ async function checkAdminStatus() {
 
 async function fetchProfiles() {
     try {
+        // プロフィール情報を取得
         const { data, error } = await supabaseClient
             .from('profiles')
-            .select('*, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name)');
+            .select('*, badges!equipped_badge_id(id, image_url, name), badges_right:badges!equipped_badge_id_right(id, image_url, name)');
         if (!error) {
             allProfiles = data.sort((a, b) => {
                 const nameA = a.account_name || "";
@@ -35,6 +37,17 @@ async function fetchProfiles() {
                 return nameA.localeCompare(nameB, 'ja');
             });
         }
+
+        // ミュータント情報を取得
+        const { data: mutantData } = await supabaseClient
+            .from('user_badges_new')
+            .select('user_id, badge_id, is_mutant')
+            .eq('is_mutant', true);
+
+        userMutantMap = {};
+        (mutantData || []).forEach(m => {
+            userMutantMap[`${m.user_id}_${m.badge_id}`] = true;
+        });
     } catch (err) {
         console.error('プロフィール取得エラー:', err);
     }
@@ -58,9 +71,25 @@ function changePlayerCount() {
 
 function changeMatchMode() {
     const mode = document.getElementById('form-mode').value;
+    const match = document.getElementById('form-match').value;
     const count = mode === '三麻' ? 3 : 4;
+    const isTeamMatch = match === 'チーム戦';
+
     setupPlayerInputs(count);
     updateRuleDisplay();
+
+    // ⑪チーム戦時は飛び賞・やきとりを無効化して「なし」に固定
+    ['tobi', 'yakitori'].forEach(opt => {
+        document.querySelectorAll(`input[name="opt-${opt}"]`).forEach(radio => {
+            radio.disabled = isTeamMatch;
+            if (isTeamMatch && radio.value === 'none') radio.checked = true;
+        });
+        // ラベルのスタイルも更新
+        document.querySelectorAll(`label[for^="${opt}-"]`).forEach(label => {
+            label.style.opacity = isTeamMatch ? '0.5' : '1';
+            label.style.cursor = isTeamMatch ? 'not-allowed' : 'pointer';
+        });
+    });
 }
 
 /**
@@ -94,13 +123,18 @@ function setupPlayerInputs(count) {
     // チームオプションを生成
     const teamOptions = allTeams.map(t => `<option value="${t.id}">${t.team_name}</option>`).join('');
 
-    for (let i = 1; i <= count; i++) {
-        // デフォルト得点を設定
-        const defaultScore = (mode === '三麻' ? 35000 : 25000);
+    // ③順位ラベル
+    const rankLabels = ['1着', '2着', '3着', '4着'];
+    // 配給点（プレースホルダー用）
+    const defaultScore = (mode === '三麻' ? 35000 : 25000);
 
+    for (let i = 1; i <= count; i++) {
         container.innerHTML += `
             <div class="player-entry" id="player-row-${i}">
                 <div class="row g-2 align-items-end player-row">
+                    <div class="col-auto" style="min-width: 50px;">
+                        <span class="badge bg-success fs-6">${rankLabels[i - 1]}</span>
+                    </div>
                     <div class="col team-col" style="display: ${isTeamMatch ? 'block' : 'none'};">
                         <label class="small text-muted">チーム名</label>
                         <select class="form-select form-select-sm player-team" onchange="filterAccountsByTeam(${i})">
@@ -115,8 +149,9 @@ function setupPlayerInputs(count) {
                                    placeholder="選択してください" readonly onfocus="showDropdown(${i})" style="cursor: pointer; background: white;">
                             <div class="selected-player-badge" id="selected-badge-${i}" style="display: none;">
                                 <img src="" class="badge-avatar">
+                                <div class="badge-left-container mutant-badge-container mini" style="display: none;"></div>
                                 <span class="name"></span>
-                                <img src="" class="badge-icon ms-1" style="width: 20px; height: 20px; display: none;">
+                                <div class="badge-right-container mutant-badge-container mini" style="display: none;"></div>
                                 <span class="btn-clear" onclick="clearPlayer(${i})">×</span>
                             </div>
                             <div class="custom-dropdown-list" id="dropdown-list-${i}"></div>
@@ -124,19 +159,55 @@ function setupPlayerInputs(count) {
                     </div>
                     <div class="col score-col">
                         <label class="small text-muted">得点</label>
-                        <input type="number" class="form-control form-control-sm player-score" value="${defaultScore}" placeholder="${defaultScore}">
+                        <input type="number" class="form-control form-control-sm player-score" 
+                               placeholder="${defaultScore}" onfocus="autoCalculateRemainingScore(${i})">
                     </div>
                     <div class="col win-col">
                         <label class="small text-muted">和了数</label>
-                        <input type="number" class="form-control form-control-sm player-win" value="0" min="0">
+                        <input type="number" class="form-control form-control-sm player-win" placeholder="0" min="0">
                     </div>
                     <div class="col deal-col">
                         <label class="small text-muted">放銃数</label>
-                        <input type="number" class="form-control form-control-sm player-deal" value="0" min="0">
+                        <input type="number" class="form-control form-control-sm player-deal" placeholder="0" min="0">
                     </div>
                 </div>
             </div>
         `;
+    }
+}
+
+/**
+ * ⑤残り得点を自動計算
+ * 自分以外の全員の得点が入力済みで、自分が未入力の場合に残りを自動入力
+ */
+function autoCalculateRemainingScore(idx) {
+    const mode = document.getElementById('form-mode').value;
+    const totalExpected = (mode === '三麻') ? 105000 : 100000;
+    const count = (mode === '三麻') ? 3 : 4;
+
+    const currentInput = document.querySelector(`#player-row-${idx} .player-score`);
+
+    // 既に値が入力済みなら何もしない
+    if (currentInput.value !== '') return;
+
+    // 他のプレイヤーの得点を集計
+    let filledCount = 0;
+    let sumOthers = 0;
+
+    for (let i = 1; i <= count; i++) {
+        if (i === idx) continue;
+        const scoreInput = document.querySelector(`#player-row-${i} .player-score`);
+        if (scoreInput && scoreInput.value !== '') {
+            filledCount++;
+            sumOthers += Number(scoreInput.value);
+        }
+    }
+
+    // 自分以外全員入力済みの場合、残り得点を自動設定
+    if (filledCount === count - 1) {
+        const remaining = totalExpected - sumOthers;
+        currentInput.value = remaining;
+        currentInput.select();
     }
 }
 
@@ -205,14 +276,29 @@ function renderDropdownItems(idx, profiles) {
         const avatarUrl = p.avatar_url || 'https://via.placeholder.com/24';
         const badge = p.badges;
         const badgeRight = p.badges_right;
-        const badgeHtmlLeft = badge ? `
-            <img src="${badge.image_url}" title="${badge.name}" 
-                 style="width: 18px; height: 18px; object-fit: contain; margin-left: 5px; border-radius: 2px;">
-        ` : '';
-        const badgeHtmlRight = badgeRight ? `
-            <img src="${badgeRight.image_url}" title="${badgeRight.name}" 
-                 style="width: 18px; height: 18px; object-fit: contain; margin-left: 5px; border-radius: 2px;">
-        ` : '';
+
+        // ⑩ミュータントバッジ対応
+        let badgeHtmlLeft = '';
+        if (badge) {
+            const isMutant = userMutantMap[`${p.discord_user_id}_${badge.id}`];
+            badgeHtmlLeft = `
+                <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}" style="margin-left: 5px;">
+                    <img src="${badge.image_url}" title="${badge.name}" 
+                         style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
+                    <div class="mutant-badge-shine" style="display: ${isMutant ? 'block' : 'none'};"></div>
+                </div>`;
+        }
+
+        let badgeHtmlRight = '';
+        if (badgeRight) {
+            const isMutant = userMutantMap[`${p.discord_user_id}_${badgeRight.id}`];
+            badgeHtmlRight = `
+                <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}" style="margin-left: 5px;">
+                    <img src="${badgeRight.image_url}" title="${badgeRight.name}" 
+                         style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
+                    <div class="mutant-badge-shine" style="display: ${isMutant ? 'block' : 'none'};"></div>
+                </div>`;
+        }
 
         return `
             <div class="dropdown-item-flex" onclick="selectPlayer(${idx}, '${p.discord_user_id}', '${(p.account_name || '').replace(/'/g, "\\'")}')">
@@ -243,15 +329,34 @@ function selectPlayer(idx, discordUserId, accountName) {
     // 名前設定
     badgeContainer.querySelector('.name').textContent = accountName || discordUserId;
 
-    // バッジ設定
-    const badgeImg = badgeContainer.querySelector('.badge-icon');
-    const badge = profile?.badges;
-    if (badge && badgeImg) {
-        badgeImg.src = badge.image_url;
-        badgeImg.title = badge.name;
-        badgeImg.style.display = 'inline-block';
-    } else if (badgeImg) {
-        badgeImg.style.display = 'none';
+    // ⑩左バッジ設定（ミュータント対応）
+    const badgeLeftContainer = badgeContainer.querySelector('.badge-left-container');
+    const badgeLeft = profile?.badges;
+    if (badgeLeft && badgeLeftContainer) {
+        const isMutantLeft = userMutantMap[`${discordUserId}_${badgeLeft.id}`];
+        badgeLeftContainer.innerHTML = `
+            <img src="${badgeLeft.image_url}" title="${badgeLeft.name}" 
+                 style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
+            <div class="mutant-badge-shine" style="display: ${isMutantLeft ? 'block' : 'none'};"></div>`;
+        badgeLeftContainer.classList.toggle('active', isMutantLeft);
+        badgeLeftContainer.style.display = 'inline-block';
+    } else if (badgeLeftContainer) {
+        badgeLeftContainer.style.display = 'none';
+    }
+
+    // 右バッジ設定（ミュータント対応）
+    const badgeRightContainer = badgeContainer.querySelector('.badge-right-container');
+    const badgeRight = profile?.badges_right;
+    if (badgeRight && badgeRightContainer) {
+        const isMutantRight = userMutantMap[`${discordUserId}_${badgeRight.id}`];
+        badgeRightContainer.innerHTML = `
+            <img src="${badgeRight.image_url}" title="${badgeRight.name}" 
+                 style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
+            <div class="mutant-badge-shine" style="display: ${isMutantRight ? 'block' : 'none'};"></div>`;
+        badgeRightContainer.classList.toggle('active', isMutantRight);
+        badgeRightContainer.style.display = 'inline-block';
+    } else if (badgeRightContainer) {
+        badgeRightContainer.style.display = 'none';
     }
 
     badgeContainer.style.display = 'flex';
@@ -349,6 +454,14 @@ async function submitScores() {
         document.getElementById('loading-overlay').style.display = 'none';
     }
 
+    // ⑧局数未入力エラー
+    const handsInput = document.getElementById('form-hands');
+    if (!handsInput.value || handsInput.value === '' || Number(handsInput.value) <= 0) {
+        alert('局数を入力してください。');
+        resetSubmitBtn();
+        return;
+    }
+
     // バリデーションチェック
     if (!isAdmin && filledCount < targetCount) {
         alert(`${targetCount}人分のデータ（アカウント名と得点）をすべて入力してください。`);
@@ -362,8 +475,26 @@ async function submitScores() {
         return;
     }
 
+    // ⑦合計点数バリデーション（四麻100000点、三麻105000点）
+    const expectedTotal = mode === '三麻' ? 105000 : 100000;
+    const actualTotal = tempData.reduce((sum, p) => sum + p.raw_points, 0);
+    if (!isAdmin && actualTotal !== expectedTotal) {
+        alert(`合計点数が${expectedTotal.toLocaleString()}点ではありません。
+現在の合計: ${actualTotal.toLocaleString()}点
+差分: ${(actualTotal - expectedTotal).toLocaleString()}点`);
+        resetSubmitBtn();
+        return;
+    }
+
     if (isAdmin && filledCount < targetCount) {
         if (!confirm(`${targetCount}人分埋まっていませんが、管理者権限で強制送信しますか？`)) {
+            resetSubmitBtn();
+            return;
+        }
+    }
+
+    if (isAdmin && actualTotal !== expectedTotal) {
+        if (!confirm(`合計点数が${expectedTotal.toLocaleString()}点ではありません（現在: ${actualTotal.toLocaleString()}点）。管理者権限で強制送信しますか？`)) {
             resetSubmitBtn();
             return;
         }
@@ -386,17 +517,15 @@ async function submitScores() {
     console.log('決定された配給点:', distPoints, '返し点:', returnPoints, 'オカ合計:', okaPoints);
     console.log('オプション - 飛び賞:', isTobiOn, 'やきとり:', isYakitoriOn);
 
-    // raw_pointsで降順ソート（同点は同順位）
-    tempData.sort((a, b) => b.raw_points - a.raw_points);
+    // ⑥入力順で順位を決定（ソートしない）
+    // tempDataは既に入力順になっているので、そのまま順位を割り当て
 
     // 順位と基本スコアの計算
-    let currentRank = 1;
     let poolBonus = 0;
 
     for (let i = 0; i < tempData.length; i++) {
-        if (i > 0 && tempData[i].raw_points < tempData[i - 1].raw_points) {
-            currentRank = i + 1;
-        }
+        // ⑥入力順で順位を決定（1番目=1位、2番目=2位...）
+        const currentRank = i + 1;
         tempData[i].rank = currentRank;
 
         // 基本スコア計算: (持ち点 - 返し点) / 1000 + ウマ
@@ -591,7 +720,7 @@ async function submitScores() {
             await sendDiscordNotification(dataToInsert, isTobiOn, isYakitoriOn, ticketRewardsMap);
         }
 
-        window.location.href = './index.html'; // ランキングに戻る
+        window.location.href = './index.html'; // ランキングに戻る\r\n        // ⑨送信後、チーム名とアカウント名以外をクリア（効率的な連続送信のため）\r\n        // clearFormExceptTeamAndAccount();\r\n        // resetSubmitBtn();", "StartLine": 723, "TargetContent": "        window.location.href = './index.html'; // ランキングに戻る
     } catch (err) {
         alert('送信エラー: ' + err.message);
         resetSubmitBtn();
