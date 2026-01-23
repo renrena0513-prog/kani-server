@@ -131,9 +131,9 @@ function setupPlayerInputs(count) {
     for (let i = 1; i <= count; i++) {
         container.innerHTML += `
             <div class="player-entry" id="player-row-${i}">
-                <div class="row g-2 align-items-end player-row">
-                    <div class="col-auto" style="min-width: 50px;">
-                        <span class="badge bg-success fs-6">${rankLabels[i - 1]}</span>
+                <div class="row g-2 align-items-center player-row">
+                    <div class="col-auto d-flex align-items-center" style="min-width: 50px;">
+                        <span class="badge bg-success fs-6 d-flex align-items-center justify-content-center" style="height: 38px; width: 40px;">${rankLabels[i - 1]}</span>
                     </div>
                     <div class="col team-col" style="display: ${isTeamMatch ? 'block' : 'none'};">
                         <label class="small text-muted">チーム名</label>
@@ -158,9 +158,9 @@ function setupPlayerInputs(count) {
                         </div>
                     </div>
                     <div class="col score-col">
-                        <label class="small text-muted">得点</label>
+                        <label class="small text-muted">得点 <span class="remaining-score text-primary fw-bold" id="remaining-${i}"></span></label>
                         <input type="number" class="form-control form-control-sm player-score" 
-                               placeholder="${defaultScore}" onfocus="autoCalculateRemainingScore(${i})">
+                               placeholder="${defaultScore}" oninput="updateRemainingScores()" onfocus="autoCalculateRemainingScore(${i})">
                     </div>
                     <div class="col win-col">
                         <label class="small text-muted">和了数</label>
@@ -208,6 +208,54 @@ function autoCalculateRemainingScore(idx) {
         const remaining = totalExpected - sumOthers;
         currentInput.value = remaining;
         currentInput.select();
+    }
+
+    // 残り点数表示を更新
+    updateRemainingScores();
+}
+
+/**
+ * 残り点数をリアルタイム表示する関数
+ */
+function updateRemainingScores() {
+    const mode = document.getElementById('form-mode').value;
+    const totalExpected = (mode === '三麻') ? 105000 : 100000;
+    const count = (mode === '三麻') ? 3 : 4;
+
+    // 入力済み得点の合計を計算
+    let totalEntered = 0;
+    let emptyCount = 0;
+
+    for (let i = 1; i <= count; i++) {
+        const scoreInput = document.querySelector(`#player-row-${i} .player-score`);
+        const remaining = document.getElementById(`remaining-${i}`);
+
+        if (scoreInput && scoreInput.value !== '') {
+            totalEntered += Number(scoreInput.value);
+        } else {
+            emptyCount++;
+        }
+    }
+
+    // 残り点数を計算
+    const remainingTotal = totalExpected - totalEntered;
+
+    // 各プレイヤーの残り表示を更新
+    for (let i = 1; i <= count; i++) {
+        const scoreInput = document.querySelector(`#player-row-${i} .player-score`);
+        const remainingSpan = document.getElementById(`remaining-${i}`);
+
+        if (remainingSpan) {
+            if (scoreInput && scoreInput.value === '' && emptyCount === 1) {
+                // 残り1人だけ未入力の場合、残り点数を表示
+                remainingSpan.textContent = `(残${remainingTotal.toLocaleString()})`;
+                remainingSpan.style.color = remainingTotal < 0 ? '#dc3545' : '#0d6efd';
+            } else if (scoreInput && scoreInput.value === '') {
+                remainingSpan.textContent = '';
+            } else {
+                remainingSpan.textContent = '';
+            }
+        }
     }
 }
 
