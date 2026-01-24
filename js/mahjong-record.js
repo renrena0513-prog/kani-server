@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await fetchProfiles();
     await fetchTeams();
     changePlayerCount(); // 初期化
+    changeMatchMode(); // 初期表示時のチーム戦判定
     updateRuleDisplay(); // ルール表示の初期設定
 });
 
@@ -159,7 +160,7 @@ function setupPlayerInputs(count) {
                         <label class="small text-muted">アカウント名</label>
                         <div class="custom-dropdown-container">
                             <input type="text" class="form-control form-control-sm player-account" 
-                                   placeholder="選択してください" readonly onfocus="showDropdown(${i})" style="cursor: pointer; background: white;">
+                                   placeholder="選択または入力" onfocus="showDropdown(${i})" oninput="filterDropdown(${i})" style="cursor: text; background: white;">
                             <div class="selected-player-badge" id="selected-badge-${i}" style="display: none;">
                                 <img src="" class="badge-avatar">
                                 <div class="badge-left-container mutant-badge-container mini" style="display: none;"></div>
@@ -279,6 +280,34 @@ function filterAccountsByTeam(idx) {
 
     // 選択済みプレイヤーをクリア
     clearPlayer(idx);
+}
+
+// ドロップダウンのフィルタリング
+function filterDropdown(idx) {
+    const input = document.querySelector(`#player-row-${idx} .player-account`);
+    const val = input.value.trim().toLowerCase();
+    const list = document.getElementById(`dropdown-list-${idx}`);
+
+    // 入力が空でも全件表示する（showDropdownと同じロジックを呼ぶのが一番安全だが、ここではフィルタのみ実装）
+    // チームフィルタも考慮する必要がある
+    const match = document.getElementById('form-match').value;
+    const teamSelect = document.querySelector(`#player-row-${idx} .player-team`);
+
+    let candidates = allProfiles;
+    if (match === 'チーム戦' && teamSelect && teamSelect.value) {
+        candidates = allProfiles.filter(p => p.team_id === teamSelect.value);
+    }
+
+    if (val) {
+        candidates = candidates.filter(p => {
+            const name = (p.account_name || '').toLowerCase();
+            const discordId = (p.discord_user_id || '').toLowerCase();
+            return name.includes(val) || discordId.includes(val);
+        });
+    }
+
+    renderDropdownItems(idx, candidates);
+    list.style.display = 'block';
 }
 
 // ドロップダウン関連
