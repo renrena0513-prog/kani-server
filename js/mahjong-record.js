@@ -135,12 +135,19 @@ function setupPlayerInputs(count) {
     // 配給点（プレースホルダー用）
     const defaultScore = (mode === '三麻' ? 35000 : 25000);
 
+    // グローバルで同点順序を管理
+    window.tieOrderState = window.tieOrderState || {};
+
+    /**
+     * ③順位ラベルの生成（初期表示は「-」）
+     * 入力に応じて updateRanks() で更新される
+     */
     for (let i = 1; i <= count; i++) {
         container.innerHTML += `
-            <div class="player-entry" id="player-row-${i}">
+            <div class="player-entry" id="player-row-${i}" data-row-index="${i}">
                 <div class="row g-2 align-items-center player-row">
                     <div class="col-auto d-flex align-items-center" style="min-width: 50px;">
-                        <span class="badge bg-success fs-6 d-flex align-items-center justify-content-center" style="height: 38px; width: 40px;">${rankLabels[i - 1]}</span>
+                        <span id="rank-badge-${i}" class="badge bg-secondary fs-6 d-flex align-items-center justify-content-center rank-badge" style="height: 38px; width: 40px;">-</span>
                     </div>
                     <div class="col team-col" style="display: ${isTeamMatch ? 'block' : 'none'};">
                         <label class="small text-muted">チーム名</label>
@@ -174,7 +181,7 @@ function setupPlayerInputs(count) {
                     <div class="col score-col">
                         <label class="small text-muted">得点 <span class="remaining-score text-primary fw-bold" id="remaining-${i}"></span></label>
                         <input type="number" class="form-control form-control-sm player-score" 
-                               placeholder="" oninput="updateRemainingScores()" onfocus="autoCalculateRemainingScore(${i})">
+                               placeholder="" oninput="updateRemainingScores(); updateRanks();" onfocus="autoCalculateRemainingScore(${i})">
                     </div>
                     <div class="col win-col">
                         <label class="small text-muted">和了数</label>
@@ -188,7 +195,227 @@ function setupPlayerInputs(count) {
             </div>
         `;
     }
+    // 初期状態でも一度ランク更新（空の状態にするため）
+    updateRanks();
 }
+
+/**
+ * ランク自動計算機能
+ * 点数順にソートし、同点の場合は tieOrderState に基づいて解決またはUI表示を行う
+ */
+function updateRanks() {
+    const entries = document.querySelectorAll('.player-entry');
+    const scores = [];
+
+    // 1. 全プレイヤーのスコアを収集
+    entries.forEach(entry => {
+        const idx = entry.dataset.rowIndex;
+        const scoreInput = entry.querySelector('.player-score');
+        const rawScore = scoreInput.value;
+        const score = rawScore === '' ? -Infinity : Number(rawScore); // 未入力は最下位扱い
+        const accountInput = entry.querySelector('.player-account');
+        const name = accountInput.dataset.accountName || accountInput.value || `プレイヤー${idx}`;
+
+        scores.push({
+            id: idx, // 行ID
+            name: name,
+            score: score,
+            isInput: rawScore !== ''
+        });
+    });
+
+    // 2. スコアで降順ソート
+    // 同点の場合は、既存の順序状態があればそれを優先、なければID順（仮）
+    scores.sort((a, b) => {
+        if (a.score !== b.score) {
+            return b.score - a.score;
+        }
+        return 0; // 同点
+    });
+
+    // 3. 同点グループの検出とランク割り当て
+    let currentRank = 1;
+    let tieGroups = [];
+    let rankMap = {}; // { rowId: rank }
+
+    for (let i = 0; i < scores.length; i++) {
+        const current = scores[i];
+
+        // 未入力はランク無し
+        if (!current.isInput) {
+            rankMap[current.id] = '-';
+            continue;
+        }
+
+        // 同点グループの開始確認
+        let ties = [current];
+        while (i + 1 < scores.length && scores[i + 1].score === current.score && scores[i + 1].isInput) {
+            ties.push(scores[i + 1]);
+            i++;
+        }
+
+        if (ties.length > 1) {
+            // 同点グループが存在する場合
+            // 保存された順序があるか確認
+            const tieKey = ties.map(p => p.id).sort().join('_'); // グループ識別キー
+            const savedOrder = window.tieOrderState[tieKey];
+
+            if (savedOrder) {
+                // 保存された順序に従って並び替え
+                ties.sort((a, b) => {
+                    return savedOrder.indexOf(a.id) - savedOrder.indexOf(b.id);
+                });
+            } else {
+                // 未解決の同点グループとして記録
+                tieGroups.push({ key: tieKey, players: ties, startRank: currentRank });
+            }
+        }
+
+        // ランク割り当て
+        ties.forEach((player, index) => {
+            rankMap[player.id] = currentRank + index;
+        });
+
+        currentRank += ties.length;
+    }
+
+    // 4. UI更新（バッジ表示）
+    entries.forEach(entry => {
+        const idx = entry.dataset.rowIndex;
+        const badge = document.getElementById(`rank-badge-${idx}`);
+        const rank = rankMap[idx];
+
+        badge.textContent = rank === '-' ? '-' : `${rank}着`;
+
+        // 色分け styling
+        badge.className = 'badge fs-6 d-flex align-items-center justify-content-center rank-badge'; // reset
+        if (rank === 1) badge.classList.add('bg-warning', 'text-dark');
+        else if (rank === 2) badge.classList.add('bg-info', 'text-dark');
+        else if (rank === 3) badge.classList.add('bg-success');
+        else if (rank === 4) badge.classList.add('bg-danger');
+        else badge.classList.add('bg-secondary');
+    });
+
+    // 5. 同点解決UIの描画
+    renderTieResolutionUI(tieGroups);
+}
+
+/**
+ * 同点解決UIの描画
+ */
+function renderTieResolutionUI(tieGroups) {
+    const container = document.getElementById('tie-resolution-area');
+    if (!container) return;
+
+    if (tieGroups.length === 0) {
+        container.style.display = 'none';
+        container.innerHTML = '';
+        return;
+    }
+
+    container.style.display = 'block';
+
+    let html = `
+        <div class="alert alert-warning border-warning">
+            <h5 class="alert-heading fw-bold mb-2">⚠️ 同点の着順判定</h5>
+            <p class="mb-3 small">以下のプレイヤーが同点です。実際の順位に合わせて<strong class="text-danger">上（上位）に並び替えてください</strong>。</p>
+    `;
+
+    tieGroups.forEach(group => {
+        html += `<div class="card mb-3 border-warning"><div class="card-body p-2">`;
+        html += `<div class="fw-bold mb-2 text-warning">順位競合 (${group.startRank}着 ～ ${group.startRank + group.players.length - 1}着)</div>`;
+        html += `<div class="d-flex flex-column gap-2">`;
+
+        group.players.forEach((p, index) => {
+            html += `
+                <div class="d-flex align-items-center justify-content-between p-2 bg-light rounded border">
+                    <span class="fw-bold text-dark">${p.name}</span>
+                    <div class="d-flex align-items-center gap-1">
+                        <span class="badge bg-secondary me-2">${p.score.toLocaleString()}点</span>
+                        <button type="button" class="btn btn-sm btn-outline-primary" ${index === 0 ? 'disabled' : ''} onclick="moveTieOrder('${group.key}', ${index}, -1)">↑</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary" ${index === group.players.length - 1 ? 'disabled' : ''} onclick="moveTieOrder('${group.key}', ${index}, 1)">↓</button>
+                    </div>
+                </div>
+            `;
+        });
+
+        html += `</div></div></div>`;
+    });
+
+    html += `</div>`;
+    container.innerHTML = html;
+}
+
+/**
+ * 同点順序の変更処理
+ */
+function moveTieOrder(groupKey, currentIndex, direction) {
+    // 現在のグループ情報を再構築（updateRanks内で生成されるため、ここでは簡易的にDOMからではなくデータから再計算したいが、
+    // 状態管理が少し複雑。シンプルに、UI描画時に保存された順序またはデフォルト順序がベースになっている）
+
+    // updateRanksを呼ぶ前に、現在の並び順を取得する必要がある。
+    // しかし、renderTieResolutionUI は updateRanks の内部データを使っている。
+    // なので、moveTieOrder 呼び出し時は、再度 updateRanks と同様のロジックで「現在の並び」を取得し、それを変更して保存する。
+
+    // 簡易実装: updateRanks を呼んで、その中の tieGroups を取得できればベストだが、
+    // ここでは window.tieOrderState を更新して updateRanks を呼ぶ形にする。
+
+    // 1. 直前の並び順を特定する必要がある。
+    // tieOrderState[groupKey] があればそれが「現在の並び」。なければIDの昇順等がデフォルト。
+    // updateRanks と同じロジックで「現在の並び」を再現する。
+
+    const entries = document.querySelectorAll('.player-entry');
+    const scores = [];
+    entries.forEach(entry => {
+        const idx = entry.dataset.rowIndex;
+        const score = Number(entry.querySelector('.player-score').value);
+        if (!isNaN(score)) scores.push({ id: idx, score: score });
+    });
+
+    // IDリストに変換
+    const idsInGroup = groupKey.split('_').sort(); // キーに含まれる全ID
+
+    // 現在の保存された順序を取得
+    let currentOrder = window.tieOrderState[groupKey];
+    if (!currentOrder) {
+        // 保存されてない場合は、現状のロジック（score順 -> 同点ならID順など）で並んでいるはずだが...
+        // renderTieResolutionUI で表示されている順序 = updateRanks で計算された順序。
+        // updateRanks 内では:
+        // scores.sort((a,b) => b.score - a.score) -> 安定ソートでないとブラウザ依存だが、
+        // ties.sort(...) で savedOrder がなければ変更なし。
+        // つまり、renderTieResolutionUI に渡された group.players の順序が「現在の順序」。
+
+        // ここでは少し横着して、groupKey (sort済みのID結合) から、
+        // updateRanks を一瞬走らせるか、あるいは引数で渡すのが楽。
+        // しかしHTML onclick なので引数は文字列化などが必要。
+
+        // 解決策: moveTieOrder は「現在のDOM上の並び」を見に行くのではなく、
+        // window.tieOrderState[groupKey] が無ければ初期順序を作成し、それを入れ替える。
+
+        // 初期順序の再現: 単純にIDソートと仮定（updateRanksの実装依存だが、未定義時の挙動に合わせる）
+        // updateRanksの実装: `const tieKey = ties.map(p => p.id).sort().join('_');` keyはIDソートされている。
+        // しかし `ties` 配列自体は `scores` (入力順) に依存している可能性が高い。
+        // setupPlayerInputs で row-1, row-2... と生成しているため、デフォルトは row ID順になる。
+        currentOrder = groupKey.split('_').sort((a, b) => Number(a) - Number(b));
+    } else {
+        currentOrder = [...currentOrder]; // コピー
+    }
+
+    // 入れ替え
+    const newIndex = currentIndex + direction;
+    if (newIndex >= 0 && newIndex < currentOrder.length) {
+        const temp = currentOrder[currentIndex];
+        currentOrder[currentIndex] = currentOrder[newIndex];
+        currentOrder[newIndex] = temp;
+
+        // 保存
+        window.tieOrderState[groupKey] = currentOrder;
+
+        // 再描画
+        updateRanks();
+    }
+}
+
 
 /**
  * ⑤残り得点を自動計算
@@ -665,15 +892,25 @@ async function submitScores() {
     console.log('決定された配給点:', distPoints, '返し点:', returnPoints, 'オカ合計:', okaPoints);
     console.log('オプション - 飛び賞:', isTobiOn, 'やきとり:', isYakitoriOn);
 
-    // ⑥入力順で順位を決定（ソートしない）
-    // tempDataは既に入力順になっているので、そのまま順位を割り当て
+    // ⑥ランクの決定 (DOMから取得)
+    updateRanks();
 
     // 順位と基本スコアの計算
     let poolBonus = 0;
 
     for (let i = 0; i < tempData.length; i++) {
-        // ⑥入力順で順位を決定（1番目=1位、2番目=2位...）
-        const currentRank = i + 1;
+        // ⑥ DOM上のバッジから順位を取得 (行ID = i+1)
+        const rowId = i + 1;
+        const badge = document.getElementById(`rank-badge-${rowId}`);
+        const rankText = badge.textContent.replace('着', '');
+
+        let currentRank;
+        if (rankText === '-' || isNaN(Number(rankText))) {
+            currentRank = i + 1; // Fallback
+        } else {
+            currentRank = Number(rankText);
+        }
+
         tempData[i].rank = currentRank;
 
         // 基本スコア計算: (持ち点 - 返し点) / 1000 + ウマ
