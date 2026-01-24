@@ -1119,7 +1119,8 @@
                                 </div>
                             </div>
                             <div class="col">
-                                <h2 id="page-title-label" class="small text-muted mb-1" style="display:none;">プレイヤー</h2>
+                                <!-- Removed Player label -->
+                                <h2 id="page-title-label" class="small text-muted mb-1" style="display:none;"></h2>
 
                                 <!-- チーム名 -->
                                 <div id="user-team-display" class="mb-2">
@@ -1157,12 +1158,7 @@
                                     </div>
                                 </div>
 
-                                <!-- 他人の場合のみ表示する表示エリア -->
-                                <div id="view-area" class="mt-2" style="display:none;">
-                                    <div class="discord-badge">
-                                        🀄 麻雀プレイヤー
-                                    </div>
-                                </div>
+                                <!-- Removed view-area with Mahjong Player label -->
                             </div>
                         </div>
                     </div>
@@ -1867,7 +1863,7 @@
             // ユーザー情報の取得（バッジ情報・コイン・チーム情報を含む）
             const { data: profile } = await supabaseClient
                 .from('profiles')
-                .select('account_name, avatar_url, coins, total_assets, gacha_tickets, exchange_tickets, equipped_badge_id, equipped_badge_id_right, team_id, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name), teams!team_id(team_name)')
+                .select('account_name, avatar_url, coins, total_assets, gacha_tickets, exchange_tickets, equipped_badge_id, equipped_badge_id_right, team_id, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name), teams!team_id(team_name, logo_badge:badges!logo_badge_id(image_url))')
                 .eq('discord_user_id', targetId)
                 .maybeSingle();
 
@@ -1893,6 +1889,26 @@
 
             // 名前のみ表示（バッジは別要素）
             document.getElementById('user-name').textContent = name;
+
+            // チーム名とアイコンを表示
+            const team = profile?.teams;
+            const teamName = team?.team_name || '未所属';
+            let logoHtml = '🏠 ';
+            if (team && team.logo_badge && team.logo_badge.image_url) {
+                logoHtml = `<img src="${team.logo_badge.image_url}" alt="logo" style="width: 20px; height: 20px; object-fit: contain; margin-right: 4px;"> `;
+            }
+
+            const teamDisplayEl = document.getElementById('user-team-display');
+            if (teamDisplayEl) {
+                const badgeEl = teamDisplayEl.querySelector('.badge');
+                if (badgeEl) {
+                    badgeEl.innerHTML = `${logoHtml}<span id="user-team-name">${teamName}</span>`;
+                }
+            } else {
+                // Fallback
+                const teamNameEl = document.getElementById('user-team-name');
+                if (teamNameEl) teamNameEl.textContent = teamName;
+            }
 
             // 左バッジ画像を設定
             const badgeImg = document.getElementById('user-equipped-badge');
@@ -1920,12 +1936,7 @@
                 applyMutantEffect('badge-container-right', null, null);
             }
 
-            // チーム名を設定
-            const teamNameEl = document.getElementById('user-team-name');
-            if (teamNameEl) {
-                const team = profile?.teams;
-                teamNameEl.textContent = team?.team_name || '未所属';
-            }
+
 
             // コイン表示の更新
             const coinsDisplay = document.getElementById('user-coins-display');
