@@ -539,6 +539,25 @@ async function submitScores() {
         return;
     }
 
+    // 3. チーム戦のバリデーション
+    if (match === 'チーム戦') {
+        // 3-1. チーム未入力チェック
+        const missingTeam = tempData.some(p => !p.team_name);
+        if (missingTeam) {
+            alert('チーム戦では全員のチームを選択してください。');
+            resetSubmitBtn();
+            return;
+        }
+
+        // 3-2. チーム重複チェック
+        const teams = tempData.map(p => p.team_name);
+        if (new Set(teams).size !== teams.length) {
+            alert('同じチームが複数選択されています。チーム戦では異なるチームを選択してください。');
+            resetSubmitBtn();
+            return;
+        }
+    }
+
     function resetSubmitBtn() {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalBtnText;
