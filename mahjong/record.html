@@ -275,13 +275,12 @@
 
         .selected-player-badge .name {
             font-size: 0.95rem;
-            flex-grow: 1;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
             color: #333;
             font-weight: 600;
-            margin: 0 4px;
+            margin: 0 8px 0 4px;
         }
 
         /* バッジコンテナのスタイル */
@@ -474,7 +473,7 @@
                     <label class="form-label">オカ (1位ボーナス)</label>
                     <div id="disp-oka" class="fw-bold fs-5 text-muted py-2">+20.0</div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-4" id="tobi-section">
                     <label class="form-label">飛び賞 (1位へ10000点)</label>
                     <div class="btn-group w-100" role="group">
                         <input type="radio" class="btn-check" name="opt-tobi" id="tobi-none" value="none"
@@ -485,7 +484,7 @@
                         <label class="btn btn-outline-success" for="tobi-yes">あり</label>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-4" id="yakitori-section">
                     <label class="form-label">やきとり (1位へ10000点)</label>
                     <div class="btn-group w-100" role="group">
                         <input type="radio" class="btn-check" name="opt-yakitori" id="yakitori-none" value="none"

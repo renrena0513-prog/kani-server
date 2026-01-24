@@ -81,18 +81,18 @@ function changeMatchMode() {
     setupPlayerInputs(count);
     updateRuleDisplay();
 
-    // ⑪チーム戦時は飛び賞・やきとりを無効化して「なし」に固定
-    ['tobi', 'yakitori'].forEach(opt => {
-        document.querySelectorAll(`input[name="opt-${opt}"]`).forEach(radio => {
-            radio.disabled = isTeamMatch;
-            if (isTeamMatch && radio.value === 'none') radio.checked = true;
-        });
-        // ラベルのスタイルも更新
-        document.querySelectorAll(`label[for^="${opt}-"]`).forEach(label => {
-            label.style.opacity = isTeamMatch ? '0.5' : '1';
-            label.style.cursor = isTeamMatch ? 'not-allowed' : 'pointer';
-        });
-    });
+    // ⑪チーム戦時は飛び賞・やきとりを非表示にする
+    const tobiSection = document.getElementById('tobi-section');
+    const yakitoriSection = document.getElementById('yakitori-section');
+
+    if (tobiSection) tobiSection.style.display = isTeamMatch ? 'none' : 'block';
+    if (yakitoriSection) yakitoriSection.style.display = isTeamMatch ? 'none' : 'block';
+
+    if (isTeamMatch) {
+        // 非表示時は「なし」を選択状態にする
+        document.getElementById('tobi-none').checked = true;
+        document.getElementById('yakitori-none').checked = true;
+    }
 }
 
 /**
