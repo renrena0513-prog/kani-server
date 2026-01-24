@@ -277,10 +277,10 @@ function updateRanks() {
                     if (idxB === -1) return -1;
                     return idxA - idxB;
                 });
-            } else {
-                // 未解決の同点グループとして記録
-                tieGroups.push({ key: tieKey, players: ties, startRank: currentRank });
             }
+
+            // 常にUIリストに追加（解決後も変更可能にするため）
+            tieGroups.push({ key: tieKey, players: ties, startRank: currentRank });
 
             // ループインデックスを進める (ties.length - 1 分)
             i += ties.length - 1;
