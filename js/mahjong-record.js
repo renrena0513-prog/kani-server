@@ -556,6 +556,44 @@ async function submitScores() {
             resetSubmitBtn();
             return;
         }
+
+        // 3-3. 三麻の場合の1日制限（5回まで）
+        if (mode === '三麻') {
+            // 今日の日付範囲を取得 (ローカルタイムベース)
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const todayStr = today.toISOString();
+
+            // 参加プレイヤー（ゲスト以外）の送信数チェック
+            const playersToCheck = tempData.filter(p => p.discord_user_id);
+            if (playersToCheck.length > 0) {
+                // ローディング表示（チェックに少し時間がかかるため）
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 制限確認中...';
+
+                try {
+                    // Promise.allで並列チェック
+                    await Promise.all(playersToCheck.map(async (p) => {
+                        const { count, error } = await supabaseClient
+                            .from('match_results')
+                            .select('*', { count: 'exact', head: true })
+                            .eq('discord_user_id', p.discord_user_id)
+                            .eq('match_mode', 'チーム戦')
+                            .eq('mahjong_mode', '三麻')
+                            .gte('event_datetime', todayStr);
+
+                        if (error) throw error;
+
+                        if (count >= 5) {
+                            throw new Error(`${p.account_name}さんは本日既に5回チーム戦(三麻)を送信しています。`);
+                        }
+                    }));
+                } catch (err) {
+                    alert(err.message);
+                    resetSubmitBtn();
+                    return;
+                }
+            }
+        }
     }
 
     function resetSubmitBtn() {
