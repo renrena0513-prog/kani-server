@@ -88,9 +88,22 @@ async function fetchData() {
 
         window.userMutantMap = {}; // global cache
         (userBadges || []).forEach(ub => {
-            // user_badges_new.user_id is discord_user_id string
             window.userMutantMap[`${ub.user_id}_${ub.badge_id}`] = true;
         });
+
+        // チーム情報取得（ロゴ用）
+        const { data: teamsData } = await supabaseClient
+            .from('teams')
+            .select('team_name, logo_badge:badges!logo_badge_id(image_url)');
+
+        window.teamLogoMap = {};
+        if (teamsData) {
+            teamsData.forEach(t => {
+                if (t.logo_badge && t.logo_badge.image_url) {
+                    window.teamLogoMap[t.team_name] = t.logo_badge.image_url;
+                }
+            });
+        }
 
 
         renderMainFilters();
@@ -563,7 +576,12 @@ function renderRanking(records, groupKey, type = 'all') {
                                     <div style="width: 64px; height: 64px;" class="flex-shrink-0 d-flex align-items-center justify-content-center">
                                         ${avatarUrl ?
                     `<img src="${avatarUrl}" alt="${displayName}" class="podium-avatar">` :
-                    (s.isTeam ? `<span style="font-size: 2rem;">🏅</span>` : `<img src="../img/default-avatar.png" class="podium-avatar">`)}
+                    (s.isTeam ?
+                        (window.teamLogoMap && window.teamLogoMap[s.key] ?
+                            `<img src="${window.teamLogoMap[s.key]}" alt="${s.key}" class="podium-avatar" style="border-radius: 8px; border: none;">` :
+                            `<span style="font-size: 2rem;">🏅</span>`
+                        ) :
+                        `<img src="../img/default-avatar.png" class="podium-avatar">`)}
                                     </div>
                                 </div>
                                 <div class="podium-identity-row">
@@ -635,7 +653,7 @@ function renderRanking(records, groupKey, type = 'all') {
                     const isMutant = window.userMutantMap?.[`${profile.discord_user_id}_${profile.equipped_badge_id}`];
                     badgeHtmlLeft = `
                         <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}">
-                            <img src="${badge.image_url}" title="${badge.name}" 
+                            <img src="${badge.image_url}" title="${badge.name}"
                                  style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
                             <div class="mutant-badge-shine" style="display: ${isMutant ? 'block' : 'none'};"></div>
                         </div>`;
@@ -645,7 +663,7 @@ function renderRanking(records, groupKey, type = 'all') {
                     const isMutant = window.userMutantMap?.[`${profile.discord_user_id}_${profile.equipped_badge_id_right}`];
                     badgeHtmlRight = `
                         <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}">
-                            <img src="${badgeRight.image_url}" title="${badgeRight.name}" 
+                            <img src="${badgeRight.image_url}" title="${badgeRight.name}"
                                  style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
                             <div class="mutant-badge-shine" style="display: ${isMutant ? 'block' : 'none'};"></div>
                         </div>`;
@@ -660,17 +678,21 @@ function renderRanking(records, groupKey, type = 'all') {
                     <div class="d-flex align-items-center gap-1">
                         <div style="width: 32px; height: 32px;" class="flex-shrink-0 d-flex align-items-center justify-content-center">
                             ${avatarUrl ?
-                        `<img src="${avatarUrl}" 
-                                   alt="${displayName}" 
-                                   class="rounded-circle" 
+                        `<img src="${avatarUrl}"
+                                   alt="${displayName}"
+                                   class="rounded-circle"
                                    style="width: 32px; height: 32px; object-fit: cover;">` : ''}
                         </div>
                         ${badgeHtmlLeft}
                     </div>`;
             } else {
+                const teamLogoUrl = window.teamLogoMap && window.teamLogoMap[s.key];
                 avatarHtml = `
                     <div style="width: 32px; height: 32px;" class="flex-shrink-0 d-flex align-items-center justify-content-center">
-                        <span style="font-size: 1.2rem;">🏅</span>
+                        ${teamLogoUrl ?
+                        `<img src="${teamLogoUrl}" alt="${s.key}" style="width: 32px; height: 32px; object-fit: contain;">` :
+                        `<span style="font-size: 1.2rem;">🏅</span>`
+                    }
                     </div>`;
             }
 

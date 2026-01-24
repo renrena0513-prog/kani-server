@@ -55,7 +55,10 @@ async function fetchProfiles() {
 
 async function fetchTeams() {
     try {
-        const { data, error } = await supabaseClient.from('teams').select('*').order('team_name');
+        const { data, error } = await supabaseClient
+            .from('teams')
+            .select('*, logo_badge:badges!logo_badge_id(image_url)')
+            .order('team_name');
         if (!error) allTeams = data || [];
     } catch (err) {
         console.error('チーム取得エラー:', err);
@@ -137,10 +140,17 @@ function setupPlayerInputs(count) {
                     </div>
                     <div class="col team-col" style="display: ${isTeamMatch ? 'block' : 'none'};">
                         <label class="small text-muted">チーム名</label>
-                        <select class="form-select form-select-sm player-team" onchange="filterAccountsByTeam(${i})">
-                            <option value="">チームを選択</option>
-                            ${teamOptions}
-                        </select>
+                        <div class="custom-dropdown-container">
+                            <input type="hidden" class="player-team" id="player-team-input-${i}" value="">
+                            <div class="form-control form-control-sm d-flex align-items-center justify-content-between" 
+                                 style="cursor: pointer; background: white; padding: 8px 12px; height: 38px;" onclick="showTeamDropdown(${i})">
+                                 <div class="d-flex align-items-center gap-2" id="selected-team-display-${i}" style="flex-grow: 1; overflow: hidden;">
+                                    <span class="text-muted small">チームを選択</span>
+                                 </div>
+                                 <span class="small text-muted">▼</span>
+                            </div>
+                            <div class="custom-dropdown-list" id="team-dropdown-list-${i}"></div>
+                        </div>
                     </div>
                     <div class="col account-col">
                         <label class="small text-muted">アカウント名</label>
@@ -894,4 +904,89 @@ async function sendDiscordNotification(matchData, isTobiOn, isYakitoriOn, ticket
     } catch (err) {
         console.error('Discord通知送信エラー:', err);
     }
+}
+
+// チーム用ドロップダウン関連
+function showTeamDropdown(idx) {
+    // 他のドロップダウンを閉じる
+    document.querySelectorAll('.custom-dropdown-list').forEach(list => {
+        list.style.display = 'none';
+    });
+
+    const list = document.getElementById(`team-dropdown-list-${idx}`);
+    renderTeamDropdownItems(idx);
+    list.style.display = 'block';
+
+    // 別クリックで閉じる
+    setTimeout(() => {
+        const h = (e) => {
+            // クリックターゲットがドロップダウンリスト内でもなく、トリガーとなる入力欄(の親要素等)でもない場合
+            if (!list.contains(e.target) && !e.target.closest('.custom-dropdown-container')) {
+                list.style.display = 'none';
+                document.removeEventListener('mousedown', h);
+            }
+        };
+        document.addEventListener('mousedown', h);
+    }, 10);
+}
+
+function renderTeamDropdownItems(idx) {
+    const list = document.getElementById(`team-dropdown-list-${idx}`);
+    if (allTeams.length === 0) {
+        list.innerHTML = '<div class="p-2 small text-muted">チームなし</div>';
+        return;
+    }
+
+    list.innerHTML = allTeams.map(t => {
+        const logoUrl = (t.logo_badge && t.logo_badge.image_url) ? t.logo_badge.image_url : null;
+        const logoHtml = logoUrl
+            ? `<img src="${logoUrl}" style="width: 24px; height: 24px; object-fit: contain; margin-right: 8px;">`
+            : `<span style="width: 24px; text-align: center; margin-right: 8px;">🏅</span>`;
+
+        return `
+            <div class="dropdown-item-flex" onclick="selectTeam(${idx}, '${t.id}', '${t.team_name.replace(/'/g, "\\'")}', '${logoUrl || ''}')">
+                ${logoHtml}
+                <span class="small">${t.team_name}</span>
+            </div>
+        `;
+    }).join('');
+
+    // クリアオプションも追加
+    list.innerHTML = `
+        <div class="dropdown-item-flex" onclick="clearTeam(${idx})">
+            <span class="small text-muted">選択解除</span>
+        </div>
+    ` + list.innerHTML;
+}
+
+function selectTeam(idx, teamId, teamName, logoUrl) {
+    const input = document.getElementById(`player-team-input-${idx}`);
+    const display = document.getElementById(`selected-team-display-${idx}`);
+
+    input.value = teamId;
+
+    let logoHtml = '';
+    if (logoUrl) {
+        logoHtml = `<img src="${logoUrl}" style="width: 20px; height: 20px; object-fit: contain;">`;
+    } else {
+        logoHtml = `<span>🏅</span>`;
+    }
+
+    display.innerHTML = `${logoHtml}<span style="font-weight: bold;">${teamName}</span>`;
+    document.getElementById(`team-dropdown-list-${idx}`).style.display = 'none';
+
+    // チーム選択変更時のフィルタリンク処理を実行
+    filterAccountsByTeam(idx);
+}
+
+function clearTeam(idx) {
+    const input = document.getElementById(`player-team-input-${idx}`);
+    const display = document.getElementById(`selected-team-display-${idx}`);
+
+    input.value = '';
+    display.innerHTML = '<span class="text-muted small">チームを選択</span>';
+    document.getElementById(`team-dropdown-list-${idx}`).style.display = 'none';
+
+    // フィルタリング解除
+    filterAccountsByTeam(idx);
 }

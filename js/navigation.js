@@ -29,7 +29,7 @@ function generateAccordionNav(basePath = '../') {
                         <li><a class="dropdown-item sub-item" href="${basePath}mahjong/index.html">📊 ランキング</a></li>
                         <li><a class="dropdown-item sub-item" href="${basePath}mahjong/record.html">📝 記録する</a></li>
                         <li><a class="dropdown-item sub-item" href="${basePath}mahjong/users/index.html">👥 ユーザー一覧</a></li>
-                        <li><a class="dropdown-item sub-item" href="${basePath}mahjong/team/index.html">🏅 チーム管理 <span id="team-notification-badge" class="notification-badge" style="display:none;">0</span></a></li>
+                        <li><a class="dropdown-item sub-item" href="${basePath}mahjong/team/index.html"><span id="nav-team-icon" style="margin-right: 4px; display: inline-flex; align-items: center;">🏅</span> チーム管理 <span id="team-notification-badge" class="notification-badge" style="display:none;">0</span></a></li>
                     </ul>
                 </li>
                 
@@ -230,5 +230,37 @@ function initAccordionNav(basePath = '../') {
         style.id = 'accordion-nav-styles';
         style.textContent = getAccordionNavStyles();
         document.head.appendChild(style);
+    }
+
+    // チームアイコン更新
+    updateNavTeamIcon();
+}
+
+/**
+ * メニューのチームアイコンを更新
+ */
+async function updateNavTeamIcon() {
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return;
+
+        // なりすまし対応
+        const impersonated = localStorage.getItem('impersonated_user');
+        const effectiveId = impersonated ? JSON.parse(impersonated).discord_user_id : user.user_metadata.provider_id;
+
+        const { data: profile } = await supabaseClient
+            .from('profiles')
+            .select('team_id, teams!team_id(logo_badge:badges!logo_badge_id(image_url))')
+            .eq('discord_user_id', effectiveId)
+            .single();
+
+        if (profile && profile.teams && profile.teams.logo_badge && profile.teams.logo_badge.image_url) {
+            const iconEl = document.getElementById('nav-team-icon');
+            if (iconEl) {
+                iconEl.innerHTML = `<img src="${profile.teams.logo_badge.image_url}" style="width: 20px; height: 20px; object-fit: contain;">`;
+            }
+        }
+    } catch (e) {
+        console.error('Menu icon update failed:', e);
     }
 }

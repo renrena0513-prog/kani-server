@@ -466,7 +466,7 @@
             // チーム情報取得
             const { data: team } = await supabaseClient
                 .from('teams')
-                .select('*')
+                .select('*, logo_badge:badges!logo_badge_id(image_url)')
                 .eq('id', profile.team_id)
                 .single();
 
@@ -480,7 +480,15 @@
         }
 
         async function renderTeamContent() {
-            document.getElementById('team-name-header').textContent = `🏅 ${myTeam.team_name}`;
+            const logoUrl = (myTeam.logo_badge && myTeam.logo_badge.image_url) ? myTeam.logo_badge.image_url : null;
+            const logoHtml = logoUrl
+                ? `<img src="${logoUrl}" style="width: 32px; height: 32px; object-fit: contain; margin-right: 8px;">`
+                : '🏅 ';
+
+            const headerEl = document.getElementById('team-name-header');
+            headerEl.innerHTML = ``; // Clear first
+            headerEl.insertAdjacentHTML('beforeend', logoHtml);
+            headerEl.insertAdjacentText('beforeend', myTeam.team_name);
 
             // 管理者の場合
             if (isTeamAdmin) {
@@ -519,8 +527,10 @@
 
                 return `
                     <div class="member-card">
-                        <img src="${avatarUrl}" alt="${name}" class="member-avatar" onerror="this.src='https://via.placeholder.com/48'">
-                        <span class="member-name">${name}</span>
+                        <a href="../../mypage/index.html?user=${member.discord_user_id}" class="d-flex align-items-center text-decoration-none text-dark flex-grow-1">
+                            <img src="${avatarUrl}" alt="${name}" class="member-avatar" onerror="this.src='https://via.placeholder.com/48'">
+                            <span class="member-name hover-underline">${name}</span>
+                        </a>
                         ${isAdmin ? '<span class="member-role">👑 リーダー</span>' : ''}
                         ${kickButton}
                     </div>
