@@ -13,6 +13,7 @@
         rel="stylesheet">
     <!-- Bootswatch Lux -->
     <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../styles.css">
     <style>
         :root {
             --primary-green: #2d8a5e;
@@ -371,95 +372,6 @@
 
         .custom-dropdown-list::-webkit-scrollbar-thumb:hover {
             background: #868e96;
-        }
-
-        /* ミュータントバッジ用スタイル */
-        .mutant-badge-container {
-            position: relative;
-            display: inline-block;
-        }
-
-        .mutant-badge-container.mini {
-            width: 24px;
-            height: 24px;
-        }
-
-        .mutant-badge-container.mini img {
-            width: 24px;
-            height: 24px;
-            object-fit: contain;
-            border-radius: 4px;
-        }
-
-        .mutant-badge-container.active::before,
-        .mutant-badge-container.active::after {
-            content: '';
-            position: absolute;
-            border-radius: 50%;
-            animation: mutant-glow 2s ease-in-out infinite;
-        }
-
-        .mutant-badge-container.active::before {
-            inset: -3px;
-            background: linear-gradient(45deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff);
-            z-index: -1;
-            filter: blur(4px);
-            opacity: 0.7;
-        }
-
-        .mutant-badge-container.active::after {
-            inset: -1px;
-            background: linear-gradient(45deg, #ffd93d, #6bcb77, #4d96ff, #ff6b6b);
-            z-index: -1;
-            filter: blur(2px);
-            opacity: 0.5;
-        }
-
-        .mutant-badge-shine {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            pointer-events: none;
-            overflow: hidden;
-            border-radius: 4px;
-        }
-
-        .mutant-badge-shine::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 50%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-            animation: mutant-shine 2s infinite ease-in-out;
-        }
-
-        @keyframes mutant-glow {
-
-            0%,
-            100% {
-                opacity: 0.7;
-                transform: rotate(0deg);
-            }
-
-            50% {
-                opacity: 1;
-                transform: rotate(180deg);
-            }
-        }
-
-        @keyframes mutant-shine {
-            0% {
-                left: -100%;
-            }
-
-            50%,
-            100% {
-                left: 150%;
-            }
         }
     </style>
 </head>
