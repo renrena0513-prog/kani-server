@@ -285,7 +285,7 @@ function filterAccountsByTeam(idx) {
 // ドロップダウンのフィルタリング
 function filterDropdown(idx) {
     const input = document.querySelector(`#player-row-${idx} .player-account`);
-    const val = input.value.trim().toLowerCase();
+    const val = input.value.trim();
     const list = document.getElementById(`dropdown-list-${idx}`);
 
     // 入力が空でも全件表示する（showDropdownと同じロジックを呼ぶのが一番安全だが、ここではフィルタのみ実装）
@@ -299,10 +299,11 @@ function filterDropdown(idx) {
     }
 
     if (val) {
+        const normalizedVal = normalizeSearchString(val);
         candidates = candidates.filter(p => {
-            const name = (p.account_name || '').toLowerCase();
-            const discordId = (p.discord_user_id || '').toLowerCase();
-            return name.includes(val) || discordId.includes(val);
+            const name = normalizeSearchString(p.account_name || '');
+            const discordId = normalizeSearchString(p.discord_user_id || '');
+            return name.includes(normalizedVal) || discordId.includes(normalizedVal);
         });
     }
 
@@ -1036,4 +1037,14 @@ function toggleRuleSettings() {
         content.style.display = 'none';
         icon.textContent = '▼';
     }
+}
+
+/**
+ * 検索用に文字列を正規化する（小文字化 + ひらがな→カタカナ変換）
+ */
+function normalizeSearchString(str) {
+    if (!str) return '';
+    return str.toLowerCase().replace(/[\u3041-\u3096]/g, function (match) {
+        return String.fromCharCode(match.charCodeAt(0) + 0x60);
+    });
 }
