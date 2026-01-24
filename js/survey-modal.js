@@ -3,6 +3,9 @@
  * 撤去時: 各ページからこのスクリプトの読み込みを削除するだけでOK
  */
 (async function () {
+    // アンケート停止中
+    return;
+
     // ログインページはスキップ
     if (window.location.pathname.includes('/login')) return;
 
