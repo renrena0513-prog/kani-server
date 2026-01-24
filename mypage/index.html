@@ -3732,27 +3732,55 @@
                 const profile = allProfiles.find(p => p.discord_user_id === String(opp.id));
                 const avatarUrl = profile?.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png';
 
+                // リンク先の設定（プロフィールがあればリンク化）
+                const linkUrl = profile ? `index.html?user=${opp.id}` : null;
+                const wrapperStart = linkUrl ? `<a href="${linkUrl}" class="text-decoration-none text-dark d-flex align-items-center gap-2 px-2 py-2 rounded" style="background: #f8f9fa; border: 1px solid #eee; transition: background 0.2s;" onmouseover="this.style.background='#e9ecef'" onmouseout="this.style.background='#f8f9fa'">`
+                    : `<div class="d-flex align-items-center gap-2 px-2 py-2 rounded" style="background: #f8f9fa; border: 1px solid #eee;">`;
+                const wrapperEnd = linkUrl ? `</a>` : `</div>`;
+
                 return `
-                    <div class="d-flex align-items-center gap-2 px-2 py-2 rounded" style="background: #f8f9fa; border: 1px solid #eee;">
+                    ${wrapperStart}
                         ${medal}
                         <img src="${avatarUrl}" class="rounded-circle shadow-sm" style="width: 24px; height: 24px; object-fit: cover;">
                         <span class="fw-bold" style="font-size: 0.9rem;">${opp.name}</span>
                         <span class="text-muted" style="font-size: 0.8rem;">${opp.count}試合</span>
-                    </div>
+                    ${wrapperEnd}
                 `;
             }).join('');
+
+            // ヘルパー: マッチアップカード生成
+            const createMatchupCard = (opp, isBest) => {
+                if (!opp) return '<span class="text-muted small">-</span>';
+
+                const profile = allProfiles.find(p => p.discord_user_id === String(opp.id));
+                const avatarUrl = profile?.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png';
+                const scoreClass = isBest ? 'text-success' : 'text-danger';
+                const scorePrefix = isBest && opp.scoreDiff > 0 ? '+' : '';
+
+                // リンク設定
+                const linkUrl = profile ? `index.html?user=${opp.id}` : null;
+                const content = `
+                    <img src="${avatarUrl}" class="rounded-circle shadow-sm" style="width: 20px; height: 20px; object-fit: cover;">
+                    <span class="fw-bold" style="font-size: 0.95rem;">${opp.name}</span>
+                    <span class="${scoreClass} fw-bold ms-auto" style="font-size: 0.95rem;">${scorePrefix}${opp.scoreDiff.toFixed(1)}</span>
+                `;
+
+                if (linkUrl) {
+                    return `<a href="${linkUrl}" class="text-decoration-none text-dark d-flex align-items-center gap-2 w-100">${content}</a>`;
+                } else {
+                    return content; // 既存の構造上、外側のdivにクラスがあるので、内部要素だけで良いか確認が必要だが、元の実装は innerHTML に直書きだった
+                    // 元の実装:
+                    // bestMatchup.innerHTML = `...`;
+                    // bestMatchup 自体は div#best-matchup class="d-flex align-items-center gap-2"
+                    // ここで中身を <a> で包むと a が flex item になる。
+                    // a に w-100 d-flex align-items-center gap-2 をつければOK
+                }
+            };
 
             // 一番勝ち越し
             const bestOpp = [...opponents].sort((a, b) => b.scoreDiff - a.scoreDiff)[0];
             if (bestOpp && bestOpp.scoreDiff > 0) {
-                const profile = allProfiles.find(p => p.discord_user_id === String(bestOpp.id));
-                const avatarUrl = profile?.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png';
-
-                bestMatchup.innerHTML = `
-                    <img src="${avatarUrl}" class="rounded-circle shadow-sm" style="width: 20px; height: 20px; object-fit: cover;">
-                    <span class="fw-bold" style="font-size: 0.95rem;">${bestOpp.name}</span>
-                    <span class="text-success fw-bold ms-auto" style="font-size: 0.95rem;">+${bestOpp.scoreDiff.toFixed(1)}</span>
-                `;
+                bestMatchup.innerHTML = createMatchupCard(bestOpp, true);
             } else {
                 bestMatchup.innerHTML = '<span class="text-muted small">-</span>';
             }
@@ -3760,14 +3788,7 @@
             // 一番負け越し
             const worstOpp = [...opponents].sort((a, b) => a.scoreDiff - b.scoreDiff)[0];
             if (worstOpp && worstOpp.scoreDiff < 0) {
-                const profile = allProfiles.find(p => p.discord_user_id === String(worstOpp.id));
-                const avatarUrl = profile?.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png';
-
-                worstMatchup.innerHTML = `
-                    <img src="${avatarUrl}" class="rounded-circle shadow-sm" style="width: 20px; height: 20px; object-fit: cover;">
-                    <span class="fw-bold" style="font-size: 0.95rem;">${worstOpp.name}</span>
-                    <span class="text-danger fw-bold ms-auto" style="font-size: 0.95rem;">${worstOpp.scoreDiff.toFixed(1)}</span>
-                `;
+                worstMatchup.innerHTML = createMatchupCard(worstOpp, false);
             } else {
                 worstMatchup.innerHTML = '<span class="text-muted small">-</span>';
             }
