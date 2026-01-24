@@ -247,11 +247,17 @@ function updateRanks() {
             continue;
         }
 
-        // 同点グループの開始確認
+        // 既にランクが割り当てられている場合はスキップ（同点グループとして処理済みなど）
+        // 今回のロジックでは i を進めるので問題ないはずだが、念のため。
+
+        // 同点グループの検出
         let ties = [current];
-        while (i + 1 < scores.length && scores[i + 1].score === current.score && scores[i + 1].isInput) {
-            ties.push(scores[i + 1]);
-            i++;
+
+        // 次の要素以降を見て、同点なら ties に追加
+        let j = i + 1;
+        while (j < scores.length && scores[j].score === current.score && scores[j].isInput) {
+            ties.push(scores[j]);
+            j++;
         }
 
         if (ties.length > 1) {
@@ -262,13 +268,22 @@ function updateRanks() {
 
             if (savedOrder) {
                 // 保存された順序に従って並び替え
+                // savedOrder に含まれていないIDがある場合（稀なケース）も考慮しつつ
                 ties.sort((a, b) => {
-                    return savedOrder.indexOf(a.id) - savedOrder.indexOf(b.id);
+                    const idxA = savedOrder.indexOf(String(a.id)); // IDはString化して比較推奨
+                    const idxB = savedOrder.indexOf(String(b.id));
+                    // 見つからない場合は後ろへ（あるいはID順）
+                    if (idxA === -1) return 1;
+                    if (idxB === -1) return -1;
+                    return idxA - idxB;
                 });
             } else {
                 // 未解決の同点グループとして記録
                 tieGroups.push({ key: tieKey, players: ties, startRank: currentRank });
             }
+
+            // ループインデックスを進める (ties.length - 1 分)
+            i += ties.length - 1;
         }
 
         // ランク割り当て
