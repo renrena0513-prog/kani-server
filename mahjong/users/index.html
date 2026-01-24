@@ -183,6 +183,25 @@
             .accordion-button .badge {
                 font-size: 1rem;
             }
+
+            .team-icon {
+                width: 60px !important;
+                height: 60px !important;
+                font-size: 3em !important;
+                /* for emoji */
+            }
+        }
+
+        .team-icon {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+            margin-right: 12px;
+            font-size: 2em;
+            /* for emoji */
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
     </style>
 </head>
@@ -466,9 +485,9 @@
                 const headingId = `headingTeam${team.id}`;
 
                 // チームロゴまたはデフォルト絵文字
-                let logoHtml = '<span style="font-size: 1.5em; margin-right: 8px;">🏅</span>';
+                let logoHtml = '<span class="team-icon">🏅</span>';
                 if (team.logo_badge && team.logo_badge.image_url) {
-                    logoHtml = `<img src="${team.logo_badge.image_url}" alt="logo" title="${team.team_name}" style="width: 32px; height: 32px; object-fit: contain; margin-right: 8px;">`;
+                    logoHtml = `<img src="${team.logo_badge.image_url}" alt="logo" title="${team.team_name}" class="team-icon">`;
                 }
 
                 const item = document.createElement('div');
@@ -506,7 +525,7 @@
                     <h2 class="accordion-header" id="${headingId}">
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false" aria-controls="${collapseId}">
                             <div class="d-flex align-items-center">
-                                <span style="font-size: 1.5em; margin-right: 8px;">🚫</span>
+                                <span class="team-icon">🚫</span>
                                 <span class="fw-bold fs-5">未所属</span>
                                 <span class="badge bg-secondary ms-3 rounded-pill">${unaffiliatedUsers.length}名</span>
                             </div>

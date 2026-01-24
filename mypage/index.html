@@ -1968,7 +1968,7 @@
         async function loadTargetUserInfo() {
             const { data: profile, error } = await supabaseClient
                 .from('profiles')
-                .select('discord_user_id, account_name, avatar_url, coins, total_assets, gacha_tickets, exchange_tickets, equipped_badge_id, equipped_badge_id_right, team_id, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name), teams!team_id(team_name)')
+                .select('discord_user_id, account_name, avatar_url, coins, total_assets, gacha_tickets, exchange_tickets, equipped_badge_id, equipped_badge_id_right, team_id, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name), teams!team_id(team_name, logo_badge:badges!logo_badge_id(image_url))')
                 .eq('discord_user_id', targetId)
                 .maybeSingle();
 
@@ -2041,9 +2041,23 @@
 
                 // チーム名を設定
                 const teamNameEl = document.getElementById('user-team-name');
+                const teamDisplayEl = document.getElementById('user-team-display');
                 if (teamNameEl) {
                     const team = profile?.teams;
-                    teamNameEl.textContent = team?.team_name || '未所属';
+                    const teamName = team?.team_name || '未所属';
+
+                    let logoHtml = '🏠 ';
+                    if (team && team.logo_badge && team.logo_badge.image_url) {
+                        logoHtml = `<img src="${team.logo_badge.image_url}" alt="logo" style="width: 20px; height: 20px; object-fit: contain; margin-right: 4px;"> `;
+                    }
+
+                    // 親要素のbadgeの中身を書き換える
+                    const badgeEl = teamDisplayEl.querySelector('.badge');
+                    if (badgeEl) {
+                        badgeEl.innerHTML = `${logoHtml}<span id="user-team-name">${teamName}</span>`;
+                    } else {
+                        teamNameEl.textContent = teamName;
+                    }
                 }
 
                 // コイン表示の更新
