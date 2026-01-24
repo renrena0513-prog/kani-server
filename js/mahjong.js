@@ -578,7 +578,7 @@ function renderRanking(records, groupKey, type = 'all') {
                     `<img src="${avatarUrl}" alt="${displayName}" class="podium-avatar">` :
                     (s.isTeam ?
                         (window.teamLogoMap && window.teamLogoMap[s.key] ?
-                            `<img src="${window.teamLogoMap[s.key]}" alt="${s.key}" class="podium-avatar" style="border-radius: 8px; border: none;">` :
+                            `<img src="${window.teamLogoMap[s.key]}" alt="${s.key}" class="podium-avatar" style="border-radius: 8px; border: none; box-shadow: none;">` :
                             `<span style="font-size: 2rem;">🏅</span>`
                         ) :
                         `<img src="../img/default-avatar.png" class="podium-avatar">`)}
