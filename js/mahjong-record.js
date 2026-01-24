@@ -84,9 +84,12 @@ function changeMatchMode() {
     // ⑪チーム戦時は飛び賞・やきとりを非表示にする
     const tobiSection = document.getElementById('tobi-section');
     const yakitoriSection = document.getElementById('yakitori-section');
+    const penaltyExplanation = document.getElementById('penalty-explanation');
 
-    if (tobiSection) tobiSection.style.display = isTeamMatch ? 'none' : 'block';
-    if (yakitoriSection) yakitoriSection.style.display = isTeamMatch ? 'none' : 'block';
+    const displayStyle = isTeamMatch ? 'none' : 'block';
+    if (tobiSection) tobiSection.style.display = displayStyle;
+    if (yakitoriSection) yakitoriSection.style.display = displayStyle;
+    if (penaltyExplanation) penaltyExplanation.style.display = displayStyle;
 
     if (isTeamMatch) {
         // 非表示時は「なし」を選択状態にする
@@ -170,7 +173,7 @@ function setupPlayerInputs(count) {
                     <div class="col score-col">
                         <label class="small text-muted">得点 <span class="remaining-score text-primary fw-bold" id="remaining-${i}"></span></label>
                         <input type="number" class="form-control form-control-sm player-score" 
-                               placeholder="${defaultScore}" oninput="updateRemainingScores()" onfocus="autoCalculateRemainingScore(${i})">
+                               placeholder="" oninput="updateRemainingScores()" onfocus="autoCalculateRemainingScore(${i})">
                     </div>
                     <div class="col win-col">
                         <label class="small text-muted">和了数</label>
