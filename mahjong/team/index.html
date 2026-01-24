@@ -196,6 +196,88 @@
             background: rgba(45, 138, 94, 0.1);
             border: 2px solid var(--deep-green);
         }
+
+        /* ミュータントバッジ用スタイル */
+        .mutant-badge-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .mutant-badge-container.mini {
+            width: 32px;
+            height: 32px;
+        }
+
+        .mutant-badge-container.active::before,
+        .mutant-badge-container.active::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            animation: mutant-glow 2s ease-in-out infinite;
+        }
+
+        .mutant-badge-container.active::before {
+            inset: -3px;
+            background: linear-gradient(45deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff);
+            z-index: -1;
+            filter: blur(4px);
+            opacity: 0.7;
+        }
+
+        .mutant-badge-container.active::after {
+            inset: -1px;
+            background: linear-gradient(45deg, #ffd93d, #6bcb77, #4d96ff, #ff6b6b);
+            z-index: -1;
+            filter: blur(2px);
+            opacity: 0.5;
+        }
+
+        .mutant-badge-shine {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            overflow: hidden;
+            border-radius: 4px;
+        }
+
+        .mutant-badge-shine::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            animation: mutant-shine 2s infinite ease-in-out;
+        }
+
+        @keyframes mutant-glow {
+
+            0%,
+            100% {
+                opacity: 0.7;
+                transform: rotate(0deg);
+            }
+
+            50% {
+                opacity: 1;
+                transform: rotate(180deg);
+            }
+        }
+
+        @keyframes mutant-shine {
+            0% {
+                left: -100%;
+            }
+
+            50%,
+            100% {
+                left: 150%;
+            }
+        }
     </style>
 </head>
 
@@ -502,12 +584,23 @@
                 await checkMyLeaveRequest();
             }
 
-            // メンバー一覧取得
+            // メンバー一覧取得（バッジ情報含む）
             const { data: members } = await supabaseClient
                 .from('profiles')
-                .select('*')
+                .select('*, badges!equipped_badge_id(id, image_url, name), badges_right:badges!equipped_badge_id_right(id, image_url, name)')
                 .eq('team_id', myTeam.id)
                 .order('account_name');
+
+            // ミュータント情報を取得
+            const { data: userBadges } = await supabaseClient
+                .from('user_badges_new')
+                .select('user_id, badge_id')
+                .eq('is_mutant', true);
+
+            const userMutantMap = {};
+            (userBadges || []).forEach(ub => {
+                userMutantMap[`${ub.user_id}_${ub.badge_id}`] = true;
+            });
 
             teamMembers = members || [];
 
@@ -521,6 +614,31 @@
                 const isAdmin = member.discord_user_id === myTeam.creator_discord_id;
                 const avatarUrl = member.avatar_url || 'https://via.placeholder.com/48';
                 const name = member.account_name || '名称未設定';
+                const badge = member.badges;
+                const badgeRight = member.badges_right;
+                let badgeHtmlLeft = '';
+                let badgeHtmlRight = '';
+
+                if (badge) {
+                    const isMutant = userMutantMap[`${member.discord_user_id}_${badge.id}`];
+                    badgeHtmlLeft = `
+                        <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}" style="margin-right: 8px;">
+                            <img src="${badge.image_url}" title="${badge.name}" 
+                                 style="width: 32px; height: 32px; object-fit: contain; border-radius: 4px;">
+                            <div class="mutant-badge-shine" style="display: ${isMutant ? 'block' : 'none'};"></div>
+                        </div>`;
+                }
+
+                if (badgeRight) {
+                    const isMutant = userMutantMap[`${member.discord_user_id}_${badgeRight.id}`];
+                    badgeHtmlRight = `
+                        <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}" style="margin-left: 8px;">
+                            <img src="${badgeRight.image_url}" title="${badgeRight.name}" 
+                                 style="width: 32px; height: 32px; object-fit: contain; border-radius: 4px;">
+                            <div class="mutant-badge-shine" style="display: ${isMutant ? 'block' : 'none'};"></div>
+                        </div>`;
+                }
+
                 const kickButton = (!isAdmin && isTeamAdmin)
                     ? `<button class="btn btn-outline-danger btn-sm ms-2" onclick="requestKick('${member.discord_user_id}', '${name.replace(/'/g, "\\'")}')">追放</button>`
                     : '';
@@ -529,7 +647,9 @@
                     <div class="member-card">
                         <a href="../../mypage/index.html?user=${member.discord_user_id}" class="d-flex align-items-center text-decoration-none text-dark flex-grow-1">
                             <img src="${avatarUrl}" alt="${name}" class="member-avatar" onerror="this.src='https://via.placeholder.com/48'">
+                            ${badgeHtmlLeft}
                             <span class="member-name hover-underline">${name}</span>
+                            ${badgeHtmlRight}
                         </a>
                         ${isAdmin ? '<span class="member-role">👑 リーダー</span>' : ''}
                         ${kickButton}

@@ -1,7 +1,7 @@
 let allRecords = [];
 let allProfiles = []; // プロフィール情報（アイコン付き）
 let currentTournament = '第二回麻雀大会'; // 初期表示は第二回
-let currentMainFilter = 'individual_yonma'; // チーム戦, 個人戦(四麻), 個人戦(三麻)
+let currentMainFilter = 'team'; // チーム戦, 個人戦(四麻), 個人戦(三麻)
 let currentSubFilter = 'all';  // 合計スコア, 平均スコア, 最大スコア, etc.
 
 document.addEventListener('DOMContentLoaded', () => {
