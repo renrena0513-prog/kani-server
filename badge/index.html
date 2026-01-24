@@ -38,6 +38,7 @@
             color: white;
         }
 
+        /* ミュータントバッジ用スタイルは styles.css の .mutant-badge-container.large を使用 */
         .badge-image-large {
             width: 150px;
             height: 150px;
@@ -47,140 +48,6 @@
             padding: 15px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
             transition: all 0.5s ease;
-        }
-
-        /* ミュータントバッジ用コンテナ */
-        .badge-image-container {
-            position: relative;
-            display: inline-block;
-        }
-
-        /* ミュータント用オーラ - 背後で大きな泡（バブル）が上昇する演出 */
-        .badge-image-container.mutant-active::before,
-        .badge-image-container.mutant-active::after {
-            content: '';
-            position: absolute;
-            bottom: -50px;
-            left: 50%;
-            width: 250px;
-            height: 400px;
-            transform: translateX(-50%);
-            z-index: 0;
-            pointer-events: none;
-            border-radius: 50% 50% 0 0;
-            filter: blur(35px);
-        }
-
-        /* オーラバブル・レイヤー1 */
-        .badge-image-container.mutant-active::before {
-            background-image:
-                radial-gradient(circle at 30% 80%, rgba(180, 0, 180, 0.6) 0%, transparent 40%),
-                radial-gradient(circle at 70% 60%, rgba(120, 0, 255, 0.5) 0%, transparent 45%),
-                radial-gradient(circle at 40% 40%, rgba(200, 0, 255, 0.4) 0%, transparent 50%);
-            animation: bubblesRise 4s linear infinite;
-        }
-
-        /* オーラバブル・レイヤー2 */
-        .badge-image-container.mutant-active::after {
-            background-image:
-                radial-gradient(circle at 60% 90%, rgba(255, 0, 150, 0.5) 0%, transparent 40%),
-                radial-gradient(circle at 20% 70%, rgba(180, 0, 255, 0.4) 0%, transparent 45%),
-                radial-gradient(circle at 80% 30%, rgba(120, 0, 255, 0.3) 0%, transparent 50%);
-            animation: bubblesRise 6s linear infinite reverse;
-            opacity: 0.7;
-        }
-
-        .badge-image-container.mutant-active .badge-image-large {
-            position: relative;
-            z-index: 1;
-            background: transparent;
-            box-shadow: none;
-            border-radius: 50%;
-            filter: drop-shadow(0 0 15px rgba(200, 0, 200, 0.8)) drop-shadow(0 0 30px rgba(150, 0, 255, 0.4));
-            animation: badgeFloatSimple 4s ease-in-out infinite;
-        }
-
-        /* キラエフェクト用オーバーレイ（画像前面：斜め光のみ） */
-        .mutant-shine-overlay {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 100%;
-            height: 100%;
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-            z-index: 2;
-            overflow: hidden;
-            border-radius: 50% !important;
-            -webkit-mask-image: radial-gradient(circle, black 65%, transparent 70%);
-            mask-image: radial-gradient(circle, black 65%, transparent 70%);
-        }
-
-        .mutant-shine-overlay::before {
-            content: '';
-            position: absolute;
-            top: -100%;
-            left: -100%;
-            width: 300%;
-            height: 300%;
-            /* 135度（左上から右下）の斜め光を2本作成 */
-            background: linear-gradient(135deg,
-                    transparent 40%,
-                    rgba(255, 255, 255, 0.1) 44%,
-                    rgba(255, 255, 255, 0.9) 45%,
-                    rgba(255, 255, 255, 0.2) 46%,
-                    transparent 48%,
-                    transparent 50%,
-                    rgba(255, 255, 255, 0.1) 51%,
-                    rgba(255, 255, 255, 0.6) 52%,
-                    rgba(255, 255, 255, 0.1) 53%,
-                    transparent 55%);
-            filter: blur(5px);
-            animation: mutantShineDiagonal 2s infinite ease-in-out;
-        }
-
-        @keyframes bubblesRise {
-            0% {
-                background-position: 0% 100%;
-                transform: translateX(-50%) translateY(20px) scale(0.8);
-                opacity: 0;
-            }
-
-            10% {
-                opacity: 0.8;
-            }
-
-            90% {
-                opacity: 0.8;
-            }
-
-            100% {
-                background-position: 0% -100%;
-                transform: translateX(-50%) translateY(-100px) scale(1.2);
-                opacity: 0;
-            }
-        }
-
-        @keyframes mutantShineDiagonal {
-            0% {
-                transform: translate(-30%, -30%);
-            }
-
-            100% {
-                transform: translate(30%, 30%);
-            }
-        }
-
-        @keyframes badgeFloatSimple {
-
-            0%,
-            100% {
-                transform: translateY(0);
-            }
-
-            50% {
-                transform: translateY(-8px);
-            }
         }
 
         .badge-name {
@@ -370,9 +237,9 @@
                         style="font-size: 0.9rem; padding: 6px 15px; display: none;">Normal</div>
 
                     <!-- バッジ画像 -->
-                    <div id="badge-image-container" class="badge-image-container">
+                    <div id="badge-image-container" class="mutant-badge-container large">
                         <img id="badge-image" src="" alt="バッジ" class="badge-image-large">
-                        <div id="mutant-shine" class="mutant-shine-overlay" style="display: none;"></div>
+                        <div id="mutant-shine" class="mutant-badge-shine" style="display: none;"></div>
                     </div>
 
                     <!-- 名称 -->
@@ -824,7 +691,7 @@
             // オーラエフェクト切り替え
             const badgeContainer = document.getElementById('badge-image-container');
             if (badgeContainer) {
-                badgeContainer.classList.toggle('mutant-active', showMutant);
+                badgeContainer.classList.toggle('active', showMutant);
             }
 
             // キラエフェクト切り替え
