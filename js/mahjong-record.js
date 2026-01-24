@@ -1022,3 +1022,18 @@ function clearTeam(idx) {
     // フィルタリング解除
     filterAccountsByTeam(idx);
 }
+
+// ルール設定の開閉切り替え
+function toggleRuleSettings() {
+    const content = document.getElementById('rule-settings-content');
+    const icon = document.getElementById('rule-toggle-icon');
+    if (!content) return;
+
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.textContent = '▲';
+    } else {
+        content.style.display = 'none';
+        icon.textContent = '▼';
+    }
+}

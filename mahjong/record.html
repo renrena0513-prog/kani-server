@@ -454,50 +454,67 @@
 
         <!-- ルール設定カード -->
         <div class="form-card">
-            <h3>⚙️ ルール設定</h3>
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <label class="form-label">配給点</label>
-                    <div id="disp-dist-points" class="fw-bold fs-5 text-dark py-2">標準 (25,000点)</div>
-                    <input type="hidden" id="opt-dist-points" value="default">
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">返し点 (固定)</label>
-                    <div id="disp-return-points" class="fw-bold fs-5 text-dark py-2">30,000点</div>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">ウマ (固定)</label>
-                    <div id="disp-uma" class="fw-bold fs-5 text-dark py-2">10-30</div>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">オカ (1位ボーナス)</label>
-                    <div id="disp-oka" class="fw-bold fs-5 text-muted py-2">+20.0</div>
-                </div>
-                <div class="col-md-4" id="tobi-section">
-                    <label class="form-label">飛び賞 (1位へ10000点)</label>
-                    <div class="btn-group w-100" role="group">
-                        <input type="radio" class="btn-check" name="opt-tobi" id="tobi-none" value="none"
-                            autocomplete="off" checked>
-                        <label class="btn btn-outline-success" for="tobi-none">なし</label>
-                        <input type="radio" class="btn-check" name="opt-tobi" id="tobi-yes" value="yes"
-                            autocomplete="off">
-                        <label class="btn btn-outline-success" for="tobi-yes">あり</label>
+            <h3 onclick="toggleRuleSettings()"
+                style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                ⚙️ ルール設定
+                <span id="rule-toggle-icon" style="font-size: 1rem;">▼</span>
+            </h3>
+            <div id="rule-settings-content" style="display: none;">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">配給点</label>
+                        <div id="disp-dist-points" class="fw-bold fs-5 text-dark py-2">標準 (25,000点)</div>
+                        <input type="hidden" id="opt-dist-points" value="default">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">返し点 (固定)</label>
+                        <div id="disp-return-points" class="fw-bold fs-5 text-dark py-2">30,000点</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">ウマ (固定)</label>
+                        <div id="disp-uma" class="fw-bold fs-5 text-dark py-2">10-30</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">オカ (1位ボーナス)</label>
+                        <div id="disp-oka" class="fw-bold fs-5 text-muted py-2">+20.0</div>
+                    </div>
+                    <div class="col-md-4" id="tobi-section">
+                        <label class="form-label">飛び賞 (1位へ10000点)</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="opt-tobi" id="tobi-none" value="none"
+                                autocomplete="off" checked>
+                            <label class="btn btn-outline-success" for="tobi-none">なし</label>
+                            <input type="radio" class="btn-check" name="opt-tobi" id="tobi-yes" value="yes"
+                                autocomplete="off">
+                            <label class="btn btn-outline-success" for="tobi-yes">あり</label>
+                        </div>
+                    </div>
+                    <div class="col-md-4" id="yakitori-section">
+                        <label class="form-label">やきとり (1位へ10000点)</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="opt-yakitori" id="yakitori-none" value="none"
+                                autocomplete="off" checked>
+                            <label class="btn btn-outline-success" for="yakitori-none">なし</label>
+                            <input type="radio" class="btn-check" name="opt-yakitori" id="yakitori-yes" value="yes"
+                                autocomplete="off">
+                            <label class="btn btn-outline-success" for="yakitori-yes">あり</label>
+                        </div>
                     </div>
                 </div>
-                <div class="col-md-4" id="yakitori-section">
-                    <label class="form-label">やきとり (1位へ10000点)</label>
-                    <div class="btn-group w-100" role="group">
-                        <input type="radio" class="btn-check" name="opt-yakitori" id="yakitori-none" value="none"
-                            autocomplete="off" checked>
-                        <label class="btn btn-outline-success" for="yakitori-none">なし</label>
-                        <input type="radio" class="btn-check" name="opt-yakitori" id="yakitori-yes" value="yes"
-                            autocomplete="off">
-                        <label class="btn btn-outline-success" for="yakitori-yes">あり</label>
-                    </div>
+                <div class="mt-3 small text-muted" id="penalty-explanation">
+                    ※「飛び賞」「やきとり」を「あり」にすると、対象者から-10.0され、1位に加算されます。
                 </div>
-            </div>
-            <div class="mt-3 small text-muted" id="penalty-explanation">
-                ※「飛び賞」「やきとり」を「あり」にすると、対象者から-10.0され、1位に加算されます。
+
+                <!-- 注意文 -->
+                <div class="alert alert-warning mt-4 mb-0" role="alert" style="font-size: 0.9rem;">
+                    <strong>⚠️ 注意事項</strong><br>
+                    <ul class="mb-0 ps-3 mt-2">
+                        <li>思考時間は卓のメンバーの了承を得て好きな秒数で大丈夫です。</li>
+                        <li>飛びあり飛びなし設定は個人戦はどちらでもOKですが、<strong>チーム戦は飛びなし設定で固定</strong>してください。</li>
+                        <li>その他詳細ルールは変更不可（例: ローカル役、赤ドラの数など）。</li>
+                        <li>寝落ちや、ルール適応外の設定で対局をしてしまった場合はねむまでご報告ください。</li>
+                    </ul>
+                </div>
             </div>
         </div>
 
