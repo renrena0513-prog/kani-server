@@ -27,6 +27,19 @@
             background: linear-gradient(180deg, #2d8a5e 0%, #256b4a 50%, #1e5538 100%);
             min-height: 100vh;
             background-attachment: fixed;
+            text-transform: none !important;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6,
+        .btn,
+        .nav-link,
+        .navbar-brand {
+            text-transform: none !important;
         }
 
         .page-header {
@@ -60,18 +73,6 @@
             padding: 30px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
             margin-bottom: 30px;
-        }
-
-        .team-section {
-            margin-bottom: 30px;
-        }
-
-        .team-header {
-            font-family: var(--font-title);
-            color: var(--deep-green);
-            border-bottom: 2px solid var(--gold);
-            padding-bottom: 10px;
-            margin-bottom: 15px;
         }
 
         .user-card {
@@ -150,6 +151,25 @@
         .team-list-item.selected {
             border-color: var(--deep-green);
             background: rgba(45, 138, 94, 0.1);
+        }
+
+        /* Accordion Customization */
+        .accordion-button:not(.collapsed) {
+            background-color: rgba(45, 138, 94, 0.1);
+            color: var(--deep-green);
+            font-weight: bold;
+        }
+
+        .accordion-button:focus {
+            box-shadow: none;
+            border-color: rgba(45, 138, 94, 0.5);
+        }
+
+        .accordion-item {
+            border: 1px solid rgba(0, 0, 0, 0.125);
+            margin-bottom: 10px;
+            border-radius: 10px !important;
+            overflow: hidden;
         }
     </style>
 </head>
@@ -340,7 +360,7 @@
                 // チームデータ取得
                 const { data: teams, error: teamsError } = await supabaseClient
                     .from('teams')
-                    .select('*')
+                    .select('*, logo_badge:badges!logo_badge_id(image_url, name)')
                     .order('team_name');
 
                 if (teamsError) throw teamsError;
@@ -412,34 +432,85 @@
 
         function renderUsers() {
             const teamsContainer = document.getElementById('teams-container');
-            const unaffiliatedContainer = document.getElementById('unaffiliated-users');
+            // 古い未所属コンテナをクリア（これからはteamsContainerのアコーディオンに含めるため）
+            const oldUnaffiliatedContainer = document.querySelector('.team-section:has(#unaffiliated-users)');
+            if (oldUnaffiliatedContainer) oldUnaffiliatedContainer.style.display = 'none';
 
             teamsContainer.innerHTML = '';
-            unaffiliatedContainer.innerHTML = '';
 
-            // チーム別にユーザーを表示
+            const accordionId = 'usersAccordion';
+            const accordion = document.createElement('div');
+            accordion.className = 'accordion';
+            accordion.id = accordionId;
+
+            // チームごとにアコーディオンアイテム作成
             allTeams.forEach(team => {
                 const teamMembers = allProfiles.filter(p => p.team_id === team.id);
-                if (teamMembers.length === 0) return;
+                // メンバー0人のチームも表示するかは要件次第だが、とりあえず表示しておく（作成したばかりのチームなど）
+                // if (teamMembers.length === 0) return; 
 
-                const section = document.createElement('div');
-                section.className = 'team-section';
-                section.innerHTML = `
-<h3 class="team-header">🏅 ${team.team_name}</h3>
-<div class="team-members">
-    ${teamMembers.map(user => createUserCard(user)).join('')}
-</div>
-`;
-                teamsContainer.appendChild(section);
+                const collapseId = `collapseTeam${team.id}`;
+                const headingId = `headingTeam${team.id}`;
+
+                // チームロゴまたはデフォルト絵文字
+                let logoHtml = '<span style="font-size: 1.5em; margin-right: 8px;">🏅</span>';
+                if (team.logo_badge && team.logo_badge.image_url) {
+                    logoHtml = `<img src="${team.logo_badge.image_url}" alt="logo" title="${team.team_name}" style="width: 32px; height: 32px; object-fit: contain; margin-right: 8px;">`;
+                }
+
+                const item = document.createElement('div');
+                item.className = 'accordion-item';
+                item.innerHTML = `
+                    <h2 class="accordion-header" id="${headingId}">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false" aria-controls="${collapseId}">
+                            <div class="d-flex align-items-center">
+                                ${logoHtml}
+                                <span class="fw-bold fs-5">${team.team_name}</span>
+                                <span class="badge bg-secondary ms-3 rounded-pill">${teamMembers.length}名</span>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="${collapseId}" class="accordion-collapse collapse" aria-labelledby="${headingId}" data-bs-parent="#${accordionId}">
+                        <div class="accordion-body">
+                            <div class="team-members">
+                                ${teamMembers.length > 0 ? teamMembers.map(user => createUserCard(user)).join('') : '<p class="text-muted p-2">メンバーはいません</p>'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                accordion.appendChild(item);
             });
 
             // 未所属ユーザー
             const unaffiliatedUsers = allProfiles.filter(p => !p.team_id);
-            if (unaffiliatedUsers.length === 0) {
-                unaffiliatedContainer.innerHTML = '<p class="text-muted">未所属のユーザーはいません</p>';
-            } else {
-                unaffiliatedContainer.innerHTML = unaffiliatedUsers.map(user => createUserCard(user)).join('');
+            if (unaffiliatedUsers.length > 0) {
+                const collapseId = 'collapseUnaffiliated';
+                const headingId = 'headingUnaffiliated';
+
+                const item = document.createElement('div');
+                item.className = 'accordion-item';
+                item.innerHTML = `
+                    <h2 class="accordion-header" id="${headingId}">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false" aria-controls="${collapseId}">
+                            <div class="d-flex align-items-center">
+                                <span style="font-size: 1.5em; margin-right: 8px;">🚫</span>
+                                <span class="fw-bold fs-5">未所属</span>
+                                <span class="badge bg-secondary ms-3 rounded-pill">${unaffiliatedUsers.length}名</span>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="${collapseId}" class="accordion-collapse collapse" aria-labelledby="${headingId}" data-bs-parent="#${accordionId}">
+                        <div class="accordion-body">
+                             <div class="team-members">
+                                ${unaffiliatedUsers.map(user => createUserCard(user)).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                accordion.appendChild(item);
             }
+
+            teamsContainer.appendChild(accordion);
         }
 
         function createUserCard(user) {
