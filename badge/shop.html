@@ -526,7 +526,7 @@
                                                 <span>販売価格: 🪙${badge.pBuy.toLocaleString()}</span>
                                             </div>
                                             <div class="d-flex justify-content-between mt-1 opacity-75" style="font-size: 0.7rem;">
-                                                <span>流通: ${badge.n} 枚 | 残り: ${badge.remaining_count ?? '∞'} | 所持: ${myCounts[badge.id] || 0}</span>
+                                                <span>流通: ${badge.circulationCount} 枚 | 残り: ${badge.remaining_count ?? '∞'} | 所持: ${myCounts[badge.id] || 0}</span>
                                             </div>
                                         </div>
                                         <button class="btn btn-buy ${isSoldOut ? 'btn-secondary' : 'btn-light'}" 
