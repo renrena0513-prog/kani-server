@@ -326,6 +326,10 @@
                 // 3. バッジマスター情報を取得（固定価格対応）
                 const { data: masterBadges } = await supabaseClient.from('badges').select('id, price, sales_type');
 
+                // 4. レアリティ閾値データを取得（エラー修正：これが不足していた）
+                const { data: thresholds } = await supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true });
+
+
                 // UUID -> discord_user_id のルックアップマップを作成
                 const uuidToDiscordMap = {};
                 profiles.forEach(p => {
