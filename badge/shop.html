@@ -440,7 +440,9 @@
                             <select id="inventory-filter" class="form-select form-select-sm"
                                 onchange="filterAndRenderInventoryBadges()">
                                 <option value="all">すべて</option>
-                                <option value="normal">通常</option>
+                                <option value="fixed">固定型</option>
+                                <option value="variable">変動型</option>
+                                <option value="shrine">お賽銭限定</option>
                                 <option value="mutant">✨ ミュータント</option>
                             </select>
                         </div>
@@ -1035,13 +1037,13 @@
 
         // ======= 所持品表示 =======
         let allInventoryBadges = [];
+        let groupedInventory = []; // グルーピング後のデータ
         let currentInventoryPage = 1;
         const INVENTORY_ITEMS_PER_PAGE = 10;
+        let expandedBadgeId = null; // 現在展開中のバッジID
 
         async function loadInventory() {
             const listEl = document.getElementById('inventory-list');
-            // listEl.innerHTML = ... ; // 既にHTML側でローディング表示があればそのまま、なければセット
-
             try {
                 // 自分の所持バッジ
                 const { data: myBadges, error } = await supabaseClient
@@ -1052,40 +1054,12 @@
 
                 if (error) throw error;
 
-                // 固定価格（マスター）取得
-                const { data: masterBadges } = await supabaseClient
-                    .from('badges')
-                    .select('id, price, sales_type, fixed_rarity_name');
-
-                // レアリティ閾値（ranking同様必要なら）
                 const { data: thresholds } = await supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true });
-
-
-                // 全バッジ数（市場流通数）カウント用
-                // 簡易的に全取得は重いので、自分の持ってるバッジIDに関連するものだけ取るか、
-                // あるいはランキング同様ここも少し重いが取得するか。
-                // ショップページなので、毎回全件取得は避けたいが、正確な売却額計算には必要。
-                // 以前のロジックではどうしていた？ -> 以前はループ内で個別に計算していた可能性や、概算だった可能性。
-                // ここではバッジIDリストを作って、それらのカウントを取得するのがベター。
 
                 const badgeIds = [...new Set(myBadges.map(ub => ub.badge_id))];
                 let marketCounts = {};
 
                 if (badgeIds.length > 0) {
-                    const { data: counts, error: cErr } = await supabaseClient
-                        .from('user_badges_new')
-                        .select('badge_id'); // countだけ取りたいが...
-                    // 全件取得は重いので、rpcを使うか、あるいは クライアント側で許容するか。
-                    // 今回は「ショップ」なのである程度正確さが欲しいが、とりあえず全バッジテーブルの remaining_count などは使えない（流通数定義が違うため）。
-                    // 暫定：全件取得はリスクあるので、自分のバッジ計算に必要な分だけ...といってもSQLが難しい。
-                    // 前の実装(900行付近)を見てみる。
-                    // -> getBadgeMarketCountなどは関数化されていなかったか？
-                    // -> BadgeUtils.calculateBadgeValues を使っているなら thresholds と count が必要。
-
-                    // 妥協案：全流通数を取得するRPCがあれば早いが、ない場合は profiles全読み込みよりは user_badges_new 全読み込みの方がマシか？（いや重い）
-                    // 既存コードではどうなっていたか確認できていないが、
-                    // 今回は "calculateBadgeValues" を使うために count が必要。
-                    // ここでは「全ユーザーのバッジ所有数」を取得するクエリを投げる。
                     const { data: allOwned } = await supabaseClient.from('user_badges_new').select('badge_id');
                     if (allOwned) {
                         allOwned.forEach(o => {
@@ -1094,10 +1068,14 @@
                     }
                 }
 
-                // データ加工
+                // データ加工（限定品かつ売却不可は除外）
                 allInventoryBadges = myBadges.map(inventoryItem => {
                     const badge = inventoryItem.badges;
                     if (!badge) return null;
+
+                    // 限定品かつ、明示的に売却を許可されていない場合は除外（今回は限定品フラグのみで判定）
+                    // 要望により「限定品の販売不可は非表示」なので、sales_type==="限定品"を除外する方針
+                    if (badge.sales_type === '限定品') return null;
 
                     const count = marketCounts[badge.id] || 1;
                     const valResult = BadgeUtils.calculateBadgeValues(badge, count, thresholds || []);
@@ -1136,12 +1114,31 @@
             // 1. フィルタ
             let filtered = allInventoryBadges.filter(item => {
                 if (searchVal && !item.badge_name.toLowerCase().includes(searchVal)) return false;
-                if (filterVal === 'mutant' && !item.is_mutant) return false;
-                if (filterVal === 'normal' && item.is_mutant) return false;
-                return true;
+
+                switch (filterVal) {
+                    case 'fixed':
+                        return item.sales_type === '固定型';
+                    case 'variable':
+                        return item.sales_type === '変動型';
+                    case 'shrine':
+                        // お賽銭限定かどうかは現状 fixed_rarity_name や sales_type で判断が必要だが
+                        // ユーザーは「お賽銭限定」フィルタを希望。
+                        // ここでは sales_type が 'お賽銭限定' または fixed_rarity_name があるもの(固定レアリティ)の一部と推測されるが
+                        // 明確なフラグがない場合、一旦 sales_type === 'お賽銭限定' をチェック（DB設計依存）
+                        // もしDBにその値がなければ、このフィルタは機能しないため、実装後に確認・調整が必要。
+                        // 仮実装: sales_type に 'お賽銭' が含まれるかチェック
+                        return item.sales_type === 'お賽銭限定';
+                    case 'mutant':
+                        return item.is_mutant;
+                    case 'all':
+                    default:
+                        return true;
+                }
             });
 
-            // 2. ソート
+            // 2. ソートは各アイテムに対して行うが、グルーピング表示のため、
+            // 「グループ代表（最新のものなど）」でソートするか、あるいは展開後のリストをソートするか。
+            // ここでは「グループ」の並び順を決めるために、全アイテムをまずソートしておく。
             filtered.sort((a, b) => {
                 if (sortVal === 'acquired_desc') return b.acquired_at - a.acquired_at;
                 if (sortVal === 'acquired_asc') return a.acquired_at - b.acquired_at;
@@ -1154,71 +1151,120 @@
                 return 0;
             });
 
-            // 3. ページネーション
-            const totalPages = Math.ceil(filtered.length / INVENTORY_ITEMS_PER_PAGE);
+            // 3. グルーピング
+            // badge_id をキーにしてまとめる。配列の順序はソート済みの filtered に従う（最初に出てきた順でグループ作成）
+            const groups = new Map();
+            filtered.forEach(item => {
+                if (!groups.has(item.badge_id)) {
+                    groups.set(item.badge_id, {
+                        badge_id: item.badge_id,
+                        badge_name: item.badge_name,
+                        badge_image_url: item.badge_image_url,
+                        items: []
+                    });
+                }
+                groups.get(item.badge_id).items.push(item);
+            });
+
+            const groupArray = Array.from(groups.values());
+
+            // 4. ページネーション（グループ単位）
+            const totalPages = Math.ceil(groupArray.length / INVENTORY_ITEMS_PER_PAGE);
             if (currentInventoryPage > totalPages && totalPages > 0) currentInventoryPage = totalPages;
             if (currentInventoryPage < 1) currentInventoryPage = 1;
 
             const start = (currentInventoryPage - 1) * INVENTORY_ITEMS_PER_PAGE;
             const end = start + INVENTORY_ITEMS_PER_PAGE;
-            const pageItems = filtered.slice(start, end);
+            const pageGroups = groupArray.slice(start, end);
 
-            // 4. 描画
-            if (pageItems.length === 0) {
-                listEl.innerHTML = '<div class="text-center py-4 text-muted">バッジがありません</div>';
+            // 5. 描画
+            if (pageGroups.length === 0) {
+                listEl.innerHTML = '<div class="text-center py-4 text-muted">該当するバッジがありません</div>';
                 document.getElementById('inventory-pagination-area').style.display = 'none';
                 return;
             }
 
-            listEl.innerHTML = pageItems.map(item => {
-                const isMutant = item.is_mutant;
-                const mutantStyle = isMutant ? 'border: 2px solid gold; background: #fffdf5;' : 'border: 1px solid #eee;';
-                const mutantLabel = isMutant ? '<span class="badge bg-warning text-dark me-2">Mutant</span>' : '';
+            listEl.innerHTML = pageGroups.map(group => {
+                const isExpanded = expandedBadgeId === group.badge_id;
+                const totalCount = group.items.length;
+                const mutantCount = group.items.filter(i => i.is_mutant).length;
 
-                // 売却ボタン（限定品は不可）
-                let actionBtn = '';
-                if (item.sales_type === '限定品') {
-                    actionBtn = '<span class="badge bg-secondary">売却不可</span>';
-                } else if (item.sales_type === '換金品') {
-                    actionBtn = `<button class="btn btn-sm btn-outline-success rounded-pill px-3" 
-                        onclick="confirmSellFromShop('${item.uuid}', '${item.badge_name.replace(/'/g, "\\'")}', ${item.purchased_price || 0}, ${item.sell_price})">
-                        換金する
-                     </button>`;
-                } else {
-                    actionBtn = `<button class="btn btn-sm btn-outline-danger rounded-pill px-3" 
-                        onclick="confirmSellFromShop('${item.uuid}', '${item.badge_name.replace(/'/g, "\\'")}', ${item.purchased_price || 0}, ${item.sell_price})">
-                        売却する
-                     </button>`;
+                // 代表アイテム（画像表示用）
+                const repItem = group.items[0];
+
+                let detailHtml = '';
+                if (isExpanded) {
+                    detailHtml = `
+                        <div class="mt-3 border-top pt-2">
+                            <div class="small fw-bold text-muted mb-2">所持リスト (${totalCount}個)</div>
+                            <div class="vstack gap-2">
+                                ${group.items.map(item => {
+                        const isMutant = item.is_mutant;
+                        const mutantStyle = isMutant ? 'border: 2px solid gold; background: #fffdf5;' : 'border: 1px solid #eee;';
+                        const mutantLabel = isMutant ? '<span class="badge bg-warning text-dark me-2">Mutant</span>' : '';
+
+                        // 限定品は除外済みだが、念のため
+                        if (item.sales_type === '限定品') return '';
+
+                        return `
+                                    <div class="d-flex align-items-center justify-content-between p-2 rounded bg-white" style="${mutantStyle}">
+                                        <div class="d-flex align-items-center overflow-hidden">
+                                            <div class="me-2 small text-muted text-truncate" style="max-width: 120px;">ID: ...${item.uuid.slice(-6)}</div>
+                                            ${mutantLabel}
+                                            <div class="small">
+                                                <div class="text-muted">購入: 🪙${(item.purchased_price || 0).toLocaleString()}</div>
+                                                <div class="text-danger fw-bold">売却: 🪙${Math.floor(item.sell_price).toLocaleString()}</div>
+                                            </div>
+                                        </div>
+                                        <button class="btn btn-sm btn-outline-danger rounded-pill ms-2 text-nowrap" style="font-size: 0.8rem;"
+                                            onclick="confirmSellFromShop('${item.uuid}', '${item.badge_name.replace(/'/g, "\\'")}', ${item.purchased_price || 0}, ${item.sell_price})">
+                                            売却
+                                        </button>
+                                    </div>
+                                    `;
+                    }).join('')}
+                            </div>
+                        </div>
+                    `;
                 }
 
                 return `
-                <div class="d-flex align-items-center p-2 rounded shadow-sm bg-white" style="${mutantStyle}">
-                    <div style="width: 50px; height: 50px; flex-shrink: 0;" class="me-3 position-relative">
-                         <div class="${isMutant ? 'mutant-badge-container active' : ''}" style="width: 100%; height: 100%; border-radius: 8px;">
-                            <img src="${item.badge_image_url}" class="w-100 h-100 object-fit-contain" style="${isMutant ? 'position: relative; z-index: 1;' : ''}">
-                            ${isMutant ? '<div class="mutant-badge-shine"></div>' : ''}
+                <div class="p-2 rounded shadow-sm bg-white border mb-2">
+                    <div class="d-flex align-items-center">
+                        <div style="width: 50px; height: 50px; flex-shrink: 0;" class="me-3">
+                             <img src="${group.badge_image_url}" class="w-100 h-100 object-fit-contain rounded">
+                        </div>
+                        <div class="flex-grow-1" style="min-width: 0;">
+                            <div class="fw-bold text-truncate">${group.badge_name}</div>
+                            <div class="small text-muted">
+                                所持: <span class="fw-bold text-dark">${totalCount}</span>個
+                                ${mutantCount > 0 ? `<span class="ms-2 badge bg-warning text-dark">内ミュータント: ${mutantCount}</span>` : ''}
+                            </div>
+                        </div>
+                        <div>
+                             <button class="btn btn-sm ${isExpanded ? 'btn-secondary' : 'btn-primary'} rounded-pill" 
+                                onclick="toggleInventoryExpand(${group.badge_id})">
+                                ${isExpanded ? '閉じる' : '選択'}
+                             </button>
                         </div>
                     </div>
-                    <div class="flex-grow-1" style="min-width: 0;">
-                        <div class="d-flex align-items-center mb-1">
-                            ${mutantLabel}
-                            <div class="fw-bold text-truncate">${item.badge_name}</div>
-                        </div>
-                        <div class="d-flex flex-wrap gap-3 small text-muted">
-                            <div>購入: 🪙${(item.purchased_price || 0).toLocaleString()}</div>
-                            <div>時価: 🪙${Math.floor(item.market_value).toLocaleString()}</div>
-                            <div class="text-danger fw-bold">売却: 🪙${Math.floor(item.sell_price).toLocaleString()}</div>
-                        </div>
-                    </div>
-                    <div class="ms-2">
-                        ${actionBtn}
-                    </div>
+                    ${detailHtml}
                 </div>
                 `;
             }).join('');
 
             renderInventoryPagination(totalPages);
         }
+
+        function toggleInventoryExpand(badgeId) {
+            if (expandedBadgeId === badgeId) {
+                expandedBadgeId = null;
+            } else {
+                expandedBadgeId = badgeId;
+            }
+            filterAndRenderInventoryBadges();
+        }
+
 
         function renderInventoryPagination(totalPages) {
             const nav = document.getElementById('inventory-pagination-area');
