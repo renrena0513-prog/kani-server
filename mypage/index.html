@@ -1535,14 +1535,47 @@
         aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header">
+                <div class="modal-header border-bottom-0 pb-0">
                     <h5 class="modal-title" id="badgeActionModalLabel">バッジを選択</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body pt-2">
+                    <!-- フィルターUI -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-12 col-md-5">
+                            <input type="text" id="action-badge-search" class="form-control form-control-sm"
+                                placeholder="バッジ名で検索..." oninput="filterAndRenderActionBadges()">
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <select id="action-badge-sort" class="form-select form-select-sm"
+                                onchange="filterAndRenderActionBadges()">
+                                <option value="acquired_desc">入手順（新→古）</option>
+                                <option value="acquired_asc">入手順（古→新）</option>
+                                <option value="rarity_desc">レアリティ（高→低）</option>
+                                <option value="rarity_asc">レアリティ（低→高）</option>
+                                <option value="name_asc">名前（A→Z）</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <select id="action-badge-filter" class="form-select form-select-sm"
+                                onchange="filterAndRenderActionBadges()">
+                                <option value="all">すべて</option>
+                                <option value="normal">通常</option>
+                                <option value="mutant">✨ ミュータント</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div id="action-badge-list" class="row g-2">
                         <!-- JSで生成 -->
                     </div>
+
+                    <!-- ページネーション -->
+                    <nav aria-label="Page navigation" class="mt-3" id="action-badge-pagination-area"
+                        style="display: none;">
+                        <ul class="pagination pagination-sm justify-content-center mb-0" id="action-badge-pagination">
+                        </ul>
+                    </nav>
                 </div>
             </div>
         </div>
@@ -3088,52 +3121,189 @@
 
                     // 売却価格: 2段階下のレアリティ価格（ミュータントは3倍）
                     const pSell = badgeResult.sellPrice * (item.is_mutant ? 3 : 1);
-                    const buyPrice = item.purchased_price || 0;
 
-                    const mutantLabel = item.is_mutant ? '<span class="text-warning fw-bold">(Mutant)</span>' : '';
+                    return {
+                        ...item, // uuid, is_mutant, user_id, acquired_at, purchased_price etc.
+                        badge_name: badge.name,
+                        badge_image_url: badge.image_url,
+                        rarity: badge.rarity,
+                        price: badge.price, // base price
+                        fixed_rarity_name: badge.fixed_rarity_name,
+                        sales_type: badge.sales_type,
+                        acquired_at: new Date(item.acquired_at),
+                        market_value: pValue,
+                        sell_price: pSell
+                    };
+                }).filter(i => i !== null);
 
-                    if (mode === 'transfer') {
-                        return `
-                    <div class="user-select-item" onclick="openUUIDTransferModal('${item.uuid}', '${badge.name.replace(/'/g, "\\'")}', ${buyPrice}, ${pValue}, ${pSell})">
-                        <img src="${badge.image_url}" class="user-select-avatar" style="border-radius: 8px;">
-                                <div class="flex-grow-1">
-                                    <div class="user-select-name">${badge.name} ${mutantLabel}</div>
-                                    <div class="small text-muted" style="font-size: 0.75rem;">
-                                        購入: 🪙${buyPrice.toLocaleString()} | 
-                                        時価: 🪙${pValue.toLocaleString()} | 
-                                        売却: 🪙${pSell.toLocaleString()}
-                                    </div>
-                                </div>
-                                <div class="text-primary fw-bold">選択</div>
-                            </div>
-                    `;
-                    } else {
-                        return `
-                    <div class="user-select-item" onclick="sellBadgeConfirm('${item.uuid}', '${badge.name.replace(/'/g, "\\'")}', ${buyPrice}, ${pValue}, ${pSell})">
-                        <img src="${badge.image_url}" class="user-select-avatar" style="border-radius: 8px;">
-                                <div class="flex-grow-1">
-                                    <div class="user-select-name">${badge.name} ${mutantLabel}</div>
-                                    <div class="small text-muted" style="font-size: 0.75rem;">
-                                        購入: 🪙${buyPrice.toLocaleString()} | 
-                                        時価: 🪙${pValue.toLocaleString()} | 
-                                        売却: 🪙${pSell.toLocaleString()}
-                                    </div>
-                                </div>
-                                <div class="text-danger fw-bold">売却</div>
-                            </div>
-                    `;
-                    }
-                }).join('');
+                // 初期状態描画（ページ1, フィルタなしはHTML側でデフォルト）
+                currentActionPage = 1;
+                filterAndRenderActionBadges();
+
             } catch (err) {
-                console.error('Error loading action badges:', err);
-                listEl.innerHTML = '<p class="text-center text-danger py-3">エラーが発生しました</p>';
+                console.error('バッジ一覧取得エラー:', err);
+                listEl.innerHTML = '<p class="text-center text-danger py-3">読み込み失敗</p>';
+            }
+        }
+
+        function filterAndRenderActionBadges() {
+            const listEl = document.getElementById('action-badge-list');
+            const searchVal = document.getElementById('action-badge-search').value.toLowerCase();
+            const sortVal = document.getElementById('action-badge-sort').value;
+            const filterVal = document.getElementById('action-badge-filter').value;
+
+            // 1. フィルタリング
+            let filtered = allActionBadges.filter(item => {
+                // 検索
+                if (searchVal && !item.badge_name.toLowerCase().includes(searchVal)) return false;
+
+                // 種類フィルタ
+                if (filterVal === 'mutant' && !item.is_mutant) return false;
+                if (filterVal === 'normal' && item.is_mutant) return false;
+
+                // 売却不可チェック（売却モード時）
+                if (currentActionType === 'sell' && item.sales_type === '限定品') return false;
+                // 譲渡モードの場合、換金品は譲渡不可
+                if (currentActionType === 'transfer' && item.sales_type === '換金品') return false;
+
+                return true;
+            });
+
+            // 2. ソート
+            filtered.sort((a, b) => {
+                if (sortVal === 'acquired_desc') return b.acquired_at - a.acquired_at;
+                if (sortVal === 'acquired_asc') return a.acquired_at - b.acquired_at;
+                if (sortVal === 'name_asc') return a.badge_name.localeCompare(b.badge_name);
+                // レアリティソートは簡易的に価格順、または固定レアリティがあればそれで
+                if (sortVal === 'rarity_desc' || sortVal === 'rarity_asc') {
+                    // 暫定: 市場価値で比較
+                    const pA = a.market_value || 0;
+                    const pB = b.market_value || 0;
+                    return sortVal === 'rarity_desc' ? pB - pA : pA - pB;
+                }
+                return 0;
+            });
+
+            // 3. ページネーション
+            const totalPages = Math.ceil(filtered.length / ACTION_ITEMS_PER_PAGE);
+            if (currentActionPage > totalPages && totalPages > 0) currentActionPage = totalPages; // フィルタでページ数が減った場合
+            if (currentActionPage < 1) currentActionPage = 1;
+
+            const start = (currentActionPage - 1) * ACTION_ITEMS_PER_PAGE;
+            const end = start + ACTION_ITEMS_PER_PAGE;
+            const pageItems = filtered.slice(start, end);
+
+            // 4. 描画
+            if (pageItems.length === 0) {
+                listEl.innerHTML = '<div class="col-12 text-center text-muted py-3">バッジが見つかりません</div>';
+                document.getElementById('action-badge-pagination-area').style.display = 'none';
+                return;
+            }
+
+            listEl.innerHTML = pageItems.map(item => {
+                const isMutant = item.is_mutant;
+                // ミュータントエフェクトなどのためのクラス
+                const mutantClass = isMutant ? 'mutant-badge-container active' : '';
+                const borderStyle = isMutant ? 'border: 2px solid gold;' : 'border: 1px solid #dee2e6;';
+
+                // レアリティ表示（簡易）
+                const rarityLabel = item.fixed_rarity_name || ''; // 本当は計算が必要だが一旦省略
+
+                return `
+                    <div class="col-4 col-sm-3" onclick="selectActionBadge('${item.uuid}', '${item.badge_name.replace(/'/g, "\\'")}')">
+                        <div class="card h-100 shadow-sm badge-select-card" style="cursor: pointer; transition: transform 0.1s; ${borderStyle}">
+                            <div class="card-body p-2 text-center d-flex flex-column align-items-center">
+                                <div class="position-relative mb-1" style="width: 50px; height: 50px;">
+                                    <div class="${mutantClass}" style="width: 100%; height: 100%; border-radius: 8px;">
+                                         <img src="${item.badge_image_url}" class="w-100 h-100 object-fit-contain" 
+                                            style="${isMutant ? 'position: relative; z-index: 1;' : ''}">
+                                         ${isMutant ? '<div class="mutant-badge-shine"></div>' : ''}
+                                    </div>
+                                </div>
+                                <div class="small fw-bold text-truncate w-100" style="font-size: 0.7rem;">${item.badge_name}</div>
+                                ${isMutant ? '<span class="badge bg-warning text-dark rounded-pill" style="font-size: 0.5rem; transform: scale(0.8);">Mutant</span>' : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // ページネーション更新
+            renderActionPagination(totalPages);
+        }
+
+        function renderActionPagination(totalPages) {
+            const nav = document.getElementById('action-badge-pagination-area');
+            const ul = document.getElementById('action-badge-pagination');
+
+            if (totalPages <= 1) {
+                nav.style.display = 'none';
+                return;
+            }
+
+            nav.style.display = 'block';
+            let html = '';
+
+            // Prev
+            html += `<li class="page-item ${currentActionPage === 1 ? 'disabled' : ''}">
+                <a class="page-link" href="javascript:void(0)" onclick="goToActionPage(${currentActionPage - 1})">‹</a></li>`;
+
+            // Pages (簡易: 全部出すと多いので、カレント周辺のみにするロジック推奨だが、一旦全出しは危険なので省略表示)
+            // ここでは簡易的に カレント-1, カレント, カレント+1 だけ出すなど
+            let startP = Math.max(1, currentActionPage - 1);
+            let endP = Math.min(totalPages, currentActionPage + 1);
+            if (currentActionPage === 1) endP = Math.min(totalPages, 3);
+            if (currentActionPage === totalPages) startP = Math.max(1, totalPages - 2);
+
+            for (let i = startP; i <= endP; i++) {
+                html += `<li class="page-item ${i === currentActionPage ? 'active' : ''}">
+                    <a class="page-link" href="javascript:void(0)" onclick="goToActionPage(${i})">${i}</a></li>`;
+            }
+
+            // Next
+            html += `<li class="page-item ${currentActionPage === totalPages ? 'disabled' : ''}">
+                <a class="page-link" href="javascript:void(0)" onclick="goToActionPage(${currentActionPage + 1})">›</a></li>`;
+
+            ul.innerHTML = html;
+        }
+
+        function goToActionPage(page) {
+            currentActionPage = page;
+            filterAndRenderActionBadges();
+        }
+
+        function selectActionBadge(uuid, name) {
+            currentActionUUID = uuid;
+            currentActionBadgeName = name; // set global
+
+            bootstrap.Modal.getInstance(document.getElementById('badgeActionModal')).hide();
+
+            const badge = allActionBadges.find(b => b.uuid === uuid);
+            if (!badge) {
+                alert('バッジ情報が見つかりませんでした。');
+                return;
+            }
+
+            if (currentActionType === 'sell') {
+                // 換金品の場合は専用モーダルを開く
+                if (badge.sales_type === '換金品') {
+                    // 同じbadge_idを持つ換金品の数を数える
+                    const convertibleCount = allActionBadges.filter(item => item.badge_id === badge.badge_id && item.sales_type === '換金品').length;
+                    openConvertibleSellModal(badge.badge_id, badge.badge_name, convertibleCount, badge.price);
+                } else {
+                    // 通常バッジの売却確認
+                    sellBadgeConfirm(badge.uuid, badge.badge_name, badge.purchased_price, badge.market_value, badge.sell_price);
+                }
+            } else if (currentActionType === 'transfer') {
+                // 譲渡確認
+                openUUIDTransferModal(badge.uuid, badge.badge_name, badge.purchased_price, badge.market_value, badge.sell_price);
             }
         }
 
         // ======= バッジ売却・譲渡 =======
-        let currentActionUUID = null;
-        let currentActionBadgeName = null;
-        let currentActionDetails = null;
+        // let currentActionUUID = null; // 既にグローバルで定義済み
+        // let currentActionBadgeName = null; // 既にグローバルで定義済み
+        // let currentActionDetails = null; // 既にグローバルで定義済み
 
         function sellBadgeConfirm(uuid, name, purchasedPrice, pValue, pSell) {
             currentActionUUID = uuid;
@@ -4214,9 +4384,16 @@
             if (Object.keys(exchanges).length === 0) {
                 listEl.innerHTML = '<div class="col-12 text-center text-muted py-3">所持している引換券はありません</div>';
             } else {
+                const rates = {
+                    '一般': 25, '良質': 60, '希少・Ⅰ': 85, '希少・Ⅱ': 150,
+                    '貴重': 250, '特上': 350, '極上': 500
+                };
+
                 listEl.innerHTML = Object.entries(exchanges).map(([rarity, count]) => {
                     if (count <= 0) return '';
                     const rarityClass = getRarityClass(rarity);
+                    const rate = rates[rarity] || 0;
+
                     return `
                         <div class="col-6 mb-3">
                             <div class="card shadow-sm border-0 ${rarityClass} p-2 text-center position-relative" style="border-radius: 12px; border: 1px solid rgba(0,0,0,0.1) !important;">
@@ -4226,10 +4403,19 @@
                                     <div class="fs-5 fw-bold">${count}枚</div>
                                 </div>
                                 ${!isViewMode ? `
-                                    <button class="btn btn-sm btn-outline-dark rounded-pill py-0 px-2" style="font-size: 0.65rem;" 
-                                        onclick="initTicketTransfer('${rarity}', ${count})">
-                                        🎁 譲渡
-                                    </button>
+                                    <div class="d-flex justify-content-center gap-1">
+                                        <button class="btn btn-sm btn-outline-dark rounded-pill py-0 px-2" style="font-size: 0.65rem;" 
+                                            onclick="initTicketTransfer('${rarity}', ${count})">
+                                            🎁 譲渡
+                                        </button>
+                                        ${rate > 0 ? `
+                                        <button class="btn btn-sm btn-outline-success rounded-pill py-0 px-2" style="font-size: 0.65rem; font-weight: bold;" 
+                                            onclick="convertTicket('${rarity}', ${count}, ${rate})">
+                                            💰 換金
+                                        </button>
+                                        ` : ''}
+                                    </div>
+                                    ${rate > 0 ? `<div class="small text-muted mt-1" style="font-size: 0.6rem;">(1枚 = ${rate}C)</div>` : ''}
                                 ` : ''}
                             </div>
                         </div>
@@ -4250,6 +4436,56 @@
             const modalEl = document.getElementById('possessionsModal');
             bootstrap.Modal.getInstance(modalEl)?.hide();
             openUserSelectModal('ticket_transfer');
+        }
+
+        async function convertTicket(rarity, maxCount, rate) {
+            const amountStr = prompt(`「${rarity}引換券」を何枚換金しますか？\n(所持: ${maxCount}枚, レート: 1枚${rate}コイン)`, "1");
+            if (amountStr === null) return; // キャンセル
+
+            const amount = parseInt(amountStr);
+            if (isNaN(amount) || amount <= 0) return alert('1枚以上を指定してください');
+            if (amount > maxCount) return alert('所持数を超えています');
+
+            const totalCoins = amount * rate;
+            if (!confirm(`${rarity}引換券 ${amount}枚 を換金して\n🪙 ${totalCoins.toLocaleString()} コインを受け取りますか？`)) return;
+
+            // ローディング（簡易）
+            const listEl = document.getElementById('exchange-tickets-list');
+            if (listEl) {
+                listEl.style.opacity = '0.5';
+                listEl.style.pointerEvents = 'none';
+            }
+
+            try {
+                const { data, error } = await supabaseClient.rpc('convert_exchange_ticket', {
+                    p_user_id: targetId,
+                    p_rarity: rarity,
+                    p_amount: amount
+                });
+
+                if (error) throw error;
+                if (!data.ok) throw new Error(data.error);
+
+                alert(data.message);
+
+                // データ更新
+                await openPossessionsModal();
+                await loadActivityLogs();
+                // 所持金表示更新
+                if (!isViewMode) {
+                    const user = await getCurrentUser();
+                    if (user) await displayMyInfo(user);
+                }
+
+            } catch (err) {
+                console.error('換金エラー:', err);
+                alert('換金に失敗しました: ' + (err.message || '不明なエラー'));
+            } finally {
+                if (listEl) {
+                    listEl.style.opacity = '1';
+                    listEl.style.pointerEvents = 'auto';
+                }
+            }
         }
     </script>
 

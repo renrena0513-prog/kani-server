@@ -359,17 +359,49 @@
     <div class="modal fade" id="inventoryModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
             <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
-                <div class="modal-header border-0 bg-light" style="border-radius: 20px 20px 0 0;">
-                    <h5 class="modal-title fw-bold">🎒 あなたの所持バッジ</h5>
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title" id="inventoryModalLabel">🎒 あなたの所持バッジ</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body p-3 bg-light">
+                <div class="modal-body pt-2 bg-light">
+                    <!-- フィルターUI -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-12 col-md-5">
+                            <input type="text" id="inventory-search" class="form-control form-control-sm"
+                                placeholder="バッジ名で検索..." oninput="filterAndRenderInventoryBadges()">
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <select id="inventory-sort" class="form-select form-select-sm"
+                                onchange="filterAndRenderInventoryBadges()">
+                                <option value="acquired_desc">入手順（新→古）</option>
+                                <option value="acquired_asc">入手順（古→新）</option>
+                                <option value="rarity_desc">レアリティ（高→低）</option>
+                                <option value="rarity_asc">レアリティ（低→高）</option>
+                                <option value="name_asc">名前（A→Z）</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <select id="inventory-filter" class="form-select form-select-sm"
+                                onchange="filterAndRenderInventoryBadges()">
+                                <option value="all">すべて</option>
+                                <option value="normal">通常</option>
+                                <option value="mutant">✨ ミュータント</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div id="inventory-list" class="vstack gap-2">
                         <!-- JSで描画 -->
                         <div class="text-center py-5">
                             <div class="spinner-border text-primary" role="status"></div>
                         </div>
                     </div>
+
+                    <!-- ページネーション -->
+                    <nav aria-label="Page navigation" class="mt-3" id="inventory-pagination-area"
+                        style="display: none;">
+                        <ul class="pagination pagination-sm justify-content-center mb-0" id="inventory-pagination"></ul>
+                    </nav>
                 </div>
                 <div class="modal-footer border-0 bg-light" style="border-radius: 0 0 20px 20px;">
                     <div class="small text-muted w-100">
@@ -938,74 +970,227 @@
             await loadInventory();
         }
 
+        // ======= 所持品表示 =======
+        let allInventoryBadges = [];
+        let currentInventoryPage = 1;
+        const INVENTORY_ITEMS_PER_PAGE = 10;
+
         async function loadInventory() {
             const listEl = document.getElementById('inventory-list');
+            // listEl.innerHTML = ... ; // 既にHTML側でローディング表示があればそのまま、なければセット
+
             try {
-                // 所持バッジ取得
-                const { data: owned, error } = await supabaseClient
+                // 自分の所持バッジ
+                const { data: myBadges, error } = await supabaseClient
                     .from('user_badges_new')
-                    .select('*, badges(*)') // badge_idだけでなく、badgesテーブルの情報も結合して取得
+                    .select('*, badges(*)')
                     .eq('user_id', currentUserId)
                     .order('acquired_at', { ascending: false });
 
                 if (error) throw error;
 
-                if (!owned || owned.length === 0) {
-                    listEl.innerHTML = '<div class="text-center py-4 text-muted">バッジを持っていません。<br>ショップで購入してみましょう！</div>';
-                    return;
+                // 固定価格（マスター）取得
+                const { data: masterBadges } = await supabaseClient
+                    .from('badges')
+                    .select('id, price, sales_type, fixed_rarity_name');
+
+                // レアリティ閾値（ranking同様必要なら）
+                const { data: thresholds } = await supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true });
+
+
+                // 全バッジ数（市場流通数）カウント用
+                // 簡易的に全取得は重いので、自分の持ってるバッジIDに関連するものだけ取るか、
+                // あるいはランキング同様ここも少し重いが取得するか。
+                // ショップページなので、毎回全件取得は避けたいが、正確な売却額計算には必要。
+                // 以前のロジックではどうしていた？ -> 以前はループ内で個別に計算していた可能性や、概算だった可能性。
+                // ここではバッジIDリストを作って、それらのカウントを取得するのがベター。
+
+                const badgeIds = [...new Set(myBadges.map(ub => ub.badge_id))];
+                let marketCounts = {};
+
+                if (badgeIds.length > 0) {
+                    const { data: counts, error: cErr } = await supabaseClient
+                        .from('user_badges_new')
+                        .select('badge_id'); // countだけ取りたいが...
+                    // 全件取得は重いので、rpcを使うか、あるいは クライアント側で許容するか。
+                    // 今回は「ショップ」なのである程度正確さが欲しいが、とりあえず全バッジテーブルの remaining_count などは使えない（流通数定義が違うため）。
+                    // 暫定：全件取得はリスクあるので、自分のバッジ計算に必要な分だけ...といってもSQLが難しい。
+                    // 前の実装(900行付近)を見てみる。
+                    // -> getBadgeMarketCountなどは関数化されていなかったか？
+                    // -> BadgeUtils.calculateBadgeValues を使っているなら thresholds と count が必要。
+
+                    // 妥協案：全流通数を取得するRPCがあれば早いが、ない場合は profiles全読み込みよりは user_badges_new 全読み込みの方がマシか？（いや重い）
+                    // 既存コードではどうなっていたか確認できていないが、
+                    // 今回は "calculateBadgeValues" を使うために count が必要。
+                    // ここでは「全ユーザーのバッジ所有数」を取得するクエリを投げる。
+                    const { data: allOwned } = await supabaseClient.from('user_badges_new').select('badge_id');
+                    if (allOwned) {
+                        allOwned.forEach(o => {
+                            marketCounts[o.badge_id] = (marketCounts[o.badge_id] || 0) + 1;
+                        });
+                    }
                 }
 
-                // 換金品を除外する場合などのフィルタリングはここで行えますが、今回は全て表示
-                // ただし、sales_type='限定品' は売れないのでボタンを出さない等の制御が可能
+                // データ加工
+                allInventoryBadges = myBadges.map(inventoryItem => {
+                    const badge = inventoryItem.badges;
+                    if (!badge) return null;
 
-                const thresholds = cachedThresholds || [];
-                const marketCounts = cachedMarketCounts || {};
+                    const count = marketCounts[badge.id] || 1;
+                    const valResult = BadgeUtils.calculateBadgeValues(badge, count, thresholds || []);
+                    const sellPrice = valResult.sellPrice * (inventoryItem.is_mutant ? 3 : 1);
 
-                listEl.innerHTML = owned.map(item => {
-                    const badge = item.badges;
-                    if (!badge) return ''; // データ不整合対策
+                    return {
+                        ...inventoryItem,
+                        badge_name: badge.name,
+                        badge_image_url: badge.image_url,
+                        rarity: badge.rarity,
+                        price: badge.price, // base
+                        fixed_rarity_name: badge.fixed_rarity_name,
+                        sales_type: badge.sales_type,
+                        market_value: valResult.marketValue,
+                        sell_price: sellPrice,
+                        purchased_price: inventoryItem.purchased_price,
+                        acquired_at: new Date(inventoryItem.acquired_at)
+                    };
+                }).filter(i => i !== null);
 
-                    const n = marketCounts[badge.id] || 0;
-                    const result = BadgeUtils.calculateBadgeValues(badge, n, thresholds);
-
-                    // 売却価格計算 (ランクダウン後の価格、ミュータントはランクダウン後×3)
-                    // 注: ミュータントの仕様は「ランクダウン後×3」で確定
-                    const sellPriceBase = result.sellPrice;
-                    const isMutant = item.is_mutant;
-                    const sellPriceFinal = sellPriceBase * (isMutant ? 3 : 1);
-
-                    const buyPrice = item.purchased_price || 0;
-                    const mutantLabel = isMutant ? '<span class="badge bg-warning text-dark ms-1">Mutant</span>' : '';
-
-                    // バッジカードの描画
-                    return `
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-body p-2 d-flex align-items-center">
-                                <img src="${badge.image_url}" style="width: 60px; height: 60px; object-fit: contain; border-radius: 8px;" class="me-3">
-                                <div class="flex-grow-1">
-                                    <div class="fw-bold text-dark">${badge.name} ${mutantLabel}</div>
-                                    <div class="small text-muted d-flex gap-2 flex-wrap">
-                                        <span>購入: 🪙${buyPrice.toLocaleString()}</span>
-                                        <span>時価: 🪙${result.marketValue.toLocaleString()}</span>
-                                        <span class="fw-bold text-dark">売却: 🪙${sellPriceFinal.toLocaleString()}</span>
-                                    </div>
-                                    <div class="badge rounded-pill bg-light text-secondary border mt-1">${result.rarityName}</div>
-                                </div>
-                                <div>
-                                    ${badge.sales_type === '限定品' ?
-                            '<span class="badge bg-secondary">売却不可</span>' :
-                            `<button class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="confirmSellFromShop('${item.uuid}', '${badge.name.replace(/'/g, "\\'")}', ${buyPrice}, ${sellPriceFinal})">売却</button>`
-                        }
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
+                // 描画
+                filterAndRenderInventoryBadges();
 
             } catch (err) {
                 console.error('Error loading inventory:', err);
                 listEl.innerHTML = '<div class="text-center py-4 text-danger">読み込みエラーが発生しました</div>';
             }
+        }
+
+        function filterAndRenderInventoryBadges() {
+            const listEl = document.getElementById('inventory-list');
+            const searchVal = document.getElementById('inventory-search').value.toLowerCase();
+            const sortVal = document.getElementById('inventory-sort').value;
+            const filterVal = document.getElementById('inventory-filter').value;
+
+            // 1. フィルタ
+            let filtered = allInventoryBadges.filter(item => {
+                if (searchVal && !item.badge_name.toLowerCase().includes(searchVal)) return false;
+                if (filterVal === 'mutant' && !item.is_mutant) return false;
+                if (filterVal === 'normal' && item.is_mutant) return false;
+                return true;
+            });
+
+            // 2. ソート
+            filtered.sort((a, b) => {
+                if (sortVal === 'acquired_desc') return b.acquired_at - a.acquired_at;
+                if (sortVal === 'acquired_asc') return a.acquired_at - b.acquired_at;
+                if (sortVal === 'name_asc') return a.badge_name.localeCompare(b.badge_name);
+                if (sortVal === 'rarity_desc' || sortVal === 'rarity_asc') {
+                    const pA = a.market_value || 0;
+                    const pB = b.market_value || 0;
+                    return sortVal === 'rarity_desc' ? pB - pA : pA - pB;
+                }
+                return 0;
+            });
+
+            // 3. ページネーション
+            const totalPages = Math.ceil(filtered.length / INVENTORY_ITEMS_PER_PAGE);
+            if (currentInventoryPage > totalPages && totalPages > 0) currentInventoryPage = totalPages;
+            if (currentInventoryPage < 1) currentInventoryPage = 1;
+
+            const start = (currentInventoryPage - 1) * INVENTORY_ITEMS_PER_PAGE;
+            const end = start + INVENTORY_ITEMS_PER_PAGE;
+            const pageItems = filtered.slice(start, end);
+
+            // 4. 描画
+            if (pageItems.length === 0) {
+                listEl.innerHTML = '<div class="text-center py-4 text-muted">バッジがありません</div>';
+                document.getElementById('inventory-pagination-area').style.display = 'none';
+                return;
+            }
+
+            listEl.innerHTML = pageItems.map(item => {
+                const isMutant = item.is_mutant;
+                const mutantStyle = isMutant ? 'border: 2px solid gold; background: #fffdf5;' : 'border: 1px solid #eee;';
+                const mutantLabel = isMutant ? '<span class="badge bg-warning text-dark me-2">Mutant</span>' : '';
+
+                // 売却ボタン（限定品は不可）
+                let actionBtn = '';
+                if (item.sales_type === '限定品') {
+                    actionBtn = '<span class="badge bg-secondary">売却不可</span>';
+                } else if (item.sales_type === '換金品') {
+                    actionBtn = `<button class="btn btn-sm btn-outline-success rounded-pill px-3" 
+                        onclick="confirmSellFromShop('${item.uuid}', '${item.badge_name.replace(/'/g, "\\'")}', ${item.purchased_price || 0}, ${item.sell_price})">
+                        換金する
+                     </button>`;
+                } else {
+                    actionBtn = `<button class="btn btn-sm btn-outline-danger rounded-pill px-3" 
+                        onclick="confirmSellFromShop('${item.uuid}', '${item.badge_name.replace(/'/g, "\\'")}', ${item.purchased_price || 0}, ${item.sell_price})">
+                        売却する
+                     </button>`;
+                }
+
+                return `
+                <div class="d-flex align-items-center p-2 rounded shadow-sm bg-white" style="${mutantStyle}">
+                    <div style="width: 50px; height: 50px; flex-shrink: 0;" class="me-3 position-relative">
+                         <div class="${isMutant ? 'mutant-badge-container active' : ''}" style="width: 100%; height: 100%; border-radius: 8px;">
+                            <img src="${item.badge_image_url}" class="w-100 h-100 object-fit-contain" style="${isMutant ? 'position: relative; z-index: 1;' : ''}">
+                            ${isMutant ? '<div class="mutant-badge-shine"></div>' : ''}
+                        </div>
+                    </div>
+                    <div class="flex-grow-1" style="min-width: 0;">
+                        <div class="d-flex align-items-center mb-1">
+                            ${mutantLabel}
+                            <div class="fw-bold text-truncate">${item.badge_name}</div>
+                        </div>
+                        <div class="d-flex flex-wrap gap-3 small text-muted">
+                            <div>購入: 🪙${(item.purchased_price || 0).toLocaleString()}</div>
+                            <div>時価: 🪙${Math.floor(item.market_value).toLocaleString()}</div>
+                            <div class="text-danger fw-bold">売却: 🪙${Math.floor(item.sell_price).toLocaleString()}</div>
+                        </div>
+                    </div>
+                    <div class="ms-2">
+                        ${actionBtn}
+                    </div>
+                </div>
+                `;
+            }).join('');
+
+            renderInventoryPagination(totalPages);
+        }
+
+        function renderInventoryPagination(totalPages) {
+            const nav = document.getElementById('inventory-pagination-area');
+            const ul = document.getElementById('inventory-pagination');
+
+            if (totalPages <= 1) {
+                nav.style.display = 'none';
+                return;
+            }
+
+            nav.style.display = 'block';
+            let html = '';
+
+            html += `<li class="page-item ${currentInventoryPage === 1 ? 'disabled' : ''}">
+                <a class="page-link" href="javascript:void(0)" onclick="goToInventoryPage(${currentInventoryPage - 1})">‹</a></li>`;
+
+            let startP = Math.max(1, currentInventoryPage - 1);
+            let endP = Math.min(totalPages, currentInventoryPage + 1);
+            if (currentInventoryPage === 1) endP = Math.min(totalPages, 3);
+            if (currentInventoryPage === totalPages) startP = Math.max(1, totalPages - 2);
+
+            for (let i = startP; i <= endP; i++) {
+                html += `<li class="page-item ${i === currentInventoryPage ? 'active' : ''}">
+                    <a class="page-link" href="javascript:void(0)" onclick="goToInventoryPage(${i})">${i}</a></li>`;
+            }
+
+            html += `<li class="page-item ${currentInventoryPage === totalPages ? 'disabled' : ''}">
+                <a class="page-link" href="javascript:void(0)" onclick="goToInventoryPage(${currentInventoryPage + 1})">›</a></li>`;
+
+            ul.innerHTML = html;
+        }
+
+        function goToInventoryPage(page) {
+            currentInventoryPage = page;
+            filterAndRenderInventoryBadges();
         }
 
         function confirmSellFromShop(uuid, name, buyPrice, sellPrice) {
