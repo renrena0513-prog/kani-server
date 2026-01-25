@@ -684,3 +684,156 @@ body.user-impersonating .title-image {
         transform: translateY(-8px);
     }
 }
+
+/* ========================================
+   新レアリティシステム対応 (2025-01-26)
+   ======================================== */
+
+/* 並品：ライトグレー（#BFC3C9）＋ホワイト */
+.rarity-normal {
+    background: #BFC3C9 !important;
+    color: #fff !important;
+    border-color: #fff !important;
+}
+
+/* 名品：グリーン（#2FBF71）＋ライトグリーン */
+.rarity-fine {
+    background: #2FBF71 !important;
+    color: #e8f5e9 !important;
+    border-color: #a5d6a7 !important;
+}
+
+/* 逸品：ブルー（#2D7FF9）＋シアン */
+.rarity-rare {
+    background: #2D7FF9 !important;
+    color: #e0f7fa !important;
+    border-color: #4dd0e1 !important;
+}
+
+/* 絶品：パープル（#8A5CFF）＋ラベンダー */
+.rarity-epic {
+    background: #8A5CFF !important;
+    color: #f3e5f5 !important;
+    border-color: #e1bee7 !important;
+}
+
+/* 至高：ゴールド（金）（#D4AF37）＋濃い金/黒 */
+.rarity-legendary {
+    background: #D4AF37 !important;
+    color: #000 !important;
+    border-color: #fbc02d !important;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+}
+
+/* 国宝：プラチナ/白金（#E5E4E2）＋ゴールド細線 */
+.rarity-national {
+    background: #E5E4E2 !important;
+    color: #333 !important;
+    border: 2px solid #D4AF37 !important;
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+}
+
+/* 秘宝：エメラルド（深緑）（#0B8F6A）＋ゴールド */
+.rarity-treasure {
+    background: #0B8F6A !important;
+    color: #ffd700 !important;
+    border-color: #ffd700 !important;
+}
+
+/* 神秘：ディープネイビー（#0B1F3B）＋アクア（#2EE6D6） */
+.rarity-mystic {
+    background: #0B1F3B !important;
+    color: #2EE6D6 !important;
+    border-color: #2EE6D6 !important;
+    box-shadow: 0 0 10px rgba(46, 230, 214, 0.4);
+}
+
+/* 英雄：クリムゾン（#D7263D）＋ゴールド */
+.rarity-hero {
+    background: #D7263D !important;
+    color: #ffd700 !important;
+    border-color: #ffd700 !important;
+    box-shadow: 0 4px 15px rgba(215, 38, 61, 0.4);
+}
+
+/* 伝説：オレンジ〜アンバー（#FF8C00）＋ゴールド */
+.rarity-legend {
+    background: linear-gradient(135deg, #FF8C00, #FFA500) !important;
+    color: #fff !important;
+    border-color: #ffd700 !important;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    border: 2px solid #ffd700 !important;
+}
+
+/* 幻想：虹色グラデ（#7C3AED→#06B6D4→#22C55E） */
+.rarity-fantasy {
+    background: linear-gradient(135deg, #7C3AED, #06B6D4, #22C55E) !important;
+    color: #fff !important;
+    border: 2px solid rgba(255, 255, 255, 0.5) !important;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* 神話：ロイヤルパープル（#4B2E83）＋星光ゴールド（#F6D365） */
+.rarity-mythic {
+    background: #4B2E83 !important;
+    color: #F6D365 !important;
+    border: 2px solid #F6D365 !important;
+    box-shadow: 0 0 15px rgba(246, 211, 101, 0.5);
+    animation: mythicPulse 3s infinite alternate;
+    background-size: 200% 200% !important;
+}
+
+@keyframes mythicPulse {
+    0% {
+        box-shadow: 0 0 15px rgba(246, 211, 101, 0.5);
+    }
+
+    100% {
+        box-shadow: 0 0 25px rgba(246, 211, 101, 0.8);
+    }
+}
+
+/* 超越：ブラック（#0B0B0F）＋レインボー縁/白発光 */
+.rarity-transcend {
+    position: relative;
+    background: #0B0B0F !important;
+    color: #fff !important;
+    /* レインボーボーダーを実現するための擬似要素スタイルは別途必要だが、簡易的にborder-image等で */
+    border: 3px solid transparent !important;
+    background-image: linear-gradient(#0B0B0F, #0B0B0F),
+        linear-gradient(to right, #ff0000, #ff8000, #ffff00, #00ff00, #00ffff, #0000ff, #8000ff, #ff0080) !important;
+    background-origin: border-box !important;
+    background-clip: padding-box, border-box !important;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+}
+
+/* 測定不能（EX）：ノイズ/宇宙（#000000ベース）＋ホログラム */
+.rarity-ex {
+    background: #000 !important;
+    color: #00F5FF !important;
+    border: 2px solid #00F5FF !important;
+    box-shadow: 0 0 20px rgba(0, 245, 255, 0.6);
+    animation: exPulse 2s infinite;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+
+@keyframes exPulse {
+    0% {
+        box-shadow: 0 0 15px rgba(0, 245, 255, 0.6);
+        color: #00F5FF;
+        border-color: #00F5FF;
+    }
+
+    50% {
+        box-shadow: 0 0 30px rgba(255, 0, 230, 0.6);
+        color: #FFE600;
+        border-color: #FFE600;
+    }
+
+    100% {
+        box-shadow: 0 0 15px rgba(0, 245, 255, 0.6);
+        color: #00F5FF;
+        border-color: #00F5FF;
+    }
+}
