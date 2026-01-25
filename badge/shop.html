@@ -483,7 +483,7 @@
                 const processed = badges.map(badge => {
                     const circulationCount = marketCounts[badge.id] || 0;
                     const result = BadgeUtils.calculateBadgeValues(badge, circulationCount, thresholds);
-                    const pBuy = result.marketValue;
+                    const pBuy = result.buyingPrice;
                     const pValue = result.marketValue;
                     const rarity = result.rarityName;
                     return { ...badge, pBuy, pValue, circulationCount, rarity };

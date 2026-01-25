@@ -97,25 +97,38 @@ function calculateBadgeValues(badge, uniqueOwnerCount, thresholds) {
         thresholds
     );
 
-    let finalStar, finalRarityName;
+    let assetStar, buyingStar;
+    let finalRarityName;
 
     if (badge.sales_type === '変動型') {
-        const result = getVariableTypeRarity(baseStar, uniqueOwnerCount, thresholds);
-        finalStar = result.starLevel;
-        finalRarityName = result.rarityName;
+        // 資産価値用: n-1 (1枚目は基本ランク)
+        const assetResult = getVariableTypeRarity(baseStar, uniqueOwnerCount, thresholds);
+        assetStar = assetResult.starLevel;
+        finalRarityName = assetResult.rarityName;
+
+        // 購入価格用: n (1枚目からランク上昇考慮、ただし0枚のときは0)
+        // ロジック: baseStar + n
+        // countに1足すのではなく、nそのものを加算するロジックが必要だが、
+        // getVariableTypeRarity は count-1 している。
+        // なので、count+1 を渡せば (count+1)-1 = count となり、期待通りの base + count になる。
+        const buyingResult = getVariableTypeRarity(baseStar, uniqueOwnerCount + 1, thresholds);
+        buyingStar = buyingResult.starLevel;
     } else {
         // 固定型、換金品、限定品など
-        finalStar = baseStar;
+        assetStar = baseStar;
+        buyingStar = baseStar;
         finalRarityName = baseRarityName;
     }
 
-    const marketValue = getMarketValue(finalStar, thresholds);
-    const sellPrice = getSellPrice(finalStar, thresholds);
+    const marketValue = getMarketValue(assetStar, thresholds);
+    const buyingPrice = getMarketValue(buyingStar, thresholds);
+    const sellPrice = getSellPrice(assetStar, thresholds); // 売却は資産価値基準
 
     return {
-        starLevel: finalStar,
+        starLevel: assetStar, // 資産ランクを表示
         rarityName: finalRarityName,
-        marketValue,
+        marketValue, // 資産価値
+        buyingPrice, // 購入価格 (新規)
         sellPrice
     };
 }
