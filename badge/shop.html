@@ -206,6 +206,62 @@
             pointer-events: none;
             border-radius: 4px;
         }
+
+        /* モバイル用レイアウト調整 */
+        @media (max-width: 767.98px) {
+            .shop-item {
+                flex-direction: row;
+                text-align: left;
+                padding: 15px;
+                align-items: center;
+                min-height: 120px;
+            }
+
+            .shop-item:hover {
+                transform: none;
+                /* モバイルでは浮き上がり無効化（誤タップ防止） */
+            }
+
+            /* 左側: バッジ画像と名前 */
+            .shop-item-badge-area {
+                width: 35%;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                margin-right: 15px;
+                flex-shrink: 0;
+            }
+
+            .shop-img {
+                width: 70px;
+                height: 70px;
+                margin-bottom: 5px;
+            }
+
+            .shop-name {
+                font-size: 0.85rem;
+                height: auto;
+                margin-bottom: 0;
+                -webkit-line-clamp: 2;
+                text-align: center;
+            }
+
+            .rarity-pill {
+                font-size: 0.6rem;
+                padding: 1px 8px;
+                margin-bottom: 5px;
+            }
+
+            /* 右側: 詳細とボタン */
+            .shop-item-details {
+                width: 65%;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                height: 100%;
+            }
+        }
     </style>
 </head>
 
@@ -676,35 +732,42 @@
                         const rarityClass = getRarityClass(badge.rarity);
                         const isSoldOut = badge.remaining_count !== null && badge.remaining_count <= 0;
                         return `
-                                <div class="col-6 col-md-4 col-lg-3">
+                                <div class="col-12 col-md-4 col-lg-3">
                                     <div class="shop-item position-relative badge-card ${rarityClass} ${isSoldOut ? 'sold-out' : ''}">
                                         ${isSoldOut ? '<div class="sold-out-badge">SOLD OUT</div>' : ''}
-                                        <a href="./index.html?id=${badge.id}" class="text-decoration-none d-flex flex-column align-items-center w-100" style="color: inherit;">
+                                        
+                                        <!-- バッジエリア（モバイルでは左側） -->
+                                        <a href="./index.html?id=${badge.id}" class="text-decoration-none shop-item-badge-area" style="color: inherit;">
                                             <div class="rarity-pill" style="background: rgba(0,0,0,0.2);">${badge.rarity}</div>
                                             <img src="${badge.image_url}" class="shop-img" alt="${badge.name}" style="filter: drop-shadow(0 5px 15px rgba(0,0,0,0.2));">
                                             <div class="shop-name" style="color: inherit;">${badge.name}</div>
                                         </a>
-                                        <div class="w-100 px-2 small mb-2 text-start">
-                                            ${badge.sales_type === '変動型' ? `
-                                            <div class="d-flex justify-content-between opacity-75" style="font-size: 0.7rem;">
-                                                <span>初期価格: 🪙${badge.price.toLocaleString()}</span>
+
+                                        <!-- 詳細エリア（モバイルでは右側） -->
+                                        <div class="shop-item-details">
+                                            <div class="w-100 px-2 small mb-2 text-start">
+                                                ${badge.sales_type === '変動型' ? `
+                                                <div class="d-flex justify-content-between opacity-75" style="font-size: 0.7rem;">
+                                                    <span>初期価格: 🪙${badge.price.toLocaleString()}</span>
+                                                </div>
+                                                <div class="d-flex justify-content-between opacity-75" style="font-size: 0.7rem;">
+                                                    <span>資産価値: 🪙${badge.pValue.toLocaleString()}</span>
+                                                </div>
+                                                ` : ''}
+                                                <div class="d-flex justify-content-between fw-bold">
+                                                    <span>販売価格: 🪙${badge.pBuy.toLocaleString()}</span>
+                                                </div>
+                                                <div class="d-flex justify-content-between mt-1 opacity-75" style="font-size: 0.7rem;">
+                                                    <span>流通: ${badge.circulationCount} 枚 | 残り: ${badge.remaining_count ?? '∞'} | 所持: ${myCounts[badge.id] || 0}</span>
+                                                </div>
                                             </div>
-                                            <div class="d-flex justify-content-between opacity-75" style="font-size: 0.7rem;">
-                                                <span>資産価値: 🪙${badge.pValue.toLocaleString()}</span>
-                                            </div>
-                                            ` : ''}
-                                            <div class="d-flex justify-content-between fw-bold">
-                                                <span>販売価格: 🪙${badge.pBuy.toLocaleString()}</span>
-                                            </div>
-                                            <div class="d-flex justify-content-between mt-1 opacity-75" style="font-size: 0.7rem;">
-                                                <span>流通: ${badge.circulationCount} 枚 | 残り: ${badge.remaining_count ?? '∞'} | 所持: ${myCounts[badge.id] || 0}</span>
-                                            </div>
+                                            
+                                            <button class="btn btn-buy ${isSoldOut ? 'btn-secondary' : 'btn-light'}" 
+                                                    onclick="buyBadgeV2('${badge.id}', ${badge.pBuy}, '${badge.name.replace(/'/g, "\\'")}')"
+                                                    ${isSoldOut ? 'disabled' : ''}>
+                                                ${isSoldOut ? '売り切れ' : '購入する'}
+                                            </button>
                                         </div>
-                                        <button class="btn btn-buy ${isSoldOut ? 'btn-secondary' : 'btn-light'}" 
-                                                onclick="buyBadgeV2('${badge.id}', ${badge.pBuy}, '${badge.name.replace(/'/g, "\\'")}')"
-                                                ${isSoldOut ? 'disabled' : ''}>
-                                            ${isSoldOut ? '売り切れ' : '購入する'}
-                                        </button>
                                     </div>
                                 </div>
                             `;

@@ -464,6 +464,7 @@ function autoCalculateRemainingScore(idx) {
         const remaining = totalExpected - sumOthers;
         currentInput.value = remaining;
         currentInput.select();
+        updateRanks();
     }
 
     // 残り点数表示を更新
