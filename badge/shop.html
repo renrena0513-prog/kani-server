@@ -1188,65 +1188,78 @@
                 const totalCount = group.items.length;
                 const mutantCount = group.items.filter(i => i.is_mutant).length;
 
-                // 代表アイテム（画像表示用）
+                // 代表アイテム
                 const repItem = group.items[0];
+
+                // ヘルパー: 名前をJS文字列として安全にする（onclick等で使用）
+                const safeName = (name) => {
+                    return name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                };
 
                 let actionArea = '';
                 let detailHtml = '';
 
-                // 1個しか持っていない場合は直接売却ボタンを表示
                 if (totalCount === 1) {
                     const item = repItem;
+                    const sName = safeName(item.badge_name);
+                    const pPrice = item.purchased_price || 0;
+                    const sPrice = item.sell_price;
+
                     if (item.sales_type === '限定品') {
                         actionArea = '<span class="badge bg-secondary text-nowrap">売却不可</span>';
                     } else if (item.sales_type === '換金品') {
                         actionArea = `<button class="btn btn-sm btn-outline-success rounded-pill text-nowrap" style="flex-shrink: 0;"
-                            onclick="confirmSellFromShop('${item.uuid}', '${item.badge_name.replace(/'/g, "\\'")}', ${item.purchased_price || 0}, ${item.sell_price})">
+                            onclick="confirmSellFromShop('${item.uuid}', '${sName}', ${pPrice}, ${sPrice})">
                             換金
                          </button>`;
                     } else {
                         actionArea = `<button class="btn btn-sm btn-outline-danger rounded-pill text-nowrap" style="flex-shrink: 0;"
-                            onclick="confirmSellFromShop('${item.uuid}', '${item.badge_name.replace(/'/g, "\\'")}', ${item.purchased_price || 0}, ${item.sell_price})">
+                            onclick="confirmSellFromShop('${item.uuid}', '${sName}', ${pPrice}, ${sPrice})">
                             売却
                          </button>`;
                     }
                 } else {
-                    // 複数所持の場合は選択（展開）ボタン
                     actionArea = `<button class="btn btn-sm ${isExpanded ? 'btn-secondary' : 'btn-primary'} rounded-pill text-nowrap" style="flex-shrink: 0;"
                         onclick="toggleInventoryExpand(${group.badge_id})">
                         ${isExpanded ? '閉じる' : '選択'}
                      </button>`;
 
                     if (isExpanded) {
-                        detailHtml = `
-                            <div class="mt-3 border-top pt-2">
-                                <div class="small fw-bold text-muted mb-2">所持リスト (${totalCount}個)</div>
-                                <div class="vstack gap-2">
-                                    ${group.items.map(item => {
+                        const listItemsHtml = group.items.map(item => {
+                            // 限定品は除外
+                            if (item.sales_type === '限定品') return '';
+
                             const isMutant = item.is_mutant;
                             const mutantStyle = isMutant ? 'border: 2px solid gold; background: #fffdf5;' : 'border: 1px solid #eee;';
                             const mutantLabel = isMutant ? '<span class="badge bg-warning text-dark me-2">Mutant</span>' : '';
 
-                            // 限定品は除外済みだが、念のため
-                            if (item.sales_type === '限定品') return '';
+                            const sName = safeName(item.badge_name);
+                            const pPrice = item.purchased_price || 0;
+                            const sPrice = item.sell_price;
 
                             return `
-                                        <div class="d-flex align-items-center justify-content-between p-2 rounded bg-white" style="${mutantStyle}">
-                                            <div class="d-flex align-items-center overflow-hidden">
-                                                <div class="me-2 small text-muted text-truncate" style="max-width: 120px;">ID: ...${item.uuid.slice(-6)}</div>
-                                                ${mutantLabel}
-                                                <div class="small">
-                                                    <div class="text-muted">購入: 🪙${(item.purchased_price || 0).toLocaleString()}</div>
-                                                    <div class="text-danger fw-bold">売却: 🪙${Math.floor(item.sell_price).toLocaleString()}</div>
-                                                </div>
-                                            </div>
-                                            <button class="btn btn-sm btn-outline-danger rounded-pill ms-2 text-nowrap" style="font-size: 0.8rem; flex-shrink: 0;"
-                                                onclick="confirmSellFromShop('${item.uuid}', '${item.badge_name.replace(/'/g, "\\'")}', ${item.purchased_price || 0}, ${item.sell_price})">
-                                                売却
-                                            </button>
+                                <div class="d-flex align-items-center justify-content-between p-2 rounded bg-white" style="${mutantStyle}">
+                                    <div class="d-flex align-items-center overflow-hidden">
+                                        <div class="me-2 small text-muted text-truncate" style="max-width: 120px;">ID: ...${item.uuid.slice(-6)}</div>
+                                        ${mutantLabel}
+                                        <div class="small">
+                                            <div class="text-muted">購入: 🪙${pPrice.toLocaleString()}</div>
+                                            <div class="text-danger fw-bold">売却: 🪙${Math.floor(sPrice).toLocaleString()}</div>
                                         </div>
-                                        `;
-                        }).join('')}
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-danger rounded-pill ms-2 text-nowrap" style="font-size: 0.8rem; flex-shrink: 0;"
+                                        onclick="confirmSellFromShop('${item.uuid}', '${sName}', ${pPrice}, ${sPrice})">
+                                        売却
+                                    </button>
+                                </div>
+                            `;
+                        }).join('');
+
+                        detailHtml = `
+                            <div class="mt-3 border-top pt-2">
+                                <div class="small fw-bold text-muted mb-2">所持リスト (${totalCount}個)</div>
+                                <div class="vstack gap-2">
+                                    ${listItemsHtml}
                                 </div>
                             </div>
                         `;
