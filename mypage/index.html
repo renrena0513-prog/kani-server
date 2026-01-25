@@ -1594,6 +1594,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Supabase設定 -->
     <script src="../js/supabase-config.js?v=20260112"></script>
+    <script src="../js/badge-utils.js"></script>
     <script src="../js/auth-guard.js"></script>
     <!-- 【一時的】アンケートモーダル（撤去時は下1行を削除） -->
     <script src="../js/survey-modal.js"></script>
@@ -2235,13 +2236,8 @@
                     const mainItem = group.instances[0];
 
                     const n = marketCounts[badge.id] || 0;
-                    let pValue;
-                    const basePrice = Number(badge.price) || 0;
-                    if (badge.sales_type === '変動型') {
-                        pValue = Math.ceil(basePrice * Math.pow(1.3, Math.max(0, n - 1)));
-                    } else {
-                        pValue = basePrice;
-                    }
+                    const badgeResult = BadgeUtils.calculateBadgeValues(badge, n, rarityThresholds);
+                    const pValue = badgeResult.marketValue;
 
                     // ミュータントは価値3倍で計算
                     group.instances.forEach(inst => {
@@ -3086,16 +3082,12 @@
 
                     const n = marketCounts[badge.id] || 0;
 
-                    // 価格計算: sales_type に基づく
-                    let pValue;
-                    if (badge.sales_type === '変動型') {
-                        pValue = Math.ceil(badge.price * Math.pow(1.3, Math.max(0, n - 1)));
-                    } else {
-                        // 固定型、null、その他は初期価格のまま
-                        pValue = badge.price;
-                    }
+                    // 新レアリティシステムで計算
+                    const badgeResult = BadgeUtils.calculateBadgeValues(badge, n, rarityThresholds);
+                    const pValue = badgeResult.marketValue;
 
-                    const pSell = Math.ceil(pValue * 0.7 * (item.is_mutant ? 3 : 1));
+                    // 売却価格: 2段階下のレアリティ価格（ミュータントは3倍）
+                    const pSell = badgeResult.sellPrice * (item.is_mutant ? 3 : 1);
                     const buyPrice = item.purchased_price || 0;
 
                     const mutantLabel = item.is_mutant ? '<span class="text-warning fw-bold">(Mutant)</span>' : '';

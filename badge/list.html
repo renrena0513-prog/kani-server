@@ -253,6 +253,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../js/supabase-config.js"></script>
     <script src="../js/auth-guard.js"></script>
+    <script src="../js/badge-utils.js"></script>
     <script src="../js/navigation.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -263,12 +264,12 @@
         let currentCategory = 'all';
         let rarityThresholds = [];
 
-        let cachedMarketCounts = {};
+        let cachedCirculationCounts = {}; // バッジごとの流通数
 
         async function initBadgeList() {
             try {
                 // レアリティ閾値とバッジ情報、流通数の取得
-                const [badgesRes, thresholdsRes, marketCountRes] = await Promise.all([
+                const [badgesRes, thresholdsRes, circulationRes] = await Promise.all([
                     supabaseClient.from('badges').select('*').order('sort_order', { ascending: true }),
                     supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true }),
                     supabaseClient.from('user_badges_new').select('badge_id')
@@ -281,11 +282,11 @@
                 rarityThresholds = thresholdsRes.data || [];
 
                 // 流通数のカウント
-                const newCounts = {};
-                (marketCountRes.data || []).forEach(s => {
-                    newCounts[s.badge_id] = (newCounts[s.badge_id] || 0) + 1;
+                const counts = {};
+                (circulationRes.data || []).forEach(item => {
+                    counts[item.badge_id] = (counts[item.badge_id] || 0) + 1;
                 });
-                cachedMarketCounts = newCounts;
+                cachedCirculationCounts = counts;
 
                 filterAndRender();
             } catch (err) {
@@ -361,17 +362,11 @@
 
             // 各バッジに資産価値と動的レアリティ情報を付加（ソート用）
             filtered.forEach(b => {
-                const n = cachedMarketCounts[b.id] || 0;
-                let assetValue;
-                if (b.sales_type === '固定型') {
-                    assetValue = b.price;
-                } else if (b.sales_type === '変動型') {
-                    assetValue = Math.ceil(b.price * Math.pow(1.3, Math.max(0, n - 1)));
-                } else {
-                    assetValue = b.price;
-                }
-                b._assetValue = assetValue;
-                b._rarity = getDynamicRarity(assetValue, b.fixed_rarity_name);
+                const circulationCount = cachedCirculationCounts[b.id] || 0;
+                const result = BadgeUtils.calculateBadgeValues(b, circulationCount, rarityThresholds);
+                b._assetValue = result.marketValue;
+                b._rarity = result.rarityName;
+                b._starLevel = result.starLevel;
             });
 
             // 2. ソート
@@ -383,10 +378,8 @@
                     if (a.fixed_rarity_name && !b.fixed_rarity_name) return 1;
                     if (!a.fixed_rarity_name && b.fixed_rarity_name) return -1;
 
-                    // 2. 両方ある、または両方ない場合は rarityOrder に基づく
-                    const idxA = rarityOrder.indexOf(a._rarity);
-                    const idxB = rarityOrder.indexOf(b._rarity);
-                    if (idxA !== idxB) return idxA - idxB;
+                    // 2. ★レベルで比較（高い順）
+                    if (b._starLevel !== a._starLevel) return b._starLevel - a._starLevel;
 
                     // 3. 同じレアリティなら資産価値順（高い順）
                     if ((b._assetValue || 0) !== (a._assetValue || 0)) {
