@@ -796,7 +796,9 @@
                 return;
             }
 
-            tbody.innerHTML = thresholds.map((t, index) => {
+            // 高い順（逆順）に表示
+            // 元のインデックス（ランク）を維持するためにmapしてからreverse
+            const rows = thresholds.map((t, index) => {
                 const star = index + 1;
                 // 売却価格（通常）: 2段階下（最低★1）
                 const sellStar = Math.max(star - 2, 1);
@@ -810,9 +812,15 @@
                 if (t.rarity_name.includes('Rare')) badgeColor = '#0dcaf0'; // info
                 if (t.rarity_name.includes('Uncommon')) badgeColor = '#198754'; // success
 
+                // ランク表示: 50は ★EX に変更
+                let starDisplay = `★${star}`;
+                if (star === 50) {
+                    starDisplay = '<span class="text-warning fw-bold" style="text-shadow: 0 0 5px rgba(255,193,7,0.5);">★EX</span>';
+                }
+
                 return `
                     <tr>
-                        <td class="fw-bold">★${star}</td>
+                        <td class="fw-bold">${starDisplay}</td>
                         <td>
                             <span class="badge rounded-pill" style="background-color: ${badgeColor}; font-size: 0.9rem;">
                                 ${t.rarity_name}
@@ -822,7 +830,9 @@
                         <td class="text-muted">🪙 ${sellPrice.toLocaleString()}</td>
                     </tr>
                 `;
-            }).join('');
+            });
+
+            tbody.innerHTML = rows.reverse().join('');
 
             new bootstrap.Modal(document.getElementById('priceListModal')).show();
         }
