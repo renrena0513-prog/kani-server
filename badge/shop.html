@@ -234,6 +234,12 @@
                 <span>🪙</span>
                 <span id="user-coins">0</span>
             </div>
+            <div>
+                <button class="btn btn-sm btn-outline-dark mt-2" style="border-radius: 20px; font-weight: bold;"
+                    onclick="openPriceListModal()">
+                    📊 レアリティ価格表を見る
+                </button>
+            </div>
         </header>
 
         <!-- 自分の権利バッジ -->
@@ -296,6 +302,44 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 価格一覧モーダル -->
+    <div class="modal fade" id="priceListModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+                <div class="modal-header border-0 bg-light" style="border-radius: 20px 20px 0 0;">
+                    <h5 class="modal-title fw-bold">📊 レアリティ価格一覧表</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover mb-0 text-center align-middle">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col">★ランク</th>
+                                    <th scope="col">レアリティ名</th>
+                                    <th scope="col">基準価格 (資産価値)</th>
+                                    <th scope="col">通常売却目安 (2段階下)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="price-list-tbody">
+                                <!-- JSで描画 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <small class="text-muted w-100 text-start">
+                        ※ 変動型バッジの「ランク」は、基本ランク + (流通数 - 1) で決まります。<br>
+                        ※ 売却価格は、現在のランクの2段階下の価格になります（下限★1）。<br>
+                        ※ ミュータント個体の売却価格は、現在のランクの価格の3倍です（ランクダウンなし）。
+                    </small>
+                    <button type="button" class="btn btn-secondary rounded-pill px-4"
+                        data-bs-dismiss="modal">閉じる</button>
                 </div>
             </div>
         </div>
@@ -737,6 +781,50 @@
             } finally {
                 overlay.classList.remove('active');
             }
+        }
+
+        /**
+         * 価格表モーダルを開く
+         */
+        function openPriceListModal() {
+            const thresholds = cachedThresholds || [];
+            const tbody = document.getElementById('price-list-tbody');
+
+            if (thresholds.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4">データを読み込み中...</td></tr>';
+                new bootstrap.Modal(document.getElementById('priceListModal')).show();
+                return;
+            }
+
+            tbody.innerHTML = thresholds.map((t, index) => {
+                const star = index + 1;
+                // 売却価格（通常）: 2段階下（最低★1）
+                const sellStar = Math.max(star - 2, 1);
+                const sellPrice = thresholds[sellStar - 1]?.threshold_value || 50;
+
+                // バッジの色（簡易的）
+                let badgeColor = '#6c757d'; // secondary
+                if (t.rarity_name.includes('Legendary')) badgeColor = '#ffc107'; // warning
+                if (t.rarity_name.includes('Mythic')) badgeColor = '#dc3545'; // danger
+                if (t.rarity_name.includes('Epic')) badgeColor = '#0d6efd'; // primary
+                if (t.rarity_name.includes('Rare')) badgeColor = '#0dcaf0'; // info
+                if (t.rarity_name.includes('Uncommon')) badgeColor = '#198754'; // success
+
+                return `
+                    <tr>
+                        <td class="fw-bold">★${star}</td>
+                        <td>
+                            <span class="badge rounded-pill" style="background-color: ${badgeColor}; font-size: 0.9rem;">
+                                ${t.rarity_name}
+                            </span>
+                        </td>
+                        <td class="fw-bold">🪙 ${t.threshold_value.toLocaleString()}</td>
+                        <td class="text-muted">🪙 ${sellPrice.toLocaleString()}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            new bootstrap.Modal(document.getElementById('priceListModal')).show();
         }
 
         document.addEventListener('DOMContentLoaded', initShop);
