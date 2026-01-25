@@ -2,6 +2,10 @@
 -- 資産価値ランクの2段階下の価格で売却するロジック
 -- ミュータントは3倍
 
+-- 既存関数の削除（戻り値の型変更対応）
+DROP FUNCTION IF EXISTS public.sell_badge_v2(text, uuid);
+DROP FUNCTION IF EXISTS public.sell_badge_v2(text, text);
+
 CREATE OR REPLACE FUNCTION public.sell_badge_v2(p_user_id text, p_badge_uuid uuid)
  RETURNS json
  LANGUAGE plpgsql
