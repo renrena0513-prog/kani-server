@@ -16,6 +16,7 @@
 
     <!-- Bootswatch Lux (Bootstrap 5.3.3) -->
     <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../styles.css">
 
     <style>
@@ -999,7 +1000,7 @@
                             <button id="nickname-edit-btn" onclick="openNicknameModal()"
                                 class="btn btn-sm btn-outline-secondary flex-shrink-0" title="ニックネームを変更"
                                 style="display: none; padding: 4px 10px;">
-                                ??
+                                <i class="fa-solid fa-pen"></i>
                             </button>
                         </div>
 
@@ -1011,7 +1012,7 @@
                                     <button id="sync-btn" onclick="updateAvatar()"
                                         class="btn btn-sm btn-outline-secondary mt-2" title="Discordから最新のアバター画像を取得"
                                         style="font-size: 0.7rem; padding: 3px 8px;">
-                                        ?? 同期
+                                        <i class="fa-solid fa-rotate"></i> 同期
                                     </button>
                                 </div>
                             </div>
@@ -1022,7 +1023,7 @@
                                 <!-- チーム名 -->
                                 <div id="user-team-display" class="mb-2">
                                     <span class="badge bg-secondary" style="font-size: 0.85rem;">
-                                        ?? <span id="user-team-name">未所属</span>
+                                        <i class="fa-solid fa-users"></i> <span id="user-team-name">未所属</span>
                                     </span>
                                 </div>
 
@@ -1031,26 +1032,26 @@
                                     style="display: none; flex-wrap: wrap; gap: 8px; align-items: center;">
                                     <span class="badge bg-light text-dark shadow-sm"
                                         style="font-size: 0.85rem; border: 1px solid var(--gold); padding: 6px 12px;">
-                                        所持金: ?? <span id="user-coins-value">0</span>
+                                        所持金: <i class="fa-solid fa-coins"></i> <span id="user-coins-value">0</span>
                                     </span>
                                     <span class="badge bg-light text-dark shadow-sm"
                                         style="font-size: 0.85rem; border: 1px solid #17a2b8; padding: 6px 12px;">
-                                        総資産: ?? <span id="total-assets-value">0</span>
+                                        総資産: <i class="fa-solid fa-landmark"></i> <span id="total-assets-value">0</span>
                                     </span>
                                     <span class="badge bg-light text-dark shadow-sm"
                                         style="font-size: 0.85rem; border: 1px solid #ffc107; padding: 6px 12px;">
-                                        祈願符: ?? <span id="user-tickets-value">0</span>
+                                        祈願符: <i class="fa-solid fa-ticket"></i> <span id="user-tickets-value">0</span>
                                     </span>
                                     <div class="d-flex gap-2">
                                         <button id="coin-transfer-btn" onclick="openCoinTransferModal()"
                                             class="btn btn-sm btn-outline-primary"
                                             style="display: none; padding: 2px 8px; font-size: 0.75rem;">
-                                            ?? 送金
+                                            <i class="fa-solid fa-paper-plane"></i> 送金
                                         </button>
                                         <button id="possessions-btn" onclick="openPossessionsModal()"
                                             class="btn btn-sm btn-outline-warning"
                                             style="display: none; padding: 2px 8px; font-size: 0.75rem;">
-                                            ?? 所持品
+                                            <i class="fa-solid fa-briefcase"></i> 所持品
                                         </button>
                                     </div>
                                 </div>
@@ -1064,18 +1065,18 @@
                     <div class="profile-card mb-4">
                         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                             <h4 style="font-family: var(--font-title); color: var(--deep-purple); margin: 0;">
-                                ?? 麻雀統計
+                                <i class="fa-solid fa-chart-pie"></i> 麻雀統計
                             </h4>
                             <div class="d-flex gap-2 flex-wrap">
                                 <div class="mahjong-filter-group">
-                                    <label class="filter-label-mini">?? 大会</label>
+                                    <label class="filter-label-mini"><i class="fa-solid fa-trophy"></i> 大会</label>
                                     <select id="tournament-select" class="mahjong-filter-select"
                                         onchange="handleTournamentChange()">
                                         <!-- JSで生成 -->
                                     </select>
                                 </div>
                                 <div class="mahjong-filter-group">
-                                    <label class="filter-label-mini">?? 形式</label>
+                                    <label class="filter-label-mini"><i class="fa-solid fa-gamepad"></i> 形式</label>
                                     <select id="mode-select" class="mahjong-filter-select"
                                         onchange="handleModeChange()">
                                         <option value="individual_yonma" selected>個人戦（四麻）</option>
@@ -1187,7 +1188,8 @@
                                     <div class="col-12 col-md-4">
                                         <div class="stat-card-mini"
                                             style="background: linear-gradient(135deg, #f3e5f5, #fff); cursor: default;">
-                                            <div class="stat-label-mini">?? レーティング</div>
+                                            <div class="stat-label-mini"><i class="fa-solid fa-chart-line"></i> レーティング
+                                            </div>
                                             <div class="stat-value-mini" id="stat-rating">-</div>
                                         </div>
                                     </div>
@@ -1196,7 +1198,8 @@
                                 <!-- 対戦相手統計 -->
                                 <div id="opponent-stats-section" class="mt-4 pt-3"
                                     style="border-top: 1px solid #eee; display: none;">
-                                    <h6 class="text-muted mb-3" style="font-size: 1.1rem; font-weight: bold;">?? 対戦相手統計
+                                    <h6 class="text-muted mb-3" style="font-size: 1.1rem; font-weight: bold;"><i
+                                            class="fa-solid fa-user-group"></i> 対戦相手統計
                                     </h6>
 
                                     <!-- 対戦回数トップ3 -->
@@ -1212,7 +1215,8 @@
                                         <div class="col-12 col-md-6">
                                             <div class="p-2 rounded mb-1"
                                                 style="background: linear-gradient(135deg, #e8f5e9, #fff); border: 1px solid #c8e6c9;">
-                                                <div class="small text-muted mb-1">?? 一番勝ち越し</div>
+                                                <div class="small text-muted mb-1"><i
+                                                        class="fa-solid fa-face-smile"></i> 一番勝ち越し</div>
                                                 <div id="best-matchup" class="d-flex align-items-center gap-2">
                                                     <span class="text-muted small">-</span>
                                                 </div>
@@ -1221,7 +1225,8 @@
                                         <div class="col-12 col-md-6">
                                             <div class="p-2 rounded"
                                                 style="background: linear-gradient(135deg, #ffebee, #fff); border: 1px solid #ffcdd2;">
-                                                <div class="small text-muted mb-1">?? 一番負け越し</div>
+                                                <div class="small text-muted mb-1"><i
+                                                        class="fa-solid fa-face-frown"></i> 一番負け越し</div>
                                                 <div id="worst-matchup" class="d-flex align-items-center gap-2">
                                                     <span class="text-muted small">-</span>
                                                 </div>
@@ -1242,7 +1247,7 @@
                         <!-- タイトル行 -->
                         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                             <h4 style="font-family: var(--font-title); color: var(--deep-purple); margin: 0;">
-                                ?? バッジコレクション
+                                <i class="fa-solid fa-shapes"></i> バッジコレクション
                             </h4>
                             <div class="d-flex gap-2" id="badge-header-actions">
                                 <button id="badge-change-btn" onclick="openBadgeChangeModal()"
@@ -1268,7 +1273,7 @@
                             <div class="d-flex justify-content-between align-items-center mb-2 badge-section-header"
                                 onclick="toggleBadgeSection('special')" style="cursor: pointer;">
                                 <h6 class="text-muted mb-0" style="font-size: 0.9rem;">
-                                    <span id="special-toggle-icon">?</span> ?? 限定バッジ
+                                    <span id="special-toggle-icon">?</span> <i class="fa-solid fa-star"></i> 限定バッジ
                                     <span id="special-count" class="badge bg-secondary ms-2">0</span>
                                 </h6>
                             </div>
@@ -1284,7 +1289,8 @@
                             <div class="d-flex justify-content-between align-items-center mb-2 badge-section-header"
                                 onclick="toggleBadgeSection('convertible')" style="cursor: pointer;">
                                 <h6 class="text-muted mb-0" style="font-size: 0.9rem;">
-                                    <span id="convertible-toggle-icon">?</span> ?? 換金品
+                                    <span id="convertible-toggle-icon">?</span> <i
+                                        class="fa-solid fa-money-bill-transfer"></i> 換金品
                                     <span id="convertible-count" class="badge bg-secondary ms-2">0</span>
                                 </h6>
                             </div>
@@ -1297,7 +1303,8 @@
 
                         <!-- 購入バッジ -->
                         <div id="purchasable-badges-section" style="display: none;">
-                            <h6 class="text-muted mb-3" style="font-size: 0.9rem;">?? 購入バッジ</h6>
+                            <h6 class="text-muted mb-3" style="font-size: 0.9rem;"><i
+                                    class="fa-solid fa-cart-shopping"></i> 購入バッジ</h6>
 
                             <!-- フィルター＆ソートUI -->
                             <div class="badge-control-panel mb-3">
@@ -1343,7 +1350,7 @@
                                         <button id="filter-mutant-btn" class="btn btn-sm w-100 btn-mutant-filter py-1"
                                             onclick="toggleMutantFilter()"
                                             style="font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                            ? ミュータント
+                                            <i class="fa-solid fa-radiation"></i> ミュータント
                                         </button>
                                     </div>
                                 </div>
@@ -1375,7 +1382,7 @@
                     <!-- 販売実績セクション -->
                     <div class="profile-card mb-4" id="revenue-section" style="display: none;">
                         <h4 style="font-family: var(--font-title); color: var(--deep-purple); margin: 0 0 15px 0;">
-                            ?? 販売実績
+                            <i class="fa-solid fa-sack-dollar"></i> 販売実績
                         </h4>
                         <div class="row g-3">
                             <div class="col-6">
