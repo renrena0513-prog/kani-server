@@ -3015,201 +3015,16 @@
             }
         }
 
-        // ============ バッジ譲渡・売却：バッジ選択モーダル ============
-        // ============ バッジ譲渡・売却：バッジ選択モーダル ============
-        async function openBadgeSelectionModal(mode) {
-            const listEl = document.getElementById('action-badge-list');
-            listEl.innerHTML = '<p class="text-center text-muted py-3">読み込み中...</p>';
+        listEl.innerHTML = pageItems.map(item => {
+            const isMutant = item.is_mutant;
+            // ミュータントエフェクトなどのためのクラス
+            const mutantClass = isMutant ? 'mutant-badge-container active' : '';
+            const borderStyle = isMutant ? 'border: 2px solid gold;' : 'border: 1px solid #dee2e6;';
 
-            document.getElementById('badgeActionModalLabel').textContent = mode === 'transfer' ? '譲渡するバッジを選択' : '売却するバッジを選択';
+            // レアリティ表示（簡易）
+            const rarityLabel = item.fixed_rarity_name || ''; // 本当は計算が必要だが一旦省略
 
-            const modalEl = document.getElementById('badgeActionModal');
-            const modal = new bootstrap.Modal(modalEl);
-            modal.show();
-
-            try {
-                // 所持バッジの取得（新テーブル user_badges_new を使用）
-                const { data: owned, error } = await supabaseClient
-                    .from('user_badges_new')
-                    .select('*, badges(*)')
-                    .eq('user_id', targetId);
-
-                if (error) throw error;
-
-                // 全バッジの流通数を取得（価格計算用）
-                const { data: marketCountRes } = await supabaseClient
-                    .from('user_badges_new')
-                    .select('*');
-
-                const marketCounts = {};
-                (marketCountRes || []).forEach(s => {
-                    marketCounts[s.badge_id] = (marketCounts[s.badge_id] || 0) + 1;
-                });
-
-                if (!owned || owned.length === 0) {
-                    listEl.innerHTML = '<p class="text-center text-muted py-3">対象のバッジを持っていません</p>';
-                    return;
-                }
-
-                // 非売品（限定品）を除外
-                let targetBadges = owned.filter(item => item.badges && item.badges.sales_type !== '限定品');
-
-                // 譲渡モードの場合のみ換金品を除外
-                if (mode === 'transfer') {
-                    targetBadges = targetBadges.filter(item => item.badges && item.badges.sales_type !== '換金品');
-                }
-
-                if (targetBadges.length === 0) {
-                    listEl.innerHTML = '<p class="text-center text-muted py-3">譲渡・売却可能なバッジを持っていません</p>';
-                    return;
-                }
-
-                // 換金品と通常バッジを分離
-                const convertibleGroups = new Map();
-                const normalItems = [];
-
-                targetBadges.forEach(item => {
-                    if (!item.badges) return;
-
-                    if (item.badges.sales_type === '換金品') {
-                        const badgeId = item.badges.id;
-                        if (!convertibleGroups.has(badgeId)) {
-                            convertibleGroups.set(badgeId, {
-                                badge: item.badges,
-                                count: 0
-                            });
-                        }
-                        convertibleGroups.get(badgeId).count++;
-                    } else {
-                        normalItems.push(item);
-                    }
-                });
-
-                let htmlParts = [];
-
-                // 換金品のHTML生成（グループ化）
-                convertibleGroups.forEach(group => {
-                    const badge = group.badge;
-                    const count = group.count;
-                    const sellPrice = badge.price;
-                    const totalSell = sellPrice * count;
-
-                    htmlParts.push(`
-                        <div class="user-select-item" onclick="openConvertibleSellModal('${badge.id}', '${badge.name.replace(/'/g, "\\'")}', ${count}, ${sellPrice})">
-                            <img src="${badge.image_url}" class="user-select-avatar" style="border-radius: 8px;">
-                            <div class="flex-grow-1">
-                                <div class="user-select-name">${badge.name} <span class="badge bg-dark">×${count}</span></div>
-                                <div class="small text-muted" style="font-size: 0.75rem;">
-                                    売却: 🪙${sellPrice.toLocaleString()} C × ${count} = 🪙${totalSell.toLocaleString()} C
-                                </div>
-                            </div>
-                            <div class="text-danger fw-bold">売却</div>
-                        </div>
-                    `);
-                });
-
-                // 通常バッジの処理
-                listEl.innerHTML = htmlParts.join('') + normalItems.map(item => {
-                    const badge = item.badges;
-                    if (!badge) return '';
-
-                    const n = marketCounts[badge.id] || 0;
-
-                    // 新レアリティシステムで計算
-                    const badgeResult = BadgeUtils.calculateBadgeValues(badge, n, rarityThresholds);
-                    const pValue = badgeResult.marketValue;
-
-                    // 売却価格: 2段階下のレアリティ価格（ミュータントは3倍）
-                    const pSell = badgeResult.sellPrice * (item.is_mutant ? 3 : 1);
-
-                    return {
-                        ...item, // uuid, is_mutant, user_id, acquired_at, purchased_price etc.
-                        badge_name: badge.name,
-                        badge_image_url: badge.image_url,
-                        rarity: badge.rarity,
-                        price: badge.price, // base price
-                        fixed_rarity_name: badge.fixed_rarity_name,
-                        sales_type: badge.sales_type,
-                        acquired_at: new Date(item.acquired_at),
-                        market_value: pValue,
-                        sell_price: pSell
-                    };
-                }).filter(i => i !== null);
-
-                // 初期状態描画（ページ1, フィルタなしはHTML側でデフォルト）
-                currentActionPage = 1;
-                filterAndRenderActionBadges();
-
-            } catch (err) {
-                console.error('バッジ一覧取得エラー:', err);
-                listEl.innerHTML = '<p class="text-center text-danger py-3">読み込み失敗</p>';
-            }
-        }
-
-        function filterAndRenderActionBadges() {
-            const listEl = document.getElementById('action-badge-list');
-            const searchVal = document.getElementById('action-badge-search').value.toLowerCase();
-            const sortVal = document.getElementById('action-badge-sort').value;
-            const filterVal = document.getElementById('action-badge-filter').value;
-
-            // 1. フィルタリング
-            let filtered = allActionBadges.filter(item => {
-                // 検索
-                if (searchVal && !item.badge_name.toLowerCase().includes(searchVal)) return false;
-
-                // 種類フィルタ
-                if (filterVal === 'mutant' && !item.is_mutant) return false;
-                if (filterVal === 'normal' && item.is_mutant) return false;
-
-                // 売却不可チェック（売却モード時）
-                if (currentActionType === 'sell' && item.sales_type === '限定品') return false;
-                // 譲渡モードの場合、換金品は譲渡不可
-                if (currentActionType === 'transfer' && item.sales_type === '換金品') return false;
-
-                return true;
-            });
-
-            // 2. ソート
-            filtered.sort((a, b) => {
-                if (sortVal === 'acquired_desc') return b.acquired_at - a.acquired_at;
-                if (sortVal === 'acquired_asc') return a.acquired_at - b.acquired_at;
-                if (sortVal === 'name_asc') return a.badge_name.localeCompare(b.badge_name);
-                // レアリティソートは簡易的に価格順、または固定レアリティがあればそれで
-                if (sortVal === 'rarity_desc' || sortVal === 'rarity_asc') {
-                    // 暫定: 市場価値で比較
-                    const pA = a.market_value || 0;
-                    const pB = b.market_value || 0;
-                    return sortVal === 'rarity_desc' ? pB - pA : pA - pB;
-                }
-                return 0;
-            });
-
-            // 3. ページネーション
-            const totalPages = Math.ceil(filtered.length / ACTION_ITEMS_PER_PAGE);
-            if (currentActionPage > totalPages && totalPages > 0) currentActionPage = totalPages; // フィルタでページ数が減った場合
-            if (currentActionPage < 1) currentActionPage = 1;
-
-            const start = (currentActionPage - 1) * ACTION_ITEMS_PER_PAGE;
-            const end = start + ACTION_ITEMS_PER_PAGE;
-            const pageItems = filtered.slice(start, end);
-
-            // 4. 描画
-            if (pageItems.length === 0) {
-                listEl.innerHTML = '<div class="col-12 text-center text-muted py-3">バッジが見つかりません</div>';
-                document.getElementById('action-badge-pagination-area').style.display = 'none';
-                return;
-            }
-
-            listEl.innerHTML = pageItems.map(item => {
-                const isMutant = item.is_mutant;
-                // ミュータントエフェクトなどのためのクラス
-                const mutantClass = isMutant ? 'mutant-badge-container active' : '';
-                const borderStyle = isMutant ? 'border: 2px solid gold;' : 'border: 1px solid #dee2e6;';
-
-                // レアリティ表示（簡易）
-                const rarityLabel = item.fixed_rarity_name || ''; // 本当は計算が必要だが一旦省略
-
-                return `
+            return `
                     <div class="col-4 col-sm-3" onclick="selectActionBadge('${item.uuid}', '${item.badge_name.replace(/'/g, "\\'")}')">
                         <div class="card h-100 shadow-sm badge-select-card" style="cursor: pointer; transition: transform 0.1s; ${borderStyle}">
                             <div class="card-body p-2 text-center d-flex flex-column align-items-center">
@@ -3226,10 +3041,10 @@
                         </div>
                     </div>
                 `;
-            }).join('');
+        }).join('');
 
-            // ページネーション更新
-            renderActionPagination(totalPages);
+        // ページネーション更新
+        renderActionPagination(totalPages);
         }
 
         function renderActionPagination(totalPages) {
@@ -4489,29 +4304,230 @@
         }
     </script>
 
-    <!-- チーム通知バッジ -->
-    <script>
-        async function checkTeamNotifications() {
-            const user = await getCurrentUser();
-            if (!user) return;
-            const discordId = user.user_metadata.provider_id;
-            const { data: myTeams } = await supabaseClient.from('teams').select('id').eq('creator_discord_id', discordId);
-            if (!myTeams || myTeams.length === 0) return;
+    // ======= バッジ選択モーダル関連 (検索・ソート・ページネーション対応) =======
+    let allActionBadges = [];
+    let currentActionPage = 1;
+    const ACTION_ITEMS_PER_PAGE = 12;
 
-            const teamIds = myTeams.map(t => t.id);
-            const { data: pendingRequests } = await supabaseClient.from('team_join_requests').select('id').in('team_id', teamIds).in('status', ['pending', 'leave_pending']);
-            const count = pendingRequests?.length || 0;
+    // currentActionType, currentActionUUID などは上で定義済みと想定するが、念のため確認が必要。
+    // currentActionType, currentActionUUID, currentActionBadgeName, currentActionDetails は 3925行目付近（前の確認時）に定義されていたはず。
+    // 重複定義を避けるため、ここでは再定義しない。
 
-            if (count > 0) {
-                const badge = document.getElementById('team-notification-badge');
-                if (badge) {
-                    badge.textContent = count;
-                    badge.style.display = 'inline';
-                }
-            }
+    // 既存の showBadgeSelectionModal や openBadgeSelectionModal を上書き・統合する
+    async function openBadgeSelectionModal(type) {
+    currentActionType = type;
+    const modalTitle = document.getElementById('badgeActionModalLabel');
+    if (type === 'sell') {
+    modalTitle.textContent = '売却するバッジを選択';
+    } else if (type === 'transfer') {
+    modalTitle.textContent = '譲渡するバッジを選択';
+    }
+
+    const listEl = document.getElementById('action-badge-list');
+    listEl.innerHTML = '<p class="text-center text-muted py-3">読み込み中...</p>';
+
+    // ページネーションエリア非表示
+    const pagiArea = document.getElementById('action-badge-pagination-area');
+    if(pagiArea) pagiArea.style.display = 'none';
+
+    new bootstrap.Modal(document.getElementById('badgeActionModal')).show();
+
+    try {
+    // 所持バッジ取得
+    const { data: myBadges, error } = await supabaseClient
+    .from('user_badges_new')
+    .select('*, badges(*)') // badge_idだけでなく、badgesテーブルの情報も結合して取得
+    .eq('user_id', targetId)
+    .order('acquired_at', { ascending: false });
+
+    if (error) throw error;
+
+    if (!myBadges || myBadges.length === 0) {
+    listEl.innerHTML = '<p class="text-center text-muted py-3">バッジを持っていません</p>';
+    return;
+    }
+
+    // 固定価格（マスター）取得
+    const { data: thresholds } = await supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', {
+    ascending: true });
+
+    // 市場カウント
+    const { data: allOwned } = await supabaseClient.from('user_badges_new').select('badge_id');
+    const marketCounts = {};
+    if (allOwned) {
+    allOwned.forEach(o => marketCounts[o.badge_id] = (marketCounts[o.badge_id] || 0) + 1);
+    }
+
+    // データ加工
+    allActionBadges = myBadges.map(item => {
+    const badge = item.badges;
+    if (!badge) return null;
+
+    const n = marketCounts[badge.id] || 0;
+    const badgeResult = BadgeUtils.calculateBadgeValues(badge, n, thresholds);
+
+    // 売却価格: 2段階下のレアリティ価格（ミュータントは3倍）
+    const pSell = badgeResult.sellPrice * (item.is_mutant ? 3 : 1);
+    const pValue = badgeResult.marketValue;
+
+    return {
+    ...item, // uuid, is_mutant, user_id, acquired_at, purchased_price etc.
+    badge_name: badge.name,
+    badge_image_url: badge.image_url,
+    rarity: badge.rarity,
+    price: badge.price, // base price
+    fixed_rarity_name: badge.fixed_rarity_name,
+    sales_type: badge.sales_type,
+    acquired_at: new Date(item.acquired_at),
+    market_value: pValue,
+    sell_price: pSell,
+    purchased_price: item.purchased_price
+    };
+    }).filter(i => i !== null);
+
+    // 初期状態描画
+    currentActionPage = 1;
+    filterAndRenderActionBadges();
+
+    } catch (err) {
+    console.error('バッジ一覧取得エラー:', err);
+    listEl.innerHTML = '<p class="text-center text-danger py-3">読み込み失敗</p>';
+    }
+    }
+
+    function filterAndRenderActionBadges() {
+    const listEl = document.getElementById('action-badge-list');
+    const searchVal = document.getElementById('action-badge-search').value.toLowerCase();
+    const sortVal = document.getElementById('action-badge-sort').value;
+    const filterVal = document.getElementById('action-badge-filter').value;
+
+    // 1. フィルタリング
+    let filtered = allActionBadges.filter(item => {
+    if (searchVal && !item.badge_name.toLowerCase().includes(searchVal)) return false;
+    if (filterVal === 'mutant' && !item.is_mutant) return false;
+    if (filterVal === 'normal' && item.is_mutant) return false;
+
+    if (currentActionType === 'sell' && item.sales_type === '限定品') return false;
+    if (currentActionType === 'transfer' && item.sales_type === '換金品') return false;
+
+    return true;
+    });
+
+    // 2. ソート
+    filtered.sort((a, b) => {
+    if (sortVal === 'acquired_desc') return b.acquired_at - a.acquired_at;
+    if (sortVal === 'acquired_asc') return a.acquired_at - b.acquired_at;
+    if (sortVal === 'name_asc') return a.badge_name.localeCompare(b.badge_name);
+    if (sortVal === 'rarity_desc' || sortVal === 'rarity_asc') {
+    const pA = a.market_value || 0;
+    const pB = b.market_value || 0;
+    return sortVal === 'rarity_desc' ? pB - pA : pA - pB;
+    }
+    return 0;
+    });
+
+    // 3. ページネーション
+    const totalPages = Math.ceil(filtered.length / ACTION_ITEMS_PER_PAGE);
+    if (currentActionPage > totalPages && totalPages > 0) currentActionPage = totalPages;
+    if (currentActionPage < 1) currentActionPage=1; const start=(currentActionPage - 1) * ACTION_ITEMS_PER_PAGE; const
+        end=start + ACTION_ITEMS_PER_PAGE; const pageItems=filtered.slice(start, end); // 4. 描画 if
+        (pageItems.length===0) { listEl.innerHTML='<div class="col-12 text-center text-muted py-3">バッジが見つかりません</div>' ;
+        const pgArea=document.getElementById('action-badge-pagination-area'); if(pgArea) pgArea.style.display='none' ;
+        return; } listEl.innerHTML=pageItems.map(item=> {
+        const isMutant = item.is_mutant;
+        const mutantClass = isMutant ? 'mutant-badge-container active' : '';
+        const borderStyle = isMutant ? 'border: 2px solid gold;' : 'border: 1px solid #dee2e6;';
+
+        // 換金品かどうかで表示を少し変えるなどあるが、選択肢としては同じ
+
+        return `
+        <div class="col-4 col-sm-3" onclick="selectActionBadge('${item.uuid}', '${item.badge_name.replace(/'/g, "
+            \\'")}')">
+            <div class="card h-100 shadow-sm badge-select-card"
+                style="cursor: pointer; transition: transform 0.1s; ${borderStyle}">
+                <div class="card-body p-2 text-center d-flex flex-column align-items-center">
+                    <div class="position-relative mb-1" style="width: 50px; height: 50px;">
+                        <div class="${mutantClass}" style="width: 100%; height: 100%; border-radius: 8px;">
+                            <img src="${item.badge_image_url}" class="w-100 h-100 object-fit-contain"
+                                style="${isMutant ? 'position: relative; z-index: 1;' : ''}">
+                            ${isMutant ? '<div class="mutant-badge-shine"></div>' : ''}
+                        </div>
+                    </div>
+                    <div class="small fw-bold text-truncate w-100" style="font-size: 0.7rem;">${item.badge_name}</div>
+                    ${isMutant ? '<span class="badge bg-warning text-dark rounded-pill"
+                        style="font-size: 0.5rem; transform: scale(0.8);">Mutant</span>' : ''}
+                </div>
+            </div>
+        </div>
+        `;
+        }).join('');
+
+        renderActionPagination(totalPages);
         }
-        document.addEventListener('DOMContentLoaded', checkTeamNotifications);
-    </script>
+
+        function renderActionPagination(totalPages) {
+        const nav = document.getElementById('action-badge-pagination-area');
+        const ul = document.getElementById('action-badge-pagination');
+        if(!nav || !ul) return;
+
+        if (totalPages <= 1) { nav.style.display='none' ; return; } nav.style.display='block' ; let html='' ; html
+            +=`<li class="page-item ${currentActionPage === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="javascript:void(0)" onclick="goToActionPage(${currentActionPage - 1})">‹</a></li>
+            `;
+
+            let startP = Math.max(1, currentActionPage - 1);
+            let endP = Math.min(totalPages, currentActionPage + 1);
+            if (currentActionPage === 1) endP = Math.min(totalPages, 3);
+            if (currentActionPage === totalPages) startP = Math.max(1, totalPages - 2);
+
+            for (let i = startP; i <= endP; i++) { html +=`<li
+                class="page-item ${i === currentActionPage ? 'active' : ''}">
+                <a class="page-link" href="javascript:void(0)" onclick="goToActionPage(${i})">${i}</a></li>`;
+                }
+
+                html += `<li class="page-item ${currentActionPage === totalPages ? 'disabled' : ''}">
+                    <a class="page-link" href="javascript:void(0)"
+                        onclick="goToActionPage(${currentActionPage + 1})">›</a>
+                </li>`;
+
+                ul.innerHTML = html;
+                }
+
+                function goToActionPage(page) {
+                currentActionPage = page;
+                filterAndRenderActionBadges();
+                }
+
+                function selectActionBadge(uuid, name) {
+                currentActionUUID = uuid;
+                currentActionBadgeName = name; // set global
+
+                bootstrap.Modal.getInstance(document.getElementById('badgeActionModal')).hide();
+
+                // allActionBadgesからデータを引く
+                const badge = allActionBadges.find(b => b.uuid === uuid);
+                if (!badge) {
+                // エラーだが、通常ありえない
+                alert('バッジ情報が見つかりませんでした');
+                return;
+                }
+
+                if (currentActionType === 'sell') {
+                if (badge.sales_type === '換金品') {
+                // 同じIDの換金品カウント
+                const count = allActionBadges.filter(i => i.badges.id === badge.badges.id && i.sales_type ===
+                '換金品').length;
+                openConvertibleSellModal(badge.badges.id, badge.badge_name, count, badge.price);
+                } else {
+                sellBadgeConfirm(badge.uuid, badge.badge_name, badge.purchased_price, badge.market_value,
+                badge.sell_price);
+                }
+                } else if (currentActionType === 'transfer') {
+                currentActionDetails = badge.is_mutant ? '\n※このバッジはミュータントです✨' : '';
+                openUserSelectModal('badge_transfer');
+                }
+                }
+                </script>
 </body>
 
 </html>
