@@ -1161,7 +1161,7 @@ async function openBadgeModal(badge = null) {
         document.getElementById('badge-name').value = badge.name;
         document.getElementById('badge-description').value = badge.description || '';
         document.getElementById('badge-image-url').value = badge.image_url;
-        document.getElementById('badge-weight').value = badge.gacha_weight || '';
+        document.getElementById('badge-image-url').value = badge.image_url;
         document.getElementById('badge-price').value = badge.price || 0;
         document.getElementById('badge-fixed-rarity').value = badge.fixed_rarity_name || '';
         document.getElementById('badge-requirements').value = badge.requirements || '';
@@ -1236,10 +1236,6 @@ async function saveBadge() {
             name,
             description,
             image_url,
-            gacha_weight: (() => {
-                const val = document.getElementById('badge-weight').value;
-                return val === '' ? null : parseInt(val);
-            })(),
             price: parseInt(document.getElementById('badge-price').value) || 0,
             requirements: document.getElementById('badge-requirements').value.trim() || null,
             sort_order: parseInt(document.getElementById('badge-sort-order').value) || 0,
@@ -1292,7 +1288,7 @@ async function exportBadgesToCSV() {
     const { data: badges } = await supabaseClient.from('badges').select('*');
     // 全カラムを含める
     const headers = [
-        'id', 'name', 'description', 'image_url', 'gacha_weight', 'price',
+        'id', 'name', 'description', 'image_url', 'price',
         'requirements', 'remaining_count', 'sort_order', 'discord_user_id',
         'fixed_rarity_name', 'sales_type', 'is_gacha_eligible', 'is_shop_listed'
     ];
@@ -1399,7 +1395,7 @@ async function handleBadgeCSVImport(event) {
                 headers.forEach((h, idx) => {
                     const value = values[idx] || '';
                     // 数値型カラムの変換
-                    if (['gacha_weight', 'price', 'remaining_count', 'sort_order'].includes(h)) {
+                    if (['price', 'remaining_count', 'sort_order'].includes(h)) {
                         obj[h] = value ? parseInt(value) : null;
                     }
                     // ブール型カラムの変換
