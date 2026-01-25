@@ -3015,37 +3015,7 @@
             }
         }
 
-        listEl.innerHTML = pageItems.map(item => {
-            const isMutant = item.is_mutant;
-            // ミュータントエフェクトなどのためのクラス
-            const mutantClass = isMutant ? 'mutant-badge-container active' : '';
-            const borderStyle = isMutant ? 'border: 2px solid gold;' : 'border: 1px solid #dee2e6;';
 
-            // レアリティ表示（簡易）
-            const rarityLabel = item.fixed_rarity_name || ''; // 本当は計算が必要だが一旦省略
-
-            return `
-                    <div class="col-4 col-sm-3" onclick="selectActionBadge('${item.uuid}', '${item.badge_name.replace(/'/g, "\\'")}')">
-                        <div class="card h-100 shadow-sm badge-select-card" style="cursor: pointer; transition: transform 0.1s; ${borderStyle}">
-                            <div class="card-body p-2 text-center d-flex flex-column align-items-center">
-                                <div class="position-relative mb-1" style="width: 50px; height: 50px;">
-                                    <div class="${mutantClass}" style="width: 100%; height: 100%; border-radius: 8px;">
-                                         <img src="${item.badge_image_url}" class="w-100 h-100 object-fit-contain" 
-                                            style="${isMutant ? 'position: relative; z-index: 1;' : ''}">
-                                         ${isMutant ? '<div class="mutant-badge-shine"></div>' : ''}
-                                    </div>
-                                </div>
-                                <div class="small fw-bold text-truncate w-100" style="font-size: 0.7rem;">${item.badge_name}</div>
-                                ${isMutant ? '<span class="badge bg-warning text-dark rounded-pill" style="font-size: 0.5rem; transform: scale(0.8);">Mutant</span>' : ''}
-                            </div>
-                        </div>
-                    </div>
-                `;
-        }).join('');
-
-        // ページネーション更新
-        renderActionPagination(totalPages);
-        }
 
         function renderActionPagination(totalPages) {
             const nav = document.getElementById('action-badge-pagination-area');
@@ -4432,13 +4402,11 @@
     if (currentActionPage < 1) currentActionPage=1; const start=(currentActionPage - 1) * ACTION_ITEMS_PER_PAGE; const
         end=start + ACTION_ITEMS_PER_PAGE; const pageItems=filtered.slice(start, end); // 4. 描画 if
         (pageItems.length===0) { listEl.innerHTML='<div class="col-12 text-center text-muted py-3">バッジが見つかりません</div>' ;
-        const pgArea=document.getElementById('action-badge-pagination-area'); if(pgArea) pgArea.style.display='none' ;
+        const pgArea=document.getElementById('action-badge-pagination-area'); if (pgArea) pgArea.style.display='none' ;
         return; } listEl.innerHTML=pageItems.map(item=> {
         const isMutant = item.is_mutant;
         const mutantClass = isMutant ? 'mutant-badge-container active' : '';
         const borderStyle = isMutant ? 'border: 2px solid gold;' : 'border: 1px solid #dee2e6;';
-
-        // 換金品かどうかで表示を少し変えるなどあるが、選択肢としては同じ
 
         return `
         <div class="col-4 col-sm-3" onclick="selectActionBadge('${item.uuid}', '${item.badge_name.replace(/'/g, "
@@ -4468,7 +4436,7 @@
         function renderActionPagination(totalPages) {
         const nav = document.getElementById('action-badge-pagination-area');
         const ul = document.getElementById('action-badge-pagination');
-        if(!nav || !ul) return;
+        if (!nav || !ul) return;
 
         if (totalPages <= 1) { nav.style.display='none' ; return; } nav.style.display='block' ; let html='' ; html
             +=`<li class="page-item ${currentActionPage === 1 ? 'disabled' : ''}">
@@ -4507,7 +4475,6 @@
                 // allActionBadgesからデータを引く
                 const badge = allActionBadges.find(b => b.uuid === uuid);
                 if (!badge) {
-                // エラーだが、通常ありえない
                 alert('バッジ情報が見つかりませんでした');
                 return;
                 }
