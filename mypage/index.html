@@ -4437,10 +4437,9 @@
         const ul = document.getElementById('action-badge-pagination');
         if (!nav || !ul) return;
 
-        if (totalPages <= 1) { nav.style.display='none' ; return; } nav.style.display='block' ; let html='' ; // Prev
-            html +=`<li class="page-item ${currentActionPage === 1 ? 'disabled' : ''}">
-            <a class="page-link" href="javascript:void(0)" onclick="goToActionPage(${currentActionPage - 1})">‹</a></li>
-            `;
+        if (totalPages <= 1) { nav.style.display='none' ; return; } nav.style.display='block' ; let html='' ; html
+            +=`<li class="page-item ${currentActionPage === 1 ? 'disabled' : ''}"><a class="page-link"
+                href="javascript:void(0)" onclick="goToActionPage(${currentActionPage - 1})">‹</a></li>`;
 
             let startP = Math.max(1, currentActionPage - 1);
             let endP = Math.min(totalPages, currentActionPage + 1);
@@ -4448,15 +4447,13 @@
             if (currentActionPage === totalPages) startP = Math.max(1, totalPages - 2);
 
             for (let i = startP; i <= endP; i++) { html +=`<li
-                class="page-item ${i === currentActionPage ? 'active' : ''}">
-                <a class="page-link" href="javascript:void(0)" onclick="goToActionPage(${i})">${i}</a></li>`;
+                class="page-item ${i === currentActionPage ? 'active' : ''}"><a class="page-link"
+                    href="javascript:void(0)" onclick="goToActionPage(${i})">${i}</a></li>`;
                 }
 
-                // Next
-                html += `<li class="page-item ${currentActionPage === totalPages ? 'disabled' : ''}">
-                    <a class="page-link" href="javascript:void(0)"
-                        onclick="goToActionPage(${currentActionPage + 1})">›</a>
-                </li>`;
+                html += `<li class="page-item ${currentActionPage === totalPages ? 'disabled' : ''}"><a
+                        class="page-link" href="javascript:void(0)"
+                        onclick="goToActionPage(${currentActionPage + 1})">›</a></li>`;
 
                 ul.innerHTML = html;
                 }
@@ -4470,7 +4467,10 @@
                 currentActionUUID = uuid;
                 currentActionBadgeName = name; // set global
 
-                bootstrap.Modal.getInstance(document.getElementById('badgeActionModal')).hide();
+                const modalEl = document.getElementById('badgeActionModal');
+                if (modalEl) {
+                bootstrap.Modal.getInstance(modalEl).hide();
+                }
 
                 // allActionBadgesからデータを引く
                 const badge = allActionBadges.find(b => b.uuid === uuid);
@@ -4481,7 +4481,6 @@
 
                 if (currentActionType === 'sell') {
                 if (badge.sales_type === '換金品') {
-                // 同じIDの換金品カウント
                 const count = allActionBadges.filter(i => i.badges.id === badge.badges.id && i.sales_type ===
                 '換金品').length;
                 openConvertibleSellModal(badge.badges.id, badge.badge_name, count, badge.price);
@@ -4494,8 +4493,135 @@
                 openUserSelectModal('badge_transfer');
                 }
                 }
-
                 </script>
 </body>
 
 </html>
+function filterAndRenderActionBadges() {
+const listEl = document.getElementById('action-badge-list');
+const searchVal = document.getElementById('action-badge-search').value.toLowerCase();
+const sortVal = document.getElementById('action-badge-sort').value;
+const filterVal = document.getElementById('action-badge-filter').value;
+
+// 1. フィルタリング
+let filtered = allActionBadges.filter(item => {
+if (searchVal && !item.badge_name.toLowerCase().includes(searchVal)) return false;
+if (filterVal === 'mutant' && !item.is_mutant) return false;
+if (filterVal === 'normal' && item.is_mutant) return false;
+
+if (currentActionType === 'sell' && item.sales_type === '限定品') return false;
+if (currentActionType === 'transfer' && item.sales_type === '換金品') return false;
+
+return true;
+});
+
+// 2. ソート
+filtered.sort((a, b) => {
+if (sortVal === 'acquired_desc') return b.acquired_at - a.acquired_at;
+if (sortVal === 'acquired_asc') return a.acquired_at - b.acquired_at;
+if (sortVal === 'name_asc') return a.badge_name.localeCompare(b.badge_name);
+if (sortVal === 'rarity_desc' || sortVal === 'rarity_asc') {
+const pA = a.market_value || 0;
+const pB = b.market_value || 0;
+return sortVal === 'rarity_desc' ? pB - pA : pA - pB;
+}
+return 0;
+});
+
+// 3. ページネーション
+const totalPages = Math.ceil(filtered.length / ACTION_ITEMS_PER_PAGE);
+if (currentActionPage > totalPages && totalPages > 0) currentActionPage = totalPages;
+if (currentActionPage < 1) currentActionPage=1; const start=(currentActionPage - 1) * ACTION_ITEMS_PER_PAGE; const
+    end=start + ACTION_ITEMS_PER_PAGE; const pageItems=filtered.slice(start, end); // 4. 描画 if (pageItems.length===0) {
+    listEl.innerHTML='<div class="col-12 text-center text-muted py-3">バッジが見つかりません</div>' ; const
+    pgArea=document.getElementById('action-badge-pagination-area'); if (pgArea) pgArea.style.display='none' ; return; }
+    listEl.innerHTML=pageItems.map(item=> {
+    const isMutant = item.is_mutant;
+    const mutantClass = isMutant ? 'mutant-badge-container active' : '';
+    const borderStyle = isMutant ? 'border: 2px solid gold;' : 'border: 1px solid #dee2e6;';
+    const safeName = item.badge_name.replace(/'/g, "\\'");
+
+    return `
+    <div class="col-4 col-sm-3" onclick="selectActionBadge('${item.uuid}', '${safeName}')">
+        <div class="card h-100 shadow-sm badge-select-card"
+            style="cursor: pointer; transition: transform 0.1s; ${borderStyle}">
+            <div class="card-body p-2 text-center d-flex flex-column align-items-center">
+                <div class="position-relative mb-1" style="width: 50px; height: 50px;">
+                    <div class="${mutantClass}" style="width: 100%; height: 100%; border-radius: 8px;">
+                        <img src="${item.badge_image_url}" class="w-100 h-100 object-fit-contain"
+                            style="${isMutant ? 'position: relative; z-index: 1;' : ''}">
+                        ${isMutant ? '<div class="mutant-badge-shine"></div>' : ''}
+                    </div>
+                </div>
+                <div class="small fw-bold text-truncate w-100" style="font-size: 0.7rem;">${item.badge_name}</div>
+                ${isMutant ? '<span class="badge bg-warning text-dark rounded-pill"
+                    style="font-size: 0.5rem; transform: scale(0.8);">Mutant</span>' : ''}
+            </div>
+        </div>
+    </div>`;
+    }).join('');
+
+    renderActionPagination(totalPages);
+    }
+
+    function renderActionPagination(totalPages) {
+    const nav = document.getElementById('action-badge-pagination-area');
+    const ul = document.getElementById('action-badge-pagination');
+    if (!nav || !ul) return;
+
+    if (totalPages <= 1) { nav.style.display='none' ; return; } nav.style.display='block' ; let html='' ; html +=`<li
+        class="page-item ${currentActionPage === 1 ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0)"
+            onclick="goToActionPage(${currentActionPage - 1})">‹</a></li>`;
+
+        let startP = Math.max(1, currentActionPage - 1);
+        let endP = Math.min(totalPages, currentActionPage + 1);
+        if (currentActionPage === 1) endP = Math.min(totalPages, 3);
+        if (currentActionPage === totalPages) startP = Math.max(1, totalPages - 2);
+
+        for (let i = startP; i <= endP; i++) { html +=`<li class="page-item ${i === currentActionPage ? 'active' : ''}">
+            <a class="page-link" href="javascript:void(0)" onclick="goToActionPage(${i})">${i}</a></li>`;
+            }
+
+            html += `<li class="page-item ${currentActionPage === totalPages ? 'disabled' : ''}"><a class="page-link"
+                    href="javascript:void(0)" onclick="goToActionPage(${currentActionPage + 1})">›</a></li>`;
+
+            ul.innerHTML = html;
+            }
+
+            function goToActionPage(page) {
+            currentActionPage = page;
+            filterAndRenderActionBadges();
+            }
+
+            function selectActionBadge(uuid, name) {
+            currentActionUUID = uuid;
+            currentActionBadgeName = name; // set global
+
+            const modalEl = document.getElementById('badgeActionModal');
+            if (modalEl) {
+            bootstrap.Modal.getInstance(modalEl).hide();
+            }
+
+            // allActionBadgesからデータを引く
+            const badge = allActionBadges.find(b => b.uuid === uuid);
+            if (!badge) {
+            alert('バッジ情報が見つかりませんでした');
+            return;
+            }
+
+            if (currentActionType === 'sell') {
+            if (badge.sales_type === '換金品') {
+            const count = allActionBadges.filter(i => i.badges.id === badge.badges.id && i.sales_type === '換金品').length;
+            openConvertibleSellModal(badge.badges.id, badge.badge_name, count, badge.price);
+            } else {
+            sellBadgeConfirm(badge.uuid, badge.badge_name, badge.purchased_price, badge.market_value, badge.sell_price);
+            }
+            } else if (currentActionType === 'transfer') {
+            currentActionDetails = badge.is_mutant ? '\n※このバッジはミュータントです✨' : '';
+            openUserSelectModal('badge_transfer');
+            }
+            }
+            </script>
+            </body>
+
+            </html>
