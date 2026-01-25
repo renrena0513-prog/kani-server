@@ -4407,10 +4407,10 @@
         const isMutant = item.is_mutant;
         const mutantClass = isMutant ? 'mutant-badge-container active' : '';
         const borderStyle = isMutant ? 'border: 2px solid gold;' : 'border: 1px solid #dee2e6;';
+        const safeName = item.badge_name.replace(/'/g, "\\'");
 
         return `
-        <div class="col-4 col-sm-3" onclick="selectActionBadge('${item.uuid}', '${item.badge_name.replace(/'/g, "
-            \\'")}')">
+        <div class="col-4 col-sm-3" onclick="selectActionBadge('${item.uuid}', '${safeName}')">
             <div class="card h-100 shadow-sm badge-select-card"
                 style="cursor: pointer; transition: transform 0.1s; ${borderStyle}">
                 <div class="card-body p-2 text-center d-flex flex-column align-items-center">
@@ -4426,8 +4426,7 @@
                         style="font-size: 0.5rem; transform: scale(0.8);">Mutant</span>' : ''}
                 </div>
             </div>
-        </div>
-        `;
+        </div>`;
         }).join('');
 
         renderActionPagination(totalPages);
@@ -4438,8 +4437,8 @@
         const ul = document.getElementById('action-badge-pagination');
         if (!nav || !ul) return;
 
-        if (totalPages <= 1) { nav.style.display='none' ; return; } nav.style.display='block' ; let html='' ; html
-            +=`<li class="page-item ${currentActionPage === 1 ? 'disabled' : ''}">
+        if (totalPages <= 1) { nav.style.display='none' ; return; } nav.style.display='block' ; let html='' ; // Prev
+            html +=`<li class="page-item ${currentActionPage === 1 ? 'disabled' : ''}">
             <a class="page-link" href="javascript:void(0)" onclick="goToActionPage(${currentActionPage - 1})">‹</a></li>
             `;
 
@@ -4453,6 +4452,7 @@
                 <a class="page-link" href="javascript:void(0)" onclick="goToActionPage(${i})">${i}</a></li>`;
                 }
 
+                // Next
                 html += `<li class="page-item ${currentActionPage === totalPages ? 'disabled' : ''}">
                     <a class="page-link" href="javascript:void(0)"
                         onclick="goToActionPage(${currentActionPage + 1})">›</a>
@@ -4494,6 +4494,7 @@
                 openUserSelectModal('badge_transfer');
                 }
                 }
+
                 </script>
 </body>
 
