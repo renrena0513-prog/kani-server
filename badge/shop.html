@@ -239,6 +239,10 @@
                     onclick="openPriceListModal()">
                     📊 レアリティ価格表を見る
                 </button>
+                <button class="btn btn-sm btn-outline-primary mt-2 ms-2" style="border-radius: 20px; font-weight: bold;"
+                    onclick="openInventoryModal()">
+                    🎒 所持品を見る
+                </button>
             </div>
         </header>
 
@@ -340,6 +344,48 @@
                     </small>
                     <button type="button" class="btn btn-secondary rounded-pill px-4"
                         data-bs-dismiss="modal">閉じる</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 所持品一覧モーダル -->
+    <div class="modal fade" id="inventoryModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+                <div class="modal-header border-0 bg-light" style="border-radius: 20px 20px 0 0;">
+                    <h5 class="modal-title fw-bold">🎒 あなたの所持バッジ</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3 bg-light">
+                    <div id="inventory-list" class="vstack gap-2">
+                        <!-- JSで描画 -->
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 bg-light" style="border-radius: 0 0 20px 20px;">
+                    <div class="small text-muted w-100">
+                        ※ ここから直接売却して、購入資金に充てることもできます。
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ショップ用アクションモーダル（売却確認など） -->
+    <div class="modal fade" id="shopActionModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg border-0" style="border-radius: 20px;">
+                <div class="modal-body p-4 text-center">
+                    <div id="shopActionContent"></div>
+                    <div class="mt-4 d-flex justify-content-center gap-2">
+                        <button type="button" class="btn btn-secondary rounded-pill px-4"
+                            data-bs-dismiss="modal">キャンセル</button>
+                        <button type="button" id="btnShopActionExec"
+                            class="btn btn-danger rounded-pill px-4">実行する</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -835,6 +881,142 @@
             tbody.innerHTML = rows.reverse().join('');
 
             new bootstrap.Modal(document.getElementById('priceListModal')).show();
+        }
+
+
+
+        // ======= 所持品・売却機能 =======
+        let currentShopActionUUID = null;
+
+        async function openInventoryModal() {
+            const modal = new bootstrap.Modal(document.getElementById('inventoryModal'));
+            modal.show();
+            await loadInventory();
+        }
+
+        async function loadInventory() {
+            const listEl = document.getElementById('inventory-list');
+            try {
+                // 所持バッジ取得
+                const { data: owned, error } = await supabaseClient
+                    .from('user_badges_new')
+                    .select('*, badges(*)') // badge_idだけでなく、badgesテーブルの情報も結合して取得
+                    .eq('user_id', currentUserId)
+                    .order('acquired_at', { ascending: false });
+
+                if (error) throw error;
+
+                if (!owned || owned.length === 0) {
+                    listEl.innerHTML = '<div class="text-center py-4 text-muted">バッジを持っていません。<br>ショップで購入してみましょう！</div>';
+                    return;
+                }
+
+                // 換金品を除外する場合などのフィルタリングはここで行えますが、今回は全て表示
+                // ただし、sales_type='限定品' は売れないのでボタンを出さない等の制御が可能
+
+                const thresholds = cachedThresholds || [];
+                const marketCounts = cachedMarketCounts || {};
+
+                listEl.innerHTML = owned.map(item => {
+                    const badge = item.badges;
+                    if (!badge) return ''; // データ不整合対策
+
+                    const n = marketCounts[badge.id] || 0;
+                    const result = BadgeUtils.calculateBadgeValues(badge, n, thresholds);
+
+                    // 売却価格計算 (ランクダウン後の価格、ミュータントはランクダウン後×3)
+                    // 注: ミュータントの仕様は「ランクダウン後×3」で確定
+                    const sellPriceBase = result.sellPrice;
+                    const isMutant = item.is_mutant;
+                    const sellPriceFinal = sellPriceBase * (isMutant ? 3 : 1);
+
+                    const buyPrice = item.purchased_price || 0;
+                    const mutantLabel = isMutant ? '<span class="badge bg-warning text-dark ms-1">Mutant</span>' : '';
+
+                    // バッジカードの描画
+                    return `
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body p-2 d-flex align-items-center">
+                                <img src="${badge.image_url}" style="width: 60px; height: 60px; object-fit: contain; border-radius: 8px;" class="me-3">
+                                <div class="flex-grow-1">
+                                    <div class="fw-bold text-dark">${badge.name} ${mutantLabel}</div>
+                                    <div class="small text-muted d-flex gap-2 flex-wrap">
+                                        <span>購入: 🪙${buyPrice.toLocaleString()}</span>
+                                        <span>時価: 🪙${result.marketValue.toLocaleString()}</span>
+                                        <span class="fw-bold text-dark">売却: 🪙${sellPriceFinal.toLocaleString()}</span>
+                                    </div>
+                                    <div class="badge rounded-pill bg-light text-secondary border mt-1">${result.rarityName}</div>
+                                </div>
+                                <div>
+                                    ${badge.sales_type === '限定品' ?
+                            '<span class="badge bg-secondary">売却不可</span>' :
+                            `<button class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="confirmSellFromShop('${item.uuid}', '${badge.name.replace(/'/g, "\\'")}', ${buyPrice}, ${sellPriceFinal})">売却</button>`
+                        }
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                console.error('Error loading inventory:', err);
+                listEl.innerHTML = '<div class="text-center py-4 text-danger">読み込みエラーが発生しました</div>';
+            }
+        }
+
+        function confirmSellFromShop(uuid, name, buyPrice, sellPrice) {
+            currentShopActionUUID = uuid;
+            const profit = sellPrice - buyPrice;
+            const profitStr = (profit >= 0 ? '+' : '') + profit.toLocaleString();
+
+            const content = `
+                <h5 class="fw-bold mb-3">売却の確認</h5>
+                <p class="mb-2">「<span class="fw-bold">${name}</span>」を売却しますか？</p>
+                <div class="alert alert-secondary d-inline-block text-start py-2 px-4">
+                    <div>購入額: 🪙 ${buyPrice.toLocaleString()}</div>
+                    <div class="fw-bold text-danger border-top border-secondary pt-1 mt-1">売却額: 🪙 ${sellPrice.toLocaleString()}</div>
+                    <div class="small text-end opacity-75 mt-1">損益: ${profitStr}</div>
+                </div>
+            `;
+
+            document.getElementById('shopActionContent').innerHTML = content;
+
+            const btnExec = document.getElementById('btnShopActionExec');
+            btnExec.onclick = () => executeSellFromShop();
+
+            // 重なり順制御のため、インベントリモーダルを隠さずに上に表示するか、あるいは入れ替える
+            // ここでは簡易的にアクションモーダルを最前面に出す(z-index指定済み)
+            new bootstrap.Modal(document.getElementById('shopActionModal')).show();
+        }
+
+        async function executeSellFromShop() {
+            // アクションモーダルを閉じる
+            bootstrap.Modal.getInstance(document.getElementById('shopActionModal')).hide();
+
+            // ローディング表示（簡易）
+            const loadingOverlay = document.getElementById('loading-overlay');
+            if (loadingOverlay) loadingOverlay.classList.add('active');
+
+            try {
+                const { data, error } = await supabaseClient.rpc('sell_badge_v2', {
+                    p_user_id: currentUserId,
+                    p_badge_uuid: currentShopActionUUID
+                });
+
+                if (error) throw error;
+                if (!data.ok) throw new Error(data.error);
+
+                alert(`売却しました！ (🪙 +${data.sell_price.toLocaleString()})`);
+
+                // データ再読み込み
+                await refreshMarketContext(); // 所持金更新
+                await loadInventory();        // 所持品リスト更新 (インベントリモーダルは開いたまま)
+
+            } catch (err) {
+                alert('エラーが発生しました: ' + err.message);
+            } finally {
+                if (loadingOverlay) loadingOverlay.classList.remove('active');
+            }
         }
 
         document.addEventListener('DOMContentLoaded', initShop);
