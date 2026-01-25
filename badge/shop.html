@@ -1086,6 +1086,7 @@
                         badge_name: badge.name,
                         badge_image_url: badge.image_url,
                         rarity: badge.rarity,
+                        rarity_name: valResult.rarityName, // 追加: 計算されたレアリティ名
                         price: badge.price, // base
                         fixed_rarity_name: badge.fixed_rarity_name,
                         sales_type: badge.sales_type,
@@ -1230,6 +1231,7 @@
                             return `
                                 <div class="d-flex align-items-center justify-content-between p-2 rounded bg-white" style="${mutantStyle}">
                                     <div class="d-flex align-items-center overflow-hidden">
+                                        <img src="${group.badge_image_url}" class="rounded me-2" style="width: 32px; height: 32px; object-fit: contain;">
                                         <div class="me-2 small text-muted text-truncate" style="max-width: 120px;">ID: ...${item.uuid.slice(-6)}</div>
                                         ${mutantLabel}
                                         <div class="small">
@@ -1264,9 +1266,10 @@
                         </div>
                         <div class="flex-grow-1" style="min-width: 0; margin-right: 10px;">
                             <div class="fw-bold text-truncate">${group.badge_name}</div>
-                            <div class="small text-muted">
-                                所持: <span class="fw-bold text-dark">${totalCount}</span>個
-                                ${mutantCount > 0 ? `<span class="ms-2 badge bg-warning text-dark">内ミュータント: ${mutantCount}</span>` : ''}
+                            <div class="small text-muted d-flex align-items-center flex-wrap gap-2">
+                                <span class="badge bg-light text-dark border">${repItem.rarity_name || '-'}</span>
+                                <div>所持: <span class="fw-bold text-dark">${totalCount}</span>個</div>
+                                ${mutantCount > 0 ? `<span class="badge bg-warning text-dark">内ミュータント: ${mutantCount}</span>` : ''}
                             </div>
                         </div>
                         <div style="flex-shrink: 0;">
