@@ -1090,6 +1090,7 @@
                         price: badge.price, // base
                         fixed_rarity_name: badge.fixed_rarity_name,
                         sales_type: badge.sales_type,
+                        is_gacha_eligible: badge.is_gacha_eligible, // 追加
                         market_value: valResult.marketValue,
                         sell_price: sellPrice,
                         purchased_price: inventoryItem.purchased_price,
@@ -1122,13 +1123,8 @@
                     case 'variable':
                         return item.sales_type === '変動型';
                     case 'shrine':
-                        // お賽銭限定かどうかは現状 fixed_rarity_name や sales_type で判断が必要だが
-                        // ユーザーは「お賽銭限定」フィルタを希望。
-                        // ここでは sales_type が 'お賽銭限定' または fixed_rarity_name があるもの(固定レアリティ)の一部と推測されるが
-                        // 明確なフラグがない場合、一旦 sales_type === 'お賽銭限定' をチェック（DB設計依存）
-                        // もしDBにその値がなければ、このフィルタは機能しないため、実装後に確認・調整が必要。
-                        // 仮実装: sales_type に 'お賽銭' が含まれるかチェック
-                        return item.sales_type === 'お賽銭限定';
+                        // ユーザー仕様: is_gacha_eligible が true ならお賽銭限定
+                        return item.is_gacha_eligible === true;
                     case 'mutant':
                         return item.is_mutant;
                     case 'all':
