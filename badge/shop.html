@@ -1191,30 +1191,21 @@
                 // 代表アイテム
                 const repItem = group.items[0];
 
-                // ヘルパー: 名前をJS文字列として安全にする（onclick等で使用）
-                const safeName = (name) => {
-                    return name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-                };
-
                 let actionArea = '';
                 let detailHtml = '';
 
                 if (totalCount === 1) {
                     const item = repItem;
-                    const sName = safeName(item.badge_name);
-                    const pPrice = item.purchased_price || 0;
-                    const sPrice = item.sell_price;
-
                     if (item.sales_type === '限定品') {
                         actionArea = '<span class="badge bg-secondary text-nowrap">売却不可</span>';
                     } else if (item.sales_type === '換金品') {
                         actionArea = `<button class="btn btn-sm btn-outline-success rounded-pill text-nowrap" style="flex-shrink: 0;"
-                            onclick="confirmSellFromShop('${item.uuid}', '${sName}', ${pPrice}, ${sPrice})">
+                            onclick="confirmSellFromShop('${item.uuid}')">
                             換金
                          </button>`;
                     } else {
                         actionArea = `<button class="btn btn-sm btn-outline-danger rounded-pill text-nowrap" style="flex-shrink: 0;"
-                            onclick="confirmSellFromShop('${item.uuid}', '${sName}', ${pPrice}, ${sPrice})">
+                            onclick="confirmSellFromShop('${item.uuid}')">
                             売却
                          </button>`;
                     }
@@ -1233,7 +1224,6 @@
                             const mutantStyle = isMutant ? 'border: 2px solid gold; background: #fffdf5;' : 'border: 1px solid #eee;';
                             const mutantLabel = isMutant ? '<span class="badge bg-warning text-dark me-2">Mutant</span>' : '';
 
-                            const sName = safeName(item.badge_name);
                             const pPrice = item.purchased_price || 0;
                             const sPrice = item.sell_price;
 
@@ -1248,7 +1238,7 @@
                                         </div>
                                     </div>
                                     <button class="btn btn-sm btn-outline-danger rounded-pill ms-2 text-nowrap" style="font-size: 0.8rem; flex-shrink: 0;"
-                                        onclick="confirmSellFromShop('${item.uuid}', '${sName}', ${pPrice}, ${sPrice})">
+                                        onclick="confirmSellFromShop('${item.uuid}')">
                                         売却
                                     </button>
                                 </div>
@@ -1332,36 +1322,6 @@
             ul.innerHTML = html;
         }
 
-        function goToInventoryPage(page) {
-            currentInventoryPage = page;
-            filterAndRenderInventoryBadges();
-        }
-
-        function confirmSellFromShop(uuid, name, buyPrice, sellPrice) {
-            currentShopActionUUID = uuid;
-            const profit = sellPrice - buyPrice;
-            const profitStr = (profit >= 0 ? '+' : '') + profit.toLocaleString();
-
-            const content = `
-                <h5 class="fw-bold mb-3">売却の確認</h5>
-                <p class="mb-2">「<span class="fw-bold">${name}</span>」を売却しますか？</p>
-                <div class="alert alert-secondary d-inline-block text-start py-2 px-4">
-                    <div>購入額: 🪙 ${buyPrice.toLocaleString()}</div>
-                    <div class="fw-bold text-danger border-top border-secondary pt-1 mt-1">売却額: 🪙 ${sellPrice.toLocaleString()}</div>
-                    <div class="small text-end opacity-75 mt-1">損益: ${profitStr}</div>
-                </div>
-            `;
-
-            document.getElementById('shopActionContent').innerHTML = content;
-
-            const btnExec = document.getElementById('btnShopActionExec');
-            btnExec.onclick = () => executeSellFromShop();
-
-            // 重なり順制御のため、インベントリモーダルを隠さずに上に表示するか、あるいは入れ替える
-            // ここでは簡易的にアクションモーダルを最前面に出す(z-index指定済み)
-            new bootstrap.Modal(document.getElementById('shopActionModal')).show();
-        }
-
         async function executeSellFromShop() {
             // アクションモーダルを閉じる
             bootstrap.Modal.getInstance(document.getElementById('shopActionModal')).hide();
@@ -1390,6 +1350,41 @@
             } finally {
                 if (loadingOverlay) loadingOverlay.classList.remove('active');
             }
+        }
+
+        // 修正: 引数渡しでエラーが出るため、UUIDだけ渡して内部で検索する
+        function confirmSellFromShop(uuid) {
+            // allInventoryBadges から UUID で検索
+            const item = allInventoryBadges.find(i => i.uuid === uuid);
+            if (!item) {
+                console.error('Item not found for uuid:', uuid);
+                return;
+            }
+
+            const name = item.badge_name;
+            const buyPrice = item.purchased_price || 0;
+            const sellPrice = item.sell_price;
+
+            currentShopActionUUID = uuid;
+            const profit = sellPrice - buyPrice;
+            const profitStr = (profit >= 0 ? '+' : '') + profit.toLocaleString();
+
+            const content = `
+                <h5 class="fw-bold mb-3">売却の確認</h5>
+                <p class="mb-2">「<span class="fw-bold">${name}</span>」を売却しますか？</p>
+                <div class="alert alert-secondary d-inline-block text-start py-2 px-4">
+                    <div>購入額: 🪙 ${buyPrice.toLocaleString()}</div>
+                    <div class="fw-bold text-danger border-top border-secondary pt-1 mt-1">売却額: 🪙 ${sellPrice.toLocaleString()}</div>
+                    <div class="small text-end opacity-75 mt-1">損益: ${profitStr}</div>
+                </div>
+            `;
+
+            document.getElementById('shopActionContent').innerHTML = content;
+
+            const btnExec = document.getElementById('btnShopActionExec');
+            btnExec.onclick = () => executeSellFromShop();
+
+            new bootstrap.Modal(document.getElementById('shopActionModal')).show();
         }
 
         async function openItemInventoryModal() {
