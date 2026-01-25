@@ -375,6 +375,12 @@
                                     チーム管理申請 <span id="team-requests-badge" class="badge bg-danger"
                                         style="display: none;">0</span></button>
                             </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="pages-tab" data-bs-toggle="pill"
+                                    data-bs-target="#pages-pane" type="button" role="tab"
+                                    onclick="fetchPageSettings()">🚧
+                                    ページ管理</button>
+                            </li>
                         </ul>
                     </div>
 
@@ -634,593 +640,620 @@
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <!-- 記録編集モーダル -->
-            <div class="modal fade" id="recordModal" tabindex="-1" aria-labelledby="recordModalLabel"
-                aria-hidden="true">
-                <div class="modal-dialog modal-xl">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="recordModalLabel">大会記録編集</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <!-- ページ管理タブ -->
+                    <div class="tab-pane fade" id="pages-pane" role="tabpanel" tabindex="0">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h2 class="mb-0" style="font-family: var(--font-title); color: var(--deep-gray);">🚧
+                                ページアクセス管理</h2>
+                            <button onclick="fetchPageSettings()" class="btn btn-outline-primary btn-sm">🔄 更新</button>
                         </div>
-                        <div class="modal-body">
-                            <form id="record-form">
-                                <input type="hidden" id="match-id">
 
-                                <!-- 共通項目 -->
-                                <div class="admin-section mb-4" style="border-left-color: #007bff;">
-                                    <h6 class="mb-3 text-primary fw-bold">共通項目</h6>
-                                    <div class="row">
-                                        <div class="col-md-3 mb-3">
-                                            <label for="event_datetime" class="form-label">日時</label>
-                                            <input type="datetime-local" class="form-control" id="event_datetime"
-                                                required>
-                                        </div>
-                                        <div class="col-md-3 mb-3">
-                                            <label for="tournament_type" class="form-label">大会名</label>
-                                            <input type="text" class="form-control" id="tournament_type">
-                                        </div>
-                                        <div class="col-md-2 mb-3">
-                                            <label for="mahjong_mode" class="form-label">麻雀/モード</label>
-                                            <select class="form-select" id="mahjong_mode">
-                                                <option value="四麻">四麻</option>
-                                                <option value="三麻">三麻</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-2 mb-3">
-                                            <label for="match_mode" class="form-label">試合方式</label>
-                                            <input type="text" class="form-control" id="match_mode" placeholder="個人戦">
-                                        </div>
-                                        <div class="col-md-2 mb-3">
-                                            <label for="hand_count" class="form-label">局数</label>
-                                            <input type="number" class="form-control" id="hand_count">
-                                        </div>
-
-                                        <!-- ルール詳細設定 -->
-                                        <div class="col-6 col-md-3 mb-3">
-                                            <label for="dist_points" class="form-label">配給点 (初期点)</label>
-                                            <input type="number" class="form-control" id="dist_points" value="25000"
-                                                step="500">
-                                        </div>
-                                        <div class="col-md-3 mb-3">
-                                            <label class="form-label">飛び賞設定</label>
-                                            <div class="form-check form-switch mt-1">
-                                                <input class="form-check-input" type="checkbox" id="opt_tobi">
-                                                <label class="form-check-label" for="opt_tobi">有効 (アリ)</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3 mb-3">
-                                            <label class="form-label">やきとり設定</label>
-                                            <div class="form-check form-switch mt-1">
-                                                <input class="form-check-input" type="checkbox" id="opt_yakitori">
-                                                <label class="form-check-label" for="opt_yakitori">有効 (アリ)</label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- プレイヤー別項目 -->
-                                <div id="players-edit-container">
-                                    <div class="row g-3">
-                                        <!-- 4人分の入力欄をJSで生成するか、HTMLで直接書く -->
-                                        <!-- 今回は可読性とメンテナンス性のためにHTMLに4つ配置します -->
-                                        <!-- 各フィールド名は record[0].account_name のようにJSで扱うため、クラスで識別します -->
-
-                                        <!-- プレイヤー 1 -->
-                                        <div class="col-md-6">
-                                            <div class="card p-3 shadow-sm player-edit-card" data-index="0">
-                                                <h6
-                                                    class="fw-bold mb-3 border-bottom pb-2 d-flex justify-content-between align-items-center">
-                                                    <span>プレイヤー 1</span>
-                                                    <span class="badge bg-secondary player-discord-id-display"
-                                                        style="font-size: 0.65rem;">ID: -</span>
-                                                </h6>
-                                                <input type="hidden" class="player-record-id">
-                                                <input type="hidden" class="player-discord-id">
-                                                <div class="row g-2">
-                                                    <div class="col-6 mb-2">
-                                                        <label class="small text-muted">アカウント名</label>
-                                                        <select class="form-select form-select-sm player-account-name">
-                                                            <option value="">選択...</option>
-                                                        </select>
-                                                    </div>
-                                                    <div class="col-6 mb-2">
-                                                        <label class="small text-muted">チーム名</label>
-                                                        <select class="form-select form-select-sm player-team-name">
-                                                            <option value="">(なし)</option>
-                                                        </select>
-                                                    </div>
-                                                    <div class="col-6 mb-2">
-                                                        <label class="small text-muted fw-bold text-primary">素点
-                                                            (持ち点)</label>
-                                                        <input type="number"
-                                                            class="form-control form-control-sm player-raw-points border-primary"
-                                                            placeholder="25000">
-                                                    </div>
-                                                    <div class="col-3 mb-2">
-                                                        <label class="small text-muted">和了数</label>
-                                                        <input type="number"
-                                                            class="form-control form-control-sm player-win-count">
-                                                    </div>
-                                                    <div class="col-3 mb-2">
-                                                        <label class="small text-muted">放銃数</label>
-                                                        <input type="number"
-                                                            class="form-control form-control-sm player-deal-in-count">
-                                                    </div>
-
-                                                    <!-- 自動計算エリア -->
-                                                    <div class="col-12 mt-2">
-                                                        <div class="p-2 rounded bg-light border d-flex justify-content-between align-items-center"
-                                                            style="font-size: 0.85rem;">
-                                                            <div>
-                                                                <span class="text-muted small">順位:</span>
-                                                                <span class="fw-bold fs-6 player-rank-display">-</span>位
-                                                            </div>
-                                                            <div>
-                                                                <span class="text-muted small">スコア:</span>
-                                                                <span
-                                                                    class="fw-bold fs-6 player-final-score-display">-</span>
-                                                            </div>
-                                                            <div>
-                                                                <span class="text-muted small">報酬:</span>
-                                                                <span
-                                                                    class="fw-bold fs-6 player-reward-preview">-</span>
-                                                            </div>
-                                                        </div>
-                                                        <input type="hidden" class="player-rank">
-                                                        <input type="hidden" class="player-final-score">
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- プレイヤー 2 -->
-                                        <div class="col-md-6">
-                                            <div class="card p-3 shadow-sm player-edit-card" data-index="1">
-                                                <h6
-                                                    class="fw-bold mb-3 border-bottom pb-2 d-flex justify-content-between align-items-center">
-                                                    <span>プレイヤー 2</span>
-                                                    <span class="badge bg-secondary player-discord-id-display"
-                                                        style="font-size: 0.65rem;">ID: -</span>
-                                                </h6>
-                                                <input type="hidden" class="player-record-id">
-                                                <input type="hidden" class="player-discord-id">
-                                                <div class="row g-2">
-                                                    <div class="col-6 mb-2">
-                                                        <label class="small text-muted">アカウント名</label>
-                                                        <select class="form-select form-select-sm player-account-name">
-                                                            <option value="">選択...</option>
-                                                        </select>
-                                                    </div>
-                                                    <div class="col-6 mb-2">
-                                                        <label class="small text-muted">チーム名</label>
-                                                        <select class="form-select form-select-sm player-team-name">
-                                                            <option value="">(なし)</option>
-                                                        </select>
-                                                    </div>
-                                                    <div class="col-6 mb-2">
-                                                        <label class="small text-muted fw-bold text-primary">素点
-                                                            (持ち点)</label>
-                                                        <input type="number"
-                                                            class="form-control form-control-sm player-raw-points border-primary"
-                                                            placeholder="25000">
-                                                    </div>
-                                                    <div class="col-3 mb-2">
-                                                        <label class="small text-muted">和了数</label>
-                                                        <input type="number"
-                                                            class="form-control form-control-sm player-win-count">
-                                                    </div>
-                                                    <div class="col-3 mb-2">
-                                                        <label class="small text-muted">放銃数</label>
-                                                        <input type="number"
-                                                            class="form-control form-control-sm player-deal-in-count">
-                                                    </div>
-
-                                                    <!-- 自動計算エリア -->
-                                                    <div class="col-12 mt-2">
-                                                        <div class="p-2 rounded bg-light border d-flex justify-content-between align-items-center"
-                                                            style="font-size: 0.85rem;">
-                                                            <div>
-                                                                <span class="text-muted small">順位:</span>
-                                                                <span class="fw-bold fs-6 player-rank-display">-</span>位
-                                                            </div>
-                                                            <div>
-                                                                <span class="text-muted small">スコア:</span>
-                                                                <span
-                                                                    class="fw-bold fs-6 player-final-score-display">-</span>
-                                                            </div>
-                                                            <div>
-                                                                <span class="text-muted small">報酬:</span>
-                                                                <span
-                                                                    class="fw-bold fs-6 player-reward-preview">-</span>
-                                                            </div>
-                                                        </div>
-                                                        <input type="hidden" class="player-rank">
-                                                        <input type="hidden" class="player-final-score">
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- プレイヤー 3 -->
-                                        <div class="col-md-6">
-                                            <div class="card p-3 shadow-sm player-edit-card" data-index="2">
-                                                <h6
-                                                    class="fw-bold mb-3 border-bottom pb-2 d-flex justify-content-between align-items-center">
-                                                    <span>プレイヤー 3</span>
-                                                    <span class="badge bg-secondary player-discord-id-display"
-                                                        style="font-size: 0.65rem;">ID: -</span>
-                                                </h6>
-                                                <input type="hidden" class="player-record-id">
-                                                <input type="hidden" class="player-discord-id">
-                                                <div class="row g-2">
-                                                    <div class="col-6 mb-2">
-                                                        <label class="small text-muted">アカウント名</label>
-                                                        <select class="form-select form-select-sm player-account-name">
-                                                            <option value="">選択...</option>
-                                                        </select>
-                                                    </div>
-                                                    <div class="col-6 mb-2">
-                                                        <label class="small text-muted">チーム名</label>
-                                                        <select class="form-select form-select-sm player-team-name">
-                                                            <option value="">(なし)</option>
-                                                        </select>
-                                                    </div>
-                                                    <div class="col-6 mb-2">
-                                                        <label class="small text-muted fw-bold text-primary">素点
-                                                            (持ち点)</label>
-                                                        <input type="number"
-                                                            class="form-control form-control-sm player-raw-points border-primary"
-                                                            placeholder="25000">
-                                                    </div>
-                                                    <div class="col-3 mb-2">
-                                                        <label class="small text-muted">和了数</label>
-                                                        <input type="number"
-                                                            class="form-control form-control-sm player-win-count">
-                                                    </div>
-                                                    <div class="col-3 mb-2">
-                                                        <label class="small text-muted">放銃数</label>
-                                                        <input type="number"
-                                                            class="form-control form-control-sm player-deal-in-count">
-                                                    </div>
-
-                                                    <!-- 自動計算エリア -->
-                                                    <div class="col-12 mt-2">
-                                                        <div class="p-2 rounded bg-light border d-flex justify-content-between align-items-center"
-                                                            style="font-size: 0.85rem;">
-                                                            <div>
-                                                                <span class="text-muted small">順位:</span>
-                                                                <span class="fw-bold fs-6 player-rank-display">-</span>位
-                                                            </div>
-                                                            <div>
-                                                                <span class="text-muted small">スコア:</span>
-                                                                <span
-                                                                    class="fw-bold fs-6 player-final-score-display">-</span>
-                                                            </div>
-                                                            <div>
-                                                                <span class="text-muted small">報酬:</span>
-                                                                <span
-                                                                    class="fw-bold fs-6 player-reward-preview">-</span>
-                                                            </div>
-                                                        </div>
-                                                        <input type="hidden" class="player-rank">
-                                                        <input type="hidden" class="player-final-score">
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- プレイヤー 4 -->
-                                        <div class="col-md-6">
-                                            <div class="card p-3 shadow-sm player-edit-card" data-index="3">
-                                                <h6
-                                                    class="fw-bold mb-3 border-bottom pb-2 d-flex justify-content-between align-items-center">
-                                                    <span>プレイヤー 4</span>
-                                                    <span class="badge bg-secondary player-discord-id-display"
-                                                        style="font-size: 0.65rem;">ID: -</span>
-                                                </h6>
-                                                <input type="hidden" class="player-record-id">
-                                                <input type="hidden" class="player-discord-id">
-                                                <div class="row g-2">
-                                                    <div class="col-6 mb-2">
-                                                        <label class="small text-muted">アカウント名</label>
-                                                        <select class="form-select form-select-sm player-account-name">
-                                                            <option value="">選択...</option>
-                                                        </select>
-                                                    </div>
-                                                    <div class="col-6 mb-2">
-                                                        <label class="small text-muted">チーム名</label>
-                                                        <select class="form-select form-select-sm player-team-name">
-                                                            <option value="">(なし)</option>
-                                                        </select>
-                                                    </div>
-                                                    <div class="col-6 mb-2">
-                                                        <label class="small text-muted fw-bold text-primary">素点
-                                                            (持ち点)</label>
-                                                        <input type="number"
-                                                            class="form-control form-control-sm player-raw-points border-primary"
-                                                            placeholder="25000">
-                                                    </div>
-                                                    <div class="col-3 mb-2">
-                                                        <label class="small text-muted">和了数</label>
-                                                        <input type="number"
-                                                            class="form-control form-control-sm player-win-count">
-                                                    </div>
-                                                    <div class="col-3 mb-2">
-                                                        <label class="small text-muted">放銃数</label>
-                                                        <input type="number"
-                                                            class="form-control form-control-sm player-deal-in-count">
-                                                    </div>
-
-                                                    <!-- 自動計算エリア -->
-                                                    <div class="col-12 mt-2">
-                                                        <div class="p-2 rounded bg-light border d-flex justify-content-between align-items-center"
-                                                            style="font-size: 0.85rem;">
-                                                            <div>
-                                                                <span class="text-muted small">順位:</span>
-                                                                <span class="fw-bold fs-6 player-rank-display">-</span>位
-                                                            </div>
-                                                            <div>
-                                                                <span class="text-muted small">スコア:</span>
-                                                                <span
-                                                                    class="fw-bold fs-6 player-final-score-display">-</span>
-                                                            </div>
-                                                            <div>
-                                                                <span class="text-muted small">報酬:</span>
-                                                                <span
-                                                                    class="fw-bold fs-6 player-reward-preview">-</span>
-                                                            </div>
-                                                        </div>
-                                                        <input type="hidden" class="player-rank">
-                                                        <input type="hidden" class="player-final-score">
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                    </div>
-                                </div>
-                            </form>
+                        <div class="alert alert-info border-0 shadow-sm">
+                            <i class="bi bi-info-circle-fill me-2"></i>
+                            <strong>機能説明:</strong> ここで各機能を「OFF」にすると、管理者以外の一般ユーザーは該当ページにアクセスできなくなります（メンテナンス画面が表示されます）。
+                            <br>緊急メンテナンスや機能アップデート準備時にご活用ください。
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
-                            <button type="button" class="btn btn-primary" onclick="saveRecord()">保存する</button>
+
+                        <div class="table-responsive bg-white rounded shadow-sm border">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>機能名 / パス</th>
+                                        <th>状態</th>
+                                        <th>最終更新</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pages-list-body">
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted py-4">読み込み中...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- バッジ登録・編集モーダル -->
-            <div class="modal fade" id="badgeModal" tabindex="-1" aria-labelledby="badgeModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="badgeModalLabel">バッジ登録・編集</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <form id="badge-form">
-                                <input type="hidden" id="badge-id">
-                                <div class="mb-3">
-                                    <label for="badge-name" class="form-label">バッジ名</label>
-                                    <input type="text" class="form-control" id="badge-name" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="badge-description" class="form-label">説明文</label>
-                                    <textarea class="form-control" id="badge-description" rows="2"></textarea>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="badge-image-file" class="form-label">画像アップロード</label>
-                                    <input type="file" class="form-control" id="badge-image-file" accept="image/*">
-                                    <div id="badge-image-preview" class="mt-2 text-center" style="display: none;">
-                                        <img src="" style="max-height: 100px; border-radius: 8px;" class="shadow-sm">
-                                    </div>
-                                    <input type="hidden" id="badge-image-url">
-                                </div>
+        <!-- 記録編集モーダル -->
+        <div class="modal fade" id="recordModal" tabindex="-1" aria-labelledby="recordModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="recordModalLabel">大会記録編集</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="record-form">
+                            <input type="hidden" id="match-id">
+
+                            <!-- 共通項目 -->
+                            <div class="admin-section mb-4" style="border-left-color: #007bff;">
+                                <h6 class="mb-3 text-primary fw-bold">共通項目</h6>
                                 <div class="row">
-                                    <div class="col-6 mb-3">
-                                        <label for="badge-weight" class="form-label">ガチャ重み (非表示用)</label>
-                                        <input type="number" class="form-control" id="badge-weight" placeholder="任意">
-                                        <small class="text-muted">0に設定すると「非売品」扱いになります</small>
+                                    <div class="col-md-3 mb-3">
+                                        <label for="event_datetime" class="form-label">日時</label>
+                                        <input type="datetime-local" class="form-control" id="event_datetime" required>
                                     </div>
-                                    <div class="col-6 mb-3">
-                                        <label for="badge-price" class="form-label">金額 (コイン)</label>
-                                        <input type="number" class="form-control" id="badge-price" value="0">
+                                    <div class="col-md-3 mb-3">
+                                        <label for="tournament_type" class="form-label">大会名</label>
+                                        <input type="text" class="form-control" id="tournament_type">
                                     </div>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="badge-fixed-rarity" class="form-label">レアリティ (固定表示名)</label>
-                                    <input type="text" class="form-control" id="badge-fixed-rarity"
-                                        placeholder="空にすると価格で自動判定">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="badge-requirements" class="form-label">獲得条件</label>
-                                    <textarea class="form-control" id="badge-requirements" rows="2"
-                                        placeholder="例：大会で優勝する、等"></textarea>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="badge-sort-order" class="form-label">表示順 (小さい順)</label>
-                                    <input type="number" class="form-control" id="badge-sort-order" value="0">
-                                </div>
-                                <div class="row">
-                                    <div class="col-6 mb-3">
-                                        <label for="badge-sales-type" class="form-label">販売タイプ</label>
-                                        <select class="form-select" id="badge-sales-type">
-                                            <option value="">未設定</option>
-                                            <option value="変動型">変動型（流通数で価格変動）</option>
-                                            <option value="固定型">固定型（価格固定）</option>
-                                            <option value="限定品">限定品（売却不可）</option>
-                                            <option value="換金品">換金品（御神石等）</option>
+                                    <div class="col-md-2 mb-3">
+                                        <label for="mahjong_mode" class="form-label">麻雀/モード</label>
+                                        <select class="form-select" id="mahjong_mode">
+                                            <option value="四麻">四麻</option>
+                                            <option value="三麻">三麻</option>
                                         </select>
                                     </div>
-                                    <div class="col-6 mb-3">
-                                        <label for="badge-gacha-eligible" class="form-label">ガチャ対象</label>
-                                        <div class="form-check form-switch mt-2">
-                                            <input class="form-check-input" type="checkbox" id="badge-gacha-eligible">
-                                            <label class="form-check-label" for="badge-gacha-eligible">
-                                                ガチャから排出する
-                                            </label>
+                                    <div class="col-md-2 mb-3">
+                                        <label for="match_mode" class="form-label">試合方式</label>
+                                        <input type="text" class="form-control" id="match_mode" placeholder="個人戦">
+                                    </div>
+                                    <div class="col-md-2 mb-3">
+                                        <label for="hand_count" class="form-label">局数</label>
+                                        <input type="number" class="form-control" id="hand_count">
+                                    </div>
+
+                                    <!-- ルール詳細設定 -->
+                                    <div class="col-6 col-md-3 mb-3">
+                                        <label for="dist_points" class="form-label">配給点 (初期点)</label>
+                                        <input type="number" class="form-control" id="dist_points" value="25000"
+                                            step="500">
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label class="form-label">飛び賞設定</label>
+                                        <div class="form-check form-switch mt-1">
+                                            <input class="form-check-input" type="checkbox" id="opt_tobi">
+                                            <label class="form-check-label" for="opt_tobi">有効 (アリ)</label>
                                         </div>
                                     </div>
-                                    <div class="col-6 mb-3">
-                                        <label for="badge-shop-listed" class="form-label">ショップ掲載</label>
-                                        <div class="form-check form-switch mt-2">
-                                            <input class="form-check-input" type="checkbox" id="badge-shop-listed"
-                                                checked>
-                                            <label class="form-check-label" for="badge-shop-listed">
-                                                ショップに表示する
-                                            </label>
+                                    <div class="col-md-3 mb-3">
+                                        <label class="form-label">やきとり設定</label>
+                                        <div class="form-check form-switch mt-1">
+                                            <input class="form-check-input" type="checkbox" id="opt_yakitori">
+                                            <label class="form-check-label" for="opt_yakitori">有効 (アリ)</label>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="mb-3">
-                                    <label for="badge-owner" class="form-label">権利者（売上10%還元先）</label>
-                                    <select class="form-select" id="badge-owner">
-                                        <option value="">なし（権利者なし）</option>
-                                        <!-- JSでユーザー一覧を生成 -->
+                            </div>
+
+                            <!-- プレイヤー別項目 -->
+                            <div id="players-edit-container">
+                                <div class="row g-3">
+                                    <!-- 4人分の入力欄をJSで生成するか、HTMLで直接書く -->
+                                    <!-- 今回は可読性とメンテナンス性のためにHTMLに4つ配置します -->
+                                    <!-- 各フィールド名は record[0].account_name のようにJSで扱うため、クラスで識別します -->
+
+                                    <!-- プレイヤー 1 -->
+                                    <div class="col-md-6">
+                                        <div class="card p-3 shadow-sm player-edit-card" data-index="0">
+                                            <h6
+                                                class="fw-bold mb-3 border-bottom pb-2 d-flex justify-content-between align-items-center">
+                                                <span>プレイヤー 1</span>
+                                                <span class="badge bg-secondary player-discord-id-display"
+                                                    style="font-size: 0.65rem;">ID: -</span>
+                                            </h6>
+                                            <input type="hidden" class="player-record-id">
+                                            <input type="hidden" class="player-discord-id">
+                                            <div class="row g-2">
+                                                <div class="col-6 mb-2">
+                                                    <label class="small text-muted">アカウント名</label>
+                                                    <select class="form-select form-select-sm player-account-name">
+                                                        <option value="">選択...</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-6 mb-2">
+                                                    <label class="small text-muted">チーム名</label>
+                                                    <select class="form-select form-select-sm player-team-name">
+                                                        <option value="">(なし)</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-6 mb-2">
+                                                    <label class="small text-muted fw-bold text-primary">素点
+                                                        (持ち点)</label>
+                                                    <input type="number"
+                                                        class="form-control form-control-sm player-raw-points border-primary"
+                                                        placeholder="25000">
+                                                </div>
+                                                <div class="col-3 mb-2">
+                                                    <label class="small text-muted">和了数</label>
+                                                    <input type="number"
+                                                        class="form-control form-control-sm player-win-count">
+                                                </div>
+                                                <div class="col-3 mb-2">
+                                                    <label class="small text-muted">放銃数</label>
+                                                    <input type="number"
+                                                        class="form-control form-control-sm player-deal-in-count">
+                                                </div>
+
+                                                <!-- 自動計算エリア -->
+                                                <div class="col-12 mt-2">
+                                                    <div class="p-2 rounded bg-light border d-flex justify-content-between align-items-center"
+                                                        style="font-size: 0.85rem;">
+                                                        <div>
+                                                            <span class="text-muted small">順位:</span>
+                                                            <span class="fw-bold fs-6 player-rank-display">-</span>位
+                                                        </div>
+                                                        <div>
+                                                            <span class="text-muted small">スコア:</span>
+                                                            <span
+                                                                class="fw-bold fs-6 player-final-score-display">-</span>
+                                                        </div>
+                                                        <div>
+                                                            <span class="text-muted small">報酬:</span>
+                                                            <span class="fw-bold fs-6 player-reward-preview">-</span>
+                                                        </div>
+                                                    </div>
+                                                    <input type="hidden" class="player-rank">
+                                                    <input type="hidden" class="player-final-score">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- プレイヤー 2 -->
+                                    <div class="col-md-6">
+                                        <div class="card p-3 shadow-sm player-edit-card" data-index="1">
+                                            <h6
+                                                class="fw-bold mb-3 border-bottom pb-2 d-flex justify-content-between align-items-center">
+                                                <span>プレイヤー 2</span>
+                                                <span class="badge bg-secondary player-discord-id-display"
+                                                    style="font-size: 0.65rem;">ID: -</span>
+                                            </h6>
+                                            <input type="hidden" class="player-record-id">
+                                            <input type="hidden" class="player-discord-id">
+                                            <div class="row g-2">
+                                                <div class="col-6 mb-2">
+                                                    <label class="small text-muted">アカウント名</label>
+                                                    <select class="form-select form-select-sm player-account-name">
+                                                        <option value="">選択...</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-6 mb-2">
+                                                    <label class="small text-muted">チーム名</label>
+                                                    <select class="form-select form-select-sm player-team-name">
+                                                        <option value="">(なし)</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-6 mb-2">
+                                                    <label class="small text-muted fw-bold text-primary">素点
+                                                        (持ち点)</label>
+                                                    <input type="number"
+                                                        class="form-control form-control-sm player-raw-points border-primary"
+                                                        placeholder="25000">
+                                                </div>
+                                                <div class="col-3 mb-2">
+                                                    <label class="small text-muted">和了数</label>
+                                                    <input type="number"
+                                                        class="form-control form-control-sm player-win-count">
+                                                </div>
+                                                <div class="col-3 mb-2">
+                                                    <label class="small text-muted">放銃数</label>
+                                                    <input type="number"
+                                                        class="form-control form-control-sm player-deal-in-count">
+                                                </div>
+
+                                                <!-- 自動計算エリア -->
+                                                <div class="col-12 mt-2">
+                                                    <div class="p-2 rounded bg-light border d-flex justify-content-between align-items-center"
+                                                        style="font-size: 0.85rem;">
+                                                        <div>
+                                                            <span class="text-muted small">順位:</span>
+                                                            <span class="fw-bold fs-6 player-rank-display">-</span>位
+                                                        </div>
+                                                        <div>
+                                                            <span class="text-muted small">スコア:</span>
+                                                            <span
+                                                                class="fw-bold fs-6 player-final-score-display">-</span>
+                                                        </div>
+                                                        <div>
+                                                            <span class="text-muted small">報酬:</span>
+                                                            <span class="fw-bold fs-6 player-reward-preview">-</span>
+                                                        </div>
+                                                    </div>
+                                                    <input type="hidden" class="player-rank">
+                                                    <input type="hidden" class="player-final-score">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- プレイヤー 3 -->
+                                    <div class="col-md-6">
+                                        <div class="card p-3 shadow-sm player-edit-card" data-index="2">
+                                            <h6
+                                                class="fw-bold mb-3 border-bottom pb-2 d-flex justify-content-between align-items-center">
+                                                <span>プレイヤー 3</span>
+                                                <span class="badge bg-secondary player-discord-id-display"
+                                                    style="font-size: 0.65rem;">ID: -</span>
+                                            </h6>
+                                            <input type="hidden" class="player-record-id">
+                                            <input type="hidden" class="player-discord-id">
+                                            <div class="row g-2">
+                                                <div class="col-6 mb-2">
+                                                    <label class="small text-muted">アカウント名</label>
+                                                    <select class="form-select form-select-sm player-account-name">
+                                                        <option value="">選択...</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-6 mb-2">
+                                                    <label class="small text-muted">チーム名</label>
+                                                    <select class="form-select form-select-sm player-team-name">
+                                                        <option value="">(なし)</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-6 mb-2">
+                                                    <label class="small text-muted fw-bold text-primary">素点
+                                                        (持ち点)</label>
+                                                    <input type="number"
+                                                        class="form-control form-control-sm player-raw-points border-primary"
+                                                        placeholder="25000">
+                                                </div>
+                                                <div class="col-3 mb-2">
+                                                    <label class="small text-muted">和了数</label>
+                                                    <input type="number"
+                                                        class="form-control form-control-sm player-win-count">
+                                                </div>
+                                                <div class="col-3 mb-2">
+                                                    <label class="small text-muted">放銃数</label>
+                                                    <input type="number"
+                                                        class="form-control form-control-sm player-deal-in-count">
+                                                </div>
+
+                                                <!-- 自動計算エリア -->
+                                                <div class="col-12 mt-2">
+                                                    <div class="p-2 rounded bg-light border d-flex justify-content-between align-items-center"
+                                                        style="font-size: 0.85rem;">
+                                                        <div>
+                                                            <span class="text-muted small">順位:</span>
+                                                            <span class="fw-bold fs-6 player-rank-display">-</span>位
+                                                        </div>
+                                                        <div>
+                                                            <span class="text-muted small">スコア:</span>
+                                                            <span
+                                                                class="fw-bold fs-6 player-final-score-display">-</span>
+                                                        </div>
+                                                        <div>
+                                                            <span class="text-muted small">報酬:</span>
+                                                            <span class="fw-bold fs-6 player-reward-preview">-</span>
+                                                        </div>
+                                                    </div>
+                                                    <input type="hidden" class="player-rank">
+                                                    <input type="hidden" class="player-final-score">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- プレイヤー 4 -->
+                                    <div class="col-md-6">
+                                        <div class="card p-3 shadow-sm player-edit-card" data-index="3">
+                                            <h6
+                                                class="fw-bold mb-3 border-bottom pb-2 d-flex justify-content-between align-items-center">
+                                                <span>プレイヤー 4</span>
+                                                <span class="badge bg-secondary player-discord-id-display"
+                                                    style="font-size: 0.65rem;">ID: -</span>
+                                            </h6>
+                                            <input type="hidden" class="player-record-id">
+                                            <input type="hidden" class="player-discord-id">
+                                            <div class="row g-2">
+                                                <div class="col-6 mb-2">
+                                                    <label class="small text-muted">アカウント名</label>
+                                                    <select class="form-select form-select-sm player-account-name">
+                                                        <option value="">選択...</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-6 mb-2">
+                                                    <label class="small text-muted">チーム名</label>
+                                                    <select class="form-select form-select-sm player-team-name">
+                                                        <option value="">(なし)</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-6 mb-2">
+                                                    <label class="small text-muted fw-bold text-primary">素点
+                                                        (持ち点)</label>
+                                                    <input type="number"
+                                                        class="form-control form-control-sm player-raw-points border-primary"
+                                                        placeholder="25000">
+                                                </div>
+                                                <div class="col-3 mb-2">
+                                                    <label class="small text-muted">和了数</label>
+                                                    <input type="number"
+                                                        class="form-control form-control-sm player-win-count">
+                                                </div>
+                                                <div class="col-3 mb-2">
+                                                    <label class="small text-muted">放銃数</label>
+                                                    <input type="number"
+                                                        class="form-control form-control-sm player-deal-in-count">
+                                                </div>
+
+                                                <!-- 自動計算エリア -->
+                                                <div class="col-12 mt-2">
+                                                    <div class="p-2 rounded bg-light border d-flex justify-content-between align-items-center"
+                                                        style="font-size: 0.85rem;">
+                                                        <div>
+                                                            <span class="text-muted small">順位:</span>
+                                                            <span class="fw-bold fs-6 player-rank-display">-</span>位
+                                                        </div>
+                                                        <div>
+                                                            <span class="text-muted small">スコア:</span>
+                                                            <span
+                                                                class="fw-bold fs-6 player-final-score-display">-</span>
+                                                        </div>
+                                                        <div>
+                                                            <span class="text-muted small">報酬:</span>
+                                                            <span class="fw-bold fs-6 player-reward-preview">-</span>
+                                                        </div>
+                                                    </div>
+                                                    <input type="hidden" class="player-rank">
+                                                    <input type="hidden" class="player-final-score">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                        <button type="button" class="btn btn-primary" onclick="saveRecord()">保存する</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- バッジ登録・編集モーダル -->
+        <div class="modal fade" id="badgeModal" tabindex="-1" aria-labelledby="badgeModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="badgeModalLabel">バッジ登録・編集</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="badge-form">
+                            <input type="hidden" id="badge-id">
+                            <div class="mb-3">
+                                <label for="badge-name" class="form-label">バッジ名</label>
+                                <input type="text" class="form-control" id="badge-name" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="badge-description" class="form-label">説明文</label>
+                                <textarea class="form-control" id="badge-description" rows="2"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="badge-image-file" class="form-label">画像アップロード</label>
+                                <input type="file" class="form-control" id="badge-image-file" accept="image/*">
+                                <div id="badge-image-preview" class="mt-2 text-center" style="display: none;">
+                                    <img src="" style="max-height: 100px; border-radius: 8px;" class="shadow-sm">
+                                </div>
+                                <input type="hidden" id="badge-image-url">
+                            </div>
+                            <div class="row">
+                                <div class="col-6 mb-3">
+                                    <label for="badge-weight" class="form-label">ガチャ重み (非表示用)</label>
+                                    <input type="number" class="form-control" id="badge-weight" placeholder="任意">
+                                    <small class="text-muted">0に設定すると「非売品」扱いになります</small>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label for="badge-price" class="form-label">金額 (コイン)</label>
+                                    <input type="number" class="form-control" id="badge-price" value="0">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="badge-fixed-rarity" class="form-label">レアリティ (固定表示名)</label>
+                                <input type="text" class="form-control" id="badge-fixed-rarity"
+                                    placeholder="空にすると価格で自動判定">
+                            </div>
+                            <div class="mb-3">
+                                <label for="badge-requirements" class="form-label">獲得条件</label>
+                                <textarea class="form-control" id="badge-requirements" rows="2"
+                                    placeholder="例：大会で優勝する、等"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="badge-sort-order" class="form-label">表示順 (小さい順)</label>
+                                <input type="number" class="form-control" id="badge-sort-order" value="0">
+                            </div>
+                            <div class="row">
+                                <div class="col-6 mb-3">
+                                    <label for="badge-sales-type" class="form-label">販売タイプ</label>
+                                    <select class="form-select" id="badge-sales-type">
+                                        <option value="">未設定</option>
+                                        <option value="変動型">変動型（流通数で価格変動）</option>
+                                        <option value="固定型">固定型（価格固定）</option>
+                                        <option value="限定品">限定品（売却不可）</option>
+                                        <option value="換金品">換金品（御神石等）</option>
                                     </select>
-                                    <small class="text-muted">選択したユーザーにバッジ売上の10%が還元されます</small>
                                 </div>
-                            </form>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
-                            <button type="button" class="btn btn-primary" onclick="saveBadge()">保存する</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- コイン編集モーダル -->
-            <div class="modal fade" id="coinModal" tabindex="-1" aria-labelledby="coinModalLabel" aria-hidden="true">
-                <div class="modal-dialog modal-sm">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="coinModalLabel">コイン編集</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="text-center mb-3">
-                                <strong id="coin-edit-user-name">ユーザー名</strong>
+                                <div class="col-6 mb-3">
+                                    <label for="badge-gacha-eligible" class="form-label">ガチャ対象</label>
+                                    <div class="form-check form-switch mt-2">
+                                        <input class="form-check-input" type="checkbox" id="badge-gacha-eligible">
+                                        <label class="form-check-label" for="badge-gacha-eligible">
+                                            ガチャから排出する
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label for="badge-shop-listed" class="form-label">ショップ掲載</label>
+                                    <div class="form-check form-switch mt-2">
+                                        <input class="form-check-input" type="checkbox" id="badge-shop-listed" checked>
+                                        <label class="form-check-label" for="badge-shop-listed">
+                                            ショップに表示する
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
-                            <input type="hidden" id="coin-edit-user-id">
                             <div class="mb-3">
-                                <label for="coin-amount" class="form-label">所持コイン</label>
-                                <input type="number" class="form-control text-center fs-4" id="coin-amount" value="0">
+                                <label for="badge-owner" class="form-label">権利者（売上10%還元先）</label>
+                                <select class="form-select" id="badge-owner">
+                                    <option value="">なし（権利者なし）</option>
+                                    <!-- JSでユーザー一覧を生成 -->
+                                </select>
+                                <small class="text-muted">選択したユーザーにバッジ売上の10%が還元されます</small>
                             </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-primary w-100" onclick="saveUserCoins()">保存</button>
-                        </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                        <button type="button" class="btn btn-primary" onclick="saveBadge()">保存する</button>
                     </div>
                 </div>
             </div>
+        </div>
 
-
-            <!-- バッジ付与モーダル -->
-            <div class="modal fade" id="badgeGrantModal" tabindex="-1" aria-labelledby="badgeGrantModalLabel"
-                aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="badgeGrantModalLabel">バッジ付与</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <!-- コイン編集モーダル -->
+        <div class="modal fade" id="coinModal" tabindex="-1" aria-labelledby="coinModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-sm">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="coinModalLabel">コイン編集</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="text-center mb-3">
+                            <strong id="coin-edit-user-name">ユーザー名</strong>
                         </div>
-                        <div class="modal-body">
-                            <div class="text-center mb-3">
-                                <strong id="badge-grant-user-name">ユーザー名</strong>
-                            </div>
-                            <input type="hidden" id="badge-grant-user-id">
-                            <div class="mb-3">
-                                <label class="form-label">付与するバッジを選択</label>
-                                <div id="badge-grant-list" class="row g-2" style="max-height: 300px; overflow-y: auto;">
-                                    <!-- JSで生成 -->
-                                </div>
-                            </div>
-                            <div id="badge-grant-owned" class="mt-3">
-                                <label class="form-label text-muted small">現在所持しているバッジ</label>
-                                <div id="badge-grant-owned-list" class="d-flex flex-wrap gap-1">
-                                    <!-- JSで生成 -->
-                                </div>
-                            </div>
+                        <input type="hidden" id="coin-edit-user-id">
+                        <div class="mb-3">
+                            <label for="coin-amount" class="form-label">所持コイン</label>
+                            <input type="number" class="form-control text-center fs-4" id="coin-amount" value="0">
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
-                            <button type="button" class="btn btn-primary"
-                                onclick="grantMultiBadges()">選択したバッジを付与</button>
-                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary w-100" onclick="saveUserCoins()">保存</button>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- ローディングオーバーレイ -->
-            <div id="loading-overlay" class="loading-overlay">
-                <div class="spinner-border text-light" role="status">
-                    <span class="visually-hidden">Loading...</span>
+
+        <!-- バッジ付与モーダル -->
+        <div class="modal fade" id="badgeGrantModal" tabindex="-1" aria-labelledby="badgeGrantModalLabel"
+            aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="badgeGrantModalLabel">バッジ付与</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="text-center mb-3">
+                            <strong id="badge-grant-user-name">ユーザー名</strong>
+                        </div>
+                        <input type="hidden" id="badge-grant-user-id">
+                        <div class="mb-3">
+                            <label class="form-label">付与するバッジを選択</label>
+                            <div id="badge-grant-list" class="row g-2" style="max-height: 300px; overflow-y: auto;">
+                                <!-- JSで生成 -->
+                            </div>
+                        </div>
+                        <div id="badge-grant-owned" class="mt-3">
+                            <label class="form-label text-muted small">現在所持しているバッジ</label>
+                            <div id="badge-grant-owned-list" class="d-flex flex-wrap gap-1">
+                                <!-- JSで生成 -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                        <button type="button" class="btn btn-primary" onclick="grantMultiBadges()">選択したバッジを付与</button>
+                    </div>
                 </div>
             </div>
+        </div>
+
+        <!-- ローディングオーバーレイ -->
+        <div id="loading-overlay" class="loading-overlay">
+            <div class="spinner-border text-light" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
 
 
-            <!-- Bootstrap JS -->
-            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-            <!-- Supabase -->
-            <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-            <!-- Supabase設定 -->
-            <script src="../js/supabase-config.js"></script>
-            <script src="../js/auth-guard.js"></script>
-            <!-- 【一時的】アンケートモーダル（撤去時は下1行を削除） -->
-            <script src="../js/survey-modal.js"></script>
-            <script src="../js/navigation.js"></script>
-            <!-- 管理ロジック -->
-            <script src="../js/admin_v2.js?v=20260111_04"></script>
-            <script>
-                document.addEventListener('DOMContentLoaded', function () {
-                    initAccordionNav('../');
-                });
-            </script>
+        <!-- Bootstrap JS -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+        <!-- Supabase -->
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+        <!-- Supabase設定 -->
+        <script src="../js/supabase-config.js"></script>
+        <script src="../js/auth-guard.js"></script>
+        <!-- 【一時的】アンケートモーダル（撤去時は下1行を削除） -->
+        <script src="../js/survey-modal.js"></script>
+        <script src="../js/navigation.js"></script>
+        <!-- 管理ロジック -->
+        <script src="../js/admin_v2.js?v=20260111_04"></script>
+        <script src="../js/admin-pages.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                initAccordionNav('../');
+            });
+        </script>
 
 
-            <script>
-                // admin/index.html 内の ADMIN_DISCORD_IDS 定義は削除 (supabase-config.js を使用)
+        <script>
+            // admin/index.html 内の ADMIN_DISCORD_IDS 定義は削除 (supabase-config.js を使用)
 
 
-                // 管理者チェック
-                async function checkAdminAccess() {
-                    const loading = document.getElementById('loading');
-                    const accessDenied = document.getElementById('access-denied');
-                    const loginPrompt = document.getElementById('login-prompt');
-                    const adminContent = document.getElementById('admin-content');
+            // 管理者チェック
+            async function checkAdminAccess() {
+                const loading = document.getElementById('loading');
+                const accessDenied = document.getElementById('access-denied');
+                const loginPrompt = document.getElementById('login-prompt');
+                const adminContent = document.getElementById('admin-content');
 
-                    const user = await getCurrentUser();
+                const user = await getCurrentUser();
 
-                    if (!user) {
-                        // 未ログイン
-                        loading.style.display = 'none';
-                        loginPrompt.style.display = 'block';
-                        return;
-                    }
-
-                    const discordId = user.user_metadata.provider_id;
-                    console.log('Discord ID:', discordId); // デバッグ用
-
-                    // 管理者リストが空の場合は全員アクセス可能（初期設定用）
-                    if (ADMIN_DISCORD_IDS.length === 0 || ADMIN_DISCORD_IDS.includes(discordId)) {
-                        loading.style.display = 'none';
-                        adminContent.style.display = 'flex';
-                        // 活動ログを自動読み込み
-                        fetchActivityLogs();
-                    } else {
-                        loading.style.display = 'none';
-                        accessDenied.style.display = 'block';
-                    }
+                if (!user) {
+                    // 未ログイン
+                    loading.style.display = 'none';
+                    loginPrompt.style.display = 'block';
+                    return;
                 }
 
-                document.addEventListener('DOMContentLoaded', checkAdminAccess);
-            </script>
-        </div> <!-- admin-content -->
+                const discordId = user.user_metadata.provider_id;
+                console.log('Discord ID:', discordId); // デバッグ用
+
+                // 管理者リストが空の場合は全員アクセス可能（初期設定用）
+                if (ADMIN_DISCORD_IDS.length === 0 || ADMIN_DISCORD_IDS.includes(discordId)) {
+                    loading.style.display = 'none';
+                    adminContent.style.display = 'flex';
+                    // 活動ログを自動読み込み
+                    fetchActivityLogs();
+                } else {
+                    loading.style.display = 'none';
+                    accessDenied.style.display = 'block';
+                }
+            }
+
+            document.addEventListener('DOMContentLoaded', checkAdminAccess);
+        </script>
+    </div> <!-- admin-content -->
     </div> <!-- container -->
     <!-- チーム通知バッジ -->
     <script>
