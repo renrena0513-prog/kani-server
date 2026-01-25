@@ -47,7 +47,7 @@ function getBaseRarity(basePrice, fixedRarity, thresholds) {
  */
 function getVariableTypeRarity(baseStarLevel, uniqueOwnerCount, thresholds) {
     const MAX_STAR = 46; // ★46（伝説）が上限
-    const finalStar = Math.min(baseStarLevel + uniqueOwnerCount, MAX_STAR);
+    const finalStar = Math.min(baseStarLevel + Math.max(0, uniqueOwnerCount - 1), MAX_STAR);
 
     // thresholds は 1-indexed で ★1 = index 0
     const idx = finalStar - 1;
