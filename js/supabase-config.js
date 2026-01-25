@@ -321,20 +321,51 @@ function hasDrawnOmikujiToday(lastOmikujiAt) {
  */
 function getRarityClass(rarityName) {
     if (!rarityName) return '';
-    const map = {
-        '一般': 'rarity-wood',
-        '良質': 'rarity-stone',
-        '希少・Ⅰ': 'rarity-bronze',
-        '希少・Ⅱ': 'rarity-silver',
-        '貴重': 'rarity-gold',
-        '特上': 'rarity-platinum',
-        '極上': 'rarity-gem',
-        '伝説': 'rarity-legend',
-        '幻想': 'rarity-fantasy',
-        '至高': 'rarity-supreme',
-        '神話': 'rarity-mythic',
-        '測定不能': 'rarity-void'
-    };
-    return map[rarityName] || '';
+
+    // マッピング定義（順序重要）
+    const mappings = [
+        { key: '測定不能', class: 'rarity-ex' },
+        { key: '超越', class: 'rarity-transcend' },
+        { key: '神話', class: 'rarity-mythic' },
+        { key: '幻想', class: 'rarity-fantasy' },
+        { key: '伝説', class: 'rarity-legend' },
+        { key: '英雄', class: 'rarity-hero' },
+        { key: '神秘', class: 'rarity-mystic' },
+        { key: '秘宝', class: 'rarity-treasure' },
+        { key: '国宝', class: 'rarity-national' },
+        { key: '至高', class: 'rarity-legendary' },
+        { key: '絶品', class: 'rarity-epic' },
+        { key: '逸品', class: 'rarity-rare' },
+        { key: '名品', class: 'rarity-fine' },
+        { key: '並品', class: 'rarity-normal' },
+
+        // 旧システム互換
+        { key: '一般', class: 'rarity-wood' },
+        { key: '良質', class: 'rarity-stone' },
+        { key: '希少', class: 'rarity-bronze' }, // 希少・I, II などをまとめて
+        { key: '貴重', class: 'rarity-gold' },
+        { key: '特上', class: 'rarity-platinum' },
+        { key: '極上', class: 'rarity-gem' },
+
+        // 英語名互換
+        { key: 'Common', class: 'rarity-normal' },
+        { key: 'Uncommon', class: 'rarity-fine' },
+        { key: 'Rare', class: 'rarity-rare' },
+        { key: 'Epic', class: 'rarity-epic' },
+        { key: 'Legendary', class: 'rarity-legendary' },
+        { key: 'Mythic', class: 'rarity-mythic' },
+        { key: 'Divine', class: 'rarity-mythic' },
+        { key: 'Celestial', class: 'rarity-transcend' },
+        { key: 'Eternal', class: 'rarity-transcend' },
+        { key: 'Cosmic', class: 'rarity-ex' }
+    ];
+
+    for (const m of mappings) {
+        if (rarityName.includes(m.key)) {
+            return m.class;
+        }
+    }
+
+    return '';
 }
 

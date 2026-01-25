@@ -87,7 +87,7 @@ BEGIN
         IF v_sell_price IS NULL THEN v_sell_price := 50; END IF;
     END IF;
     
-    -- ミュータント補正
+    -- ミュータント補正 (ランクダウン後の価格の3倍)
     IF v_user_badge.is_mutant THEN
         v_sell_price := v_sell_price * 3;
     END IF;

@@ -239,10 +239,16 @@
                     onclick="openPriceListModal()">
                     📊 レアリティ価格表を見る
                 </button>
-                <button class="btn btn-sm btn-outline-primary mt-2 ms-2" style="border-radius: 20px; font-weight: bold;"
-                    onclick="openInventoryModal()">
-                    🎒 所持品を見る
-                </button>
+                <div class="d-inline-block mt-2">
+                    <button class="btn btn-sm btn-outline-primary ms-2" style="border-radius: 20px; font-weight: bold;"
+                        onclick="openInventoryModal()">
+                        🎒 所持バッジ
+                    </button>
+                    <button class="btn btn-sm btn-outline-warning ms-1" style="border-radius: 20px; font-weight: bold;"
+                        onclick="openItemInventoryModal()">
+                        🎁 所持アイテム
+                    </button>
+                </div>
             </div>
         </header>
 
@@ -385,6 +391,49 @@
                             data-bs-dismiss="modal">キャンセル</button>
                         <button type="button" id="btnShopActionExec"
                             class="btn btn-danger rounded-pill px-4">実行する</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 所持アイテムモーダル（チケット・引換券） -->
+    <div class="modal fade" id="itemInventoryModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+                <div class="modal-header border-0 bg-light" style="border-radius: 20px 20px 0 0;">
+                    <h5 class="modal-title fw-bold">🎁 あなたの所持アイテム</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 bg-light">
+                    <!-- チケット -->
+                    <div class="mb-4">
+                        <h6 class="fw-bold border-bottom pb-2">チケット</h6>
+                        <div
+                            class="d-flex align-items-center justify-content-between p-3 bg-white rounded shadow-sm border">
+                            <div class="d-flex align-items-center gap-2">
+                                <span style="font-size: 1.5rem;">🧧</span>
+                                <div>
+                                    <div class="fw-bold" style="color: #6f42c1;">祈願符</div>
+                                    <div class="small text-muted">お賽銭（ガチャ）を1回引けます</div>
+                                </div>
+                            </div>
+                            <div class="fs-4 fw-bold text-primary"><span id="modal-tickets-count">0</span> 枚</div>
+                        </div>
+                    </div>
+
+                    <!-- 引換券 -->
+                    <div>
+                        <h6 class="fw-bold border-bottom pb-2">引換券</h6>
+                        <div id="exchange-tickets-list" class="row g-2">
+                            <!-- JSで生成 -->
+                            <div class="col-12 text-center text-muted py-3">読み込み中...</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 bg-light" style="border-radius: 0 0 20px 20px;">
+                    <div class="small text-muted w-100 text-center">
+                        ※ アイテムの使用はマイページまたはお賽銭ページで行えます。
                     </div>
                 </div>
             </div>
@@ -850,26 +899,21 @@
                 const sellStar = Math.max(star - 2, 1);
                 const sellPrice = thresholds[sellStar - 1]?.threshold_value || 50;
 
-                // バッジの色（簡易的）
-                let badgeColor = '#6c757d'; // secondary
-                if (t.rarity_name.includes('Legendary')) badgeColor = '#ffc107'; // warning
-                if (t.rarity_name.includes('Mythic')) badgeColor = '#dc3545'; // danger
-                if (t.rarity_name.includes('Epic')) badgeColor = '#0d6efd'; // primary
-                if (t.rarity_name.includes('Rare')) badgeColor = '#0dcaf0'; // info
-                if (t.rarity_name.includes('Uncommon')) badgeColor = '#198754'; // success
+                const rarityName = t.rarity_name;
+                const rarityClass = getRarityClass(rarityName);
 
                 // ランク表示: 50は ★EX に変更
                 let starDisplay = `★${star}`;
                 if (star === 50) {
-                    starDisplay = '<span class="text-warning fw-bold" style="text-shadow: 0 0 5px rgba(255,193,7,0.5);">★EX</span>';
+                    starDisplay = '<span class="rarity-ex badge rounded-pill">★EX</span>';
                 }
 
                 return `
                     <tr>
                         <td class="fw-bold">${starDisplay}</td>
                         <td>
-                            <span class="badge rounded-pill" style="background-color: ${badgeColor}; font-size: 0.9rem;">
-                                ${t.rarity_name}
+                            <span class="badge rounded-pill ${rarityClass}" style="font-size: 0.9rem; padding: 6px 12px;">
+                                ${rarityName}
                             </span>
                         </td>
                         <td class="fw-bold">🪙 ${t.threshold_value.toLocaleString()}</td>
@@ -1016,6 +1060,54 @@
                 alert('エラーが発生しました: ' + err.message);
             } finally {
                 if (loadingOverlay) loadingOverlay.classList.remove('active');
+            }
+        }
+
+        async function openItemInventoryModal() {
+            const modal = new bootstrap.Modal(document.getElementById('itemInventoryModal'));
+            modal.show();
+
+            try {
+                const { data: profile, error } = await supabaseClient
+                    .from('profiles')
+                    .select('gacha_tickets, exchange_tickets')
+                    .eq('discord_user_id', currentUserId)
+                    .maybeSingle();
+
+                if (error) throw error;
+
+                // チケット
+                const gachaTickets = profile?.gacha_tickets || 0;
+                document.getElementById('modal-tickets-count').textContent = gachaTickets.toLocaleString();
+
+                // 引換券
+                const listEl = document.getElementById('exchange-tickets-list');
+                const exchanges = profile?.exchange_tickets || {};
+
+                if (Object.keys(exchanges).length === 0) {
+                    listEl.innerHTML = '<div class="col-12 text-center text-muted py-3">所持している引換券はありません</div>';
+                } else {
+                    listEl.innerHTML = Object.entries(exchanges).map(([rarity, count]) => {
+                        if (count <= 0) return '';
+                        const rarityClass = getRarityClass(rarity);
+
+                        return `
+                        <div class="col-6 mb-3">
+                            <div class="card shadow-sm border-0 ${rarityClass} p-2 text-center position-relative" style="border-radius: 12px; border: 1px solid rgba(0,0,0,0.1) !important;">
+                                <div class="small fw-bold opacity-75 mb-1">${rarity}引換券</div>
+                                <div class="d-flex align-items-center justify-content-center gap-2 mb-1">
+                                    <span style="font-size: 1.2rem;">🎫</span>
+                                    <div class="fs-5 fw-bold">${count}枚</div>
+                                </div>
+                            </div>
+                        </div>
+                        `;
+                    }).join('');
+                }
+
+            } catch (err) {
+                console.error('所持アイテム取得エラー:', err);
+                document.getElementById('exchange-tickets-list').innerHTML = '<div class="col-12 text-center text-danger">読み込みエラー</div>';
             }
         }
 
