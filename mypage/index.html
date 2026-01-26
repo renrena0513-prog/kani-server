@@ -4998,6 +4998,21 @@
                     }
                 });
 
+                // セクションの表示制御
+                if (document.getElementById('special-badges-section')) {
+                    document.getElementById('special-badges-section').style.display = specialBadges.length > 0 ? 'block' : 'none';
+                }
+                if (document.getElementById('convertible-badges-section')) {
+                    document.getElementById('convertible-badges-section').style.display = convertibleBadges.length > 0 ? 'block' : 'none';
+                }
+                if (document.getElementById('purchasable-badges-section')) {
+                    document.getElementById('purchasable-badges-section').style.display = purchasableBadges.length > 0 ? 'block' : 'none';
+                }
+                if (document.getElementById('no-badges-msg')) {
+                    const hasAny = specialBadges.length > 0 || convertibleBadges.length > 0 || purchasableBadges.length > 0;
+                    document.getElementById('no-badges-msg').style.display = hasAny ? 'none' : 'block';
+                }
+
                 // 描画関数の呼び出し (既存の関数が存在すると仮定、なければエラーになるが...)
                 if (typeof renderSpecialBadges === 'function') renderSpecialBadges();
                 if (typeof renderConvertibleBadges === 'function') renderConvertibleBadges();
