@@ -4474,6 +4474,549 @@
         document.addEventListener('DOMContentLoaded', checkTeamNotifications);
     </script>
 
+
+    <!-- 汎用インベントリモーダル (売却・譲渡共通) -->
+    <div class="modal fade" id="universalInventoryModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
+                <div class="modal-header border-0 bg-white pb-0">
+                    <div>
+                        <h5 class="modal-title fw-bold" id="universalInventoryTitle">バッジ選択</h5>
+                        <p class="text-muted small mb-0" id="universalInventorySubtitle">選択してください</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body bg-light">
+                    <!-- フィルターエリア -->
+                    <div class="card border-0 shadow-sm mb-3" style="border-radius: 12px;">
+                        <div class="card-body p-3">
+                            <div class="row g-2">
+                                <div class="col-12 col-md-4">
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-white border-end-0"><i
+                                                class="bi bi-search"></i></span>
+                                        <input type="text" id="inventory-search"
+                                            class="form-control border-start-0 ps-0" placeholder="バッジ名で検索..."
+                                            oninput="renderUniversalInventory()">
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <select class="form-select" id="inventory-sort"
+                                        onchange="renderUniversalInventory()">
+                                        <option value="acquired_desc">入手: 新しい順</option>
+                                        <option value="acquired_asc">入手: 古い順</option>
+                                        <option value="rarity_desc">価値: 高い順</option>
+                                        <option value="rarity_asc">価値: 低い順</option>
+                                        <option value="name_asc">名前: 五十音順</option>
+                                    </select>
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <select class="form-select" id="inventory-filter"
+                                        onchange="renderUniversalInventory()">
+                                        <option value="all">すべて表示</option>
+                                        <option value="fixed">固定型のみ</option>
+                                        <option value="variable">変動型のみ</option>
+                                        <option value="mutant">✨ ミュータントのみ</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- リストエリア -->
+                    <div id="inventory-list" class="vstack gap-2">
+                        <!-- JSで描画 -->
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- ページネーション -->
+                <div class="modal-footer border-0 bg-white justify-content-center py-2" id="inventory-pagination-area">
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0" id="inventory-pagination"></ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 売却アクション確認モーダル（ショップ用再利用） -->
+    <div class="modal fade" id="shopActionModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg border-0" style="border-radius: 20px;">
+                <div class="modal-body p-4 text-center">
+                    <div id="shopActionContent"></div>
+                    <div class="mt-4 d-flex justify-content-center gap-2">
+                        <button type="button" class="btn btn-secondary rounded-pill px-4"
+                            data-bs-dismiss="modal">キャンセル</button>
+                        <button type="button" id="btnShopActionExec"
+                            class="btn btn-danger rounded-pill px-4">実行する</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 汎用インベントリ・売却・譲渡ロジックの復旧
+        // ==========================================
+        let currentInventoryMode = 'sell'; // 'sell' | 'transfer'
+        let allInventoryBadges = [];
+        let currentInventoryPage = 1;
+        const INVENTORY_ITEMS_PER_PAGE = 10;
+        let expandedBadgeId = null;
+        let currentShopActionUUID = null;
+
+        /**
+         * モーダルを開くエントリポイント
+         * @param {string} mode - 'sell' or 'transfer'
+         */
+        async function openModernInventory(mode) {
+            currentInventoryMode = mode;
+            const title = document.getElementById('universalInventoryTitle');
+            const subtitle = document.getElementById('universalInventorySubtitle');
+
+            if (mode === 'sell') {
+                title.textContent = 'バッジの売却';
+                subtitle.textContent = '売却したいバッジを選択してください';
+                title.className = 'modal-title fw-bold text-danger';
+            } else if (mode === 'transfer') {
+                title.textContent = 'バッジの譲渡';
+                subtitle.textContent = '譲渡したいバッジを選択してください';
+                title.className = 'modal-title fw-bold text-primary';
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('universalInventoryModal'));
+            modal.show();
+
+            await loadInventory();
+        }
+
+        async function loadInventory() {
+            const listEl = document.getElementById('inventory-list');
+            listEl.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>';
+
+            try {
+                const user = await getCurrentUser();
+                if (!user) return;
+                const myId = user.user_metadata.provider_id;
+
+                // 所持バッジ取得
+                const { data: myBadges, error } = await supabaseClient
+                    .from('user_badges_new')
+                    .select('*, badges(*)')
+                    .eq('user_id', myId)
+                    .order('acquired_at', { ascending: false });
+
+                if (error) throw error;
+
+                // 閾値取得
+                const { data: thresholds } = await supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true });
+
+                // マーケット流通数取得 (簡易版: 自分の持ち物にあるバッジIDについてのみ集計)
+                const badgeIds = [...new Set(myBadges.map(ub => ub.badge_id))];
+                let marketCounts = {};
+                if (badgeIds.length > 0) {
+                    const { data: allOwned } = await supabaseClient.from('user_badges_new').select('badge_id').in('badge_id', badgeIds);
+                    if (allOwned) {
+                        allOwned.forEach(o => {
+                            marketCounts[o.badge_id] = (marketCounts[o.badge_id] || 0) + 1;
+                        });
+                    }
+                }
+
+                // データ加工
+                allInventoryBadges = myBadges.map(inventoryItem => {
+                    const badge = inventoryItem.badges;
+                    if (!badge) return null;
+                    if (badge.sales_type === '限定品') return null; // 限定品は売却・譲渡リストに出さない
+
+                    const count = marketCounts[badge.id] || 1;
+                    const valResult = BadgeUtils.calculateBadgeValues(badge, count, thresholds || []);
+                    const sellPrice = valResult.sellPrice * (inventoryItem.is_mutant ? 3 : 1);
+
+                    return {
+                        ...inventoryItem,
+                        badge_name: badge.name,
+                        badge_image_url: badge.image_url,
+                        rarity: badge.rarity,
+                        rarity_name: valResult.rarityName,
+                        market_value: valResult.marketValue,
+                        sell_price: sellPrice,
+                        purchased_price: inventoryItem.purchased_price,
+                        is_mutant: inventoryItem.is_mutant,
+                        sales_type: badge.sales_type,
+                        acquired_at: new Date(inventoryItem.acquired_at)
+                    };
+                }).filter(i => i !== null);
+
+                renderUniversalInventory();
+
+            } catch (err) {
+                console.error('Inventory Load Error:', err);
+                listEl.innerHTML = '<div class="text-center text-danger">読み込みエラー</div>';
+            }
+        }
+
+        function renderUniversalInventory() {
+            const listEl = document.getElementById('inventory-list');
+            const searchVal = document.getElementById('inventory-search').value.toLowerCase();
+            const sortVal = document.getElementById('inventory-sort').value;
+            const filterVal = document.getElementById('inventory-filter').value;
+
+            // フィルタリング
+            let filtered = allInventoryBadges.filter(item => {
+                if (searchVal && !item.badge_name.toLowerCase().includes(searchVal)) return false;
+                if (filterVal === 'mutant' && !item.is_mutant) return false;
+                if (filterVal === 'fixed' && item.sales_type !== '固定型') return false;
+                if (filterVal === 'variable' && item.sales_type !== '変動型') return false;
+                return true;
+            });
+
+            // ソート
+            filtered.sort((a, b) => {
+                if (sortVal === 'acquired_desc') return b.acquired_at - a.acquired_at;
+                if (sortVal === 'acquired_asc') return a.acquired_at - b.acquired_at;
+                if (sortVal === 'name_asc') return a.badge_name.localeCompare(b.badge_name);
+                if (sortVal === 'rarity_desc') return b.market_value - a.market_value;
+                if (sortVal === 'rarity_asc') return a.market_value - b.market_value;
+                return 0;
+            });
+
+            // グルーピング
+            const groups = new Map();
+            filtered.forEach(item => {
+                if (!groups.has(item.badge_id)) {
+                    groups.set(item.badge_id, {
+                        badge_id: item.badge_id,
+                        badge_name: item.badge_name,
+                        badge_image_url: item.badge_image_url,
+                        items: []
+                    });
+                }
+                groups.get(item.badge_id).items.push(item);
+            });
+            const groupArray = Array.from(groups.values());
+
+            // ページネーション
+            const totalPages = Math.ceil(groupArray.length / INVENTORY_ITEMS_PER_PAGE);
+            if (currentInventoryPage > totalPages && totalPages > 0) currentInventoryPage = totalPages;
+            if (currentInventoryPage < 1) currentInventoryPage = 1;
+
+            const start = (currentInventoryPage - 1) * INVENTORY_ITEMS_PER_PAGE;
+            const end = start + INVENTORY_ITEMS_PER_PAGE;
+            const pageGroups = groupArray.slice(start, end);
+
+            // 描画
+            if (pageGroups.length === 0) {
+                listEl.innerHTML = '<div class="text-center py-4 text-muted">該当するバッジがありません</div>';
+                document.getElementById('inventory-pagination-area').style.display = 'none';
+                return;
+            }
+            document.getElementById('inventory-pagination-area').style.display = 'block';
+
+            listEl.innerHTML = pageGroups.map(group => {
+                const isExpanded = expandedBadgeId === group.badge_id;
+                const totalCount = group.items.length;
+                const mutantCount = group.items.filter(i => i.is_mutant).length;
+                const repItem = group.items[0];
+                const rarityClass = getRarityClass(repItem.rarity_name || '');
+
+                let actionArea = '';
+                let detailHtml = '';
+
+                // ボタンのラベルとクラスをモードによって切り替え
+                const btnLabel = currentInventoryMode === 'sell' ? '売却' : '譲渡';
+                const btnClass = currentInventoryMode === 'sell' ? 'btn-outline-danger' : 'btn-outline-primary';
+
+                if (totalCount === 1) {
+                    // 単一アイテム
+                    actionArea = `<button class="btn btn-sm ${btnClass} rounded-pill text-nowrap" 
+                        onclick="confirmActionFromInventory('${repItem.uuid}')">
+                        ${btnLabel}
+                     </button>`;
+                } else {
+                    // 複数あり -> 展開ボタン
+                    actionArea = `<button class="btn btn-sm ${isExpanded ? 'btn-secondary' : 'btn-primary'} rounded-pill text-nowrap" 
+                        onclick="toggleInventoryExpand('${group.badge_id}')">
+                        ${isExpanded ? '閉じる' : '選択'}
+                     </button>`;
+
+                    if (isExpanded) {
+                        const listItemsHtml = group.items.map(item => {
+                            const isMutant = item.is_mutant;
+                            let imgHtml = isMutant ?
+                                `<div class="mutant-badge-container mini active me-3" style="width: 40px; height: 40px;">
+                                    <div class="mutant-badge-shine"></div>
+                                    <img src="${group.badge_image_url}" class="w-100 h-100 object-fit-contain">
+                                </div>` :
+                                `<img src="${group.badge_image_url}" class="rounded me-3" style="width: 40px; height: 40px; object-fit: contain;">`;
+
+                            const itemStyle = isMutant ? 'border: 2px solid gold; background: #fffdf5;' : 'border: 1px solid #eee;';
+
+                            return `
+                                <div class="d-flex align-items-center justify-content-between p-2 rounded bg-white" style="${itemStyle}">
+                                    <div class="d-flex align-items-center overflow-hidden">
+                                        ${imgHtml}
+                                        <div class="small">
+                                            <div class="text-muted">購入: 🪙${(item.purchased_price || 0).toLocaleString()}</div>
+                                            <div class="text-danger fw-bold">売却: 🪙${Math.floor(item.sell_price).toLocaleString()}</div>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-sm ${btnClass} rounded-pill ms-2 text-nowrap" 
+                                        onclick="confirmActionFromInventory('${item.uuid}')">
+                                        ${btnLabel}
+                                    </button>
+                                </div>
+                            `;
+                        }).join('');
+
+                        detailHtml = `<div class="mt-3 border-top pt-2"><div class="vstack gap-2">${listItemsHtml}</div></div>`;
+                    }
+                }
+
+                return `
+                <div class="p-2 rounded shadow-sm bg-white border mb-2">
+                    <div class="d-flex align-items-center">
+                        <div style="width: 50px; height: 50px; flex-shrink: 0;" class="me-3">
+                             <img src="${group.badge_image_url}" class="w-100 h-100 object-fit-contain rounded">
+                        </div>
+                        <div class="flex-grow-1" style="min-width: 0; margin-right: 10px;">
+                            <div class="fw-bold text-truncate">${group.badge_name}</div>
+                            <div class="small text-muted d-flex align-items-center flex-wrap gap-2">
+                                <span class="badge ${rarityClass || 'bg-light text-dark border'}">${repItem.rarity_name || '-'}</span>
+                                <div>所持: <span class="fw-bold text-dark">${totalCount}</span>個</div>
+                                ${mutantCount > 0 ? `<span class="badge bg-warning text-dark">内ミュータント: ${mutantCount}</span>` : ''}
+                            </div>
+                        </div>
+                        <div style="flex-shrink: 0;">${actionArea}</div>
+                    </div>
+                    ${detailHtml}
+                </div>`;
+            }).join('');
+
+            renderInventoryPagination(totalPages);
+        }
+
+        function toggleInventoryExpand(badgeId) {
+            if (expandedBadgeId === badgeId) expandedBadgeId = null;
+            else expandedBadgeId = badgeId;
+            renderUniversalInventory();
+        }
+
+        function goToInventoryPage(page) {
+            currentInventoryPage = page;
+            renderUniversalInventory();
+        }
+
+        function renderInventoryPagination(totalPages) {
+            const ul = document.getElementById('inventory-pagination');
+            if (totalPages <= 1) {
+                document.getElementById('inventory-pagination-area').style.display = 'none';
+                return;
+            }
+            let html = '';
+            // 簡易ページネーション実装
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= currentInventoryPage - 1 && i <= currentInventoryPage + 1)) {
+                    html += `<li class="page-item ${i === currentInventoryPage ? 'active' : ''}">
+                        <a class="page-link" href="javascript:void(0)" onclick="goToInventoryPage(${i})">${i}</a></li>`;
+                } else if (i === currentInventoryPage - 2 || i === currentInventoryPage + 2) {
+                    html += `<li class="page-item disabled"><a class="page-link">...</a></li>`;
+                }
+            }
+            ul.innerHTML = html;
+        }
+
+        function confirmActionFromInventory(uuid) {
+            if (currentInventoryMode === 'sell') {
+                confirmSellFromList(uuid);
+            } else {
+                initiateTransferFromList(uuid);
+            }
+        }
+
+        // 売却確認
+        function confirmSellFromList(uuid) {
+            const item = allInventoryBadges.find(i => i.uuid === uuid);
+            if (!item) return;
+
+            currentShopActionUUID = uuid;
+            const container = document.getElementById('shopActionContent');
+            const btnExec = document.getElementById('btnShopActionExec');
+
+            container.innerHTML = `
+                <h5 class="fw-bold mb-3 text-danger">売却の確認</h5>
+                <p class="mb-2">「<span class="fw-bold">${item.badge_name}</span>」を売却しますか？</p>
+                <div class="alert alert-secondary d-inline-block text-start py-2 px-4">
+                    <div>購入額: 🪙 ${item.purchased_price?.toLocaleString() || 0}</div>
+                    <div class="fw-bold text-danger fs-5">売却額: 🪙 ${item.sell_price.toLocaleString()}</div>
+                </div>
+                <p class="text-muted small mt-2">この操作は取り消せません。</p>
+            `;
+
+            btnExec.textContent = '売却する';
+            btnExec.className = 'btn btn-danger rounded-pill px-4';
+            btnExec.onclick = executeSellBadges;
+
+            new bootstrap.Modal(document.getElementById('shopActionModal')).show();
+        }
+
+        async function executeSellBadges() {
+            bootstrap.Modal.getInstance(document.getElementById('shopActionModal'))?.hide();
+            // (ローディング表示などは省略、アラートのみ)
+            try {
+                const user = await getCurrentUser();
+                const { data, error } = await supabaseClient.rpc('sell_badge_v2', {
+                    p_user_id: user.user_metadata.provider_id,
+                    p_badge_uuid: currentShopActionUUID
+                });
+                if (error || !data.ok) throw error || new Error(data?.error);
+
+                alert(`売却しました！ (🪙 +${data.sell_price.toLocaleString()})`);
+
+                // リロード
+                if (!isViewMode) {
+                    const u = await getCurrentUser();
+                    if (u) await displayMyInfo(u);
+                }
+                loadInventory(); // リスト更新
+            } catch (e) {
+                alert('売却エラー: ' + e.message);
+            }
+        }
+
+        // 譲渡開始
+        function initiateTransferFromList(uuid) {
+            const item = allInventoryBadges.find(i => i.uuid === uuid);
+            if (!item) return;
+
+            // 譲渡対象を設定してユーザー選択モーダルへ
+            currentActionUUID = uuid;
+            currentActionBadgeName = item.badge_name;
+            currentActionDetails = `(購入額: ${item.purchased_price} C)`;
+
+            // モーダルを一時的に隠す（bootstrapの仕様上、入れ子回避のため）
+            bootstrap.Modal.getInstance(document.getElementById('universalInventoryModal'))?.hide();
+
+            // ユーザー選択モーダルを開く
+            openUserSelectModal('badge_transfer');
+        }
+    </script>
+
+    <script>
+        // ==========================================
+        // メインページ用バッジ読み込みロジック (復旧)
+        // ==========================================
+        // Global variables are already defined above (lines ~2090)
+
+
+        async function loadOwnedBadges() {
+            const list = document.getElementById('purchasable-badge-list');
+            if (list) list.innerHTML = '<div class="col-12 text-center py-5"><div class="spinner-border text-primary"></div></div>';
+
+            try {
+                // targetIdが未設定なら特定を試みる
+                if (typeof targetId === 'undefined' || !targetId) {
+                    const params = new URLSearchParams(window.location.search);
+                    targetId = params.get('user');
+                    if (!targetId) {
+                        const user = await getCurrentUser();
+                        if (user) targetId = user.user_metadata.provider_id;
+                    }
+                }
+                if (!targetId) return;
+
+                // バッジ取得
+                const { data: owned, error } = await supabaseClient
+                    .from('user_badges_new')
+                    .select('*, badges(*)')
+                    .eq('user_id', targetId)
+                    .order('acquired_at', { ascending: false });
+
+                if (error) throw error;
+
+                // 各種マスタデータ取得
+                const { data: thresholds } = await supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true });
+                const { data: marketCountRes } = await supabaseClient.from('user_badges_new').select('badge_id');
+                let marketCounts = {};
+                (marketCountRes || []).forEach(s => marketCounts[s.badge_id] = (marketCounts[s.badge_id] || 0) + 1);
+
+                // グルーピング用マップ
+                const groups = new Map();
+
+                owned.forEach(item => {
+                    if (!item.badges) return;
+                    const badge = item.badges;
+                    const bId = badge.id;
+
+                    if (!groups.has(bId)) {
+                        groups.set(bId, {
+                            badge: badge,
+                            items: [],
+                            count: 0,
+                            hasMutant: false,
+                            isEquippedLeft: false, // 簡易
+                            isEquippedRight: false // 簡易
+                        });
+                    }
+                    const g = groups.get(bId);
+                    g.items.push(item);
+                    g.count++;
+                    if (item.is_mutant) g.hasMutant = true;
+                });
+
+                // 分類
+                purchasableBadges = [];
+                specialBadges = [];
+                convertibleBadges = [];
+
+                groups.forEach(group => {
+                    const badge = group.badge;
+                    const count = marketCounts[badge.id] || 1;
+                    const valResult = BadgeUtils.calculateBadgeValues(badge, count, thresholds || []);
+
+                    const badgeInfo = {
+                        group: group,
+                        badge: { ...badge, ...valResult },
+                        count: group.count,
+                        hasMutant: group.hasMutant,
+                        rarity: valResult.rarityName,
+                        pValue: valResult.marketValue,
+                        mainItem: group.items[0], // 代表アイテム
+                        n: count
+                    };
+
+                    if (badge.sales_type === '限定品') {
+                        specialBadges.push(badgeInfo);
+                    } else if (badge.sales_type === '換金品') {
+                        convertibleBadges.push(badgeInfo);
+                    } else {
+                        purchasableBadges.push(badgeInfo);
+                    }
+                });
+
+                // 描画関数の呼び出し (既存の関数が存在すると仮定、なければエラーになるが...)
+                if (typeof renderSpecialBadges === 'function') renderSpecialBadges();
+                if (typeof renderConvertibleBadges === 'function') renderConvertibleBadges();
+                if (typeof filterAndRenderBadges === 'function') filterAndRenderBadges();
+
+            } catch (err) {
+                console.error('loadOwnedBadges Error:', err);
+                if (list) list.innerHTML = '<div class="text-center text-danger py-5">読み込みエラー</div>';
+            }
+        }
+
+        // 初期化トリガー
+        document.addEventListener('DOMContentLoaded', () => {
+            // 既存のinitPageが走っているかもしれないが、念のため少し遅延させてロード?
+            // まだロードされていない場合のみ走らせる制御を入れるのが理想だが、
+            // 単純に呼び出しても再描画されるだけなので許容する。
+            setTimeout(loadOwnedBadges, 500);
+        });
+    </script>
 </body>
 
 </html>
