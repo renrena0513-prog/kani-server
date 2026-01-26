@@ -79,6 +79,7 @@ function getMarketValue(starLevel, thresholds) {
  * @returns {number} 売却価格（C）
  */
 function getSellPrice(currentStarLevel, thresholds) {
+    if (currentStarLevel === 1) return 30; // 特例: Rank 1は30
     const sellStarLevel = Math.max(currentStarLevel - 2, 1); // 2段階下、最低★1
     return getMarketValue(sellStarLevel, thresholds);
 }
