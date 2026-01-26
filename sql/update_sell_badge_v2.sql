@@ -85,6 +85,11 @@ BEGIN
         LIMIT 1 OFFSET (v_sell_star - 1);
         
         IF v_sell_price IS NULL THEN v_sell_price := 50; END IF;
+        
+        -- ★1 (Rank 1) の場合のみ、特例で売却価格を30にする
+        IF v_current_star = 1 THEN
+            v_sell_price := 30;
+        END IF;
     END IF;
     
     -- ミュータント補正 (ランクダウン後の価格の3倍)
