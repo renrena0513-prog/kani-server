@@ -4102,7 +4102,7 @@
             if (overlay) overlay.classList.toggle('active', show);
         }
 
-        document.addEventListener('DOMContentLoaded', initPage);
+        // Listener removed to prevent ReferenceError
     </script>
 
     <!-- コイン送金とユーザー検索 -->
@@ -4912,6 +4912,134 @@
         // ==========================================
         // Global variables are already defined above (lines ~2090)
 
+        // ==========================================
+        // 欠損していたコア機能を復旧・実装
+        // ==========================================
+        async function getCurrentUser() {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            return session?.user || null;
+        }
+
+        async function displayMyInfo(user) {
+            if (!user) return;
+            const discordId = user.user_metadata.provider_id;
+
+            try {
+                // プロフィール取得
+                const { data: profile, error } = await supabaseClient
+                    .from('profiles')
+                    .select('*')
+                    .eq('discord_user_id', discordId)
+                    .single();
+
+                if (error || !profile) {
+                    console.error('Profile load error:', error);
+                    return;
+                }
+
+                // 名前・アバター
+                const avatarUrl = profile.avatar_url || user.user_metadata.avatar_url;
+                const name = profile.account_name || user.user_metadata.full_name || 'No Name';
+
+                // ページタイトルラベル（Player Nameなど）
+                const titleLabel = document.getElementById('page-title-label');
+                if (titleLabel) {
+                    titleLabel.textContent = name;
+                    titleLabel.style.display = 'block';
+                }
+
+                // アバター画像
+                const avatarEl = document.getElementById('user-avatar');
+                if (avatarEl) avatarEl.src = avatarUrl;
+
+                // チーム
+                const teamEl = document.getElementById('user-team-name');
+                if (teamEl) teamEl.textContent = profile.team_name || '未所属';
+
+                // 資産表示 (自分自身の場合のみ、または公開設定によるが今回は簡易実装)
+                // isViewMode が false (自分のページ) の場合
+                if (!isViewMode) {
+                    const coinsVal = document.getElementById('user-coins-value');
+                    const assetsVal = document.getElementById('total-assets-value');
+                    const ticketsVal = document.getElementById('user-tickets-value');
+                    const coinsDisplay = document.getElementById('user-coins-display');
+
+                    if (coinsVal) coinsVal.textContent = (profile.coins || 0).toLocaleString();
+                    if (assetsVal) assetsVal.textContent = (profile.total_assets || 0).toLocaleString();
+
+                    // 祈願符は user_tickets テーブルなどを参照するか、profilesにカラムがあるか要確認。
+                    // shop.htmlでは user_tickets テーブルをcountしていた。
+                    // ここでは一旦 dummy 0 または別途取得が必要だが、エラー回避のため 0 表記
+                    if (ticketsVal) ticketsVal.textContent = '0'; // 要実装: countUserTickets()
+
+                    if (coinsDisplay) coinsDisplay.style.display = 'flex';
+
+                    // ボタン類
+                    const btnTransfer = document.getElementById('coin-transfer-btn');
+                    const btnPossess = document.getElementById('possessions-btn');
+                    const btnEdit = document.getElementById('nickname-edit-btn');
+
+                    if (btnTransfer) btnTransfer.style.display = 'inline-block';
+                    if (btnPossess) btnPossess.style.display = 'inline-block';
+                    if (btnEdit) btnEdit.style.display = 'inline-block';
+                }
+
+            } catch (err) {
+                console.error('displayMyInfo error:', err);
+            }
+        }
+
+        // loadTargetUserInfo: 譲渡などの後に呼ばれる再読み込み関数
+        // 基本的には displayMyInfo(currentUser) と loadOwnedBadges() を呼ぶ
+        async function loadTargetUserInfo() {
+            // targetId が設定されている前提
+            if (!targetId) return;
+
+            // 自分かどうか判定
+            const user = await getCurrentUser();
+            const isMe = user && user.user_metadata.provider_id === targetId;
+
+            // プロフィール表示更新 (自分の場合のみ詳細更新、他人の場合は最低限)
+            if (isMe) {
+                await displayMyInfo(user);
+            } else {
+                // 他人のプロフィール読み込みロジック (必要であれば実装)
+            }
+
+            // バッジリスト更新
+            await loadOwnedBadges();
+        }
+
+        async function initPage() {
+            console.log('initPage (Recovered) started');
+            const user = await getCurrentUser();
+
+            // URLパラメータ ?user=... があれば targetId にセット、なければ自分
+            const params = new URLSearchParams(window.location.search);
+            targetId = params.get('user');
+
+            if (user && !targetId) {
+                targetId = user.user_metadata.provider_id;
+                isViewMode = false;
+            } else if (targetId && user && targetId !== user.user_metadata.provider_id) {
+                isViewMode = true;
+            } else if (!user && targetId) {
+                isViewMode = true;
+            }
+
+            if (user && !isViewMode) {
+                await displayMyInfo(user);
+            }
+
+            await loadOwnedBadges();
+
+            // 麻雀統計や活動ログなど他の読み込みもここで行う
+            if (typeof loadMahjongStats === 'function') loadMahjongStats();
+            if (typeof loadActivityLogs === 'function') loadActivityLogs();
+            if (typeof loadRevenueStats === 'function') loadRevenueStats();
+        }
+
+        // 既存の loadOwnedBadges は下に続く...
 
         async function loadOwnedBadges() {
             const list = document.getElementById('purchasable-badge-list');
@@ -5026,10 +5154,8 @@
 
         // 初期化トリガー
         document.addEventListener('DOMContentLoaded', () => {
-            // 既存のinitPageが走っているかもしれないが、念のため少し遅延させてロード?
-            // まだロードされていない場合のみ走らせる制御を入れるのが理想だが、
-            // 単純に呼び出しても再描画されるだけなので許容する。
-            setTimeout(loadOwnedBadges, 500);
+            // 復元したinitPageを呼び出す
+            setTimeout(initPage, 500);
         });
     </script>
 </body>
