@@ -17,7 +17,6 @@
     <!-- Bootswatch Lux (Bootstrap 5.3.3) -->
     <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../styles.css">
-    <script src="../js/badge-utils.js"></script>
 
     <style>
         :root {
@@ -1251,12 +1250,12 @@
                                     <i class="bi bi-award"></i>
                                     <span>装着</span>
                                 </button>
-                                <button id="badge-transfer-btn" onclick="openModernInventory('transfer')"
+                                <button id="badge-transfer-btn" onclick="openBadgeSelectionModal('transfer')"
                                     class="btn-badge-action btn-badge-transfer" style="display: none;">
                                     <i class="bi bi-gift"></i>
                                     <span>譲渡</span>
                                 </button>
-                                <button id="badge-sell-btn" onclick="openModernInventory('sell')"
+                                <button id="badge-sell-btn" onclick="openBadgeSelectionModal('sell')"
                                     class="btn-badge-action btn-badge-sell" style="display: none;">
                                     <i class="bi bi-cash-coin"></i>
                                     <span>売却</span>
@@ -2280,54 +2279,30 @@
                 convertibleBadges.sort((a, b) => (a.badge.id || 0) - (b.badge.id || 0));
 
                 // 限定バッジの表示
-                // 限定バッジの表示 (新モーダル移行につき非表示)
-                if (document.getElementById('special-badges-section')) {
+                if (specialBadges.length > 0) {
+                    renderSpecialBadges();
+                    document.getElementById('special-badges-section').style.display = 'block';
+                } else {
                     document.getElementById('special-badges-section').style.display = 'none';
                 }
 
-                // 換金品の表示 (新モーダル移行につき非表示)
-                if (document.getElementById('convertible-badges-section')) {
+                // 換金品の表示
+                if (convertibleBadges.length > 0) {
+                    renderConvertibleBadges();
+                    document.getElementById('convertible-badges-section').style.display = 'block';
+                } else {
                     document.getElementById('convertible-badges-section').style.display = 'none';
                 }
 
-                // 購入バッジの表示（旧リストは非表示にし、新ボタンを表示するロジックへ移行）
+                // 購入バッジの表示（フィルター・ソート・ページネーション適用）
                 if (purchasableBadges.length > 0) {
-                    // 旧セクションは非表示
-                    const oldSection = document.getElementById('purchasable-badges-section');
-                    if (oldSection) oldSection.style.display = 'none';
-
+                    document.getElementById('purchasable-badges-section').style.display = 'block';
+                    filterAndRenderBadges();
                 } else {
                     document.getElementById('purchasable-badges-section').style.display = 'none';
                 }
 
                 if (noBadgesMsg) noBadgesMsg.style.display = 'none';
-
-                // 新インベントリシステム用のデータを構築
-                allInventoryBadges = owned.map(item => {
-                    const badge = item.badges || {};
-                    const n = marketCounts[item.badge_id] || 0;
-                    const calc = BadgeUtils.calculateBadgeValues(badge, n, thresholds);
-
-                    return {
-                        uuid: item.uuid,
-                        badge_id: item.badge_id,
-                        badge_name: badge.name || '不明',
-                        badge_image_url: badge.image_url || '',
-                        acquired_at: new Date(item.acquired_at).getTime(),
-                        is_mutant: item.is_mutant,
-                        purchased_price: item.purchased_price,
-                        sales_type: badge.sales_type,
-                        is_gacha_eligible: badge.is_gacha_eligible,
-                        rarity_name: getDynamicRarity(calc.marketValue, badge.fixed_rarity_name),
-                        // 価格計算（Rank1特例含む、ミュータント3倍）
-                        sell_price: calc.sellPrice * (item.is_mutant ? 3 : 1)
-                    };
-                });
-
-                // インベントリが開かれていれば再描画
-                if (document.getElementById('universalInventoryModal')?.classList.contains('show')) {
-                    renderModernInventory();
-                }
 
                 // バッジの総資産を更新
                 const totalAssetsEl = document.getElementById('total-assets-value');
@@ -2343,101 +2318,7 @@
                 }
             }
         }
-    </script>
 
-    <!-- 汎用インベントリモーダル (売却・譲渡共通) -->
-    <div class="modal fade" id="universalInventoryModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
-                <div class="modal-header border-0 bg-white pb-0">
-                    <div>
-                        <h5 class="modal-title fw-bold" id="universalInventoryTitle">バッジ選択</h5>
-                        <p class="text-muted small mb-0" id="universalInventorySubtitle">選択してください</p>
-                    </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body bg-light">
-                    <!-- フィルターエリア -->
-                    <div class="card border-0 shadow-sm mb-3" style="border-radius: 12px;">
-                        <div class="card-body p-3">
-                            <div class="row g-2">
-                                <div class="col-12 col-md-4">
-                                    <div class="input-group">
-                                        <span class="input-group-text bg-white border-end-0"><i
-                                                class="bi bi-search"></i></span>
-                                        <input type="text" id="inventory-search"
-                                            class="form-control border-start-0 ps-0" placeholder="バッジ名で検索...">
-                                    </div>
-                                </div>
-                                <div class="col-6 col-md-4">
-                                    <select class="form-select" id="inventory-sort">
-                                        <option value="acquired_desc">入手: 新しい順</option>
-                                        <option value="acquired_asc">入手: 古い順</option>
-                                        <option value="rarity_desc">価値: 高い順</option>
-                                        <option value="rarity_asc">価値: 低い順</option>
-                                        <option value="name_asc">名前: 五十音順</option>
-                                    </select>
-                                </div>
-                                <div class="col-6 col-md-4">
-                                    <select class="form-select" id="inventory-filter">
-                                        <option value="all">すべて表示</option>
-                                        <option value="fixed">固定型のみ</option>
-                                        <option value="variable">変動型のみ</option>
-                                        <option value="shrine">お賽銭限定</option>
-                                        <option value="mutant">ミュータントのみ</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- リストエリア -->
-                    <div id="inventory-list" class="vstack gap-2">
-                        <!-- JSで描画 -->
-                    </div>
-                </div>
-                <!-- ページネーション -->
-                <div class="modal-footer border-0 bg-white justify-content-center py-2" id="inventory-pagination-area">
-                    <nav>
-                        <ul class="pagination pagination-sm mb-0" id="inventory-pagination"></ul>
-                    </nav>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 売却アクション確認モーダル -->
-    <div class="modal fade" id="shopActionModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow" style="border-radius: 20px;">
-                <div class="modal-body text-center p-4">
-                    <div class="mb-4">
-                        <div class="d-inline-flex align-items-center justify-content-center bg-danger bg-opacity-10 text-danger rounded-circle mb-3"
-                            style="width: 60px; height: 60px;">
-                            <span style="font-size: 1.8rem;">💴</span>
-                        </div>
-                        <h5 class="fw-bold mb-1">売却の確認</h5>
-                        <p class="text-muted small">この操作は取り消せません</p>
-                    </div>
-
-                    <div id="shopActionContent" class="mb-4 text-start bg-light p-3 rounded">
-                        <!-- JSで注入 -->
-                    </div>
-
-                    <div class="d-flex gap-2 justify-content-center">
-                        <button type="button" class="btn btn-light rounded-pill px-4"
-                            data-bs-dismiss="modal">キャンセル</button>
-                        <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold"
-                            onclick="executeSellFromShop()">
-                            売却する
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
         // バッジカードを描画するヘルパー関数
         function renderBadgeCard(badgeInfo, equippedId, equippedRightId) {
             const { group, badge, count, hasMutant, rarity } = badgeInfo;
@@ -2446,58 +2327,43 @@
             const isEquippedRight = group.isEquippedRight;
             const isEquipped = isEquippedLeft || isEquippedRight;
             const isNonSaleable = (badge.sales_type === '限定品');
-            const countLabel = count > 1 ? `<span class="badge bg-dark position-absolute bottom-0 end-0 m-1"
-        style="font-size:0.6rem; z-index:4; opacity: 0.9;">x${count}</span>` : '';
+            const countLabel = count > 1 ? `<span class="badge bg-dark position-absolute bottom-0 end-0 m-1" style="font-size:0.6rem; z-index:4; opacity: 0.9;">x${count}</span>` : '';
 
             return `
-    <div class="col-6 col-sm-4 col-md-3 mb-3">
-        <div class="card h-100 shadow-sm border-0 position-relative badge-card ${rarityClass}"
-            style="border-radius: 12px; overflow: hidden; transition: transform 0.2s;"
-            onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
-            <a href="../badge/index.html?id=${badge.id}${hasMutant ? '&view=mutant' : ''}"
-                class="text-decoration-none w-100 h-100 d-flex flex-column align-items-center justify-content-center"
-                style="color: inherit;">
-                <div class="card-body p-2 d-flex flex-column align-items-center justify-content-center text-center">
-                    <div class="position-relative mb-1">
-                        <div class="badge-item ${isEquipped ? 'equipped' : ''} ${hasMutant ? 'mutant-badge-container active' : ''}"
-                            style="width: 70px; height: 70px; padding: 5px; background: transparent; border-width: 2px; border-radius: 50%;">
-                            <img src="${badge.image_url}" alt="${badge.name}"
-                                style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.2)); ${hasMutant ? 'position: relative; z-index: 1;' : ''}">
-                            ${hasMutant ? '<div class="mutant-badge-shine"></div>' : ''}
-                        </div>
-                        ${isEquipped ? `
-                        <span
-                            class="badge bg-gold position-absolute top-0 start-0 d-flex align-items-center justify-content-center"
-                            style="font-size:0.4rem; z-index:2; min-width: 45px; height: 16px; transform: translate(-10%, -10%);">
-                            ${isEquippedLeft && isEquippedRight ? '◀左右▶' : (isEquippedLeft ? '◀左 装着' : '右 装着▶')}
-                        </span>` : ''}
-                        ${countLabel}
+                <div class="col-6 col-sm-4 col-md-3 mb-3">
+                    <div class="card h-100 shadow-sm border-0 position-relative badge-card ${rarityClass}" style="border-radius: 12px; overflow: hidden; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <a href="../badge/index.html?id=${badge.id}${hasMutant ? '&view=mutant' : ''}" class="text-decoration-none w-100 h-100 d-flex flex-column align-items-center justify-content-center" style="color: inherit;">
+                            <div class="card-body p-2 d-flex flex-column align-items-center justify-content-center text-center">
+                                <div class="position-relative mb-1">
+                                    <div class="badge-item ${isEquipped ? 'equipped' : ''} ${hasMutant ? 'mutant-badge-container active' : ''}" style="width: 70px; height: 70px; padding: 5px; background: transparent; border-width: 2px; border-radius: 50%;">
+                                        <img src="${badge.image_url}" alt="${badge.name}" style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.2)); ${hasMutant ? 'position: relative; z-index: 1;' : ''}">
+                                        ${hasMutant ? '<div class="mutant-badge-shine"></div>' : ''}
+                                    </div>
+                                    ${isEquipped ? `
+                                        <span class="badge bg-gold position-absolute top-0 start-0 d-flex align-items-center justify-content-center" style="font-size:0.4rem; z-index:2; min-width: 45px; height: 16px; transform: translate(-10%, -10%);">
+                                            ${isEquippedLeft && isEquippedRight ? '◀左右▶' : (isEquippedLeft ? '◀左 装着' : '右 装着▶')}
+                                        </span>` : ''}
+                                    ${countLabel}
+                                </div>
+                                <div class="small opacity-75 text-truncate w-100 px-1" style="font-size: 0.65rem; line-height: 1.2;">${badge.name}</div>
+                                <span class="badge mt-1" style="background: rgba(0,0,0,0.2); font-size: 0.45rem; padding: 2px 5px;">${rarity}</span>
+                            </div>
+                        </a>
+                        
+                        ${(!isViewMode && !isNonSaleable) ? `
+                            <div class="dropdown position-absolute top-0 end-0" style="z-index: 5;">
+                                <button class="btn btn-link btn-sm p-1" data-bs-toggle="dropdown" style="font-size: 0.7rem; color: inherit; opacity: 0.5;">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0" style="font-size: 0.75rem; min-width: 80px;">
+                                    <li><a class="dropdown-item py-1" href="javascript:void(0)" onclick="openBadgeSelectionModal('sell')">売却</a></li>
+                                    <li><a class="dropdown-item py-1" href="javascript:void(0)" onclick="openBadgeSelectionModal('transfer')">譲渡</a></li>
+                                </ul>
+                            </div>
+                        ` : ''}
                     </div>
-                    <div class="small opacity-75 text-truncate w-100 px-1"
-                        style="font-size: 0.65rem; line-height: 1.2;">${badge.name}</div>
-                    <span class="badge mt-1"
-                        style="background: rgba(0,0,0,0.2); font-size: 0.45rem; padding: 2px 5px;">${rarity}</span>
                 </div>
-            </a>
-
-            ${(!isViewMode && !isNonSaleable) ? `
-            <div class="dropdown position-absolute top-0 end-0" style="z-index: 5;">
-                <button class="btn btn-link btn-sm p-1" data-bs-toggle="dropdown"
-                    style="font-size: 0.7rem; color: inherit; opacity: 0.5;">
-                    <i class="bi bi-three-dots-vertical"></i>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0"
-                    style="font-size: 0.75rem; min-width: 80px;">
-                    <li><a class="dropdown-item py-1" href="javascript:void(0)"
-                            onclick="openBadgeSelectionModal('sell')">売却</a></li>
-                    <li><a class="dropdown-item py-1" href="javascript:void(0)"
-                            onclick="openBadgeSelectionModal('transfer')">譲渡</a></li>
-                </ul>
-            </div>
-            ` : ''}
-        </div>
-    </div>
-    `;
+            `;
         }
 
         // 限定バッジを描画
@@ -2528,30 +2394,24 @@
                 const fixedSellPrice = badge.price;
 
                 html += `
-    <div class="col-6 col-sm-4 col-md-3 mb-3">
-        <div class="card h-100 shadow-sm border-0 ${rarityClass}"
-            style="border-radius: 12px; overflow: hidden; transition: transform 0.2s;"
-            onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
-            <a href="../badge/index.html?id=${badge.id}" class="text-decoration-none w-100 h-100"
-                style="color: inherit;">
-                <div class="card-body p-3 d-flex flex-column align-items-center justify-content-center text-center">
-                    <div class="small text-muted mb-1" style="font-size: 0.65rem;">${rarity}</div>
-                    <div class="d-flex align-items-center justify-content-center mb-2" style="gap: 8px;">
-                        <div style="width: 70px; height: 70px;">
-                            <img src="${badge.image_url}" alt="${badge.name}"
-                                style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.2));">
+                    <div class="col-6 col-sm-4 col-md-3 mb-3">
+                        <div class="card h-100 shadow-sm border-0 ${rarityClass}" style="border-radius: 12px; overflow: hidden; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
+                            <a href="../badge/index.html?id=${badge.id}" class="text-decoration-none w-100 h-100" style="color: inherit;">
+                                <div class="card-body p-3 d-flex flex-column align-items-center justify-content-center text-center">
+                                    <div class="small text-muted mb-1" style="font-size: 0.65rem;">${rarity}</div>
+                                    <div class="d-flex align-items-center justify-content-center mb-2" style="gap: 8px;">
+                                        <div style="width: 70px; height: 70px;">
+                                            <img src="${badge.image_url}" alt="${badge.name}" style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.2));">
+                                        </div>
+                                        <span class="badge bg-dark" style="font-size:0.75rem; padding: 4px 8px;">×${count}</span>
+                                    </div>
+                                    <div class="small fw-bold text-truncate w-100" style="font-size: 0.75rem; line-height: 1.2;">${badge.name}</div>
+                                    <div class="small text-muted mt-1" style="font-size: 0.7rem;">💰 ${fixedSellPrice.toLocaleString()} C</div>
+                                </div>
+                            </a>
                         </div>
-                        <span class="badge bg-dark" style="font-size:0.75rem; padding: 4px 8px;">×${count}</span>
                     </div>
-                    <div class="small fw-bold text-truncate w-100" style="font-size: 0.75rem; line-height: 1.2;">
-                        ${badge.name}</div>
-                    <div class="small text-muted mt-1" style="font-size: 0.7rem;">💰 ${fixedSellPrice.toLocaleString()}
-                        C</div>
-                </div>
-            </a>
-        </div>
-    </div>
-    `;
+                `;
             });
 
             list.innerHTML = html;
@@ -2641,14 +2501,25 @@
             });
 
             // ページネーション: モバイル10個、PC12個
-            const isMobile = window.innerWidth < 768; const itemsPerPage = isMobile ? 10 : 12; const
-                totalPages = Math.ceil(filtered.length / itemsPerPage); // ページ番号が範囲外の場合は1ページ目に戻す if (currentBadgePage> totalPages)
-            {
+            const isMobile = window.innerWidth < 768;
+            const itemsPerPage = isMobile ? 10 : 12;
+            const totalPages = Math.ceil(filtered.length / itemsPerPage);
+
+            // ページ番号が範囲外の場合は1ページ目に戻す
+            if (currentBadgePage > totalPages) {
                 currentBadgePage = 1;
             }
-            if (currentBadgePage < 1) { currentBadgePage = 1; } const startIdx = (currentBadgePage - 1) * itemsPerPage; const
-                endIdx = startIdx + itemsPerPage; const pageItems = filtered.slice(startIdx, endIdx); // バッジ描画 const
-            list = document.getElementById('purchasable-badge-list'); if (list) {
+            if (currentBadgePage < 1) {
+                currentBadgePage = 1;
+            }
+
+            const startIdx = (currentBadgePage - 1) * itemsPerPage;
+            const endIdx = startIdx + itemsPerPage;
+            const pageItems = filtered.slice(startIdx, endIdx);
+
+            // バッジ描画
+            const list = document.getElementById('purchasable-badge-list');
+            if (list) {
                 let html = '';
                 pageItems.forEach(badgeInfo => {
                     html += renderBadgeCard(badgeInfo, null, null);
@@ -2672,28 +2543,32 @@
 
                 // 前へボタン
                 paginationHtml += `
-            <li class="page-item ${currentBadgePage === 1 ? 'disabled' : ''}">
-                <a class="page-link" href="javascript:void(0)" onclick="goToBadgePage(${currentBadgePage - 1})">‹</a>
-            </li>
-            `;
+                    <li class="page-item ${currentBadgePage === 1 ? 'disabled' : ''}">
+                        <a class="page-link" href="javascript:void(0)" onclick="goToBadgePage(${currentBadgePage - 1})">‹</a>
+                    </li>
+                `;
 
                 // ページ番号（最大7個表示）
                 let startPage = Math.max(1, currentBadgePage - 3);
                 let endPage = Math.min(totalPages, startPage + 6);
 
-                if (endPage - startPage < 6) { startPage = Math.max(1, endPage - 6); } for (let i = startPage; i <= endPage; i++) {
-                    paginationHtml += ` <li class="page-item ${i === currentBadgePage ? 'active' : ''}">
-                <a class="page-link" href="javascript:void(0)" onclick="goToBadgePage(${i})">${i}</a>
-                </li>
-                `;
+                if (endPage - startPage < 6) {
+                    startPage = Math.max(1, endPage - 6);
+                }
+
+                for (let i = startPage; i <= endPage; i++) {
+                    paginationHtml += `
+                        <li class="page-item ${i === currentBadgePage ? 'active' : ''}">
+                            <a class="page-link" href="javascript:void(0)" onclick="goToBadgePage(${i})">${i}</a>
+                        </li>
+                    `;
                 }
 
                 // 次へボタン
                 paginationHtml += `
-                <li class="page-item ${currentBadgePage === totalPages ? 'disabled' : ''}">
-                    <a class="page-link" href="javascript:void(0)"
-                        onclick="goToBadgePage(${currentBadgePage + 1})">›</a>
-                </li>
+                    <li class="page-item ${currentBadgePage === totalPages ? 'disabled' : ''}">
+                        <a class="page-link" href="javascript:void(0)" onclick="goToBadgePage(${currentBadgePage + 1})">›</a>
+                    </li>
                 `;
 
                 pagination.innerHTML = paginationHtml;
@@ -2707,10 +2582,7 @@
             currentBadgePage = page;
             filterAndRenderBadges();
             // ページ移動時、バッジセクションまでスクロール
-            document.getElementById('purchasable-badges-section')?.scrollIntoView({
-                behavior: 'smooth', block:
-                    'nearest'
-            });
+            document.getElementById('purchasable-badges-section')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
         // ============ 販売実績の読み込み ============
@@ -2798,8 +2670,7 @@
                     if (actionFilter === 'transfer') {
                         logsQuery = logsQuery.in('action_type', ['transfer_send', 'transfer_receive']);
                     } else if (actionFilter === 'badge') {
-                        logsQuery = logsQuery.in('action_type', ['badge_transfer', 'badge_receive', 'badge_sell',
-                            'badge_purchase']);
+                        logsQuery = logsQuery.in('action_type', ['badge_transfer', 'badge_receive', 'badge_sell', 'badge_purchase']);
                     } else if (actionFilter === 'mahjong') {
                         // 麻雀記録はここでは取得しない（matchesで取得）
                         logsQuery = logsQuery.eq('action_type', 'none_xyz');
@@ -2880,7 +2751,7 @@
                 combined.sort((a, b) => b.timestamp - a.timestamp);
 
                 if (combined.length === 0) {
-                    listEl.innerHTML = `<div class="text-center text-muted py-3"> 活動ログはまだありません</div> `;
+                    listEl.innerHTML = `<div class="text-center text-muted py-3" > 活動ログはまだありません</div> `;
                     section.style.display = 'block';
                     paginationEl.style.display = 'none';
                     return;
@@ -2922,8 +2793,7 @@
                         const isTicketOmikuji = log.action_type === 'omikuji' && log.details?.ticket_reward;
                         // ガチャでコイン0の場合は祈願符（チケット）使用なので🎫-1表示
                         const isTicketGacha = log.action_type === 'gacha_draw' && log.amount === 0;
-                        amountStr = isTicketGacha ? '🎫 -1' : (log.amount !== null && (!isTicketOmikuji || log.amount !== 0)) ?
-                            `🪙 ${log.amount.toLocaleString()}` : '';
+                        amountStr = isTicketGacha ? '🎫 -1' : (log.amount !== null && (!isTicketOmikuji || log.amount !== 0)) ? `🪙 ${log.amount.toLocaleString()}` : '';
                     }
 
                     // 相手の情報を取得（基本は target_user_id。常に最新のプロフィールを参照）
@@ -2931,11 +2801,11 @@
                     const otherProfile = otherId ? allProfiles.find(p => p.discord_user_id === String(otherId)) : null;
 
                     const otherHtml = otherProfile ? `
-                <div class="d-inline-flex align-items-center gap-1 mx-1">
-                    <img src="${otherProfile.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png'}"
-                        class="rounded-circle shadow-sm" style="width: 24px; height: 24px; object-fit: cover;">
-                    <span class="fw-bold">${otherProfile.account_name || '誰か'}</span>
-                </div>` : (otherId ? ` <span class="badge bg-secondary"> ID: ${otherId}</span> ` : '');
+                        <div class="d-inline-flex align-items-center gap-1 mx-1" >
+                            <img src="${otherProfile.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png'}"
+                                class="rounded-circle shadow-sm" style="width: 24px; height: 24px; object-fit: cover;">
+                                <span class="fw-bold">${otherProfile.account_name || '誰か'}</span>
+                            </div>` : (otherId ? ` <span class="badge bg-secondary" > ID: ${otherId}</span> ` : '');
 
                     let detailsStr = '';
                     if (log.isMatch) {
@@ -2945,22 +2815,19 @@
                         const mMode = log.details?.match_mode || '';
 
                         // 大会種別の表示用ラベル
-                        const tLabel = mMode ? `${mMode} ` : (tType.includes('個人') ? '個人戦' : (tType.includes('団体') ? '団体戦' :
-                            tType));
-                        const tPrefix = tLabel ? `<span class="text-muted small me-1"> [${tLabel}]</span> ` : '';
+                        const tLabel = mMode ? `${mMode} ` : (tType.includes('個人') ? '個人戦' : (tType.includes('団体') ? '団体戦' : tType));
+                        const tPrefix = tLabel ? `<span class="text-muted small me-1" > [${tLabel}]</span> ` : '';
 
                         // 過去大会（legacy）の場合は順位を非表示
                         const showRank = !log.details?.is_legacy && rank !== null && rank !== undefined;
 
                         detailsStr = `
-                <div class="d-inline-flex align-items-center flex-wrap">
-                    ${tPrefix}
-                    <span class="fw-bold text-dark me-2">${mode}</span>
-                    ${showRank ? `<span
-                        class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 me-2"
-                        style="font-size: 0.8rem;">${rank}位</span>` : ''}
-                </div>
-                `;
+                        <div class="d-inline-flex align-items-center flex-wrap" >
+                            ${tPrefix}
+                            <span class="fw-bold text-dark me-2">${mode}</span>
+                            ${showRank ? `<span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 me-2" style="font-size: 0.8rem;">${rank}位</span>` : ''}
+                        </div>
+                        `;
                     } else if (log.action_type === 'transfer_send') {
                         detailsStr = `➡ ${otherHtml} への送金`;
                     } else if (log.action_type === 'transfer_receive') {
@@ -2977,8 +2844,7 @@
                         const tr = log.details?.ticket_reward;
                         const rank = log.details?.rank || '不明';
                         if (tr) {
-                            detailsStr = `🎋 運勢: <strong>${rank}</strong> <span class="badge bg-warning text-dark ms-1"
-                    style="font-size: 0.75rem;">🎫 +${tr}枚 祈願符</span>`;
+                            detailsStr = `🎋 運勢: <strong>${rank}</strong> <span class="badge bg-warning text-dark ms-1" style="font-size: 0.75rem;">🎫 +${tr}枚 祈願符</span>`;
                         } else {
                             detailsStr = `🎋 運勢: <strong>${rank}</strong>`;
                         }
@@ -2994,12 +2860,11 @@
                         if (bId && badgeMap[bId]) {
                             const badge = badgeMap[bId];
                             detailsStr = `
-                <div class="d-inline-flex align-items-center gap-1">
-                    <img src="${badge.image_url}" style="width: 30px; height: 30px; object-fit: contain;"
-                        title="${badge.name}">
-                    <span>${badge.name} を獲得</span>
-                </div>
-                `;
+                        <div class="d-inline-flex align-items-center gap-1" >
+                            <img src="${badge.image_url}" style="width: 30px; height: 30px; object-fit: contain;" title="${badge.name}">
+                                <span>${badge.name} を獲得</span>
+                            </div>
+                    `;
                         } else {
                             let icon = '🎁';
                             if (resultType === 'exchange_ticket') icon = '🎫';
@@ -3011,36 +2876,33 @@
 
                     // バッジ関連のログで、detailsにbadge_idがないがlog本体にある場合のアイコン表示
                     const bId = log.badge_id;
-                    if (['badge_transfer', 'badge_receive', 'badge_sell', 'badge_purchase'].includes(log.action_type) && bId
-                        && badgeMap[bId]) {
+                    if (['badge_transfer', 'badge_receive', 'badge_sell', 'badge_purchase'].includes(log.action_type) && bId && badgeMap[bId]) {
                         const badge = badgeMap[bId];
                         const originalDetails = detailsStr;
                         detailsStr = `
-                <div class="d-inline-flex align-items-center gap-1">
-                    <img src="${badge.image_url}" style="width: 24px; height: 24px; object-fit: contain;"
-                        title="${badge.name}">
-                    <span>${originalDetails}</span>
-                </div>
-                `;
+                            <div class="d-inline-flex align-items-center gap-1">
+                                <img src="${badge.image_url}" style="width: 24px; height: 24px; object-fit: contain;" title="${badge.name}">
+                                <span>${originalDetails}</span>
+                            </div>
+                        `;
                     }
 
                     return `
-                <div class="activity-item-card">
-                    <span class="activity-date">${date}</span>
-                    <div class="row align-items-center g-2">
-                        <div class="col">
-                            <div class="d-flex flex-wrap align-items-center gap-2">
-                                <span class="activity-type-badge">${typeName}</span>
-                                <span class="activity-details">${detailsStr}</span>
+                        <div class="activity-item-card" >
+                            <span class="activity-date">${date}</span>
+                            <div class="row align-items-center g-2">
+                                <div class="col">
+                                    <div class="d-flex flex-wrap align-items-center gap-2">
+                                        <span class="activity-type-badge">${typeName}</span>
+                                        <span class="activity-details">${detailsStr}</span>
+                                    </div>
+                                </div>
+                                <div class="col-auto text-end">
+                                    <span class="activity-amount ${log.amount > 0 ? 'text-success' : log.amount < 0 ? 'text-danger' : ''}">${amountStr}</span>
+                                </div>
                             </div>
                         </div>
-                        <div class="col-auto text-end">
-                            <span
-                                class="activity-amount ${log.amount > 0 ? 'text-success' : log.amount < 0 ? 'text-danger' : ''}">${amountStr}</span>
-                        </div>
-                    </div>
-                </div>
-                `;
+                        `;
                 }).join('');
 
 
@@ -3049,64 +2911,63 @@
                 if (totalPages > 1) {
                     // 画面幅に応じてボタン表示数を切り替え (モバイル:3, 中間:4, PC:5+)
                     const width = window.innerWidth;
-                    const groupSize = width < 576 ? 3 : (width < 992 ? 4 : 5); const pageGroup = Math.ceil(page / groupSize);
-                    const startPage = (pageGroup - 1) * groupSize + 1; const endPage = Math.min(startPage + (groupSize - 1),
-                        totalPages); let pagHtml = '';
-                    // 「最初へ」ボタン 
-                    pagHtml += ` <li
-                    class="page-item ${page === 1 ? 'disabled' : ''}">
-                    <a class="page-link shadow-sm" href="javascript:void(0)" onclick="loadActivityLogs(1)">«</a>
-                    </li>`;
+                    const groupSize = width < 576 ? 3 : (width < 992 ? 4 : 5);
+                    const pageGroup = Math.ceil(page / groupSize);
+                    const startPage = (pageGroup - 1) * groupSize + 1;
+                    const endPage = Math.min(startPage + (groupSize - 1), totalPages);
+
+                    let pagHtml = '';
+
+                    // 「最初へ」ボタン
+                    pagHtml += `
+                        <li class="page-item ${page === 1 ? 'disabled' : ''}">
+                            <a class="page-link shadow-sm" href="javascript:void(0)" onclick="loadActivityLogs(1)">«</a>
+                        </li>`;
 
                     // 「前のグループ」ボタン
                     if (startPage > 1) {
                         pagHtml += `
-                    <li class="page-item">
-                        <a class="page-link shadow-sm" href="javascript:void(0)"
-                            onclick="loadActivityLogs(${startPage - 1})">‹</a>
-                    </li>`;
+                        <li class="page-item">
+                            <a class="page-link shadow-sm" href="javascript:void(0)" onclick="loadActivityLogs(${startPage - 1})">‹</a>
+                        </li>`;
                     }
 
                     // 現在のグループのページ番号（最大5個）
                     for (let i = startPage; i <= endPage; i++) {
-                        pagHtml += ` <li
-                        class="page-item ${i === page ? 'active' : ''}">
-                        <a class="page-link shadow-sm" href="javascript:void(0)"
-                            onclick="loadActivityLogs(${i})">${i}</a>
+                        pagHtml += `
+                        <li class="page-item ${i === page ? 'active' : ''}">
+                            <a class="page-link shadow-sm" href="javascript:void(0)" onclick="loadActivityLogs(${i})">${i}</a>
                         </li>`;
                     }
 
                     // 「次のグループ」ボタン
                     if (endPage < totalPages) {
-                        pagHtml += ` <li class="page-item">
-                            <a class="page-link shadow-sm" href="javascript:void(0)"
-                                onclick="loadActivityLogs(${endPage + 1})">›</a>
-                            </li>`;
+                        pagHtml += `
+                        <li class="page-item">
+                            <a class="page-link shadow-sm" href="javascript:void(0)" onclick="loadActivityLogs(${endPage + 1})">›</a>
+                        </li>`;
                     }
 
                     // 「最後へ」ボタン
                     pagHtml += `
-                            <li class="page-item ${page === totalPages ? 'disabled' : ''}">
-                                <a class="page-link shadow-sm" href="javascript:void(0)"
-                                    onclick="loadActivityLogs(${totalPages})">»</a>
-                            </li>`;
+                        <li class="page-item ${page === totalPages ? 'disabled' : ''}">
+                            <a class="page-link shadow-sm" href="javascript:void(0)" onclick="loadActivityLogs(${totalPages})">»</a>
+                        </li>`;
 
                     // プルダウンによるページ選択 (モバイルではコンパクトに)
-                    const selectWidth = width < 576 ? '100px' : 'auto'; pagHtml += ` <li
-                                class="page-item ms-sm-2">
-                                <select class="form-select form-select-sm shadow-sm"
-                                    onchange="if(this.value) loadActivityLogs(parseInt(this.value))"
-                                    style="width: ${selectWidth}; display: inline-block; font-size: 0.75rem;">
-                                    <option value="">ページ...</option>`;
+                    const selectWidth = width < 576 ? '100px' : 'auto';
+                    pagHtml += `
+                        <li class="page-item ms-sm-2">
+                            <select class="form-select form-select-sm shadow-sm" onchange="if(this.value) loadActivityLogs(parseInt(this.value))" style="width: ${selectWidth}; display: inline-block; font-size: 0.75rem;">
+                                <option value="">ページ...</option>`;
 
                     for (let i = 1; i <= totalPages; i++) {
-                        pagHtml += `<option value="${i}" ${i === page
-                            ? 'selected' : ''}>${i}ページ</option>`;
+                        pagHtml += `<option value="${i}" ${i === page ? 'selected' : ''}>${i}ページ</option>`;
                     }
 
                     pagHtml += `
-                                </select>
-                                </li>`;
+                            </select>
+                        </li>`;
 
                     paginationEl.innerHTML = pagHtml;
                     if (paginationArea) paginationArea.style.display = 'block';
@@ -3127,8 +2988,7 @@
             const listEl = document.getElementById('action-badge-list');
             listEl.innerHTML = '<p class="text-center text-muted py-3">読み込み中...</p>';
 
-            document.getElementById('badgeActionModalLabel').textContent = mode === 'transfer' ?
-                '譲渡するバッジを選択' : '売却するバッジを選択';
+            document.getElementById('badgeActionModalLabel').textContent = mode === 'transfer' ? '譲渡するバッジを選択' : '売却するバッジを選択';
 
             const modalEl = document.getElementById('badgeActionModal');
             const modal = new bootstrap.Modal(modalEl);
@@ -3159,13 +3019,11 @@
                 }
 
                 // 非売品（限定品）を除外
-                let targetBadges = owned.filter(item => item.badges && item.badges.sales_type !==
-                    '限定品');
+                let targetBadges = owned.filter(item => item.badges && item.badges.sales_type !== '限定品');
 
                 // 譲渡モードの場合のみ換金品を除外
                 if (mode === 'transfer') {
-                    targetBadges = targetBadges.filter(item => item.badges && item.badges.sales_type !==
-                        '換金品');
+                    targetBadges = targetBadges.filter(item => item.badges && item.badges.sales_type !== '換金品');
                 }
 
                 if (targetBadges.length === 0) {
@@ -3204,21 +3062,17 @@
                     const totalSell = sellPrice * count;
 
                     htmlParts.push(`
-                                <div class="user-select-item"
-                                    onclick="openConvertibleSellModal('${badge.id}', '${badge.name.replace(/'/g, "\\'")}', ${count}, ${sellPrice})">
-                                    <img src="${badge.image_url}" class="user-select-avatar"
-                                        style="border-radius: 8px;">
-                                    <div class="flex-grow-1">
-                                        <div class="user-select-name">${badge.name} <span
-                                                class="badge bg-dark">×${count}</span></div>
-                                        <div class="small text-muted" style="font-size: 0.75rem;">
-                                            売却: 🪙${sellPrice.toLocaleString()} C × ${count} =
-                                            🪙${totalSell.toLocaleString()} C
-                                        </div>
-                                    </div>
-                                    <div class="text-danger fw-bold">売却</div>
+                        <div class="user-select-item" onclick="openConvertibleSellModal('${badge.id}', '${badge.name.replace(/'/g, "\\'")}', ${count}, ${sellPrice})">
+                            <img src="${badge.image_url}" class="user-select-avatar" style="border-radius: 8px;">
+                            <div class="flex-grow-1">
+                                <div class="user-select-name">${badge.name} <span class="badge bg-dark">×${count}</span></div>
+                                <div class="small text-muted" style="font-size: 0.75rem;">
+                                    売却: 🪙${sellPrice.toLocaleString()} C × ${count} = 🪙${totalSell.toLocaleString()} C
                                 </div>
-                                `);
+                            </div>
+                            <div class="text-danger fw-bold">売却</div>
+                        </div>
+                    `);
                 });
 
                 // 通常バッジの処理
@@ -3240,39 +3094,34 @@
 
                     if (mode === 'transfer') {
                         return `
-                                <div class="user-select-item"
-                                    onclick="openUUIDTransferModal('${item.uuid}', '${badge.name.replace(/'/g, "\\'")}', ${buyPrice}, ${pValue}, ${pSell})">
-                                    <img src="${badge.image_url}" class="user-select-avatar"
-                                        style="border-radius: 8px;">
-                                    <div class="flex-grow-1">
-                                        <div class="user-select-name">${badge.name} ${mutantLabel}</div>
-                                        <div class="small text-muted" style="font-size: 0.75rem;">
-                                            購入: 🪙${buyPrice.toLocaleString()} |
-                                            時価: 🪙${pValue.toLocaleString()} |
-                                            売却: 🪙${pSell.toLocaleString()}
-                                        </div>
+                    <div class="user-select-item" onclick="openUUIDTransferModal('${item.uuid}', '${badge.name.replace(/'/g, "\\'")}', ${buyPrice}, ${pValue}, ${pSell})">
+                        <img src="${badge.image_url}" class="user-select-avatar" style="border-radius: 8px;">
+                                <div class="flex-grow-1">
+                                    <div class="user-select-name">${badge.name} ${mutantLabel}</div>
+                                    <div class="small text-muted" style="font-size: 0.75rem;">
+                                        購入: 🪙${buyPrice.toLocaleString()} | 
+                                        時価: 🪙${pValue.toLocaleString()} | 
+                                        売却: 🪙${pSell.toLocaleString()}
                                     </div>
-                                    <div class="text-primary fw-bold">選択</div>
                                 </div>
-                                `;
+                                <div class="text-primary fw-bold">選択</div>
+                            </div>
+                    `;
                     } else {
                         return `
-                                <div class="user-select-item"
-                                    onclick="sellBadgeConfirm('${item.uuid}', '${badge.name.replace(/'/g, "\\'")}',
-                                    ${buyPrice}, ${pValue}, ${pSell})">
-                                    <img src="${badge.image_url}" class="user-select-avatar"
-                                        style="border-radius: 8px;">
-                                    <div class="flex-grow-1">
-                                        <div class="user-select-name">${badge.name} ${mutantLabel}</div>
-                                        <div class="small text-muted" style="font-size: 0.75rem;">
-                                            購入: 🪙${buyPrice.toLocaleString()} |
-                                            時価: 🪙${pValue.toLocaleString()} |
-                                            売却: 🪙${pSell.toLocaleString()}
-                                        </div>
+                    <div class="user-select-item" onclick="sellBadgeConfirm('${item.uuid}', '${badge.name.replace(/'/g, "\\'")}', ${buyPrice}, ${pValue}, ${pSell})">
+                        <img src="${badge.image_url}" class="user-select-avatar" style="border-radius: 8px;">
+                                <div class="flex-grow-1">
+                                    <div class="user-select-name">${badge.name} ${mutantLabel}</div>
+                                    <div class="small text-muted" style="font-size: 0.75rem;">
+                                        購入: 🪙${buyPrice.toLocaleString()} | 
+                                        時価: 🪙${pValue.toLocaleString()} | 
+                                        売却: 🪙${pSell.toLocaleString()}
                                     </div>
-                                    <div class="text-danger fw-bold">売却</div>
                                 </div>
-                                `;
+                                <div class="text-danger fw-bold">売却</div>
+                            </div>
+                    `;
                     }
                 }).join('');
             } catch (err) {
@@ -3330,9 +3179,7 @@
                 // 活動ログ記録
                 if (typeof logActivity === 'function') {
                     // バッジID(整数)を取得
-                    const { data: bInfo } = await
-                        supabaseClient.from('user_badges_new').select('badge_id').eq('uuid',
-                            currentActionUUID).single();
+                    const { data: bInfo } = await supabaseClient.from('user_badges_new').select('badge_id').eq('uuid', currentActionUUID).single();
                     const bId = bInfo?.badge_id;
 
                     await logActivity(targetId, 'badge_sell', {
@@ -3362,21 +3209,23 @@
 
         // ============ 換金品の売却 ============
         async function openConvertibleSellModal(badgeId, badgeName, totalCount, fixedPrice) {
-            const quantity = prompt(`「${badgeName}」を何個売却しますか？（所持数: ${totalCount} 個、売却価格:
-                                ${fixedPrice.toLocaleString()} C / 個）`, '1');
+            const quantity = prompt(`「${badgeName}」を何個売却しますか？（所持数: ${totalCount} 個、売却価格: ${fixedPrice.toLocaleString()} C / 個）`, '1');
 
             if (!quantity) return;
 
             const count = parseInt(quantity);
-            if (isNaN(count) || count <= 0) { alert('有効な個数を入力してください。'); return; } if (count >
-                totalCount) {
+            if (isNaN(count) || count <= 0) {
+                alert('有効な個数を入力してください。');
+                return;
+            }
+
+            if (count > totalCount) {
                 alert(`所持数（${totalCount} 個）を超えています。`);
                 return;
             }
 
             const totalPrice = fixedPrice * count;
-            if (!confirm(`「${badgeName}」を ${count} 個売却しますか？（合計: 💰${totalPrice.toLocaleString()}
-                                    C）`)) return;
+            if (!confirm(`「${badgeName}」を ${count} 個売却しますか？（合計: 💰${totalPrice.toLocaleString()} C）`)) return;
 
             toggleLoading(true);
             try {
@@ -3390,20 +3239,25 @@
 
                 if (fetchError) throw fetchError;
                 if (!ownedItems || ownedItems.length < count) throw new Error('指定した数のバッジが見つかりません。');
-                // 一つずつ売却 
-                let successCount = 0; for (const item of ownedItems) {
-                    const { data,
-                        error } = await supabaseClient.rpc('sell_badge_v2', {
-                            p_user_id: targetId,
-                            p_badge_uuid: item.uuid
-                        }); if (error || !data.ok) {
-                            console.error('売却エラー:',
-                                error || data.error); continue;
-                        } successCount++;
-                } if (successCount > 0) {
+
+                // 一つずつ売却
+                let successCount = 0;
+                for (const item of ownedItems) {
+                    const { data, error } = await supabaseClient.rpc('sell_badge_v2', {
+                        p_user_id: targetId,
+                        p_badge_uuid: item.uuid
+                    });
+
+                    if (error || !data.ok) {
+                        console.error('売却エラー:', error || data.error);
+                        continue;
+                    }
+                    successCount++;
+                }
+
+                if (successCount > 0) {
                     const actualTotalPrice = fixedPrice * successCount;
-                    alert(`「${badgeName}」を ${successCount} 個売却しました。（合計:
-                                        💰${actualTotalPrice.toLocaleString()} C）`);
+                    alert(`「${badgeName}」を ${successCount} 個売却しました。（合計: 💰${actualTotalPrice.toLocaleString()} C）`);
 
                     // 活動ログ記録
                     if (typeof logActivity === 'function') {
@@ -3470,8 +3324,7 @@
             document.querySelectorAll('#badge-modal-list .badge-item').forEach(el => {
                 el.classList.remove('selected');
             });
-            const targetEl =
-                document.querySelector(`.badge-item[data-badge-id="${badgeId}"]`);
+            const targetEl = document.querySelector(`.badge-item[data-badge-id="${badgeId}"]`);
             if (targetEl) targetEl.classList.add('selected');
 
             const btn = document.getElementById('btn-execute-equip');
@@ -3499,8 +3352,7 @@
                 position = posRadio ? posRadio.value : 'left';
             }
 
-            const columnName = position === 'right' ? 'equipped_badge_id_right' :
-                'equipped_badge_id';
+            const columnName = position === 'right' ? 'equipped_badge_id_right' : 'equipped_badge_id';
 
             // 現在の装着状況を確認
             const { data: current } = await supabaseClient
@@ -3510,12 +3362,9 @@
                 .maybeSingle();
 
             // 同じバッジをクリックした場合は外す
-            const currentBadgeId = position === 'right' ? current?.equipped_badge_id_right :
-                current?.equipped_badge_id;
-            const oppositeBadgeId = position === 'right' ? current?.equipped_badge_id :
-                current?.equipped_badge_id_right;
-            const oppositeColumn = position === 'right' ? 'equipped_badge_id' :
-                'equipped_badge_id_right';
+            const currentBadgeId = position === 'right' ? current?.equipped_badge_id_right : current?.equipped_badge_id;
+            const oppositeBadgeId = position === 'right' ? current?.equipped_badge_id : current?.equipped_badge_id_right;
+            const oppositeColumn = position === 'right' ? 'equipped_badge_id' : 'equipped_badge_id_right';
 
             const newBadgeId = (currentBadgeId === badgeId) ? null : badgeId;
 
@@ -3622,21 +3471,18 @@
                     if (isEquippedLeft && isEquippedRight) posLabel = '◀左右▶';
 
                     return `
-                                        <div class="col-4 col-md-3 text-center">
-                                            <div class="badge-item ${isEquipped ? 'equipped' : ''}"
-                                                data-badge-id="${badge.id}" onclick="selectBadgeInModal('${badge.id}')"
-                                                style="cursor: pointer; position: relative;"
-                                                title="${badge.name}${isEquipped ? ' (装着中)' : ''}">
-                                                <img src="${badge.image_url}" alt="${badge.name}"
-                                                    style="width: 60px; height: 60px; object-fit: contain;">
-                                                ${isEquipped ? `<span
-                                                    class="position-absolute top-0 start-50 translate-middle badge bg-primary"
-                                                    style="font-size: 0.6rem; z-index: 10;">${posLabel}</span>` : ''}
-                                            </div>
-                                            <div class="small text-truncate mt-1" style="font-size: 0.7rem;">
-                                                ${badge.name}</div>
-                                        </div>
-                                        `;
+                    <div class="col-4 col-md-3 text-center" >
+                            <div class="badge-item ${isEquipped ? 'equipped' : ''}"
+                                data-badge-id="${badge.id}"
+                                onclick="selectBadgeInModal('${badge.id}')"
+                                style="cursor: pointer; position: relative;"
+                                title="${badge.name}${isEquipped ? ' (装着中)' : ''}">
+                                <img src="${badge.image_url}" alt="${badge.name}" style="width: 60px; height: 60px; object-fit: contain;">
+                                ${isEquipped ? `<span class="position-absolute top-0 start-50 translate-middle badge bg-primary" style="font-size: 0.6rem; z-index: 10;">${posLabel}</span>` : ''}
+                            </div>
+                            <div class="small text-truncate mt-1" style="font-size: 0.7rem;">${badge.name}</div>
+                        </div>
+                    `;
                 }).join('');
             } catch (err) {
                 console.error('バッジ読み込みエラー:', err);
@@ -3682,20 +3528,25 @@
 
                     allCurrentData = allCurrentData.concat(data);
 
-                    if (data.length < pageSize) break; page++;
-                } console.log('✅ マイページ: match_results取得完了: ', allCurrentData.length, '件'); const
-                    currentData = allCurrentData; let legacyData = []; try {
-                        const { data, error:
-                            legacyError } = await supabaseClient.from('tournament_player_stats_snapshot')
-                                .select('*'); if (!legacyError) legacyData = data || [];
-                    } catch (e) {
-                        console.warn('第一回データ取得スキップ:', e);
-                    } const taggedCurrentData = (currentData ||
-                        []).map(r => ({ ...r, tournament_type: r.tournament_type || '第二回麻雀大会' }));
-                const taggedLegacyData = (legacyData || []).map(r => ({
-                    ...r,
-                    tournament_type: r.tournament_type || '第一回麻雀大会'
-                }));
+                    if (data.length < pageSize) break;
+                    page++;
+                }
+
+                console.log('✅ マイページ: match_results取得完了:', allCurrentData.length, '件');
+                const currentData = allCurrentData;
+
+                let legacyData = [];
+                try {
+                    const { data, error: legacyError } = await supabaseClient
+                        .from('tournament_player_stats_snapshot')
+                        .select('*');
+                    if (!legacyError) legacyData = data || [];
+                } catch (e) {
+                    console.warn('第一回データ取得スキップ:', e);
+                }
+
+                const taggedCurrentData = (currentData || []).map(r => ({ ...r, tournament_type: r.tournament_type || '第二回麻雀大会' }));
+                const taggedLegacyData = (legacyData || []).map(r => ({ ...r, tournament_type: r.tournament_type || '第一回麻雀大会' }));
 
                 allMahjongRecords = [...taggedCurrentData, ...taggedLegacyData];
                 renderTournamentDropdown();
@@ -3711,10 +3562,8 @@
             const select = document.getElementById('tournament-select');
             if (!select) return;
             const tournaments = ['第二回麻雀大会', '第一回麻雀大会'];
-            let html = tournaments.map(t => `<option value="${t}"
-                                                ${currentMyTournament === t ? 'selected' : ''}>${t}</option>`).join('');
-            html += `<option value="all" ${currentMyTournament === 'all' ? 'selected' : ''
-                }>全シーズン</option>`;
+            let html = tournaments.map(t => `<option value="${t}" ${currentMyTournament === t ? 'selected' : ''}>${t}</option>`).join('');
+            html += `<option value="all" ${currentMyTournament === 'all' ? 'selected' : ''}>全シーズン</option>`;
             select.innerHTML = html;
         }
 
@@ -3767,28 +3616,18 @@
             if (statsGrid) statsGrid.style.display = 'block';
             noStatsMsg.style.display = 'none';
 
-            const formatScore = (val) => (typeof val !== 'number') ? val :
-                Math.round(val * 10) / 10;
+            const formatScore = (val) => (typeof val !== 'number') ? val : Math.round(val * 10) / 10;
             const games = myStats.games;
 
-            updateStatCard('total', formatScore(myStats.total), playerStats, 'total',
-                true, games);
-            updateStatCard('avg-score', formatScore(myStats.avgScore), playerStats,
-                'avgScore', true, games);
-            updateStatCard('max-score', formatScore(myStats.maxScore), playerStats,
-                'maxScore', true, games);
-            updateStatCard('win-rate', myStats.winRate.toFixed(1) + '%', playerStats,
-                'winRate', true, games);
-            updateStatCard('deal-rate', myStats.dealRate.toFixed(1) + '%', playerStats,
-                'dealRate', false, games);
-            updateStatCard('skill', myStats.skill.toFixed(1) + '%', playerStats,
-                'skill', true, games);
-            updateStatCard('avg-rank', myStats.avgRank.toFixed(2), playerStats,
-                'avgRank', false, games);
-            updateStatCard('top-rate', myStats.topRate.toFixed(1) + '%', playerStats,
-                'topRate', true, games);
-            updateStatCard('avoid-rate', myStats.avoidRate.toFixed(1) + '%',
-                playerStats, 'avoidRate', true, games);
+            updateStatCard('total', formatScore(myStats.total), playerStats, 'total', true, games);
+            updateStatCard('avg-score', formatScore(myStats.avgScore), playerStats, 'avgScore', true, games);
+            updateStatCard('max-score', formatScore(myStats.maxScore), playerStats, 'maxScore', true, games);
+            updateStatCard('win-rate', myStats.winRate.toFixed(1) + '%', playerStats, 'winRate', true, games);
+            updateStatCard('deal-rate', myStats.dealRate.toFixed(1) + '%', playerStats, 'dealRate', false, games);
+            updateStatCard('skill', myStats.skill.toFixed(1) + '%', playerStats, 'skill', true, games);
+            updateStatCard('avg-rank', myStats.avgRank.toFixed(2), playerStats, 'avgRank', false, games);
+            updateStatCard('top-rate', myStats.topRate.toFixed(1) + '%', playerStats, 'topRate', true, games);
+            updateStatCard('avoid-rate', myStats.avoidRate.toFixed(1) + '%', playerStats, 'avoidRate', true, games);
             updateStatCard('games', myStats.games, playerStats, 'games', true, games);
 
             // 局数とレーティング（順位なし）
@@ -3813,8 +3652,7 @@
             // プレイヤーID特定ロジック（discord_user_idがあれば優先、なければ名前）
             const getPlayerId = (r) => {
                 let id = r.discord_user_id;
-                if (!id || id === 'null') id = r.nickname || r.account_name || r.name ||
-                    'Unknown';
+                if (!id || id === 'null') id = r.nickname || r.account_name || r.name || 'Unknown';
                 return String(id);
             };
 
@@ -3827,8 +3665,7 @@
             // 自分が参加した試合のmatch_idを取得
             // calculateAllPlayerStatsと同様のID抽出ロジックを使用
             const myMatches = records.filter(r => getPlayerId(r) === myId);
-            const myMatchIds = [...new Set(myMatches.map(r => r.match_id).filter(id =>
-                id))];
+            const myMatchIds = [...new Set(myMatches.map(r => r.match_id).filter(id => id))];
 
             if (myMatchIds.length === 0) {
                 section.style.display = 'none';
@@ -3859,8 +3696,7 @@
                     }
                     opponentData[oppId].count++;
                     opponentData[oppId].myScoreSum += myScore;
-                    opponentData[oppId].opponentScoreSum += Number(r.final_score ||
-                        r.score_total || 0);
+                    opponentData[oppId].opponentScoreSum += Number(r.final_score || r.score_total || 0);
                 });
             });
 
@@ -3882,77 +3718,59 @@
             const top3 = [...opponents].sort((a, b) => b.count - a.count).slice(0, 3);
             topList.innerHTML = top3.map((opp, i) => {
                 const medalColors = ['#ffd700', '#c0c0c0', '#cd7f32'];
-                const medal = i < 3 ? `<span
-                                                style="color: ${medalColors[i]}; font-weight: bold;">${i + 1}位</span>` :
-                    `${i + 1}位`;
+                const medal = i < 3 ? `<span style="color: ${medalColors[i]}; font-weight: bold;">${i + 1}位</span>` : `${i + 1}位`;
 
                 // プロフィールからアバターを取得
-                const profile = allProfiles.find(p => p.discord_user_id ===
-                    String(opp.id));
-                const avatarUrl = profile?.avatar_url ||
-                    'https://cdn.discordapp.com/embed/avatars/0.png';
+                const profile = allProfiles.find(p => p.discord_user_id === String(opp.id));
+                const avatarUrl = profile?.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png';
 
                 // リンク先の設定（プロフィールがあればリンク化）
                 const linkUrl = profile ? `index.html?user=${opp.id}` : null;
-                const wrapperStart = linkUrl ? `<a href="${linkUrl}"
-                                                    class="text-decoration-none text-dark d-flex align-items-center gap-2 px-2 py-2 rounded"
-                                                    style="background: #f8f9fa; border: 1px solid #eee; transition: background 0.2s;"
-                                                    onmouseover="this.style.background='#e9ecef'"
-                                                    onmouseout="this.style.background='#f8f9fa'">`
-                    : `<div class="d-flex align-items-center gap-2 px-2 py-2 rounded"
-                                                        style="background: #f8f9fa; border: 1px solid #eee;">`;
+                const wrapperStart = linkUrl ? `<a href="${linkUrl}" class="text-decoration-none text-dark d-flex align-items-center gap-2 px-2 py-2 rounded" style="background: #f8f9fa; border: 1px solid #eee; transition: background 0.2s;" onmouseover="this.style.background='#e9ecef'" onmouseout="this.style.background='#f8f9fa'">`
+                    : `<div class="d-flex align-items-center gap-2 px-2 py-2 rounded" style="background: #f8f9fa; border: 1px solid #eee;">`;
                 const wrapperEnd = linkUrl ? `</a>` : `</div>`;
 
                 return `
-                                                ${wrapperStart}
-                                                ${medal}
-                                                <img src="${avatarUrl}" class="rounded-circle shadow-sm"
-                                                    style="width: 24px; height: 24px; object-fit: cover;">
-                                                <span class="fw-bold" style="font-size: 0.9rem;">${opp.name}</span>
-                                                <span class="text-muted"
-                                                    style="font-size: 0.8rem;">${opp.count}試合</span>
-                                                ${wrapperEnd}
-                                                `;
+                    ${wrapperStart}
+                        ${medal}
+                        <img src="${avatarUrl}" class="rounded-circle shadow-sm" style="width: 24px; height: 24px; object-fit: cover;">
+                        <span class="fw-bold" style="font-size: 0.9rem;">${opp.name}</span>
+                        <span class="text-muted" style="font-size: 0.8rem;">${opp.count}試合</span>
+                    ${wrapperEnd}
+                `;
             }).join('');
 
             // ヘルパー: マッチアップカード生成
             const createMatchupCard = (opp, isBest) => {
                 if (!opp) return '<span class="text-muted small">-</span>';
 
-                const profile = allProfiles.find(p => p.discord_user_id ===
-                    String(opp.id));
-                const avatarUrl = profile?.avatar_url ||
-                    'https://cdn.discordapp.com/embed/avatars/0.png';
+                const profile = allProfiles.find(p => p.discord_user_id === String(opp.id));
+                const avatarUrl = profile?.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png';
                 const scoreClass = isBest ? 'text-success' : 'text-danger';
                 const scorePrefix = isBest && opp.scoreDiff > 0 ? '+' : '';
 
                 // リンク設定
                 const linkUrl = profile ? `index.html?user=${opp.id}` : null;
                 const content = `
-                                                <img src="${avatarUrl}" class="rounded-circle shadow-sm"
-                                                    style="width: 20px; height: 20px; object-fit: cover;">
-                                                <span class="fw-bold" style="font-size: 0.95rem;">${opp.name}</span>
-                                                <span class="${scoreClass} fw-bold ms-auto"
-                                                    style="font-size: 0.95rem;">${scorePrefix}${opp.scoreDiff.toFixed(1)}</span>
-                                                `;
+                    <img src="${avatarUrl}" class="rounded-circle shadow-sm" style="width: 20px; height: 20px; object-fit: cover;">
+                    <span class="fw-bold" style="font-size: 0.95rem;">${opp.name}</span>
+                    <span class="${scoreClass} fw-bold ms-auto" style="font-size: 0.95rem;">${scorePrefix}${opp.scoreDiff.toFixed(1)}</span>
+                `;
 
                 if (linkUrl) {
-                    return `<a href="${linkUrl}"
-                                                    class="text-decoration-none text-dark d-flex align-items-center gap-2 w-100">${content}</a>`;
+                    return `<a href="${linkUrl}" class="text-decoration-none text-dark d-flex align-items-center gap-2 w-100">${content}</a>`;
                 } else {
-                    return content;
-                    // 既存の構造上、外側のdivにクラスがあるので、内部要素だけで良いか確認が必要だが、元の実装は innerHTML に直書きだった
+                    return content; // 既存の構造上、外側のdivにクラスがあるので、内部要素だけで良いか確認が必要だが、元の実装は innerHTML に直書きだった
                     // 元の実装:
                     // bestMatchup.innerHTML = `...`;
-                    // bestMatchup 自体は div#best-matchup class="d-flex align-items-center gap - 2"
+                    // bestMatchup 自体は div#best-matchup class="d-flex align-items-center gap-2"
                     // ここで中身を <a> で包むと a が flex item になる。
                     // a に w-100 d-flex align-items-center gap-2 をつければOK
                 }
             };
 
             // 一番勝ち越し
-            const bestOpp = [...opponents].sort((a, b) => b.scoreDiff -
-                a.scoreDiff)[0];
+            const bestOpp = [...opponents].sort((a, b) => b.scoreDiff - a.scoreDiff)[0];
             if (bestOpp && bestOpp.scoreDiff > 0) {
                 bestMatchup.innerHTML = createMatchupCard(bestOpp, true);
             } else {
@@ -3960,39 +3778,38 @@
             }
 
             // 一番負け越し
-            const worstOpp = [...opponents].sort((a, b) => a.scoreDiff -
-                b.scoreDiff)[0];
+            const worstOpp = [...opponents].sort((a, b) => a.scoreDiff - b.scoreDiff)[0];
             if (worstOpp && worstOpp.scoreDiff < 0) {
                 worstMatchup.innerHTML = createMatchupCard(worstOpp, false);
-            }
-            else {
-                worstMatchup.innerHTML = '<span class="text-muted small">-</span>'
-                    ;
+            } else {
+                worstMatchup.innerHTML = '<span class="text-muted small">-</span>';
             }
         }
+
         function redirectToRanking(subFilter) {
             // 現在のフィルター設定を取得
             const tournament = currentMyTournament;
             const main = currentMahjongMode;
-            // 自分のIDを取得（アンカー用） 
-            // myAccountName は DiscordID または ニックネームが入っている 
+
+            // 自分のIDを取得（アンカー用）
+            // myAccountName は DiscordID または ニックネームが入っている
             const anchor = `#rank-player-${myAccountName}`;
-            // URL構築 
+
+            // URL構築
             const url = `../mahjong/index.html?tournament=${encodeURIComponent(tournament)}&main=${encodeURIComponent(main)}&sub=${encodeURIComponent(subFilter)}${anchor}`;
-            // 遷移 
+
+            // 遷移
             window.location.href = url;
         }
-        function updateStatCard(id,
-            value, allStats, key, higherIsBetter, myGames) {
-            const
-                el = document.getElementById('stat-' + id); if (el)
-                el.textContent = value;
-            // 10試合以上のプレイヤーのみをランキング対象にする 
+
+        function updateStatCard(id, value, allStats, key, higherIsBetter, myGames) {
+            const el = document.getElementById('stat-' + id);
+            if (el) el.textContent = value;
+
+            // 10試合以上のプレイヤーのみをランキング対象にする
             const qualified = [...allStats].filter(p => p.games >= 10);
-            const sorted = qualified.sort((a, b) => higherIsBetter ? b[key]
-                - a[key] : a[key] - b[key]);
-            const myRank = sorted.findIndex(p => p.name === myAccountName) +
-                1;
+            const sorted = qualified.sort((a, b) => higherIsBetter ? b[key] - a[key] : a[key] - b[key]);
+            const myRank = sorted.findIndex(p => p.name === myAccountName) + 1;
             const total = sorted.length;
 
             const rankEl = document.getElementById('rank-' + id);
@@ -4005,10 +3822,13 @@
                 if (myGames >= 10 && myRank >= 1 && myRank <= 3) {
                     cardEl.classList.add(`rank-${myRank}`);
                 }
-            } if (rankEl) {
-                // 自分が10試合未満の場合はランク外 
+            }
+
+            if (rankEl) {
+                // 自分が10試合未満の場合はランク外
                 if (myGames < 10) {
-                    rankEl.textContent = 'ランク外'; rankEl.classList.add('no-data');
+                    rankEl.textContent = 'ランク外';
+                    rankEl.classList.add('no-data');
                 } else if (myRank > 0) {
                     rankEl.textContent = `${myRank}/${total}位`;
                     rankEl.classList.remove('no-data');
@@ -4023,16 +3843,11 @@
             const players = {};
             records.forEach(r => {
                 let id = r.discord_user_id;
-                if (!id || id === 'null') id = r.nickname || r.account_name
-                    || 'Unknown';
+                if (!id || id === 'null') id = r.nickname || r.account_name || 'Unknown';
                 if (!id) return;
 
                 if (!players[id]) {
-                    players[id] = {
-                        name: id, score: 0, sanma: 0, yonma: 0,
-                        count: 0, win: 0, deal: 0, r1: 0, r2: 0, r3: 0, r4: 0,
-                        max_score: -Infinity, hand_total: 0
-                    };
+                    players[id] = { name: id, score: 0, sanma: 0, yonma: 0, count: 0, win: 0, deal: 0, r1: 0, r2: 0, r3: 0, r4: 0, max_score: -Infinity, hand_total: 0 };
                 }
 
                 const p = players[id];
@@ -4041,36 +3856,28 @@
                 if (r.tournament_type === '第一回麻雀大会') {
                     p.score += Number(r.score_total || 0);
                     p.count += Number(r.matches_played || 0);
-                    p.r1 += Number(r.rank1_count || 0); p.r2 +=
-                        Number(r.rank2_count || 0); p.r3 += Number(r.rank3_count ||
-                            0); p.r4 += Number(r.rank4_count || 0);
-                    p.max_score = Math.max(p.max_score, Number(r.score_max ||
-                        0));
+                    p.r1 += Number(r.rank1_count || 0); p.r2 += Number(r.rank2_count || 0); p.r3 += Number(r.rank3_count || 0); p.r4 += Number(r.rank4_count || 0);
+                    p.max_score = Math.max(p.max_score, Number(r.score_max || 0));
                     p.hand_total += Number(r.hands_played || 0);
                 } else {
                     p.score += Number(r.final_score || 0);
                     p.count += 1;
                     const rk = Number(r.rank);
-                    if (rk === 1) p.r1++; else if (rk === 2) p.r2++; else if (rk
-                        === 3) p.r3++; else if (rk === 4) p.r4++;
-                    p.max_score = Math.max(p.max_score, Number(r.final_score ||
-                        0));
+                    if (rk === 1) p.r1++; else if (rk === 2) p.r2++; else if (rk === 3) p.r3++; else if (rk === 4) p.r4++;
+                    p.max_score = Math.max(p.max_score, Number(r.final_score || 0));
                     p.hand_total += Number(r.hand_count || 0);
                 }
                 p.win += Number(r.win_count || r.wins || 0);
                 p.deal += Number(r.deal_in_count || r.deals || 0);
-                if (mode === '三麻') p.sanma += Number(r.final_score ||
-                    r.score_total || 0);
-                if (mode === '四麻') p.yonma += Number(r.final_score ||
-                    r.score_total || 0);
+                if (mode === '三麻') p.sanma += Number(r.final_score || r.score_total || 0);
+                if (mode === '四麻') p.yonma += Number(r.final_score || r.score_total || 0);
             });
 
             return Object.values(players).map(p => {
                 const count = p.count;
                 const hands = p.hand_total;
                 return {
-                    name: p.name, total: p.score, sanma: p.sanma, yonma:
-                        p.yonma,
+                    name: p.name, total: p.score, sanma: p.sanma, yonma: p.yonma,
                     avgScore: count > 0 ? p.score / count : 0,
                     maxScore: p.max_score === -Infinity ? 0 : p.max_score,
                     // 和了率・放銃率は局数ベースで計算（%）
@@ -4078,11 +3885,9 @@
                     dealRate: hands > 0 ? (p.deal / hands * 100) : 0,
                     // バランス雀力 = (和了数 - 放銃数) / 局数 * 100
                     skill: hands > 0 ? ((p.win - p.deal) / hands * 100) : 0,
-                    avgRank: count > 0 ? (1 * p.r1 + 2 * p.r2 + 3 * p.r3 + 4 *
-                        p.r4) / count : 0,
+                    avgRank: count > 0 ? (1 * p.r1 + 2 * p.r2 + 3 * p.r3 + 4 * p.r4) / count : 0,
                     topRate: count > 0 ? (p.r1 / count) * 100 : 0,
-                    avoidRate: count > 0 ? (1 - ((p.r4 === 0 && p.r3 > 0 ? p.r3
-                        : p.r4) / count)) * 100 : 0,
+                    avoidRate: count > 0 ? (1 - ((p.r4 === 0 && p.r3 > 0 ? p.r3 : p.r4) / count)) * 100 : 0,
                     games: count,
                     hands: hands
                 };
@@ -4091,9 +3896,7 @@
 
         // 戻るボタン
         function goBack() {
-            if (document.referrer &&
-                document.referrer.includes(location.hostname))
-                history.back();
+            if (document.referrer && document.referrer.includes(location.hostname)) history.back();
             else location.href = '../index.html';
         }
 
@@ -4102,7 +3905,7 @@
             if (overlay) overlay.classList.toggle('active', show);
         }
 
-        // Listener removed to prevent ReferenceError
+        document.addEventListener('DOMContentLoaded', initPage);
     </script>
 
     <!-- コイン送金とユーザー検索 -->
@@ -4472,691 +4275,6 @@
             }
         }
         document.addEventListener('DOMContentLoaded', checkTeamNotifications);
-    </script>
-
-
-    <!-- 汎用インベントリモーダル (売却・譲渡共通) -->
-    <div class="modal fade" id="universalInventoryModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
-                <div class="modal-header border-0 bg-white pb-0">
-                    <div>
-                        <h5 class="modal-title fw-bold" id="universalInventoryTitle">バッジ選択</h5>
-                        <p class="text-muted small mb-0" id="universalInventorySubtitle">選択してください</p>
-                    </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body bg-light">
-                    <!-- フィルターエリア -->
-                    <div class="card border-0 shadow-sm mb-3" style="border-radius: 12px;">
-                        <div class="card-body p-3">
-                            <div class="row g-2">
-                                <div class="col-12 col-md-4">
-                                    <div class="input-group">
-                                        <span class="input-group-text bg-white border-end-0"><i
-                                                class="bi bi-search"></i></span>
-                                        <input type="text" id="inventory-search"
-                                            class="form-control border-start-0 ps-0" placeholder="バッジ名で検索..."
-                                            oninput="renderUniversalInventory()">
-                                    </div>
-                                </div>
-                                <div class="col-6 col-md-4">
-                                    <select class="form-select" id="inventory-sort"
-                                        onchange="renderUniversalInventory()">
-                                        <option value="acquired_desc">入手: 新しい順</option>
-                                        <option value="acquired_asc">入手: 古い順</option>
-                                        <option value="rarity_desc">価値: 高い順</option>
-                                        <option value="rarity_asc">価値: 低い順</option>
-                                        <option value="name_asc">名前: 五十音順</option>
-                                    </select>
-                                </div>
-                                <div class="col-6 col-md-4">
-                                    <select class="form-select" id="inventory-filter"
-                                        onchange="renderUniversalInventory()">
-                                        <option value="all">すべて表示</option>
-                                        <option value="fixed">固定型のみ</option>
-                                        <option value="variable">変動型のみ</option>
-                                        <option value="mutant">✨ ミュータントのみ</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- リストエリア -->
-                    <div id="inventory-list" class="vstack gap-2">
-                        <!-- JSで描画 -->
-                        <div class="text-center py-5">
-                            <div class="spinner-border text-primary" role="status"></div>
-                        </div>
-                    </div>
-                </div>
-                <!-- ページネーション -->
-                <div class="modal-footer border-0 bg-white justify-content-center py-2" id="inventory-pagination-area">
-                    <nav>
-                        <ul class="pagination pagination-sm mb-0" id="inventory-pagination"></ul>
-                    </nav>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 売却アクション確認モーダル（ショップ用再利用） -->
-    <div class="modal fade" id="shopActionModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content shadow-lg border-0" style="border-radius: 20px;">
-                <div class="modal-body p-4 text-center">
-                    <div id="shopActionContent"></div>
-                    <div class="mt-4 d-flex justify-content-center gap-2">
-                        <button type="button" class="btn btn-secondary rounded-pill px-4"
-                            data-bs-dismiss="modal">キャンセル</button>
-                        <button type="button" id="btnShopActionExec"
-                            class="btn btn-danger rounded-pill px-4">実行する</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // ==========================================
-        // 汎用インベントリ・売却・譲渡ロジックの復旧
-        // ==========================================
-        let currentInventoryMode = 'sell'; // 'sell' | 'transfer'
-        let allInventoryBadges = [];
-        let currentInventoryPage = 1;
-        const INVENTORY_ITEMS_PER_PAGE = 10;
-        let expandedBadgeId = null;
-        let currentShopActionUUID = null;
-
-        /**
-         * モーダルを開くエントリポイント
-         * @param {string} mode - 'sell' or 'transfer'
-         */
-        async function openModernInventory(mode) {
-            currentInventoryMode = mode;
-            const title = document.getElementById('universalInventoryTitle');
-            const subtitle = document.getElementById('universalInventorySubtitle');
-
-            if (mode === 'sell') {
-                title.textContent = 'バッジの売却';
-                subtitle.textContent = '売却したいバッジを選択してください';
-                title.className = 'modal-title fw-bold text-danger';
-            } else if (mode === 'transfer') {
-                title.textContent = 'バッジの譲渡';
-                subtitle.textContent = '譲渡したいバッジを選択してください';
-                title.className = 'modal-title fw-bold text-primary';
-            }
-
-            const modal = new bootstrap.Modal(document.getElementById('universalInventoryModal'));
-            modal.show();
-
-            await loadInventory();
-        }
-
-        async function loadInventory() {
-            const listEl = document.getElementById('inventory-list');
-            listEl.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>';
-
-            try {
-                const user = await getCurrentUser();
-                if (!user) return;
-                const myId = user.user_metadata.provider_id;
-
-                // 所持バッジ取得
-                const { data: myBadges, error } = await supabaseClient
-                    .from('user_badges_new')
-                    .select('*, badges(*)')
-                    .eq('user_id', myId)
-                    .order('acquired_at', { ascending: false });
-
-                if (error) throw error;
-
-                // 閾値取得
-                const { data: thresholds } = await supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true });
-
-                // マーケット流通数取得 (簡易版: 自分の持ち物にあるバッジIDについてのみ集計)
-                const badgeIds = [...new Set(myBadges.map(ub => ub.badge_id))];
-                let marketCounts = {};
-                if (badgeIds.length > 0) {
-                    const { data: allOwned } = await supabaseClient.from('user_badges_new').select('badge_id').in('badge_id', badgeIds);
-                    if (allOwned) {
-                        allOwned.forEach(o => {
-                            marketCounts[o.badge_id] = (marketCounts[o.badge_id] || 0) + 1;
-                        });
-                    }
-                }
-
-                // データ加工
-                allInventoryBadges = myBadges.map(inventoryItem => {
-                    const badge = inventoryItem.badges;
-                    if (!badge) return null;
-                    if (badge.sales_type === '限定品') return null; // 限定品は売却・譲渡リストに出さない
-
-                    const count = marketCounts[badge.id] || 1;
-                    const valResult = BadgeUtils.calculateBadgeValues(badge, count, thresholds || []);
-                    const sellPrice = valResult.sellPrice * (inventoryItem.is_mutant ? 3 : 1);
-
-                    return {
-                        ...inventoryItem,
-                        badge_name: badge.name,
-                        badge_image_url: badge.image_url,
-                        rarity: badge.rarity,
-                        rarity_name: valResult.rarityName,
-                        market_value: valResult.marketValue,
-                        sell_price: sellPrice,
-                        purchased_price: inventoryItem.purchased_price,
-                        is_mutant: inventoryItem.is_mutant,
-                        sales_type: badge.sales_type,
-                        acquired_at: new Date(inventoryItem.acquired_at)
-                    };
-                }).filter(i => i !== null);
-
-                renderUniversalInventory();
-
-            } catch (err) {
-                console.error('Inventory Load Error:', err);
-                listEl.innerHTML = '<div class="text-center text-danger">読み込みエラー</div>';
-            }
-        }
-
-        function renderUniversalInventory() {
-            const listEl = document.getElementById('inventory-list');
-            const searchVal = document.getElementById('inventory-search').value.toLowerCase();
-            const sortVal = document.getElementById('inventory-sort').value;
-            const filterVal = document.getElementById('inventory-filter').value;
-
-            // フィルタリング
-            let filtered = allInventoryBadges.filter(item => {
-                if (searchVal && !item.badge_name.toLowerCase().includes(searchVal)) return false;
-                if (filterVal === 'mutant' && !item.is_mutant) return false;
-                if (filterVal === 'fixed' && item.sales_type !== '固定型') return false;
-                if (filterVal === 'variable' && item.sales_type !== '変動型') return false;
-                return true;
-            });
-
-            // ソート
-            filtered.sort((a, b) => {
-                if (sortVal === 'acquired_desc') return b.acquired_at - a.acquired_at;
-                if (sortVal === 'acquired_asc') return a.acquired_at - b.acquired_at;
-                if (sortVal === 'name_asc') return a.badge_name.localeCompare(b.badge_name);
-                if (sortVal === 'rarity_desc') return b.market_value - a.market_value;
-                if (sortVal === 'rarity_asc') return a.market_value - b.market_value;
-                return 0;
-            });
-
-            // グルーピング
-            const groups = new Map();
-            filtered.forEach(item => {
-                if (!groups.has(item.badge_id)) {
-                    groups.set(item.badge_id, {
-                        badge_id: item.badge_id,
-                        badge_name: item.badge_name,
-                        badge_image_url: item.badge_image_url,
-                        items: []
-                    });
-                }
-                groups.get(item.badge_id).items.push(item);
-            });
-            const groupArray = Array.from(groups.values());
-
-            // ページネーション
-            const totalPages = Math.ceil(groupArray.length / INVENTORY_ITEMS_PER_PAGE);
-            if (currentInventoryPage > totalPages && totalPages > 0) currentInventoryPage = totalPages;
-            if (currentInventoryPage < 1) currentInventoryPage = 1;
-
-            const start = (currentInventoryPage - 1) * INVENTORY_ITEMS_PER_PAGE;
-            const end = start + INVENTORY_ITEMS_PER_PAGE;
-            const pageGroups = groupArray.slice(start, end);
-
-            // 描画
-            if (pageGroups.length === 0) {
-                listEl.innerHTML = '<div class="text-center py-4 text-muted">該当するバッジがありません</div>';
-                document.getElementById('inventory-pagination-area').style.display = 'none';
-                return;
-            }
-            document.getElementById('inventory-pagination-area').style.display = 'block';
-
-            listEl.innerHTML = pageGroups.map(group => {
-                const isExpanded = expandedBadgeId === group.badge_id;
-                const totalCount = group.items.length;
-                const mutantCount = group.items.filter(i => i.is_mutant).length;
-                const repItem = group.items[0];
-                const rarityClass = getRarityClass(repItem.rarity_name || '');
-
-                let actionArea = '';
-                let detailHtml = '';
-
-                // ボタンのラベルとクラスをモードによって切り替え
-                const btnLabel = currentInventoryMode === 'sell' ? '売却' : '譲渡';
-                const btnClass = currentInventoryMode === 'sell' ? 'btn-outline-danger' : 'btn-outline-primary';
-
-                if (totalCount === 1) {
-                    // 単一アイテム
-                    actionArea = `<button class="btn btn-sm ${btnClass} rounded-pill text-nowrap" 
-                        onclick="confirmActionFromInventory('${repItem.uuid}')">
-                        ${btnLabel}
-                     </button>`;
-                } else {
-                    // 複数あり -> 展開ボタン
-                    actionArea = `<button class="btn btn-sm ${isExpanded ? 'btn-secondary' : 'btn-primary'} rounded-pill text-nowrap" 
-                        onclick="toggleInventoryExpand('${group.badge_id}')">
-                        ${isExpanded ? '閉じる' : '選択'}
-                     </button>`;
-
-                    if (isExpanded) {
-                        const listItemsHtml = group.items.map(item => {
-                            const isMutant = item.is_mutant;
-                            let imgHtml = isMutant ?
-                                `<div class="mutant-badge-container mini active me-3" style="width: 40px; height: 40px;">
-                                    <div class="mutant-badge-shine"></div>
-                                    <img src="${group.badge_image_url}" class="w-100 h-100 object-fit-contain">
-                                </div>` :
-                                `<img src="${group.badge_image_url}" class="rounded me-3" style="width: 40px; height: 40px; object-fit: contain;">`;
-
-                            const itemStyle = isMutant ? 'border: 2px solid gold; background: #fffdf5;' : 'border: 1px solid #eee;';
-
-                            return `
-                                <div class="d-flex align-items-center justify-content-between p-2 rounded bg-white" style="${itemStyle}">
-                                    <div class="d-flex align-items-center overflow-hidden">
-                                        ${imgHtml}
-                                        <div class="small">
-                                            <div class="text-muted">購入: 🪙${(item.purchased_price || 0).toLocaleString()}</div>
-                                            <div class="text-danger fw-bold">売却: 🪙${Math.floor(item.sell_price).toLocaleString()}</div>
-                                        </div>
-                                    </div>
-                                    <button class="btn btn-sm ${btnClass} rounded-pill ms-2 text-nowrap" 
-                                        onclick="confirmActionFromInventory('${item.uuid}')">
-                                        ${btnLabel}
-                                    </button>
-                                </div>
-                            `;
-                        }).join('');
-
-                        detailHtml = `<div class="mt-3 border-top pt-2"><div class="vstack gap-2">${listItemsHtml}</div></div>`;
-                    }
-                }
-
-                return `
-                <div class="p-2 rounded shadow-sm bg-white border mb-2">
-                    <div class="d-flex align-items-center">
-                        <div style="width: 50px; height: 50px; flex-shrink: 0;" class="me-3">
-                             <img src="${group.badge_image_url}" class="w-100 h-100 object-fit-contain rounded">
-                        </div>
-                        <div class="flex-grow-1" style="min-width: 0; margin-right: 10px;">
-                            <div class="fw-bold text-truncate">${group.badge_name}</div>
-                            <div class="small text-muted d-flex align-items-center flex-wrap gap-2">
-                                <span class="badge ${rarityClass || 'bg-light text-dark border'}">${repItem.rarity_name || '-'}</span>
-                                <div>所持: <span class="fw-bold text-dark">${totalCount}</span>個</div>
-                                ${mutantCount > 0 ? `<span class="badge bg-warning text-dark">内ミュータント: ${mutantCount}</span>` : ''}
-                            </div>
-                        </div>
-                        <div style="flex-shrink: 0;">${actionArea}</div>
-                    </div>
-                    ${detailHtml}
-                </div>`;
-            }).join('');
-
-            renderInventoryPagination(totalPages);
-        }
-
-        function toggleInventoryExpand(badgeId) {
-            if (expandedBadgeId === badgeId) expandedBadgeId = null;
-            else expandedBadgeId = badgeId;
-            renderUniversalInventory();
-        }
-
-        function goToInventoryPage(page) {
-            currentInventoryPage = page;
-            renderUniversalInventory();
-        }
-
-        function renderInventoryPagination(totalPages) {
-            const ul = document.getElementById('inventory-pagination');
-            if (totalPages <= 1) {
-                document.getElementById('inventory-pagination-area').style.display = 'none';
-                return;
-            }
-            let html = '';
-            // 簡易ページネーション実装
-            for (let i = 1; i <= totalPages; i++) {
-                if (i === 1 || i === totalPages || (i >= currentInventoryPage - 1 && i <= currentInventoryPage + 1)) {
-                    html += `<li class="page-item ${i === currentInventoryPage ? 'active' : ''}">
-                        <a class="page-link" href="javascript:void(0)" onclick="goToInventoryPage(${i})">${i}</a></li>`;
-                } else if (i === currentInventoryPage - 2 || i === currentInventoryPage + 2) {
-                    html += `<li class="page-item disabled"><a class="page-link">...</a></li>`;
-                }
-            }
-            ul.innerHTML = html;
-        }
-
-        function confirmActionFromInventory(uuid) {
-            if (currentInventoryMode === 'sell') {
-                confirmSellFromList(uuid);
-            } else {
-                initiateTransferFromList(uuid);
-            }
-        }
-
-        // 売却確認
-        function confirmSellFromList(uuid) {
-            const item = allInventoryBadges.find(i => i.uuid === uuid);
-            if (!item) return;
-
-            currentShopActionUUID = uuid;
-            const container = document.getElementById('shopActionContent');
-            const btnExec = document.getElementById('btnShopActionExec');
-
-            container.innerHTML = `
-                <h5 class="fw-bold mb-3 text-danger">売却の確認</h5>
-                <p class="mb-2">「<span class="fw-bold">${item.badge_name}</span>」を売却しますか？</p>
-                <div class="alert alert-secondary d-inline-block text-start py-2 px-4">
-                    <div>購入額: 🪙 ${item.purchased_price?.toLocaleString() || 0}</div>
-                    <div class="fw-bold text-danger fs-5">売却額: 🪙 ${item.sell_price.toLocaleString()}</div>
-                </div>
-                <p class="text-muted small mt-2">この操作は取り消せません。</p>
-            `;
-
-            btnExec.textContent = '売却する';
-            btnExec.className = 'btn btn-danger rounded-pill px-4';
-            btnExec.onclick = executeSellBadges;
-
-            new bootstrap.Modal(document.getElementById('shopActionModal')).show();
-        }
-
-        async function executeSellBadges() {
-            bootstrap.Modal.getInstance(document.getElementById('shopActionModal'))?.hide();
-            // (ローディング表示などは省略、アラートのみ)
-            try {
-                const user = await getCurrentUser();
-                const { data, error } = await supabaseClient.rpc('sell_badge_v2', {
-                    p_user_id: user.user_metadata.provider_id,
-                    p_badge_uuid: currentShopActionUUID
-                });
-                if (error || !data.ok) throw error || new Error(data?.error);
-
-                alert(`売却しました！ (🪙 +${data.sell_price.toLocaleString()})`);
-
-                // リロード
-                if (!isViewMode) {
-                    const u = await getCurrentUser();
-                    if (u) await displayMyInfo(u);
-                }
-                loadInventory(); // リスト更新
-            } catch (e) {
-                alert('売却エラー: ' + e.message);
-            }
-        }
-
-        // 譲渡開始
-        function initiateTransferFromList(uuid) {
-            const item = allInventoryBadges.find(i => i.uuid === uuid);
-            if (!item) return;
-
-            // 譲渡対象を設定してユーザー選択モーダルへ
-            currentActionUUID = uuid;
-            currentActionBadgeName = item.badge_name;
-            currentActionDetails = `(購入額: ${item.purchased_price} C)`;
-
-            // モーダルを一時的に隠す（bootstrapの仕様上、入れ子回避のため）
-            bootstrap.Modal.getInstance(document.getElementById('universalInventoryModal'))?.hide();
-
-            // ユーザー選択モーダルを開く
-            openUserSelectModal('badge_transfer');
-        }
-    </script>
-
-    <script>
-        // ==========================================
-        // メインページ用バッジ読み込みロジック (復旧)
-        // ==========================================
-        // Global variables are already defined above (lines ~2090)
-
-        // ==========================================
-        // 欠損していたコア機能を復旧・実装
-        // ==========================================
-        async function getCurrentUser() {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            return session?.user || null;
-        }
-
-        async function displayMyInfo(user) {
-            if (!user) return;
-            const discordId = user.user_metadata.provider_id;
-
-            try {
-                // プロフィール取得
-                const { data: profile, error } = await supabaseClient
-                    .from('profiles')
-                    .select('*')
-                    .eq('discord_user_id', discordId)
-                    .single();
-
-                if (error || !profile) {
-                    console.error('Profile load error:', error);
-                    return;
-                }
-
-                // 名前・アバター
-                const avatarUrl = profile.avatar_url || user.user_metadata.avatar_url;
-                const name = profile.account_name || user.user_metadata.full_name || 'No Name';
-
-                // ページタイトルラベル（Player Nameなど）
-                const titleLabel = document.getElementById('page-title-label');
-                if (titleLabel) {
-                    titleLabel.textContent = name;
-                    titleLabel.style.display = 'block';
-                }
-
-                // アバター画像
-                const avatarEl = document.getElementById('user-avatar');
-                if (avatarEl) avatarEl.src = avatarUrl;
-
-                // チーム
-                const teamEl = document.getElementById('user-team-name');
-                if (teamEl) teamEl.textContent = profile.team_name || '未所属';
-
-                // 資産表示 (自分自身の場合のみ、または公開設定によるが今回は簡易実装)
-                // isViewMode が false (自分のページ) の場合
-                if (!isViewMode) {
-                    const coinsVal = document.getElementById('user-coins-value');
-                    const assetsVal = document.getElementById('total-assets-value');
-                    const ticketsVal = document.getElementById('user-tickets-value');
-                    const coinsDisplay = document.getElementById('user-coins-display');
-
-                    if (coinsVal) coinsVal.textContent = (profile.coins || 0).toLocaleString();
-                    if (assetsVal) assetsVal.textContent = (profile.total_assets || 0).toLocaleString();
-
-                    // 祈願符は user_tickets テーブルなどを参照するか、profilesにカラムがあるか要確認。
-                    // shop.htmlでは user_tickets テーブルをcountしていた。
-                    // ここでは一旦 dummy 0 または別途取得が必要だが、エラー回避のため 0 表記
-                    if (ticketsVal) ticketsVal.textContent = '0'; // 要実装: countUserTickets()
-
-                    if (coinsDisplay) coinsDisplay.style.display = 'flex';
-
-                    // ボタン類
-                    const btnTransfer = document.getElementById('coin-transfer-btn');
-                    const btnPossess = document.getElementById('possessions-btn');
-                    const btnEdit = document.getElementById('nickname-edit-btn');
-
-                    if (btnTransfer) btnTransfer.style.display = 'inline-block';
-                    if (btnPossess) btnPossess.style.display = 'inline-block';
-                    if (btnEdit) btnEdit.style.display = 'inline-block';
-                }
-
-            } catch (err) {
-                console.error('displayMyInfo error:', err);
-            }
-        }
-
-        // loadTargetUserInfo: 譲渡などの後に呼ばれる再読み込み関数
-        // 基本的には displayMyInfo(currentUser) と loadOwnedBadges() を呼ぶ
-        async function loadTargetUserInfo() {
-            // targetId が設定されている前提
-            if (!targetId) return;
-
-            // 自分かどうか判定
-            const user = await getCurrentUser();
-            const isMe = user && user.user_metadata.provider_id === targetId;
-
-            // プロフィール表示更新 (自分の場合のみ詳細更新、他人の場合は最低限)
-            if (isMe) {
-                await displayMyInfo(user);
-            } else {
-                // 他人のプロフィール読み込みロジック (必要であれば実装)
-            }
-
-            // バッジリスト更新
-            await loadOwnedBadges();
-        }
-
-        async function initPage() {
-            console.log('initPage (Recovered) started');
-            const user = await getCurrentUser();
-
-            // URLパラメータ ?user=... があれば targetId にセット、なければ自分
-            const params = new URLSearchParams(window.location.search);
-            targetId = params.get('user');
-
-            if (user && !targetId) {
-                targetId = user.user_metadata.provider_id;
-                isViewMode = false;
-            } else if (targetId && user && targetId !== user.user_metadata.provider_id) {
-                isViewMode = true;
-            } else if (!user && targetId) {
-                isViewMode = true;
-            }
-
-            if (user && !isViewMode) {
-                await displayMyInfo(user);
-            }
-
-            await loadOwnedBadges();
-
-            // 麻雀統計や活動ログなど他の読み込みもここで行う
-            if (typeof loadMahjongStats === 'function') loadMahjongStats();
-            if (typeof loadActivityLogs === 'function') loadActivityLogs();
-            if (typeof loadRevenueStats === 'function') loadRevenueStats();
-        }
-
-        // 既存の loadOwnedBadges は下に続く...
-
-        async function loadOwnedBadges() {
-            const list = document.getElementById('purchasable-badge-list');
-            if (list) list.innerHTML = '<div class="col-12 text-center py-5"><div class="spinner-border text-primary"></div></div>';
-
-            try {
-                // targetIdが未設定なら特定を試みる
-                if (typeof targetId === 'undefined' || !targetId) {
-                    const params = new URLSearchParams(window.location.search);
-                    targetId = params.get('user');
-                    if (!targetId) {
-                        const user = await getCurrentUser();
-                        if (user) targetId = user.user_metadata.provider_id;
-                    }
-                }
-                if (!targetId) return;
-
-                // バッジ取得
-                const { data: owned, error } = await supabaseClient
-                    .from('user_badges_new')
-                    .select('*, badges(*)')
-                    .eq('user_id', targetId)
-                    .order('acquired_at', { ascending: false });
-
-                if (error) throw error;
-
-                // 各種マスタデータ取得
-                const { data: thresholds } = await supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true });
-                const { data: marketCountRes } = await supabaseClient.from('user_badges_new').select('badge_id');
-                let marketCounts = {};
-                (marketCountRes || []).forEach(s => marketCounts[s.badge_id] = (marketCounts[s.badge_id] || 0) + 1);
-
-                // グルーピング用マップ
-                const groups = new Map();
-
-                owned.forEach(item => {
-                    if (!item.badges) return;
-                    const badge = item.badges;
-                    const bId = badge.id;
-
-                    if (!groups.has(bId)) {
-                        groups.set(bId, {
-                            badge: badge,
-                            items: [],
-                            count: 0,
-                            hasMutant: false,
-                            isEquippedLeft: false, // 簡易
-                            isEquippedRight: false // 簡易
-                        });
-                    }
-                    const g = groups.get(bId);
-                    g.items.push(item);
-                    g.count++;
-                    if (item.is_mutant) g.hasMutant = true;
-                });
-
-                // 分類
-                purchasableBadges = [];
-                specialBadges = [];
-                convertibleBadges = [];
-
-                groups.forEach(group => {
-                    const badge = group.badge;
-                    const count = marketCounts[badge.id] || 1;
-                    const valResult = BadgeUtils.calculateBadgeValues(badge, count, thresholds || []);
-
-                    const badgeInfo = {
-                        group: group,
-                        badge: { ...badge, ...valResult },
-                        count: group.count,
-                        hasMutant: group.hasMutant,
-                        rarity: valResult.rarityName,
-                        pValue: valResult.marketValue,
-                        mainItem: group.items[0], // 代表アイテム
-                        n: count
-                    };
-
-                    if (badge.sales_type === '限定品') {
-                        specialBadges.push(badgeInfo);
-                    } else if (badge.sales_type === '換金品') {
-                        convertibleBadges.push(badgeInfo);
-                    } else {
-                        purchasableBadges.push(badgeInfo);
-                    }
-                });
-
-                // セクションの表示制御
-                if (document.getElementById('special-badges-section')) {
-                    document.getElementById('special-badges-section').style.display = specialBadges.length > 0 ? 'block' : 'none';
-                }
-                if (document.getElementById('convertible-badges-section')) {
-                    document.getElementById('convertible-badges-section').style.display = convertibleBadges.length > 0 ? 'block' : 'none';
-                }
-                if (document.getElementById('purchasable-badges-section')) {
-                    document.getElementById('purchasable-badges-section').style.display = purchasableBadges.length > 0 ? 'block' : 'none';
-                }
-                if (document.getElementById('no-badges-msg')) {
-                    const hasAny = specialBadges.length > 0 || convertibleBadges.length > 0 || purchasableBadges.length > 0;
-                    document.getElementById('no-badges-msg').style.display = hasAny ? 'none' : 'block';
-                }
-
-                // 描画関数の呼び出し (既存の関数が存在すると仮定、なければエラーになるが...)
-                if (typeof renderSpecialBadges === 'function') renderSpecialBadges();
-                if (typeof renderConvertibleBadges === 'function') renderConvertibleBadges();
-                if (typeof filterAndRenderBadges === 'function') filterAndRenderBadges();
-
-            } catch (err) {
-                console.error('loadOwnedBadges Error:', err);
-                if (list) list.innerHTML = '<div class="text-center text-danger py-5">読み込みエラー</div>';
-            }
-        }
-
-        // 初期化トリガー
-        document.addEventListener('DOMContentLoaded', () => {
-            // 復元したinitPageを呼び出す
-            setTimeout(initPage, 500);
-        });
     </script>
 </body>
 
