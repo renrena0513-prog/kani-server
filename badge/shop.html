@@ -246,6 +246,12 @@
             color: #2b2f36;
         }
 
+        .shop-filter-count {
+            font-size: 0.7rem;
+            color: #6c757d;
+            line-height: 1;
+        }
+
         .shop-filter-toggle {
             display: inline-flex;
             align-items: center;
@@ -440,7 +446,7 @@
                     <div class="col-6 col-md-1">
                         <div class="mt-3">
                             <button type="button" class="btn shop-filter-btn shop-filter-toggle w-100"
-                                id="shop-unowned-btn" data-active="false">未所持</button>
+                                id="shop-unowned-btn" data-active="false">未所持のみ表示</button>
                         </div>
                     </div>
                 </div>
@@ -877,12 +883,28 @@
             return shopIsMobile ? 10 : 12;
         }
 
-        function setRaritySelection(id, label = 'すべて') {
+        function setRaritySelection(id, label = 'すべて', count = null) {
             const btn = document.getElementById('shop-rarity-btn');
             const labelEl = document.getElementById('shop-rarity-label');
             if (!btn || !labelEl) return;
             btn.dataset.value = id || '';
-            labelEl.textContent = label || 'すべて';
+            labelEl.innerHTML = '';
+            if (!id) {
+                labelEl.textContent = label || 'すべて';
+                return;
+            }
+            const pill = document.createElement('span');
+            const rarityClass = getRarityClass(label);
+            pill.className = `rarity-pill ${rarityClass}`;
+            pill.style.background = 'rgba(0,0,0,0.2)';
+            pill.textContent = label;
+            labelEl.appendChild(pill);
+            if (count !== null && count !== undefined) {
+                const countEl = document.createElement('span');
+                countEl.className = 'shop-filter-count';
+                countEl.textContent = `${count}個出品`;
+                labelEl.appendChild(countEl);
+            }
         }
 
         function getSelectedRarityId() {
@@ -929,7 +951,7 @@
                         <button class="dropdown-item d-flex align-items-center gap-2" type="button" data-value="${id}"
                             data-name="${name}">
                             <span class="rarity-pill ${rarityClass}" style="background: rgba(0,0,0,0.2);">${name}</span>
-                            <span class="small text-muted">(${count})</span>
+                            <span class="shop-filter-count">${count}個出品</span>
                         </button>
                     </li>
                 `;
@@ -938,16 +960,16 @@
             menu.innerHTML = renderItem('', 'すべて', 0) + items.map(name => renderItem(name, name, counts[name])).join('');
 
             const selected = items.includes(current) ? current : '';
-            const label = selected ? `${selected} (${counts[selected]})` : 'すべて';
-            setRaritySelection(selected, label);
+            const label = selected ? `${selected}` : 'すべて';
+            setRaritySelection(selected, label, selected ? counts[selected] : null);
             shopFilters.rarity = selected;
 
             menu.querySelectorAll('button[data-value]').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const id = btn.getAttribute('data-value') || '';
                     const name = btn.getAttribute('data-name') || 'すべて';
-                    const labelText = id ? `${name} (${counts[name] || 0})` : 'すべて';
-                    setRaritySelection(id, labelText);
+                    const count = counts[name] || 0;
+                    setRaritySelection(id, name, id ? count : null);
                     shopFilters.rarity = id;
                     currentShopPage = 1;
                     applyShopFilters();
