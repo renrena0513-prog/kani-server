@@ -191,6 +191,61 @@
             opacity: 0.7;
         }
 
+        .shop-filter-select,
+        .shop-filter-btn {
+            border-radius: 14px;
+            border: 1px solid #e2e6ef;
+            background: linear-gradient(180deg, #ffffff 0%, #f4f6fb 100%);
+            box-shadow: 0 6px 16px rgba(25, 28, 36, 0.08);
+            padding: 0.45rem 0.9rem;
+            font-weight: 600;
+            color: #2b2f36;
+        }
+
+        .shop-filter-select:focus,
+        .shop-filter-btn:focus {
+            border-color: #ffc107;
+            box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.2);
+        }
+
+        .shop-filter-select {
+            appearance: none;
+            background-image: linear-gradient(45deg, transparent 50%, #2b2f36 50%),
+                linear-gradient(135deg, #2b2f36 50%, transparent 50%),
+                linear-gradient(to right, #e2e6ef, #e2e6ef);
+            background-position: calc(100% - 18px) calc(1em + 2px), calc(100% - 12px) calc(1em + 2px),
+                calc(100% - 2.2em) 0.5em;
+            background-size: 6px 6px, 6px 6px, 1px 1.6em;
+            background-repeat: no-repeat;
+            padding-right: 2.5rem;
+        }
+
+        .shop-creator-avatar {
+            width: 22px;
+            height: 22px;
+            border-radius: 999px;
+            object-fit: cover;
+            border: 1px solid #e1e4ed;
+            background: #fff;
+        }
+
+        .shop-filter-menu {
+            border-radius: 14px;
+            padding: 0.35rem;
+            box-shadow: 0 12px 24px rgba(24, 30, 45, 0.14);
+        }
+
+        .shop-filter-menu .dropdown-item {
+            border-radius: 10px;
+            padding: 0.45rem 0.6rem;
+            font-weight: 600;
+        }
+
+        .shop-filter-menu .dropdown-item:active {
+            background: #fff3cd;
+            color: #2b2f36;
+        }
+
         .sold-out-badge {
             position: absolute;
             top: 50%;
@@ -326,7 +381,7 @@
                 <div class="row g-2 align-items-end">
                     <div class="col-12 col-md-3">
                         <label class="small text-muted mb-1">並び替え</label>
-                        <select id="shop-sort" class="form-select form-select-sm">
+                        <select id="shop-sort" class="form-select form-select-sm shop-filter-select">
                             <option value="price_asc">価格順（低→高）</option>
                             <option value="price_desc">価格順（高→低）</option>
                             <option value="circulation_asc">流通数順（低→高）</option>
@@ -335,19 +390,27 @@
                     </div>
                     <div class="col-12 col-md-3">
                         <label class="small text-muted mb-1">レアリティ</label>
-                        <select id="shop-rarity" class="form-select form-select-sm">
+                        <select id="shop-rarity" class="form-select form-select-sm shop-filter-select">
                             <option value="">すべて</option>
                         </select>
                     </div>
                     <div class="col-12 col-md-3">
                         <label class="small text-muted mb-1">クリエイター</label>
-                        <select id="shop-creator" class="form-select form-select-sm">
-                            <option value="">すべて</option>
-                        </select>
+                        <div class="dropdown" id="shop-creator-dropdown">
+                            <button class="btn shop-filter-btn dropdown-toggle w-100 text-start" type="button"
+                                data-bs-toggle="dropdown" aria-expanded="false" id="shop-creator-btn"
+                                data-value="">
+                                <span class="d-inline-flex align-items-center gap-2">
+                                    <img src="" class="shop-creator-avatar" id="shop-creator-avatar" style="display:none;">
+                                    <span id="shop-creator-label">すべて</span>
+                                </span>
+                            </button>
+                            <ul class="dropdown-menu w-100 shop-filter-menu" id="shop-creator-menu"></ul>
+                        </div>
                     </div>
                     <div class="col-6 col-md-2">
                         <label class="small text-muted mb-1">タイプ</label>
-                        <select id="shop-type" class="form-select form-select-sm">
+                        <select id="shop-type" class="form-select form-select-sm shop-filter-select">
                             <option value="">全タイプ</option>
                             <option value="変動型">変動型</option>
                             <option value="固定型">固定型</option>
@@ -747,13 +810,12 @@
 
             const sortEl = document.getElementById('shop-sort');
             const rarityEl = document.getElementById('shop-rarity');
-            const creatorEl = document.getElementById('shop-creator');
             const typeEl = document.getElementById('shop-type');
             const unownedEl = document.getElementById('shop-unowned');
 
             if (sortEl) sortEl.value = shopFilters.sort;
             if (rarityEl) rarityEl.value = shopFilters.rarity;
-            if (creatorEl) creatorEl.value = shopFilters.creator;
+            setCreatorSelection(shopFilters.creator);
             if (typeEl) typeEl.value = shopFilters.type;
             if (unownedEl) unownedEl.checked = shopFilters.unowned;
 
@@ -761,7 +823,7 @@
                 shopFilters = {
                     sort: sortEl?.value || 'price_asc',
                     rarity: rarityEl?.value || '',
-                    creator: creatorEl?.value || '',
+                    creator: getSelectedCreatorId(),
                     type: typeEl?.value || '',
                     unowned: !!unownedEl?.checked
                 };
@@ -771,7 +833,6 @@
 
             sortEl?.addEventListener('change', updateFilters);
             rarityEl?.addEventListener('change', updateFilters);
-            creatorEl?.addEventListener('change', updateFilters);
             typeEl?.addEventListener('change', updateFilters);
             unownedEl?.addEventListener('change', updateFilters);
 
@@ -793,35 +854,89 @@
             const rarityEl = document.getElementById('shop-rarity');
             if (!rarityEl) return;
             const current = rarityEl.value;
-            const seen = new Set();
-            const items = (cachedThresholds || [])
+            const counts = {};
+            (shopBadges || []).forEach(badge => {
+                if (!badge.rarity) return;
+                counts[badge.rarity] = (counts[badge.rarity] || 0) + 1;
+            });
+
+            const ordered = (cachedThresholds || [])
                 .slice()
                 .sort((a, b) => a.threshold_value - b.threshold_value)
                 .map(t => t.rarity_name)
-                .filter(name => {
-                    if (!name || seen.has(name)) return false;
-                    seen.add(name);
-                    return true;
-                });
+                .filter(name => name && counts[name]);
+
+            const extras = Object.keys(counts)
+                .filter(name => !ordered.includes(name))
+                .sort((a, b) => a.localeCompare(b, 'ja'));
+
+            const items = ordered.concat(extras);
 
             rarityEl.innerHTML = ['<option value="">すべて</option>']
-                .concat(items.map(name => `<option value="${name}">${name}</option>`))
+                .concat(items.map(name => `<option value="${name}">${name} (${counts[name]})</option>`))
                 .join('');
             rarityEl.value = items.includes(current) ? current : '';
+            shopFilters.rarity = rarityEl.value || '';
+        }
+
+        function setCreatorSelection(id, name = 'すべて', avatarUrl = '') {
+            const btn = document.getElementById('shop-creator-btn');
+            const label = document.getElementById('shop-creator-label');
+            const avatar = document.getElementById('shop-creator-avatar');
+            if (!btn || !label || !avatar) return;
+            btn.dataset.value = id || '';
+            label.textContent = name || 'すべて';
+            if (avatarUrl) {
+                avatar.src = avatarUrl;
+                avatar.style.display = 'inline-block';
+            } else {
+                avatar.style.display = 'none';
+            }
+        }
+
+        function getSelectedCreatorId() {
+            const btn = document.getElementById('shop-creator-btn');
+            return btn?.dataset.value || '';
         }
 
         function populateShopCreatorOptions(creatorMap) {
-            const creatorEl = document.getElementById('shop-creator');
-            if (!creatorEl) return;
-            const current = creatorEl.value;
+            const menu = document.getElementById('shop-creator-menu');
+            if (!menu) return;
+            const currentId = getSelectedCreatorId();
             const creators = Array.from(creatorMap.entries())
-                .map(([id, name]) => ({ id, name }))
+                .map(([id, info]) => ({ id, name: info.name, avatar: info.avatar }))
                 .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
 
-            creatorEl.innerHTML = ['<option value="">すべて</option>']
-                .concat(creators.map(c => `<option value="${c.id}">${c.name}</option>`))
-                .join('');
-            creatorEl.value = creators.some(c => c.id === current) ? current : '';
+            const items = [
+                { id: '', name: 'すべて', avatar: '' },
+                ...creators
+            ];
+
+            menu.innerHTML = items.map(item => `
+                <li>
+                    <button class="dropdown-item d-flex align-items-center gap-2" type="button" data-value="${item.id}"
+                        data-name="${item.name}" data-avatar="${item.avatar || ''}">
+                        ${item.avatar ? `<img src="${item.avatar}" class="shop-creator-avatar" onerror="this.style.display='none'">` : '<span class="shop-creator-avatar" style="display:inline-block;"></span>'}
+                        <span>${item.name}</span>
+                    </button>
+                </li>
+            `).join('');
+
+            const current = items.find(i => i.id === currentId) || items[0];
+            setCreatorSelection(current.id, current.name, current.avatar);
+            shopFilters.creator = current.id;
+
+            menu.querySelectorAll('button[data-value]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = btn.getAttribute('data-value') || '';
+                    const name = btn.getAttribute('data-name') || 'すべて';
+                    const avatar = btn.getAttribute('data-avatar') || '';
+                    setCreatorSelection(id, name, avatar);
+                    shopFilters.creator = id;
+                    currentShopPage = 1;
+                    applyShopFilters();
+                });
+            });
         }
 
         function applyShopFilters() {
@@ -1049,17 +1164,22 @@
                 if (creatorIds.length > 0) {
                     const { data: creatorsData, error: creatorsError } = await supabaseClient
                         .from('profiles')
-                        .select('discord_user_id, account_name')
+                        .select('discord_user_id, account_name, avatar_url')
                         .in('discord_user_id', creatorIds);
                     if (!creatorsError && creatorsData) {
                         creatorsData.forEach(c => {
-                            creatorMap.set(c.discord_user_id, c.account_name || c.discord_user_id);
+                            creatorMap.set(c.discord_user_id, {
+                                name: c.account_name || c.discord_user_id,
+                                avatar: c.avatar_url || ''
+                            });
                         });
                     }
                 }
                 // フォールバック: 取得できなかったものはID表示
                 creatorIds.forEach(id => {
-                    if (!creatorMap.has(id)) creatorMap.set(id, id);
+                    if (!creatorMap.has(id)) {
+                        creatorMap.set(id, { name: id, avatar: '' });
+                    }
                 });
 
                 populateShopRarityOptions();
