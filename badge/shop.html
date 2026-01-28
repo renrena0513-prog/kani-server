@@ -246,6 +246,17 @@
             color: #2b2f36;
         }
 
+        #shop-rarity-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        #shop-rarity-label .rarity-pill,
+        .shop-filter-menu .rarity-pill {
+            margin-bottom: 0;
+        }
+
         .shop-filter-count {
             font-size: 0.7rem;
             color: #6c757d;
@@ -257,6 +268,7 @@
             align-items: center;
             justify-content: center;
             gap: 6px;
+            white-space: nowrap;
         }
 
         .shop-filter-toggle.active {
@@ -443,7 +455,7 @@
                             <option value="固定型">固定型</option>
                         </select>
                     </div>
-                    <div class="col-6 col-md-1">
+                    <div class="col-12 col-md-2">
                         <div class="mt-3">
                             <button type="button" class="btn shop-filter-btn shop-filter-toggle w-100"
                                 id="shop-unowned-btn" data-active="false">未所持のみ表示</button>
@@ -809,7 +821,7 @@
                     const rarity = result.rarityName;
                     const rarityClass = getRarityClass(rarity);
                     return `
-                        <div class="col-6 col-md-3 col-lg-2">
+                        <div class="col-12 col-md-3 col-lg-2">
                             <div class="text-center p-2 h-100 d-flex flex-column badge-card ${rarityClass}" style="border-radius: 10px;">
                                 <a href="./index.html?id=${badge.id}" class="text-decoration-none mb-auto" style="color: inherit;">
                                     <div class="rarity-pill mx-auto" style="background: rgba(0,0,0,0.2); width: fit-content; margin-bottom: 5px;">${rarity}</div>
