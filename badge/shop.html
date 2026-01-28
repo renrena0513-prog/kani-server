@@ -395,7 +395,7 @@
     </div>
 
     <div class="container py-5">
-        <header class="text-center">
+        <header class="text-center mb-4">
             <h1 class="shop-header display-4 fw-bold">🛒 バッジショップ</h1>
             <div class="coins-display">
                 <span>🪙</span>
@@ -420,7 +420,7 @@
         </header>
 
         <!-- 自分の権利バッジ -->
-        <div id="my-rights-section" class="rights-section mb-4" style="display: none;">
+        <div id="my-rights-section" class="rights-section mb-4 mt-4" style="display: none;">
             <div class="rights-title">
                 💎 あなたの権利バッジ
                 <button class="btn btn-sm btn-outline-secondary ms-auto" type="button" data-bs-toggle="collapse"
@@ -430,7 +430,7 @@
             </div>
             <div class="collapse" id="my-rights-collapse">
                 <p class="small text-muted mb-3">これらのバッジが売れると、売上の還元があなたに行われます。</p>
-                <div id="my-rights-grid" class="vstack gap-2">
+                <div id="my-rights-grid" class="row g-3">
                     <!-- JSで権利バッジを表示 -->
                 </div>
             </div>
@@ -877,19 +877,22 @@
                     const soldCount = soldCounts[badge.id] || 0;
                     const totalRoyalty = royaltySums[badge.id] || 0;
                     return `
-                        <div class="rights-item badge-card ${rarityClass}">
-                            <a href="./index.html?id=${badge.id}" class="text-decoration-none" style="color: inherit;">
-                                <img src="${badge.image_url}" alt="${badge.name}" class="rights-item-img">
-                            </a>
-                            <div class="flex-grow-1">
-                                <div class="d-flex align-items-center gap-2 mb-1">
-                                    <span class="rarity-pill" style="background: rgba(0,0,0,0.2); margin-bottom: 0;">${rarity}</span>
-                                    <span class="fw-bold text-truncate">${badge.name}</span>
-                                </div>
-                                <div class="rights-item-meta">
-                                    <div class="opacity-75">現在: 🪙${pBuy.toLocaleString()}</div>
-                                    <div class="fw-bold">利益: 🪙${totalRoyalty.toLocaleString()}</div>
-                                    <div class="opacity-75">売れた: ${soldCount}個 | 所持: ${myCounts[badge.id] || 0}個</div>
+                        <div class="col-12 col-md-3 col-lg-3">
+                            <div class="rights-item badge-card ${rarityClass}">
+                                <a href="./index.html?id=${badge.id}" class="text-decoration-none d-flex flex-column align-items-center" style="color: inherit;">
+                                    <span class="rarity-pill mb-1" style="background: rgba(0,0,0,0.2);">${rarity}</span>
+                                    <img src="${badge.image_url}" alt="${badge.name}" class="rights-item-img">
+                                </a>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <span class="fw-bold text-truncate">${badge.name}</span>
+                                    </div>
+                                    <div class="rights-item-meta">
+                                        <div class="opacity-75">価格: 🪙${pBuy.toLocaleString()}</div>
+                                        <div class="opacity-75">販売利益: 🪙${profit.toLocaleString()}</div>
+                                        <div class="fw-bold">利益: 🪙${totalRoyalty.toLocaleString()}</div>
+                                        <div class="opacity-75">売れた: ${soldCount}個 | 所持: ${myCounts[badge.id] || 0}個</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
