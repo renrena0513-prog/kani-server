@@ -321,6 +321,46 @@
         </div>
 
         <div class="shop-container">
+            <!-- フィルター / ソート / ページ -->
+            <div class="mb-3 p-3 bg-white rounded-3 shadow-sm">
+                <div class="row g-2 align-items-end">
+                    <div class="col-12 col-md-3">
+                        <label class="small text-muted mb-1">並び替え</label>
+                        <select id="shop-sort" class="form-select form-select-sm">
+                            <option value="price_asc">価格順（低→高）</option>
+                            <option value="price_desc">価格順（高→低）</option>
+                            <option value="circulation_asc">流通数順（低→高）</option>
+                            <option value="circulation_desc">流通数順（高→低）</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="small text-muted mb-1">レアリティ</label>
+                        <select id="shop-rarity" class="form-select form-select-sm">
+                            <option value="">すべて</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="small text-muted mb-1">クリエイター</label>
+                        <select id="shop-creator" class="form-select form-select-sm">
+                            <option value="">すべて</option>
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="small text-muted mb-1">タイプ</label>
+                        <select id="shop-type" class="form-select form-select-sm">
+                            <option value="">全タイプ</option>
+                            <option value="変動型">変動型</option>
+                            <option value="固定型">固定型</option>
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-1">
+                        <div class="form-check mt-3">
+                            <input class="form-check-input" type="checkbox" id="shop-unowned">
+                            <label class="form-check-label small" for="shop-unowned">未所持</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div id="shop-grid" class="row g-4">
                 <div class="col-12 text-center py-5">
                     <div class="spinner-border text-primary" role="status">
@@ -328,6 +368,13 @@
                     </div>
                 </div>
             </div>
+            </div>
+            <nav aria-label="Page navigation" class="mt-3" id="shop-pagination-area" style="display:none;">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div class="small text-muted" id="shop-page-info"></div>
+                    <ul class="pagination pagination-sm justify-content-center mb-0" id="shop-pagination"></ul>
+                </div>
+            </nav>
         </div>
     </div>
 
@@ -550,6 +597,18 @@
         let cachedMarketCounts = {};
         let cachedMyCounts = {};
         let cachedThresholds = [];
+        let shopBadges = [];
+        let shopFilteredBadges = [];
+        let currentShopPage = 1;
+        let shopFiltersInitialized = false;
+        let shopIsMobile = window.matchMedia('(max-width: 767.98px)').matches;
+        let shopFilters = {
+            sort: 'price_asc',
+            rarity: '',
+            creator: '',
+            type: '',
+            unowned: false
+        };
 
         // ページ初期化
         async function initShop() {
@@ -561,6 +620,7 @@
             }
             currentUserId = user.user_metadata.provider_id;
 
+            setupShopFilters();
             await refreshMarketContext();
         }
 
@@ -681,12 +741,276 @@
             }
         }
 
+        function setupShopFilters() {
+            if (shopFiltersInitialized) return;
+            shopFiltersInitialized = true;
+
+            const sortEl = document.getElementById('shop-sort');
+            const rarityEl = document.getElementById('shop-rarity');
+            const creatorEl = document.getElementById('shop-creator');
+            const typeEl = document.getElementById('shop-type');
+            const unownedEl = document.getElementById('shop-unowned');
+
+            if (sortEl) sortEl.value = shopFilters.sort;
+            if (rarityEl) rarityEl.value = shopFilters.rarity;
+            if (creatorEl) creatorEl.value = shopFilters.creator;
+            if (typeEl) typeEl.value = shopFilters.type;
+            if (unownedEl) unownedEl.checked = shopFilters.unowned;
+
+            const updateFilters = () => {
+                shopFilters = {
+                    sort: sortEl?.value || 'price_asc',
+                    rarity: rarityEl?.value || '',
+                    creator: creatorEl?.value || '',
+                    type: typeEl?.value || '',
+                    unowned: !!unownedEl?.checked
+                };
+                currentShopPage = 1;
+                applyShopFilters();
+            };
+
+            sortEl?.addEventListener('change', updateFilters);
+            rarityEl?.addEventListener('change', updateFilters);
+            creatorEl?.addEventListener('change', updateFilters);
+            typeEl?.addEventListener('change', updateFilters);
+            unownedEl?.addEventListener('change', updateFilters);
+
+            window.addEventListener('resize', () => {
+                const nowMobile = window.matchMedia('(max-width: 767.98px)').matches;
+                if (nowMobile !== shopIsMobile) {
+                    shopIsMobile = nowMobile;
+                    currentShopPage = 1;
+                    renderShopPage();
+                }
+            });
+        }
+
+        function getShopPageSize() {
+            return shopIsMobile ? 10 : 12;
+        }
+
+        function populateShopRarityOptions() {
+            const rarityEl = document.getElementById('shop-rarity');
+            if (!rarityEl) return;
+            const current = rarityEl.value;
+            const seen = new Set();
+            const items = (cachedThresholds || [])
+                .slice()
+                .sort((a, b) => a.threshold_value - b.threshold_value)
+                .map(t => t.rarity_name)
+                .filter(name => {
+                    if (!name || seen.has(name)) return false;
+                    seen.add(name);
+                    return true;
+                });
+
+            rarityEl.innerHTML = ['<option value="">すべて</option>']
+                .concat(items.map(name => `<option value="${name}">${name}</option>`))
+                .join('');
+            rarityEl.value = items.includes(current) ? current : '';
+        }
+
+        function populateShopCreatorOptions(creatorMap) {
+            const creatorEl = document.getElementById('shop-creator');
+            if (!creatorEl) return;
+            const current = creatorEl.value;
+            const creators = Array.from(creatorMap.entries())
+                .map(([id, name]) => ({ id, name }))
+                .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+
+            creatorEl.innerHTML = ['<option value="">すべて</option>']
+                .concat(creators.map(c => `<option value="${c.id}">${c.name}</option>`))
+                .join('');
+            creatorEl.value = creators.some(c => c.id === current) ? current : '';
+        }
+
+        function applyShopFilters() {
+            const myCounts = cachedMyCounts || {};
+            let filtered = (shopBadges || []).slice();
+
+            if (shopFilters.rarity) {
+                filtered = filtered.filter(b => b.rarity === shopFilters.rarity);
+            }
+            if (shopFilters.creator) {
+                filtered = filtered.filter(b => b.discord_user_id === shopFilters.creator);
+            }
+            if (shopFilters.type) {
+                filtered = filtered.filter(b => b.sales_type === shopFilters.type);
+            }
+            if (shopFilters.unowned) {
+                filtered = filtered.filter(b => (myCounts[b.id] || 0) === 0);
+            }
+
+            const sortKey = shopFilters.sort || 'price_asc';
+            const sorters = {
+                price_asc: (a, b) => a.pBuy - b.pBuy,
+                price_desc: (a, b) => b.pBuy - a.pBuy,
+                circulation_asc: (a, b) => a.circulationCount - b.circulationCount,
+                circulation_desc: (a, b) => b.circulationCount - a.circulationCount
+            };
+            filtered.sort((a, b) => {
+                const result = (sorters[sortKey] || sorters.price_asc)(a, b);
+                if (result !== 0) return result;
+                return (a.name || '').localeCompare(b.name || '', 'ja');
+            });
+
+            shopFilteredBadges = filtered;
+            renderShopPage();
+        }
+
+        function renderShopPage() {
+            const grid = document.getElementById('shop-grid');
+            if (!grid) return;
+            const pageSize = getShopPageSize();
+            const total = shopFilteredBadges.length;
+            const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
+
+            if (total === 0) {
+                grid.innerHTML = '<div class="col-12 text-center text-muted py-5">該当するバッジがありません</div>';
+                renderShopPagination(0, 0, 0);
+                return;
+            }
+
+            if (currentShopPage > totalPages) currentShopPage = totalPages;
+            if (currentShopPage < 1) currentShopPage = 1;
+
+            const start = (currentShopPage - 1) * pageSize;
+            const end = Math.min(start + pageSize, total);
+            const items = shopFilteredBadges.slice(start, end);
+
+            grid.innerHTML = items.map(badge => {
+                const rarityClass = getRarityClass(badge.rarity);
+                const isSoldOut = badge.remaining_count !== null && badge.remaining_count <= 0;
+                return `
+                    <div class="col-12 col-md-4 col-lg-3">
+                        <div class="shop-item position-relative badge-card ${rarityClass} ${isSoldOut ? 'sold-out' : ''}">
+                            ${isSoldOut ? '<div class="sold-out-badge">SOLD OUT</div>' : ''}
+                            
+                            <!-- バッジエリア（モバイルでは左側） -->
+                            <a href="./index.html?id=${badge.id}" class="text-decoration-none shop-item-badge-area" style="color: inherit;">
+                                <div class="rarity-pill" style="background: rgba(0,0,0,0.2);">${badge.rarity}</div>
+                                <img src="${badge.image_url}" class="shop-img" alt="${badge.name}" style="filter: drop-shadow(0 5px 15px rgba(0,0,0,0.2));">
+                                <div class="shop-name" style="color: inherit;">${badge.name}</div>
+                            </a>
+
+                            <!-- 詳細エリア（モバイルでは右側） -->
+                            <div class="shop-item-details">
+                                <div class="w-100 px-2 small mb-2 text-start">
+                                    ${badge.sales_type === '変動型' ? `
+                                    <div class="d-flex justify-content-between opacity-75" style="font-size: 0.7rem;">
+                                        <span>初期価格: 🪙${badge.price.toLocaleString()}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between opacity-75" style="font-size: 0.7rem;">
+                                        <span>資産価値: 🪙${badge.pValue.toLocaleString()}</span>
+                                    </div>
+                                    ` : ''}
+                                    <div class="d-flex justify-content-between fw-bold">
+                                        <span>販売価格: 🪙${badge.pBuy.toLocaleString()}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mt-1 opacity-75" style="font-size: 0.7rem;">
+                                        <span>流通: ${badge.circulationCount} 枚 | 残り: ${badge.remaining_count ?? '∞'} | 所持: ${(cachedMyCounts[badge.id] || 0)}</span>
+                                    </div>
+                                </div>
+                                
+                                <button class="btn btn-buy ${isSoldOut ? 'btn-secondary' : 'btn-light'}" 
+                                        onclick="buyBadgeV2('${badge.id}', ${badge.pBuy}, '${badge.name.replace(/'/g, "\\'")}')"
+                                        ${isSoldOut ? 'disabled' : ''}>
+                                    ${isSoldOut ? '売り切れ' : '購入する'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            renderShopPagination(total, start + 1, end);
+        }
+
+        function renderShopPagination(total, startIndex, endIndex) {
+            const area = document.getElementById('shop-pagination-area');
+            const info = document.getElementById('shop-page-info');
+            const pagination = document.getElementById('shop-pagination');
+            const pageSize = getShopPageSize();
+
+            if (!area || !info || !pagination) return;
+
+            if (!total) {
+                area.style.display = 'none';
+                info.textContent = '';
+                pagination.innerHTML = '';
+                return;
+            }
+
+            const totalPages = Math.ceil(total / pageSize);
+            info.textContent = `${startIndex}〜${endIndex} / ${total}件`;
+
+            if (totalPages <= 1) {
+                area.style.display = 'none';
+                pagination.innerHTML = '';
+                return;
+            }
+
+            area.style.display = 'block';
+
+            const pages = [];
+            if (totalPages <= 7) {
+                for (let i = 1; i <= totalPages; i++) pages.push(i);
+            } else {
+                pages.push(1);
+                let start = Math.max(2, currentShopPage - 2);
+                let end = Math.min(totalPages - 1, currentShopPage + 2);
+                if (currentShopPage <= 4) {
+                    start = 2;
+                    end = 5;
+                } else if (currentShopPage >= totalPages - 3) {
+                    start = totalPages - 4;
+                    end = totalPages - 1;
+                }
+                if (start > 2) pages.push('...');
+                for (let i = start; i <= end; i++) pages.push(i);
+                if (end < totalPages - 1) pages.push('...');
+                pages.push(totalPages);
+            }
+
+            const buildItem = (label, page, disabled = false, active = false) => `
+                <li class="page-item ${disabled ? 'disabled' : ''} ${active ? 'active' : ''}">
+                    <button class="page-link" type="button" ${disabled ? 'disabled' : ''} data-page="${page}">${label}</button>
+                </li>
+            `;
+
+            const prevDisabled = currentShopPage <= 1;
+            const nextDisabled = currentShopPage >= totalPages;
+
+            const html = []
+                .concat(buildItem('«', currentShopPage - 1, prevDisabled))
+                .concat(pages.map(p => {
+                    if (p === '...') {
+                        return buildItem('…', 'ellipsis', true, false);
+                    }
+                    return buildItem(p, p, false, p === currentShopPage);
+                }))
+                .concat(buildItem('»', currentShopPage + 1, nextDisabled))
+                .join('');
+
+            pagination.innerHTML = html;
+            pagination.querySelectorAll('button[data-page]').forEach(btn => {
+                const page = btn.getAttribute('data-page');
+                if (page === 'ellipsis') return;
+                btn.addEventListener('click', () => {
+                    const nextPage = parseInt(page, 10);
+                    if (!Number.isNaN(nextPage)) {
+                        currentShopPage = nextPage;
+                        renderShopPage();
+                    }
+                });
+            });
+        }
+
         // ショップアイテム一覧の読み込み
         async function fetchShopBadges() {
             const marketCounts = cachedMarketCounts || {};
             const myCounts = cachedMyCounts || {};
             const thresholds = cachedThresholds || [];
-            const grid = document.getElementById('shop-grid');
             try {
                 const { data: badges, error } = await supabaseClient
                     .from('badges')
@@ -709,7 +1033,7 @@
                 };
 
                 // 各バッジの計算値を事前付与
-                const processed = badges.map(badge => {
+                const processed = (badges || []).map(badge => {
                     const circulationCount = marketCounts[badge.id] || 0;
                     const result = BadgeUtils.calculateBadgeValues(badge, circulationCount, thresholds);
                     const pBuy = result.buyingPrice;
@@ -718,73 +1042,36 @@
                     return { ...badge, pBuy, pValue, circulationCount, rarity };
                 });
 
-                // グループ分けとソート（安い順）
-                const variableBadges = processed.filter(b => b.sales_type === '変動型').sort((a, b) => a.pBuy - b.pBuy);
-                const fixedBadges = processed.filter(b => b.sales_type === '固定型').sort((a, b) => a.pBuy - b.pBuy);
+                shopBadges = processed;
 
-                const renderSection = (title, items, icon) => {
-                    if (items.length === 0) return '';
-                    return `
-                        <div class="col-12 mt-4 mb-2">
-                            <h4 class="d-flex align-items-center fw-bold" style="color: #444; border-left: 5px solid #ffc107; padding-left: 15px;">
-                                <span class="me-2">${icon}</span> ${title}
-                            </h4>
-                        </div>
-                        ${items.map(badge => {
-                        const rarityClass = getRarityClass(badge.rarity);
-                        const isSoldOut = badge.remaining_count !== null && badge.remaining_count <= 0;
-                        return `
-                                <div class="col-12 col-md-4 col-lg-3">
-                                    <div class="shop-item position-relative badge-card ${rarityClass} ${isSoldOut ? 'sold-out' : ''}">
-                                        ${isSoldOut ? '<div class="sold-out-badge">SOLD OUT</div>' : ''}
-                                        
-                                        <!-- バッジエリア（モバイルでは左側） -->
-                                        <a href="./index.html?id=${badge.id}" class="text-decoration-none shop-item-badge-area" style="color: inherit;">
-                                            <div class="rarity-pill" style="background: rgba(0,0,0,0.2);">${badge.rarity}</div>
-                                            <img src="${badge.image_url}" class="shop-img" alt="${badge.name}" style="filter: drop-shadow(0 5px 15px rgba(0,0,0,0.2));">
-                                            <div class="shop-name" style="color: inherit;">${badge.name}</div>
-                                        </a>
+                const creatorIds = [...new Set(processed.map(b => b.discord_user_id).filter(Boolean))];
+                const creatorMap = new Map();
+                if (creatorIds.length > 0) {
+                    const { data: creatorsData, error: creatorsError } = await supabaseClient
+                        .from('profiles')
+                        .select('discord_user_id, account_name')
+                        .in('discord_user_id', creatorIds);
+                    if (!creatorsError && creatorsData) {
+                        creatorsData.forEach(c => {
+                            creatorMap.set(c.discord_user_id, c.account_name || c.discord_user_id);
+                        });
+                    }
+                }
+                // フォールバック: 取得できなかったものはID表示
+                creatorIds.forEach(id => {
+                    if (!creatorMap.has(id)) creatorMap.set(id, id);
+                });
 
-                                        <!-- 詳細エリア（モバイルでは右側） -->
-                                        <div class="shop-item-details">
-                                            <div class="w-100 px-2 small mb-2 text-start">
-                                                ${badge.sales_type === '変動型' ? `
-                                                <div class="d-flex justify-content-between opacity-75" style="font-size: 0.7rem;">
-                                                    <span>初期価格: 🪙${badge.price.toLocaleString()}</span>
-                                                </div>
-                                                <div class="d-flex justify-content-between opacity-75" style="font-size: 0.7rem;">
-                                                    <span>資産価値: 🪙${badge.pValue.toLocaleString()}</span>
-                                                </div>
-                                                ` : ''}
-                                                <div class="d-flex justify-content-between fw-bold">
-                                                    <span>販売価格: 🪙${badge.pBuy.toLocaleString()}</span>
-                                                </div>
-                                                <div class="d-flex justify-content-between mt-1 opacity-75" style="font-size: 0.7rem;">
-                                                    <span>流通: ${badge.circulationCount} 枚 | 残り: ${badge.remaining_count ?? '∞'} | 所持: ${myCounts[badge.id] || 0}</span>
-                                                </div>
-                                            </div>
-                                            
-                                            <button class="btn btn-buy ${isSoldOut ? 'btn-secondary' : 'btn-light'}" 
-                                                    onclick="buyBadgeV2('${badge.id}', ${badge.pBuy}, '${badge.name.replace(/'/g, "\\'")}')"
-                                                    ${isSoldOut ? 'disabled' : ''}>
-                                                ${isSoldOut ? '売り切れ' : '購入する'}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
-                    }).join('')}
-                    `;
-                };
-
-                grid.innerHTML = `
-                    ${renderSection('変動価格バッジ', variableBadges, '📈')}
-                    ${renderSection('固定価格バッジ', fixedBadges, '🏷️')}
-                `;
+                populateShopRarityOptions();
+                populateShopCreatorOptions(creatorMap);
+                applyShopFilters();
 
             } catch (err) {
                 console.error('Error fetching shop badges:', err);
-                grid.innerHTML = '<div class="col-12 text-center text-danger py-5">読み込みエラーが発生しました</div>';
+                const grid = document.getElementById('shop-grid');
+                if (grid) {
+                    grid.innerHTML = '<div class="col-12 text-center text-danger py-5">読み込みエラーが発生しました</div>';
+                }
             }
         }
 

@@ -339,14 +339,6 @@ function getRarityClass(rarityName) {
         { key: '名品', class: 'rarity-fine' },
         { key: '並品', class: 'rarity-normal' },
 
-        // 旧システム互換
-        { key: '一般', class: 'rarity-wood' },
-        { key: '良質', class: 'rarity-stone' },
-        { key: '希少', class: 'rarity-bronze' }, // 希少・I, II などをまとめて
-        { key: '貴重', class: 'rarity-gold' },
-        { key: '特上', class: 'rarity-platinum' },
-        { key: '極上', class: 'rarity-gem' },
-
         // 英語名互換
         { key: 'Common', class: 'rarity-normal' },
         { key: 'Uncommon', class: 'rarity-fine' },

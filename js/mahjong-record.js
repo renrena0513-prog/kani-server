@@ -619,7 +619,7 @@ function renderDropdownItems(idx, profiles) {
                 <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}" style="margin-left: 5px;">
                     <img src="${badge.image_url}" title="${badge.name}" 
                          style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
-                    <div class="mutant-badge-shine" style="display: ${isMutant ? 'block' : 'none'};"></div>
+                    ${MutantBadge.renderShine(isMutant)}
                 </div>`;
         }
 
@@ -630,7 +630,7 @@ function renderDropdownItems(idx, profiles) {
                 <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}" style="margin-left: 5px;">
                     <img src="${badgeRight.image_url}" title="${badgeRight.name}" 
                          style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
-                    <div class="mutant-badge-shine" style="display: ${isMutant ? 'block' : 'none'};"></div>
+                    ${MutantBadge.renderShine(isMutant)}
                 </div>`;
         }
 
@@ -671,7 +671,7 @@ function selectPlayer(idx, discordUserId, accountName) {
         badgeLeftContainer.innerHTML = `
             <img src="${badgeLeft.image_url}" title="${badgeLeft.name}" 
                  style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
-            <div class="mutant-badge-shine" style="display: ${isMutantLeft ? 'block' : 'none'};"></div>`;
+            ${MutantBadge.renderShine(isMutantLeft)}`;
         badgeLeftContainer.classList.toggle('active', isMutantLeft);
         badgeLeftContainer.style.display = 'inline-block';
     } else if (badgeLeftContainer) {
@@ -686,7 +686,7 @@ function selectPlayer(idx, discordUserId, accountName) {
         badgeRightContainer.innerHTML = `
             <img src="${badgeRight.image_url}" title="${badgeRight.name}" 
                  style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
-            <div class="mutant-badge-shine" style="display: ${isMutantRight ? 'block' : 'none'};"></div>`;
+            ${MutantBadge.renderShine(isMutantRight)}`;
         badgeRightContainer.classList.toggle('active', isMutantRight);
         badgeRightContainer.style.display = 'inline-block';
     } else if (badgeRightContainer) {

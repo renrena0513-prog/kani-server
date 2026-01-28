@@ -527,7 +527,7 @@ function renderRanking(records, groupKey, type = 'all') {
                             <div class="podium-badge-left">
                                 <img src="${badge.image_url}" title="${badge.name}">
                             </div>
-                            <div class="mutant-badge-shine" style="display: ${isMutant ? 'block' : 'none'};"></div>
+                            ${MutantBadge.renderShine(isMutant)}
                         </div>`;
                 }
 
@@ -538,7 +538,7 @@ function renderRanking(records, groupKey, type = 'all') {
                             <div class="podium-badge-right">
                                 <img src="${badgeRight.image_url}" title="${badgeRight.name}">
                             </div>
-                            <div class="mutant-badge-shine" style="display: ${isMutant ? 'block' : 'none'};"></div>
+                            ${MutantBadge.renderShine(isMutant)}
                         </div>`;
                 }
             } else {
@@ -655,7 +655,7 @@ function renderRanking(records, groupKey, type = 'all') {
                         <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}">
                             <img src="${badge.image_url}" title="${badge.name}"
                                  style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
-                            <div class="mutant-badge-shine" style="display: ${isMutant ? 'block' : 'none'};"></div>
+                            ${MutantBadge.renderShine(isMutant)}
                         </div>`;
                 }
 
@@ -665,7 +665,7 @@ function renderRanking(records, groupKey, type = 'all') {
                         <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}">
                             <img src="${badgeRight.image_url}" title="${badgeRight.name}"
                                  style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
-                            <div class="mutant-badge-shine" style="display: ${isMutant ? 'block' : 'none'};"></div>
+                            ${MutantBadge.renderShine(isMutant)}
                         </div>`;
                 }
             } else {
