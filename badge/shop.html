@@ -140,6 +140,29 @@
             gap: 8px;
         }
 
+        .rights-item {
+            background: #fff;
+            border-radius: 14px;
+            padding: 12px 14px;
+            border: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .rights-item-img {
+            width: 70px;
+            height: 70px;
+            object-fit: contain;
+            flex-shrink: 0;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+        }
+
+        .rights-item-meta {
+            font-size: 0.8rem;
+        }
+
         /* ローディングオーバーレイ */
         #loading-overlay {
             position: fixed;
@@ -378,17 +401,17 @@
                 <span>🪙</span>
                 <span id="user-coins">0</span>
             </div>
-            <div>
-                <button class="btn btn-sm btn-outline-dark mt-2" style="border-radius: 20px; font-weight: bold;"
+            <div class="d-flex flex-column align-items-center gap-3 mt-3">
+                <button class="btn btn-sm btn-outline-dark" style="border-radius: 20px; font-weight: bold;"
                     onclick="openPriceListModal()">
                     📊 レアリティ価格表を見る
                 </button>
-                <div class="d-inline-block mt-2">
-                    <button class="btn btn-sm btn-outline-primary ms-2" style="border-radius: 20px; font-weight: bold;"
+                <div class="d-inline-flex flex-wrap justify-content-center gap-3 mt-1">
+                    <button class="btn btn-sm btn-outline-primary" style="border-radius: 20px; font-weight: bold;"
                         onclick="openInventoryModal()">
                         🎒 所持バッジ
                     </button>
-                    <button class="btn btn-sm btn-outline-warning ms-1" style="border-radius: 20px; font-weight: bold;"
+                    <button class="btn btn-sm btn-outline-warning" style="border-radius: 20px; font-weight: bold;"
                         onclick="openItemInventoryModal()">
                         🎁 所持アイテム
                     </button>
@@ -400,10 +423,16 @@
         <div id="my-rights-section" class="rights-section mb-4" style="display: none;">
             <div class="rights-title">
                 💎 あなたの権利バッジ
+                <button class="btn btn-sm btn-outline-secondary ms-auto" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#my-rights-collapse" aria-expanded="false" aria-controls="my-rights-collapse">
+                    表示/非表示
+                </button>
             </div>
-            <p class="small text-muted mb-3">これらのバッジが売れると、売上の還元があなたに行われます。</p>
-            <div id="my-rights-grid" class="row g-3">
-                <!-- JSで権利バッジを表示 -->
+            <div class="collapse" id="my-rights-collapse">
+                <p class="small text-muted mb-3">これらのバッジが売れると、売上の還元があなたに行われます。</p>
+                <div id="my-rights-grid" class="vstack gap-2">
+                    <!-- JSで権利バッジを表示 -->
+                </div>
             </div>
         </div>
 
@@ -808,6 +837,31 @@
                     return current;
                 };
 
+                const badgeIds = badges.map(b => b.id);
+                let soldCounts = {};
+                let royaltySums = {};
+                if (badgeIds.length > 0) {
+                    const { data: logRows, error: logError } = await supabaseClient
+                        .from('activity_logs')
+                        .select('action_type, badge_id, amount')
+                        .in('badge_id', badgeIds)
+                        .in('action_type', ['badge_purchase', 'royalty_receive']);
+
+                    if (logError) {
+                        console.error('Error loading rights badge logs:', logError);
+                    } else if (logRows) {
+                        logRows.forEach(row => {
+                            if (!row.badge_id) return;
+                            if (row.action_type === 'badge_purchase') {
+                                soldCounts[row.badge_id] = (soldCounts[row.badge_id] || 0) + 1;
+                            } else if (row.action_type === 'royalty_receive') {
+                                const amt = row.amount || 0;
+                                royaltySums[row.badge_id] = (royaltySums[row.badge_id] || 0) + amt;
+                            }
+                        });
+                    }
+                }
+
                 grid.innerHTML = badges.map(badge => {
                     const circulationCount = marketCounts[badge.id] || 0;
                     const result = BadgeUtils.calculateBadgeValues(badge, circulationCount, thresholds);
@@ -820,18 +874,22 @@
 
                     const rarity = result.rarityName;
                     const rarityClass = getRarityClass(rarity);
+                    const soldCount = soldCounts[badge.id] || 0;
+                    const totalRoyalty = royaltySums[badge.id] || 0;
                     return `
-                        <div class="col-12 col-md-3 col-lg-2">
-                            <div class="text-center p-2 h-100 d-flex flex-column badge-card ${rarityClass}" style="border-radius: 10px;">
-                                <a href="./index.html?id=${badge.id}" class="text-decoration-none mb-auto" style="color: inherit;">
-                                    <div class="rarity-pill mx-auto" style="background: rgba(0,0,0,0.2); width: fit-content; margin-bottom: 5px;">${rarity}</div>
-                                    <img src="${badge.image_url}" alt="${badge.name}" style="width: 60px; height: 60px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">
-                                    <div class="small text-truncate mt-1 fw-bold">${badge.name}</div>
-                                </a>
-                                <div class="mt-2" style="font-size: 0.75rem;">
-                                    <div class="opacity-75 text-truncate">現在: 🪙${pBuy.toLocaleString()}</div>
-                                    <div class="fw-bold">利益: 🪙${profit.toLocaleString()}</div>
-                                    <div class="">流通: ${circulationCount}枚 | 所持: ${myCounts[badge.id] || 0}</div>
+                        <div class="rights-item badge-card ${rarityClass}">
+                            <a href="./index.html?id=${badge.id}" class="text-decoration-none" style="color: inherit;">
+                                <img src="${badge.image_url}" alt="${badge.name}" class="rights-item-img">
+                            </a>
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <span class="rarity-pill" style="background: rgba(0,0,0,0.2); margin-bottom: 0;">${rarity}</span>
+                                    <span class="fw-bold text-truncate">${badge.name}</span>
+                                </div>
+                                <div class="rights-item-meta">
+                                    <div class="opacity-75">現在: 🪙${pBuy.toLocaleString()}</div>
+                                    <div class="fw-bold">利益: 🪙${totalRoyalty.toLocaleString()}</div>
+                                    <div class="opacity-75">売れた: ${soldCount}個 | 所持: ${myCounts[badge.id] || 0}個</div>
                                 </div>
                             </div>
                         </div>
