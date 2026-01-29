@@ -400,6 +400,7 @@
             <div class="coins-display">
                 <span>🪙</span>
                 <span id="user-coins">0</span>
+                <span class="ms-3 small text-muted" id="daily-purchase-limit">本日の購入可能回数 0/5</span>
             </div>
             <div class="d-flex flex-column align-items-center gap-3 mt-3">
                 <button class="btn btn-sm btn-outline-dark" style="border-radius: 20px; font-weight: bold;"
@@ -774,6 +775,7 @@
                 currentUserTickets = profileRes.data?.exchange_tickets || {};
 
                 document.getElementById('user-coins').textContent = currentUserCoins.toLocaleString();
+                await updateDailyPurchaseLimit();
 
                 // 流通数のカウント
                 const counts = {};
@@ -901,6 +903,42 @@
 
             } catch (err) {
                 console.error('Error loading rights badges:', err);
+            }
+        }
+
+        function getJstDayRange() {
+            const now = new Date();
+            const jstOffset = 9 * 60 * 60 * 1000;
+            const jstNow = new Date(now.getTime() + jstOffset);
+            const startJst = new Date(jstNow);
+            startJst.setHours(0, 0, 0, 0);
+            const endJst = new Date(jstNow);
+            endJst.setHours(23, 59, 59, 999);
+            return {
+                startUtc: new Date(startJst.getTime() - jstOffset).toISOString(),
+                endUtc: new Date(endJst.getTime() - jstOffset).toISOString()
+            };
+        }
+
+        async function updateDailyPurchaseLimit() {
+            const limitEl = document.getElementById('daily-purchase-limit');
+            if (!limitEl || !currentUserId) return;
+            const { startUtc, endUtc } = getJstDayRange();
+            try {
+                const { count, error } = await supabaseClient
+                    .from('activity_logs')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('user_id', currentUserId)
+                    .eq('action_type', 'badge_purchase')
+                    .gte('created_at', startUtc)
+                    .lte('created_at', endUtc);
+
+                if (error) throw error;
+                const used = count || 0;
+                limitEl.textContent = `本日の購入可能回数 ${used}/5`;
+            } catch (err) {
+                console.error('Failed to load daily purchase count:', err);
+                limitEl.textContent = '本日の購入可能回数 -/5';
             }
         }
 
