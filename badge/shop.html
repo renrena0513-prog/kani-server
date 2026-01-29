@@ -44,6 +44,17 @@
             margin-bottom: 20px;
         }
 
+        .daily-limit-badge {
+            background: #fff;
+            border: 1px solid #e2e6ef;
+            border-radius: 18px;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #2b2f36;
+            box-shadow: 0 4px 10px rgba(25, 28, 36, 0.08);
+        }
+
         .shop-container {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 24px;
@@ -397,10 +408,12 @@
     <div class="container py-5">
         <header class="text-center mb-4">
             <h1 class="shop-header display-4 fw-bold">🛒 バッジショップ</h1>
-            <div class="coins-display">
-                <span>🪙</span>
-                <span id="user-coins">0</span>
-                <span class="ms-3 small text-muted" id="daily-purchase-limit">本日の購入可能回数 0/5</span>
+            <div class="d-inline-flex align-items-center gap-3">
+                <div class="coins-display mb-0">
+                    <span>🪙</span>
+                    <span id="user-coins">0</span>
+                </div>
+                <div class="daily-limit-badge" id="daily-purchase-limit">本日の残り 0個</div>
             </div>
             <div class="d-flex flex-column align-items-center gap-3 mt-3">
                 <button class="btn btn-sm btn-outline-dark" style="border-radius: 20px; font-weight: bold;"
@@ -935,10 +948,11 @@
 
                 if (error) throw error;
                 const used = count || 0;
-                limitEl.textContent = `本日の購入可能回数 ${used}/5`;
+                const remaining = Math.max(0, 5 - used);
+                limitEl.textContent = `本日の残り ${remaining}個`;
             } catch (err) {
                 console.error('Failed to load daily purchase count:', err);
-                limitEl.textContent = '本日の購入可能回数 -/5';
+                limitEl.textContent = '本日の残り -個';
             }
         }
 
