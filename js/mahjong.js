@@ -467,18 +467,25 @@ function renderRanking(records, groupKey, type = 'all') {
     };
 
     const formatDelta = (value, kind) => {
-        if (Math.abs(value) < 0.00001) return { text: '―', cls: 'delta-zero', color: '#6c757d' };
         const sign = value > 0 ? '+' : '';
         if (kind === 'win' || kind === 'deal' || kind === 'top' || kind === 'avoid' || kind === 'skill') {
-            return { text: `${sign}${value.toFixed(1)}%`, cls: value > 0 ? 'delta-pos' : 'delta-neg', color: value > 0 ? '#0d6efd' : '#dc3545' };
+            const rounded = Number(value.toFixed(1));
+            if (rounded === 0) return { text: '―', cls: 'delta-zero', color: '#6c757d' };
+            return { text: `${sign}${rounded.toFixed(1)}%`, cls: value > 0 ? 'delta-pos' : 'delta-neg', color: value > 0 ? '#0d6efd' : '#dc3545' };
         }
         if (kind === 'avg_rank') {
-            return { text: `${sign}${value.toFixed(2)}`, cls: value > 0 ? 'delta-pos' : 'delta-neg', color: value > 0 ? '#0d6efd' : '#dc3545' };
+            const rounded = Number(value.toFixed(2));
+            if (rounded === 0) return { text: '―', cls: 'delta-zero', color: '#6c757d' };
+            return { text: `${sign}${rounded.toFixed(2)}`, cls: value > 0 ? 'delta-pos' : 'delta-neg', color: value > 0 ? '#0d6efd' : '#dc3545' };
         }
         if (kind === 'avg_score' || kind === 'max_score') {
-            return { text: `${sign}${value.toFixed(1)}`, cls: value > 0 ? 'delta-pos' : 'delta-neg', color: value > 0 ? '#0d6efd' : '#dc3545' };
+            const rounded = Number(value.toFixed(1));
+            if (rounded === 0) return { text: '―', cls: 'delta-zero', color: '#6c757d' };
+            return { text: `${sign}${rounded.toFixed(1)}`, cls: value > 0 ? 'delta-pos' : 'delta-neg', color: value > 0 ? '#0d6efd' : '#dc3545' };
         }
-        return { text: `${sign}${Math.round(value)}`, cls: value > 0 ? 'delta-pos' : 'delta-neg', color: value > 0 ? '#0d6efd' : '#dc3545' };
+        const rounded = Math.round(value);
+        if (rounded === 0) return { text: '―', cls: 'delta-zero', color: '#6c757d' };
+        return { text: `${sign}${rounded}`, cls: value > 0 ? 'delta-pos' : 'delta-neg', color: value > 0 ? '#0d6efd' : '#dc3545' };
     };
 
     // ソート
