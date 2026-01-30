@@ -752,37 +752,37 @@ function renderRanking(records, groupKey, type = 'all') {
             const linkClass = canLink ? '' : 'pe-none text-dark';
 
             let statValue = '';
-            let statColorClass = 'text-primary';
+            let statColorClass = 'text-dark';
 
             if (type === 'win') {
                 statValue = `${s.avg_win.toFixed(1)}%`;
-                statColorClass = 'text-success';
+                statColorClass = 'text-dark';
             } else if (type === 'deal') {
                 statValue = `${s.avg_deal.toFixed(1)}%`;
-                statColorClass = 'text-danger';
+                statColorClass = 'text-dark';
             } else if (type === 'top') {
                 statValue = `${s.top_rate.toFixed(1)}%`;
             } else if (type === 'avoid') {
                 statValue = `${s.avoid_rate.toFixed(1)}%`;
-                statColorClass = 'text-info';
+                statColorClass = 'text-dark';
             } else if (type === 'avg_rank') {
                 statValue = `${s.avg_rank.toFixed(2)}`;
-                statColorClass = 'text-secondary';
+                statColorClass = 'text-dark';
             } else if (type === 'max_score') {
                 statValue = `${(s.max_score > 0 ? '+' : '') + s.max_score.toFixed(1)}`;
-                statColorClass = 'text-warning';
+                statColorClass = 'text-dark';
             } else if (type === 'avg_score') {
                 statValue = `${(s.avg_score > 0 ? '+' : '') + s.avg_score.toFixed(1)}`;
-                statColorClass = 'text-muted';
+                statColorClass = 'text-dark';
             } else if (type === 'match_count') {
                 statValue = `${s.count}`;
                 statColorClass = 'text-dark';
             } else if (type === 'skill') {
                 statValue = `${(s.skill > 0 ? '+' : '') + s.skill.toFixed(1)}%`;
-                statColorClass = s.skill > 0 ? 'text-success' : (s.skill < 0 ? 'text-danger' : '');
+                statColorClass = 'text-dark';
             } else if (type === 'all' || type === 'individual_yonma' || type === 'individual_sanma') {
                 statValue = `${(s.score > 0 ? '+' : '') + s.score.toFixed(1)}`;
-                statColorClass = s.score > 0 ? 'text-success' : (s.score < 0 ? 'text-danger' : '');
+                statColorClass = 'text-dark';
             }
 
             const labelText = document.getElementById('stat-header')?.textContent || '合計スコア';
