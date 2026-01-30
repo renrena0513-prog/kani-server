@@ -294,8 +294,15 @@
                 font-size: 0.8rem;
             }
 
+            .ranking-table td:nth-child(5)::before {
+                content: attr(data-label) ": ";
+                color: #888;
+                font-size: 0.8rem;
+            }
+
             .ranking-table td:nth-child(3),
-            .ranking-table td:nth-child(4) {
+            .ranking-table td:nth-child(4),
+            .ranking-table td:nth-child(5) {
                 display: inline-block;
                 width: auto;
                 margin-right: 15px;

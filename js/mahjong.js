@@ -317,6 +317,7 @@ function showRanking() {
             <th style="width: 80px;">順位</th>
             <th id="name-header">${nameHeader.textContent}</th>
             <th id="stat-header" style="width: 180px;">${statHeader.textContent}</th>
+            <th style="width: 120px;">24時間比</th>
             <th style="width: 120px;">${type === 'match_count' ? '局数' : '試合数'}</th>
         `;
 
@@ -338,30 +339,12 @@ function showRanking() {
 function renderRanking(records, groupKey, type = 'all') {
     // ランキング集計
     const summary = {};
-    records.forEach(r => {
-        // グループ化のキーを決定
-        let key;
-        if (groupKey === 'team_name') {
-            key = r.team_name;
-        } else {
-            key = r.discord_user_id;
-            if (!key || key === 'null') {
-                // 過去データの場合、account_nameからprofilesでdiscord_user_idを逆引き
-                const playerName = r.nickname || r.account_name;
-                const matchedProfile = allProfiles.find(p => p.account_name === playerName);
-                if (matchedProfile && matchedProfile.discord_user_id) {
-                    key = matchedProfile.discord_user_id;
-                } else {
-                    // プロフィールが見つからない場合は名前をキーにする
-                    key = playerName || 'Unknown';
-                }
-            }
-        }
+    const summaryOld = {};
+    const nowTs = Date.now();
 
-        if (!key) return;
-
-        if (!summary[key]) {
-            summary[key] = {
+    const ensureSummary = (target, key, r) => {
+        if (!target[key]) {
+            target[key] = {
                 key: key,
                 discord_user_id: groupKey === 'team_name' ? null : (r.discord_user_id || null),
                 nickname: groupKey === 'team_name' ? key : (r.nickname || r.account_name || key),
@@ -380,60 +363,122 @@ function renderRanking(records, groupKey, type = 'all') {
                 isTeam: (groupKey === 'team_name')
             };
         }
+        return target[key];
+    };
 
-        // 過去データ（第一回）は既に集計済み、新データは試合ごとに合算
-        if (r.tournament_type === '第一回麻雀大会') {
-            summary[key].score += Number(r.score_total || 0);
-            summary[key].count += Number(r.matches_played || 0);
-            summary[key].r1 += Number(r.rank1_count || 0);
-            summary[key].r2 += Number(r.rank2_count || 0);
-            summary[key].r3 += Number(r.rank3_count || 0);
-            summary[key].r4 += Number(r.rank4_count || 0);
-            summary[key].max_score = Math.max(summary[key].max_score, Number(r.score_max || 0));
-            summary[key].hand_total += Number(r.hands_played || 0);
-            summary[key].win += Number(r.win_count || 0);
-            summary[key].deal += Number(r.deal_in_count || 0);
-            // 第一回は四麻メインと想定
-            summary[key].yonma_count += Number(r.matches_played || 0);
-            summary[key].yonma_last += Number(r.rank4_count || 0);  // 四麻のラス回数
+    const addRecord = (target, r) => {
+        let key;
+        if (groupKey === 'team_name') {
+            key = r.team_name;
         } else {
-            summary[key].score += Number(r.final_score || 0);
-            summary[key].count += 1;
-            // 新データ: rankカラムからカウント
-            const rk = Number(r.rank);
-            if (rk === 1) summary[key].r1++;
-            else if (rk === 2) summary[key].r2++;
-            else if (rk === 3) summary[key].r3++;
-            else if (rk === 4) summary[key].r4++;
-            summary[key].max_score = Math.max(summary[key].max_score, Number(r.final_score || 0));
-            summary[key].hand_total += Number(r.hand_count || 0);
-            summary[key].win += Number(r.win_count || 0);
-            summary[key].deal += Number(r.deal_in_count || 0);
-
-            // モード別カウント＆ラスカウント
-            if (r.mahjong_mode === '三麻') {
-                summary[key].sanma_count++;
-                if (rk === 3) summary[key].sanma_last++;  // 三麻は3位がラス
-            } else {
-                summary[key].yonma_count++;
-                if (rk === 4) summary[key].yonma_last++;  // 四麻は4位がラス
+            key = r.discord_user_id;
+            if (!key || key === 'null') {
+                const playerName = r.nickname || r.account_name;
+                const matchedProfile = allProfiles.find(p => p.account_name === playerName);
+                if (matchedProfile && matchedProfile.discord_user_id) {
+                    key = matchedProfile.discord_user_id;
+                } else {
+                    key = playerName || 'Unknown';
+                }
             }
+        }
+
+        if (!key) return;
+        const s = ensureSummary(target, key, r);
+
+        if (r.tournament_type === '第一回麻雀大会') {
+            s.score += Number(r.score_total || 0);
+            s.count += Number(r.matches_played || 0);
+            s.r1 += Number(r.rank1_count || 0);
+            s.r2 += Number(r.rank2_count || 0);
+            s.r3 += Number(r.rank3_count || 0);
+            s.r4 += Number(r.rank4_count || 0);
+            s.max_score = Math.max(s.max_score, Number(r.score_max || 0));
+            s.hand_total += Number(r.hands_played || 0);
+            s.win += Number(r.win_count || 0);
+            s.deal += Number(r.deal_in_count || 0);
+            s.yonma_count += Number(r.matches_played || 0);
+            s.yonma_last += Number(r.rank4_count || 0);
+        } else {
+            s.score += Number(r.final_score || 0);
+            s.count += 1;
+            const rk = Number(r.rank);
+            if (rk === 1) s.r1++;
+            else if (rk === 2) s.r2++;
+            else if (rk === 3) s.r3++;
+            else if (rk === 4) s.r4++;
+            s.max_score = Math.max(s.max_score, Number(r.final_score || 0));
+            s.hand_total += Number(r.hand_count || 0);
+            s.win += Number(r.win_count || 0);
+            s.deal += Number(r.deal_in_count || 0);
+
+            if (r.mahjong_mode === '三麻') {
+                s.sanma_count++;
+                if (rk === 3) s.sanma_last++;
+            } else {
+                s.yonma_count++;
+                if (rk === 4) s.yonma_last++;
+            }
+        }
+    };
+
+    const finalizeSummary = (target) => {
+        Object.values(target).forEach(s => {
+            s.avg_win = s.hand_total > 0 ? (s.win / s.hand_total * 100) : 0;
+            s.avg_deal = s.hand_total > 0 ? (s.deal / s.hand_total * 100) : 0;
+            s.top_rate = s.count > 0 ? (s.r1 / s.count) * 100 : 0;
+            const lastCount = s.sanma_last + s.yonma_last;
+            s.avoid_rate = s.count > 0 ? (1 - (lastCount / s.count)) * 100 : 0;
+            s.avg_rank = s.count > 0 ? (1 * s.r1 + 2 * s.r2 + 3 * s.r3 + 4 * s.r4) / s.count : 0;
+            s.avg_score = s.count > 0 ? s.score / s.count : 0;
+            if (s.max_score === -Infinity) s.max_score = 0;
+            s.skill = s.hand_total > 0 ? ((s.win - s.deal) / s.hand_total * 100) : 0;
+        });
+    };
+
+    const isRecent = (r) => {
+        if (!r.event_datetime) return false;
+        const ts = new Date(r.event_datetime).getTime();
+        if (Number.isNaN(ts)) return false;
+        return (nowTs - ts) < (24 * 60 * 60 * 1000);
+    };
+    records.forEach(r => {
+        addRecord(summary, r);
+        if (!isRecent(r)) {
+            addRecord(summaryOld, r);
         }
     });
 
-    Object.values(summary).forEach(s => {
-        // 和了率・放銃率は局数（hand_total）で計算
-        s.avg_win = s.hand_total > 0 ? (s.win / s.hand_total * 100) : 0;   // 和了率（%）
-        s.avg_deal = s.hand_total > 0 ? (s.deal / s.hand_total * 100) : 0; // 放銃率（%）
-        s.top_rate = s.count > 0 ? (s.r1 / s.count) * 100 : 0;
-        // ラス回避率：三麻の3位 + 四麻の4位 の合計をラスとしてカウント
-        const lastCount = s.sanma_last + s.yonma_last;
-        s.avoid_rate = s.count > 0 ? (1 - (lastCount / s.count)) * 100 : 0;
-        s.avg_rank = s.count > 0 ? (1 * s.r1 + 2 * s.r2 + 3 * s.r3 + 4 * s.r4) / s.count : 0;
-        s.avg_score = s.count > 0 ? s.score / s.count : 0;
-        if (s.max_score === -Infinity) s.max_score = 0;
-        s.skill = s.hand_total > 0 ? ((s.win - s.deal) / s.hand_total * 100) : 0;
-    });
+    finalizeSummary(summary);
+    finalizeSummary(summaryOld);
+
+    const getStatValueNum = (s, kind) => {
+        if (!s) return 0;
+        if (kind === 'win') return s.avg_win;
+        if (kind === 'deal') return s.avg_deal;
+        if (kind === 'top') return s.top_rate;
+        if (kind === 'avoid') return s.avoid_rate;
+        if (kind === 'avg_rank') return s.avg_rank;
+        if (kind === 'max_score') return s.max_score;
+        if (kind === 'avg_score') return s.avg_score;
+        if (kind === 'match_count') return s.count;
+        if (kind === 'skill') return s.skill;
+        return s.score;
+    };
+
+    const formatDelta = (value, kind) => {
+        const sign = value > 0 ? '+' : value < 0 ? '' : '±';
+        if (kind === 'win' || kind === 'deal' || kind === 'top' || kind === 'avoid' || kind === 'skill') {
+            return `${sign}${value.toFixed(1)}%`;
+        }
+        if (kind === 'avg_rank') {
+            return `${sign}${value.toFixed(2)}`;
+        }
+        if (kind === 'avg_score' || kind === 'max_score') {
+            return `${sign}${value.toFixed(1)}`;
+        }
+        return `${sign}${Math.round(value)}`;
+    };
 
     // ソート
     const targetTypes = ['avg_score', 'max_score', 'deal', 'win', 'skill', 'avg_rank', 'top', 'avoid'];
@@ -563,6 +608,8 @@ function renderRanking(records, groupKey, type = 'all') {
             const linkUrl = canLink ? `../mypage/index.html?user=${s.discord_user_id}` : '#';
             const linkClass = canLink ? '' : 'pe-none text-dark';
 
+            const deltaValue = getStatValueNum(s, type) - getStatValueNum(summaryOld[s.key], type);
+            const deltaDisplay = formatDelta(deltaValue, type);
             return `
                 <div class="col-12" id="rank-player-${s.discord_user_id || 'unknown'}">
                     <div class="podium-card ${rankClass}">
@@ -749,6 +796,7 @@ function renderRanking(records, groupKey, type = 'all') {
                     <td class="fw-bold ${statColorClass}" data-label="${labelText}" style="font-size: 1.1rem;">
                         ${statValue}
                     </td>
+                    <td data-label="24時間比">${deltaDisplay}</td>
                     <td data-label="${type === 'match_count' ? '局数' : '試合数'}">${type === 'match_count' ? s.hand_total : s.count}</td>
                 </tr>
             `;

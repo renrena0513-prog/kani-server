@@ -8,7 +8,7 @@
             try {
                 const { data: profiles, error } = await supabaseClient
                     .from('profiles')
-                    .select('discord_user_id, account_name, avatar_url, equipped_badge_id, badges!equipped_badge_id(image_url)')
+                    .select('discord_user_id, account_name, avatar_url')
                     .neq('discord_user_id', targetId)
                     .order('account_name');
 
@@ -17,7 +17,6 @@
                     <div class="user-select-item" onclick="confirmSelection('${p.discord_user_id}', '${p.account_name.replace(/'/g, "\\'")}')">
                         <img src="${p.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png'}" class="user-select-avatar">
                         <span class="user-select-name">${p.account_name}</span>
-                        ${p.badges ? `<img src="${p.badges.image_url}" class="user-select-badge">` : ''}
                     </div>
                 `).join('');
             } catch (err) {

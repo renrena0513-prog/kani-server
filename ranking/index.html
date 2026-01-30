@@ -122,6 +122,11 @@
             gap: 10px;
         }
 
+        .user-meta .meta-main {
+            font-weight: 700;
+            color: #9b59b6;
+        }
+
         .user-avatar {
             width: 40px;
             height: 40px;
@@ -217,6 +222,10 @@
 
             .user-meta {
                 display: flex;
+            }
+
+            .creator-meta .meta-main {
+                color: #e67e22;
             }
         }
     </style>
@@ -458,8 +467,8 @@
                                                 ${item.account_name || '名称未設定'}
                                             </a>
                                         </div>
-                                    <div class="user-meta">
-                                        <span>累計収益: ${displayStat}</span>
+                                    <div class="user-meta creator-meta">
+                                        <span class="meta-main">累計収益: ${displayStat}</span>
                                         <span>出品数: ${item.listings}件</span>
                                         <span>販売回数: ${item.sales}回</span>
                                     </div>
@@ -612,13 +621,13 @@
                                     <div class="user-meta">
                                         ${currentMode === 'networth'
                             ? `
-                                            <span>純資産: ${displayStat}</span>
+                                            <span class="meta-main">純資産: ${displayStat}</span>
                                             <span>所持金: 🪙 ${item.coins.toLocaleString()}</span>
                                             <span>所持バッジ: 📛 ${item.badgeCount}個</span>
                                             <span>バッジ価値: 📈 ${item.badgeValue.toLocaleString()}</span>
                                         `
                             : `
-                                            <span>累計資産: ${displayStat}</span>
+                                            <span class="meta-main">累計資産: ${displayStat}</span>
                                             <span>所持金: 🪙 ${item.coins.toLocaleString()}</span>
                                             <span>所持バッジ: 📛 ${item.badgeCount}個</span>
                                             <span>バッジ価値: 📈 ${item.badgeValue.toLocaleString()}</span>
