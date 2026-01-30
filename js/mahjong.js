@@ -645,10 +645,12 @@ function renderRanking(records, groupKey, type = 'all') {
                                     <div class="podium-stat-label">${statLabel}</div>
                                     <div class="podium-stat-value">${statValue}</div>
                                 </div>
+                                ${type === 'max_score' ? '' : `
                                 <div class="podium-stat-item">
                                     <div class="podium-stat-label">24時間比</div>
                                     <div class="podium-stat-value ${delta.cls}">${delta.text}</div>
                                 </div>
+                                `}
                                 <div class="podium-stat-item">
                                     <div class="podium-stat-label">${type === 'match_count' ? '局数' : '試合数'}</div>
                                     <div class="podium-stat-value podium-match-count">${type === 'match_count' ? s.hand_total : s.count}</div>
@@ -803,7 +805,7 @@ function renderRanking(records, groupKey, type = 'all') {
                     <td class="fw-bold ${statColorClass}" data-label="${labelText}" style="font-size: 1.1rem;">
                         ${statValue}
                     </td>
-                    <td data-label="24時間比"><span class="${delta.cls}">${delta.text}</span></td>
+                    ${type === 'max_score' ? '<td data-label="24時間比">―</td>' : `<td data-label="24時間比"><span class="${delta.cls}">${delta.text}</span></td>`}
                     <td data-label="${type === 'match_count' ? '局数' : '試合数'}">${type === 'match_count' ? s.hand_total : s.count}</td>
                 </tr>
             `;
