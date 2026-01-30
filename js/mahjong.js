@@ -467,18 +467,18 @@ function renderRanking(records, groupKey, type = 'all') {
     };
 
     const formatDelta = (value, kind) => {
-        if (Math.abs(value) < 0.00001) return { text: '―', cls: 'delta-zero' };
+        if (Math.abs(value) < 0.00001) return { text: '―', cls: 'delta-zero', color: '#6c757d' };
         const sign = value > 0 ? '+' : '';
         if (kind === 'win' || kind === 'deal' || kind === 'top' || kind === 'avoid' || kind === 'skill') {
-            return { text: `${sign}${value.toFixed(1)}%`, cls: value > 0 ? 'delta-pos' : 'delta-neg' };
+            return { text: `${sign}${value.toFixed(1)}%`, cls: value > 0 ? 'delta-pos' : 'delta-neg', color: value > 0 ? '#0d6efd' : '#dc3545' };
         }
         if (kind === 'avg_rank') {
-            return { text: `${sign}${value.toFixed(2)}`, cls: value > 0 ? 'delta-pos' : 'delta-neg' };
+            return { text: `${sign}${value.toFixed(2)}`, cls: value > 0 ? 'delta-pos' : 'delta-neg', color: value > 0 ? '#0d6efd' : '#dc3545' };
         }
         if (kind === 'avg_score' || kind === 'max_score') {
-            return { text: `${sign}${value.toFixed(1)}`, cls: value > 0 ? 'delta-pos' : 'delta-neg' };
+            return { text: `${sign}${value.toFixed(1)}`, cls: value > 0 ? 'delta-pos' : 'delta-neg', color: value > 0 ? '#0d6efd' : '#dc3545' };
         }
-        return { text: `${sign}${Math.round(value)}`, cls: value > 0 ? 'delta-pos' : 'delta-neg' };
+        return { text: `${sign}${Math.round(value)}`, cls: value > 0 ? 'delta-pos' : 'delta-neg', color: value > 0 ? '#0d6efd' : '#dc3545' };
     };
 
     // ソート
@@ -648,7 +648,7 @@ function renderRanking(records, groupKey, type = 'all') {
                                 ${type === 'max_score' ? '' : `
                                 <div class="podium-stat-item">
                                     <div class="podium-stat-label">24時間比</div>
-                                    <div class="podium-stat-value ${delta.cls}">${delta.text}</div>
+                                    <div class="podium-stat-value ${delta.cls}" style="color: ${delta.color};">${delta.text}</div>
                                 </div>
                                 `}
                                 <div class="podium-stat-item">
@@ -729,7 +729,7 @@ function renderRanking(records, groupKey, type = 'all') {
             let avatarHtml = '';
             if (!s.isTeam) {
                 avatarHtml = `
-                    <div class="d-flex align-items-center gap-1">
+                    <div class="d-flex align-items-center gap-2">
                         <div style="width: 32px; height: 32px;" class="flex-shrink-0 d-flex align-items-center justify-content-center">
                             ${avatarUrl ?
                         `<img src="${avatarUrl}"
@@ -805,7 +805,7 @@ function renderRanking(records, groupKey, type = 'all') {
                     <td class="fw-bold ${statColorClass}" data-label="${labelText}" style="font-size: 1.1rem;">
                         ${statValue}
                     </td>
-                    ${type === 'max_score' ? '<td data-label="24時間比">―</td>' : `<td data-label="24時間比"><span class="${delta.cls}">${delta.text}</span></td>`}
+                    ${type === 'max_score' ? '<td data-label="24時間比">―</td>' : `<td data-label="24時間比"><span class="${delta.cls}" style="color: ${delta.color};">${delta.text}</span></td>`}
                     <td data-label="${type === 'match_count' ? '局数' : '試合数'}">${type === 'match_count' ? s.hand_total : s.count}</td>
                 </tr>
             `;
