@@ -294,11 +294,26 @@
                 font-size: 0.8rem;
             }
 
-            .ranking-table td:nth-child(5)::before {
-                content: attr(data-label) ": ";
-                color: #888;
-                font-size: 0.8rem;
-            }
+        .ranking-table td:nth-child(5)::before {
+            content: attr(data-label) ": ";
+            color: #888;
+            font-size: 0.8rem;
+        }
+
+        .delta-pos {
+            color: #0d6efd;
+            font-weight: 700;
+        }
+
+        .delta-neg {
+            color: #dc3545;
+            font-weight: 700;
+        }
+
+        .delta-zero {
+            color: #6c757d;
+            font-weight: 700;
+        }
 
             .ranking-table td:nth-child(3),
             .ranking-table td:nth-child(4),

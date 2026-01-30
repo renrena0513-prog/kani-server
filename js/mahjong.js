@@ -467,17 +467,18 @@ function renderRanking(records, groupKey, type = 'all') {
     };
 
     const formatDelta = (value, kind) => {
-        const sign = value > 0 ? '+' : value < 0 ? '' : '±';
+        if (Math.abs(value) < 0.00001) return { text: '―', cls: 'delta-zero' };
+        const sign = value > 0 ? '+' : '';
         if (kind === 'win' || kind === 'deal' || kind === 'top' || kind === 'avoid' || kind === 'skill') {
-            return `${sign}${value.toFixed(1)}%`;
+            return { text: `${sign}${value.toFixed(1)}%`, cls: value > 0 ? 'delta-pos' : 'delta-neg' };
         }
         if (kind === 'avg_rank') {
-            return `${sign}${value.toFixed(2)}`;
+            return { text: `${sign}${value.toFixed(2)}`, cls: value > 0 ? 'delta-pos' : 'delta-neg' };
         }
         if (kind === 'avg_score' || kind === 'max_score') {
-            return `${sign}${value.toFixed(1)}`;
+            return { text: `${sign}${value.toFixed(1)}`, cls: value > 0 ? 'delta-pos' : 'delta-neg' };
         }
-        return `${sign}${Math.round(value)}`;
+        return { text: `${sign}${Math.round(value)}`, cls: value > 0 ? 'delta-pos' : 'delta-neg' };
     };
 
     // ソート
@@ -609,7 +610,7 @@ function renderRanking(records, groupKey, type = 'all') {
             const linkClass = canLink ? '' : 'pe-none text-dark';
 
             const deltaValue = getStatValueNum(s, type) - getStatValueNum(summaryOld[s.key], type);
-            const deltaDisplay = formatDelta(deltaValue, type);
+            const delta = formatDelta(deltaValue, type);
             return `
                 <div class="col-12" id="rank-player-${s.discord_user_id || 'unknown'}">
                     <div class="podium-card ${rankClass}">
@@ -646,7 +647,7 @@ function renderRanking(records, groupKey, type = 'all') {
                                 </div>
                                 <div class="podium-stat-item">
                                     <div class="podium-stat-label">24時間比</div>
-                                    <div class="podium-stat-value">${deltaDisplay}</div>
+                                    <div class="podium-stat-value ${delta.cls}">${delta.text}</div>
                                 </div>
                                 <div class="podium-stat-item">
                                     <div class="podium-stat-label">${type === 'match_count' ? '局数' : '試合数'}</div>
@@ -786,7 +787,7 @@ function renderRanking(records, groupKey, type = 'all') {
 
             const labelText = document.getElementById('stat-header')?.textContent || '合計スコア';
             const deltaValue = getStatValueNum(s, type) - getStatValueNum(summaryOld[s.key], type);
-            const deltaDisplay = formatDelta(deltaValue, type);
+            const delta = formatDelta(deltaValue, type);
 
             return `
                 <tr id="rank-player-${s.discord_user_id || 'unknown'}">
@@ -802,7 +803,7 @@ function renderRanking(records, groupKey, type = 'all') {
                     <td class="fw-bold ${statColorClass}" data-label="${labelText}" style="font-size: 1.1rem;">
                         ${statValue}
                     </td>
-                    <td data-label="24時間比">${deltaDisplay}</td>
+                    <td data-label="24時間比"><span class="${delta.cls}">${delta.text}</span></td>
                     <td data-label="${type === 'match_count' ? '局数' : '試合数'}">${type === 'match_count' ? s.hand_total : s.count}</td>
                 </tr>
             `;
