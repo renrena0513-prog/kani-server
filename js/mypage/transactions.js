@@ -122,6 +122,7 @@
                 if (error) throw error;
                 if (!data.ok) throw new Error(data.error || '送金に失敗しました');
 
+                bootstrap.Modal.getInstance(document.getElementById('coinAmountModal'))?.hide();
                 alert(`${selectedToUserName} さんに 🪙${amount.toLocaleString()} 送金しました。`);
                 // 活動ログ記録
                 if (typeof logActivity === 'function') {

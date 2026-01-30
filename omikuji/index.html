@@ -272,6 +272,9 @@
                         <div id="fortune-reward" class="fortune-reward"></div>
                     </div>
                     <div id="fortune-message" class="fortune-message"></div>
+                    <button id="pay-penalty-btn" class="btn btn-danger mt-3" style="display: none;" onclick="payOmikujiPenalty()">
+                        🪙 支払う
+                    </button>
                     <button class="btn btn-outline-secondary mt-4" onclick="location.href='../mypage/index.html'">
                         マイページで確認
                     </button>
@@ -373,9 +376,11 @@
 
                 if (profileError) throw profileError;
 
-                const coinReward = selected.reward || 0;
+                let coinReward = selected.reward || 0;
                 const ticketReward = selected.ticket_reward || 0;
                 const manganReward = selected.mangan_ticket_reward || 0;
+                const isMusumeKyo = selected.rank === 'むすめ凶';
+                const displayPenalty = isMusumeKyo ? -999 : null;
 
                 let newCoins = (profile.coins || 0) + coinReward;
                 let newTotalAssets = profile.total_assets || 0;
@@ -433,6 +438,9 @@
                 if (coinReward !== 0) {
                     rewardHtml += `<span class="${coinReward > 0 ? 'text-success' : 'text-danger'}">🪙 ${coinReward >= 0 ? '+' : ''}${coinReward.toLocaleString()}</span> `;
                 }
+                if (displayPenalty !== null) {
+                    rewardHtml += `<span class="text-danger">🪙 ${displayPenalty.toLocaleString()}</span> `;
+                }
                 if (ticketReward !== 0) {
                     rewardHtml += `<span style="color: #d4a574;">🎫 ${ticketReward >= 0 ? '+' : ''}${ticketReward}枚</span>`;
                 }
@@ -444,6 +452,11 @@
                 rewardEl.className = 'fortune-reward'; // 個別に色を指定するのでクラスはリセット
 
                 document.getElementById('fortune-message').textContent = message;
+                const payBtn = document.getElementById('pay-penalty-btn');
+                if (payBtn) {
+                    payBtn.style.display = isMusumeKyo ? 'inline-block' : 'none';
+                    payBtn.disabled = false;
+                }
 
             } catch (err) {
                 console.error('Omikuji error:', err);
@@ -453,6 +466,15 @@
             } finally {
                 button.classList.remove('shaking');
             }
+        }
+
+        function payOmikujiPenalty() {
+            const payBtn = document.getElementById('pay-penalty-btn');
+            if (payBtn) {
+                payBtn.disabled = true;
+                payBtn.textContent = '支払い済み';
+            }
+            document.getElementById('fortune-message').textContent = 'ちっ、持ってねーのかよ！しけてんなー。しゃーなしこれやるよ';
         }
 
         document.addEventListener('DOMContentLoaded', initOmikuji);
