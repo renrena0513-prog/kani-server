@@ -221,9 +221,12 @@
                         detailsStr = `🛒 「${log.details?.badge_name || 'バッジ'}」を購入`;
                     } else if (log.action_type === 'omikuji') {
                         const tr = log.details?.ticket_reward;
+                        const mr = log.details?.mangan_ticket_reward;
                         const rank = log.details?.rank || '不明';
-                        if (tr) {
-                            detailsStr = `🎋 運勢: <strong>${rank}</strong> <span class="badge bg-warning text-dark ms-1" style="font-size: 0.75rem;">🎫 +${tr}枚 祈願符</span>`;
+                        if (tr || mr) {
+                            const trBadge = tr ? `<span class="badge bg-warning text-dark ms-1" style="font-size: 0.75rem;">🎫 +${tr}枚 祈願符</span>` : '';
+                            const mrBadge = mr ? `<span class="badge bg-warning text-dark ms-1" style="font-size: 0.75rem;">🧧 +${mr}枚 満願符</span>` : '';
+                            detailsStr = `🎋 運勢: <strong>${rank}</strong> ${trBadge}${mrBadge}`;
                         } else {
                             detailsStr = `🎋 運勢: <strong>${rank}</strong>`;
                         }

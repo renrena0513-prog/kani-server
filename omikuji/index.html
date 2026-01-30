@@ -367,7 +367,7 @@
                 // 現在のプロフィールを取得
                 const { data: profile, error: profileError } = await supabaseClient
                     .from('profiles')
-                    .select('coins, total_assets, gacha_tickets')
+                    .select('coins, total_assets, gacha_tickets, mangan_tickets')
                     .eq('discord_user_id', currentUserId)
                     .single();
 
@@ -375,14 +375,17 @@
 
                 const coinReward = selected.reward || 0;
                 const ticketReward = selected.ticket_reward || 0;
+                const manganReward = selected.mangan_ticket_reward || 0;
 
                 let newCoins = (profile.coins || 0) + coinReward;
                 let newTotalAssets = profile.total_assets || 0;
                 let newTickets = (profile.gacha_tickets || 0) + ticketReward;
+                let newManganTickets = (profile.mangan_tickets || 0) + manganReward;
 
                 // マイナスの場合は0以下にしない
                 if (newCoins < 0) newCoins = 0;
                 if (newTickets < 0) newTickets = 0;
+                if (newManganTickets < 0) newManganTickets = 0;
 
                 // コインプラス分を総資産に加算
                 if (coinReward > 0) {
@@ -396,6 +399,7 @@
                         coins: newCoins,
                         total_assets: newTotalAssets,
                         gacha_tickets: newTickets,
+                        mangan_tickets: newManganTickets,
                         last_omikuji_at: new Date().toISOString()
                     })
                     .eq('discord_user_id', currentUserId);
@@ -409,7 +413,8 @@
                         details: {
                             rank: selected.rank,
                             message: message,
-                            ticket_reward: ticketReward // チケット報酬数を含める
+                            ticket_reward: ticketReward,
+                            mangan_ticket_reward: manganReward
                         }
                     });
                 }
@@ -430,6 +435,9 @@
                 }
                 if (ticketReward !== 0) {
                     rewardHtml += `<span style="color: #d4a574;">🎫 ${ticketReward >= 0 ? '+' : ''}${ticketReward}枚</span>`;
+                }
+                if (manganReward !== 0) {
+                    rewardHtml += ` <span style="color: #d4a574;">🧧 ${manganReward >= 0 ? '+' : ''}${manganReward}枚</span>`;
                 }
 
                 rewardEl.innerHTML = rewardHtml || '<span class="text-muted">報酬なし</span>';

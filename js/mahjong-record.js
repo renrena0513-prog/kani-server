@@ -1019,6 +1019,7 @@ async function submitScores() {
 
         // 報酬付与（コイン・チケット）とログ記録
         const ticketRewardsMap = {}; // Discord通知用: { discord_user_id: count }
+        const manganRewardsMap = {}; // Discord通知用: { discord_user_id: count }
 
         for (const player of dataToInsert) {
             if (!player.discord_user_id) continue;
@@ -1042,6 +1043,15 @@ async function submitScores() {
                 ticketRewardsMap[player.discord_user_id] = ticketReward;
             }
 
+            // 1.5 満願符報酬（3%）
+            let manganReward = 0;
+            if (Math.random() < 0.03) {
+                manganReward = 1;
+            }
+            if (manganReward > 0) {
+                manganRewardsMap[player.discord_user_id] = manganReward;
+            }
+
             // 2. コイン報酬計算 (Discord通知ロジック準拠)
             // スコアボーナス: 切り上げ (プラスの場合のみ)
             const scoreBonus = player.final_score > 0 ? Math.ceil(player.final_score / 10) : 0;
@@ -1063,7 +1073,7 @@ async function submitScores() {
                 // プロフィール取得
                 const { data: profile } = await supabaseClient
                     .from('profiles')
-                    .select('coins, total_assets, gacha_tickets')
+                    .select('coins, total_assets, gacha_tickets, mangan_tickets')
                     .eq('discord_user_id', player.discord_user_id)
                     .single();
 
@@ -1073,6 +1083,10 @@ async function submitScores() {
                 // チケット更新
                 if (ticketReward > 0) {
                     updates.gacha_tickets = (profile?.gacha_tickets || 0) + ticketReward;
+                    updated = true;
+                }
+                if (manganReward > 0) {
+                    updates.mangan_tickets = (profile?.mangan_tickets || 0) + manganReward;
                     updated = true;
                 }
 
@@ -1091,7 +1105,7 @@ async function submitScores() {
                         .eq('discord_user_id', player.discord_user_id);
                 }
 
-                console.log(`${player.account_name} への報酬: コイン=${coinReward}, チケット=${ticketReward}`);
+                console.log(`${player.account_name} への報酬: コイン=${coinReward}, チケット=${ticketReward}, 満願符=${manganReward}`);
 
                 // 活動ログ記録 (コインまたはチケットの変動がある場合)
                 if (updated) {
@@ -1104,6 +1118,7 @@ async function submitScores() {
                             team: player.team_name,
                             coin_reward: coinReward,
                             ticket_reward: ticketReward,
+                            mangan_ticket_reward: manganReward,
                             breakdown: { base: 1, score: scoreBonus, rank: rankBonus }
                         }
                     });
@@ -1118,7 +1133,7 @@ async function submitScores() {
 
         // Discord通知を送信
         if (typeof DISCORD_WEBHOOK_URL !== 'undefined' && DISCORD_WEBHOOK_URL) {
-            await sendDiscordNotification(dataToInsert, isTobiOn, isYakitoriOn, ticketRewardsMap);
+            await sendDiscordNotification(dataToInsert, isTobiOn, isYakitoriOn, ticketRewardsMap, manganRewardsMap);
         }
 
         // ⑨送信後、チーム名とアカウント名以外をクリア（効率的な連続送信のため）
@@ -1160,8 +1175,9 @@ function clearFormExceptTeamAndAccount() {
  * @param {boolean} isTobiOn 飛び賞設定
  * @param {boolean} isYakitoriOn やきとり設定
  * @param {Object} ticketRewardsMap チケット獲得情報のマップ { discordUserId: count }
+ * @param {Object} manganRewardsMap 満願符獲得情報のマップ { discordUserId: count }
  */
-async function sendDiscordNotification(matchData, isTobiOn, isYakitoriOn, ticketRewardsMap = {}) {
+async function sendDiscordNotification(matchData, isTobiOn, isYakitoriOn, ticketRewardsMap = {}, manganRewardsMap = {}) {
     if (!matchData || matchData.length === 0) return;
 
     const first = matchData[0];
@@ -1195,7 +1211,8 @@ async function sendDiscordNotification(matchData, isTobiOn, isYakitoriOn, ticket
         const baseReward = (mode === '三麻') ? 3 : 5;
         const reward = baseReward + scoreBonus + rankBonus;
         const tickets = ticketRewardsMap[p.discord_user_id] || 0;
-        const rewardText = `💰+${reward}${tickets > 0 ? ` 🎫+${tickets}` : ''}`;
+        const mangans = manganRewardsMap[p.discord_user_id] || 0;
+        const rewardText = `💰+${reward}${tickets > 0 ? ` 🎫+${tickets}` : ''}${mangans > 0 ? ` 🧧+${mangans}` : ''}`;
 
         // 和了数と放銃数を表示
         const winDealLine = `🀄和了${p.win_count || 0}　🔫放銃${p.deal_in_count || 0}`;
