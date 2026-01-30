@@ -339,7 +339,7 @@ function showRanking() {
 function renderRanking(records, groupKey, type = 'all') {
     // ランキング集計
     const summary = {};
-    const summaryRecent = {};
+    const summaryOld = {};
     const nowTs = Date.now();
 
     const ensureSummary = (target, key, r) => {
@@ -444,13 +444,13 @@ function renderRanking(records, groupKey, type = 'all') {
     };
     records.forEach(r => {
         addRecord(summary, r);
-        if (isRecent(r)) {
-            addRecord(summaryRecent, r);
+        if (!isRecent(r)) {
+            addRecord(summaryOld, r);
         }
     });
 
     finalizeSummary(summary);
-    finalizeSummary(summaryRecent);
+    finalizeSummary(summaryOld);
 
     const getStatValueNum = (s, kind) => {
         if (!s) return 0;
@@ -466,20 +466,18 @@ function renderRanking(records, groupKey, type = 'all') {
         return s.score;
     };
 
-    const formatStatValue = (value, kind) => {
+    const formatDelta = (value, kind) => {
+        const sign = value > 0 ? '+' : value < 0 ? '' : '±';
         if (kind === 'win' || kind === 'deal' || kind === 'top' || kind === 'avoid' || kind === 'skill') {
-            return `${value.toFixed(1)}%`;
+            return `${sign}${value.toFixed(1)}%`;
         }
         if (kind === 'avg_rank') {
-            return `${value.toFixed(2)}`;
+            return `${sign}${value.toFixed(2)}`;
         }
         if (kind === 'avg_score' || kind === 'max_score') {
-            return `${value.toFixed(1)}`;
+            return `${sign}${value.toFixed(1)}`;
         }
-        if (kind === 'match_count') {
-            return `${Math.round(value)}`;
-        }
-        return `${value.toFixed(1)}`;
+        return `${sign}${Math.round(value)}`;
     };
 
     // ソート
@@ -605,13 +603,13 @@ function renderRanking(records, groupKey, type = 'all') {
             else if (type === 'match_count') statValue = `${s.count}`;
             else statValue = `${s.score.toFixed(1)}`;
 
-            const statLabel = document.getElementById('stat-header')?.textContent || '指標';
+            const statLabel = document.getElementById('stat-header')?.textContent || '合計スコア';
 
             const linkUrl = canLink ? `../mypage/index.html?user=${s.discord_user_id}` : '#';
             const linkClass = canLink ? '' : 'pe-none text-dark';
 
-            const recentValue = getStatValueNum(summaryRecent[s.key], type);
-            const recentDisplay = formatStatValue(recentValue, type);
+            const deltaValue = getStatValueNum(s, type) - getStatValueNum(summaryOld[s.key], type);
+            const deltaDisplay = formatDelta(deltaValue, type);
             return `
                 <div class="col-12" id="rank-player-${s.discord_user_id || 'unknown'}">
                     <div class="podium-card ${rankClass}">
@@ -648,7 +646,7 @@ function renderRanking(records, groupKey, type = 'all') {
                                 </div>
                                 <div class="podium-stat-item">
                                     <div class="podium-stat-label">24時間比</div>
-                                    <div class="podium-stat-value">${recentDisplay}</div>
+                                    <div class="podium-stat-value">${deltaDisplay}</div>
                                 </div>
                                 <div class="podium-stat-item">
                                     <div class="podium-stat-label">${type === 'match_count' ? '局数' : '試合数'}</div>
@@ -786,7 +784,9 @@ function renderRanking(records, groupKey, type = 'all') {
                 statColorClass = s.score > 0 ? 'text-success' : (s.score < 0 ? 'text-danger' : '');
             }
 
-            const labelText = document.getElementById('stat-header')?.textContent || '指標';
+            const labelText = document.getElementById('stat-header')?.textContent || '合計スコア';
+            const deltaValue = getStatValueNum(s, type) - getStatValueNum(summaryOld[s.key], type);
+            const deltaDisplay = formatDelta(deltaValue, type);
 
             return `
                 <tr id="rank-player-${s.discord_user_id || 'unknown'}">
@@ -802,7 +802,7 @@ function renderRanking(records, groupKey, type = 'all') {
                     <td class="fw-bold ${statColorClass}" data-label="${labelText}" style="font-size: 1.1rem;">
                         ${statValue}
                     </td>
-                    <td data-label="24時間比">${recentDisplay}</td>
+                    <td data-label="24時間比">${deltaDisplay}</td>
                     <td data-label="${type === 'match_count' ? '局数' : '試合数'}">${type === 'match_count' ? s.hand_total : s.count}</td>
                 </tr>
             `;
