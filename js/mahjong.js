@@ -636,7 +636,7 @@ function renderRanking(records, groupKey, type = 'all') {
                             `<img src="${window.teamLogoMap[s.key]}" alt="${s.key}" class="podium-avatar" style="border-radius: 8px; border: none; box-shadow: none;">` :
                             `<span style="font-size: 2rem;">🏅</span>`
                         ) :
-                        `<img src="../img/default-avatar.png" class="podium-avatar">`)}
+                        `<img src="https://cdn.discordapp.com/embed/avatars/0.png" class="podium-avatar">`)}
                                     </div>
                                 </div>
                                 <div class="podium-identity-row">
@@ -736,7 +736,7 @@ function renderRanking(records, groupKey, type = 'all') {
             let avatarHtml = '';
             if (!s.isTeam) {
                 avatarHtml = `
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-3">
                         <div style="width: 32px; height: 32px;" class="flex-shrink-0 d-flex align-items-center justify-content-center">
                             ${avatarUrl ?
                         `<img src="${avatarUrl}"
