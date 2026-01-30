@@ -343,7 +343,8 @@
             }
         }
 
-                let baseRewardHtml = '';
+        let baseRewardHtml = '';
+        let pendingOmikuji = null;
 
         async function drawOmikuji() {
             const button = document.getElementById('draw-button');
@@ -399,31 +400,43 @@
                     newTotalAssets += coinReward;
                 }
 
-                // プロフィールを更新
-                const { error: updateError } = await supabaseClient
-                    .from('profiles')
-                    .update({
-                        coins: newCoins,
-                        total_assets: newTotalAssets,
-                        gacha_tickets: newTickets,
-                        mangan_tickets: newManganTickets,
-                        last_omikuji_at: new Date().toISOString()
-                    })
-                    .eq('discord_user_id', currentUserId);
+                if (isMusumeKyo) {
+                    // 日時だけ確定。報酬は支払いボタンを押すまで反映しない。
+                    const { error: updateError } = await supabaseClient
+                        .from('profiles')
+                        .update({
+                            last_omikuji_at: new Date().toISOString()
+                        })
+                        .eq('discord_user_id', currentUserId);
+                    if (updateError) throw updateError;
+                    pendingOmikuji = { coinReward, ticketReward, manganReward, message, rank: selected.rank };
+                } else {
+                    // プロフィールを更新
+                    const { error: updateError } = await supabaseClient
+                        .from('profiles')
+                        .update({
+                            coins: newCoins,
+                            total_assets: newTotalAssets,
+                            gacha_tickets: newTickets,
+                            mangan_tickets: newManganTickets,
+                            last_omikuji_at: new Date().toISOString()
+                        })
+                        .eq('discord_user_id', currentUserId);
 
-                if (updateError) throw updateError;
+                    if (updateError) throw updateError;
 
-                // 活動ログを記録
-                if (typeof logActivity === 'function') {
-                    await logActivity(currentUserId, 'omikuji', {
-                        amount: coinReward,
-                        details: {
-                            rank: selected.rank,
-                            message: message,
-                            ticket_reward: ticketReward,
-                            mangan_ticket_reward: manganReward
-                        }
-                    });
+                    // 活動ログを記録
+                    if (typeof logActivity === 'function') {
+                        await logActivity(currentUserId, 'omikuji', {
+                            amount: coinReward,
+                            details: {
+                                rank: selected.rank,
+                                message: message,
+                                ticket_reward: ticketReward,
+                                mangan_ticket_reward: manganReward
+                            }
+                        });
+                    }
                 }
 
                 // 少し待ってから結果を表示
@@ -490,7 +503,8 @@
             }
         }
 
-        function payOmikujiPenalty() {
+        async function payOmikujiPenalty() {
+            if (!pendingOmikuji) return;
             const payBtn = document.getElementById('pay-penalty-btn');
             if (payBtn) {
                 payBtn.disabled = true;
@@ -504,6 +518,56 @@
             const rewardEl = document.getElementById('fortune-reward');
             if (rewardEl) {
                 rewardEl.innerHTML = baseRewardHtml || '<span class="text-muted">報酬なし</span>';
+            }
+            try {
+                const { data: profile, error: profileError } = await supabaseClient
+                    .from('profiles')
+                    .select('coins, total_assets, gacha_tickets, mangan_tickets')
+                    .eq('discord_user_id', currentUserId)
+                    .single();
+                if (profileError) throw profileError;
+
+                const coinReward = pendingOmikuji.coinReward || 0;
+                const ticketReward = pendingOmikuji.ticketReward || 0;
+                const manganReward = pendingOmikuji.manganReward || 0;
+
+                let newCoins = (profile.coins || 0) + coinReward;
+                let newTotalAssets = profile.total_assets || 0;
+                let newTickets = (profile.gacha_tickets || 0) + ticketReward;
+                let newManganTickets = (profile.mangan_tickets || 0) + manganReward;
+
+                if (newCoins < 0) newCoins = 0;
+                if (newTickets < 0) newTickets = 0;
+                if (newManganTickets < 0) newManganTickets = 0;
+                if (coinReward > 0) {
+                    newTotalAssets += coinReward;
+                }
+
+                const { error: updateError } = await supabaseClient
+                    .from('profiles')
+                    .update({
+                        coins: newCoins,
+                        total_assets: newTotalAssets,
+                        gacha_tickets: newTickets,
+                        mangan_tickets: newManganTickets
+                    })
+                    .eq('discord_user_id', currentUserId);
+                if (updateError) throw updateError;
+
+                if (typeof logActivity === 'function') {
+                    await logActivity(currentUserId, 'omikuji', {
+                        amount: coinReward,
+                        details: {
+                            rank: pendingOmikuji.rank,
+                            message: pendingOmikuji.message,
+                            ticket_reward: ticketReward,
+                            mangan_ticket_reward: manganReward
+                        }
+                    });
+                }
+                pendingOmikuji = null;
+            } catch (err) {
+                console.error('Omikuji penalty apply error:', err);
             }
             document.getElementById('fortune-message').textContent = 'ちっ、持ってねーのかよ！しけてんなー。しゃーなしこれやるよ';
         }
