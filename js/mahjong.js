@@ -612,8 +612,6 @@ function renderRanking(records, groupKey, type = 'all') {
 
             const recentValue = getStatValueNum(summaryRecent[s.key], type);
             const recentDisplay = formatStatValue(recentValue, type);
-            const recentValue = getStatValueNum(summaryRecent[s.key], type);
-            const recentDisplay = formatStatValue(recentValue, type);
             return `
                 <div class="col-12" id="rank-player-${s.discord_user_id || 'unknown'}">
                     <div class="podium-card ${rankClass}">
