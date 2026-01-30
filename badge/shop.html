@@ -312,6 +312,12 @@
             box-shadow: 0 10px 18px rgba(255, 193, 7, 0.25);
         }
 
+        .shop-filter-select.is-active,
+        .shop-filter-btn.is-active {
+            border-color: #ffc107;
+            box-shadow: 0 10px 18px rgba(255, 193, 7, 0.2);
+        }
+
         .sold-out-badge {
             position: absolute;
             top: 50%;
@@ -461,6 +467,7 @@
                             <option value="price_desc">価格順（高→低）</option>
                             <option value="circulation_asc">流通数順（低→高）</option>
                             <option value="circulation_desc">流通数順（高→低）</option>
+                            <option value="new_desc">新着順</option>
                         </select>
                     </div>
                     <div class="col-12 col-md-3">
@@ -747,6 +754,7 @@
         let currentShopPage = 1;
         let shopFiltersInitialized = false;
         let shopIsMobile = window.matchMedia('(max-width: 767.98px)').matches;
+        let creatorCache = new Map();
         let shopFilters = {
             sort: 'price_asc',
             rarity: '',
@@ -973,6 +981,16 @@
                 unownedBtn.classList.toggle('active', shopFilters.unowned);
             }
 
+            const refreshFilterActiveStyles = () => {
+                if (sortEl) sortEl.classList.toggle('is-active', (sortEl.value || 'price_asc') !== 'price_asc');
+                const rarityBtn = document.getElementById('shop-rarity-btn');
+                if (rarityBtn) rarityBtn.classList.toggle('is-active', !!getSelectedRarityId());
+                const creatorBtn = document.getElementById('shop-creator-btn');
+                if (creatorBtn) creatorBtn.classList.toggle('is-active', !!getSelectedCreatorId());
+                if (typeEl) typeEl.classList.toggle('is-active', !!typeEl.value);
+                if (unownedBtn) unownedBtn.classList.toggle('is-active', unownedBtn.dataset.active === 'true');
+            };
+
             const updateFilters = () => {
                 shopFilters = {
                     sort: sortEl?.value || 'price_asc',
@@ -983,6 +1001,7 @@
                 };
                 currentShopPage = 1;
                 applyShopFilters();
+                refreshFilterActiveStyles();
             };
 
             sortEl?.addEventListener('change', updateFilters);
@@ -1002,6 +1021,8 @@
                     renderShopPage();
                 }
             });
+
+            refreshFilterActiveStyles();
         }
 
         function getShopPageSize() {
@@ -1037,12 +1058,12 @@
             return btn?.dataset.value || '';
         }
 
-        function populateShopRarityOptions() {
+        function populateShopRarityOptions(sourceBadges = null) {
             const menu = document.getElementById('shop-rarity-menu');
             if (!menu) return;
             const current = getSelectedRarityId();
             const counts = {};
-            (shopBadges || []).forEach(badge => {
+            (sourceBadges || shopBadges || []).forEach(badge => {
                 if (!badge.rarity) return;
                 counts[badge.rarity] = (counts[badge.rarity] || 0) + 1;
             });
@@ -1098,6 +1119,8 @@
                     shopFilters.rarity = id;
                     currentShopPage = 1;
                     applyShopFilters();
+                    const rarityBtn = document.getElementById('shop-rarity-btn');
+                    if (rarityBtn) rarityBtn.classList.toggle('is-active', !!id);
                 });
             });
         }
@@ -1158,13 +1181,52 @@
                     shopFilters.creator = id;
                     currentShopPage = 1;
                     applyShopFilters();
+                    const creatorBtn = document.getElementById('shop-creator-btn');
+                    if (creatorBtn) creatorBtn.classList.toggle('is-active', !!id);
                 });
             });
+        }
+
+        function getBaseFilteredBadges(excludeKey) {
+            const myCounts = cachedMyCounts || {};
+            let base = (shopBadges || []).slice();
+            if (excludeKey !== 'rarity' && shopFilters.rarity) {
+                base = base.filter(b => b.rarity === shopFilters.rarity);
+            }
+            if (excludeKey !== 'creator' && shopFilters.creator) {
+                base = base.filter(b => b.discord_user_id === shopFilters.creator);
+            }
+            if (excludeKey !== 'type' && shopFilters.type) {
+                base = base.filter(b => b.sales_type === shopFilters.type);
+            }
+            if (excludeKey !== 'unowned' && shopFilters.unowned) {
+                base = base.filter(b => (myCounts[b.id] || 0) === 0);
+            }
+            return base;
+        }
+
+        function buildCreatorMapFromBadges(sourceBadges) {
+            const ids = [...new Set((sourceBadges || []).map(b => b.discord_user_id).filter(Boolean))];
+            const map = new Map();
+            ids.forEach(id => {
+                const info = creatorCache.get(id) || { name: id, avatar: '' };
+                map.set(id, info);
+            });
+            return map;
+        }
+
+        function updateDynamicFilterOptions() {
+            const baseForRarity = getBaseFilteredBadges('rarity');
+            const baseForCreator = getBaseFilteredBadges('creator');
+            populateShopRarityOptions(baseForRarity);
+            populateShopCreatorOptions(buildCreatorMapFromBadges(baseForCreator));
         }
 
         function applyShopFilters() {
             const myCounts = cachedMyCounts || {};
             let filtered = (shopBadges || []).slice();
+
+            updateDynamicFilterOptions();
 
             if (shopFilters.rarity) {
                 filtered = filtered.filter(b => b.rarity === shopFilters.rarity);
@@ -1181,6 +1243,7 @@
 
             const sortKey = shopFilters.sort || 'price_asc';
             const sorters = {
+                new_desc: (a, b) => (b.sort_order || 0) - (a.sort_order || 0),
                 price_asc: (a, b) => a.pBuy - b.pBuy,
                 price_desc: (a, b) => b.pBuy - a.pBuy,
                 circulation_asc: (a, b) => a.circulationCount - b.circulationCount,
@@ -1405,6 +1468,7 @@
                     }
                 });
 
+                creatorCache = creatorMap;
                 populateShopRarityOptions();
                 populateShopCreatorOptions(creatorMap);
                 applyShopFilters();
