@@ -858,14 +858,14 @@ async function fetchUsers() {
     const listBody = document.getElementById('users-list-body');
     if (!listBody) return;
 
-    listBody.innerHTML = '<tr><td colspan="4" class="text-center">読み込み中...</td></tr>';
+    listBody.innerHTML = '<tr><td colspan="6" class="text-center">読み込み中...</td></tr>';
 
     try {
         const { data: users, error } = await supabaseClient.from('profiles').select('*').order('account_name');
         if (error) throw error;
 
         if (!users || users.length === 0) {
-            listBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">ユーザーがいません</td></tr>';
+            listBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">ユーザーがいません</td></tr>';
             return;
         }
 
@@ -877,23 +877,20 @@ async function fetchUsers() {
             const coins = user.coins || 0;
             const teamName = user.team_name || '-';
             const avatarUrl = user.avatar_url || '';
+            const updatedAt = user.updated_at ? new Date(user.updated_at).toLocaleString('ja-JP') : '-';
 
             tr.innerHTML = `
                 <td>
-                    <div class="d-flex align-items-center gap-2">
-                        <img src="${escapeHtml(avatarUrl)}" class="rounded-circle border" style="width: 32px; height: 32px;" onerror="this.style.display='none'">
-                        <div>
-                            <div class="fw-bold">${escapeHtml(name)}</div>
-                            <div class="small text-muted" style="font-size: 0.7rem;">${escapeHtml(discordId)}</div>
-                        </div>
-                    </div>
+                    <img src="${escapeHtml(avatarUrl)}" class="rounded-circle border" style="width: 32px; height: 32px;" onerror="this.style.display='none'">
                 </td>
+                <td class="fw-bold">${escapeHtml(name)}</td>
+                <td>${escapeHtml(discordId)}</td>
+                <td>${escapeHtml(updatedAt)}</td>
                 <td><span class="badge bg-light text-dark border">🪙 ${coins.toLocaleString()}</span></td>
-                <td>${escapeHtml(teamName)}</td>
                 <td>
                     <div class="d-flex gap-1 flex-wrap">
                         <button class="btn btn-sm btn-outline-warning btn-coin" data-id="${escapeHtml(discordId)}" data-name="${escapeHtml(name)}" data-coins="${coins}">コイン</button>
-                        <button class="btn btn-sm btn-outline-info btn-badge" data-id="${escapeHtml(discordId)}" data-name="${escapeHtml(name)}">バッジ</button>
+                        <button class="btn btn-sm btn-outline-primary btn-items" data-id="${escapeHtml(discordId)}" data-name="${escapeHtml(name)}">アイテム</button>
                         <button class="btn btn-sm btn-outline-secondary btn-impersonate" data-id="${escapeHtml(discordId)}" data-name="${escapeHtml(name)}" data-avatar="${escapeHtml(avatarUrl)}">なりすまし</button>
                     </div>
                 </td>
@@ -907,9 +904,9 @@ async function fetchUsers() {
                 openCoinModal(this.dataset.id, this.dataset.name, parseInt(this.dataset.coins) || 0);
             });
         });
-        listBody.querySelectorAll('.btn-badge').forEach(btn => {
+        listBody.querySelectorAll('.btn-items').forEach(btn => {
             btn.addEventListener('click', function () {
-                openBadgeGrantModal(this.dataset.id, this.dataset.name);
+                openItemsModal(this.dataset.id, this.dataset.name);
             });
         });
         listBody.querySelectorAll('.btn-impersonate').forEach(btn => {
@@ -921,6 +918,79 @@ async function fetchUsers() {
     } catch (err) {
         console.error('ユーザー取得エラー:', err);
         listBody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">エラー: ${err.message}</td></tr>`;
+    }
+}
+
+async function openItemsModal(userId, userName) {
+    document.getElementById('items-edit-user-id').value = userId;
+    document.getElementById('items-edit-user-name').textContent = userName;
+    const listEl = document.getElementById('items-exchange-list');
+    listEl.innerHTML = '<div class="text-muted small">読み込み中...</div>';
+
+    try {
+        const [{ data: profile, error: pError }, { data: thresholds, error: tError }] = await Promise.all([
+            supabaseClient.from('profiles').select('gacha_tickets, mangan_tickets, exchange_tickets').eq('discord_user_id', userId).maybeSingle(),
+            supabaseClient.from('rarity_thresholds').select('rarity_name, threshold_value').order('threshold_value', { ascending: true })
+        ]);
+        if (pError) throw pError;
+        if (tError) throw tError;
+
+        const gacha = profile?.gacha_tickets || 0;
+        const mangan = profile?.mangan_tickets || 0;
+        const exchanges = profile?.exchange_tickets || {};
+
+        document.getElementById('items-gacha').value = gacha;
+        document.getElementById('items-mangan').value = mangan;
+
+        const ordered = (thresholds || []).map(t => t.rarity_name).filter(Boolean);
+        const extras = Object.keys(exchanges || {}).filter(k => !ordered.includes(k)).sort((a, b) => a.localeCompare(b, 'ja'));
+        const allKeys = ordered.concat(extras);
+
+        if (allKeys.length === 0) {
+            listEl.innerHTML = '<div class="text-muted small">引換券がありません</div>';
+        } else {
+            listEl.innerHTML = allKeys.map(r => `
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="small fw-bold">${escapeHtml(r)}</div>
+                    <input type="number" class="form-control form-control-sm exchange-input" style="width: 90px;"
+                        data-rarity="${escapeHtml(r)}" value="${(exchanges[r] || 0)}" min="0">
+                </div>
+            `).join('');
+        }
+
+        new bootstrap.Modal(document.getElementById('itemsModal')).show();
+    } catch (err) {
+        console.error('アイテム取得エラー:', err);
+        alert('アイテム取得に失敗しました');
+    }
+}
+
+async function saveUserItems() {
+    const userId = document.getElementById('items-edit-user-id').value;
+    const gacha = parseInt(document.getElementById('items-gacha').value) || 0;
+    const mangan = parseInt(document.getElementById('items-mangan').value) || 0;
+    const exchange = {};
+    document.querySelectorAll('#items-exchange-list .exchange-input').forEach(input => {
+        const rarity = input.dataset.rarity;
+        const val = parseInt(input.value) || 0;
+        exchange[rarity] = val;
+    });
+
+    toggleLoading(true);
+    try {
+        const { error } = await supabaseClient.from('profiles').update({
+            gacha_tickets: gacha,
+            mangan_tickets: mangan,
+            exchange_tickets: exchange
+        }).eq('discord_user_id', userId);
+        if (error) throw error;
+        bootstrap.Modal.getInstance(document.getElementById('itemsModal'))?.hide();
+        fetchUsers();
+    } catch (err) {
+        console.error('アイテム更新エラー:', err);
+        alert('アイテム更新に失敗しました');
+    } finally {
+        toggleLoading(false);
     }
 }
 
@@ -1152,6 +1222,7 @@ function renderAdminBadges() {
                     <h6 class="fw-bold mb-1">${badge.name}</h6>
                     <div class="mt-3 d-flex gap-1 justify-content-center">
                         <button onclick='openBadgeModal(${JSON.stringify(badge).replace(/'/g, "&apos;")})' class="btn btn-sm btn-outline-primary">編集</button>
+                        <button onclick='openBadgeGrantUserModal(${JSON.stringify(badge).replace(/'/g, "&apos;")})' class="btn btn-sm btn-outline-success">付与</button>
                         <button onclick="deleteBadge('${badge.id}')" class="btn btn-sm btn-outline-danger">削除</button>
                     </div>
                 </div>
@@ -1159,6 +1230,56 @@ function renderAdminBadges() {
         </div>
     `).join('');
     updateBadgesPagination(filtered.length, totalPages);
+}
+
+let currentGrantBadge = null;
+
+async function openBadgeGrantUserModal(badge) {
+    currentGrantBadge = badge;
+    const listEl = document.getElementById('badge-grant-user-list');
+    if (!listEl) return;
+    listEl.innerHTML = '<div class="text-center text-muted py-3">読み込み中...</div>';
+    new bootstrap.Modal(document.getElementById('badgeGrantUserModal')).show();
+
+    try {
+        const { data: profiles, error } = await supabaseClient
+            .from('profiles')
+            .select('discord_user_id, account_name, avatar_url')
+            .order('account_name');
+        if (error) throw error;
+
+        listEl.innerHTML = profiles.map(p => `
+            <div class="d-flex align-items-center gap-2 p-2 border rounded mb-2" style="cursor:pointer;"
+                onclick="grantBadgeToUser('${p.discord_user_id}', '${escapeHtml(p.account_name || p.discord_user_id).replace(/'/g, "\\'")}')">
+                <img src="${p.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png'}" style="width: 28px; height: 28px; border-radius: 50%;">
+                <div class="fw-bold">${escapeHtml(p.account_name || p.discord_user_id)}</div>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error('ユーザー一覧取得エラー:', err);
+        listEl.innerHTML = '<div class="text-center text-danger py-3">読み込み失敗</div>';
+    }
+}
+
+async function grantBadgeToUser(userId, userName) {
+    if (!currentGrantBadge) return;
+    if (!confirm(`${userName} さんに「${currentGrantBadge.name}」を付与しますか？`)) return;
+    toggleLoading(true);
+    try {
+        const { error } = await supabaseClient.from('user_badges_new').insert([{
+            user_id: userId,
+            badge_id: currentGrantBadge.id,
+            purchased_price: 0
+        }]);
+        if (error) throw error;
+        alert('付与しました');
+        bootstrap.Modal.getInstance(document.getElementById('badgeGrantUserModal'))?.hide();
+    } catch (err) {
+        console.error('バッジ付与エラー:', err);
+        alert('付与に失敗しました');
+    } finally {
+        toggleLoading(false);
+    }
 }
 
 function updateBadgesPagination(totalItems, totalPages) {

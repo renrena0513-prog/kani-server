@@ -1159,6 +1159,58 @@
             </div>
         </div>
 
+        <!-- アイテム編集モーダル -->
+        <div class="modal fade" id="itemsModal" tabindex="-1" aria-labelledby="itemsModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="itemsModalLabel">所持アイテム編集</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="text-center mb-3">
+                            <strong id="items-edit-user-name">ユーザー名</strong>
+                        </div>
+                        <input type="hidden" id="items-edit-user-id">
+                        <div class="mb-3">
+                            <label for="items-gacha" class="form-label">祈願符 (gacha_tickets)</label>
+                            <input type="number" class="form-control" id="items-gacha" value="0" min="0">
+                        </div>
+                        <div class="mb-3">
+                            <label for="items-mangan" class="form-label">満願符 (mangan_tickets)</label>
+                            <input type="number" class="form-control" id="items-mangan" value="0" min="0">
+                        </div>
+                        <div class="mb-2 fw-bold">引換券 (exchange_tickets)</div>
+                        <div id="items-exchange-list" class="vstack gap-2">
+                            <div class="text-muted small">読み込み中...</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                        <button type="button" class="btn btn-primary" onclick="saveUserItems()">保存する</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- バッジ付与ユーザー選択モーダル -->
+        <div class="modal fade" id="badgeGrantUserModal" tabindex="-1" aria-labelledby="badgeGrantUserModalLabel"
+            aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="badgeGrantUserModalLabel">付与するユーザーを選択</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="badge-grant-user-list">
+                            <div class="text-center text-muted py-3">読み込み中...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
 
         <!-- バッジ付与モーダル -->
         <div class="modal fade" id="badgeGrantModal" tabindex="-1" aria-labelledby="badgeGrantModalLabel"

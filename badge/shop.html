@@ -686,6 +686,37 @@
         </div>
     </div>
 
+    <!-- 権利バッジ編集モーダル -->
+    <div class="modal fade" id="rightsBadgeEditModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold">🛠️ バッジ情報を編集</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body pt-2">
+                    <input type="hidden" id="rights-badge-id">
+                    <div class="mb-3">
+                        <label class="form-label">バッジ名</label>
+                        <input type="text" id="rights-badge-name" class="form-control" maxlength="40">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">説明文</label>
+                        <textarea id="rights-badge-description" class="form-control" rows="4" maxlength="200"></textarea>
+                        <div class="small text-muted mt-1">
+                            <span id="rights-badge-desc-count">0</span> / 200 文字
+                        </div>
+                    </div>
+                    <div class="small text-muted">※ 変更は即時反映されます</div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                    <button type="button" class="btn btn-primary" onclick="saveRightsBadgeEdit()">保存する</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 所持アイテムモーダル（チケット・引換券） -->
         <div class="modal fade" id="itemInventoryModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
@@ -927,6 +958,12 @@
                                         <div class="fw-bold">累計利益: 🪙${totalRoyalty.toLocaleString()}</div>
                                         <div class="opacity-75">売れた: ${soldCount}個 | 所持: ${myCounts[badge.id] || 0}個</div>
                                     </div>
+                                    <div class="mt-2">
+                                        <button class="btn btn-sm btn-outline-primary"
+                                            onclick="openRightsBadgeEdit('${badge.id}', '${badge.name.replace(/'/g, "\\'")}', '${(badge.description || '').replace(/'/g, "\\'")}')">
+                                            ✏️ 編集
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -937,6 +974,57 @@
                 console.error('Error loading rights badges:', err);
             }
         }
+
+        function openRightsBadgeEdit(badgeId, name, description) {
+            document.getElementById('rights-badge-id').value = badgeId;
+            document.getElementById('rights-badge-name').value = name || '';
+            document.getElementById('rights-badge-description').value = description || '';
+            updateRightsBadgeDescCount();
+            new bootstrap.Modal(document.getElementById('rightsBadgeEditModal')).show();
+        }
+
+        function updateRightsBadgeDescCount() {
+            const textarea = document.getElementById('rights-badge-description');
+            const countEl = document.getElementById('rights-badge-desc-count');
+            const saveBtn = document.querySelector('#rightsBadgeEditModal .btn.btn-primary');
+            if (!textarea || !countEl || !saveBtn) return;
+            const length = textarea.value.length;
+            countEl.textContent = length;
+            saveBtn.disabled = length > 200;
+        }
+
+        async function saveRightsBadgeEdit() {
+            const badgeId = document.getElementById('rights-badge-id').value;
+            const name = document.getElementById('rights-badge-name').value.trim();
+            const description = document.getElementById('rights-badge-description').value.trim();
+
+            if (!badgeId) return;
+            if (!name) return alert('バッジ名を入力してください');
+            if (description.length > 200) return alert('説明文は200文字以内で入力してください');
+
+            try {
+                const { error } = await supabaseClient
+                    .from('badges')
+                    .update({ name, description })
+                    .eq('id', badgeId)
+                    .eq('discord_user_id', currentUserId);
+                if (error) throw error;
+
+                bootstrap.Modal.getInstance(document.getElementById('rightsBadgeEditModal'))?.hide();
+                await loadMyRightsBadges();
+                await fetchShopBadges();
+            } catch (err) {
+                console.error('権利バッジ更新エラー:', err);
+                alert('更新に失敗しました');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const textarea = document.getElementById('rights-badge-description');
+            if (textarea) {
+                textarea.addEventListener('input', updateRightsBadgeDescCount);
+            }
+        });
 
         function getJstDayRange() {
             const now = new Date();
