@@ -648,10 +648,10 @@
 
         async function sendResultToDiscord(tables, spectators, options = {}) {
             if (!WEBHOOK_URL) return;
-            const sep = '――――――――――――――――――';
+            const sep = '━━━━━━━━━━━━━━━━━━';
             const lines = [];
             if (options.warning) lines.push(`⚠️ ${options.warning}`);
-            lines.push('# 🧩 チーム分け結果');
+            lines.push('# :jigsaw: チーム分け結果');
             lines.push(sep);
             const yonmaTables = tables.filter(t => t.type === '四麻');
             const sanmaTables = tables.filter(t => t.type === '三麻');
@@ -659,35 +659,53 @@
             const buildSection = (title, tableList) => {
                 lines.push(`## ${title}`);
                 if (tableList.length === 0) {
-                    lines.push('（なし）');
+                    lines.push('* :no_entry_sign: **なし**');
                     return;
                 }
                 tableList.forEach((t, idx) => {
-                    lines.push(`【${t.type}${idx + 1}】`);
+                    const suffix = t.type === '四麻' ? `（${idx + 1}卓目）` : `（${idx + 1}卓目）`;
+                    lines.push(`## :mahjong: ${t.type}${suffix}`);
                     if (t.members.length === 0) {
-                        lines.push('（空）');
+                        lines.push('* :no_entry_sign: **なし**');
                         lines.push('');
                         return;
                     }
                     t.members.forEach(m => {
-                        lines.push(`${m.team_name}`);
-                        lines.push(`　**${m.account_name}**`);
+                        lines.push(`* :label: **${m.team_name}**`);
+                        lines.push(`　　:bust_in_silhouette: **${m.account_name}**`);
                         lines.push('');
                     });
                 });
             };
 
-            buildSection('【四麻】', yonmaTables);
+            buildSection('## :mahjong: 四麻', yonmaTables);
             lines.push(sep);
-            buildSection('【三麻】', sanmaTables);
+            if (sanmaTables.length === 0) {
+                lines.push('## :mahjong: 三麻');
+                lines.push('* :no_entry_sign: **なし**');
+            } else {
+                sanmaTables.forEach((t, idx) => {
+                    lines.push(`## :mahjong: 三麻（${idx + 1}卓目）`);
+                    if (t.members.length === 0) {
+                        lines.push('* :no_entry_sign: **なし**');
+                        lines.push('');
+                        return;
+                    }
+                    t.members.forEach(m => {
+                        lines.push(`* :label: **${m.team_name}**`);
+                        lines.push(`　　:bust_in_silhouette: **${m.account_name}**`);
+                        lines.push('');
+                    });
+                });
+            }
             lines.push(sep);
-            lines.push('## 【観戦】');
+            lines.push('## :eyes: 観戦');
             if (spectators.length === 0) {
-                lines.push('（なし）');
+                lines.push('* :no_entry_sign: **なし**');
             } else {
                 spectators.forEach(m => {
-                    lines.push(`${m.team_name}`);
-                    lines.push(`　**${m.account_name}**`);
+                    lines.push(`* :label: **${m.team_name}**`);
+                    lines.push(`　　:bust_in_silhouette: **${m.account_name}**`);
                     lines.push('');
                 });
             }
