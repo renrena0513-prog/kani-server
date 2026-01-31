@@ -1088,13 +1088,21 @@
             const now = new Date();
             const jstOffset = 9 * 60 * 60 * 1000;
             const jstNow = new Date(now.getTime() + jstOffset);
-            const startJst = new Date(jstNow);
-            startJst.setHours(0, 0, 0, 0);
-            const endJst = new Date(jstNow);
-            endJst.setHours(23, 59, 59, 999);
+            const startUtc = new Date(Date.UTC(
+                jstNow.getUTCFullYear(),
+                jstNow.getUTCMonth(),
+                jstNow.getUTCDate(),
+                0, 0, 0, 0
+            ));
+            const endUtc = new Date(Date.UTC(
+                jstNow.getUTCFullYear(),
+                jstNow.getUTCMonth(),
+                jstNow.getUTCDate(),
+                23, 59, 59, 999
+            ));
             return {
-                startUtc: new Date(startJst.getTime() - jstOffset).toISOString(),
-                endUtc: new Date(endJst.getTime() - jstOffset).toISOString()
+                startUtc: startUtc.toISOString(),
+                endUtc: endUtc.toISOString()
             };
         }
 
