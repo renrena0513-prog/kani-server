@@ -871,7 +871,7 @@
             try {
                 const { data: badges, error } = await supabaseClient
                     .from('badges')
-                    .select('id, name, image_url, price, remaining_count, fixed_rarity_name, sales_type')
+                    .select('id, name, description, image_url, price, remaining_count, fixed_rarity_name, sales_type')
                     .eq('discord_user_id', currentUserId);
 
                 if (error) throw error;
