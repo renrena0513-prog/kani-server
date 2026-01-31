@@ -271,14 +271,14 @@ function showRanking() {
         title.textContent = '個人戦（四麻）ランキング';
         filtered = seasonFiltered.filter(r => {
             if (r.tournament_type === '第一回麻雀大会') return true; // 第一回は四麻扱い
-            return r.match_mode === '個人戦' && r.mahjong_mode === '四麻';
+            return r.mahjong_mode === '四麻';
         });
         nameHeader.textContent = '名前';
     } else if (category === 'individual_sanma') {
         title.textContent = '個人戦（三麻）ランキング';
         filtered = seasonFiltered.filter(r => {
             if (r.tournament_type === '第一回麻雀大会') return false; // 第一回に三麻はない
-            return r.match_mode === '個人戦' && r.mahjong_mode === '三麻';
+            return r.mahjong_mode === '三麻';
         });
         nameHeader.textContent = '名前';
     } else {
@@ -287,7 +287,7 @@ function showRanking() {
         nameHeader.textContent = '名前';
         filtered = seasonFiltered.filter(r => {
             if (r.tournament_type === '第一回麻雀大会') return true;
-            return r.match_mode === '個人戦' && r.mahjong_mode === '四麻';
+            return r.mahjong_mode === '四麻';
         });
     }
 
@@ -318,7 +318,7 @@ function showRanking() {
             <th style="width: 80px;">順位</th>
             <th id="name-header">${nameHeader.textContent}</th>
             <th id="stat-header" style="width: 180px;">${statHeader.textContent}</th>
-            <th style="width: 120px;">24時間比</th>
+            ${type === 'max_score' ? '' : '<th style="width: 120px;">24時間比</th>'}
             <th style="width: 120px;">${type === 'match_count' ? '局数' : '試合数'}</th>
         `;
 
@@ -813,7 +813,7 @@ function renderRanking(records, groupKey, type = 'all') {
                     <td class="fw-bold ${statColorClass}" data-label="${labelText}" style="font-size: 1.1rem;">
                         ${statValue}
                     </td>
-                    ${type === 'max_score' ? '<td data-label="24時間比">―</td>' : `<td data-label="24時間比"><span class="${delta.cls}" style="color: ${delta.color};">${delta.text}</span></td>`}
+                    ${type === 'max_score' ? '' : `<td data-label="24時間比"><span class="${delta.cls}" style="color: ${delta.color};">${delta.text}</span></td>`}
                     <td data-label="${type === 'match_count' ? '局数' : '試合数'}">${type === 'match_count' ? s.hand_total : s.count}</td>
                 </tr>
             `;

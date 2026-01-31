@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>チーム分け | かにサーバー</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../styles.css">
+    <style>
+        :root {
+            --primary-green: #2d8a5e;
+            --deep-green: #1e6b47;
+            --cream: #faf5e8;
+            --gold: #d4a853;
+            --font-title: 'Noto Serif JP', serif;
+            --font-body: 'M PLUS Rounded 1c', sans-serif;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: linear-gradient(180deg, #2d8a5e 0%, #256b4a 50%, #1e5538 100%);
+            min-height: 100vh;
+            background-attachment: fixed;
+        }
+
+        .page-header {
+            font-family: var(--font-title);
+            color: var(--cream);
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .content-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-family: var(--font-title);
+            color: var(--deep-green);
+            border-bottom: 2px solid var(--gold);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .custom-dropdown-container {
+            position: relative;
+        }
+
+        .custom-dropdown-list {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            max-height: 360px;
+            overflow-y: auto;
+            z-index: 2000;
+            display: none;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .dropdown-item-flex {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 1px solid #f1f3f5;
+        }
+
+        .dropdown-item-flex:last-child {
+            border-bottom: none;
+        }
+
+        .dropdown-item-flex:hover {
+            background: linear-gradient(to right, #f8f9fa, #e9ecef);
+        }
+
+        .dropdown-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            margin-right: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            border: 2px solid white;
+        }
+
+        .selected-player-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 2px solid #dee2e6;
+            padding: 6px 10px;
+            border-radius: 10px;
+            min-height: 38px;
+        }
+
+        .selected-player-badge .badge-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+        }
+
+        .selected-player-badge .name {
+            font-weight: 600;
+        }
+
+        .selected-player-badge .badge-left-container,
+        .selected-player-badge .badge-right-container {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+        }
+
+        .player-row {
+            display: grid;
+            grid-template-columns: 1.1fr 1.2fr 1fr 120px;
+            gap: 12px;
+            align-items: end;
+        }
+
+        @media (max-width: 768px) {
+            .player-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+        }
+
+        .table-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 16px;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+        }
+
+        .table-title {
+            font-weight: 700;
+            color: var(--deep-green);
+            margin-bottom: 10px;
+        }
+
+        .player-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 8px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+            margin-bottom: 6px;
+        }
+
+        .player-pill .team-badge {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background: #e9ecef;
+        }
+
+        .spectator-card {
+            background: #fff6e0;
+            border: 1px dashed #e0b44b;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="nav-dropdown dropdown" style="position: fixed; top: 20px; right: 20px; z-index: 1000;">
+        <button class="btn dropdown-toggle" type="button" id="navDropdown" data-bs-toggle="dropdown"
+            aria-expanded="false"
+            style="background: linear-gradient(135deg, var(--gold) 0%, #b8892d 100%); color: white; padding: 12px 24px; border-radius: 25px; font-weight: bold;">
+            📝 メニュー
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navDropdown">
+            <li><a class="dropdown-item" href="../../index.html">🏠 ホームに戻る</a></li>
+        </ul>
+    </div>
+
+    <div class="container py-5">
+        <h1 class="page-header display-5 fw-bold text-center mb-4">🧩 チーム分け</h1>
+
+        <div class="content-card">
+            <h2 class="section-title">参加者の追加</h2>
+            <div class="player-row">
+                <div>
+                    <label class="form-label small text-muted">チーム名</label>
+                    <select id="team-select" class="form-select form-select-sm"></select>
+                </div>
+                <div>
+                    <label class="form-label small text-muted">アカウント</label>
+                    <div class="custom-dropdown-container">
+                        <input type="text" id="player-input" class="form-control form-control-sm"
+                            placeholder="選択または入力" onfocus="showPlayerDropdown()" oninput="filterPlayerDropdown()">
+                        <div class="selected-player-badge mt-2" id="selected-player" style="display:none;">
+                            <img src="" class="badge-avatar">
+                            <div class="badge-left-container mutant-badge-container mini" style="display: none;"></div>
+                            <span class="name"></span>
+                            <div class="badge-right-container mutant-badge-container mini" style="display: none;"></div>
+                        </div>
+                        <div class="custom-dropdown-list" id="player-dropdown"></div>
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label small text-muted">希望試合タイプ</label>
+                    <select id="pref-select" class="form-select form-select-sm">
+                        <option value="none">希望無し</option>
+                        <option value="yonma">四麻希望</option>
+                        <option value="sanma">三麻希望</option>
+                    </select>
+                </div>
+                <div>
+                    <button class="btn btn-success w-100" onclick="addPlayer()">＋ ユーザー追加</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-card">
+            <h2 class="section-title">参加者一覧</h2>
+            <div id="player-list" class="vstack gap-2"></div>
+        </div>
+
+        <div class="content-card">
+            <h2 class="section-title">卓数設定</h2>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label small text-muted">四麻の卓数</label>
+                    <input type="number" id="yonma-count" class="form-control" value="0" min="0">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small text-muted">三麻の卓数</label>
+                    <input type="number" id="sanma-count" class="form-control" value="0" min="0">
+                </div>
+            </div>
+            <button class="btn btn-primary mt-3 w-100" onclick="splitTeams()">チーム分けをする</button>
+        </div>
+
+        <div class="content-card">
+            <h2 class="section-title">分け結果</h2>
+            <div id="table-results" class="team-grid"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../../js/supabase-config.js"></script>
+    <script src="../../js/auth-guard.js"></script>
+    <script src="../../js/navigation.js"></script>
+    <script src="../../js/effects/mutant-badge.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            initAccordionNav('../../');
+            loadData();
+        });
+
+        let allTeams = [];
+        let allProfiles = [];
+        let selectedPlayer = null;
+        const addedPlayers = [];
+
+        async function loadData() {
+            const { data: teams } = await supabaseClient.from('teams').select('id, team_name').order('team_name');
+            allTeams = teams || [];
+            const { data: profiles } = await supabaseClient
+                .from('profiles')
+                .select('discord_user_id, account_name, avatar_url, team_id, badges!equipped_badge_id(image_url, name, id), badges_right:badges!equipped_badge_id_right(image_url, name, id)')
+                .order('account_name');
+            allProfiles = profiles || [];
+            renderTeamOptions();
+        }
+
+        function renderTeamOptions() {
+            const select = document.getElementById('team-select');
+            select.innerHTML = ['<option value="">チームを選択</option>']
+                .concat(allTeams.map(t => `<option value="${t.id}">${t.team_name}</option>`))
+                .join('');
+        }
+
+        function getFilteredPlayers() {
+            const teamId = document.getElementById('team-select').value;
+            const candidates = teamId ? allProfiles.filter(p => p.team_id === teamId) : allProfiles;
+            return candidates;
+        }
+
+        function showPlayerDropdown() {
+            renderPlayerDropdown();
+            document.getElementById('player-dropdown').style.display = 'block';
+        }
+
+        function filterPlayerDropdown() {
+            renderPlayerDropdown();
+            document.getElementById('player-dropdown').style.display = 'block';
+        }
+
+        function renderPlayerDropdown() {
+            const list = document.getElementById('player-dropdown');
+            const keyword = document.getElementById('player-input').value.trim().toLowerCase();
+            let players = getFilteredPlayers();
+            if (keyword) {
+                players = players.filter(p => (p.account_name || p.discord_user_id || '').toLowerCase().includes(keyword));
+            }
+            list.innerHTML = players.map(p => buildPlayerItem(p)).join('') || '<div class="p-2 text-muted">該当なし</div>';
+        }
+
+        function buildPlayerItem(p) {
+            const display = p.account_name || p.discord_user_id;
+            const avatarUrl = p.avatar_url || 'https://via.placeholder.com/24';
+            let badgeHtmlLeft = '';
+            if (p.badges) {
+                badgeHtmlLeft = `
+                    <div class="mutant-badge-container mini" style="margin-left: 5px;">
+                        <img src="${p.badges.image_url}" title="${p.badges.name}" style="width: 22px; height: 22px; object-fit: contain; border-radius: 4px;">
+                    </div>`;
+            }
+            let badgeHtmlRight = '';
+            if (p.badges_right) {
+                badgeHtmlRight = `
+                    <div class="mutant-badge-container mini" style="margin-left: 5px;">
+                        <img src="${p.badges_right.image_url}" title="${p.badges_right.name}" style="width: 22px; height: 22px; object-fit: contain; border-radius: 4px;">
+                    </div>`;
+            }
+            return `
+                <div class="dropdown-item-flex" onclick="selectPlayer('${p.discord_user_id}')">
+                    <img src="${avatarUrl}" class="dropdown-avatar" onerror="this.src='https://via.placeholder.com/24'">
+                    ${badgeHtmlLeft}
+                    <span class="small">${display}</span>
+                    ${badgeHtmlRight}
+                </div>
+            `;
+        }
+
+        function selectPlayer(discordId) {
+            const p = allProfiles.find(x => x.discord_user_id === discordId);
+            if (!p) return;
+            selectedPlayer = p;
+            document.getElementById('player-input').value = p.account_name || p.discord_user_id;
+            const badge = document.getElementById('selected-player');
+            badge.style.display = 'flex';
+            badge.querySelector('.badge-avatar').src = p.avatar_url || 'https://via.placeholder.com/24';
+            badge.querySelector('.name').textContent = p.account_name || p.discord_user_id;
+            document.getElementById('player-dropdown').style.display = 'none';
+        }
+
+        function addPlayer() {
+            const teamId = document.getElementById('team-select').value;
+            const team = allTeams.find(t => t.id === teamId);
+            if (!teamId || !team) {
+                alert('チームを選択してください。');
+                return;
+            }
+            if (!selectedPlayer) {
+                alert('ユーザーを選択してください。');
+                return;
+            }
+            if (addedPlayers.some(p => p.discord_user_id === selectedPlayer.discord_user_id)) {
+                alert('同じユーザーは追加できません。');
+                return;
+            }
+            const pref = document.getElementById('pref-select').value;
+            addedPlayers.push({
+                discord_user_id: selectedPlayer.discord_user_id,
+                account_name: selectedPlayer.account_name || selectedPlayer.discord_user_id,
+                team_id: teamId,
+                team_name: team.team_name,
+                pref: pref
+            });
+            selectedPlayer = null;
+            document.getElementById('player-input').value = '';
+            document.getElementById('selected-player').style.display = 'none';
+            renderPlayerList();
+        }
+
+        function renderPlayerList() {
+            const list = document.getElementById('player-list');
+            if (addedPlayers.length === 0) {
+                list.innerHTML = '<div class="text-muted">まだ追加されていません。</div>';
+                return;
+            }
+            list.innerHTML = addedPlayers.map(p => `
+                <div class="player-pill">
+                    <div class="fw-bold">${p.account_name}</div>
+                    <span class="team-badge">${p.team_name}</span>
+                    <span class="small text-muted">${p.pref === 'yonma' ? '四麻希望' : p.pref === 'sanma' ? '三麻希望' : '希望無し'}</span>
+                    <button class="btn btn-sm btn-outline-danger ms-auto" onclick="removePlayer('${p.discord_user_id}')">削除</button>
+                </div>
+            `).join('');
+        }
+
+        function removePlayer(id) {
+            const idx = addedPlayers.findIndex(p => p.discord_user_id === id);
+            if (idx >= 0) addedPlayers.splice(idx, 1);
+            renderPlayerList();
+        }
+
+        function splitTeams() {
+            const yonmaCount = parseInt(document.getElementById('yonma-count').value) || 0;
+            const sanmaCount = parseInt(document.getElementById('sanma-count').value) || 0;
+            const tables = [];
+            for (let i = 1; i <= yonmaCount; i++) {
+                tables.push({ id: `四麻${i}`, type: '四麻', cap: 4, members: [], teamSet: new Set() });
+            }
+            for (let i = 1; i <= sanmaCount; i++) {
+                tables.push({ id: `三麻${i}`, type: '三麻', cap: 3, members: [], teamSet: new Set() });
+            }
+            if (tables.length === 0) {
+                alert('卓数を入力してください。');
+                return;
+            }
+
+            const remaining = [...addedPlayers];
+            const byPref = {
+                yonma: remaining.filter(p => p.pref === 'yonma'),
+                sanma: remaining.filter(p => p.pref === 'sanma'),
+                none: remaining.filter(p => p.pref === 'none')
+            };
+
+            const assignToTables = (tableType) => {
+                const candidatesOrder = tableType === '四麻'
+                    ? [byPref.yonma, byPref.none, byPref.sanma]
+                    : [byPref.sanma, byPref.none, byPref.yonma];
+                const targetTables = tables.filter(t => t.type === tableType);
+                targetTables.forEach(table => {
+                    while (table.members.length < table.cap) {
+                        let assigned = false;
+                        for (const list of candidatesOrder) {
+                            for (let i = 0; i < list.length; i++) {
+                                const p = list[i];
+                                if (table.teamSet.has(p.team_id)) continue;
+                                table.members.push(p);
+                                table.teamSet.add(p.team_id);
+                                list.splice(i, 1);
+                                assigned = true;
+                                break;
+                            }
+                            if (assigned) break;
+                        }
+                        if (!assigned) break;
+                    }
+                });
+            };
+
+            assignToTables('四麻');
+            assignToTables('三麻');
+
+            const spectators = [...byPref.yonma, ...byPref.sanma, ...byPref.none];
+            renderTables(tables, spectators);
+        }
+
+        function renderTables(tables, spectators) {
+            const container = document.getElementById('table-results');
+            const cards = tables.map(t => `
+                <div class="table-card">
+                    <div class="table-title">${t.id}</div>
+                    ${t.members.length === 0 ? '<div class="text-muted small">空</div>' : t.members.map(m => `
+                        <div class="player-pill">
+                            <div class="fw-bold">${m.account_name}</div>
+                            <span class="team-badge">${m.team_name}</span>
+                            <span class="small text-muted">${m.pref === 'yonma' ? '四麻希望' : m.pref === 'sanma' ? '三麻希望' : '希望無し'}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `);
+            const spectatorCard = `
+                <div class="table-card spectator-card">
+                    <div class="table-title">観戦枠</div>
+                    ${spectators.length === 0 ? '<div class="text-muted small">なし</div>' : spectators.map(m => `
+                        <div class="player-pill">
+                            <div class="fw-bold">${m.account_name}</div>
+                            <span class="team-badge">${m.team_name}</span>
+                            <span class="small text-muted">${m.pref === 'yonma' ? '四麻希望' : m.pref === 'sanma' ? '三麻希望' : '希望無し'}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            container.innerHTML = cards.join('') + spectatorCard;
+        }
+    </script>
+</body>
+
+</html>
