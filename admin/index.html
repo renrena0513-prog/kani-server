@@ -637,6 +637,10 @@
                                         <option value="omikuji">⛩️ おみくじ</option>
                                         <option value="admin_edit">🔧 管理者調整</option>
                                     </select>
+                                    <select id="log-user-filter" class="form-select form-select-sm" style="width: 180px;"
+                                        onchange="handleLogUserFilterChange()">
+                                        <option value="all">👤 すべてのユーザー</option>
+                                    </select>
                                     <button onclick="fetchActivityLogs()" class="btn btn-outline-primary btn-sm">🔄
                                         更新</button>
                                 </div>

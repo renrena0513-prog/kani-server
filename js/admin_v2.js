@@ -1845,18 +1845,46 @@ function handleLogActionFilterChange() {
     fetchActivityLogs(1); // フィルター変更時は1ページ目に戻す
 }
 
+function handleLogUserFilterChange() {
+    fetchActivityLogs(1); // フィルター変更時は1ページ目に戻す
+}
+
+function getSelectedLogUserId() {
+    const userFilter = document.getElementById('log-user-filter');
+    return userFilter?.value || 'all';
+}
+
+function populateLogUserFilterOptions() {
+    const userFilter = document.getElementById('log-user-filter');
+    if (!userFilter) return;
+    const current = userFilter.value || 'all';
+    const options = Object.entries(profilesCache)
+        .map(([id, info]) => ({ id, name: info.name || id }))
+        .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));
+    userFilter.innerHTML = ['<option value="all">👤 すべてのユーザー</option>']
+        .concat(options.map(o => `<option value="${o.id}">${escapeHtml(o.name)}</option>`))
+        .join('');
+    userFilter.value = options.some(o => o.id === current) ? current : 'all';
+}
+
 async function fetchActivityLogs(page = 1) {
     currentLogsPage = page;
     if (Object.keys(profilesCache).length === 0) await loadProfilesCache();
     if (Object.keys(badgesCache).length === 0) await loadBadgesCache();
+    populateLogUserFilterOptions();
 
     const from = (page - 1) * LOGS_PER_PAGE;
     const to = from + LOGS_PER_PAGE - 1;
 
     // フィルターの取得
     const actionFilter = document.getElementById('log-action-filter')?.value || 'all';
+    const userFilter = getSelectedLogUserId();
 
     let query = supabaseClient.from('activity_logs').select('*', { count: 'exact' });
+
+    if (userFilter !== 'all') {
+        query = query.eq('user_id', userFilter);
+    }
 
     // アクションフィルターの適用
     if (actionFilter !== 'all') {
@@ -2026,7 +2054,7 @@ async function revertLog(logId) {
 
         if (data?.ok) {
             alert('成功');
-            fetchActivityLogs();
+            fetchActivityLogs(currentLogsPage);
         } else {
             alert('エラー: ' + (data?.error || '取消に失敗しました'));
         }
@@ -2085,5 +2113,5 @@ async function revertSelectedLogs() {
 
     toggleLoading(false);
     alert(`完了: ${successCount}件成功、${errorCount}件失敗`);
-    fetchActivityLogs();
+    fetchActivityLogs(currentLogsPage);
 }
