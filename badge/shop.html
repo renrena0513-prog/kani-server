@@ -1431,8 +1431,8 @@
 
             const sortKey = shopFilters.sort || 'price_asc';
             const sorters = {
-                id_desc: (a, b) => (b.id || '').localeCompare(a.id || ''),
-                id_asc: (a, b) => (a.id || '').localeCompare(b.id || ''),
+                id_desc: (a, b) => (b.sort_order || 0) - (a.sort_order || 0),
+                id_asc: (a, b) => (a.sort_order || 0) - (b.sort_order || 0),
                 price_asc: (a, b) => a.pBuy - b.pBuy,
                 price_desc: (a, b) => b.pBuy - a.pBuy,
                 circulation_asc: (a, b) => a.circulationCount - b.circulationCount,

@@ -1251,14 +1251,15 @@ function renderAdminBadges() {
 
     list.innerHTML = pageItems.map(badge => `
         <div class="col-md-4 col-lg-3">
-            <div class="card h-100 shadow-sm border-0 badge-card">
+            <div class="card h-100 shadow-sm border-0 badge-card" style="cursor: pointer;"
+                onclick="window.location.href='../badge/index.html?id=${badge.id}'">
                 <div class="card-body text-center">
                     <img src="${badge.image_url}" class="mb-3 badge-thumb shadow-sm" style="width: 64px; height: 64px; object-fit: contain;">
                     <h6 class="fw-bold mb-1">${badge.name}</h6>
                     <div class="mt-3 d-flex gap-1 justify-content-center">
-                        <button onclick='openBadgeModal(${JSON.stringify(badge).replace(/'/g, "&apos;")})' class="btn btn-sm btn-outline-primary">編集</button>
-                        <button onclick='openBadgeGrantUserModal(${JSON.stringify(badge).replace(/'/g, "&apos;")})' class="btn btn-sm btn-outline-success">付与</button>
-                        <button onclick="deleteBadge('${badge.id}')" class="btn btn-sm btn-outline-danger">削除</button>
+                        <button onclick='event.stopPropagation(); openBadgeModal(${JSON.stringify(badge).replace(/'/g, "&apos;")})' class="btn btn-sm btn-outline-primary">編集</button>
+                        <button onclick='event.stopPropagation(); openBadgeGrantUserModal(${JSON.stringify(badge).replace(/'/g, "&apos;")})' class="btn btn-sm btn-outline-success">付与</button>
+                        <button onclick="event.stopPropagation(); deleteBadge('${badge.id}')" class="btn btn-sm btn-outline-danger">削除</button>
                     </div>
                 </div>
             </div>
