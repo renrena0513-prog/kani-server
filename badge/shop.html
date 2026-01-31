@@ -513,7 +513,8 @@
                             <option value="price_desc">価格順（高→低）</option>
                             <option value="circulation_asc">流通数順（低→高）</option>
                             <option value="circulation_desc">流通数順（高→低）</option>
-                            <option value="new_desc">新着順</option>
+                            <option value="id_asc">バッジID順（低→高）</option>
+                            <option value="id_desc">バッジID順（高→低）</option>
                         </select>
                     </div>
                     <div class="col-12 col-md-3">
@@ -1430,7 +1431,8 @@
 
             const sortKey = shopFilters.sort || 'price_asc';
             const sorters = {
-                new_desc: (a, b) => (b.sort_order || 0) - (a.sort_order || 0),
+                id_desc: (a, b) => (b.id || '').localeCompare(a.id || ''),
+                id_asc: (a, b) => (a.id || '').localeCompare(b.id || ''),
                 price_asc: (a, b) => a.pBuy - b.pBuy,
                 price_desc: (a, b) => b.pBuy - a.pBuy,
                 circulation_asc: (a, b) => a.circulationCount - b.circulationCount,
@@ -1480,7 +1482,7 @@
                             <a href="./index.html?id=${badge.id}" class="text-decoration-none shop-item-badge-area" style="color: inherit;">
                                 <div class="badge-meta-row">
                                     <div class="rarity-pill" style="background: rgba(0,0,0,0.2);">${badge.rarity}</div>
-                                    <span class="badge bg-light text-dark border badge-type-pill">
+                                    <span class="badge badge-type-pill ${badge.sales_type === '変動型' ? 'rarity-epic' : 'bg-light text-dark border'}">
                                         ${badge.sales_type === '変動型' ? '変動型' : '固定型'}
                                     </span>
                                     ${badge.label ? `<span class="badge-label-strong">${badge.label}</span>` : ''}

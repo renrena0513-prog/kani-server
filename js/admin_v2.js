@@ -53,6 +53,24 @@ document.addEventListener('DOMContentLoaded', () => {
             if (el) el.addEventListener('input', calculateFinalScores);
         });
     });
+
+    const adminBadgeSort = document.getElementById('admin-badge-sort');
+    if (adminBadgeSort) {
+        adminBadgeSort.addEventListener('change', () => {
+            currentAdminBadgeSort = adminBadgeSort.value || 'sort_order_asc';
+            currentBadgesPage = 1;
+            renderAdminBadges();
+        });
+    }
+
+    const adminBadgeType = document.getElementById('admin-badge-type');
+    if (adminBadgeType) {
+        adminBadgeType.addEventListener('change', () => {
+            currentAdminBadgeType = adminBadgeType.value || 'all';
+            currentBadgesPage = 1;
+            renderAdminBadges();
+        });
+    }
 });
 
 // 最終スコアの自動計算
@@ -1155,6 +1173,8 @@ async function revokeBadge(userId, badgeId, badgeName) {
 
 let allAdminBadges = [];
 let currentAdminBadgeFilter = 'all';
+let currentAdminBadgeSort = 'sort_order_asc';
+let currentAdminBadgeType = 'all';
 let currentBadgesPage = 1;
 const BADGES_PER_PAGE = 24;
 
@@ -1200,7 +1220,22 @@ function renderAdminBadges() {
             default:
                 return true;
         }
+    }).filter(b => {
+        if (!currentAdminBadgeType || currentAdminBadgeType === 'all') return true;
+        if (currentAdminBadgeType === 'none') return !b.sales_type;
+        return b.sales_type === currentAdminBadgeType;
     });
+
+    const sorters = {
+        sort_order_asc: (a, b) => (a.sort_order || 0) - (b.sort_order || 0),
+        sort_order_desc: (a, b) => (b.sort_order || 0) - (a.sort_order || 0),
+        id_desc: (a, b) => (b.id || '').localeCompare(a.id || ''),
+        id_asc: (a, b) => (a.id || '').localeCompare(b.id || ''),
+        price_asc: (a, b) => (a.price || 0) - (b.price || 0),
+        price_desc: (a, b) => (b.price || 0) - (a.price || 0),
+        name_asc: (a, b) => (a.name || '').localeCompare(b.name || '', 'ja')
+    };
+    filtered.sort(sorters[currentAdminBadgeSort] || sorters.sort_order_asc);
 
     if (filtered.length === 0) {
         list.innerHTML = '<div class="col-12 text-center text-muted py-5">該当するバッジがありません</div>';
@@ -1306,60 +1341,6 @@ function updateBadgesPagination(totalItems, totalPages) {
 function changeBadgesPage(delta) {
     currentBadgesPage += delta;
     renderAdminBadges();
-}
-
-async function openSortOrderModal() {
-    const listEl = document.getElementById('sort-order-list');
-    if (!listEl) return;
-    listEl.innerHTML = '<div class="text-muted small">読み込み中...</div>';
-    new bootstrap.Modal(document.getElementById('sortOrderModal')).show();
-
-    try {
-        const { data: badges, error } = await supabaseClient
-            .from('badges')
-            .select('id, name, sort_order')
-            .order('sort_order', { ascending: false });
-        if (error) throw error;
-
-        listEl.innerHTML = (badges || []).map(b => `
-            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-                <div class="small fw-bold">${escapeHtml(b.name)}</div>
-                <input type="number" class="form-control form-control-sm" style="width: 120px;"
-                    value="${b.sort_order || 0}" data-id="${b.id}">
-            </div>
-        `).join('') || '<div class="text-muted small">バッジがありません</div>';
-
-        const saveBtn = document.createElement('button');
-        saveBtn.className = 'btn btn-primary w-100 mt-3';
-        saveBtn.textContent = '保存する';
-        saveBtn.onclick = saveSortOrders;
-        listEl.appendChild(saveBtn);
-    } catch (err) {
-        console.error('sort_order取得エラー:', err);
-        listEl.innerHTML = '<div class="text-danger small">読み込み失敗</div>';
-    }
-}
-
-async function saveSortOrders() {
-    const inputs = document.querySelectorAll('#sort-order-list input[data-id]');
-    if (!inputs.length) return;
-    toggleLoading(true);
-    try {
-        const updates = Array.from(inputs).map(input => ({
-            id: input.dataset.id,
-            sort_order: parseInt(input.value) || 0
-        }));
-        const { error } = await supabaseClient.from('badges').upsert(updates);
-        if (error) throw error;
-        alert('保存しました');
-        bootstrap.Modal.getInstance(document.getElementById('sortOrderModal'))?.hide();
-        fetchBadges();
-    } catch (err) {
-        console.error('sort_order更新エラー:', err);
-        alert('保存に失敗しました');
-    } finally {
-        toggleLoading(false);
-    }
 }
 
 async function openBadgeModal(badge = null) {
