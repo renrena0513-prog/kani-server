@@ -1278,8 +1278,8 @@ async function submitScores() {
                 manganReward += 1;
             }
             const yakumanList = yakumanMap[player.discord_user_id] || [];
-            if (match === 'チーム戦' && yakumanList.length > 0) {
-                manganReward += 1;
+            if (yakumanList.length > 0) {
+                manganReward += (mode === '四麻') ? 2 : 1;
             }
             if (manganReward > 0) {
                 manganRewardsMap[player.discord_user_id] = manganReward;
@@ -1481,7 +1481,7 @@ async function sendDiscordNotification(matchData, isTobiOn, isYakitoriOn, ticket
         const rewardText = `💰+${reward}${tickets > 0 ? ` 🎫+${tickets}` : ''}${mangans > 0 ? ` 🧧+${mangans}` : ''}`;
         const yakumanList = yakumanMap[p.discord_user_id] || [];
         const yakumanText = yakumanList.length > 0
-            ? `　　 💮🎍✨役満: ${yakumanList.join(' / ')}（🧧+1 確定）\n`
+            ? `　　 💮🎍✨役満: ${yakumanList.join(' / ')}（🧧+${mode === '四麻' ? 2 : 1} 確定）\n`
             : '';
 
         // 和了数と放銃数を表示
