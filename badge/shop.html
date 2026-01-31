@@ -1112,12 +1112,11 @@
             const { startUtc, endUtc } = getJstDayRange();
             try {
                 const { count, error } = await supabaseClient
-                    .from('activity_logs')
-                    .select('id', { count: 'exact', head: true })
+                    .from('user_badges_new')
+                    .select('uuid', { count: 'exact', head: true })
                     .eq('user_id', currentUserId)
-                    .eq('action_type', 'badge_purchase')
-                    .gte('created_at', startUtc)
-                    .lte('created_at', endUtc);
+                    .gte('acquired_at', startUtc)
+                    .lte('acquired_at', endUtc);
 
                 if (error) throw error;
                 const used = count || 0;
@@ -1132,12 +1131,11 @@
         async function canPurchaseToday() {
             const { startUtc, endUtc } = getJstDayRange();
             const { count, error } = await supabaseClient
-                .from('activity_logs')
-                .select('id', { count: 'exact', head: true })
+                .from('user_badges_new')
+                .select('uuid', { count: 'exact', head: true })
                 .eq('user_id', currentUserId)
-                .eq('action_type', 'badge_purchase')
-                .gte('created_at', startUtc)
-                .lte('created_at', endUtc);
+                .gte('acquired_at', startUtc)
+                .lte('acquired_at', endUtc);
             if (error) throw error;
             return (count || 0) < 5;
         }
@@ -1815,12 +1813,10 @@
             overlay.classList.add('active');
 
             try {
-                if (!isTicket) {
-                    const allowed = await canPurchaseToday();
-                    if (!allowed) {
-                        alert('本日の購入上限（5個）に達しています。');
-                        return;
-                    }
+                const allowed = await canPurchaseToday();
+                if (!allowed) {
+                    alert('本日の購入上限（5個）に達しています。');
+                    return;
                 }
                 const { data, error } = await supabaseClient.rpc(rpcName, params);
 
