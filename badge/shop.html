@@ -1090,32 +1090,32 @@
         });
 
         function getJstDayRange() {
-            const now = new Date();
-            const jstOffset = 9 * 60 * 60 * 1000;
-            const jstNow = new Date(now.getTime() + jstOffset);
-            const startUtc = new Date(Date.UTC(
-                jstNow.getUTCFullYear(),
-                jstNow.getUTCMonth(),
-                jstNow.getUTCDate(),
-                0, 0, 0, 0
-            ));
-            const endUtc = new Date(Date.UTC(
-                jstNow.getUTCFullYear(),
-                jstNow.getUTCMonth(),
-                jstNow.getUTCDate(),
-                23, 59, 59, 999
-            ));
+            const todayJst = new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'Asia/Tokyo',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            }).format(new Date());
+            const startJst = new Date(`${todayJst}T00:00:00+09:00`);
+            const endJst = new Date(`${todayJst}T23:59:59.999+09:00`);
             return {
-                startUtc: startUtc.toISOString(),
-                endUtc: endUtc.toISOString()
+                startUtc: startJst.toISOString(),
+                endUtc: endJst.toISOString()
             };
+        }
+
+        function renderDailyPurchaseLimit(used) {
+            const limitEl = document.getElementById('daily-purchase-limit');
+            if (!limitEl) return;
+            const remaining = Math.max(0, 5 - (used || 0));
+            limitEl.textContent = `本日の残り ${remaining}個`;
         }
 
         async function updateDailyPurchaseLimit() {
             const limitEl = document.getElementById('daily-purchase-limit');
             if (!limitEl || !currentUserId) return;
-            const { startUtc, endUtc } = getJstDayRange();
             try {
+                const { startUtc, endUtc } = getJstDayRange();
                 const { data, count, error } = await supabaseClient
                     .from('activity_logs')
                     .select('id', { count: 'exact' })
@@ -1127,11 +1127,14 @@
                 if (error) throw error;
                 const used = (typeof count === 'number') ? count : (data?.length || 0);
                 cachedDailyPurchaseCount = used;
-                const remaining = Math.max(0, 5 - used);
-                limitEl.textContent = `本日の残り ${remaining}個`;
+                renderDailyPurchaseLimit(used);
             } catch (err) {
                 console.error('Failed to load daily purchase count:', err);
-                limitEl.textContent = '本日の残り -個';
+                if (typeof cachedDailyPurchaseCount === 'number') {
+                    renderDailyPurchaseLimit(cachedDailyPurchaseCount);
+                } else {
+                    limitEl.textContent = '本日の残り -個';
+                }
             }
         }
 
@@ -1847,6 +1850,10 @@
                         method: isTicket ? `${ticketRarity}引換券` : 'コイン'
                     }
                 });
+                if (typeof cachedDailyPurchaseCount === 'number') {
+                    cachedDailyPurchaseCount += 1;
+                    renderDailyPurchaseLimit(cachedDailyPurchaseCount);
+                }
                 await updateDailyPurchaseLimit();
                 setTimeout(updateDailyPurchaseLimit, 1000);
 
