@@ -204,7 +204,17 @@
             <div class="player-row">
                 <div>
                     <label class="form-label small text-muted">チーム名</label>
-                    <select id="team-select" class="form-select form-select-sm"></select>
+                    <div class="custom-dropdown-container">
+                        <input type="hidden" id="team-select" value="">
+                        <div class="form-control form-control-sm d-flex align-items-center justify-content-between"
+                            style="cursor: pointer; background: white; padding: 8px 12px; height: 34px;" onclick="toggleTeamDropdown()">
+                            <div class="d-flex align-items-center gap-2" id="selected-team-display" style="flex-grow: 1; overflow: hidden;">
+                                <span class="text-muted small">チームを選択</span>
+                            </div>
+                            <span class="small text-muted">▼</span>
+                        </div>
+                        <div class="custom-dropdown-list" id="team-dropdown"></div>
+                    </div>
                 </div>
                 <div>
                     <label class="form-label small text-muted">アカウント</label>
@@ -216,6 +226,7 @@
                             <div class="badge-left-container mutant-badge-container mini" style="display: none;"></div>
                             <span class="name"></span>
                             <div class="badge-right-container mutant-badge-container mini" style="display: none;"></div>
+                            <span class="ms-auto text-muted" style="cursor:pointer;" onclick="clearSelectedPlayer()">×</span>
                         </div>
                         <div class="custom-dropdown-list" id="player-dropdown"></div>
                     </div>
@@ -278,7 +289,10 @@
         const addedPlayers = [];
 
         async function loadData() {
-            const { data: teams } = await supabaseClient.from('teams').select('id, team_name').order('team_name');
+            const { data: teams } = await supabaseClient
+                .from('teams')
+                .select('id, team_name, logo_badge:badges!logo_badge_id(image_url)')
+                .order('team_name');
             allTeams = teams || [];
             const { data: profiles } = await supabaseClient
                 .from('profiles')
@@ -289,16 +303,45 @@
         }
 
         function renderTeamOptions() {
-            const select = document.getElementById('team-select');
-            select.innerHTML = ['<option value="">チームを選択</option>']
-                .concat(allTeams.map(t => `<option value="${t.id}">${t.team_name}</option>`))
-                .join('');
+            const list = document.getElementById('team-dropdown');
+            if (!list) return;
+            list.innerHTML = allTeams.map(t => {
+                const logo = t.logo_badge?.image_url;
+                const logoHtml = logo ? `<img src="${logo}" style="width: 20px; height: 20px; object-fit: contain; border-radius: 4px;">` : '';
+                return `
+                    <div class="dropdown-item-flex" onclick="selectTeam('${t.id}')">
+                        ${logoHtml}
+                        <span class="small">${t.team_name}</span>
+                    </div>
+                `;
+            }).join('') || '<div class="p-2 text-muted">チームがありません</div>';
         }
 
         function getFilteredPlayers() {
             const teamId = document.getElementById('team-select').value;
             const candidates = teamId ? allProfiles.filter(p => p.team_id === teamId) : allProfiles;
             return candidates;
+        }
+
+        function toggleTeamDropdown() {
+            const list = document.getElementById('team-dropdown');
+            if (!list) return;
+            list.style.display = list.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function selectTeam(teamId) {
+            const input = document.getElementById('team-select');
+            const display = document.getElementById('selected-team-display');
+            const list = document.getElementById('team-dropdown');
+            const team = allTeams.find(t => t.id === teamId);
+            if (!input || !display || !team) return;
+            input.value = teamId;
+            const logo = team.logo_badge?.image_url;
+            const logoHtml = logo ? `<img src="${logo}" style="width: 20px; height: 20px; object-fit: contain; border-radius: 4px;">` : '';
+            display.innerHTML = `${logoHtml}<span style="font-weight: 600;">${team.team_name}</span>`;
+            if (list) list.style.display = 'none';
+            clearSelectedPlayer();
+            showPlayerDropdown();
         }
 
         function showPlayerDropdown() {
@@ -358,6 +401,18 @@
             badge.querySelector('.badge-avatar').src = p.avatar_url || 'https://via.placeholder.com/24';
             badge.querySelector('.name').textContent = p.account_name || p.discord_user_id;
             document.getElementById('player-dropdown').style.display = 'none';
+            document.getElementById('player-input').style.display = 'none';
+        }
+
+        function clearSelectedPlayer() {
+            selectedPlayer = null;
+            const input = document.getElementById('player-input');
+            const badge = document.getElementById('selected-player');
+            if (input) {
+                input.value = '';
+                input.style.display = 'block';
+            }
+            if (badge) badge.style.display = 'none';
         }
 
         function addPlayer() {
@@ -383,9 +438,7 @@
                 team_name: team.team_name,
                 pref: pref
             });
-            selectedPlayer = null;
-            document.getElementById('player-input').value = '';
-            document.getElementById('selected-player').style.display = 'none';
+            clearSelectedPlayer();
             renderPlayerList();
         }
 
@@ -432,6 +485,7 @@
                 sanma: remaining.filter(p => p.pref === 'sanma'),
                 none: remaining.filter(p => p.pref === 'none')
             };
+            Object.values(byPref).forEach(list => shuffleArray(list));
 
             const assignToTables = (tableType) => {
                 const candidatesOrder = tableType === '四麻'
@@ -463,6 +517,13 @@
 
             const spectators = [...byPref.yonma, ...byPref.sanma, ...byPref.none];
             renderTables(tables, spectators);
+        }
+
+        function shuffleArray(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
         }
 
         function renderTables(tables, spectators) {
