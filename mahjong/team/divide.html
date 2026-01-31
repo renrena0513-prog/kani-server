@@ -718,12 +718,14 @@
                 });
                 const allSpectators = [...addedPlayers];
                 renderTables(tables, allSpectators);
+                renderPlayerList();
                 sendResultToDiscord(tables, allSpectators, { warning: '四麻の人数が足りないため全員観戦枠に移動' });
                 return;
             }
 
             const spectators = [...byPref.yonma, ...byPref.sanma, ...byPref.none];
             renderTables(tables, spectators);
+            renderPlayerList();
             sendResultToDiscord(tables, spectators);
         }
 
