@@ -850,6 +850,7 @@
         let shopFiltersInitialized = false;
         let shopIsMobile = window.matchMedia('(max-width: 767.98px)').matches;
         let creatorCache = new Map();
+        let cachedDailyPurchaseCount = null;
         let shopFilters = {
             sort: 'price_asc',
             rarity: '',
@@ -870,7 +871,11 @@
             currentUserId = user.user_metadata.provider_id;
 
             setupShopFilters();
-            await refreshMarketContext();
+            try {
+                await refreshMarketContext();
+            } finally {
+                await updateDailyPurchaseLimit();
+            }
         }
 
         // 市場データとユーザー財産の再取得
@@ -1121,6 +1126,7 @@
 
                 if (error) throw error;
                 const used = count || 0;
+                cachedDailyPurchaseCount = used;
                 const remaining = Math.max(0, 5 - used);
                 limitEl.textContent = `本日の残り ${remaining}個`;
             } catch (err) {
@@ -1841,6 +1847,7 @@
                     }
                 });
                 await updateDailyPurchaseLimit();
+                setTimeout(updateDailyPurchaseLimit, 1000);
 
                 // 権利者への売買還元
                 // 固定型: 20%, 変動型: 10%
