@@ -17,7 +17,7 @@ const YAKUMAN_TYPES = [
     '四槓子',
     '九蓮宝燈'
 ];
-const YAKUMAN_BADGE_MAP = {
+const YAKUMAN_BADGE_MAP_YONMA = {
     '天和': '034f1891-58e1-495e-9d04-9a01e3eeb78c',
     '地和': '956f46aa-7bd4-4ac1-804e-80f671db1d12',
     '大三元': '9edc02f7-8a09-41c8-8ca7-71c814e880c9',
@@ -29,6 +29,19 @@ const YAKUMAN_BADGE_MAP = {
     '小四喜': 'b85470c4-4ab0-41bc-8454-aa01d53be4a0',
     '四槓子': '1a46eb8c-62fd-4909-a881-2571977c389a',
     '九蓮宝燈': '5a9b1162-dfbf-4441-bb18-124cfa014abe'
+};
+const YAKUMAN_BADGE_MAP_SANMA = {
+    '天和': '6ab2aa9e-5b90-4dc6-afeb-70ff9833cfca',
+    '地和': '47982374-adb1-4e5b-90e7-b0edda915a48',
+    '大三元': 'b3c8bdf7-809a-4d7a-88bb-29f664432868',
+    '四暗刻': '0a6a7322-aa81-417c-b125-8740be4a5d96',
+    '字一色': 'bbaf45e3-90f5-4784-a2cb-48b2e02651ca',
+    '緑一色': 'bcf41c3f-bd4e-49f0-8900-fdcd2bf0f12e',
+    '清老頭': 'b0ec2298-002b-432d-8949-cde75d6c709d',
+    '国士無双': '7c2c4567-d535-4de0-a43a-57cc3a21c9bf',
+    '小四喜': 'f35e2d78-9c1d-40ea-9316-7a76fb8cc9db',
+    '四槓子': 'ab8837f3-17b9-4e6b-976f-3ddef1e377ca',
+    '九蓮宝燈': '20b04e04-021d-4eec-b7ad-e81ce40b83c5'
 };
 let yakumanRowSeq = 0;
 
@@ -1335,7 +1348,8 @@ async function submitScores() {
 
                 // 役満バッジ付与
                 if (yakumanList.length > 0) {
-                    const badgeIds = yakumanList.map(y => YAKUMAN_BADGE_MAP[y]).filter(Boolean);
+                    const badgeMap = (mode === '三麻') ? YAKUMAN_BADGE_MAP_SANMA : YAKUMAN_BADGE_MAP_YONMA;
+                    const badgeIds = yakumanList.map(y => badgeMap[y]).filter(Boolean);
                     if (badgeIds.length > 0) {
                         const inserts = badgeIds.map(badgeId => ({
                             user_id: player.discord_user_id,
