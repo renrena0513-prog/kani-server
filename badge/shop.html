@@ -131,6 +131,40 @@
             text-transform: uppercase;
         }
 
+        .shop-item-badge-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            width: 100%;
+        }
+
+        .badge-meta-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .badge-meta-row .rarity-pill {
+            margin-bottom: 0;
+        }
+
+        .badge-type-pill,
+        .badge-meta-row .rarity-pill,
+        .badge-label-strong {
+            display: inline-flex;
+            align-items: center;
+            line-height: 1;
+        }
+
+        .badge-type-pill {
+            border-radius: 10px;
+            padding: 0.2rem 0.5rem;
+            font-size: 0.6rem;
+        }
+
         /* 権利バッジセクション */
         .rights-section {
             background: #fff;
@@ -1444,9 +1478,9 @@
                             
                             <!-- バッジエリア（モバイルでは左側） -->
                             <a href="./index.html?id=${badge.id}" class="text-decoration-none shop-item-badge-area" style="color: inherit;">
-                                <div class="d-inline-flex align-items-center gap-1 flex-wrap">
+                                <div class="badge-meta-row">
                                     <div class="rarity-pill" style="background: rgba(0,0,0,0.2);">${badge.rarity}</div>
-                                    <span class="badge bg-light text-dark border" style="font-size: 0.6rem; border-radius: 10px;">
+                                    <span class="badge bg-light text-dark border badge-type-pill">
                                         ${badge.sales_type === '変動型' ? '変動型' : '固定型'}
                                     </span>
                                     ${badge.label ? `<span class="badge-label-strong">${badge.label}</span>` : ''}
