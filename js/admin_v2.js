@@ -1308,6 +1308,60 @@ function changeBadgesPage(delta) {
     renderAdminBadges();
 }
 
+async function openSortOrderModal() {
+    const listEl = document.getElementById('sort-order-list');
+    if (!listEl) return;
+    listEl.innerHTML = '<div class="text-muted small">読み込み中...</div>';
+    new bootstrap.Modal(document.getElementById('sortOrderModal')).show();
+
+    try {
+        const { data: badges, error } = await supabaseClient
+            .from('badges')
+            .select('id, name, sort_order')
+            .order('sort_order', { ascending: false });
+        if (error) throw error;
+
+        listEl.innerHTML = (badges || []).map(b => `
+            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                <div class="small fw-bold">${escapeHtml(b.name)}</div>
+                <input type="number" class="form-control form-control-sm" style="width: 120px;"
+                    value="${b.sort_order || 0}" data-id="${b.id}">
+            </div>
+        `).join('') || '<div class="text-muted small">バッジがありません</div>';
+
+        const saveBtn = document.createElement('button');
+        saveBtn.className = 'btn btn-primary w-100 mt-3';
+        saveBtn.textContent = '保存する';
+        saveBtn.onclick = saveSortOrders;
+        listEl.appendChild(saveBtn);
+    } catch (err) {
+        console.error('sort_order取得エラー:', err);
+        listEl.innerHTML = '<div class="text-danger small">読み込み失敗</div>';
+    }
+}
+
+async function saveSortOrders() {
+    const inputs = document.querySelectorAll('#sort-order-list input[data-id]');
+    if (!inputs.length) return;
+    toggleLoading(true);
+    try {
+        const updates = Array.from(inputs).map(input => ({
+            id: input.dataset.id,
+            sort_order: parseInt(input.value) || 0
+        }));
+        const { error } = await supabaseClient.from('badges').upsert(updates);
+        if (error) throw error;
+        alert('保存しました');
+        bootstrap.Modal.getInstance(document.getElementById('sortOrderModal'))?.hide();
+        fetchBadges();
+    } catch (err) {
+        console.error('sort_order更新エラー:', err);
+        alert('保存に失敗しました');
+    } finally {
+        toggleLoading(false);
+    }
+}
+
 async function openBadgeModal(badge = null) {
     const form = document.getElementById('badge-form');
     form.reset();
@@ -1319,6 +1373,7 @@ async function openBadgeModal(badge = null) {
         document.getElementById('badge-id').value = badge.id;
         document.getElementById('badge-name').value = badge.name;
         document.getElementById('badge-description').value = badge.description || '';
+        document.getElementById('badge-label').value = badge.label || '';
         document.getElementById('badge-image-url').value = badge.image_url;
         document.getElementById('badge-image-url').value = badge.image_url;
         document.getElementById('badge-price').value = badge.price || 0;
@@ -1335,6 +1390,7 @@ async function openBadgeModal(badge = null) {
         document.getElementById('badge-price').value = 0;
         document.getElementById('badge-sort-order').value = 0;
         document.getElementById('badge-sales-type').value = '';
+        document.getElementById('badge-label').value = '';
         document.getElementById('badge-gacha-eligible').checked = false;
         document.getElementById('badge-shop-listed').checked = true; // 新規作成時はデフォルトで true
     }
@@ -1411,6 +1467,7 @@ async function saveBadge() {
     const id = document.getElementById('badge-id').value;
     const name = document.getElementById('badge-name').value;
     const description = document.getElementById('badge-description').value;
+    const label = document.getElementById('badge-label').value.trim();
     let image_url = document.getElementById('badge-image-url').value;
     const imageFile = document.getElementById('badge-image-file').files[0];
 
@@ -1427,6 +1484,7 @@ async function saveBadge() {
         const badgeData = {
             name,
             description,
+            label: label || null,
             image_url,
             price: parseInt(document.getElementById('badge-price').value) || 0,
             requirements: document.getElementById('badge-requirements').value.trim() || null,
@@ -1469,7 +1527,11 @@ async function handleBulkBadgeUpload(event) {
             const fileName = `${Math.random().toString(36).substring(2)}.${file.name.split('.').pop()}`;
             await supabaseClient.storage.from('badges').upload(fileName, file);
             const { data } = supabaseClient.storage.from('badges').getPublicUrl(fileName);
-            await supabaseClient.from('badges').insert([{ name: file.name.replace(/\.[^/.]+$/, ''), image_url: data.publicUrl }]);
+            await supabaseClient.from('badges').insert([{
+                name: file.name.replace(/\.[^/.]+$/, ''),
+                image_url: data.publicUrl,
+                label: null
+            }]);
         } catch (err) { console.error(err); }
     }
     toggleLoading(false);
@@ -1480,7 +1542,7 @@ async function exportBadgesToCSV() {
     const { data: badges } = await supabaseClient.from('badges').select('*');
     // 全カラムを含める
     const headers = [
-        'id', 'name', 'description', 'image_url', 'price',
+        'id', 'name', 'description', 'label', 'image_url', 'price',
         'requirements', 'remaining_count', 'sort_order', 'discord_user_id',
         'fixed_rarity_name', 'sales_type', 'is_gacha_eligible', 'is_shop_listed'
     ];

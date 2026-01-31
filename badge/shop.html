@@ -297,6 +297,18 @@
             line-height: 1;
         }
 
+        .badge-label-strong {
+            background: linear-gradient(135deg, #ffb300 0%, #ff6a00 100%);
+            color: #1b0e00;
+            border: 1px solid rgba(0, 0, 0, 0.15);
+            font-size: 0.6rem;
+            border-radius: 10px;
+            padding: 0.2rem 0.5rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            box-shadow: 0 4px 10px rgba(255, 122, 0, 0.35);
+        }
+
         .shop-filter-toggle {
             display: inline-flex;
             align-items: center;
@@ -503,6 +515,12 @@
                             <option value="">全タイプ</option>
                             <option value="変動型">変動型</option>
                             <option value="固定型">固定型</option>
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="small text-muted mb-1">ラベル</label>
+                        <select id="shop-label" class="form-select form-select-sm shop-filter-select">
+                            <option value="">すべて</option>
                         </select>
                     </div>
                     <div class="col-12 col-md-2">
@@ -802,6 +820,7 @@
             rarity: '',
             creator: '',
             type: '',
+            label: '',
             unowned: false
         };
 
@@ -1073,12 +1092,14 @@
 
             const sortEl = document.getElementById('shop-sort');
             const typeEl = document.getElementById('shop-type');
+            const labelEl = document.getElementById('shop-label');
             const unownedBtn = document.getElementById('shop-unowned-btn');
 
             if (sortEl) sortEl.value = shopFilters.sort;
             setRaritySelection(shopFilters.rarity);
             setCreatorSelection(shopFilters.creator);
             if (typeEl) typeEl.value = shopFilters.type;
+            if (labelEl) labelEl.value = shopFilters.label;
             if (unownedBtn) {
                 unownedBtn.dataset.active = shopFilters.unowned ? 'true' : 'false';
                 unownedBtn.classList.toggle('active', shopFilters.unowned);
@@ -1091,6 +1112,7 @@
                 const creatorBtn = document.getElementById('shop-creator-btn');
                 if (creatorBtn) creatorBtn.classList.toggle('is-active', !!getSelectedCreatorId());
                 if (typeEl) typeEl.classList.toggle('is-active', !!typeEl.value);
+                if (labelEl) labelEl.classList.toggle('is-active', !!labelEl.value);
                 if (unownedBtn) unownedBtn.classList.toggle('is-active', unownedBtn.dataset.active === 'true');
             };
 
@@ -1100,6 +1122,7 @@
                     rarity: getSelectedRarityId(),
                     creator: getSelectedCreatorId(),
                     type: typeEl?.value || '',
+                    label: labelEl?.value || '',
                     unowned: !!(unownedBtn && unownedBtn.dataset.active === 'true')
                 };
                 currentShopPage = 1;
@@ -1109,6 +1132,7 @@
 
             sortEl?.addEventListener('change', updateFilters);
             typeEl?.addEventListener('change', updateFilters);
+            labelEl?.addEventListener('change', updateFilters);
             unownedBtn?.addEventListener('click', () => {
                 const next = !(unownedBtn.dataset.active === 'true');
                 unownedBtn.dataset.active = next ? 'true' : 'false';
@@ -1302,6 +1326,9 @@
             if (excludeKey !== 'type' && shopFilters.type) {
                 base = base.filter(b => b.sales_type === shopFilters.type);
             }
+            if (excludeKey !== 'label' && shopFilters.label) {
+                base = base.filter(b => (b.label || '').trim() === shopFilters.label);
+            }
             if (excludeKey !== 'unowned' && shopFilters.unowned) {
                 base = base.filter(b => (myCounts[b.id] || 0) === 0);
             }
@@ -1318,11 +1345,31 @@
             return map;
         }
 
+        function populateShopLabelOptions(sourceBadges = null) {
+            const labelEl = document.getElementById('shop-label');
+            if (!labelEl) return;
+            const current = labelEl.value;
+            const counts = {};
+            (sourceBadges || shopBadges || []).forEach(badge => {
+                const label = (badge.label || '').trim();
+                if (!label) return;
+                counts[label] = (counts[label] || 0) + 1;
+            });
+            const labels = Object.keys(counts).sort((a, b) => a.localeCompare(b, 'ja'));
+            labelEl.innerHTML = ['<option value="">すべて</option>']
+                .concat(labels.map(l => `<option value="${l}">${l} (${counts[l]})</option>`))
+                .join('');
+            labelEl.value = labels.includes(current) ? current : '';
+            shopFilters.label = labelEl.value || '';
+        }
+
         function updateDynamicFilterOptions() {
             const baseForRarity = getBaseFilteredBadges('rarity');
             const baseForCreator = getBaseFilteredBadges('creator');
+            const baseForLabel = getBaseFilteredBadges('label');
             populateShopRarityOptions(baseForRarity);
             populateShopCreatorOptions(buildCreatorMapFromBadges(baseForCreator));
+            populateShopLabelOptions(baseForLabel);
         }
 
         function applyShopFilters() {
@@ -1339,6 +1386,9 @@
             }
             if (shopFilters.type) {
                 filtered = filtered.filter(b => b.sales_type === shopFilters.type);
+            }
+            if (shopFilters.label) {
+                filtered = filtered.filter(b => (b.label || '').trim() === shopFilters.label);
             }
             if (shopFilters.unowned) {
                 filtered = filtered.filter(b => (myCounts[b.id] || 0) === 0);
@@ -1394,7 +1444,13 @@
                             
                             <!-- バッジエリア（モバイルでは左側） -->
                             <a href="./index.html?id=${badge.id}" class="text-decoration-none shop-item-badge-area" style="color: inherit;">
-                                <div class="rarity-pill" style="background: rgba(0,0,0,0.2);">${badge.rarity}</div>
+                                <div class="d-inline-flex align-items-center gap-1 flex-wrap">
+                                    <div class="rarity-pill" style="background: rgba(0,0,0,0.2);">${badge.rarity}</div>
+                                    <span class="badge bg-light text-dark border" style="font-size: 0.6rem; border-radius: 10px;">
+                                        ${badge.sales_type === '変動型' ? '変動型' : '固定型'}
+                                    </span>
+                                    ${badge.label ? `<span class="badge-label-strong">${badge.label}</span>` : ''}
+                                </div>
                                 <img src="${badge.image_url}" class="shop-img" alt="${badge.name}" style="filter: drop-shadow(0 5px 15px rgba(0,0,0,0.2));">
                                 <div class="shop-name" style="color: inherit;">${badge.name}</div>
                             </a>

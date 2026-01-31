@@ -583,6 +583,8 @@
                                         onclick="setAdminBadgeFilter('limited', this)">限定品</button>
                                     <button class="btn btn-sm btn-outline-secondary"
                                         onclick="setAdminBadgeFilter('not_for_sale', this)">非売品</button>
+                                    <button class="btn btn-sm btn-outline-secondary"
+                                        onclick="openSortOrderModal()">新着管理</button>
                                 </div>
                             </div>
                             <div class="row g-3" id="badges-list">
@@ -1124,6 +1126,11 @@
                                 <input type="hidden" id="badge-owner" value="">
                                 <small class="text-muted">選択したユーザーにバッジ売上の10%が還元されます</small>
                             </div>
+                            <div class="mb-3">
+                                <label for="badge-label" class="form-label">ラベル</label>
+                                <input type="text" class="form-control" id="badge-label" maxlength="20" placeholder="例: NEW / 注目">
+                                <small class="text-muted">空欄なら表示されません</small>
+                            </div>
                         </form>
                     </div>
                     <div class="modal-footer">
@@ -1205,6 +1212,24 @@
                     <div class="modal-body">
                         <div id="badge-grant-user-list">
                             <div class="text-center text-muted py-3">読み込み中...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 新着管理モーダル -->
+        <div class="modal fade" id="sortOrderModal" tabindex="-1" aria-labelledby="sortOrderModalLabel"
+            aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="sortOrderModalLabel">新着管理（sort_order）</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="sort-order-list">
+                            <div class="text-muted small">読み込み中...</div>
                         </div>
                     </div>
                 </div>
