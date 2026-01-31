@@ -180,7 +180,10 @@
             }
         }
 
+        let isSellingBadge = false;
         async function executeSellUUID() {
+            if (isSellingBadge) return;
+            isSellingBadge = true;
             toggleLoading(true);
             try {
                 let badgeIdForLog = null;
@@ -228,10 +231,12 @@
                 alert('売却に失敗しました: ' + err.message);
             } finally {
                 toggleLoading(false);
+                isSellingBadge = false;
             }
         }
 
         // ============ 換金品の売却 ============
+        let isSellingConvertible = false;
         async function openConvertibleSellModal(badgeId, badgeName, totalCount, fixedPrice) {
             const quantity = prompt(`「${badgeName}」を何個売却しますか？（所持数: ${totalCount} 個、売却価格: ${fixedPrice.toLocaleString()} C / 個）`, '1');
 
@@ -251,6 +256,8 @@
             const totalPrice = fixedPrice * count;
             if (!confirm(`「${badgeName}」を ${count} 個売却しますか？（合計: 💰${totalPrice.toLocaleString()} C）`)) return;
 
+            if (isSellingConvertible) return;
+            isSellingConvertible = true;
             toggleLoading(true);
             try {
                 // 所持している換金品の UUID を取得
@@ -316,6 +323,7 @@
                 alert('売却に失敗しました: ' + err.message);
             } finally {
                 toggleLoading(false);
+                isSellingConvertible = false;
             }
         }
 

@@ -59,7 +59,10 @@
             }
         }
 
+        let isTransferringBadge = false;
         async function executeBadgeTransfer(toUserId, toUserName) {
+            if (isTransferringBadge) return;
+            isTransferringBadge = true;
             toggleLoading(true);
             try {
                 // 1. バッジの user_id を変更
@@ -105,6 +108,7 @@
                 alert('譲渡に失敗しました');
             } finally {
                 toggleLoading(false);
+                isTransferringBadge = false;
             }
         }
 
