@@ -103,11 +103,30 @@ async function displayUserInfo() {
         // プロフィール情報の同期（非同期で実行）- なりすまし中は同期しない
         if (!impersonated) {
             const syncProfile = async () => {
-                const avatarUrl = discordUser.avatar_url || discordUser.picture || '';
+                let avatarUrl = discordUser.avatar_url || discordUser.picture || '';
                 const discordUserId = discordUser.provider_id || discordId;
 
                 // Discordの表示名 (Global Name) を優先取得、なければ full_name
                 const discordDisplayName = discordUser.custom_claims?.global_name || discordUser.full_name || discordUser.name;
+
+                try {
+                    const { data: sessionData } = await supabaseClient.auth.getSession();
+                    const providerToken = sessionData?.session?.provider_token;
+                    if (providerToken) {
+                        const resp = await fetch('https://discord.com/api/users/@me', {
+                            headers: { Authorization: `Bearer ${providerToken}` }
+                        });
+                        if (resp.ok) {
+                            const discordProfile = await resp.json();
+                            if (discordProfile?.avatar && discordProfile?.id) {
+                                const ext = discordProfile.avatar.startsWith('a_') ? 'gif' : 'png';
+                                avatarUrl = `https://cdn.discordapp.com/avatars/${discordProfile.id}/${discordProfile.avatar}.${ext}?size=128`;
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.warn('Discord avatar refresh failed:', err);
+                }
 
                 // 既存のプロフィールを確認
                 const { data: existing } = await supabaseClient

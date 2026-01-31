@@ -414,7 +414,25 @@
 
             try {
                 const discordUser = user.user_metadata;
-                const avatarUrl = discordUser.avatar_url || discordUser.picture || '';
+                let avatarUrl = discordUser.avatar_url || discordUser.picture || '';
+                try {
+                    const { data: sessionData } = await supabaseClient.auth.getSession();
+                    const providerToken = sessionData?.session?.provider_token;
+                    if (providerToken) {
+                        const resp = await fetch('https://discord.com/api/users/@me', {
+                            headers: { Authorization: `Bearer ${providerToken}` }
+                        });
+                        if (resp.ok) {
+                            const discordProfile = await resp.json();
+                            if (discordProfile?.avatar && discordProfile?.id) {
+                                const ext = discordProfile.avatar.startsWith('a_') ? 'gif' : 'png';
+                                avatarUrl = `https://cdn.discordapp.com/avatars/${discordProfile.id}/${discordProfile.avatar}.${ext}?size=128`;
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.warn('Discord avatar refresh failed:', err);
+                }
 
                 const { error } = await supabaseClient
                     .from('profiles')
