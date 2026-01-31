@@ -51,6 +51,12 @@
             margin-bottom: 20px;
         }
 
+        .participant-count {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-left: 8px;
+        }
+
         .custom-dropdown-container {
             position: relative;
         }
@@ -157,6 +163,51 @@
             font-weight: 700;
             color: var(--deep-green);
             margin-bottom: 10px;
+        }
+
+        .player-list-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 1.6fr 0.8fr 80px;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .player-list-header {
+            font-weight: 700;
+            color: #495057;
+            background: #f1f3f5;
+            border-radius: 10px;
+            padding: 8px 12px;
+        }
+
+        .player-list-row {
+            padding: 8px 12px;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+            background: #fff;
+        }
+
+        .player-list-team {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .player-list-name {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 768px) {
+            .player-list-grid {
+                grid-template-columns: 1fr;
+                gap: 6px;
+            }
+            .player-list-header {
+                display: none;
+            }
         }
 
         .player-pill {
@@ -289,7 +340,7 @@
         </div>
 
         <div class="content-card">
-            <h2 class="section-title">参加者一覧</h2>
+            <h2 class="section-title">参加者一覧 <span id="participant-count" class="participant-count">0人</span></h2>
             <div id="player-list" class="vstack gap-2"></div>
         </div>
 
@@ -547,11 +598,35 @@
 
         function renderPlayerList() {
             const list = document.getElementById('player-list');
+            const countEl = document.getElementById('participant-count');
+            if (countEl) countEl.textContent = `${addedPlayers.length}人`;
             if (addedPlayers.length === 0) {
                 list.innerHTML = '<div class="text-muted">まだ追加されていません。</div>';
                 return;
             }
-            list.innerHTML = addedPlayers.map(p => renderPlayerDisplay(p, { withPref: true, withRemove: true })).join('');
+            const header = `
+                <div class="player-list-grid player-list-header">
+                    <div>チーム名</div>
+                    <div>名前</div>
+                    <div>希望</div>
+                    <div></div>
+                </div>
+            `;
+            const rows = addedPlayers.map(p => {
+                const teamLogo = p.team_logo ? `<img src="${p.team_logo}" class="team-logo" alt="">` : '';
+                const avatar = p.avatar_url ? `<img src="${p.avatar_url}" class="player-avatar" alt="">` : '';
+                const leftBadge = p.badge_left ? `<img src="${p.badge_left}" class="badge-icon" title="${p.badge_left_name || ''}">` : '';
+                const rightBadge = p.badge_right ? `<img src="${p.badge_right}" class="badge-icon" title="${p.badge_right_name || ''}">` : '';
+                return `
+                    <div class="player-list-grid player-list-row">
+                        <div class="player-list-team">${teamLogo}<span class="team-badge">${p.team_name}</span></div>
+                        <div class="player-list-name">${avatar}${leftBadge}<span class="name">${p.account_name}</span>${rightBadge}</div>
+                        <div>${getPrefLabel(p.pref)}</div>
+                        <div><button class="btn btn-sm btn-outline-danger w-100" onclick="removePlayer('${p.discord_user_id}')">削除</button></div>
+                    </div>
+                `;
+            }).join('');
+            list.innerHTML = header + rows;
         }
 
         function removePlayer(id) {
@@ -589,6 +664,27 @@
             };
             Object.values(byPref).forEach(list => shuffleArray(list));
 
+            const pickFromPool = (pool, table) => {
+                if (!pool.length) return null;
+                const teamCounts = new Map();
+                pool.forEach(p => {
+                    if (table.teamSet.has(p.team_id)) return;
+                    teamCounts.set(p.team_id, (teamCounts.get(p.team_id) || 0) + 1);
+                });
+                if (teamCounts.size === 0) return null;
+                let targetTeam = null;
+                let maxCount = -1;
+                teamCounts.forEach((count, teamId) => {
+                    if (count > maxCount) {
+                        maxCount = count;
+                        targetTeam = teamId;
+                    }
+                });
+                const idx = pool.findIndex(p => p.team_id === targetTeam && !table.teamSet.has(p.team_id));
+                if (idx === -1) return null;
+                return pool.splice(idx, 1)[0];
+            };
+
             const assignToTables = (tableType) => {
                 const candidatesOrder = tableType === '四麻'
                     ? [byPref.yonma, byPref.none, byPref.sanma]
@@ -597,17 +693,13 @@
                 targetTables.forEach(table => {
                     while (table.members.length < table.cap) {
                         let assigned = false;
-                        for (const list of candidatesOrder) {
-                            for (let i = 0; i < list.length; i++) {
-                                const p = list[i];
-                                if (table.teamSet.has(p.team_id)) continue;
-                                table.members.push(p);
-                                table.teamSet.add(p.team_id);
-                                list.splice(i, 1);
-                                assigned = true;
-                                break;
-                            }
-                            if (assigned) break;
+                        for (const pool of candidatesOrder) {
+                            const picked = pickFromPool(pool, table);
+                            if (!picked) continue;
+                            table.members.push(picked);
+                            table.teamSet.add(picked.team_id);
+                            assigned = true;
+                            break;
                         }
                         if (!assigned) break;
                     }
@@ -616,6 +708,19 @@
 
             assignToTables('四麻');
             assignToTables('三麻');
+
+            const yonmaTables = tables.filter(t => t.type === '四麻');
+            const yonmaIncomplete = yonmaCount > 0 && yonmaTables.some(t => t.members.length < t.cap);
+            if (yonmaIncomplete) {
+                tables.forEach(t => {
+                    t.members = [];
+                    t.teamSet = new Set();
+                });
+                const allSpectators = [...addedPlayers];
+                renderTables(tables, allSpectators);
+                sendResultToDiscord(tables, allSpectators, { warning: '四麻の人数が足りないため全員観戦枠に移動' });
+                return;
+            }
 
             const spectators = [...byPref.yonma, ...byPref.sanma, ...byPref.none];
             renderTables(tables, spectators);
@@ -656,49 +761,46 @@
             const yonmaTables = tables.filter(t => t.type === '四麻');
             const sanmaTables = tables.filter(t => t.type === '三麻');
 
-            const buildSection = (title, tableList) => {
-                lines.push(`## ${title}`);
-                if (tableList.length === 0) {
-                    lines.push('* :no_entry_sign: **なし**');
-                    return;
-                }
-                tableList.forEach((t, idx) => {
-                    const suffix = t.type === '四麻' ? `（${idx + 1}卓目）` : `（${idx + 1}卓目）`;
-                    lines.push(`## :mahjong: ${t.type}${suffix}`);
+            if (yonmaTables.length === 0) {
+                lines.push('## :mahjong: 四麻（なし）');
+                lines.push('* :no_entry_sign: **なし**');
+                lines.push(sep);
+            } else {
+                yonmaTables.forEach((t, idx) => {
+                    lines.push(`## :mahjong: 四麻（${idx + 1}卓目）`);
                     if (t.members.length === 0) {
                         lines.push('* :no_entry_sign: **なし**');
-                        lines.push('');
-                        return;
+                    } else {
+                        t.members.forEach(m => {
+                            lines.push(`* :label: **${m.team_name}**`);
+                            lines.push(`　　:bust_in_silhouette: **${m.account_name}**`);
+                        });
                     }
-                    t.members.forEach(m => {
-                        lines.push(`* :label: **${m.team_name}**`);
-                        lines.push(`　　:bust_in_silhouette: **${m.account_name}**`);
-                        lines.push('');
-                    });
+                    lines.push('');
+                    lines.push(sep);
                 });
-            };
+            }
 
-            buildSection('## :mahjong: 四麻', yonmaTables);
-            lines.push(sep);
             if (sanmaTables.length === 0) {
-                lines.push('## :mahjong: 三麻');
+                lines.push('## :mahjong: 三麻（なし）');
                 lines.push('* :no_entry_sign: **なし**');
+                lines.push(sep);
             } else {
                 sanmaTables.forEach((t, idx) => {
                     lines.push(`## :mahjong: 三麻（${idx + 1}卓目）`);
                     if (t.members.length === 0) {
                         lines.push('* :no_entry_sign: **なし**');
-                        lines.push('');
-                        return;
+                    } else {
+                        t.members.forEach(m => {
+                            lines.push(`* :label: **${m.team_name}**`);
+                            lines.push(`　　:bust_in_silhouette: **${m.account_name}**`);
+                        });
                     }
-                    t.members.forEach(m => {
-                        lines.push(`* :label: **${m.team_name}**`);
-                        lines.push(`　　:bust_in_silhouette: **${m.account_name}**`);
-                        lines.push('');
-                    });
+                    lines.push('');
+                    lines.push(sep);
                 });
             }
-            lines.push(sep);
+
             lines.push('## :eyes: 観戦');
             if (spectators.length === 0) {
                 lines.push('* :no_entry_sign: **なし**');
@@ -706,7 +808,6 @@
                 spectators.forEach(m => {
                     lines.push(`* :label: **${m.team_name}**`);
                     lines.push(`　　:bust_in_silhouette: **${m.account_name}**`);
-                    lines.push('');
                 });
             }
             const payload = { content: lines.join('\n') };

@@ -1112,11 +1112,12 @@
             const { startUtc, endUtc } = getJstDayRange();
             try {
                 const { count, error } = await supabaseClient
-                    .from('user_badges_new')
-                    .select('uuid', { count: 'exact', head: true })
+                    .from('activity_logs')
+                    .select('id', { count: 'exact', head: true })
                     .eq('user_id', currentUserId)
-                    .gte('acquired_at', startUtc)
-                    .lte('acquired_at', endUtc);
+                    .eq('action_type', 'badge_purchase')
+                    .gte('created_at', startUtc)
+                    .lte('created_at', endUtc);
 
                 if (error) throw error;
                 const used = count || 0;
@@ -1131,11 +1132,12 @@
         async function canPurchaseToday() {
             const { startUtc, endUtc } = getJstDayRange();
             const { count, error } = await supabaseClient
-                .from('user_badges_new')
-                .select('uuid', { count: 'exact', head: true })
+                .from('activity_logs')
+                .select('id', { count: 'exact', head: true })
                 .eq('user_id', currentUserId)
-                .gte('acquired_at', startUtc)
-                .lte('acquired_at', endUtc);
+                .eq('action_type', 'badge_purchase')
+                .gte('created_at', startUtc)
+                .lte('created_at', endUtc);
             if (error) throw error;
             return (count || 0) < 5;
         }
