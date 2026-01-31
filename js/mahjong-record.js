@@ -4,6 +4,19 @@ let allProfiles = [];
 let allTeams = [];
 let isAdmin = false;
 let userMutantMap = {}; // ミュータント情報を格納
+const YAKUMAN_TYPES = [
+    '天和',
+    '地和',
+    '大三元',
+    '四暗刻',
+    '字一色',
+    '緑一色',
+    '清老頭',
+    '国士無双',
+    '小四喜',
+    '四槓子',
+    '九蓮宝燈'
+];
 
 document.addEventListener('DOMContentLoaded', async () => {
     await checkAdminStatus();
@@ -96,6 +109,19 @@ function changeMatchMode() {
         // 非表示時は「なし」を選択状態にする
         document.getElementById('tobi-none').checked = true;
         document.getElementById('yakitori-none').checked = true;
+    }
+
+    const yakumanSection = document.getElementById('yakuman-section');
+    const yakumanPanel = document.getElementById('yakuman-panel');
+    const yakumanIcon = document.getElementById('yakuman-toggle-icon');
+    if (!isTeamMatch) {
+        if (yakumanSection) yakumanSection.style.display = 'none';
+        if (yakumanPanel) yakumanPanel.style.display = 'none';
+        if (yakumanIcon) yakumanIcon.textContent = '▼';
+        const list = document.getElementById('yakuman-list');
+        if (list) list.innerHTML = '';
+    } else if (yakumanSection) {
+        yakumanSection.style.display = 'block';
     }
 }
 
@@ -695,15 +721,102 @@ function selectPlayer(idx, discordUserId, accountName) {
 
     badgeContainer.style.display = 'flex';
     document.getElementById(`dropdown-list-${idx}`).style.display = 'none';
+    refreshYakumanPlayerOptions();
 }
 
 function clearPlayer(idx) {
     const input = document.querySelector(`#player-row-${idx} .player-account`);
     const badge = document.getElementById(`selected-badge-${idx}`);
     input.value = '';
+    input.dataset.discordUserId = '';
+    input.dataset.accountName = '';
     input.style.display = 'block';
     badge.style.display = 'none';
     input.focus();
+    refreshYakumanPlayerOptions();
+}
+
+function toggleYakumanPanel() {
+    const panel = document.getElementById('yakuman-panel');
+    const icon = document.getElementById('yakuman-toggle-icon');
+    if (!panel || !icon) return;
+    const isOpen = panel.style.display !== 'none';
+    panel.style.display = isOpen ? 'none' : 'block';
+    icon.textContent = isOpen ? '▼' : '▲';
+    if (!isOpen) {
+        refreshYakumanPlayerOptions();
+    }
+}
+
+function getSelectedPlayersForYakuman() {
+    const players = [];
+    document.querySelectorAll('.player-entry').forEach(entry => {
+        const input = entry.querySelector('.player-account');
+        const id = input?.dataset?.discordUserId || '';
+        const name = input?.dataset?.accountName || input?.value || '';
+        if (id) players.push({ id, name: name || id });
+    });
+    const unique = new Map();
+    players.forEach(p => unique.set(p.id, p));
+    return Array.from(unique.values());
+}
+
+function escapeHtml(str) {
+    return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function buildYakumanPlayerOptions(selectedId = '') {
+    const players = getSelectedPlayersForYakuman();
+    const options = ['<option value="">プレイヤーを選択</option>']
+        .concat(players.map(p => `<option value="${p.id}" ${p.id === selectedId ? 'selected' : ''}>${escapeHtml(p.name)}</option>`));
+    return options.join('');
+}
+
+function addYakumanRow() {
+    const list = document.getElementById('yakuman-list');
+    if (!list) return;
+    const players = getSelectedPlayersForYakuman();
+    if (players.length === 0) {
+        alert('先にプレイヤーを選択してください。');
+        return;
+    }
+    const row = document.createElement('div');
+    row.className = 'd-flex gap-2 align-items-center yakuman-row';
+    row.innerHTML = `
+        <select class="form-select form-select-sm yakuman-player" style="max-width: 220px;">
+            ${buildYakumanPlayerOptions()}
+        </select>
+        <select class="form-select form-select-sm yakuman-type" style="max-width: 200px;">
+            ${YAKUMAN_TYPES.map(y => `<option value="${y}">${y}</option>`).join('')}
+        </select>
+        <button type="button" class="btn btn-sm btn-outline-danger">削除</button>
+    `;
+    row.querySelector('button').addEventListener('click', () => row.remove());
+    list.appendChild(row);
+}
+
+function refreshYakumanPlayerOptions() {
+    document.querySelectorAll('.yakuman-player').forEach(select => {
+        const current = select.value;
+        select.innerHTML = buildYakumanPlayerOptions(current);
+    });
+}
+
+function getYakumanSelections() {
+    const map = {};
+    document.querySelectorAll('.yakuman-row').forEach(row => {
+        const playerId = row.querySelector('.yakuman-player')?.value || '';
+        const yakuman = row.querySelector('.yakuman-type')?.value || '';
+        if (!playerId || !yakuman) return;
+        if (!map[playerId]) map[playerId] = [];
+        map[playerId].push(yakuman);
+    });
+    return map;
 }
 
 // 送信処理
@@ -982,6 +1095,7 @@ async function submitScores() {
     // Step 4: 記録者のIDを取得（なりすまし対応）
     const effectiveUserId = await getEffectiveUserId();
     const submittedBy = effectiveUserId;
+    const yakumanMap = (match === 'チーム戦') ? getYakumanSelections() : {};
 
     // Step 5: 最終的な挿入データを構築
     const dataToInsert = tempData.map(player => ({
@@ -1043,29 +1157,41 @@ async function submitScores() {
                 ticketRewardsMap[player.discord_user_id] = ticketReward;
             }
 
-            // 1.5 満願符報酬（3%）
+            // 1.5 満願符報酬（3%）＋役満確定
             let manganReward = 0;
             if (Math.random() < 0.03) {
-                manganReward = 1;
+                manganReward += 1;
+            }
+            const yakumanList = yakumanMap[player.discord_user_id] || [];
+            if (match === 'チーム戦' && yakumanList.length > 0) {
+                manganReward += 1;
             }
             if (manganReward > 0) {
                 manganRewardsMap[player.discord_user_id] = manganReward;
             }
 
             // 2. コイン報酬計算 (Discord通知ロジック準拠)
-            // スコアボーナス: 切り上げ (プラスの場合のみ)
-            const scoreBonus = player.final_score > 0 ? Math.ceil(player.final_score / 10) : 0;
-
-            // 四麻順位ボーナス
+            let scoreBonus = 0;
             let rankBonus = 0;
-            if (mode === '四麻') {
-                const yonmaRankBonus = { 1: 5, 2: 3, 3: 1, 4: 0 };
-                rankBonus = yonmaRankBonus[player.rank] || 0;
+            let baseReward = 0;
+            if (match === 'チーム戦') {
+                baseReward = (mode === '三麻') ? 20 : 30;
+                scoreBonus = player.final_score > 0 ? Math.floor(player.final_score / 5) : 0;
+                if (mode === '四麻') {
+                    const yonmaRankBonus = { 1: 15, 2: 9, 3: 5, 4: 0 };
+                    rankBonus = yonmaRankBonus[player.rank] || 0;
+                } else {
+                    const sanmaRankBonus = { 1: 8, 2: 4, 3: 0 };
+                    rankBonus = sanmaRankBonus[player.rank] || 0;
+                }
+            } else {
+                scoreBonus = player.final_score > 0 ? Math.ceil(player.final_score / 10) : 0;
+                if (mode === '四麻') {
+                    const yonmaRankBonus = { 1: 5, 2: 3, 3: 1, 4: 0 };
+                    rankBonus = yonmaRankBonus[player.rank] || 0;
+                }
+                baseReward = (mode === '三麻') ? 3 : 5;
             }
-
-            // 参加ボーナス: 三麻3, 四麻5
-            const baseReward = (mode === '三麻') ? 3 : 5;
-            // 合計報酬 (参加ボーナス + スコア + 順位)
             const coinReward = baseReward + scoreBonus + rankBonus;
 
             // 3. DB更新とログ記録
@@ -1119,7 +1245,8 @@ async function submitScores() {
                             coin_reward: coinReward,
                             ticket_reward: ticketReward,
                             mangan_ticket_reward: manganReward,
-                            breakdown: { base: 1, score: scoreBonus, rank: rankBonus }
+                            yakuman_list: yakumanList,
+                            breakdown: { base: baseReward, score: scoreBonus, rank: rankBonus }
                         }
                     });
                 }
@@ -1133,7 +1260,7 @@ async function submitScores() {
 
         // Discord通知を送信
         if (typeof DISCORD_WEBHOOK_URL !== 'undefined' && DISCORD_WEBHOOK_URL) {
-            await sendDiscordNotification(dataToInsert, isTobiOn, isYakitoriOn, ticketRewardsMap, manganRewardsMap);
+            await sendDiscordNotification(dataToInsert, isTobiOn, isYakitoriOn, ticketRewardsMap, manganRewardsMap, yakumanMap);
         }
 
         // ⑨送信後、チーム名とアカウント名以外をクリア（効率的な連続送信のため）
@@ -1177,7 +1304,7 @@ function clearFormExceptTeamAndAccount() {
  * @param {Object} ticketRewardsMap チケット獲得情報のマップ { discordUserId: count }
  * @param {Object} manganRewardsMap 満願符獲得情報のマップ { discordUserId: count }
  */
-async function sendDiscordNotification(matchData, isTobiOn, isYakitoriOn, ticketRewardsMap = {}, manganRewardsMap = {}) {
+async function sendDiscordNotification(matchData, isTobiOn, isYakitoriOn, ticketRewardsMap = {}, manganRewardsMap = {}, yakumanMap = {}) {
     if (!matchData || matchData.length === 0) return;
 
     const first = matchData[0];
@@ -1197,29 +1324,43 @@ async function sendDiscordNotification(matchData, isTobiOn, isYakitoriOn, ticket
         const nameDisplay = p.discord_user_id ? `<@${p.discord_user_id}>` : p.account_name;
 
         // 報酬コインの計算（実際の付与ロジックと一致させる）
-        // スコアボーナス: 切り上げ
-        const scoreBonus = p.final_score > 0 ? Math.ceil(p.final_score / 10) : 0;
-
-        // 四麻順位ボーナス
+        let scoreBonus = 0;
         let rankBonus = 0;
-        if (mode === '四麻') {
-            const yonmaRankBonus = { 1: 5, 2: 3, 3: 1, 4: 0 };
-            rankBonus = yonmaRankBonus[p.rank] || 0;
+        let baseReward = 0;
+        if (matchType === 'チーム戦') {
+            baseReward = (mode === '三麻') ? 20 : 30;
+            scoreBonus = p.final_score > 0 ? Math.floor(p.final_score / 5) : 0;
+            if (mode === '四麻') {
+                const yonmaRankBonus = { 1: 15, 2: 9, 3: 5, 4: 0 };
+                rankBonus = yonmaRankBonus[p.rank] || 0;
+            } else {
+                const sanmaRankBonus = { 1: 8, 2: 4, 3: 0 };
+                rankBonus = sanmaRankBonus[p.rank] || 0;
+            }
+        } else {
+            scoreBonus = p.final_score > 0 ? Math.ceil(p.final_score / 10) : 0;
+            if (mode === '四麻') {
+                const yonmaRankBonus = { 1: 5, 2: 3, 3: 1, 4: 0 };
+                rankBonus = yonmaRankBonus[p.rank] || 0;
+            }
+            baseReward = (mode === '三麻') ? 3 : 5;
         }
-
-        // 参加ボーナス: 三麻3, 四麻5
-        const baseReward = (mode === '三麻') ? 3 : 5;
         const reward = baseReward + scoreBonus + rankBonus;
         const tickets = ticketRewardsMap[p.discord_user_id] || 0;
         const mangans = manganRewardsMap[p.discord_user_id] || 0;
         const rewardText = `💰+${reward}${tickets > 0 ? ` 🎫+${tickets}` : ''}${mangans > 0 ? ` 🧧+${mangans}` : ''}`;
+        const yakumanList = yakumanMap[p.discord_user_id] || [];
+        const yakumanText = yakumanList.length > 0
+            ? `　　 🀄役満: ${yakumanList.join(' / ')}（🧧+1 確定）\n`
+            : '';
 
         // 和了数と放銃数を表示
         const winDealLine = `🀄和了${p.win_count || 0}　🔫放銃${p.deal_in_count || 0}`;
 
         return `${medal} **${p.rank}位**: ${nameDisplay}${teamInfo}\n` +
             `　　 \`${p.raw_points.toLocaleString()}点\` ➡ **${scoreStr} pts**\n` +
-            `　　 ${winDealLine}　(${rewardText})\n`;
+            `　　 ${winDealLine}　(${rewardText})\n` +
+            yakumanText;
     }).join('\n');
 
     // ルール情報の取得

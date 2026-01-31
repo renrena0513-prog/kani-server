@@ -401,11 +401,11 @@
                 // プロフィールデータ取得
                 const { data: profiles, error: profilesError } = await supabaseClient
                     .from('profiles')
-                    .select('*, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name)')
+                    .select('*, is_hidden, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name)')
                     .order('account_name');
 
                 if (profilesError) throw profilesError;
-                allProfiles = profiles || [];
+                allProfiles = (profiles || []).filter(p => !p.is_hidden);
 
                 // ミュータント情報を取得
                 const { data: userBadges } = await supabaseClient
