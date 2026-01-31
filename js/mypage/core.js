@@ -403,56 +403,19 @@
             document.getElementById('user-nickname').value = discordDisplayName;
         }
 
-        async function updateAvatar() {
-            const user = await getCurrentUser();
-            if (!user || isViewMode) return;
-
+        async function reloginForAvatar() {
+            if (isViewMode) return;
             const btn = document.getElementById('sync-btn');
-            btn.disabled = true;
-            const originalText = btn.textContent;
-            btn.textContent = '更新中...';
-
-            try {
-                const discordUser = user.user_metadata;
-                let avatarUrl = discordUser.avatar_url || discordUser.picture || '';
-                try {
-                    const { data: sessionData } = await supabaseClient.auth.getSession();
-                    const providerToken = sessionData?.session?.provider_token;
-                    if (providerToken) {
-                        const resp = await fetch('https://discord.com/api/users/@me', {
-                            headers: { Authorization: `Bearer ${providerToken}` }
-                        });
-                        if (resp.ok) {
-                            const discordProfile = await resp.json();
-                            if (discordProfile?.avatar && discordProfile?.id) {
-                                const ext = discordProfile.avatar.startsWith('a_') ? 'gif' : 'png';
-                                avatarUrl = `https://cdn.discordapp.com/avatars/${discordProfile.id}/${discordProfile.avatar}.${ext}?size=128`;
-                            }
-                        }
-                    }
-                } catch (err) {
-                    console.warn('Discord avatar refresh failed:', err);
-                }
-
-                const { error } = await supabaseClient
-                    .from('profiles')
-                    .update({
-                        avatar_url: avatarUrl,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('discord_user_id', targetId);
-
-                if (error) throw error;
-
-                alert('アバター画像を更新しました！');
-                document.getElementById('user-avatar').src = avatarUrl;
-            } catch (err) {
-                console.error('Error:', err);
-                alert('エラーが発生しました');
-            } finally {
-                btn.disabled = false;
-                btn.textContent = originalText;
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = '再ログイン中...';
             }
+            try {
+                await supabaseClient.auth.signOut();
+            } catch (err) {
+                console.error('Sign out error:', err);
+            }
+            window.location.href = '../index.html';
         }
 
         async function saveNickname() {
