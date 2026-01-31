@@ -17,6 +17,19 @@ const YAKUMAN_TYPES = [
     '四槓子',
     '九蓮宝燈'
 ];
+const YAKUMAN_BADGE_MAP = {
+    '天和': '034f1891-58e1-495e-9d04-9a01e3eeb78c',
+    '地和': '956f46aa-7bd4-4ac1-804e-80f671db1d12',
+    '大三元': '9edc02f7-8a09-41c8-8ca7-71c814e880c9',
+    '四暗刻': '97e867e8-7c44-4413-9b76-54641a6c14d2',
+    '字一色': '9f1176e5-8e81-4bd2-8165-f78a9b955d07',
+    '緑一色': '417ecd82-7eeb-4bfd-946e-760fcf6a6398',
+    '清老頭': '39758a47-8389-4898-b2e9-c58c395bf020',
+    '国士無双': 'f3b5109a-46bd-40ac-a4a7-7138df16f200',
+    '小四喜': 'b85470c4-4ab0-41bc-8454-aa01d53be4a0',
+    '四槓子': '1a46eb8c-62fd-4909-a881-2571977c389a',
+    '九蓮宝燈': '5a9b1162-dfbf-4441-bb18-124cfa014abe'
+};
 let yakumanRowSeq = 0;
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -1318,6 +1331,20 @@ async function submitScores() {
                         .from('profiles')
                         .update(updates)
                         .eq('discord_user_id', player.discord_user_id);
+                }
+
+                // 役満バッジ付与
+                if (yakumanList.length > 0) {
+                    const badgeIds = yakumanList.map(y => YAKUMAN_BADGE_MAP[y]).filter(Boolean);
+                    if (badgeIds.length > 0) {
+                        const inserts = badgeIds.map(badgeId => ({
+                            user_id: player.discord_user_id,
+                            badge_id: badgeId,
+                            purchased_price: 0,
+                            is_mutant: false
+                        }));
+                        await supabaseClient.from('user_badges_new').insert(inserts);
+                    }
                 }
 
                 console.log(`${player.account_name} への報酬: コイン=${coinReward}, チケット=${ticketReward}, 満願符=${manganReward}`);
