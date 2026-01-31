@@ -70,9 +70,10 @@ async function fetchData() {
         // 全プロフィール取得（アイコン・バッジ用）
         const { data: profiles, error: pError } = await supabaseClient
             .from('profiles')
-            .select('*, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name)');
-        if (!pError && profiles.length > 0) {
-            allProfiles = profiles;
+            .select('*, is_hidden, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name)');
+        const visibleProfiles = (profiles || []).filter(p => !p.is_hidden);
+        if (!pError && visibleProfiles.length > 0) {
+            allProfiles = visibleProfiles;
         } else {
             // 背景：profilesが空（まだ誰もログインして同期してない）場合
             // match_results から過去の名前を拾って仮のリストを作る

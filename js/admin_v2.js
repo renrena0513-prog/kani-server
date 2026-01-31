@@ -882,13 +882,15 @@ async function fetchUsers() {
         const { data: users, error } = await supabaseClient.from('profiles').select('*').order('account_name');
         if (error) throw error;
 
-        if (!users || users.length === 0) {
+        const filteredUsers = users || [];
+
+        if (!filteredUsers || filteredUsers.length === 0) {
             listBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">ユーザーがいません</td></tr>';
             return;
         }
 
         listBody.innerHTML = '';
-        users.forEach(user => {
+        filteredUsers.forEach(user => {
             const tr = document.createElement('tr');
             const name = user.account_name || '名前なし';
             const discordId = user.discord_user_id || '';
@@ -910,6 +912,9 @@ async function fetchUsers() {
                         <button class="btn btn-sm btn-outline-warning btn-coin" data-id="${escapeHtml(discordId)}" data-name="${escapeHtml(name)}" data-coins="${coins}">コイン</button>
                         <button class="btn btn-sm btn-outline-primary btn-items" data-id="${escapeHtml(discordId)}" data-name="${escapeHtml(name)}">アイテム</button>
                         <button class="btn btn-sm btn-outline-secondary btn-impersonate" data-id="${escapeHtml(discordId)}" data-name="${escapeHtml(name)}" data-avatar="${escapeHtml(avatarUrl)}">なりすまし</button>
+                        <button class="btn btn-sm ${user.is_hidden ? 'btn-success' : 'btn-outline-danger'} btn-toggle-hidden" data-id="${escapeHtml(discordId)}" data-name="${escapeHtml(name)}" data-hidden="${user.is_hidden ? '1' : '0'}">
+                            ${user.is_hidden ? '表示に戻す' : '非表示'}
+                        </button>
                     </div>
                 </td>
             `;
@@ -932,10 +937,36 @@ async function fetchUsers() {
                 impersonateUser(this.dataset.id, this.dataset.name, this.dataset.avatar);
             });
         });
+        listBody.querySelectorAll('.btn-toggle-hidden').forEach(btn => {
+            btn.addEventListener('click', function () {
+                toggleUserHidden(this.dataset.id, this.dataset.name, this.dataset.hidden === '1');
+            });
+        });
 
     } catch (err) {
         console.error('ユーザー取得エラー:', err);
         listBody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">エラー: ${err.message}</td></tr>`;
+    }
+}
+
+async function toggleUserHidden(userId, userName, isHidden) {
+    if (!userId) return;
+    const nextHidden = !isHidden;
+    const actionLabel = nextHidden ? '非表示にする' : '表示に戻す';
+    if (!confirm(`${userName} を${actionLabel}しますか？`)) return;
+    toggleLoading(true);
+    try {
+        const { error } = await supabaseClient
+            .from('profiles')
+            .update({ is_hidden: nextHidden })
+            .eq('discord_user_id', userId);
+        if (error) throw error;
+        fetchUsers();
+    } catch (err) {
+        console.error('ユーザー非表示エラー:', err);
+        alert('更新に失敗しました: ' + err.message);
+    } finally {
+        toggleLoading(false);
     }
 }
 
@@ -1870,6 +1901,10 @@ async function fetchActivityLogs(page = 1) {
         listBody.innerHTML = logs.map(log => {
             const u = profilesCache[log.user_id] || { name: '不明', avatar: '' };
             const target = log.target_user_id ? (profilesCache[log.target_user_id] || { name: '不明' }) : null;
+            let details = log.details;
+            if (typeof details === 'string') {
+                try { details = JSON.parse(details); } catch (e) { details = {}; }
+            }
 
             // アクションタイプのアイコンと日本語名
             const actionMap = {
@@ -1895,8 +1930,12 @@ async function fetchActivityLogs(page = 1) {
             const amountPrefix = log.amount > 0 ? '+' : '';
             const amountDisplay = log.amount !== null ? `${amountPrefix}${log.amount.toLocaleString()}` : '-';
 
-            // 対象者・バッジの表示
+            // 対象者・バッジ・詳細の表示
             let targetDisplay = target ? `→ ${escapeHtml(target.name)}` : '';
+            if (!targetDisplay) {
+                if (details?.target_name) targetDisplay = `→ ${escapeHtml(details.target_name)}`;
+                if (details?.sender_name) targetDisplay = `← ${escapeHtml(details.sender_name)}`;
+            }
 
             // バッジ表示の追加
             if (log.badge_id && badgesCache[log.badge_id]) {
@@ -1908,6 +1947,18 @@ async function fetchActivityLogs(page = 1) {
                     </div>
                 `;
             }
+
+            const detailParts = [];
+            if (details?.badge_name) detailParts.push(`バッジ: ${details.badge_name}`);
+            if (details?.quantity) detailParts.push(`数量: ${details.quantity}`);
+            if (details?.unit_price) detailParts.push(`単価: ${Number(details.unit_price).toLocaleString()}`);
+            if (details?.method) detailParts.push(`方法: ${details.method}`);
+            if (details?.buyer) detailParts.push(`購入者: ${details.buyer}`);
+            if (details?.is_mutant === true) detailParts.push('変異: あり');
+            if (details?.badge_uuid) detailParts.push(`UUID: ${details.badge_uuid}`);
+            const detailsText = detailParts.length
+                ? `<div class="small text-muted mt-1">${detailParts.map(t => escapeHtml(t)).join(' / ')}</div>`
+                : '';
 
             return `
                 <tr>
@@ -1929,7 +1980,7 @@ async function fetchActivityLogs(page = 1) {
                             ${action.icon} ${action.label}
                         </span>
                     </td>
-                    <td class="small text-muted">${targetDisplay}</td>
+                    <td class="small text-muted">${targetDisplay}${detailsText}</td>
                     <td class="fw-bold ${amountColor}">${amountDisplay}</td>
                     <td><button onclick="revertLog('${log.id}')" class="btn btn-sm btn-outline-danger">🔄</button></td>
                 </tr>

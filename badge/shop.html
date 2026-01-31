@@ -654,7 +654,7 @@
                     <small class="text-muted w-100 text-start">
                         ※ 変動型バッジの「ランク」は、基本ランク + (流通数 - 1) で決まります。<br>
                         ※ 売却価格は、現在のランクの2段階下の価格になります（下限★1）。<br>
-                        ※ ミュータント個体の売却価格は、現在のランクの価格の3倍です（ランクダウンなし）。
+                        ※ ミュータントはバッジ入手時3％の確率で変異し、売却価格が3倍になります。
                     </small>
                     <button type="button" class="btn btn-secondary rounded-pill px-4"
                         data-bs-dismiss="modal">閉じる</button>
@@ -1644,13 +1644,15 @@
 
                 const creatorIds = [...new Set(processed.map(b => b.discord_user_id).filter(Boolean))];
                 const creatorMap = new Map();
+                let creatorsData = [];
                 if (creatorIds.length > 0) {
-                    const { data: creatorsData, error: creatorsError } = await supabaseClient
+                    const { data, error: creatorsError } = await supabaseClient
                         .from('profiles')
-                        .select('discord_user_id, account_name, avatar_url')
+                        .select('discord_user_id, account_name, avatar_url, is_hidden')
                         .in('discord_user_id', creatorIds);
-                    if (!creatorsError && creatorsData) {
-                        creatorsData.forEach(c => {
+                    if (!creatorsError && data) {
+                        creatorsData = data;
+                        creatorsData.filter(c => !c.is_hidden).forEach(c => {
                             creatorMap.set(c.discord_user_id, {
                                 name: c.account_name || c.discord_user_id,
                                 avatar: c.avatar_url || ''
@@ -1658,8 +1660,10 @@
                         });
                     }
                 }
-                // フォールバック: 取得できなかったものはID表示
+                // フォールバック: 取得できなかったものはID表示（非表示ユーザーは除外）
+                const hiddenCreatorIds = new Set((creatorsData || []).filter(c => c.is_hidden).map(c => c.discord_user_id));
                 creatorIds.forEach(id => {
+                    if (hiddenCreatorIds.has(id)) return;
                     if (!creatorMap.has(id)) {
                         creatorMap.set(id, { name: id, avatar: '' });
                     }
@@ -1920,6 +1924,8 @@
 
         // ======= 所持品・売却機能 =======
         let currentShopActionUUID = null;
+        let currentShopActionBadgeId = null;
+        let currentShopActionBadgeName = null;
 
         async function openInventoryModal() {
             const modal = new bootstrap.Modal(document.getElementById('inventoryModal'));
@@ -2257,6 +2263,17 @@
 
                 alert(`売却しました！ (🪙 +${data.sell_price.toLocaleString()})`);
 
+                if (typeof logActivity === 'function') {
+                    await logActivity(currentUserId, 'badge_sell', {
+                        amount: data.sell_price,
+                        badgeId: currentShopActionBadgeId,
+                        details: {
+                            badge_uuid: currentShopActionUUID,
+                            badge_name: currentShopActionBadgeName
+                        }
+                    });
+                }
+
                 // データ再読み込み
                 await refreshMarketContext(); // 所持金更新
                 await loadInventory();        // 所持品リスト更新 (インベントリモーダルは開いたまま)
@@ -2282,6 +2299,8 @@
             const sellPrice = item.sell_price;
 
             currentShopActionUUID = uuid;
+            currentShopActionBadgeId = item.badge_id || null;
+            currentShopActionBadgeName = name || '';
             const profit = sellPrice - buyPrice;
             const profitStr = (profit >= 0 ? '+' : '') + profit.toLocaleString();
 

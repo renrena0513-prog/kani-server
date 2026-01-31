@@ -30,9 +30,9 @@ async function fetchProfiles() {
         // プロフィール情報を取得
         const { data, error } = await supabaseClient
             .from('profiles')
-            .select('*, badges!equipped_badge_id(id, image_url, name), badges_right:badges!equipped_badge_id_right(id, image_url, name)');
+            .select('*, is_hidden, badges!equipped_badge_id(id, image_url, name), badges_right:badges!equipped_badge_id_right(id, image_url, name)');
         if (!error) {
-            allProfiles = data.sort((a, b) => {
+            allProfiles = (data || []).filter(p => !p.is_hidden).sort((a, b) => {
                 const nameA = a.account_name || "";
                 const nameB = b.account_name || "";
                 return nameA.localeCompare(nameB, 'ja');

@@ -335,6 +335,7 @@
         });
 
         let currentMode = 'networth';
+        const EXCLUDED_RANKING_USERS = new Set(['1184908452959621233']);
 
         function switchRanking(mode) {
             if (currentMode === mode) return;
@@ -426,14 +427,18 @@
                     });
 
                     const creatorIds = Object.keys(creatorCounts);
+                    const filteredCreatorIds = creatorIds.filter(id => !EXCLUDED_RANKING_USERS.has(id));
                     const { data: profiles, error: pError } = await supabaseClient
                         .from('profiles')
-                        .select('discord_user_id, account_name, avatar_url')
-                        .in('discord_user_id', creatorIds);
+                        .select('discord_user_id, account_name, avatar_url, is_hidden')
+                        .in('discord_user_id', filteredCreatorIds);
                     if (pError) throw pError;
 
-                    const rankingData = creatorIds.map(id => {
-                        const profile = (profiles || []).find(p => p.discord_user_id === id) || {};
+                    const visibleProfiles = (profiles || []).filter(p => !p.is_hidden);
+                    const visibleCreatorIds = filteredCreatorIds.filter(id => visibleProfiles.some(p => p.discord_user_id === id));
+
+                    const rankingData = visibleCreatorIds.map(id => {
+                        const profile = visibleProfiles.find(p => p.discord_user_id === id) || {};
                         return {
                             discord_user_id: id,
                             account_name: profile.account_name || id,
@@ -487,8 +492,9 @@
                 // 1. プロフィール情報を取得
                 const { data: profiles, error: pError } = await supabaseClient
                     .from('profiles')
-                    .select('discord_user_id, account_name, avatar_url, coins, total_assets, equipped_badge_id, equipped_badge_id_right, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name)');
+                    .select('discord_user_id, account_name, avatar_url, coins, total_assets, is_hidden, equipped_badge_id, equipped_badge_id_right, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name)');
                 if (pError) throw pError;
+                const filteredProfiles = (profiles || []).filter(p => !EXCLUDED_RANKING_USERS.has(p.discord_user_id) && !p.is_hidden);
 
                 // 2. 全バッジ個体データを取得（資産価値計算用）
                 const { data: userBadges, error: bError } = await supabaseClient
@@ -534,7 +540,7 @@
 
                 // 各ユーザーのバッジ価値合計と個数を計算
                 const userFinances = {};
-                profiles.forEach(p => {
+                filteredProfiles.forEach(p => {
                     userFinances[p.discord_user_id] = { badgeCount: 0, badgeValue: 0 };
                 });
 
@@ -550,7 +556,7 @@
                 });
 
                 // ランキング用データ構築
-                const rankingData = profiles.map(p => {
+                const rankingData = filteredProfiles.map(p => {
                     const finances = userFinances[p.discord_user_id] || { badgeCount: 0, badgeValue: 0 };
                     return {
                         ...p,

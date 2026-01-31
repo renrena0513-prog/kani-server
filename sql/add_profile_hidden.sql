@@ -1,0 +1,6 @@
+ALTER TABLE profiles
+ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT FALSE;
+
+UPDATE profiles
+SET is_hidden = FALSE
+WHERE is_hidden IS NULL;

@@ -22,6 +22,25 @@
         }
     }
 
+    // 2.5. 非表示ユーザーは全ページブロック
+    if (user) {
+        try {
+            const discordId = user.user_metadata.provider_id;
+            const { data: profile } = await supabaseClient
+                .from('profiles')
+                .select('is_hidden')
+                .eq('discord_user_id', discordId)
+                .maybeSingle();
+            if (profile?.is_hidden) {
+                showBlockedScreen();
+                try { await supabaseClient.auth.signOut(); } catch (e) { }
+                throw new Error('Hidden User Blocked');
+            }
+        } catch (e) {
+            // 取得失敗時は何もしない（誤ブロック防止）
+        }
+    }
+
     // 3. ページアクセス制限チェック (管理者以外のみ)
     if (!isAdmin) {
         await checkPageAccess();
@@ -152,6 +171,26 @@
         // ただし、もしセンシティブなデータが見えてはいけないので、main-contentがあれば隠す
         const adminContent = document.getElementById('admin-content');
         if (adminContent) adminContent.style.display = 'none';
+    }
+
+    function showBlockedScreen() {
+        document.body.style.overflow = 'hidden';
+        document.body.innerHTML = `
+            <div style="
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: #0f1116;
+                color: #f1f1f1;
+                text-align: center;
+                padding: 24px;">
+                <div style="max-width: 520px;">
+                    <div style="font-size: 2.2rem; margin-bottom: 12px;">接続エラーです</div>
+                    <div style="opacity: 0.8; font-size: 1rem;">運営に連絡してください。</div>
+                </div>
+            </div>
+        `;
     }
 
     function redirectToLogin() {

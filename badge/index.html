@@ -457,11 +457,11 @@
                 if (badge.discord_user_id) {
                     const { data: ownerProfile } = await supabaseClient
                         .from('profiles')
-                        .select('account_name, avatar_url')
+                        .select('account_name, avatar_url, is_hidden')
                         .eq('discord_user_id', badge.discord_user_id)
                         .maybeSingle();
 
-                    if (ownerProfile) {
+                    if (ownerProfile && !ownerProfile.is_hidden) {
                         document.getElementById('badge-owner-name').textContent = ownerProfile.account_name || '名称未設定';
                         document.getElementById('badge-owner-avatar').src = ownerProfile.avatar_url || 'https://via.placeholder.com/32';
                         document.getElementById('badge-owner-link').href = `../mypage/index.html?user=${badge.discord_user_id}`;
@@ -474,13 +474,13 @@
                 // 所持者取得（通常+ミュータント）
                 const { data: owners, error: ownerError } = await supabaseClient
                     .from('user_badges_new')
-                    .select('user_id, is_mutant, profiles!user_id(discord_user_id, account_name, avatar_url, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name))')
+                    .select('user_id, is_mutant, profiles!user_id(discord_user_id, account_name, avatar_url, is_hidden, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name))')
                     .eq('badge_id', badgeId);
 
                 if (ownerError) throw ownerError;
 
                 // 全所持者とミュータントのみを保存
-                const allOwners = owners || [];
+                const allOwners = (owners || []).filter(o => !o.profiles?.is_hidden);
                 const mutantOwners = allOwners.filter(o => o.is_mutant);
 
                 // オーナーたちの装備中バッジのミュータント情報を取得
@@ -538,7 +538,8 @@
                 // 全ユーザー数取得（所持率計算用）
                 const { count: totalUsers, error: countError } = await supabaseClient
                     .from('profiles')
-                    .select('*', { count: 'exact', head: true });
+                    .select('*', { count: 'exact', head: true })
+                    .neq('is_hidden', true);
 
                 if (countError) throw countError;
                 window.badgeData.totalUsers = totalUsers;

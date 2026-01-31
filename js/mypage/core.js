@@ -12,7 +12,7 @@
 
             // 全ユーザー情報を取得（名前解決用）
             const [profilesRes, thresholdsRes] = await Promise.all([
-                supabaseClient.from('profiles').select('discord_user_id, account_name, avatar_url, coins'),
+                supabaseClient.from('profiles').select('discord_user_id, account_name, avatar_url, coins, is_hidden'),
                 supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true })
             ]);
             if (profilesRes.data) allProfiles = profilesRes.data;
@@ -38,6 +38,11 @@
                 // URLパラメータがない場合は有効なユーザーID（なりすまし優先）
                 targetId = effectiveId;
                 isViewMode = false;
+            }
+
+            // 非表示ユーザーは一覧から除外（自分自身は除外しない）
+            if (allProfiles.length > 0) {
+                allProfiles = allProfiles.filter(p => !p.is_hidden || p.discord_user_id === targetId);
             }
 
             // UIの基本表示切り替え
@@ -280,9 +285,25 @@
         async function loadTargetUserInfo() {
             const { data: profile, error } = await supabaseClient
                 .from('profiles')
-                .select('discord_user_id, account_name, avatar_url, coins, total_assets, gacha_tickets, exchange_tickets, equipped_badge_id, equipped_badge_id_right, team_id, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name), teams!team_id(team_name, logo_badge:badges!logo_badge_id(image_url))')
+                .select('discord_user_id, account_name, avatar_url, coins, total_assets, gacha_tickets, exchange_tickets, is_hidden, equipped_badge_id, equipped_badge_id_right, team_id, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name), teams!team_id(team_name, logo_badge:badges!logo_badge_id(image_url))')
                 .eq('discord_user_id', targetId)
                 .maybeSingle();
+
+            if (profile?.is_hidden && isViewMode) {
+                const profileContent = document.getElementById('profile-content');
+                const loginPrompt = document.getElementById('login-prompt');
+                if (profileContent) profileContent.style.display = 'none';
+                if (loginPrompt) {
+                    loginPrompt.style.display = 'block';
+                    const title = loginPrompt.querySelector('h3');
+                    const desc = loginPrompt.querySelector('p');
+                    const btn = loginPrompt.querySelector('button');
+                    if (title) title.textContent = '接続エラーです';
+                    if (desc) desc.textContent = '運営に連絡してください。';
+                    if (btn) btn.style.display = 'none';
+                }
+                return;
+            }
 
             // allProfiles にも最新情報を同期
             if (profile) {

@@ -183,6 +183,18 @@
         async function executeSellUUID() {
             toggleLoading(true);
             try {
+                let badgeIdForLog = null;
+                try {
+                    const { data: bInfo } = await supabaseClient
+                        .from('user_badges_new')
+                        .select('badge_id')
+                        .eq('uuid', currentActionUUID)
+                        .single();
+                    badgeIdForLog = bInfo?.badge_id || null;
+                } catch (err) {
+                    console.warn('売却前badge_id取得失敗:', err);
+                }
+
                 const { data, error } = await supabaseClient.rpc('sell_badge_v2', {
                     p_user_id: targetId,
                     p_badge_uuid: currentActionUUID
@@ -194,13 +206,9 @@
                 alert(`バッジを 🪙${data.sell_price.toLocaleString()} で売却しました。`);
                 // 活動ログ記録
                 if (typeof logActivity === 'function') {
-                    // バッジID(整数)を取得
-                    const { data: bInfo } = await supabaseClient.from('user_badges_new').select('badge_id').eq('uuid', currentActionUUID).single();
-                    const bId = bInfo?.badge_id;
-
                     await logActivity(targetId, 'badge_sell', {
                         amount: data.sell_price,
-                        badgeId: bId, // 整数IDを追加
+                        badgeId: badgeIdForLog,
                         details: { badge_uuid: currentActionUUID, badge_name: currentActionBadgeName }
                     });
                 }
@@ -279,6 +287,7 @@
                     if (typeof logActivity === 'function') {
                         await logActivity(targetId, 'badge_sell', {
                             amount: actualTotalPrice,
+                            badgeId: badgeId,
                             details: {
                                 badge_id: badgeId,
                                 badge_name: badgeName,
