@@ -168,13 +168,56 @@
             border-radius: 10px;
             border: 1px solid #e9ecef;
             margin-bottom: 6px;
+            flex-wrap: wrap;
         }
 
         .player-pill .team-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
             font-size: 0.7rem;
             padding: 2px 8px;
             border-radius: 12px;
             background: #e9ecef;
+        }
+
+        .player-pill .team-logo {
+            width: 26px;
+            height: 26px;
+            object-fit: contain;
+            border-radius: 6px;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+        }
+
+        .player-pill .player-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .player-pill .badge-icon {
+            width: 22px;
+            height: 22px;
+            object-fit: contain;
+            border-radius: 4px;
+        }
+
+        .player-pill .name {
+            font-weight: 700;
+            color: #2b2f36;
+        }
+
+        .player-pill .pref-chip {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: #e9ecef;
+            color: #495057;
         }
 
         .spectator-card {
@@ -287,6 +330,7 @@
         let allProfiles = [];
         let selectedPlayer = null;
         const addedPlayers = [];
+        const WEBHOOK_URL = 'https://discord.com/api/webhooks/1467224376838586652/jSlT0_3-5eVMbGQSsDPGu8BIo67byWRGZYOHGAtKBRSCFGWbWELS7FEQ6X8wfzXxw4So';
 
         async function loadData() {
             const { data: teams } = await supabaseClient
@@ -400,6 +444,22 @@
             badge.style.display = 'flex';
             badge.querySelector('.badge-avatar').src = p.avatar_url || 'https://via.placeholder.com/24';
             badge.querySelector('.name').textContent = p.account_name || p.discord_user_id;
+            const leftContainer = badge.querySelector('.badge-left-container');
+            const rightContainer = badge.querySelector('.badge-right-container');
+            if (p.badges) {
+                leftContainer.style.display = 'inline-flex';
+                leftContainer.innerHTML = `<img src="${p.badges.image_url}" title="${p.badges.name}" style="width: 22px; height: 22px; object-fit: contain; border-radius: 4px;">`;
+            } else {
+                leftContainer.style.display = 'none';
+                leftContainer.innerHTML = '';
+            }
+            if (p.badges_right) {
+                rightContainer.style.display = 'inline-flex';
+                rightContainer.innerHTML = `<img src="${p.badges_right.image_url}" title="${p.badges_right.name}" style="width: 22px; height: 22px; object-fit: contain; border-radius: 4px;">`;
+            } else {
+                rightContainer.style.display = 'none';
+                rightContainer.innerHTML = '';
+            }
             document.getElementById('player-dropdown').style.display = 'none';
             document.getElementById('player-input').style.display = 'none';
         }
@@ -431,15 +491,58 @@
                 return;
             }
             const pref = document.getElementById('pref-select').value;
+            const teamLogo = team.logo_badge?.image_url || '';
             addedPlayers.push({
                 discord_user_id: selectedPlayer.discord_user_id,
                 account_name: selectedPlayer.account_name || selectedPlayer.discord_user_id,
+                avatar_url: selectedPlayer.avatar_url || '',
+                badge_left: selectedPlayer.badges?.image_url || '',
+                badge_left_name: selectedPlayer.badges?.name || '',
+                badge_right: selectedPlayer.badges_right?.image_url || '',
+                badge_right_name: selectedPlayer.badges_right?.name || '',
                 team_id: teamId,
                 team_name: team.team_name,
+                team_logo: teamLogo,
                 pref: pref
             });
             clearSelectedPlayer();
+            clearSelectedTeam();
+            document.getElementById('pref-select').value = 'none';
             renderPlayerList();
+        }
+
+        function getPrefLabel(pref) {
+            if (pref === 'yonma') return '四麻希望';
+            if (pref === 'sanma') return '三麻希望';
+            return '希望無し';
+        }
+
+        function renderPlayerDisplay(p, { withPref = true, withRemove = false } = {}) {
+            const teamLogo = p.team_logo ? `<img src="${p.team_logo}" class="team-logo" alt="">` : '';
+            const avatar = p.avatar_url ? `<img src="${p.avatar_url}" class="player-avatar" alt="">` : '';
+            const leftBadge = p.badge_left ? `<img src="${p.badge_left}" class="badge-icon" title="${p.badge_left_name || ''}">` : '';
+            const rightBadge = p.badge_right ? `<img src="${p.badge_right}" class="badge-icon" title="${p.badge_right_name || ''}">` : '';
+            const prefChip = withPref ? `<span class="pref-chip">${getPrefLabel(p.pref)}</span>` : '';
+            const removeBtn = withRemove ? `<button class="btn btn-sm btn-outline-danger ms-auto" onclick="removePlayer('${p.discord_user_id}')">削除</button>` : '';
+            return `
+                <div class="player-pill">
+                    ${teamLogo}
+                    <span class="team-badge">${p.team_name}</span>
+                    ${avatar}
+                    ${leftBadge}
+                    <span class="name">${p.account_name}</span>
+                    ${rightBadge}
+                    ${prefChip}
+                    ${removeBtn}
+                </div>
+            `;
+        }
+
+        function clearSelectedTeam() {
+            const input = document.getElementById('team-select');
+            const display = document.getElementById('selected-team-display');
+            if (input) input.value = '';
+            if (display) display.innerHTML = '<span class="text-muted small">チームを選択</span>';
         }
 
         function renderPlayerList() {
@@ -448,14 +551,7 @@
                 list.innerHTML = '<div class="text-muted">まだ追加されていません。</div>';
                 return;
             }
-            list.innerHTML = addedPlayers.map(p => `
-                <div class="player-pill">
-                    <div class="fw-bold">${p.account_name}</div>
-                    <span class="team-badge">${p.team_name}</span>
-                    <span class="small text-muted">${p.pref === 'yonma' ? '四麻希望' : p.pref === 'sanma' ? '三麻希望' : '希望無し'}</span>
-                    <button class="btn btn-sm btn-outline-danger ms-auto" onclick="removePlayer('${p.discord_user_id}')">削除</button>
-                </div>
-            `).join('');
+            list.innerHTML = addedPlayers.map(p => renderPlayerDisplay(p, { withPref: true, withRemove: true })).join('');
         }
 
         function removePlayer(id) {
@@ -476,6 +572,12 @@
             }
             if (tables.length === 0) {
                 alert('卓数を入力してください。');
+                return;
+            }
+
+            if (yonmaCount > 0 && addedPlayers.length < yonmaCount * 4) {
+                renderTables(tables, [...addedPlayers]);
+                sendResultToDiscord(tables, [...addedPlayers], { warning: '四麻の人数が足りないため全員観戦枠に移動' });
                 return;
             }
 
@@ -517,6 +619,7 @@
 
             const spectators = [...byPref.yonma, ...byPref.sanma, ...byPref.none];
             renderTables(tables, spectators);
+            sendResultToDiscord(tables, spectators);
         }
 
         function shuffleArray(arr) {
@@ -531,28 +634,39 @@
             const cards = tables.map(t => `
                 <div class="table-card">
                     <div class="table-title">${t.id}</div>
-                    ${t.members.length === 0 ? '<div class="text-muted small">空</div>' : t.members.map(m => `
-                        <div class="player-pill">
-                            <div class="fw-bold">${m.account_name}</div>
-                            <span class="team-badge">${m.team_name}</span>
-                            <span class="small text-muted">${m.pref === 'yonma' ? '四麻希望' : m.pref === 'sanma' ? '三麻希望' : '希望無し'}</span>
-                        </div>
-                    `).join('')}
+                    ${t.members.length === 0 ? '<div class="text-muted small">空</div>' : t.members.map(m => renderPlayerDisplay(m, { withPref: false })).join('')}
                 </div>
             `);
             const spectatorCard = `
                 <div class="table-card spectator-card">
                     <div class="table-title">観戦枠</div>
-                    ${spectators.length === 0 ? '<div class="text-muted small">なし</div>' : spectators.map(m => `
-                        <div class="player-pill">
-                            <div class="fw-bold">${m.account_name}</div>
-                            <span class="team-badge">${m.team_name}</span>
-                            <span class="small text-muted">${m.pref === 'yonma' ? '四麻希望' : m.pref === 'sanma' ? '三麻希望' : '希望無し'}</span>
-                        </div>
-                    `).join('')}
+                    ${spectators.length === 0 ? '<div class="text-muted small">なし</div>' : spectators.map(m => renderPlayerDisplay(m, { withPref: false })).join('')}
                 </div>
             `;
             container.innerHTML = cards.join('') + spectatorCard;
+        }
+
+        async function sendResultToDiscord(tables, spectators, options = {}) {
+            if (!WEBHOOK_URL) return;
+            const lines = [];
+            if (options.warning) lines.push(`⚠️ ${options.warning}`);
+            lines.push('🧩 チーム分け結果');
+            tables.forEach(t => {
+                const members = t.members.map(m => `${m.team_name}：${m.account_name}`).join(' / ');
+                lines.push(`【${t.id}】${members || '空'}`);
+            });
+            const spectatorLine = spectators.map(m => `${m.team_name}：${m.account_name}`).join(' / ');
+            lines.push(`【観戦枠】${spectatorLine || 'なし'}`);
+            const payload = { content: lines.join('\n') };
+            try {
+                await fetch(WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            } catch (err) {
+                console.error('Discord送信失敗', err);
+            }
         }
     </script>
 </body>
