@@ -697,7 +697,7 @@
                 <div class="modal-body pt-2">
                     <input type="hidden" id="rights-badge-id">
                     <div class="mb-3">
-                        <label class="form-label">バッジ名</label>
+                        <label class="form-label">バッジ名（自動で【】が付きます）</label>
                         <input type="text" id="rights-badge-name" class="form-control" maxlength="40">
                     </div>
                     <div class="mb-2">
@@ -976,7 +976,8 @@
         }
 
         function openRightsBadgeEdit(badgeId, nameEncoded, descriptionEncoded) {
-            const name = decodeURIComponent(nameEncoded || '');
+            const rawName = decodeURIComponent(nameEncoded || '');
+            const name = rawName.replace(/^【|】$/g, '').replace(/^【(.*)】$/, '$1');
             const description = decodeURIComponent(descriptionEncoded || '');
             document.getElementById('rights-badge-id').value = badgeId;
             document.getElementById('rights-badge-name').value = name || '';
@@ -997,11 +998,12 @@
 
         async function saveRightsBadgeEdit() {
             const badgeId = document.getElementById('rights-badge-id').value;
-            const name = document.getElementById('rights-badge-name').value.trim();
+            const nameInput = document.getElementById('rights-badge-name').value.trim();
+            const name = nameInput ? `【${nameInput.replace(/^【|】$/g, '').replace(/^【(.*)】$/, '$1')}】` : '';
             const description = document.getElementById('rights-badge-description').value.trim();
 
             if (!badgeId) return;
-            if (!name) return alert('バッジ名を入力してください');
+            if (!nameInput) return alert('バッジ名を入力してください');
             if (description.length > 200) return alert('説明文は200文字以内で入力してください');
 
             try {
