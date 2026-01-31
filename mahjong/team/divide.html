@@ -662,13 +662,15 @@
                     lines.push('（なし）');
                     return;
                 }
-                tableList.forEach(t => {
+                tableList.forEach((t, idx) => {
+                    lines.push(`【${t.type}${idx + 1}】`);
                     if (t.members.length === 0) {
                         lines.push('（空）');
+                        lines.push('');
                         return;
                     }
                     t.members.forEach(m => {
-                        lines.push(`🦀 ${m.team_name}`);
+                        lines.push(`${m.team_name}`);
                         lines.push(`　**${m.account_name}**`);
                         lines.push('');
                     });
@@ -684,7 +686,7 @@
                 lines.push('（なし）');
             } else {
                 spectators.forEach(m => {
-                    lines.push(`🎴 ${m.team_name}`);
+                    lines.push(`${m.team_name}`);
                     lines.push(`　**${m.account_name}**`);
                     lines.push('');
                 });
