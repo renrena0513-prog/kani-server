@@ -1085,6 +1085,8 @@ async function revokeBadge(userId, badgeId, badgeName) {
 
 let allAdminBadges = [];
 let currentAdminBadgeFilter = 'all';
+let currentBadgesPage = 1;
+const BADGES_PER_PAGE = 24;
 
 async function fetchBadges() {
     const list = document.getElementById('badges-list');
@@ -1092,6 +1094,7 @@ async function fetchBadges() {
     try {
         const { data: badges } = await supabaseClient.from('badges').select('*').order('sort_order', { ascending: true });
         allAdminBadges = badges || [];
+        currentBadgesPage = 1;
         renderAdminBadges();
     } catch (err) { console.error(err); }
 }
@@ -1101,6 +1104,7 @@ function setAdminBadgeFilter(filter, btn) {
     // ボタンのアクティブ状態を更新
     document.querySelectorAll('#admin-badge-filter-tabs button').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
+    currentBadgesPage = 1;
     renderAdminBadges();
 }
 
@@ -1130,10 +1134,17 @@ function renderAdminBadges() {
 
     if (filtered.length === 0) {
         list.innerHTML = '<div class="col-12 text-center text-muted py-5">該当するバッジがありません</div>';
+        updateBadgesPagination(0, 0);
         return;
     }
 
-    list.innerHTML = filtered.map(badge => `
+    const totalPages = Math.ceil(filtered.length / BADGES_PER_PAGE);
+    if (currentBadgesPage > totalPages) currentBadgesPage = totalPages;
+    if (currentBadgesPage < 1) currentBadgesPage = 1;
+    const start = (currentBadgesPage - 1) * BADGES_PER_PAGE;
+    const pageItems = filtered.slice(start, start + BADGES_PER_PAGE);
+
+    list.innerHTML = pageItems.map(badge => `
         <div class="col-md-4 col-lg-3">
             <div class="card h-100 shadow-sm border-0 badge-card">
                 <div class="card-body text-center">
@@ -1147,6 +1158,33 @@ function renderAdminBadges() {
             </div>
         </div>
     `).join('');
+    updateBadgesPagination(filtered.length, totalPages);
+}
+
+function updateBadgesPagination(totalItems, totalPages) {
+    const area = document.getElementById('badges-pagination-area');
+    const info = document.getElementById('badges-page-info');
+    const prevBtn = document.getElementById('prev-badges-btn');
+    const nextBtn = document.getElementById('next-badges-btn');
+    if (!area || !info || !prevBtn || !nextBtn) return;
+
+    if (!totalItems || totalPages <= 1) {
+        area.style.display = 'none';
+        info.textContent = '1 / 1';
+        prevBtn.disabled = true;
+        nextBtn.disabled = true;
+        return;
+    }
+
+    area.style.display = 'flex';
+    info.textContent = `${currentBadgesPage} / ${totalPages}`;
+    prevBtn.disabled = currentBadgesPage <= 1;
+    nextBtn.disabled = currentBadgesPage >= totalPages;
+}
+
+function changeBadgesPage(delta) {
+    currentBadgesPage += delta;
+    renderAdminBadges();
 }
 
 async function openBadgeModal(badge = null) {
@@ -1186,8 +1224,12 @@ async function openBadgeModal(badge = null) {
  * 権利者セレクトボックスにユーザー一覧を動的生成
  */
 async function populateBadgeOwnerSelect(selectedValue = '') {
-    const select = document.getElementById('badge-owner');
-    if (!select) return;
+    const hiddenInput = document.getElementById('badge-owner');
+    const menu = document.getElementById('badge-owner-menu');
+    const btn = document.getElementById('badge-owner-btn');
+    const label = document.getElementById('badge-owner-label');
+    const avatar = document.getElementById('badge-owner-avatar');
+    if (!hiddenInput || !menu || !btn || !label || !avatar) return;
 
     try {
         const { data: profiles, error } = await supabaseClient
@@ -1197,18 +1239,47 @@ async function populateBadgeOwnerSelect(selectedValue = '') {
 
         if (error) throw error;
 
-        // 既存のオプションをクリア（最初の「なし」を残す）
-        select.innerHTML = '<option value="">なし（権利者なし）</option>';
+        const items = [
+            { id: '', name: 'なし（権利者なし）', avatar: '' },
+            ...(profiles || []).map(p => ({
+                id: p.discord_user_id,
+                name: p.account_name || p.discord_user_id,
+                avatar: p.avatar_url || ''
+            }))
+        ];
 
-        // ユーザー一覧を追加
-        profiles.forEach(p => {
-            const option = document.createElement('option');
-            option.value = p.discord_user_id;
-            option.textContent = p.account_name || p.discord_user_id;
-            if (p.discord_user_id === selectedValue) {
-                option.selected = true;
+        menu.innerHTML = items.map(item => `
+            <li>
+                <button class="dropdown-item d-flex align-items-center gap-2" type="button"
+                    data-value="${item.id}" data-name="${item.name}" data-avatar="${item.avatar}">
+                    ${item.avatar ? `<img src="${item.avatar}" style="width: 20px; height: 20px; border-radius: 50%;" onerror="this.style.display='none'">` : '<span style="width:20px;height:20px;display:inline-block;"></span>'}
+                    <span>${item.name}</span>
+                </button>
+            </li>
+        `).join('');
+
+        const applySelection = (id, name, avatarUrl) => {
+            hiddenInput.value = id || '';
+            label.textContent = name || 'なし（権利者なし）';
+            if (avatarUrl) {
+                avatar.src = avatarUrl;
+                avatar.style.display = 'inline-block';
+            } else {
+                avatar.style.display = 'none';
             }
-            select.appendChild(option);
+            btn.dataset.value = id || '';
+        };
+
+        const current = items.find(i => i.id === selectedValue) || items[0];
+        applySelection(current.id, current.name, current.avatar);
+
+        menu.querySelectorAll('button[data-value]').forEach(btnEl => {
+            btnEl.addEventListener('click', () => {
+                const id = btnEl.getAttribute('data-value') || '';
+                const name = btnEl.getAttribute('data-name') || 'なし（権利者なし）';
+                const avatarUrl = btnEl.getAttribute('data-avatar') || '';
+                applySelection(id, name, avatarUrl);
+            });
         });
     } catch (err) {
         console.error('権利者リスト取得エラー:', err);

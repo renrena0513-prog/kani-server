@@ -1263,6 +1263,8 @@
             filtered.sort((a, b) => {
                 const result = (sorters[sortKey] || sorters.price_asc)(a, b);
                 if (result !== 0) return result;
+                const sortOrderDiff = (b.sort_order || 0) - (a.sort_order || 0);
+                if (sortOrderDiff !== 0) return sortOrderDiff;
                 return (a.name || '').localeCompare(b.name || '', 'ja');
             });
 
