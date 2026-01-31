@@ -648,15 +648,47 @@
 
         async function sendResultToDiscord(tables, spectators, options = {}) {
             if (!WEBHOOK_URL) return;
+            const sep = '――――――――――――――――――';
             const lines = [];
             if (options.warning) lines.push(`⚠️ ${options.warning}`);
-            lines.push('🧩 チーム分け結果');
-            tables.forEach(t => {
-                const members = t.members.map(m => `${m.team_name}：${m.account_name}`).join(' / ');
-                lines.push(`【${t.id}】${members || '空'}`);
-            });
-            const spectatorLine = spectators.map(m => `${m.team_name}：${m.account_name}`).join(' / ');
-            lines.push(`【観戦枠】${spectatorLine || 'なし'}`);
+            lines.push('# 🧩 チーム分け結果');
+            lines.push(sep);
+            const yonmaTables = tables.filter(t => t.type === '四麻');
+            const sanmaTables = tables.filter(t => t.type === '三麻');
+
+            const buildSection = (title, tableList) => {
+                lines.push(`## ${title}`);
+                if (tableList.length === 0) {
+                    lines.push('（なし）');
+                    return;
+                }
+                tableList.forEach(t => {
+                    if (t.members.length === 0) {
+                        lines.push('（空）');
+                        return;
+                    }
+                    t.members.forEach(m => {
+                        lines.push(`🦀 ${m.team_name}`);
+                        lines.push(`　**${m.account_name}**`);
+                        lines.push('');
+                    });
+                });
+            };
+
+            buildSection('【四麻】', yonmaTables);
+            lines.push(sep);
+            buildSection('【三麻】', sanmaTables);
+            lines.push(sep);
+            lines.push('## 【観戦】');
+            if (spectators.length === 0) {
+                lines.push('（なし）');
+            } else {
+                spectators.forEach(m => {
+                    lines.push(`🎴 ${m.team_name}`);
+                    lines.push(`　**${m.account_name}**`);
+                    lines.push('');
+                });
+            }
             const payload = { content: lines.join('\n') };
             try {
                 await fetch(WEBHOOK_URL, {
