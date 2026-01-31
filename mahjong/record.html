@@ -507,22 +507,6 @@
                     ※「飛び賞」「やきとり」を「あり」にすると、対象者から-10.0され、1位に加算されます。
                 </div>
 
-                <!-- 役満判定 -->
-                <div class="mt-4" id="yakuman-section">
-                    <div class="d-flex align-items-center justify-content-between" onclick="toggleYakumanPanel()" style="cursor: pointer;">
-                        <strong>🀄 役満判定</strong>
-                        <span id="yakuman-toggle-icon" style="font-size: 1rem;">▼</span>
-                    </div>
-                    <div id="yakuman-panel" style="display: none;">
-                        <div class="small text-muted mt-2">選択されているプレイヤーに対して役満を登録します。</div>
-                        <div id="yakuman-list" class="vstack gap-2 mt-2"></div>
-                        <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="addYakumanRow()">＋ 役満を追加</button>
-                        <div class="alert alert-warning mt-3 mb-0" role="alert" style="font-size: 0.85rem;">
-                            ※ W役満は報告ください。数え役満は役満扱いしません。
-                        </div>
-                    </div>
-                </div>
-
                 <!-- 注意文 -->
                 <div class="alert alert-warning mt-4 mb-0" role="alert" style="font-size: 0.9rem;">
                     <strong>⚠️ 対局時のルール</strong><br>
@@ -537,6 +521,23 @@
                         <li><strong>詳細ルール</strong>： 赤ドラ数、ローカル役等は変更不可</li>
                         <li><strong>トラブル報告</strong>： 寝落ちや設定ミスでの対局は、Namelessまで報告ください。</li>
                     </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 役満判定（ルール設定の外） -->
+        <div class="form-card" id="yakuman-section">
+            <h3 onclick="toggleYakumanPanel()"
+                style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                🀄 役満判定
+                <span id="yakuman-toggle-icon" style="font-size: 1rem;">▼</span>
+            </h3>
+            <div id="yakuman-panel" style="display: none;">
+                <div class="small text-muted mt-2">選択されているプレイヤーに対して役満を登録します。</div>
+                <div id="yakuman-list" class="vstack gap-2 mt-2"></div>
+                <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="addYakumanRow()">＋ 役満を追加</button>
+                <div class="alert alert-warning mt-3 mb-0" role="alert" style="font-size: 0.85rem;">
+                    ※ W役満は報告ください。数え役満は役満扱いしません。
                 </div>
             </div>
         </div>

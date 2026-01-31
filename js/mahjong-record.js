@@ -17,6 +17,7 @@ const YAKUMAN_TYPES = [
     '四槓子',
     '九蓮宝燈'
 ];
+let yakumanRowSeq = 0;
 
 document.addEventListener('DOMContentLoaded', async () => {
     await checkAdminStatus();
@@ -112,17 +113,7 @@ function changeMatchMode() {
     }
 
     const yakumanSection = document.getElementById('yakuman-section');
-    const yakumanPanel = document.getElementById('yakuman-panel');
-    const yakumanIcon = document.getElementById('yakuman-toggle-icon');
-    if (!isTeamMatch) {
-        if (yakumanSection) yakumanSection.style.display = 'none';
-        if (yakumanPanel) yakumanPanel.style.display = 'none';
-        if (yakumanIcon) yakumanIcon.textContent = '▼';
-        const list = document.getElementById('yakuman-list');
-        if (list) list.innerHTML = '';
-    } else if (yakumanSection) {
-        yakumanSection.style.display = 'block';
-    }
+    if (yakumanSection) yakumanSection.style.display = 'block';
 }
 
 /**
@@ -770,13 +761,6 @@ function escapeHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
-function buildYakumanPlayerOptions(selectedId = '') {
-    const players = getSelectedPlayersForYakuman();
-    const options = ['<option value="">プレイヤーを選択</option>']
-        .concat(players.map(p => `<option value="${p.id}" ${p.id === selectedId ? 'selected' : ''}>${escapeHtml(p.name)}</option>`));
-    return options.join('');
-}
-
 function addYakumanRow() {
     const list = document.getElementById('yakuman-list');
     if (!list) return;
@@ -785,12 +769,20 @@ function addYakumanRow() {
         alert('先にプレイヤーを選択してください。');
         return;
     }
+    const rowId = `yakuman-row-${++yakumanRowSeq}`;
     const row = document.createElement('div');
-    row.className = 'd-flex gap-2 align-items-center yakuman-row';
+    row.className = 'd-flex gap-2 align-items-center yakuman-row flex-wrap';
+    row.dataset.rowId = rowId;
     row.innerHTML = `
-        <select class="form-select form-select-sm yakuman-player" style="max-width: 220px;">
-            ${buildYakumanPlayerOptions()}
-        </select>
+        <div class="custom-dropdown-container yakuman-player-container" style="min-width: 220px;">
+            <input type="hidden" class="yakuman-player-id">
+            <div class="form-control form-control-sm d-flex align-items-center justify-content-between yakuman-player-display"
+                style="cursor: pointer; background: white; padding: 8px 12px; height: 34px;" onclick="toggleYakumanDropdown('${rowId}')">
+                <span class="text-muted small">プレイヤーを選択</span>
+                <span class="small text-muted">▼</span>
+            </div>
+            <div class="custom-dropdown-list yakuman-player-list"></div>
+        </div>
         <select class="form-select form-select-sm yakuman-type" style="max-width: 200px;">
             ${YAKUMAN_TYPES.map(y => `<option value="${y}">${y}</option>`).join('')}
         </select>
@@ -798,19 +790,116 @@ function addYakumanRow() {
     `;
     row.querySelector('button').addEventListener('click', () => row.remove());
     list.appendChild(row);
+    refreshYakumanPlayerOptions();
 }
 
 function refreshYakumanPlayerOptions() {
-    document.querySelectorAll('.yakuman-player').forEach(select => {
-        const current = select.value;
-        select.innerHTML = buildYakumanPlayerOptions(current);
+    const players = getSelectedPlayersForYakuman();
+    document.querySelectorAll('.yakuman-row').forEach(row => {
+        const list = row.querySelector('.yakuman-player-list');
+        const hidden = row.querySelector('.yakuman-player-id');
+        const display = row.querySelector('.yakuman-player-display');
+        if (!list || !hidden || !display) return;
+        const current = hidden.value;
+        list.innerHTML = players.map(p => buildYakumanDropdownItem(p, row.dataset.rowId)).join('');
+        if (current && !players.some(p => p.id === current)) {
+            hidden.value = '';
+            display.innerHTML = `<span class="text-muted small">プレイヤーを選択</span><span class="small text-muted">▼</span>`;
+        }
     });
+}
+
+function buildYakumanDropdownItem(player, rowId) {
+    const profile = allProfiles.find(p => p.discord_user_id === player.id) || {};
+    const avatarUrl = profile.avatar_url || 'https://via.placeholder.com/24';
+    const badgeLeft = profile.badges;
+    const badgeRight = profile.badges_right;
+    let badgeHtmlLeft = '';
+    if (badgeLeft) {
+        const isMutant = userMutantMap[`${player.id}_${badgeLeft.id}`];
+        badgeHtmlLeft = `
+            <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}" style="margin-left: 5px;">
+                <img src="${badgeLeft.image_url}" title="${badgeLeft.name}" style="width: 22px; height: 22px; object-fit: contain; border-radius: 4px;">
+                ${MutantBadge.renderShine(isMutant)}
+            </div>`;
+    }
+    let badgeHtmlRight = '';
+    if (badgeRight) {
+        const isMutant = userMutantMap[`${player.id}_${badgeRight.id}`];
+        badgeHtmlRight = `
+            <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}" style="margin-left: 5px;">
+                <img src="${badgeRight.image_url}" title="${badgeRight.name}" style="width: 22px; height: 22px; object-fit: contain; border-radius: 4px;">
+                ${MutantBadge.renderShine(isMutant)}
+            </div>`;
+    }
+    return `
+        <div class="dropdown-item-flex" onclick="selectYakumanPlayer('${rowId}', '${player.id}', '${escapeHtml(player.name).replace(/'/g, "\\'")}')">
+            <img src="${avatarUrl}" class="dropdown-avatar" onerror="this.src='https://via.placeholder.com/24'">
+            ${badgeHtmlLeft}
+            <span class="small">${escapeHtml(player.name)}</span>
+            ${badgeHtmlRight}
+        </div>
+    `;
+}
+
+function toggleYakumanDropdown(rowId) {
+    const row = document.querySelector(`.yakuman-row[data-row-id="${rowId}"]`);
+    if (!row) return;
+    const list = row.querySelector('.yakuman-player-list');
+    if (!list) return;
+    document.querySelectorAll('.yakuman-player-list').forEach(l => {
+        if (l !== list) l.style.display = 'none';
+    });
+    list.style.display = list.style.display === 'block' ? 'none' : 'block';
+}
+
+function selectYakumanPlayer(rowId, discordUserId, accountName) {
+    const row = document.querySelector(`.yakuman-row[data-row-id="${rowId}"]`);
+    if (!row) return;
+    const hidden = row.querySelector('.yakuman-player-id');
+    const display = row.querySelector('.yakuman-player-display');
+    const list = row.querySelector('.yakuman-player-list');
+    if (hidden) hidden.value = discordUserId;
+    if (display) {
+        const profile = allProfiles.find(p => p.discord_user_id === discordUserId) || {};
+        const avatarUrl = profile.avatar_url || 'https://via.placeholder.com/24';
+        const badgeLeft = profile.badges;
+        const badgeRight = profile.badges_right;
+        let badgeHtmlLeft = '';
+        if (badgeLeft) {
+            const isMutant = userMutantMap[`${discordUserId}_${badgeLeft.id}`];
+            badgeHtmlLeft = `
+                <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}" style="margin-left: 5px;">
+                    <img src="${badgeLeft.image_url}" title="${badgeLeft.name}" style="width: 22px; height: 22px; object-fit: contain; border-radius: 4px;">
+                    ${MutantBadge.renderShine(isMutant)}
+                </div>`;
+        }
+        let badgeHtmlRight = '';
+        if (badgeRight) {
+            const isMutant = userMutantMap[`${discordUserId}_${badgeRight.id}`];
+            badgeHtmlRight = `
+                <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}" style="margin-left: 5px;">
+                    <img src="${badgeRight.image_url}" title="${badgeRight.name}" style="width: 22px; height: 22px; object-fit: contain; border-radius: 4px;">
+                    ${MutantBadge.renderShine(isMutant)}
+                </div>`;
+        }
+        display.innerHTML = `
+            <div class="d-flex align-items-center gap-1">
+                <img src="${avatarUrl}" class="dropdown-avatar" onerror="this.src='https://via.placeholder.com/24'">
+                ${badgeHtmlLeft}
+                <span class="small">${escapeHtml(accountName || discordUserId)}</span>
+                ${badgeHtmlRight}
+            </div>
+            <span class="small text-muted">▼</span>
+        `;
+    }
+    if (list) list.style.display = 'none';
 }
 
 function getYakumanSelections() {
     const map = {};
     document.querySelectorAll('.yakuman-row').forEach(row => {
-        const playerId = row.querySelector('.yakuman-player')?.value || '';
+        const playerId = row.querySelector('.yakuman-player-id')?.value || '';
         const yakuman = row.querySelector('.yakuman-type')?.value || '';
         if (!playerId || !yakuman) return;
         if (!map[playerId]) map[playerId] = [];
@@ -1095,7 +1184,7 @@ async function submitScores() {
     // Step 4: 記録者のIDを取得（なりすまし対応）
     const effectiveUserId = await getEffectiveUserId();
     const submittedBy = effectiveUserId;
-    const yakumanMap = (match === 'チーム戦') ? getYakumanSelections() : {};
+    const yakumanMap = getYakumanSelections();
 
     // Step 5: 最終的な挿入データを構築
     const dataToInsert = tempData.map(player => ({
@@ -1351,7 +1440,7 @@ async function sendDiscordNotification(matchData, isTobiOn, isYakitoriOn, ticket
         const rewardText = `💰+${reward}${tickets > 0 ? ` 🎫+${tickets}` : ''}${mangans > 0 ? ` 🧧+${mangans}` : ''}`;
         const yakumanList = yakumanMap[p.discord_user_id] || [];
         const yakumanText = yakumanList.length > 0
-            ? `　　 🀄役満: ${yakumanList.join(' / ')}（🧧+1 確定）\n`
+            ? `　　 💮🎍✨役満: ${yakumanList.join(' / ')}（🧧+1 確定）\n`
             : '';
 
         // 和了数と放銃数を表示
