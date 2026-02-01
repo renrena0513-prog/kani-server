@@ -81,7 +81,7 @@
             displayMahjongStats();
         }
 
-        let currentMahjongMode = 'individual_yonma'; // 四麻/三麻/チーム
+        let currentMahjongMode = 'individual_yonma'; // 四麻/三麻
 
         function handleModeChange() {
             const select = document.getElementById('mode-select');
@@ -98,10 +98,7 @@
             }
 
             // メインフィルター（対戦形式）
-            if (currentMahjongMode === 'team') {
-                // チーム戦はまだデータがないので空配列にする
-                records = [];
-            } else if (currentMahjongMode === 'individual_yonma') {
+            if (currentMahjongMode === 'individual_yonma') {
                 records = records.filter(r => (r.mahjong_mode || r.mode) === '四麻');
             } else if (currentMahjongMode === 'individual_sanma') {
                 records = records.filter(r => (r.mahjong_mode || r.mode) === '三麻');

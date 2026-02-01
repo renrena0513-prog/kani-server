@@ -472,6 +472,9 @@ function renderRanking(records, groupKey, type = 'all') {
         if (kind === 'win' || kind === 'deal' || kind === 'top' || kind === 'avoid' || kind === 'skill') {
             const rounded = Number(value.toFixed(1));
             if (rounded === 0) return { text: '―', cls: 'delta-zero', color: '#6c757d' };
+            if (kind === 'deal') {
+                return { text: `${sign}${rounded.toFixed(1)}%`, cls: value < 0 ? 'delta-pos' : 'delta-neg', color: value < 0 ? '#0d6efd' : '#dc3545' };
+            }
             return { text: `${sign}${rounded.toFixed(1)}%`, cls: value > 0 ? 'delta-pos' : 'delta-neg', color: value > 0 ? '#0d6efd' : '#dc3545' };
         }
         if (kind === 'avg_rank') {
