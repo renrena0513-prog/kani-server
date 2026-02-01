@@ -70,6 +70,20 @@
 
                 let htmlParts = [];
 
+                // クリエイター名の取得
+                const creatorIds = Array.from(new Set(targetBadges.map(item => item.badges?.discord_user_id).filter(Boolean)));
+                const creatorMap = new Map();
+                if (creatorIds.length > 0) {
+                    const { data: creators } = await supabaseClient
+                        .from('profiles')
+                        .select('discord_user_id, account_name, avatar_url')
+                        .in('discord_user_id', creatorIds);
+                    (creators || []).forEach(c => creatorMap.set(c.discord_user_id, {
+                        name: c.account_name || c.discord_user_id,
+                        avatar: c.avatar_url || ''
+                    }));
+                }
+
                 // 換金品のHTML生成（グループ化）
                 convertibleGroups.forEach(group => {
                     const badge = group.badge;
@@ -105,6 +119,12 @@
                     // 売却価格: 2段階下のレアリティ価格（ミュータントは3倍）
                     const pSell = badgeResult.sellPrice * (item.is_mutant ? 3 : 1);
                     const buyPrice = item.purchased_price || 0;
+                    const rarityName = badgeResult.rarityName || '';
+                    const sellStar = Math.max((badgeResult.starLevel || 1) - 2, 1);
+                    const sellRarity = rarityThresholds?.[sellStar - 1]?.rarity_name || rarityName;
+                    const creatorInfo = creatorMap.get(badge.discord_user_id) || { name: '不明', avatar: '' };
+                    const creatorName = creatorInfo.name;
+                    const creatorAvatar = creatorInfo.avatar;
 
                     const mutantLabel = item.is_mutant ? '<span class="text-warning fw-bold">(Mutant)</span>' : '';
 
@@ -125,7 +145,7 @@
                     `;
                     } else {
                         return `
-                    <div class="user-select-item" onclick="sellBadgeConfirm('${item.uuid}', '${badge.name.replace(/'/g, "\\'")}', ${buyPrice}, ${pValue}, ${pSell})">
+                    <div class="user-select-item" onclick="sellBadgeConfirm('${item.uuid}', '${badge.name.replace(/'/g, "\\'")}', ${buyPrice}, ${pValue}, ${pSell}, '${badge.sales_type || ''}', '${creatorName.replace(/'/g, "\\'")}', '${creatorAvatar.replace(/'/g, "\\'")}', ${n}, '${rarityName.replace(/'/g, "\\'")}', '${sellRarity.replace(/'/g, "\\'")}')">
                         <img src="${badge.image_url}" class="user-select-avatar" style="border-radius: 8px;">
                                 <div class="flex-grow-1">
                                     <div class="user-select-name">${badge.name} ${mutantLabel}</div>
@@ -151,7 +171,7 @@
         let currentActionBadgeName = null;
         let currentActionDetails = null;
 
-        function sellBadgeConfirm(uuid, name, purchasedPrice, pValue, pSell) {
+        function sellBadgeConfirm(uuid, name, purchasedPrice, pValue, pSell, salesType, creatorName, creatorAvatar, circulation, rarityName, sellRarity) {
             currentActionUUID = uuid;
             currentActionBadgeName = name;
 
@@ -162,22 +182,48 @@
             const profit = sPrice - pPrice;
             const profitStr = (profit >= 0 ? '+' : '') + profit.toLocaleString();
 
-            const msg = `「${name}」を売却しますか？\n\n` +
-                `・購入時の金額: 🪙 ${pPrice.toLocaleString()} \n` +
-                `・現在の市場価値: 🪙 ${pVal.toLocaleString()} \n` +
-                `・実際の売却価格: 🪙 ${sPrice.toLocaleString()} \n` +
-                `--------------------------\n` +
-                `・予想損益: ${profitStr} `;
+            const typeLabel = salesType || '固定型';
+            const rarityLabel = rarityName || '';
+            const sellRarityLabel = sellRarity || rarityLabel;
 
-            if (confirm(msg)) {
-                // 選択モーダルを閉じる
-                const modalEl = document.getElementById('badgeActionModal');
-                if (modalEl) {
-                    const modal = bootstrap.Modal.getInstance(modalEl);
-                    if (modal) modal.hide();
-                }
-                executeSellUUID();
+            const isFree = pPrice <= 0;
+            const purchaseLabel = isFree ? '無料' : `${rarityLabel}🪙${pPrice.toLocaleString()}`;
+            const assetLabel = (salesType === '換金品')
+                ? `🪙${pVal.toLocaleString()}`
+                : `${rarityLabel}🪙${pVal.toLocaleString()}`;
+            const sellLabel = (salesType === '換金品')
+                ? `🪙${sPrice.toLocaleString()}`
+                : `${sellRarityLabel}🪙${sPrice.toLocaleString()}`;
+            const creatorAvatarHtml = creatorAvatar
+                ? `<img src="${creatorAvatar}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;">`
+                : '';
+
+            const content = `
+                <h5 class="fw-bold mb-2">売却の確認</h5>
+                <div class="fw-bold mb-1">${name}</div>
+                <div class="text-muted mb-2 d-flex align-items-center justify-content-center gap-2">
+                    ${typeLabel}
+                    <span class="d-flex align-items-center gap-1">
+                        ${creatorAvatarHtml}
+                        <span>${creatorName || '不明'}</span>
+                    </span>
+                </div>
+                <div class="text-muted mb-3">流通数：${circulation || 0}枚</div>
+                <div class="text-start small">
+                    <div>購入額：${purchaseLabel}</div>
+                    <div>資産価値：${assetLabel}</div>
+                    <div>売却額：${sellLabel}</div>
+                    <div class="fw-bold mt-2">損益：🪙${profitStr}</div>
+                </div>
+            `;
+
+            // 選択モーダルを閉じる
+            const modalEl = document.getElementById('badgeActionModal');
+            if (modalEl) {
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
             }
+            showShopActionModal(content, executeSellUUID, '売却する');
         }
 
         let isSellingBadge = false;

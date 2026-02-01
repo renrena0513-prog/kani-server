@@ -55,6 +55,19 @@ async function loadInventory() {
             }
         }
 
+        const creatorIds = [...new Set((myBadges || []).map(ub => ub.badges?.discord_user_id).filter(Boolean))];
+        const creatorMap = new Map();
+        if (creatorIds.length > 0) {
+            const { data: creators } = await supabaseClient
+                .from('profiles')
+                .select('discord_user_id, account_name, avatar_url')
+                .in('discord_user_id', creatorIds);
+            (creators || []).forEach(c => creatorMap.set(c.discord_user_id, {
+                name: c.account_name || c.discord_user_id,
+                avatar: c.avatar_url || ''
+            }));
+        }
+
         allInventoryBadges = (myBadges || []).map(inventoryItem => {
             const badge = inventoryItem.badges;
             if (!badge) return null;
@@ -65,21 +78,34 @@ async function loadInventory() {
             if (inventoryMode === 'transfer' && badge.sales_type === '換金品') return null;
 
             const count = marketCounts[badge.id] || 1;
+            const circulationCount = marketCounts[badge.id] || 0;
             const valResult = BadgeUtils.calculateBadgeValues(badge, count, thresholds || []);
             const sellPrice = valResult.sellPrice * (inventoryItem.is_mutant ? 3 : 1);
+            const sellStar = Math.max((valResult.starLevel || 1) - 2, 1);
+            const sellRarity = thresholds?.[sellStar - 1]?.rarity_name || valResult.rarityName || '';
+            const creatorInfo = creatorMap.get(badge.discord_user_id) || { name: '不明', avatar: '' };
+            const isConvertible = badge.sales_type === '換金品';
+            const marketValue = isConvertible ? badge.price : valResult.marketValue;
+            const sellValue = isConvertible ? badge.price : sellPrice;
+            const displayRarity = isConvertible ? '' : valResult.rarityName;
+            const displaySellRarity = isConvertible ? '' : sellRarity;
 
             return {
                 ...inventoryItem,
                 badge_name: badge.name,
                 badge_image_url: badge.image_url,
-                rarity_name: valResult.rarityName,
+                rarity_name: displayRarity,
+                sell_rarity_name: displaySellRarity,
                 price: badge.price,
                 fixed_rarity_name: badge.fixed_rarity_name,
                 sales_type: badge.sales_type,
                 is_gacha_eligible: badge.is_gacha_eligible,
-                market_value: valResult.marketValue,
-                sell_price: sellPrice,
+                market_value: marketValue,
+                sell_price: sellValue,
                 purchased_price: inventoryItem.purchased_price,
+                creator_name: creatorInfo.name,
+                creator_avatar: creatorInfo.avatar,
+                market_count: circulationCount,
                 acquired_at: new Date(inventoryItem.acquired_at)
             };
         }).filter(Boolean);
@@ -319,16 +345,42 @@ function confirmSellFromMyPage(uuid) {
     const sellPrice = item.sell_price;
     const profit = sellPrice - buyPrice;
     const profitStr = (profit >= 0 ? '+' : '') + profit.toLocaleString();
+    const rarityLabel = item.rarity_name || '';
+    const sellRarityLabel = item.sell_rarity_name || rarityLabel;
+    const creatorName = item.creator_name || '不明';
+    const creatorAvatar = item.creator_avatar || '';
+    const typeLabel = item.sales_type || '固定型';
+    const circulation = item.market_count || 0;
+    const isConvertible = item.sales_type === '換金品';
+    const purchaseLabel = buyPrice <= 0 ? '無料' : `${rarityLabel}🪙${buyPrice.toLocaleString()}`;
+    const assetLabel = isConvertible
+        ? `🪙${(item.market_value || 0).toLocaleString()}`
+        : `${rarityLabel}🪙${(item.market_value || 0).toLocaleString()}`;
+    const sellLabel = isConvertible
+        ? `🪙${sellPrice.toLocaleString()}`
+        : `${sellRarityLabel}🪙${sellPrice.toLocaleString()}`;
+    const creatorAvatarHtml = creatorAvatar
+        ? `<img src="${creatorAvatar}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;">`
+        : '';
 
     currentShopActionUUID = uuid;
 
     const content = `
-        <h5 class="fw-bold mb-3">売却の確認</h5>
-        <p class="mb-2">「<span class="fw-bold">${name}</span>」を売却しますか？</p>
-        <div class="alert alert-secondary d-inline-block text-start py-2 px-4">
-            <div>購入額: 🪙 ${buyPrice.toLocaleString()}</div>
-            <div class="fw-bold text-danger border-top border-secondary pt-1 mt-1">売却額: 🪙 ${sellPrice.toLocaleString()}</div>
-            <div class="small text-end opacity-75 mt-1">損益: ${profitStr}</div>
+        <h5 class="fw-bold mb-2">売却の確認</h5>
+        <div class="fw-bold mb-1">${name}</div>
+        <div class="text-muted mb-2 d-flex align-items-center justify-content-center gap-2">
+            ${typeLabel}
+            <span class="d-flex align-items-center gap-1">
+                ${creatorAvatarHtml}
+                <span>${creatorName}</span>
+            </span>
+        </div>
+        <div class="text-muted mb-3">流通数：${circulation}枚</div>
+        <div class="text-start small">
+            <div>購入額：${purchaseLabel}</div>
+            <div>資産価値：${assetLabel}</div>
+            <div>売却額：${sellLabel}</div>
+            <div class="fw-bold mt-2">損益：🪙${profitStr}</div>
         </div>
     `;
 
