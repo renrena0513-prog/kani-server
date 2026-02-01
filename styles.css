@@ -604,6 +604,12 @@ body.user-impersonating .title-image {
     height: 22px;
     display: inline-flex;
     align-items: center;
+    margin-bottom: 0 !important;
+}
+
+.sell-meta-row .badge-type-pill {
+    font-size: 0.7rem;
+    height: 22px;
 }
 
 .sell-line {
