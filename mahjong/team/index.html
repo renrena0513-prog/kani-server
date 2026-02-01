@@ -557,70 +557,77 @@
                 </div>
                 <div id="team-stats-grid" class="row g-3 mb-4">
                     <div class="col-12 col-md-4">
-                        <div class="stat-card-mini">
+                        <div class="stat-card-mini" onclick="redirectToTeamRanking('all')">
                             <div class="stat-label-mini">合計スコア</div>
                             <div class="stat-value-mini" id="team-stat-total">-</div>
                             <div class="stat-rank" id="team-rank-total">-</div>
                         </div>
                     </div>
                     <div class="col-12 col-md-4">
-                        <div class="stat-card-mini">
+                        <div class="stat-card-mini" onclick="redirectToTeamRanking('avg_score')">
                             <div class="stat-label-mini">平均スコア</div>
                             <div class="stat-value-mini" id="team-stat-avg">-</div>
                             <div class="stat-rank" id="team-rank-avg">-</div>
                         </div>
                     </div>
                     <div class="col-12 col-md-4">
-                        <div class="stat-card-mini">
+                        <div class="stat-card-mini" onclick="redirectToTeamRanking('max_score')">
                             <div class="stat-label-mini">最大スコア</div>
                             <div class="stat-value-mini" id="team-stat-max">-</div>
                             <div class="stat-rank" id="team-rank-max">-</div>
                         </div>
                     </div>
                     <div class="col-12 col-md-4">
-                        <div class="stat-card-mini">
-                            <div class="stat-label-mini">試合数</div>
-                            <div class="stat-value-mini" id="team-stat-count">-</div>
-                            <div class="stat-rank" id="team-rank-count">-</div>
-                        </div>
-                    </div>
-                    <div class="col-12 col-md-4">
-                        <div class="stat-card-mini">
+                        <div class="stat-card-mini" onclick="redirectToTeamRanking('win')">
                             <div class="stat-label-mini">和了率</div>
                             <div class="stat-value-mini" id="team-stat-win">-</div>
                             <div class="stat-rank" id="team-rank-win">-</div>
                         </div>
                     </div>
                     <div class="col-12 col-md-4">
-                        <div class="stat-card-mini">
+                        <div class="stat-card-mini" onclick="redirectToTeamRanking('deal')">
                             <div class="stat-label-mini">放銃率</div>
                             <div class="stat-value-mini" id="team-stat-deal">-</div>
                             <div class="stat-rank" id="team-rank-deal">-</div>
                         </div>
                     </div>
                     <div class="col-12 col-md-4">
-                        <div class="stat-card-mini">
+                        <div class="stat-card-mini" onclick="redirectToTeamRanking('skill')">
+                            <div class="stat-label-mini">バランス雀力</div>
+                            <div class="stat-value-mini" id="team-stat-skill">-</div>
+                            <div class="stat-rank" id="team-rank-skill">-</div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <div class="stat-card-mini" onclick="redirectToTeamRanking('avg_rank')">
                             <div class="stat-label-mini">平均順位</div>
                             <div class="stat-value-mini" id="team-stat-avg-rank">-</div>
                             <div class="stat-rank" id="team-rank-avg-rank">-</div>
                         </div>
                     </div>
                     <div class="col-12 col-md-4">
-                        <div class="stat-card-mini">
+                        <div class="stat-card-mini" onclick="redirectToTeamRanking('top')">
                             <div class="stat-label-mini">トップ率</div>
                             <div class="stat-value-mini" id="team-stat-top">-</div>
                             <div class="stat-rank" id="team-rank-top">-</div>
                         </div>
                     </div>
                     <div class="col-12 col-md-4">
-                        <div class="stat-card-mini">
+                        <div class="stat-card-mini" onclick="redirectToTeamRanking('avoid')">
                             <div class="stat-label-mini">ラス回避</div>
                             <div class="stat-value-mini" id="team-stat-avoid">-</div>
                             <div class="stat-rank" id="team-rank-avoid">-</div>
                         </div>
                     </div>
                     <div class="col-12 col-md-4">
-                        <div class="stat-card-mini">
+                        <div class="stat-card-mini" onclick="redirectToTeamRanking('match_count')">
+                            <div class="stat-label-mini">試合数</div>
+                            <div class="stat-value-mini" id="team-stat-count">-</div>
+                            <div class="stat-rank" id="team-rank-count">-</div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <div class="stat-card-mini" style="cursor: default;">
                             <div class="stat-label-mini">局数</div>
                             <div class="stat-value-mini" id="team-stat-hands">-</div>
                             <div class="stat-rank" id="team-rank-hands">-</div>
@@ -1402,6 +1409,7 @@
                 maxScore: agg.max_score === -Infinity ? 0 : agg.max_score,
                 winRate: hands > 0 ? (agg.win / hands * 100) : 0,
                 dealRate: hands > 0 ? (agg.deal / hands * 100) : 0,
+                skill: hands > 0 ? ((agg.win - agg.deal) / hands * 100) : 0,
                 avgRank: count > 0 ? (1 * agg.r1 + 2 * agg.r2 + 3 * agg.r3 + 4 * agg.r4) / count : 0,
                 topRate: count > 0 ? (agg.r1 / count) * 100 : 0,
                 avoidRate: count > 0 ? (1 - ((agg.r4 === 0 && agg.r3 > 0 ? agg.r3 : agg.r4) / count)) * 100 : 0,
@@ -1421,6 +1429,7 @@
             set('team-stat-count', stats.games.toLocaleString());
             set('team-stat-win', stats.winRate.toFixed(1) + '%');
             set('team-stat-deal', stats.dealRate.toFixed(1) + '%');
+            set('team-stat-skill', stats.skill.toFixed(1) + '%');
             set('team-stat-avg-rank', stats.avgRank.toFixed(2));
             set('team-stat-top', stats.topRate.toFixed(1) + '%');
             set('team-stat-avoid', stats.avoidRate.toFixed(1) + '%');
@@ -1455,7 +1464,7 @@
                         .filter(t => t.stats.games > 0)
                         .sort((a, b) => higherIsBetter ? (b.stats[key] - a.stats[key]) : (a.stats[key] - b.stats[key]));
                     const idx = sorted.findIndex(t => t.team === myTeam.team_name);
-                    return idx >= 0 ? (idx + 1) : '-';
+                    return idx >= 0 ? `${idx + 1}/${sorted.length}位` : '-';
                 };
 
                 const setRank = (id, value) => {
@@ -1472,6 +1481,7 @@
                 setRank('team-rank-count', rankOf('games', true));
                 setRank('team-rank-win', rankOf('winRate', true));
                 setRank('team-rank-deal', rankOf('dealRate', false));
+                setRank('team-rank-skill', rankOf('skill', true));
                 setRank('team-rank-avg-rank', rankOf('avgRank', false));
                 setRank('team-rank-top', rankOf('topRate', true));
                 setRank('team-rank-avoid', rankOf('avoidRate', true));
@@ -1520,6 +1530,8 @@
             }
             const stats = calculateTeamAggregate(target);
             renderTeamStats(stats);
+            const matchupList = calculateTeamMatchup(target, myTeam?.team_name || '');
+            renderTeamMatchups(matchupList);
         }
 
         function calculateTeamMatchup(players, myTeamName) {
@@ -1759,6 +1771,13 @@
             if (rank === 2) return '🥈';
             if (rank === 3) return '🥉';
             return '🔹';
+        }
+
+        function redirectToTeamRanking(subFilter) {
+            if (!myTeam?.team_name) return;
+            const anchor = `#rank-team-${encodeURIComponent(myTeam.team_name)}`;
+            const url = `../index.html?main=team&sub=${encodeURIComponent(subFilter || 'all')}${anchor}`;
+            window.location.href = url;
         }
 
         // メンバー追放申請（管理者へ申請）

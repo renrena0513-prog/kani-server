@@ -622,8 +622,9 @@ function renderRanking(records, groupKey, type = 'all') {
 
             const deltaValue = getStatValueNum(s, type) - getStatValueNum(summaryOld[s.key], type);
             const delta = formatDelta(deltaValue, type);
+            const anchorId = s.isTeam ? `rank-team-${encodeURIComponent(s.key)}` : `rank-player-${s.discord_user_id || 'unknown'}`;
             return `
-                <div class="col-12" id="rank-player-${s.discord_user_id || 'unknown'}">
+                <div class="col-12" id="${anchorId}">
                     <div class="podium-card ${rankClass}">
                         <div class="podium-card-left">
                             <div class="podium-rank-box">
@@ -802,8 +803,9 @@ function renderRanking(records, groupKey, type = 'all') {
             const deltaValue = getStatValueNum(s, type) - getStatValueNum(summaryOld[s.key], type);
             const delta = formatDelta(deltaValue, type);
 
+            const anchorRowId = s.isTeam ? `rank-team-${encodeURIComponent(s.key)}` : `rank-player-${s.discord_user_id || 'unknown'}`;
             return `
-                <tr id="rank-player-${s.discord_user_id || 'unknown'}">
+                <tr id="${anchorRowId}">
                     <td>${rankValue}</td>
                     <td class="ps-4 text-start">
                         <a href="${linkUrl}" 
