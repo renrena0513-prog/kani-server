@@ -135,6 +135,27 @@
             border-color: var(--gold);
         }
 
+        .stat-card-mini.rank-1 {
+            background: linear-gradient(135deg, #fff7ad 0%, #ffa700 100%) !important;
+            border-left: 8px solid #ffd700 !important;
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3) !important;
+        }
+
+        .stat-card-mini.rank-2 {
+            background: linear-gradient(135deg, #f0f0f0 0%, #a0a0a0 100%) !important;
+            border-left: 8px solid #c0c0c0 !important;
+            box-shadow: 0 4px 15px rgba(192, 192, 192, 0.3) !important;
+        }
+
+        .stat-card-mini.rank-3 {
+            background: linear-gradient(135deg, #f5d4b5 0%, #b87333 100%) !important;
+            border-left: 8px solid #cd7f32 !important;
+            box-shadow: 0 4px 15px rgba(205, 127, 50, 0.3) !important;
+        }
+        .stat-card-mini.clickable {
+            cursor: pointer;
+        }
+
         .stat-rank {
             font-size: 0.7rem;
             color: #fff;
@@ -303,9 +324,9 @@
             background: #fff;
             border: 1px solid #dee2e6;
             border-radius: 12px;
-            padding: 8px 12px;
-            font-size: 0.85rem;
-            min-width: 240px;
+            padding: 10px 14px;
+            font-size: 0.9rem;
+            min-width: 280px;
             transition: all 0.2s;
         }
 
@@ -557,84 +578,84 @@
                 </div>
                 <div id="team-stats-grid" class="row g-3 mb-4">
                     <div class="col-12 col-md-4">
-                        <div class="stat-card-mini" onclick="redirectToTeamRanking('all')">
+                        <div class="stat-card-mini clickable" data-rank-key="total" onclick="redirectToTeamRanking('all')">
                             <div class="stat-label-mini">合計スコア</div>
                             <div class="stat-value-mini" id="team-stat-total">-</div>
                             <div class="stat-rank" id="team-rank-total">-</div>
                         </div>
                     </div>
                     <div class="col-12 col-md-4">
-                        <div class="stat-card-mini" onclick="redirectToTeamRanking('avg_score')">
+                        <div class="stat-card-mini clickable" data-rank-key="avgScore" onclick="redirectToTeamRanking('avg_score')">
                             <div class="stat-label-mini">平均スコア</div>
                             <div class="stat-value-mini" id="team-stat-avg">-</div>
                             <div class="stat-rank" id="team-rank-avg">-</div>
                         </div>
                     </div>
                     <div class="col-12 col-md-4">
-                        <div class="stat-card-mini" onclick="redirectToTeamRanking('max_score')">
+                        <div class="stat-card-mini clickable" data-rank-key="maxScore" onclick="redirectToTeamRanking('max_score')">
                             <div class="stat-label-mini">最大スコア</div>
                             <div class="stat-value-mini" id="team-stat-max">-</div>
                             <div class="stat-rank" id="team-rank-max">-</div>
                         </div>
                     </div>
                     <div class="col-12 col-md-4">
-                        <div class="stat-card-mini" onclick="redirectToTeamRanking('win')">
+                        <div class="stat-card-mini clickable" data-rank-key="winRate" onclick="redirectToTeamRanking('win')">
                             <div class="stat-label-mini">和了率</div>
                             <div class="stat-value-mini" id="team-stat-win">-</div>
                             <div class="stat-rank" id="team-rank-win">-</div>
                         </div>
                     </div>
                     <div class="col-12 col-md-4">
-                        <div class="stat-card-mini" onclick="redirectToTeamRanking('deal')">
+                        <div class="stat-card-mini clickable" data-rank-key="dealRate" onclick="redirectToTeamRanking('deal')">
                             <div class="stat-label-mini">放銃率</div>
                             <div class="stat-value-mini" id="team-stat-deal">-</div>
                             <div class="stat-rank" id="team-rank-deal">-</div>
                         </div>
                     </div>
                     <div class="col-12 col-md-4">
-                        <div class="stat-card-mini" onclick="redirectToTeamRanking('skill')">
+                        <div class="stat-card-mini clickable" data-rank-key="skill" onclick="redirectToTeamRanking('skill')">
                             <div class="stat-label-mini">バランス雀力</div>
                             <div class="stat-value-mini" id="team-stat-skill">-</div>
                             <div class="stat-rank" id="team-rank-skill">-</div>
                         </div>
                     </div>
                     <div class="col-12 col-md-4">
-                        <div class="stat-card-mini" onclick="redirectToTeamRanking('avg_rank')">
+                        <div class="stat-card-mini clickable" data-rank-key="avgRank" onclick="redirectToTeamRanking('avg_rank')">
                             <div class="stat-label-mini">平均順位</div>
                             <div class="stat-value-mini" id="team-stat-avg-rank">-</div>
                             <div class="stat-rank" id="team-rank-avg-rank">-</div>
                         </div>
                     </div>
                     <div class="col-12 col-md-4">
-                        <div class="stat-card-mini" onclick="redirectToTeamRanking('top')">
+                        <div class="stat-card-mini clickable" data-rank-key="topRate" onclick="redirectToTeamRanking('top')">
                             <div class="stat-label-mini">トップ率</div>
                             <div class="stat-value-mini" id="team-stat-top">-</div>
                             <div class="stat-rank" id="team-rank-top">-</div>
                         </div>
                     </div>
                     <div class="col-12 col-md-4">
-                        <div class="stat-card-mini" onclick="redirectToTeamRanking('avoid')">
+                        <div class="stat-card-mini clickable" data-rank-key="avoidRate" onclick="redirectToTeamRanking('avoid')">
                             <div class="stat-label-mini">ラス回避</div>
                             <div class="stat-value-mini" id="team-stat-avoid">-</div>
                             <div class="stat-rank" id="team-rank-avoid">-</div>
                         </div>
                     </div>
                     <div class="col-12 col-md-4">
-                        <div class="stat-card-mini" onclick="redirectToTeamRanking('match_count')">
+                        <div class="stat-card-mini clickable" data-rank-key="games" onclick="redirectToTeamRanking('match_count')">
                             <div class="stat-label-mini">試合数</div>
                             <div class="stat-value-mini" id="team-stat-count">-</div>
                             <div class="stat-rank" id="team-rank-count">-</div>
                         </div>
                     </div>
                     <div class="col-12 col-md-4">
-                        <div class="stat-card-mini" style="cursor: default;">
+                        <div class="stat-card-mini" data-rank-key="hands" style="cursor: default;">
                             <div class="stat-label-mini">局数</div>
                             <div class="stat-value-mini" id="team-stat-hands">-</div>
                             <div class="stat-rank" id="team-rank-hands">-</div>
                         </div>
                     </div>
                     <div class="col-12 col-md-4">
-                        <div class="stat-card-mini" style="cursor: default;">
+                        <div class="stat-card-mini" data-rank-key="rating" style="cursor: default;">
                             <div class="stat-label-mini">📊 レーティング</div>
                             <div class="stat-value-mini" id="team-stat-rating">-</div>
                             <div class="stat-rank no-data" id="team-rank-rating">-</div>
@@ -659,30 +680,7 @@
 
                 <!-- 最近の対局ログ -->
                 <h4 class="mb-3 mt-4">📝 最近のチーム戦</h4>
-                <div class="team-log-filters mb-3">
-                    <div class="mahjong-filter-group">
-                        <label class="filter-label-mini">👤 メンバー</label>
-                        <div class="custom-dropdown-container">
-                            <input type="hidden" id="team-log-member-filter" value="all">
-                            <div class="mahjong-filter-select d-flex align-items-center justify-content-between"
-                                style="cursor: pointer;" onclick="toggleTeamMemberDropdown()">
-                                <div class="d-flex align-items-center gap-2" id="team-log-member-display" style="flex-grow: 1; overflow: hidden;">
-                                    <span class="text-muted small">メンバー（全員）</span>
-                                </div>
-                                <span class="small text-muted">▼</span>
-                            </div>
-                            <div class="custom-dropdown-list" id="team-log-member-menu"></div>
-                        </div>
-                    </div>
-                    <div class="mahjong-filter-group">
-                        <label class="filter-label-mini">🀄 試合形式</label>
-                        <select id="team-log-mode-filter" class="mahjong-filter-select">
-                            <option value="all">すべて</option>
-                            <option value="四麻">四麻</option>
-                            <option value="三麻">三麻</option>
-                        </select>
-                    </div>
-                </div>
+                <!-- チーム統計のフィルターを共用 -->
                 <div id="team-battle-log">
                     <div class="text-center py-3">
                         <div class="spinner-border spinner-border-sm" role="status"></div>
@@ -1367,11 +1365,10 @@
 
             teamLogPlayers = allMatchPlayers || [];
             teamLogMatches = buildTeamLogMatches(teamLogPlayers, memberIds, profileMap);
-            setupTeamLogFilters();
-            applyTeamLogFilters();
+            applyTeamLogFilters(...Object.values(getCurrentTeamFilters()));
 
             // 対戦相性
-            const matchupList = calculateTeamMatchup(teamLogPlayers, myTeam?.team_name || '');
+            const matchupList = calculateTeamMatchupFiltered(teamLogPlayers, myTeam?.team_name || '', ...Object.values(getCurrentTeamFilters()));
             renderTeamMatchups(matchupList);
         }
 
@@ -1467,26 +1464,36 @@
                     return idx >= 0 ? `${idx + 1}/${sorted.length}位` : '-';
                 };
 
-                const setRank = (id, value) => {
+                const setRank = (id, value, key) => {
                     const el = document.getElementById(id);
                     if (el) {
                         el.textContent = value;
                         el.classList.toggle('no-data', value === '-');
                     }
+                    if (key) {
+                        const card = document.querySelector(`.stat-card-mini[data-rank-key="${key}"]`);
+                        if (card) {
+                            card.classList.remove('rank-1', 'rank-2', 'rank-3');
+                            const rankNum = parseInt(String(value).split('/')[0], 10);
+                            if (rankNum === 1 || rankNum === 2 || rankNum === 3) {
+                                card.classList.add(`rank-${rankNum}`);
+                            }
+                        }
+                    }
                 };
 
-                setRank('team-rank-total', rankOf('total', true));
-                setRank('team-rank-avg', rankOf('avgScore', true));
-                setRank('team-rank-max', rankOf('maxScore', true));
-                setRank('team-rank-count', rankOf('games', true));
-                setRank('team-rank-win', rankOf('winRate', true));
-                setRank('team-rank-deal', rankOf('dealRate', false));
-                setRank('team-rank-skill', rankOf('skill', true));
-                setRank('team-rank-avg-rank', rankOf('avgRank', false));
-                setRank('team-rank-top', rankOf('topRate', true));
-                setRank('team-rank-avoid', rankOf('avoidRate', true));
-                setRank('team-rank-hands', rankOf('hands', true));
-                setRank('team-rank-rating', '-');
+                setRank('team-rank-total', rankOf('total', true), 'total');
+                setRank('team-rank-avg', rankOf('avgScore', true), 'avgScore');
+                setRank('team-rank-max', rankOf('maxScore', true), 'maxScore');
+                setRank('team-rank-count', rankOf('games', true), 'games');
+                setRank('team-rank-win', rankOf('winRate', true), 'winRate');
+                setRank('team-rank-deal', rankOf('dealRate', false), 'dealRate');
+                setRank('team-rank-skill', rankOf('skill', true), 'skill');
+                setRank('team-rank-avg-rank', rankOf('avgRank', false), 'avgRank');
+                setRank('team-rank-top', rankOf('topRate', true), 'topRate');
+                setRank('team-rank-avoid', rankOf('avoidRate', true), 'avoidRate');
+                setRank('team-rank-hands', rankOf('hands', true), 'hands');
+                setRank('team-rank-rating', '-', 'rating');
             } catch (err) {
                 console.error('チームランキング取得エラー:', err);
             }
@@ -1516,11 +1523,16 @@
             }
         }
 
-        function applyTeamStatsFilter() {
+        function getCurrentTeamFilters() {
             const select = document.getElementById('team-stats-member-filter');
             const memberId = select ? select.value : 'all';
             const modeSelect = document.getElementById('team-stats-mode-filter');
             const mode = modeSelect ? modeSelect.value : 'all';
+            return { memberId, mode };
+        }
+
+        function applyTeamStatsFilter() {
+            const { memberId, mode } = getCurrentTeamFilters();
             let target = teamStatsRecords || [];
             if (memberId && memberId !== 'all') {
                 target = target.filter(r => r.discord_user_id === memberId);
@@ -1530,21 +1542,33 @@
             }
             const stats = calculateTeamAggregate(target);
             renderTeamStats(stats);
-            const matchupList = calculateTeamMatchup(target, myTeam?.team_name || '');
+
+            const matchupList = calculateTeamMatchupFiltered(teamLogPlayers, myTeam?.team_name || '', memberId, mode);
             renderTeamMatchups(matchupList);
+
+            teamLogPage = 1;
+            applyTeamLogFilters(memberId, mode);
         }
 
-        function calculateTeamMatchup(players, myTeamName) {
+        function calculateTeamMatchupFiltered(players, myTeamName, memberId, mode) {
             const matchMap = {};
+            const memberMatchSet = new Set();
+
             players.forEach(p => {
                 if (!p.match_id) return;
+                if (mode && mode !== 'all' && (p.mahjong_mode || '') !== mode) return;
+                if (memberId && memberId !== 'all' && p.discord_user_id === memberId) {
+                    memberMatchSet.add(p.match_id);
+                }
                 if (!matchMap[p.match_id]) matchMap[p.match_id] = {};
                 const team = p.team_name;
                 if (!team) return;
                 matchMap[p.match_id][team] = (matchMap[p.match_id][team] || 0) + Number(p.final_score || p.score || 0);
             });
+
             const diffMap = {};
-            Object.values(matchMap).forEach(teams => {
+            Object.entries(matchMap).forEach(([matchId, teams]) => {
+                if (memberId && memberId !== 'all' && !memberMatchSet.has(matchId)) return;
                 const myScore = teams[myTeamName];
                 if (typeof myScore !== 'number') return;
                 Object.entries(teams).forEach(([team, score]) => {
@@ -1554,8 +1578,7 @@
                     diffMap[team].diff += diff;
                 });
             });
-            const list = Object.values(diffMap).sort((a, b) => b.diff - a.diff);
-            return list;
+            return Object.values(diffMap).sort((a, b) => b.diff - a.diff);
         }
 
         function renderTeamMatchups(list) {
@@ -1610,40 +1633,8 @@
                 });
         }
 
-        function setupTeamLogFilters() {
-            const memberMenu = document.getElementById('team-log-member-menu');
-            if (memberMenu && !memberMenu.dataset.bound) {
-                memberMenu.dataset.bound = 'true';
-                const rows = ['<div class="dropdown-item-flex" onclick="selectTeamMemberFilter(\'all\', \'メンバー（全員）\')"><span class="small">メンバー（全員）</span></div>'];
-                teamMembers.forEach(m => {
-                    const avatar = m.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png';
-                    const name = m.account_name || m.discord_user_id;
-                    rows.push(`
-                        <div class="dropdown-item-flex" onclick="selectTeamMemberFilter('${m.discord_user_id}', '${name}', '${avatar}')">
-                            <img src="${avatar}" class="dropdown-avatar" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
-                            <span class="small">${name}</span>
-                        </div>
-                    `);
-                });
-                memberMenu.innerHTML = rows.join('');
-            }
 
-            const modeSelect = document.getElementById('team-log-mode-filter');
-            if (modeSelect && !modeSelect.dataset.bound) {
-                modeSelect.dataset.bound = 'true';
-                modeSelect.addEventListener('change', () => {
-                    teamLogPage = 1;
-                    applyTeamLogFilters();
-                });
-            }
-        }
-
-        function applyTeamLogFilters() {
-            const memberSelect = document.getElementById('team-log-member-filter');
-            const modeSelect = document.getElementById('team-log-mode-filter');
-            const memberId = memberSelect ? memberSelect.value : 'all';
-            const mode = modeSelect ? modeSelect.value : 'all';
-
+        function applyTeamLogFilters(memberId = 'all', mode = 'all') {
             let filtered = teamLogMatches.slice();
             if (memberId && memberId !== 'all') {
                 filtered = filtered.filter(m => m.players.some(p => p.discord_user_id === memberId));
@@ -1743,28 +1734,6 @@
             applyTeamStatsFilter();
         }
 
-        function toggleTeamMemberDropdown() {
-            const list = document.getElementById('team-log-member-menu');
-            if (!list) return;
-            list.style.display = list.style.display === 'block' ? 'none' : 'block';
-        }
-
-        function selectTeamMemberFilter(id, name, avatarUrl = '') {
-            const input = document.getElementById('team-log-member-filter');
-            const display = document.getElementById('team-log-member-display');
-            const list = document.getElementById('team-log-member-menu');
-            if (input) input.value = id;
-            if (display) {
-                if (avatarUrl) {
-                    display.innerHTML = `<img src="${avatarUrl}" class="dropdown-avatar" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'"><span class="small">${name}</span>`;
-                } else {
-                    display.innerHTML = `<span class="small">${name}</span>`;
-                }
-            }
-            if (list) list.style.display = 'none';
-            teamLogPage = 1;
-            applyTeamLogFilters();
-        }
 
         function getRankEmoji(rank) {
             if (rank === 1) return '🥇';
