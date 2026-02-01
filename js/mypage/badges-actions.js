@@ -186,6 +186,7 @@
             const rarityLabel = rarityName || '';
             const sellRarityLabel = sellRarity || rarityLabel;
             const rarityClass = rarityLabel ? getRarityClass(rarityLabel) : '';
+            const sellRarityClass = sellRarityLabel ? getRarityClass(sellRarityLabel) : '';
 
             const isFree = pPrice <= 0;
             const purchaseLabel = isFree ? '無料' : `${rarityLabel}🪙${pPrice.toLocaleString()}`;
@@ -200,30 +201,24 @@
                 : '';
             const profitClass = profit < 0 ? 'profit-negative' : '';
 
-            const content = `
-                <h5 class="fw-bold mb-2">売却の確認</h5>
-                <div class="fw-bold mb-1">${name}</div>
-                <div class="d-flex justify-content-center gap-2 flex-wrap mb-2">
-                    ${rarityLabel ? `<span class="rarity-pill ${rarityClass}" style="background: rgba(0,0,0,0.2);">${rarityLabel}</span>` : ''}
-                    <span class="badge badge-type-pill ${typeLabel === '変動型' ? 'rarity-epic' : 'bg-light text-dark border'}">${typeLabel}</span>
-                    <span class="creator-pill">${creatorAvatarHtml}<span>${creatorName || '不明'}</span></span>
-                </div>
-                <div class="text-muted mb-3">流通数：${circulation || 0}枚</div>
-                <div class="text-start sell-detail-large">
-                    <div>購入額：${purchaseLabel}</div>
-                    <div>資産価値：${assetLabel}</div>
-                    <div>売却額：${sellLabel}</div>
-                    <div class="fw-bold mt-2 ${profitClass}">損益：🪙${profitStr}</div>
-                </div>
-            `;
-
-            // 選択モーダルを閉じる
             const modalEl = document.getElementById('badgeActionModal');
             if (modalEl) {
                 const modal = bootstrap.Modal.getInstance(modalEl);
                 if (modal) modal.hide();
             }
-            showShopActionModal(content, executeSellUUID, '売却する');
+            const sellItem = {
+                badge_name: name,
+                purchased_price: pPrice,
+                market_value: pVal,
+                sell_price: sPrice,
+                sales_type: typeLabel,
+                creator_name: creatorName,
+                creator_avatar: creatorAvatar,
+                market_count: circulation || 0,
+                rarity_name: rarityLabel,
+                sell_rarity_name: sellRarityLabel
+            };
+            BadgeSellUI.renderSellConfirmModal(sellItem, executeSellUUID, { confirmLabel: '売却する' });
         }
 
         let isSellingBadge = false;

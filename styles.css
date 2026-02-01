@@ -585,11 +585,32 @@ body.user-impersonating .title-image {
     background: #fff;
     font-size: 0.75rem;
     color: #495057;
+    line-height: 1;
 }
 
 .sell-detail-large {
     font-size: 1.1rem;
     line-height: 1.6;
+}
+
+.sell-meta-row {
+    align-items: center;
+}
+
+.sell-meta-row .badge,
+.sell-meta-row .creator-pill,
+.sell-meta-row .rarity-pill {
+    line-height: 1;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+}
+
+.sell-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
 }
 
 .profit-negative {
