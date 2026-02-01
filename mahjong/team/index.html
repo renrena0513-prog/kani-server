@@ -120,22 +120,60 @@
         }
 
         .stat-card-mini {
-            background: #f8f9fa;
+            background: #fff;
             border-radius: 12px;
-            padding: 12px;
+            padding: 15px;
             text-align: center;
-            border: 1px solid #e9ecef;
+            transition: all 0.3s ease;
+            border: 1px solid #dee2e6;
+            height: 100%;
+        }
+
+        .stat-card-mini:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-color: var(--gold);
         }
 
         .stat-label-mini {
             font-size: 0.75rem;
             color: #6c757d;
+            font-weight: 600;
+            margin-bottom: 5px;
         }
 
         .stat-value-mini {
-            font-size: 1.2rem;
+            font-size: 1.3rem;
             font-weight: 700;
-            color: #2b2f36;
+            color: var(--deep-purple);
+        }
+
+        @media (max-width: 767px) {
+            .stat-card-mini {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 10px 15px;
+                text-align: left;
+            }
+
+            .stat-label-mini {
+                margin-bottom: 0;
+                flex: 1;
+            }
+
+            .stat-value-mini {
+                font-size: 1.1rem;
+                margin: 0 10px;
+                flex: 1;
+                text-align: right;
+            }
+        }
+
+        .matchup-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
         }
 
         .matchup-card {
@@ -143,6 +181,94 @@
             border-radius: 12px;
             padding: 12px 14px;
             border: 1px solid #e9ecef;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .team-log-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .team-log-filters .form-select {
+            min-width: 220px;
+        }
+
+        .custom-dropdown-container {
+            position: relative;
+            min-width: 240px;
+        }
+
+        .custom-dropdown-list {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            max-height: 320px;
+            overflow-y: auto;
+            z-index: 2000;
+            display: none;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .dropdown-item-flex {
+            display: flex;
+            align-items: center;
+            padding: 8px 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 1px solid #f1f3f5;
+        }
+
+        .dropdown-item-flex:last-child {
+            border-bottom: none;
+        }
+
+        .dropdown-item-flex:hover {
+            background: linear-gradient(to right, #f8f9fa, #e9ecef);
+        }
+
+        .dropdown-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            margin-right: 8px;
+            object-fit: cover;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .player-entry {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .player-team-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            color: #6c757d;
+        }
+
+        .team-logo-mini {
+            width: 18px;
+            height: 18px;
+            object-fit: contain;
+            border-radius: 4px;
+        }
+
+        .player-info-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .leave-request-card {
@@ -421,23 +547,8 @@
 
                 <!-- 対戦相性 -->
                 <h4 class="mb-3">⚔️ 対戦相性</h4>
-                <div class="row g-3 mb-4">
-                    <div class="col-md-6">
-                        <div class="matchup-card">
-                            <div class="small text-muted mb-1">🔥 一番勝ち越し</div>
-                            <div id="team-best-matchup" class="d-flex align-items-center gap-2">
-                                <span class="text-muted small">-</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="matchup-card">
-                            <div class="small text-muted mb-1">💔 一番負け越し</div>
-                            <div id="team-worst-matchup" class="d-flex align-items-center gap-2">
-                                <span class="text-muted small">-</span>
-                            </div>
-                        </div>
-                    </div>
+                <div id="team-matchup-list" class="matchup-grid mb-4">
+                    <div class="text-muted small">-</div>
                 </div>
 
                 <!-- メンバー別スコア一覧 -->
@@ -451,14 +562,22 @@
 
                 <!-- 最近の対局ログ -->
                 <h4 class="mb-3 mt-4">📝 最近のチーム戦</h4>
-                <div class="d-flex flex-wrap gap-2 mb-3">
-                    <select id="team-log-member-filter" class="form-select form-select-sm" style="max-width: 220px;">
-                        <option value="all">メンバー（全員）</option>
-                    </select>
-                    <select id="team-log-mode-filter" class="form-select form-select-sm" style="max-width: 180px;">
-                        <option value="all">試合形式（すべて）</option>
-                        <option value="四麻">四麻</option>
-                        <option value="三麻">三麻</option>
+                <div class="team-log-filters mb-3">
+                    <div class="custom-dropdown-container">
+                        <input type="hidden" id="team-log-member-filter" value="all">
+                        <div class="form-control form-control-sm d-flex align-items-center justify-content-between"
+                            style="cursor: pointer; background: white; padding: 8px 12px; height: 34px;" onclick="toggleTeamMemberDropdown()">
+                            <div class="d-flex align-items-center gap-2" id="team-log-member-display" style="flex-grow: 1; overflow: hidden;">
+                                <span class="text-muted small">メンバー（全員）</span>
+                            </div>
+                            <span class="small text-muted">▼</span>
+                        </div>
+                        <div class="custom-dropdown-list" id="team-log-member-menu"></div>
+                    </div>
+                    <select id="team-log-mode-filter" class="form-select form-select-sm">
+                        <option value="all">🀄 試合形式（すべて）</option>
+                        <option value="四麻">🀄 四麻</option>
+                        <option value="三麻">🀄 三麻</option>
                     </select>
                 </div>
                 <div id="team-battle-log">
@@ -565,6 +684,7 @@
         const TEAM_LOG_PER_PAGE = 10;
         let teamLogMatches = [];
         let teamLogPlayers = [];
+        let teamLogoMap = {};
         let selectedNewLeader = null;
         let effectiveDiscordId = null; // なりすまし中はそのユーザーID、通常は自分のID
 
@@ -609,6 +729,16 @@
 
             myTeam = team;
             isTeamAdmin = team.creator_discord_id === effectiveDiscordId;
+
+            const { data: teamsData } = await supabaseClient
+                .from('teams')
+                .select('team_name, logo_badge:badges!logo_badge_id(image_url)');
+            teamLogoMap = {};
+            (teamsData || []).forEach(t => {
+                if (t.team_name && t.logo_badge?.image_url) {
+                    teamLogoMap[t.team_name] = t.logo_badge.image_url;
+                }
+            });
 
             await renderTeamContent();
 
@@ -1110,8 +1240,8 @@
             applyTeamLogFilters();
 
             // 対戦相性
-            const matchup = calculateTeamMatchup(teamLogPlayers, myTeam?.team_name || '');
-            renderTeamMatchups(matchup.best, matchup.worst);
+            const matchupList = calculateTeamMatchup(teamLogPlayers, myTeam?.team_name || '');
+            renderTeamMatchups(matchupList);
         }
 
         function calculateTeamAggregate(records) {
@@ -1193,35 +1323,27 @@
                     diffMap[team].diff += diff;
                 });
             });
-            const list = Object.values(diffMap);
-            const best = list.sort((a, b) => b.diff - a.diff)[0];
-            const worst = list.sort((a, b) => a.diff - b.diff)[0];
-            return { best, worst };
+            const list = Object.values(diffMap).sort((a, b) => b.diff - a.diff);
+            return list;
         }
 
-        function renderTeamMatchups(best, worst) {
-            const bestEl = document.getElementById('team-best-matchup');
-            const worstEl = document.getElementById('team-worst-matchup');
-            if (bestEl) {
-                if (!best || best.diff <= 0) {
-                    bestEl.innerHTML = '<span class="text-muted small">-</span>';
-                } else {
-                    bestEl.innerHTML = `
-                        <span class="fw-bold">${best.team}</span>
-                        <span class="text-success fw-bold ms-auto">+${best.diff.toFixed(1)}</span>
-                    `;
-                }
+        function renderTeamMatchups(list) {
+            const container = document.getElementById('team-matchup-list');
+            if (!container) return;
+            if (!list || list.length === 0) {
+                container.innerHTML = '<div class="text-muted small">-</div>';
+                return;
             }
-            if (worstEl) {
-                if (!worst || worst.diff >= 0) {
-                    worstEl.innerHTML = '<span class="text-muted small">-</span>';
-                } else {
-                    worstEl.innerHTML = `
-                        <span class="fw-bold">${worst.team}</span>
-                        <span class="text-danger fw-bold ms-auto">${worst.diff.toFixed(1)}</span>
-                    `;
-                }
-            }
+            container.innerHTML = list.map(item => {
+                const cls = item.diff > 0 ? 'text-success' : item.diff < 0 ? 'text-danger' : 'text-muted';
+                const prefix = item.diff > 0 ? '+' : '';
+                return `
+                    <div class="matchup-card">
+                        <span class="fw-bold">${item.team}</span>
+                        <span class="${cls} fw-bold">${prefix}${item.diff.toFixed(1)}</span>
+                    </div>
+                `;
+            }).join('');
         }
 
         function buildTeamLogMatches(players, memberIds, profileMap) {
@@ -1257,15 +1379,21 @@
         }
 
         function setupTeamLogFilters() {
-            const memberSelect = document.getElementById('team-log-member-filter');
-            if (memberSelect && memberSelect.options.length <= 1) {
-                memberSelect.innerHTML = '<option value="all">メンバー（全員）</option>' + teamMembers.map(m => `
-                    <option value="${m.discord_user_id}">${m.account_name || m.discord_user_id}</option>
-                `).join('');
-                memberSelect.addEventListener('change', () => {
-                    teamLogPage = 1;
-                    applyTeamLogFilters();
+            const memberMenu = document.getElementById('team-log-member-menu');
+            if (memberMenu && !memberMenu.dataset.bound) {
+                memberMenu.dataset.bound = 'true';
+                const rows = ['<div class="dropdown-item-flex" onclick="selectTeamMemberFilter(\'all\', \'メンバー（全員）\')"><span class="small">メンバー（全員）</span></div>'];
+                teamMembers.forEach(m => {
+                    const avatar = m.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png';
+                    const name = m.account_name || m.discord_user_id;
+                    rows.push(`
+                        <div class="dropdown-item-flex" onclick="selectTeamMemberFilter('${m.discord_user_id}', '${name}', '${avatar}')">
+                            <img src="${avatar}" class="dropdown-avatar" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+                            <span class="small">${name}</span>
+                        </div>
+                    `);
                 });
+                memberMenu.innerHTML = rows.join('');
             }
 
             const modeSelect = document.getElementById('team-log-mode-filter');
@@ -1315,12 +1443,21 @@
                                 const score = p.final_score || p.score || 0;
                                 const scoreClass = score >= 0 ? 'text-success' : 'text-danger';
                                 const scorePrefix = score >= 0 ? '+' : '';
+                                const rankEmoji = getRankEmoji(p.rank);
+                                const teamLogo = teamLogoMap[p.team_name] ? `<img src="${teamLogoMap[p.team_name]}" class="team-logo-mini" onerror="this.remove()">` : '';
                                 return `
-                                    <div class="player-entry d-flex align-items-center ${isMember ? 'fw-bold border-start border-3 ps-2 border-success' : ''}" 
+                                    <div class="player-entry ${isMember ? 'fw-bold border-start border-3 ps-2 border-success' : ''}" 
                                          style="flex: 1 1 180px; max-width: 280px; min-width: 140px; padding: 4px;">
-                                        <img src="${p.avatar_url}" class="rounded-circle me-1" width="22" height="22" onerror="this.src='https://via.placeholder.com/22'">
-                                        <span class="player-name text-truncate" style="flex-grow: 1;">${p.account_name}</span>
-                                        <span class="fw-bold ${scoreClass} ms-2" style="font-size: 0.95rem; min-width: 45px; text-align: right;">${scorePrefix}${Number(score).toLocaleString()}</span>
+                                        <div class="player-team-row">
+                                            ${teamLogo}
+                                            <span class="text-truncate">${p.team_name || ''}</span>
+                                        </div>
+                                        <div class="player-info-row">
+                                            <img src="${p.avatar_url}" class="rounded-circle" width="22" height="22" onerror="this.src='https://via.placeholder.com/22'">
+                                            <span class="rank-emoji">${rankEmoji}</span>
+                                            <span class="player-name text-truncate" style="flex-grow: 1;">${p.account_name}</span>
+                                            <span class="fw-bold ${scoreClass} ms-2" style="font-size: 0.95rem; min-width: 45px; text-align: right;">${scorePrefix}${Number(score).toLocaleString()}</span>
+                                        </div>
                                     </div>
                                 `;
                             }).join('')}
@@ -1350,6 +1487,36 @@
             teamLogPage += delta;
             if (teamLogPage < 1) teamLogPage = 1;
             applyTeamLogFilters();
+        }
+
+        function toggleTeamMemberDropdown() {
+            const list = document.getElementById('team-log-member-menu');
+            if (!list) return;
+            list.style.display = list.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function selectTeamMemberFilter(id, name, avatarUrl = '') {
+            const input = document.getElementById('team-log-member-filter');
+            const display = document.getElementById('team-log-member-display');
+            const list = document.getElementById('team-log-member-menu');
+            if (input) input.value = id;
+            if (display) {
+                if (avatarUrl) {
+                    display.innerHTML = `<img src="${avatarUrl}" class="dropdown-avatar" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'"><span class="small">${name}</span>`;
+                } else {
+                    display.innerHTML = `<span class="small">${name}</span>`;
+                }
+            }
+            if (list) list.style.display = 'none';
+            teamLogPage = 1;
+            applyTeamLogFilters();
+        }
+
+        function getRankEmoji(rank) {
+            if (rank === 1) return '🥇';
+            if (rank === 2) return '🥈';
+            if (rank === 3) return '🥉';
+            return '🔹';
         }
 
         // メンバー追放申請（管理者へ申請）
