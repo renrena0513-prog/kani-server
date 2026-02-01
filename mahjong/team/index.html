@@ -482,62 +482,67 @@
 
                 <!-- チーム統計 -->
                 <h4 class="mb-3">🧮 チーム統計</h4>
+                <div class="team-log-filters mb-3">
+                    <select id="team-stats-member-filter" class="form-select form-select-sm" style="max-width: 240px;">
+                        <option value="all">チーム全体</option>
+                    </select>
+                </div>
                 <div id="team-stats-grid" class="row g-3 mb-4">
-                    <div class="col-6 col-md-3">
+                    <div class="col-12 col-md-3">
                         <div class="stat-card-mini">
                             <div class="stat-label-mini">合計スコア</div>
                             <div class="stat-value-mini" id="team-stat-total">-</div>
                         </div>
                     </div>
-                    <div class="col-6 col-md-3">
+                    <div class="col-12 col-md-3">
                         <div class="stat-card-mini">
                             <div class="stat-label-mini">平均スコア</div>
                             <div class="stat-value-mini" id="team-stat-avg">-</div>
                         </div>
                     </div>
-                    <div class="col-6 col-md-3">
+                    <div class="col-12 col-md-3">
                         <div class="stat-card-mini">
                             <div class="stat-label-mini">最大スコア</div>
                             <div class="stat-value-mini" id="team-stat-max">-</div>
                         </div>
                     </div>
-                    <div class="col-6 col-md-3">
+                    <div class="col-12 col-md-3">
                         <div class="stat-card-mini">
                             <div class="stat-label-mini">試合数</div>
                             <div class="stat-value-mini" id="team-stat-count">-</div>
                         </div>
                     </div>
-                    <div class="col-6 col-md-3">
+                    <div class="col-12 col-md-3">
                         <div class="stat-card-mini">
                             <div class="stat-label-mini">和了率</div>
                             <div class="stat-value-mini" id="team-stat-win">-</div>
                         </div>
                     </div>
-                    <div class="col-6 col-md-3">
+                    <div class="col-12 col-md-3">
                         <div class="stat-card-mini">
                             <div class="stat-label-mini">放銃率</div>
                             <div class="stat-value-mini" id="team-stat-deal">-</div>
                         </div>
                     </div>
-                    <div class="col-6 col-md-3">
+                    <div class="col-12 col-md-3">
                         <div class="stat-card-mini">
                             <div class="stat-label-mini">平均順位</div>
                             <div class="stat-value-mini" id="team-stat-avg-rank">-</div>
                         </div>
                     </div>
-                    <div class="col-6 col-md-3">
+                    <div class="col-12 col-md-3">
                         <div class="stat-card-mini">
                             <div class="stat-label-mini">トップ率</div>
                             <div class="stat-value-mini" id="team-stat-top">-</div>
                         </div>
                     </div>
-                    <div class="col-6 col-md-3">
+                    <div class="col-12 col-md-3">
                         <div class="stat-card-mini">
                             <div class="stat-label-mini">ラス回避</div>
                             <div class="stat-value-mini" id="team-stat-avoid">-</div>
                         </div>
                     </div>
-                    <div class="col-6 col-md-3">
+                    <div class="col-12 col-md-3">
                         <div class="stat-card-mini">
                             <div class="stat-label-mini">局数</div>
                             <div class="stat-value-mini" id="team-stat-hands">-</div>
@@ -685,6 +690,7 @@
         let teamLogMatches = [];
         let teamLogPlayers = [];
         let teamLogoMap = {};
+        let teamStatsRecords = [];
         let selectedNewLeader = null;
         let effectiveDiscordId = null; // なりすまし中はそのユーザーID、通常は自分のID
 
@@ -1140,8 +1146,9 @@
             }
 
             // チーム統計
-            const teamStats = calculateTeamAggregate(results || []);
-            renderTeamStats(teamStats);
+            teamStatsRecords = results || [];
+            setupTeamStatsFilter();
+            applyTeamStatsFilter();
 
             // メンバー別にスコアを集計
             const memberScores = {};
@@ -1301,6 +1308,29 @@
             set('team-stat-top', stats.topRate.toFixed(1) + '%');
             set('team-stat-avoid', stats.avoidRate.toFixed(1) + '%');
             set('team-stat-hands', stats.hands.toLocaleString());
+        }
+
+        function setupTeamStatsFilter() {
+            const select = document.getElementById('team-stats-member-filter');
+            if (!select || select.dataset.bound) return;
+            select.dataset.bound = 'true';
+            select.innerHTML = '<option value="all">チーム全体</option>' + teamMembers.map(m => `
+                <option value="${m.discord_user_id}">${m.account_name || m.discord_user_id}</option>
+            `).join('');
+            select.addEventListener('change', () => {
+                applyTeamStatsFilter();
+            });
+        }
+
+        function applyTeamStatsFilter() {
+            const select = document.getElementById('team-stats-member-filter');
+            const memberId = select ? select.value : 'all';
+            let target = teamStatsRecords || [];
+            if (memberId && memberId !== 'all') {
+                target = target.filter(r => r.discord_user_id === memberId);
+            }
+            const stats = calculateTeamAggregate(target);
+            renderTeamStats(stats);
         }
 
         function calculateTeamMatchup(players, myTeamName) {
