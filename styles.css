@@ -556,6 +556,46 @@ body.user-impersonating .title-image {
    新レアリティシステム対応 (2025-01-26)
    ======================================== */
 
+/* バッジショップ風のメタUI */
+.rarity-pill {
+    font-size: 0.7rem;
+    padding: 2px 12px;
+    border-radius: 20px;
+    color: #fff;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.badge-type-pill {
+    border-radius: 10px;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.65rem;
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+}
+
+.creator-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 10px;
+    border: 1px solid #dee2e6;
+    border-radius: 999px;
+    background: #fff;
+    font-size: 0.75rem;
+    color: #495057;
+}
+
+.sell-detail-large {
+    font-size: 1.1rem;
+    line-height: 1.6;
+}
+
+.profit-negative {
+    color: #dc3545 !important;
+}
+
 /* 並品：ライトグレー（#BFC3C9）＋ホワイト */
 .rarity-normal {
     background: #BFC3C9 !important;

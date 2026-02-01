@@ -347,6 +347,7 @@ function confirmSellFromMyPage(uuid) {
     const profitStr = (profit >= 0 ? '+' : '') + profit.toLocaleString();
     const rarityLabel = item.rarity_name || '';
     const sellRarityLabel = item.sell_rarity_name || rarityLabel;
+    const rarityClass = rarityLabel ? getRarityClass(rarityLabel) : '';
     const creatorName = item.creator_name || '不明';
     const creatorAvatar = item.creator_avatar || '';
     const typeLabel = item.sales_type || '固定型';
@@ -362,25 +363,24 @@ function confirmSellFromMyPage(uuid) {
     const creatorAvatarHtml = creatorAvatar
         ? `<img src="${creatorAvatar}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;">`
         : '';
+    const profitClass = profit < 0 ? 'profit-negative' : '';
 
     currentShopActionUUID = uuid;
 
     const content = `
         <h5 class="fw-bold mb-2">売却の確認</h5>
         <div class="fw-bold mb-1">${name}</div>
-        <div class="text-muted mb-2 d-flex align-items-center justify-content-center gap-2">
-            ${typeLabel}
-            <span class="d-flex align-items-center gap-1">
-                ${creatorAvatarHtml}
-                <span>${creatorName}</span>
-            </span>
+        <div class="d-flex justify-content-center gap-2 flex-wrap mb-2">
+            ${rarityLabel ? `<span class="rarity-pill ${rarityClass}" style="background: rgba(0,0,0,0.2);">${rarityLabel}</span>` : ''}
+            <span class="badge badge-type-pill ${typeLabel === '変動型' ? 'rarity-epic' : 'bg-light text-dark border'}">${typeLabel}</span>
+            <span class="creator-pill">${creatorAvatarHtml}<span>${creatorName}</span></span>
         </div>
         <div class="text-muted mb-3">流通数：${circulation}枚</div>
-        <div class="text-start small">
+        <div class="text-start sell-detail-large">
             <div>購入額：${purchaseLabel}</div>
             <div>資産価値：${assetLabel}</div>
             <div>売却額：${sellLabel}</div>
-            <div class="fw-bold mt-2">損益：🪙${profitStr}</div>
+            <div class="fw-bold mt-2 ${profitClass}">損益：🪙${profitStr}</div>
         </div>
     `;
 
