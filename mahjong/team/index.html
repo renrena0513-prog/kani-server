@@ -254,6 +254,24 @@
                 gap: 6px;
             }
 
+            .member-score-table tr.rank-1 {
+                background: linear-gradient(135deg, #fff7ad 0%, #ffa700 100%);
+                border-left: 6px solid #ffd700;
+                box-shadow: 0 4px 12px rgba(255, 215, 0, 0.25);
+            }
+
+            .member-score-table tr.rank-2 {
+                background: linear-gradient(135deg, #f0f0f0 0%, #a0a0a0 100%);
+                border-left: 6px solid #c0c0c0;
+                box-shadow: 0 4px 12px rgba(192, 192, 192, 0.25);
+            }
+
+            .member-score-table tr.rank-3 {
+                background: linear-gradient(135deg, #f5d4b5 0%, #b87333 100%);
+                border-left: 6px solid #cd7f32;
+                box-shadow: 0 4px 12px rgba(205, 127, 50, 0.25);
+            }
+
             .member-score-table td {
                 display: flex;
                 justify-content: space-between;
@@ -278,9 +296,11 @@
                 order: 1;
                 justify-content: flex-start;
                 gap: 8px;
+                flex-direction: column;
+                align-items: flex-start;
             }
 
-            .member-score-table td[data-label="メンバー"] .rank-badge-mini {
+            .member-score-table td[data-label="メンバー"] .rank-badge-inline {
                 display: inline-flex;
             }
 
@@ -309,6 +329,7 @@
                 gap: 6px;
                 margin-top: 6px;
                 width: 100%;
+                align-items: flex-start;
             }
 
             .member-score-mobile-row {
@@ -319,6 +340,7 @@
                 font-weight: 600;
                 color: #2b2f36;
                 flex-wrap: wrap;
+                align-items: center;
             }
 
             .member-score-mobile-row span {
@@ -369,6 +391,18 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
+        }
+
+        .rank-badge-inline {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: #f1f3f5;
+            color: #495057;
+            font-weight: 700;
+            font-size: 0.75rem;
         }
 
         .member-score-header .member-name {
@@ -1459,11 +1493,11 @@
                         </thead>
                         <tbody>
                             ${sortedMembers.map((m, i) => `
-                                <tr${i === 0 ? ' class="table-warning"' : ''}>
+                                <tr class="${i < 3 ? `rank-${i + 1}` : ''}">
                                     <td data-label="順位"><span class="rank-badge-mini">${i + 1}</span></td>
                                     <td data-label="メンバー">
                                         <div class="member-score-header">
-                                            <span class="rank-badge-mini">${i + 1}</span>
+                                            <span class="rank-badge-inline">順位${i + 1}</span>
                                             <img src="${m.avatar}" class="rounded-circle" width="24" height="24" onerror="this.src='https://via.placeholder.com/24'">
                                             <span class="member-name">${m.name}</span>
                                         </div>
