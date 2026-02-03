@@ -230,6 +230,48 @@
             gap: 8px;
         }
 
+        @media (max-width: 767px) {
+            .member-score-table thead {
+                display: none;
+            }
+
+            .member-score-table,
+            .member-score-table tbody,
+            .member-score-table tr,
+            .member-score-table td {
+                display: block;
+                width: 100%;
+            }
+
+            .member-score-table tr {
+                border: 1px solid #e9ecef;
+                border-radius: 12px;
+                padding: 10px;
+                margin-bottom: 12px;
+                background: #fff;
+            }
+
+            .member-score-table td {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 6px 0;
+                border: none;
+            }
+
+            .member-score-table td::before {
+                content: attr(data-label);
+                font-size: 0.75rem;
+                color: #6c757d;
+                font-weight: 600;
+                margin-right: 10px;
+            }
+
+            .member-score-table td:first-child::before {
+                content: '順位';
+            }
+        }
+
         .team-log-filters {
             display: flex;
             flex-wrap: wrap;
@@ -1297,7 +1339,7 @@
                 scoresContainer.innerHTML = '<p class="text-muted">まだ対局記録がありません</p>';
             } else {
             scoresContainer.innerHTML = `
-                    <table class="table table-hover">
+                    <table class="table table-hover member-score-table">
                         <thead>
                             <tr>
                                 <th>順位</th>
@@ -1312,16 +1354,16 @@
                         <tbody>
                             ${sortedMembers.map((m, i) => `
                                 <tr${i === 0 ? ' class="table-warning"' : ''}>
-                                    <td>${i + 1}</td>
-                                    <td>
+                                    <td data-label="順位">${i + 1}</td>
+                                    <td data-label="メンバー">
                                         <img src="${m.avatar}" class="rounded-circle me-2" width="24" height="24" onerror="this.src='https://via.placeholder.com/24'">
                                         ${m.name}
                                     </td>
-                                    <td class="${m.totalScore >= 0 ? 'text-success' : 'text-danger'}">${m.totalScore >= 0 ? '+' : ''}${m.totalScore.toLocaleString()}</td>
-                                    <td class="${m.deltaScore === 0 ? 'text-muted' : (m.deltaScore > 0 ? 'text-success' : 'text-danger')}">${m.deltaScore === 0 ? '―' : (m.deltaScore > 0 ? '+' : '') + m.deltaScore.toFixed(1)}</td>
-                                    <td>${m.games}</td>
-                                    <td>${m.yonmaCount}</td>
-                                    <td>${m.sanmaCount}</td>
+                                    <td data-label="合計スコア" class="${m.totalScore >= 0 ? 'text-success' : 'text-danger'}">${m.totalScore >= 0 ? '+' : ''}${m.totalScore.toLocaleString()}</td>
+                                    <td data-label="24時間比" class="${m.deltaScore === 0 ? 'text-muted' : (m.deltaScore > 0 ? 'text-success' : 'text-danger')}">${m.deltaScore === 0 ? '―' : (m.deltaScore > 0 ? '+' : '') + m.deltaScore.toFixed(1)}</td>
+                                    <td data-label="試合数">${m.games}</td>
+                                    <td data-label="四麻回数">${m.yonmaCount}</td>
+                                    <td data-label="三麻回数">${m.sanmaCount}</td>
                                 </tr>
                             `).join('')}
                         </tbody>
