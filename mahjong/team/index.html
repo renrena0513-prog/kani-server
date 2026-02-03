@@ -246,16 +246,19 @@
             .member-score-table tr {
                 border: 1px solid #e9ecef;
                 border-radius: 12px;
-                padding: 10px;
+                padding: 12px;
                 margin-bottom: 12px;
                 background: #fff;
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
             }
 
             .member-score-table td {
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                padding: 6px 0;
+                padding: 4px 0;
                 border: none;
             }
 
@@ -267,9 +270,38 @@
                 margin-right: 10px;
             }
 
-            .member-score-table td:first-child::before {
-                content: '順位';
+            .member-score-table td[data-label="順位"] {
+                order: 0;
             }
+
+            .member-score-table td[data-label="メンバー"] {
+                order: 1;
+                justify-content: flex-start;
+                gap: 8px;
+            }
+
+            .member-score-table td[data-label="メンバー"]::before {
+                min-width: 3.5em;
+            }
+
+            .member-score-table td[data-label="合計スコア"] { order: 2; }
+            .member-score-table td[data-label="24時間比"] { order: 3; }
+            .member-score-table td[data-label="試合数"] { order: 4; }
+            .member-score-table td[data-label="四麻回数"] { order: 5; }
+            .member-score-table td[data-label="三麻回数"] { order: 6; }
+        }
+
+        .rank-badge-mini {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: #f1f3f5;
+            color: #495057;
+            font-weight: 700;
+            font-size: 0.85rem;
         }
 
         .team-log-filters {
@@ -1354,7 +1386,7 @@
                         <tbody>
                             ${sortedMembers.map((m, i) => `
                                 <tr${i === 0 ? ' class="table-warning"' : ''}>
-                                    <td data-label="順位">${i + 1}</td>
+                                    <td data-label="順位"><span class="rank-badge-mini">${i + 1}</span></td>
                                     <td data-label="メンバー">
                                         <img src="${m.avatar}" class="rounded-circle me-2" width="24" height="24" onerror="this.src='https://via.placeholder.com/24'">
                                         ${m.name}
