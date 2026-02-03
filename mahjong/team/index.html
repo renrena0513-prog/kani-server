@@ -271,13 +271,17 @@
             }
 
             .member-score-table td[data-label="順位"] {
-                order: 0;
+                display: none;
             }
 
             .member-score-table td[data-label="メンバー"] {
                 order: 1;
                 justify-content: flex-start;
                 gap: 8px;
+            }
+
+            .member-score-table td[data-label="メンバー"] .rank-badge-mini {
+                display: inline-flex;
             }
 
             .member-score-table td[data-label="メンバー"]::before {
@@ -289,6 +293,43 @@
             .member-score-table td[data-label="試合数"] { order: 4; }
             .member-score-table td[data-label="四麻回数"] { order: 5; }
             .member-score-table td[data-label="三麻回数"] { order: 6; }
+
+            .member-score-table td[data-label="合計スコア"],
+            .member-score-table td[data-label="24時間比"],
+            .member-score-table td[data-label="試合数"],
+            .member-score-table td[data-label="四麻回数"],
+            .member-score-table td[data-label="三麻回数"] {
+                display: none;
+            }
+
+            .member-score-mobile-stats {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+                margin-top: 6px;
+                width: 100%;
+            }
+
+            .member-score-mobile-row {
+                display: flex;
+                justify-content: space-between;
+                gap: 10px;
+                font-size: 0.9rem;
+                font-weight: 600;
+                color: #2b2f36;
+            }
+
+            .member-score-mobile-row span {
+                min-width: 0;
+                text-align: left;
+            }
+
+            .member-score-mobile-row .label {
+                font-size: 0.7rem;
+                color: #6c757d;
+                font-weight: 600;
+                margin-right: 6px;
+            }
         }
 
         .rank-badge-mini {
@@ -302,6 +343,10 @@
             color: #495057;
             font-weight: 700;
             font-size: 0.85rem;
+        }
+
+        .member-score-table td[data-label="メンバー"] .rank-badge-mini {
+            display: none;
         }
 
         .team-log-filters {
@@ -1388,8 +1433,20 @@
                                 <tr${i === 0 ? ' class="table-warning"' : ''}>
                                     <td data-label="順位"><span class="rank-badge-mini">${i + 1}</span></td>
                                     <td data-label="メンバー">
+                                        <span class="rank-badge-mini me-2">${i + 1}</span>
                                         <img src="${m.avatar}" class="rounded-circle me-2" width="24" height="24" onerror="this.src='https://via.placeholder.com/24'">
                                         ${m.name}
+                                        <div class="member-score-mobile-stats">
+                                            <div class="member-score-mobile-row">
+                                                <span><span class="label">合計スコア</span>${m.totalScore >= 0 ? '+' : ''}${m.totalScore.toLocaleString()}</span>
+                                                <span class="${m.deltaScore === 0 ? 'text-muted' : (m.deltaScore > 0 ? 'text-success' : 'text-danger')}"><span class="label">24時間比</span>${m.deltaScore === 0 ? '―' : (m.deltaScore > 0 ? '+' : '') + m.deltaScore.toFixed(1)}</span>
+                                            </div>
+                                            <div class="member-score-mobile-row">
+                                                <span><span class="label">試合数</span>${m.games}</span>
+                                                <span><span class="label">四麻</span>${m.yonmaCount}</span>
+                                                <span><span class="label">三麻</span>${m.sanmaCount}</span>
+                                            </div>
+                                        </div>
                                     </td>
                                     <td data-label="合計スコア" class="${m.totalScore >= 0 ? 'text-success' : 'text-danger'}">${m.totalScore >= 0 ? '+' : ''}${m.totalScore.toLocaleString()}</td>
                                     <td data-label="24時間比" class="${m.deltaScore === 0 ? 'text-muted' : (m.deltaScore > 0 ? 'text-success' : 'text-danger')}">${m.deltaScore === 0 ? '―' : (m.deltaScore > 0 ? '+' : '') + m.deltaScore.toFixed(1)}</td>
