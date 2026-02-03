@@ -352,7 +352,17 @@
         }
 
         .member-score-mobile-stats {
-            display: none;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 6px;
+            width: 100%;
+        }
+
+        @media (min-width: 768px) {
+            .member-score-mobile-stats {
+                display: none;
+            }
         }
 
         .member-score-header {
