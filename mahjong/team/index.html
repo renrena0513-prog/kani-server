@@ -355,6 +355,17 @@
             display: none;
         }
 
+        .member-score-header {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .member-score-header .member-name {
+            font-weight: 700;
+            color: #2b2f36;
+        }
+
         .team-log-filters {
             display: flex;
             flex-wrap: wrap;
@@ -671,6 +682,17 @@
                 </div>
             </div>
 
+            <!-- メンバースコアランキング -->
+            <div class="content-card mt-4">
+                <h3 class="section-title">🏆 メンバースコアランキング</h3>
+                <div id="member-scores" class="mb-2">
+                    <div class="text-center py-3">
+                        <div class="spinner-border spinner-border-sm" role="status"></div>
+                        読み込み中...
+                    </div>
+                </div>
+            </div>
+
             <!-- チーム戦績セクション -->
             <div class="content-card mt-4">
                 <h3 class="section-title">📊 チーム戦績</h3>
@@ -792,15 +814,6 @@
                 <h4 class="mb-3">⚔️ 対戦相性</h4>
                 <div id="team-matchup-list" class="matchup-grid mb-4">
                     <div class="text-muted small">-</div>
-                </div>
-
-                <!-- メンバー別スコア一覧 -->
-                <h4 class="mb-3">🏆 メンバースコアランキング</h4>
-                <div id="member-scores" class="mb-4">
-                    <div class="text-center py-3">
-                        <div class="spinner-border spinner-border-sm" role="status"></div>
-                        読み込み中...
-                    </div>
                 </div>
 
                 <!-- 最近の対局ログ -->
@@ -1439,18 +1452,20 @@
                                 <tr${i === 0 ? ' class="table-warning"' : ''}>
                                     <td data-label="順位"><span class="rank-badge-mini">${i + 1}</span></td>
                                     <td data-label="メンバー">
-                                        <span class="rank-badge-mini me-2">${i + 1}</span>
-                                        <img src="${m.avatar}" class="rounded-circle me-2" width="24" height="24" onerror="this.src='https://via.placeholder.com/24'">
-                                        ${m.name}
+                                        <div class="member-score-header">
+                                            <span class="rank-badge-mini">${i + 1}</span>
+                                            <img src="${m.avatar}" class="rounded-circle" width="24" height="24" onerror="this.src='https://via.placeholder.com/24'">
+                                            <span class="member-name">${m.name}</span>
+                                        </div>
                                         <div class="member-score-mobile-stats">
                                             <div class="member-score-mobile-row">
-                                                <span><span class="label">合計スコア</span>${m.totalScore >= 0 ? '+' : ''}${m.totalScore.toLocaleString()}</span>
-                                                <span class="${m.deltaScore === 0 ? 'text-muted' : (m.deltaScore > 0 ? 'text-success' : 'text-danger')}"><span class="label">24時間比</span>${m.deltaScore === 0 ? '―' : (m.deltaScore > 0 ? '+' : '') + m.deltaScore.toFixed(1)}</span>
+                                                <span>合計スコア ${m.totalScore >= 0 ? '+' : ''}${m.totalScore.toLocaleString()}</span>
+                                                <span class="${m.deltaScore === 0 ? 'text-muted' : (m.deltaScore > 0 ? 'text-success' : 'text-danger')}">24時間比 ${m.deltaScore === 0 ? '―' : (m.deltaScore > 0 ? '+' : '') + m.deltaScore.toFixed(1)}</span>
                                             </div>
                                             <div class="member-score-mobile-row">
-                                                <span><span class="label">試合数</span>${m.games}</span>
-                                                <span><span class="label">四麻</span>${m.yonmaCount}</span>
-                                                <span><span class="label">三麻</span>${m.sanmaCount}</span>
+                                                <span>試合数 ${m.games}</span>
+                                                <span>四麻 ${m.yonmaCount}</span>
+                                                <span>三麻 ${m.sanmaCount}</span>
                                             </div>
                                         </div>
                                     </td>
