@@ -387,6 +387,27 @@
             width: 100%;
         }
 
+        .member-score-table tr.rank-1 {
+            background: linear-gradient(135deg, #fff7ad 0%, #ffa700 100%);
+            box-shadow: 0 4px 12px rgba(255, 215, 0, 0.18) inset;
+        }
+
+        .member-score-table tr.rank-2 {
+            background: linear-gradient(135deg, #f0f0f0 0%, #a0a0a0 100%);
+            box-shadow: 0 4px 12px rgba(192, 192, 192, 0.18) inset;
+        }
+
+        .member-score-table tr.rank-3 {
+            background: linear-gradient(135deg, #f5d4b5 0%, #b87333 100%);
+            box-shadow: 0 4px 12px rgba(205, 127, 50, 0.18) inset;
+        }
+
+        .member-score-table tr.rank-1 td,
+        .member-score-table tr.rank-2 td,
+        .member-score-table tr.rank-3 td {
+            background: transparent;
+        }
+
         @media (min-width: 768px) {
             .member-score-mobile-stats {
                 display: none;
