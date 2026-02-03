@@ -285,7 +285,8 @@
             }
 
             .member-score-table td[data-label="メンバー"]::before {
-                min-width: 3.5em;
+                content: '';
+                display: none;
             }
 
             .member-score-table td[data-label="合計スコア"] { order: 2; }
@@ -312,11 +313,12 @@
 
             .member-score-mobile-row {
                 display: flex;
-                justify-content: space-between;
-                gap: 10px;
+                justify-content: flex-start;
+                gap: 16px;
                 font-size: 0.9rem;
                 font-weight: 600;
                 color: #2b2f36;
+                flex-wrap: wrap;
             }
 
             .member-score-mobile-row span {
@@ -346,6 +348,10 @@
         }
 
         .member-score-table td[data-label="メンバー"] .rank-badge-mini {
+            display: none;
+        }
+
+        .member-score-mobile-stats {
             display: none;
         }
 
