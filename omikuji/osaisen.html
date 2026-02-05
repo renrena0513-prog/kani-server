@@ -439,6 +439,19 @@
         </div>
     </div>
 
+    <!-- 売却結果モーダル -->
+    <div class="modal fade" id="sellResultModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content text-center p-4">
+                <div class="fs-4 fw-bold mb-2">売却完了</div>
+                <div id="sell-result-message" class="text-muted mb-3">売却しました</div>
+                <button type="button" class="btn btn-primary rounded-pill px-5" data-bs-dismiss="modal">
+                    OK
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../js/supabase-config.js"></script>
@@ -455,6 +468,7 @@
         let currentDrawMode = 'single';
         let rarityValueMap = {};
         let lastDrawnBadgeUuid = null;
+        let lastDrawnBadgeMeta = null;
         let lastTenResults = [];
         let currentGachaMode = 'coin';
         let gachaCoinPrice = 50;
@@ -862,6 +876,11 @@
             }
             const msgEl = document.getElementById('result-msg');
             lastDrawnBadgeUuid = result.uuid || null;
+            lastDrawnBadgeMeta = {
+                uuid: result.uuid || null,
+                badgeId: result.badge_id || null,
+                name: result.name || null
+            };
             const sellBtn = document.getElementById('result-sell-btn');
             if (sellBtn) sellBtn.style.display = lastDrawnBadgeUuid ? 'inline-block' : 'none';
 
@@ -905,12 +924,19 @@
             if (!confirm('このバッジを売却しますか？')) return;
             try {
                 const data = await sellBadgeByUuid(lastDrawnBadgeUuid);
-                alert(`売却しました！ (🪙 +${data.sell_price.toLocaleString()})`);
+                await logActivity(currentUser.user_metadata.provider_id, 'badge_sell', {
+                    amount: data.sell_price,
+                    badgeId: lastDrawnBadgeMeta?.badgeId || null,
+                    details: { badge_name: lastDrawnBadgeMeta?.name || null, source: 'osaisen' }
+                });
+                showSellResult(`売却しました！ (🪙 +${data.sell_price.toLocaleString()})`);
                 lastDrawnBadgeUuid = null;
+                lastDrawnBadgeMeta = null;
                 const sellBtn = document.getElementById('result-sell-btn');
                 if (sellBtn) sellBtn.style.display = 'none';
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('resultModal')).hide();
             } catch (err) {
-                alert('売却に失敗しました: ' + err.message);
+                showSellResult('売却に失敗しました: ' + err.message);
             }
         }
 
@@ -925,16 +951,29 @@
                 for (const uuid of selected) {
                     const data = await sellBadgeByUuid(uuid);
                     total += data.sell_price || 0;
+                    const meta = lastTenResults.find(r => r.uuid === uuid);
+                    await logActivity(currentUser.user_metadata.provider_id, 'badge_sell', {
+                        amount: data.sell_price,
+                        badgeId: meta?.badge_id || null,
+                        details: { badge_name: meta?.name || null, source: 'osaisen' }
+                    });
                 }
-                alert(`売却しました！ (🪙 +${total.toLocaleString()})`);
+                showSellResult(`売却しました！ (🪙 +${total.toLocaleString()})`);
                 selected.forEach(uuid => {
                     const el = document.querySelector(`.ten-result-item[data-uuid="${uuid}"]`);
                     if (el) el.classList.remove('selected');
                 });
                 updateTenSellButtonState();
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('resultModalTen')).hide();
             } catch (err) {
-                alert('売却に失敗しました: ' + err.message);
+                showSellResult('売却に失敗しました: ' + err.message);
             }
+        }
+
+        function showSellResult(message) {
+            const msg = document.getElementById('sell-result-message');
+            if (msg) msg.textContent = message;
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('sellResultModal')).show();
         }
 
         document.addEventListener('DOMContentLoaded', () => {
