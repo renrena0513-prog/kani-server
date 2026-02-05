@@ -769,7 +769,8 @@
             const totalEl = document.getElementById('result-ten-total');
             if (totalEl) totalEl.textContent = `合計価値: 🪙 ${totalValue.toLocaleString()}`;
 
-            results.forEach((r, idx) => {
+            // まず全てレアリティのみ表示
+            results.forEach((r) => {
                 const card = document.createElement('div');
                 card.className = 'text-center';
                 card.style.opacity = '0';
@@ -780,18 +781,25 @@
                     <div class="fw-bold ${rarityClass} text-dark mb-2">${rarityText}</div>
                 `;
                 list.appendChild(card);
+            });
+
+            // レアリティを先に見せてから、1秒ごとにバッジ画像へ変換
+            Array.from(list.children).forEach((card, idx) => {
+                const r = results[idx];
+                const rarityText = r?.rarity || 'レアリティ不明';
+                const rarityClass = getRarityClass(rarityText);
                 setTimeout(() => {
                     card.style.transition = 'all 0.3s ease';
                     card.style.opacity = '1';
                     card.style.transform = 'translateY(0)';
                     card.innerHTML = `
                         <div class="fw-bold ${rarityClass} text-dark mb-2">${rarityText}</div>
-                        <div class="mutant-badge-container mini ${r.is_mutant ? 'active' : ''}" style="width: 96px; height: 96px; margin: 0 auto;">
-                            <img src="${r.image_url || '../images/placeholder-badge.png'}" alt="${r.name || ''}" style="width: 100%; height: 100%; object-fit: contain;">
-                            ${window.MutantBadge ? window.MutantBadge.renderShine(!!r.is_mutant) : '<div class=\"mutant-badge-shine\"></div>'}
+                        <div class="mutant-badge-container mini ${r?.is_mutant ? 'active' : ''}" style="width: 96px; height: 96px; margin: 0 auto;">
+                            <img src="${r?.image_url || '../images/placeholder-badge.png'}" alt="${r?.name || ''}" style="width: 100%; height: 100%; object-fit: contain;">
+                            ${window.MutantBadge ? window.MutantBadge.renderShine(!!r?.is_mutant) : '<div class=\"mutant-badge-shine\"></div>'}
                         </div>
                     `;
-                }, idx * 1000);
+                }, (idx + 1) * 1000);
             });
         }
 
