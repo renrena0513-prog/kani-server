@@ -408,7 +408,7 @@
                 <div class="mb-2">
                     <span class="fs-4 fw-bold">✨ 10連の結果</span>
                 </div>
-                <div id="result-ten-total" class="text-white-50 fw-bold mb-2"></div>
+                <div id="result-ten-total" class="text-dark fw-bold mb-2"></div>
                 <div id="result-ten-list" class="d-grid gap-2" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
                     <!-- JSで挿入 -->
                 </div>
@@ -655,12 +655,6 @@
         }
 
         async function fetchRarityThresholds() {
-            const { data: newData, error: newError } = await supabaseClient
-                .from('update_rarity_thresholds')
-                .select('rarity_name, threshold_value')
-                .order('threshold_value', { ascending: true });
-            if (!newError && newData && newData.length > 0) return newData;
-
             const { data, error } = await supabaseClient
                 .from('rarity_thresholds')
                 .select('rarity_name, threshold_value')
@@ -780,9 +774,10 @@
                 card.className = 'text-center';
                 card.style.opacity = '0';
                 card.style.transform = 'translateY(8px)';
-                const rarityClass = getRarityClass(r.rarity || '');
+                const rarityText = r.rarity || 'レアリティ不明';
+                const rarityClass = getRarityClass(rarityText);
                 card.innerHTML = `
-                    <div class="fw-bold ${rarityClass} text-white mb-2">${r.rarity || ''}</div>
+                    <div class="fw-bold ${rarityClass} text-dark mb-2">${rarityText}</div>
                 `;
                 list.appendChild(card);
                 setTimeout(() => {
@@ -790,7 +785,7 @@
                     card.style.opacity = '1';
                     card.style.transform = 'translateY(0)';
                     card.innerHTML = `
-                        <div class="fw-bold ${rarityClass} text-white mb-2">${r.rarity || ''}</div>
+                        <div class="fw-bold ${rarityClass} text-dark mb-2">${rarityText}</div>
                         <div class="mutant-badge-container mini ${r.is_mutant ? 'active' : ''}" style="width: 96px; height: 96px; margin: 0 auto;">
                             <img src="${r.image_url || '../images/placeholder-badge.png'}" alt="${r.name || ''}" style="width: 100%; height: 100%; object-fit: contain;">
                             ${window.MutantBadge ? window.MutantBadge.renderShine(!!r.is_mutant) : '<div class=\"mutant-badge-shine\"></div>'}
@@ -803,7 +798,7 @@
         function showResult(result) {
             const rarityEl = document.getElementById('result-rarity-badge');
             const headerEl = document.getElementById('result-header');
-            const rarity = result.rarity || '';
+            const rarity = result.rarity || 'レアリティ不明';
             rarityEl.textContent = rarity;
             rarityEl.className = 'result-rarity ' + getRarityClass(rarity);
             const isMutant = !!result.is_mutant;
