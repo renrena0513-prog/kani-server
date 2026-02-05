@@ -203,6 +203,43 @@
             transform: translateY(-3px);
             border-color: rgba(255, 255, 255, 0.4);
         }
+
+        .gacha-tabs {
+            display: inline-flex;
+            gap: 10px;
+            padding: 6px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .gacha-tab-btn {
+            border: none;
+            background: transparent;
+            color: #fff;
+            font-weight: 700;
+            padding: 8px 18px;
+            border-radius: 999px;
+            transition: all 0.2s ease;
+            opacity: 0.7;
+        }
+
+        .gacha-tab-btn.active {
+            background: rgba(255, 255, 255, 0.18);
+            opacity: 1;
+            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
+        }
+
+        .gacha-tab-btn.disabled {
+            cursor: not-allowed;
+            opacity: 0.4;
+        }
+
+        .gacha-mode-note {
+            color: #f8f9fa;
+            font-weight: 600;
+            margin-top: 12px;
+        }
     </style>
 </head>
 
@@ -217,6 +254,13 @@
         </header>
 
         <div class="gacha-container text-center">
+            <div class="mb-4">
+                <div class="gacha-tabs mx-auto">
+                    <button class="gacha-tab-btn active" data-mode="coin" onclick="setGachaMode('coin')">🪙 コインで回す</button>
+                    <button class="gacha-tab-btn disabled" data-mode="ticket" onclick="setGachaMode('ticket')">🎫 チケットで回す</button>
+                </div>
+                <div id="gacha-mode-note" class="gacha-mode-note">チケットで回す機能はアップデート待ちです</div>
+            </div>
             <div id="osaisen-box-area" class="osaisen-box-wrapper mx-auto mb-4"
                 style="position: relative; width: fit-content;">
                 <div id="coin" class="coin-animation">🪙</div>
@@ -225,7 +269,7 @@
 
             <div class="mb-4">
                 <h3 class="fw-bold" style="color: var(--crimson);">幸運を願って、お賽銭を奉納しましょう</h3>
-                <p class="text-muted">祈願符1枚、またはコイン50枚でお賽銭を投げることができます。</p>
+                <p class="text-muted" id="gacha-price-note">コインでお賽銭を投げることができます。</p>
             </div>
 
             <div
@@ -239,23 +283,10 @@
                 <span id="coin-count" class="fw-bold text-white fs-5">- C</span>
             </div>
 
-            <!-- 支払い方法選択 -->
-            <div class="mb-4">
-                <div class="d-flex justify-content-center gap-3">
-                    <label class="payment-option">
-                        <input type="radio" name="payment-type" value="ticket" checked>
-                        <div class="payment-card">
-                            <span class="fs-3">🎫</span>
-                            <span class="fw-bold">祈願符 1枚</span>
-                        </div>
-                    </label>
-                    <label class="payment-option">
-                        <input type="radio" name="payment-type" value="coin">
-                        <div class="payment-card">
-                            <span class="fs-3">🪙</span>
-                            <span class="fw-bold">コイン 50枚</span>
-                        </div>
-                    </label>
+            <div class="mb-4 d-flex justify-content-center">
+                <div class="payment-card">
+                    <span class="fs-3">🪙</span>
+                    <span class="fw-bold" id="coin-price-label">コイン - 枚</span>
                 </div>
             </div>
 
@@ -335,6 +366,8 @@
         let currentUser = null;
         let isDrawing = false;
         let provisionData = null;
+        let currentGachaMode = 'coin';
+        let gachaCoinPrice = 50;
 
         document.addEventListener('DOMContentLoaded', async function () {
             initAccordionNav('../');
@@ -347,6 +380,7 @@
             }
             currentUser = user;
             fetchTicketCount();
+            fetchGachaCoinPrice();
         });
 
         async function fetchTicketCount() {
@@ -565,8 +599,68 @@
             }
         }
 
+        async function fetchGachaCoinPrice() {
+            try {
+                const [badgesRes, thresholdsRes, circulationRes] = await Promise.all([
+                    supabaseClient.from('badges').select('id, price, fixed_rarity_name, sales_type, is_gacha_eligible').eq('is_gacha_eligible', true),
+                    supabaseClient.from('rarity_thresholds').select('rarity_name, threshold_value').order('threshold_value', { ascending: true }),
+                    supabaseClient.from('user_badges_new').select('badge_id')
+                ]);
+
+                if (badgesRes.error) throw badgesRes.error;
+                if (thresholdsRes.error) throw thresholdsRes.error;
+
+                const badges = badgesRes.data || [];
+                const thresholds = thresholdsRes.data || [];
+                const circulation = {};
+                (circulationRes.data || []).forEach(r => {
+                    circulation[r.badge_id] = (circulation[r.badge_id] || 0) + 1;
+                });
+
+                if (badges.length === 0 || thresholds.length === 0) {
+                    updateGachaPriceUI();
+                    return;
+                }
+
+                let total = 0;
+                badges.forEach(badge => {
+                    const count = circulation[badge.id] || 0;
+                    const values = BadgeUtils.calculateBadgeValues(badge, count, thresholds);
+                    total += values.marketValue;
+                });
+
+                gachaCoinPrice = Math.max(1, Math.round(total / badges.length));
+                updateGachaPriceUI();
+            } catch (err) {
+                console.error('ガチャ価格取得エラー:', err);
+                updateGachaPriceUI();
+            }
+        }
+
+        function updateGachaPriceUI() {
+            const coinLabel = document.getElementById('coin-price-label');
+            const note = document.getElementById('gacha-price-note');
+            if (coinLabel) coinLabel.textContent = `コイン ${gachaCoinPrice.toLocaleString()}枚`;
+            if (note) note.textContent = `コイン${gachaCoinPrice.toLocaleString()}枚でお賽銭を投げることができます。`;
+        }
+
+        function setGachaMode(mode) {
+            if (mode === 'ticket') {
+                return;
+            }
+            currentGachaMode = mode;
+            document.querySelectorAll('.gacha-tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+        }
+
         async function handleDraw() {
             if (isDrawing) return;
+
+            if (currentGachaMode === 'ticket') {
+                alert('チケットで回す機能はアップデート待ちです。');
+                return;
+            }
 
             // お賽銭の制限を解除 - 全員がガチャを回せるように
             // const discordId = currentUser.user_metadata.provider_id;
@@ -579,7 +673,7 @@
             // }
 
             // 支払い方法を取得
-            const paymentType = document.querySelector('input[name="payment-type"]:checked')?.value || 'ticket';
+            const paymentType = currentGachaMode === 'coin' ? 'coin' : 'ticket';
 
             isDrawing = true;
 
