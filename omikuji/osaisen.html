@@ -408,10 +408,10 @@
 
         async function fetchProvisionRatio() {
             try {
-                // 2. レアリティの内訳（新レアリティ優先）
+                // レアリティの内訳
                 const rarityThresholds = await fetchRarityThresholds();
-                // 3. ガチャ排出バッジ
-                const { data: gachaBadges } = await supabaseClient.from('badges').select('id, price, fixed_rarity_name, sales_type, is_gacha_eligible').eq('is_gacha_eligible', true).neq('sales_type', '換金品');
+                // ガチャ排出バッジ
+                const { data: gachaBadges } = await supabaseClient.from('badges').select('id, price, fixed_rarity_name, sales_type, is_gacha_eligible').eq('is_gacha_eligible', true);
                 const { data: circulationRes } = await supabaseClient.from('user_badges_new').select('badge_id');
 
                 const badges = gachaBadges || [];
@@ -427,22 +427,12 @@
                     rarityCounts[values.rarityName] = (rarityCounts[values.rarityName] || 0) + 1;
                 });
 
-                const totalRarityWeight = rarityThresholds.reduce((s, r) => s + (r.gacha_weight || 0), 0);
-                const hasWeights = totalRarityWeight > 0;
                 const totalBadgeCount = Object.values(rarityCounts).reduce((s, v) => s + v, 0);
 
-                const badgeOdds = Object.keys(rarityCounts).map(name => {
-                    const threshold = rarityThresholds.find(r => r.rarity_name === name);
-                    const weight = hasWeights ? (threshold?.gacha_weight || 0) : (rarityCounts[name] || 0);
-                    return { name, weight };
-                }).filter(r => r.weight > 0);
-
-                const totalBadgeWeight = badgeOdds.reduce((s, r) => s + r.weight, 0);
-
                 provisionData = {
-                    badges: badgeOdds.map(r => ({
-                        name: r.name,
-                        percent: totalBadgeWeight > 0 ? ((r.weight / totalBadgeWeight) * 100).toFixed(2) : '0.00'
+                    badges: Object.entries(rarityCounts).map(([name, count]) => ({
+                        name,
+                        percent: totalBadgeCount > 0 ? ((count / totalBadgeCount) * 100).toFixed(2) : '0.00'
                     }))
                 };
 
@@ -503,7 +493,7 @@
             try {
                 // レアリティ閾値、バッジ、流通数、ガチャ重みを取得
                 const [badgesRes, thresholdsRes, circulationRes] = await Promise.all([
-                    supabaseClient.from('badges').select('id, name, image_url, price, fixed_rarity_name, sales_type, is_gacha_eligible, remaining_count').eq('is_gacha_eligible', true).neq('sales_type', '換金品'),
+                    supabaseClient.from('badges').select('id, name, image_url, price, fixed_rarity_name, sales_type, is_gacha_eligible, remaining_count').eq('is_gacha_eligible', true),
                     fetchRarityThresholds(),
                     supabaseClient.from('user_badges_new').select('badge_id')
                 ]);
@@ -519,13 +509,6 @@
                 const totalRarityWeight = thresholds.reduce((s, t) => s + (t.gacha_weight || 0), 0);
 
                 // レアリティ別排出率マップ
-                const rarityPercentMap = {};
-                if (totalRarityWeight > 0) {
-                    thresholds.forEach(t => {
-                        rarityPercentMap[t.rarity_name] = (t.gacha_weight / totalRarityWeight) * 100;
-                    });
-                }
-
                 // 流通数カウント
                 const circulation = {};
                 (circulationRes.data || []).forEach(r => {
@@ -560,7 +543,7 @@
                 for (const rarity of rarityOrder) {
                     if (!grouped[rarity] || grouped[rarity].length === 0) continue;
                     const badgesInRarity = grouped[rarity];
-                const rarityPercent = rarityPercentMap[rarity] || ((badgesInRarity.length / badges.length) * 100);
+                const rarityPercent = (badgesInRarity.length / badges.length) * 100;
                 const perBadgePercent = badgesInRarity.length > 0 ? (rarityPercent / badgesInRarity.length) : 0;
 
                     html += `
@@ -595,7 +578,7 @@
         async function fetchGachaCoinPrice() {
             try {
                 const [badgesRes, thresholdsRes, circulationRes] = await Promise.all([
-                    supabaseClient.from('badges').select('id, price, fixed_rarity_name, sales_type, is_gacha_eligible').eq('is_gacha_eligible', true).neq('sales_type', '換金品'),
+                    supabaseClient.from('badges').select('id, price, fixed_rarity_name, sales_type, is_gacha_eligible').eq('is_gacha_eligible', true),
                     fetchRarityThresholds(),
                     supabaseClient.from('user_badges_new').select('badge_id')
                 ]);
@@ -638,15 +621,9 @@
         }
 
         async function fetchRarityThresholds() {
-            const { data: newData, error: newError } = await supabaseClient
-                .from('update_rarity_thresholds')
-                .select('rarity_name, threshold_value, gacha_weight')
-                .order('threshold_value', { ascending: true });
-            if (!newError && newData && newData.length > 0) return newData;
-
             const { data, error } = await supabaseClient
                 .from('rarity_thresholds')
-                .select('rarity_name, threshold_value, gacha_weight')
+                .select('rarity_name, threshold_value')
                 .order('threshold_value', { ascending: true });
             if (error) throw error;
             return data || [];
