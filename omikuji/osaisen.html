@@ -215,6 +215,38 @@
             100% { opacity: 0; transform: translateY(-6px) scale(0.98); }
         }
 
+        .draw-mode-toggle {
+            display: inline-flex;
+            gap: 8px;
+            padding: 6px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .draw-mode-btn {
+            border: none;
+            background: transparent;
+            color: #fff;
+            font-weight: 700;
+            padding: 6px 16px;
+            border-radius: 999px;
+            transition: all 0.2s ease;
+            opacity: 0.7;
+        }
+
+        .draw-mode-btn.active {
+            background: rgba(255, 255, 255, 0.22);
+            opacity: 1;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+        }
+
+        .draw-mode-note {
+            color: #fff;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
         .gacha-tabs {
             display: inline-flex;
             gap: 10px;
@@ -276,7 +308,7 @@
                 style="position: relative; width: fit-content;">
                 <div id="coin" class="coin-animation">🪙</div>
                 <div id="osaisen-box" style="cursor: default;">
-                    <img id="osaisen-badge" src="../images/placeholder-badge.png" alt="排出バッジ" style="width: 480px; height: 480px; object-fit: contain;">
+                    <img id="osaisen-badge" src="../images/placeholder-badge.png" alt="排出バッジ" style="width: min(480px, 90vw); height: min(480px, 90vw); object-fit: contain;">
                 </div>
             </div>
 
@@ -301,11 +333,15 @@
 
             <div class="mt-2" id="draw-area">
                 <div class="d-flex flex-column align-items-center gap-3">
+                    <div class="draw-mode-toggle">
+                        <button class="draw-mode-btn active" data-mode="single" onclick="setDrawMode('single')">1回</button>
+                        <button class="draw-mode-btn" data-mode="ten" onclick="setDrawMode('ten')">10連</button>
+                    </div>
+                    <div id="draw-mode-note" class="draw-mode-note" style="display:none;">
+                        10連はミュータント確率が5%になります
+                    </div>
                     <button id="draw-btn" class="gacha-btn" onclick="handleDraw()">
                         🙏 お賽銭を奉納する
-                    </button>
-                    <button id="draw-10-btn" class="gacha-btn" onclick="handleDrawTen()">
-                        ✨ 10連お賽銭（<span id="coin-price-label-10">-</span>）
                     </button>
                 </div>
                 <div id="not-started-msg" class="alert alert-warning mt-3 mx-auto"
@@ -383,6 +419,7 @@
         let provisionData = null;
         let osaisenBadgeList = [];
         let osaisenBadgeTimer = null;
+        let currentDrawMode = 'single';
         let currentGachaMode = 'coin';
         let gachaCoinPrice = 50;
 
@@ -592,11 +629,10 @@
 
         function updateGachaPriceUI() {
             const coinLabel = document.getElementById('coin-price-label');
-            const coinLabel10 = document.getElementById('coin-price-label-10');
             const note = document.getElementById('gacha-price-note');
-            if (coinLabel) coinLabel.textContent = `コイン ${gachaCoinPrice.toLocaleString()}枚`;
-            if (coinLabel10) coinLabel10.textContent = `${(gachaCoinPrice * 10).toLocaleString()}枚`;
-            if (note) note.textContent = `コイン${gachaCoinPrice.toLocaleString()}枚でお賽銭を投げることができます。`;
+            const price = currentDrawMode === 'ten' ? gachaCoinPrice * 10 : gachaCoinPrice;
+            if (coinLabel) coinLabel.textContent = `コイン ${price.toLocaleString()}枚`;
+            if (note) note.textContent = `コイン${price.toLocaleString()}枚でお賽銭を投げることができます。`;
         }
 
         async function fetchRarityThresholds() {
@@ -616,6 +652,16 @@
             document.querySelectorAll('.gacha-tab-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.mode === mode);
             });
+        }
+
+        function setDrawMode(mode) {
+            currentDrawMode = mode;
+            document.querySelectorAll('.draw-mode-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+            const note = document.getElementById('draw-mode-note');
+            if (note) note.style.display = mode === 'ten' ? 'block' : 'none';
+            updateGachaPriceUI();
         }
 
         async function handleDraw() {
@@ -656,11 +702,18 @@
                     box.classList.add('shaking');
                 }, 400);
 
-                // 3. RPC呼び出し（支払い方法を渡す）
-                const { data, error } = await supabaseClient.rpc('draw_gacha', {
-                    p_user_id: currentUser.user_metadata.provider_id,
-                    p_payment_type: paymentType
-                });
+                let data, error;
+                if (currentDrawMode === 'ten') {
+                    ({ data, error } = await supabaseClient.rpc('draw_gacha_multi', {
+                        p_user_id: currentUser.user_metadata.provider_id,
+                        p_draw_count: 10
+                    }));
+                } else {
+                    ({ data, error } = await supabaseClient.rpc('draw_gacha', {
+                        p_user_id: currentUser.user_metadata.provider_id,
+                        p_payment_type: paymentType
+                    }));
+                }
 
                 // アニメーションを見せるための待機
                 await new Promise(resolve => setTimeout(resolve, 1500));
@@ -668,7 +721,11 @@
                 if (error) throw error;
                 if (!data.ok) throw new Error(data.error);
 
-                showResult(data);
+                if (currentDrawMode === 'ten') {
+                    showTenResults(data.results || []);
+                } else {
+                    showResult(data);
+                }
 
             } catch (err) {
                 console.error('ガチャエラー:', err);
@@ -682,62 +739,35 @@
             }
         }
 
-        async function handleDrawTen() {
-            if (isDrawing) return;
-
-            if (currentGachaMode === 'ticket') {
-                alert('チケットで回す機能はアップデート待ちです。');
-                return;
-            }
-
-            isDrawing = true;
-
-            const btn = document.getElementById('draw-10-btn');
-            const box = document.getElementById('osaisen-box');
-            const coin = document.getElementById('coin');
-
-            btn.disabled = true;
-
-            try {
-                coin.classList.add('active');
-                setTimeout(() => {
-                    box.classList.add('shaking');
-                }, 400);
-
-                const { data, error } = await supabaseClient.rpc('draw_gacha_multi', {
-                    p_user_id: currentUser.user_metadata.provider_id,
-                    p_draw_count: 10
-                });
-
-                await new Promise(resolve => setTimeout(resolve, 1500));
-
-                if (error) throw error;
-                if (!data.ok) throw new Error(data.error);
-
-                showTenResults(data.results || []);
-            } catch (err) {
-                console.error('10連ガチャエラー:', err);
-                alert('奉納に失敗しました: ' + (err.message || '不明なエラー'));
-            } finally {
-                isDrawing = false;
-                coin.classList.remove('active');
-                box.classList.remove('shaking');
-                btn.disabled = false;
-                fetchTicketCount();
-            }
-        }
-
         function showTenResults(results) {
             const list = document.getElementById('result-ten-list');
             if (!list) return;
-            list.innerHTML = results.map(r => `
-                <div class="text-center p-2 rounded" style="background: rgba(0,0,0,0.2);">
-                    <img src="${r.image_url || '../images/placeholder-badge.png'}" alt="${r.name || ''}" style="width: 72px; height: 72px; object-fit: contain;">
-                    <div class="small text-white-50 mt-1">${r.name || ''}</div>
-                </div>
-            `).join('');
+            list.innerHTML = '';
             const modal = new bootstrap.Modal(document.getElementById('resultModalTen'));
             modal.show();
+
+            results.forEach((r, idx) => {
+                const card = document.createElement('div');
+                card.className = 'text-center p-2 rounded';
+                card.style.background = 'rgba(0,0,0,0.2)';
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(8px)';
+                card.innerHTML = `
+                    <div class="fw-bold text-white-50">${r.rarity || ''}</div>
+                    <img src="${r.image_url || '../images/placeholder-badge.png'}" alt="${r.name || ''}" style="width: 72px; height: 72px; object-fit: contain; display:none;">
+                    <div class="small text-white-50 mt-1" style="display:none;">${r.name || ''}</div>
+                `;
+                list.appendChild(card);
+                setTimeout(() => {
+                    card.style.transition = 'all 0.3s ease';
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                    const img = card.querySelector('img');
+                    const name = card.querySelector('.small');
+                    if (img) img.style.display = 'block';
+                    if (name) name.style.display = 'block';
+                }, idx * 1000);
+            });
         }
 
         function showResult(result) {
