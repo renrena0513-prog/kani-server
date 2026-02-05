@@ -215,6 +215,22 @@
             100% { opacity: 0; transform: translateY(-6px) scale(0.98); }
         }
 
+        .mutant-glow {
+            box-shadow: 0 0 18px rgba(0, 255, 200, 0.7), 0 0 36px rgba(0, 255, 200, 0.5);
+            border-radius: 12px;
+        }
+
+        .mutant-label {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: rgba(0, 255, 200, 0.2);
+            color: #7fffd4;
+            font-weight: 700;
+            font-size: 0.75rem;
+            border: 1px solid rgba(0, 255, 200, 0.5);
+        }
+
         .draw-mode-toggle {
             display: inline-flex;
             gap: 8px;
@@ -420,6 +436,7 @@
         let osaisenBadgeList = [];
         let osaisenBadgeTimer = null;
         let currentDrawMode = 'single';
+        let rarityValueMap = {};
         let currentGachaMode = 'coin';
         let gachaCoinPrice = 50;
 
@@ -524,14 +541,15 @@
                 for (const rarity of rarityOrder) {
                     if (!grouped[rarity] || grouped[rarity].length === 0) continue;
                     const badgesInRarity = grouped[rarity];
-                const rarityPercent = (badgesInRarity.length / badges.length) * 100;
-                const perBadgePercent = badgesInRarity.length > 0 ? (rarityPercent / badgesInRarity.length) : 0;
+                    const rarityPercent = (badgesInRarity.length / badges.length) * 100;
+                    const perBadgePercent = badgesInRarity.length > 0 ? (rarityPercent / badgesInRarity.length) : 0;
+                    const rarityClass = getRarityClass(rarity);
 
                     html += `
                         <div class="mb-3">
                             <div class="text-start mb-2">
-                                <span class="badge bg-light text-dark">${rarity}</span>
-                                <span class="small text-white-50">(${badgesInRarity.length}種 / 計${rarityPercent.toFixed(2)}%)</span>
+                                <span class="badge ${rarityClass} text-white">${rarity}</span>
+                                <span class="small text-white-50">(${badgesInRarity.length}種)</span>
                             </div>
                             <div class="d-flex flex-wrap gap-2 justify-content-start">
                                 ${badgesInRarity.map(b => `
@@ -596,6 +614,10 @@
 
                 const badges = badgesRes.data || [];
                 const thresholds = thresholdsRes || [];
+                rarityValueMap = {};
+                thresholds.forEach(t => {
+                    rarityValueMap[t.rarity_name] = Number(t.threshold_value || 0);
+                });
                 const circulation = {};
                 (circulationRes.data || []).forEach(r => {
                     circulation[r.badge_id] = (circulation[r.badge_id] || 0) + 1;
@@ -636,6 +658,12 @@
         }
 
         async function fetchRarityThresholds() {
+            const { data: newData, error: newError } = await supabaseClient
+                .from('update_rarity_thresholds')
+                .select('rarity_name, threshold_value')
+                .order('threshold_value', { ascending: true });
+            if (!newError && newData && newData.length > 0) return newData;
+
             const { data, error } = await supabaseClient
                 .from('rarity_thresholds')
                 .select('rarity_name, threshold_value')
@@ -746,26 +774,30 @@
             const modal = new bootstrap.Modal(document.getElementById('resultModalTen'));
             modal.show();
 
+            const totalValue = results.reduce((sum, r) => sum + (rarityValueMap[r.rarity] || 0), 0);
+            const totalEl = document.createElement('div');
+            totalEl.className = 'text-white-50 fw-bold mb-2';
+            totalEl.textContent = `合計価値: 🪙 ${totalValue.toLocaleString()}`;
+            list.appendChild(totalEl);
+
             results.forEach((r, idx) => {
                 const card = document.createElement('div');
-                card.className = 'text-center p-2 rounded';
-                card.style.background = 'rgba(0,0,0,0.2)';
+                card.className = 'text-center';
                 card.style.opacity = '0';
                 card.style.transform = 'translateY(8px)';
+                const rarityClass = getRarityClass(r.rarity || '');
                 card.innerHTML = `
-                    <div class="fw-bold text-white-50">${r.rarity || ''}</div>
-                    <img src="${r.image_url || '../images/placeholder-badge.png'}" alt="${r.name || ''}" style="width: 72px; height: 72px; object-fit: contain; display:none;">
-                    <div class="small text-white-50 mt-1" style="display:none;">${r.name || ''}</div>
+                    <div class="fw-bold ${rarityClass} text-white mb-2">${r.rarity || ''}</div>
                 `;
                 list.appendChild(card);
                 setTimeout(() => {
                     card.style.transition = 'all 0.3s ease';
                     card.style.opacity = '1';
                     card.style.transform = 'translateY(0)';
-                    const img = card.querySelector('img');
-                    const name = card.querySelector('.small');
-                    if (img) img.style.display = 'block';
-                    if (name) name.style.display = 'block';
+                    card.innerHTML = `
+                        <div class="fw-bold ${rarityClass} text-white mb-2">${r.rarity || ''}</div>
+                        <img src="${r.image_url || '../images/placeholder-badge.png'}" alt="${r.name || ''}" style="width: 96px; height: 96px; object-fit: contain;" class="${r.is_mutant ? 'mutant-glow' : ''}">
+                    `;
                 }, idx * 1000);
             });
         }
@@ -780,9 +812,10 @@
             imgEl.src = result.image_url || '../images/placeholder-badge.png';
             nameEl.textContent = result.name;
 
-            const rarity = result.rarity || '一般';
+            const rarity = result.rarity || '';
             rarityEl.textContent = rarity;
             rarityEl.className = 'result-rarity ' + getRarityClass(rarity);
+            imgEl.classList.toggle('mutant-glow', !!result.is_mutant);
 
             if (result.type === 'stone') {
                 headerEl.innerHTML = '<span class="fs-4 fw-bold">💠 換金できる石を授かりました</span>';
@@ -793,7 +826,9 @@
                 imgEl.src = 'https://cdn-icons-png.flaticon.com/512/812/812328.png';
             } else {
                 headerEl.innerHTML = '<span class="fs-4 fw-bold">✨ 新しい縁を授かりました</span>';
-                msgEl.textContent = '新しいバッジを獲得しました！マイページや所持品から確認してください。';
+                const value = rarityValueMap[rarity] || 0;
+                const mutantLabel = result.is_mutant ? ' <span class="mutant-label">ミュータント</span>' : '';
+                msgEl.innerHTML = `新しいバッジを獲得しました！${mutantLabel}<br>価値: 🪙 ${value.toLocaleString()}`;
             }
 
             const modal = new bootstrap.Modal(document.getElementById('resultModal'));
