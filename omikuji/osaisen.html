@@ -215,20 +215,15 @@
             100% { opacity: 0; transform: translateY(-6px) scale(0.98); }
         }
 
-        .mutant-glow {
-            box-shadow: 0 0 18px rgba(0, 255, 200, 0.7), 0 0 36px rgba(0, 255, 200, 0.5);
-            border-radius: 12px;
-        }
-
         .mutant-label {
             display: inline-block;
             padding: 2px 8px;
             border-radius: 999px;
-            background: rgba(0, 255, 200, 0.2);
-            color: #7fffd4;
+            background: rgba(255, 215, 0, 0.2);
+            color: #ffeaa7;
             font-weight: 700;
             font-size: 0.75rem;
-            border: 1px solid rgba(0, 255, 200, 0.5);
+            border: 1px solid rgba(255, 215, 0, 0.5);
         }
 
         .draw-mode-toggle {
@@ -413,6 +408,7 @@
                 <div class="mb-2">
                     <span class="fs-4 fw-bold">✨ 10連の結果</span>
                 </div>
+                <div id="result-ten-total" class="text-white-50 fw-bold mb-2"></div>
                 <div id="result-ten-list" class="d-grid gap-2" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
                     <!-- JSで挿入 -->
                 </div>
@@ -427,6 +423,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../js/supabase-config.js"></script>
     <script src="../js/badge-utils.js"></script>
+    <script src="../js/effects/mutant-badge.js"></script>
     <script src="../js/auth-guard.js"></script>
     <script src="../js/navigation.js"></script>
     <script>
@@ -775,10 +772,8 @@
             modal.show();
 
             const totalValue = results.reduce((sum, r) => sum + (rarityValueMap[r.rarity] || 0), 0);
-            const totalEl = document.createElement('div');
-            totalEl.className = 'text-white-50 fw-bold mb-2';
-            totalEl.textContent = `合計価値: 🪙 ${totalValue.toLocaleString()}`;
-            list.appendChild(totalEl);
+            const totalEl = document.getElementById('result-ten-total');
+            if (totalEl) totalEl.textContent = `合計価値: 🪙 ${totalValue.toLocaleString()}`;
 
             results.forEach((r, idx) => {
                 const card = document.createElement('div');
@@ -796,26 +791,34 @@
                     card.style.transform = 'translateY(0)';
                     card.innerHTML = `
                         <div class="fw-bold ${rarityClass} text-white mb-2">${r.rarity || ''}</div>
-                        <img src="${r.image_url || '../images/placeholder-badge.png'}" alt="${r.name || ''}" style="width: 96px; height: 96px; object-fit: contain;" class="${r.is_mutant ? 'mutant-glow' : ''}">
+                        <div class="mutant-badge-container mini ${r.is_mutant ? 'active' : ''}" style="width: 96px; height: 96px; margin: 0 auto;">
+                            <img src="${r.image_url || '../images/placeholder-badge.png'}" alt="${r.name || ''}" style="width: 100%; height: 100%; object-fit: contain;">
+                            ${window.MutantBadge ? window.MutantBadge.renderShine(!!r.is_mutant) : '<div class=\"mutant-badge-shine\"></div>'}
+                        </div>
                     `;
                 }, idx * 1000);
             });
         }
 
         function showResult(result) {
-            const imgEl = document.getElementById('result-img');
-            const nameEl = document.getElementById('result-name');
-            const msgEl = document.getElementById('result-msg');
             const rarityEl = document.getElementById('result-rarity-badge');
             const headerEl = document.getElementById('result-header');
-
-            imgEl.src = result.image_url || '../images/placeholder-badge.png';
-            nameEl.textContent = result.name;
-
             const rarity = result.rarity || '';
             rarityEl.textContent = rarity;
             rarityEl.className = 'result-rarity ' + getRarityClass(rarity);
-            imgEl.classList.toggle('mutant-glow', !!result.is_mutant);
+            const isMutant = !!result.is_mutant;
+            const resultBody = document.querySelector('#resultModal .result-body');
+            if (resultBody) {
+                resultBody.innerHTML = `
+                    <div class="mutant-badge-container large ${isMutant ? 'active' : ''}" style="width: 140px; height: 140px; margin: 0 auto;">
+                        <img src="${result.image_url || '../images/placeholder-badge.png'}" alt="${result.name || ''}" style="width: 100%; height: 100%; object-fit: contain;">
+                        ${window.MutantBadge ? window.MutantBadge.renderShine(isMutant) : '<div class=\"mutant-badge-shine\"></div>'}
+                    </div>
+                    <h3 id="result-name" class="fw-bold mb-3">${result.name || ''}</h3>
+                    <p id="result-msg" class="text-muted mb-4"></p>
+                `;
+            }
+            const msgEl = document.getElementById('result-msg');
 
             if (result.type === 'stone') {
                 headerEl.innerHTML = '<span class="fs-4 fw-bold">💠 換金できる石を授かりました</span>';
@@ -823,7 +826,6 @@
             } else if (result.type === 'exchange_ticket') {
                 headerEl.innerHTML = '<span class="fs-4 fw-bold">🎫 引換券を授かりました</span>';
                 msgEl.textContent = `該当レアリティのバッジが不在だったため、${rarity}引換券を獲得しました。`;
-                imgEl.src = 'https://cdn-icons-png.flaticon.com/512/812/812328.png';
             } else {
                 headerEl.innerHTML = '<span class="fs-4 fw-bold">✨ 新しい縁を授かりました</span>';
                 const value = rarityValueMap[rarity] || 0;
