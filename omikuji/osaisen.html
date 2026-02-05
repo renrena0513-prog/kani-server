@@ -204,6 +204,17 @@
             border-color: rgba(255, 255, 255, 0.4);
         }
 
+        .badge-fade {
+            animation: badgeFade 5s ease-in-out infinite;
+        }
+
+        @keyframes badgeFade {
+            0% { opacity: 0; transform: translateY(6px) scale(0.98); }
+            15% { opacity: 1; transform: translateY(0) scale(1); }
+            85% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-6px) scale(0.98); }
+        }
+
         .gacha-tabs {
             display: inline-flex;
             gap: 10px;
@@ -264,7 +275,9 @@
             <div id="osaisen-box-area" class="osaisen-box-wrapper mx-auto mb-4"
                 style="position: relative; width: fit-content;">
                 <div id="coin" class="coin-animation">🪙</div>
-                <div id="osaisen-box" style="font-size: 100px; cursor: default;">🎫</div>
+                <div id="osaisen-box" style="cursor: default;">
+                    <img id="osaisen-badge" src="../images/placeholder-badge.png" alt="排出バッジ" style="width: 96px; height: 96px; object-fit: contain;">
+                </div>
             </div>
 
             <div class="mb-4">
@@ -274,10 +287,6 @@
 
             <div
                 class="ticket-balance d-inline-flex align-items-center bg-dark bg-opacity-25 px-4 py-2 rounded-pill mb-3 border border-secondary border-opacity-25">
-                <span class="fs-4 me-2">🎫</span>
-                <span class="me-2 text-white-50">祈願符:</span>
-                <span id="ticket-count" class="fw-bold text-white fs-5">- 枚</span>
-                <span class="mx-3 text-white-50">|</span>
                 <span class="fs-4 me-2">🪙</span>
                 <span class="me-2 text-white-50">コイン:</span>
                 <span id="coin-count" class="fw-bold text-white fs-5">- C</span>
@@ -300,23 +309,7 @@
                 </div>
             </div>
 
-            <!-- 提供割合表示セクション -->
-            <div class="mt-5 text-center">
-                <a href="javascript:void(0)" class="text-white-50 small text-decoration-none" onclick="toggleOdds()">
-                    <i class="bi bi-info-circle me-1"></i> 提供割合を確認する
-                </a>
-                <div id="odds-area" class="mt-4 p-4 rounded shadow-lg mx-auto"
-                    style="background: rgba(0,0,0,0.3); display: none; max-width: 600px; border: 1px solid rgba(255,255,255,0.1);">
-                    <div id="odds-list-badges" class="row g-2 mb-4">
-                        <div class="col-12 odds-category">📿 バッジ・引換券</div>
-                        <!-- JSでバッジ系を挿入 -->
-                    </div>
-                    <div id="odds-list-stones" class="row g-2">
-                        <div class="col-12 odds-category">💠 御神石（換金用バッジ）</div>
-                        <!-- JSで石系を挿入 -->
-                    </div>
-                </div>
-            </div>
+            <!-- 提供割合は非表示（コインガチャ専用） -->
 
             <!-- 排出バッジ一覧セクション -->
             <div class="mt-4 text-center">
@@ -366,6 +359,8 @@
         let currentUser = null;
         let isDrawing = false;
         let provisionData = null;
+        let osaisenBadgeList = [];
+        let osaisenBadgeTimer = null;
         let currentGachaMode = 'coin';
         let gachaCoinPrice = 50;
 
@@ -381,13 +376,14 @@
             currentUser = user;
             fetchTicketCount();
             fetchGachaCoinPrice();
+            initOsaisenBadgeShowcase();
         });
 
         async function fetchTicketCount() {
             const discordId = currentUser.user_metadata.provider_id;
             const { data, error } = await supabaseClient
                 .from('profiles')
-                .select('gacha_tickets, coins')
+                .select('coins')
                 .eq('discord_user_id', discordId)
                 .maybeSingle();
 
@@ -396,103 +392,14 @@
                 return;
             }
 
-            const ticketCount = data?.gacha_tickets || 0;
             const coinCount = data?.coins || 0;
 
-            const ticketEl = document.getElementById('ticket-count');
             const coinEl = document.getElementById('coin-count');
 
-            if (ticketEl) ticketEl.textContent = `${ticketCount.toLocaleString()} 枚`;
             if (coinEl) coinEl.textContent = `${coinCount.toLocaleString()} C`;
         }
 
-        async function fetchProvisionRatio() {
-            try {
-                // レアリティの内訳
-                const rarityThresholds = await fetchRarityThresholds();
-                // ガチャ排出バッジ
-                const { data: gachaBadges } = await supabaseClient.from('badges').select('id, price, fixed_rarity_name, sales_type, is_gacha_eligible').eq('is_gacha_eligible', true);
-                const { data: circulationRes } = await supabaseClient.from('user_badges_new').select('badge_id');
-
-                const badges = gachaBadges || [];
-                const circulation = {};
-                (circulationRes || []).forEach(r => {
-                    circulation[r.badge_id] = (circulation[r.badge_id] || 0) + 1;
-                });
-
-                // レアリティ別件数
-                const rarityCounts = {};
-                if (rarityThresholds.length === 0) {
-                    provisionData = null;
-                    renderOddsError('レアリティ情報が取得できませんでした。');
-                    return;
-                }
-                badges.forEach(badge => {
-                    const values = BadgeUtils.calculateBadgeValues(badge, circulation[badge.id] || 0, rarityThresholds);
-                    rarityCounts[values.rarityName] = (rarityCounts[values.rarityName] || 0) + 1;
-                });
-
-                const totalBadgeCount = Object.values(rarityCounts).reduce((s, v) => s + v, 0);
-
-                provisionData = {
-                    badges: Object.entries(rarityCounts).map(([name, count]) => ({
-                        name,
-                        percent: totalBadgeCount > 0 ? ((count / totalBadgeCount) * 100).toFixed(2) : '0.00'
-                    }))
-                };
-
-                renderOdds();
-            } catch (err) {
-                console.error('提供割合取得エラー:', err);
-            }
-        }
-
-        function renderOdds() {
-            if (!provisionData) return;
-
-            const badgeList = document.getElementById('odds-list-badges');
-            const stoneList = document.getElementById('odds-list-stones');
-            const stoneSection = document.querySelector('#odds-list-stones')?.parentElement;
-
-            // 既存のカテゴリラベル以外をクリア
-            Array.from(badgeList.children).slice(1).forEach(el => el.remove());
-            if (stoneList) Array.from(stoneList.children).slice(1).forEach(el => el.remove());
-
-            provisionData.badges.forEach(b => {
-                const div = document.createElement('div');
-                div.className = 'col-6 col-md-4';
-                div.innerHTML = `
-                    <div class="odds-item d-flex justify-content-between">
-                        <span class="text-white-50">${b.name}</span>
-                        <span style="color: var(--gold);">${b.percent}%</span>
-                    </div>`;
-                badgeList.appendChild(div);
-            });
-
-            if (stoneSection) stoneSection.style.display = 'none';
-        }
-
-        function renderOddsError(message) {
-            const badgeList = document.getElementById('odds-list-badges');
-            if (!badgeList) return;
-            badgeList.innerHTML = `
-                <div class="col-12">
-                    <div class="text-white-50">${message}</div>
-                </div>
-            `;
-            const stoneSection = document.querySelector('#odds-list-stones')?.parentElement;
-            if (stoneSection) stoneSection.style.display = 'none';
-        }
-
-        function toggleOdds() {
-            const area = document.getElementById('odds-area');
-            if (area.style.display === 'none') {
-                area.style.display = 'block';
-                if (!provisionData) fetchProvisionRatio();
-            } else {
-                area.style.display = 'none';
-            }
-        }
+        // 提供割合は非表示（コインガチャ専用）
 
         let badgePoolData = null;
 
@@ -587,6 +494,34 @@
             } catch (err) {
                 console.error('排出バッジ取得エラー:', err);
                 document.getElementById('badge-pool-list').innerHTML = '<p class="text-danger">読み込みエラー</p>';
+            }
+        }
+
+        async function initOsaisenBadgeShowcase() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('badges')
+                    .select('id, image_url')
+                    .eq('is_gacha_eligible', true);
+                if (error) throw error;
+                osaisenBadgeList = (data || []).filter(b => b.image_url);
+                if (osaisenBadgeList.length === 0) return;
+
+                const imgEl = document.getElementById('osaisen-badge');
+                if (!imgEl) return;
+                imgEl.classList.add('badge-fade');
+
+                let idx = Math.floor(Math.random() * osaisenBadgeList.length);
+                imgEl.src = osaisenBadgeList[idx].image_url;
+
+                if (osaisenBadgeTimer) clearInterval(osaisenBadgeTimer);
+                osaisenBadgeTimer = setInterval(() => {
+                    if (osaisenBadgeList.length === 0) return;
+                    idx = (idx + 1) % osaisenBadgeList.length;
+                    imgEl.src = osaisenBadgeList[idx].image_url;
+                }, 5000);
+            } catch (err) {
+                console.error('バッジ表示エラー:', err);
             }
         }
 
