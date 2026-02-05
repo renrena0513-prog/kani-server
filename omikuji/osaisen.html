@@ -258,6 +258,20 @@
             margin-top: 10px;
         }
 
+        .ten-result-item {
+            cursor: pointer;
+            border-radius: 10px;
+            padding: 6px;
+            border: 2px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .ten-result-item.selected {
+            border-color: var(--gold);
+            box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.35);
+            background: rgba(255, 215, 0, 0.08);
+        }
+
         .gacha-tabs {
             display: inline-flex;
             gap: 10px;
@@ -397,6 +411,9 @@
                 <button type="button" class="btn btn-primary rounded-pill px-5" data-bs-dismiss="modal">
                     ありがたく受け取る
                 </button>
+                <button type="button" class="btn btn-outline-danger rounded-pill px-5 mt-2" id="result-sell-btn" style="display:none;">
+                    その場で売却する
+                </button>
             </div>
         </div>
     </div>
@@ -412,6 +429,9 @@
                 <div id="result-ten-list" class="d-grid gap-2" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
                     <!-- JSで挿入 -->
                 </div>
+                <button type="button" class="btn btn-outline-danger rounded-pill px-5 mt-3" id="result-ten-sell-btn" style="display:none;">
+                    選択したものをまとめて売却
+                </button>
                 <button type="button" class="btn btn-primary rounded-pill px-5 mt-3" data-bs-dismiss="modal">
                     ありがたく受け取る
                 </button>
@@ -434,6 +454,8 @@
         let osaisenBadgeTimer = null;
         let currentDrawMode = 'single';
         let rarityValueMap = {};
+        let lastDrawnBadgeUuid = null;
+        let lastTenResults = [];
         let currentGachaMode = 'coin';
         let gachaCoinPrice = 50;
 
@@ -766,6 +788,7 @@
             list.innerHTML = '';
             const modal = new bootstrap.Modal(document.getElementById('resultModalTen'));
             modal.show();
+            lastTenResults = results || [];
 
             const totalValue = results.reduce((sum, r) => {
                 const base = rarityValueMap[r.rarity] || 0;
@@ -773,12 +796,14 @@
                 return sum + (base * multiplier);
             }, 0);
             const totalEl = document.getElementById('result-ten-total');
-            if (totalEl) totalEl.textContent = `合計価値: 🪙 ${totalValue.toLocaleString()}`;
+            if (totalEl) totalEl.textContent = '';
+            const sellBtn = document.getElementById('result-ten-sell-btn');
+            if (sellBtn) sellBtn.style.display = 'none';
 
             // まず全てレアリティのみ表示
             results.forEach((r) => {
                 const card = document.createElement('div');
-                card.className = 'text-center';
+                card.className = 'text-center ten-result-item';
                 card.style.opacity = '0';
                 card.style.transform = 'translateY(8px)';
                 const rarityText = r.rarity || 'レアリティ不明';
@@ -805,6 +830,14 @@
                             ${window.MutantBadge ? window.MutantBadge.renderShine(!!r?.is_mutant) : '<div class=\"mutant-badge-shine\"></div>'}
                         </div>
                     `;
+                    card.dataset.uuid = r?.uuid || '';
+                    card.addEventListener('click', () => {
+                        card.classList.toggle('selected');
+                        updateTenSellButtonState();
+                    });
+                    if (idx === results.length - 1 && totalEl) {
+                        totalEl.textContent = `合計価値: 🪙 ${totalValue.toLocaleString()}`;
+                    }
                 }, (idx + 1) * 1000);
             });
         }
@@ -828,6 +861,9 @@
                 `;
             }
             const msgEl = document.getElementById('result-msg');
+            lastDrawnBadgeUuid = result.uuid || null;
+            const sellBtn = document.getElementById('result-sell-btn');
+            if (sellBtn) sellBtn.style.display = lastDrawnBadgeUuid ? 'inline-block' : 'none';
 
             if (result.type === 'stone') {
                 headerEl.innerHTML = '<span class="fs-4 fw-bold">💠 換金できる石を授かりました</span>';
@@ -845,6 +881,68 @@
             const modal = new bootstrap.Modal(document.getElementById('resultModal'));
             modal.show();
         }
+
+        function updateTenSellButtonState() {
+            const sellBtn = document.getElementById('result-ten-sell-btn');
+            if (!sellBtn) return;
+            const selected = Array.from(document.querySelectorAll('.ten-result-item.selected'));
+            sellBtn.style.display = selected.length > 0 ? 'inline-block' : 'none';
+        }
+
+        async function sellBadgeByUuid(badgeUuid) {
+            const { data, error } = await supabaseClient.rpc('sell_badge_v2', {
+                p_user_id: currentUser.user_metadata.provider_id,
+                p_badge_uuid: badgeUuid
+            });
+            if (error || (data && data.error)) {
+                throw new Error(error?.message || data?.error || '売却に失敗しました');
+            }
+            return data;
+        }
+
+        async function handleSellSingle() {
+            if (!lastDrawnBadgeUuid) return;
+            if (!confirm('このバッジを売却しますか？')) return;
+            try {
+                const data = await sellBadgeByUuid(lastDrawnBadgeUuid);
+                alert(`売却しました！ (🪙 +${data.sell_price.toLocaleString()})`);
+                lastDrawnBadgeUuid = null;
+                const sellBtn = document.getElementById('result-sell-btn');
+                if (sellBtn) sellBtn.style.display = 'none';
+            } catch (err) {
+                alert('売却に失敗しました: ' + err.message);
+            }
+        }
+
+        async function handleSellTenSelected() {
+            const selected = Array.from(document.querySelectorAll('.ten-result-item.selected'))
+                .map(el => el.dataset.uuid)
+                .filter(Boolean);
+            if (selected.length === 0) return;
+            if (!confirm(`選択した ${selected.length} 個を売却しますか？`)) return;
+            try {
+                let total = 0;
+                for (const uuid of selected) {
+                    const data = await sellBadgeByUuid(uuid);
+                    total += data.sell_price || 0;
+                }
+                alert(`売却しました！ (🪙 +${total.toLocaleString()})`);
+                selected.forEach(uuid => {
+                    const el = document.querySelector(`.ten-result-item[data-uuid="${uuid}"]`);
+                    if (el) el.classList.remove('selected');
+                });
+                updateTenSellButtonState();
+            } catch (err) {
+                alert('売却に失敗しました: ' + err.message);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const sellBtn = document.getElementById('result-sell-btn');
+            if (sellBtn) sellBtn.addEventListener('click', handleSellSingle);
+            const sellTenBtn = document.getElementById('result-ten-sell-btn');
+            if (sellTenBtn) sellTenBtn.addEventListener('click', handleSellTenSelected);
+        });
     </script>
 </body>
 
