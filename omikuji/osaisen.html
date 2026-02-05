@@ -422,6 +422,11 @@
 
                 // レアリティ別件数
                 const rarityCounts = {};
+                if (rarityThresholds.length === 0) {
+                    provisionData = null;
+                    renderOddsError('レアリティ情報が取得できませんでした。');
+                    return;
+                }
                 badges.forEach(badge => {
                     const values = BadgeUtils.calculateBadgeValues(badge, circulation[badge.id] || 0, rarityThresholds);
                     rarityCounts[values.rarityName] = (rarityCounts[values.rarityName] || 0) + 1;
@@ -467,6 +472,18 @@
             if (stoneSection) stoneSection.style.display = 'none';
         }
 
+        function renderOddsError(message) {
+            const badgeList = document.getElementById('odds-list-badges');
+            if (!badgeList) return;
+            badgeList.innerHTML = `
+                <div class="col-12">
+                    <div class="text-white-50">${message}</div>
+                </div>
+            `;
+            const stoneSection = document.querySelector('#odds-list-stones')?.parentElement;
+            if (stoneSection) stoneSection.style.display = 'none';
+        }
+
         function toggleOdds() {
             const area = document.getElementById('odds-area');
             if (area.style.display === 'none') {
@@ -499,16 +516,14 @@
                 ]);
 
                 if (badgesRes.error) throw badgesRes.error;
-                if (thresholdsRes.error) throw thresholdsRes.error;
 
-                // remaining_count が 0 のバッジを除外（null は無制限として扱う）
-                const badges = (badgesRes.data || []).filter(b => b.remaining_count === null || b.remaining_count > 0);
+                // ガチャ対象バッジは is_gacha_eligible のみ（在庫制限は無視）
+                const badges = badgesRes.data || [];
                 const thresholds = thresholdsRes || [];
-
-                // レアリティ別重みの合計（未設定なら件数で算出）
-                const totalRarityWeight = thresholds.reduce((s, t) => s + (t.gacha_weight || 0), 0);
-
-                // レアリティ別排出率マップ
+                if (thresholds.length === 0) {
+                    document.getElementById('badge-pool-list').innerHTML = '<p class="text-danger">レアリティ情報が取得できません</p>';
+                    return;
+                }
                 // 流通数カウント
                 const circulation = {};
                 (circulationRes.data || []).forEach(r => {
@@ -517,12 +532,12 @@
 
                 // 動的レアリティ計算（BadgeUtils使用）
                 function getDynamicRarity(badge) {
-                    if (badge.fixed_rarity_name) return badge.fixed_rarity_name;
-                    if (badge.sales_type !== '変動型') return badge.fixed_rarity_name || '一般';
-
                     const n = circulation[badge.id] || 0;
-                    const result = BadgeUtils.calculateBadgeValues(badge, n, thresholds);
-                    return result.rarityName;
+                    if (typeof BadgeUtils !== 'undefined' && BadgeUtils.calculateBadgeValues) {
+                        const result = BadgeUtils.calculateBadgeValues(badge, n, thresholds);
+                        return result.rarityName;
+                    }
+                    return badge.fixed_rarity_name || thresholds[0]?.rarity_name || '不明';
                 }
 
                 // レアリティ別にグループ化
@@ -584,26 +599,31 @@
                 ]);
 
                 if (badgesRes.error) throw badgesRes.error;
-                if (thresholdsRes.error) throw thresholdsRes.error;
 
                 const badges = badgesRes.data || [];
-                const thresholds = thresholdsRes.data || [];
+                const thresholds = thresholdsRes || [];
                 const circulation = {};
                 (circulationRes.data || []).forEach(r => {
                     circulation[r.badge_id] = (circulation[r.badge_id] || 0) + 1;
                 });
 
-                if (badges.length === 0 || thresholds.length === 0) {
+                if (badges.length === 0) {
                     updateGachaPriceUI();
                     return;
                 }
 
                 let total = 0;
-                badges.forEach(badge => {
-                    const count = circulation[badge.id] || 0;
-                    const values = BadgeUtils.calculateBadgeValues(badge, count, thresholds);
-                    total += values.marketValue;
-                });
+                if (thresholds.length > 0 && typeof BadgeUtils !== 'undefined' && BadgeUtils.calculateBadgeValues) {
+                    badges.forEach(badge => {
+                        const count = circulation[badge.id] || 0;
+                        const values = BadgeUtils.calculateBadgeValues(badge, count, thresholds);
+                        total += values.marketValue;
+                    });
+                } else {
+                    badges.forEach(badge => {
+                        total += Number(badge.price || 0);
+                    });
+                }
 
                 gachaCoinPrice = Math.max(1, Math.round(total / badges.length));
                 updateGachaPriceUI();
