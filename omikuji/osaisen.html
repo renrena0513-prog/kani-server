@@ -630,7 +630,9 @@
                     badges.forEach(badge => {
                         const count = circulation[badge.id] || 0;
                         const values = BadgeUtils.calculateBadgeValues(badge, count, thresholds);
-                        total += values.marketValue;
+                        const nextIdx = Math.min(values.starLevel, thresholds.length - 1);
+                        const nextValue = Number(thresholds[nextIdx]?.threshold_value || values.marketValue);
+                        total += nextValue;
                     });
                 } else {
                     badges.forEach(badge => {
@@ -765,7 +767,11 @@
             const modal = new bootstrap.Modal(document.getElementById('resultModalTen'));
             modal.show();
 
-            const totalValue = results.reduce((sum, r) => sum + (rarityValueMap[r.rarity] || 0), 0);
+            const totalValue = results.reduce((sum, r) => {
+                const base = rarityValueMap[r.rarity] || 0;
+                const multiplier = r.is_mutant ? 3 : 1;
+                return sum + (base * multiplier);
+            }, 0);
             const totalEl = document.getElementById('result-ten-total');
             if (totalEl) totalEl.textContent = `合計価値: 🪙 ${totalValue.toLocaleString()}`;
 
