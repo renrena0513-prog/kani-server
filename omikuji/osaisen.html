@@ -300,9 +300,14 @@
             </div>
 
             <div class="mt-2" id="draw-area">
-                <button id="draw-btn" class="gacha-btn" onclick="handleDraw()">
-                    🙏 お賽銭を奉納する
-                </button>
+                <div class="d-flex flex-column align-items-center gap-3">
+                    <button id="draw-btn" class="gacha-btn" onclick="handleDraw()">
+                        🙏 お賽銭を奉納する
+                    </button>
+                    <button id="draw-10-btn" class="gacha-btn" onclick="handleDrawTen()">
+                        ✨ 10連お賽銭（<span id="coin-price-label-10">-</span>）
+                    </button>
+                </div>
                 <div id="not-started-msg" class="alert alert-warning mt-3 mx-auto"
                     style="display: none; max-width: 400px;">
                     ✨ 現在、神事の準備をしています。お賽銭箱はまだ開いていないようです。r
@@ -343,6 +348,23 @@
                     <p id="result-msg" class="text-muted mb-4">メッセージ</p>
                 </div>
                 <button type="button" class="btn btn-primary rounded-pill px-5" data-bs-dismiss="modal">
+                    ありがたく受け取る
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 10連結果モーダル -->
+    <div class="modal fade" id="resultModalTen" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content text-center p-4">
+                <div class="mb-2">
+                    <span class="fs-4 fw-bold">✨ 10連の結果</span>
+                </div>
+                <div id="result-ten-list" class="d-grid gap-2" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
+                    <!-- JSで挿入 -->
+                </div>
+                <button type="button" class="btn btn-primary rounded-pill px-5 mt-3" data-bs-dismiss="modal">
                     ありがたく受け取る
                 </button>
             </div>
@@ -570,8 +592,10 @@
 
         function updateGachaPriceUI() {
             const coinLabel = document.getElementById('coin-price-label');
+            const coinLabel10 = document.getElementById('coin-price-label-10');
             const note = document.getElementById('gacha-price-note');
             if (coinLabel) coinLabel.textContent = `コイン ${gachaCoinPrice.toLocaleString()}枚`;
+            if (coinLabel10) coinLabel10.textContent = `${(gachaCoinPrice * 10).toLocaleString()}枚`;
             if (note) note.textContent = `コイン${gachaCoinPrice.toLocaleString()}枚でお賽銭を投げることができます。`;
         }
 
@@ -656,6 +680,64 @@
                 btn.disabled = false;
                 fetchTicketCount();
             }
+        }
+
+        async function handleDrawTen() {
+            if (isDrawing) return;
+
+            if (currentGachaMode === 'ticket') {
+                alert('チケットで回す機能はアップデート待ちです。');
+                return;
+            }
+
+            isDrawing = true;
+
+            const btn = document.getElementById('draw-10-btn');
+            const box = document.getElementById('osaisen-box');
+            const coin = document.getElementById('coin');
+
+            btn.disabled = true;
+
+            try {
+                coin.classList.add('active');
+                setTimeout(() => {
+                    box.classList.add('shaking');
+                }, 400);
+
+                const { data, error } = await supabaseClient.rpc('draw_gacha_multi', {
+                    p_user_id: currentUser.user_metadata.provider_id,
+                    p_draw_count: 10
+                });
+
+                await new Promise(resolve => setTimeout(resolve, 1500));
+
+                if (error) throw error;
+                if (!data.ok) throw new Error(data.error);
+
+                showTenResults(data.results || []);
+            } catch (err) {
+                console.error('10連ガチャエラー:', err);
+                alert('奉納に失敗しました: ' + (err.message || '不明なエラー'));
+            } finally {
+                isDrawing = false;
+                coin.classList.remove('active');
+                box.classList.remove('shaking');
+                btn.disabled = false;
+                fetchTicketCount();
+            }
+        }
+
+        function showTenResults(results) {
+            const list = document.getElementById('result-ten-list');
+            if (!list) return;
+            list.innerHTML = results.map(r => `
+                <div class="text-center p-2 rounded" style="background: rgba(0,0,0,0.2);">
+                    <img src="${r.image_url || '../images/placeholder-badge.png'}" alt="${r.name || ''}" style="width: 72px; height: 72px; object-fit: contain;">
+                    <div class="small text-white-50 mt-1">${r.name || ''}</div>
+                </div>
+            `).join('');
+            const modal = new bootstrap.Modal(document.getElementById('resultModalTen'));
+            modal.show();
         }
 
         function showResult(result) {
