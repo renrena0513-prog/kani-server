@@ -162,6 +162,11 @@
             padding: 1px 6px;
         }
 
+        .badge-tag-link {
+            text-decoration: none;
+            color: inherit;
+        }
+
         .badge-meta-row .rarity-pill {
             margin-bottom: 0;
         }
@@ -1935,7 +1940,7 @@
                 const isSoldOut = badge.remaining_count !== null && badge.remaining_count <= 0;
                 const tags = getBadgeTags(badge);
                 const tagHtml = tags.length
-                    ? `<div class="badge-tag-list">${tags.map(t => `<span class="badge-tag">#${escapeHtml(t)}</span>`).join('')}</div>`
+                    ? `<div class="badge-tag-list">${tags.map(t => `<a class="badge-tag-link" href="./list.html?tag=${encodeURIComponent(t)}"><span class="badge-tag">#${escapeHtml(t)}</span></a>`).join('')}</div>`
                     : '';
                 return `
                     <div class="col-12 col-md-4 col-lg-3">
