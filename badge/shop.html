@@ -176,14 +176,14 @@
 
         .rights-action-row {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 6px;
+            grid-template-columns: repeat(2, 94px);
+            gap: 8px;
             width: 100%;
+            justify-content: start;
         }
 
         .rights-action-row .btn {
-            width: 100%;
-            max-width: 94px;
+            width: 94px;
             justify-self: stretch;
             white-space: nowrap;
             font-size: 0.75rem;
@@ -1255,8 +1255,8 @@
                                             ✏️ 編集
                                         </button>
                                         ${pendingSet.has(badge.id)
-                        ? `<button class="btn btn-sm btn-outline-secondary ms-1 tag-request-btn" disabled>⏳ 申請中</button>`
-                        : `<button class="btn btn-sm btn-outline-warning ms-1 tag-request-btn"
+                        ? `<button class="btn btn-sm btn-outline-secondary tag-request-btn" disabled>⏳ 申請中</button>`
+                        : `<button class="btn btn-sm btn-outline-warning tag-request-btn"
                                                 onclick="openTagRequestModal('${badge.id}', '${encodeURIComponent(badge.name || '')}')">
                                                 🏷️ タグ申請
                                             </button>`}
