@@ -1397,6 +1397,7 @@ async function openBadgeModal(badge = null) {
         document.getElementById('badge-gacha-eligible').checked = badge.is_gacha_eligible || false;
         document.getElementById('badge-shop-listed').checked = badge.is_shop_listed !== false; // デフォルト true
         document.getElementById('badge-owner').value = badge.discord_user_id || '';
+        document.getElementById('badge-tags').value = Array.isArray(badge.tags) ? badge.tags.join('|') : '';
     } else {
         document.getElementById('badge-id').value = '';
         document.getElementById('badge-weight').value = '';
@@ -1404,6 +1405,7 @@ async function openBadgeModal(badge = null) {
         document.getElementById('badge-sort-order').value = 0;
         document.getElementById('badge-sales-type').value = '';
         document.getElementById('badge-label').value = '';
+        document.getElementById('badge-tags').value = '';
         document.getElementById('badge-gacha-eligible').checked = false;
         document.getElementById('badge-shop-listed').checked = true; // 新規作成時はデフォルトで true
     }
@@ -1476,13 +1478,24 @@ async function populateBadgeOwnerSelect(selectedValue = '') {
     }
 }
 
+function parseTags(value) {
+    if (!value) return [];
+    const raw = String(value).trim();
+    if (!raw) return [];
+    const sep = raw.includes('|') ? '|' : ',';
+    return raw.split(sep).map(t => t.trim()).filter(Boolean);
+}
+
 async function saveBadge() {
     const id = document.getElementById('badge-id').value;
     const name = document.getElementById('badge-name').value;
     const description = document.getElementById('badge-description').value;
     const label = document.getElementById('badge-label').value.trim();
+    const tagsInput = document.getElementById('badge-tags')?.value || '';
     let image_url = document.getElementById('badge-image-url').value;
     const imageFile = document.getElementById('badge-image-file').files[0];
+
+    const tags = parseTags(tagsInput);
 
     toggleLoading(true);
     try {
@@ -1506,7 +1519,8 @@ async function saveBadge() {
             fixed_rarity_name: document.getElementById('badge-fixed-rarity').value.trim() || null,
             sales_type: document.getElementById('badge-sales-type').value || null,
             is_gacha_eligible: document.getElementById('badge-gacha-eligible').checked,
-            is_shop_listed: document.getElementById('badge-shop-listed').checked
+            is_shop_listed: document.getElementById('badge-shop-listed').checked,
+            tags: tags.length ? tags : null
         };
 
 
@@ -1534,6 +1548,8 @@ async function deleteBadge(id) {
 
 async function handleBulkBadgeUpload(event) {
     const files = Array.from(event.target.files);
+    const bulkTagsInput = document.getElementById('badge-bulk-tags')?.value || '';
+    const bulkTags = parseTags(bulkTagsInput);
     toggleLoading(true);
     for (const file of files) {
         try {
@@ -1543,7 +1559,8 @@ async function handleBulkBadgeUpload(event) {
             await supabaseClient.from('badges').insert([{
                 name: file.name.replace(/\.[^/.]+$/, ''),
                 image_url: data.publicUrl,
-                label: null
+                label: null,
+                tags: bulkTags.length ? bulkTags : null
             }]);
         } catch (err) { console.error(err); }
     }
@@ -1555,13 +1572,17 @@ async function exportBadgesToCSV() {
     const { data: badges } = await supabaseClient.from('badges').select('*');
     // 全カラムを含める
     const headers = [
-        'id', 'name', 'description', 'label', 'image_url', 'price',
+        'id', 'name', 'description', 'label', 'tags', 'image_url', 'price',
         'requirements', 'remaining_count', 'sort_order', 'discord_user_id',
         'fixed_rarity_name', 'sales_type', 'is_gacha_eligible', 'is_shop_listed'
     ];
     const csvRows = [headers.join(',')];
     badges.forEach(b => csvRows.push(headers.map(h => {
         const value = b[h];
+        if (h === 'tags') {
+            const tags = Array.isArray(value) ? value : [];
+            return `"${tags.join('|').replace(/"/g, '""')}"`;
+        }
         // ブール値を文字列化
         if (typeof value === 'boolean') return value ? 'true' : 'false';
         // null/undefinedを空文字列に
@@ -1668,6 +1689,11 @@ async function handleBadgeCSVImport(event) {
                     // ブール型カラムの変換
                     else if (h === 'is_gacha_eligible' || h === 'is_shop_listed') {
                         obj[h] = value.toUpperCase() === 'TRUE' || value === '1';
+                    }
+                    // タグ配列
+                    else if (h === 'tags') {
+                        const tags = parseTags(value);
+                        obj[h] = tags.length ? tags : null;
                     }
                     // その他は文字列
                     else {

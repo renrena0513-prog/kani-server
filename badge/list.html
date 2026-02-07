@@ -186,6 +186,19 @@
             min-height: 38px;
         }
 
+        .filter-controls .form-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='%236c757d'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 12px 12px;
+            padding-right: 34px;
+        }
+
+        .creator-dropdown-btn .bi-caret-down-fill {
+            color: #6c757d;
+        }
+
         .filter-active {
             background: #f6ead6 !important;
             border-color: var(--gold) !important;
@@ -353,6 +366,12 @@
                         </select>
                     </div>
                     <div class="col-12 col-md-3">
+                        <label class="filter-label">タグ</label>
+                        <select id="tag-filter" class="form-select form-select-sm" onchange="filterAndRender()">
+                            <option value="">すべて</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-3">
                         <label class="filter-label">入手方法</label>
                         <select id="method-filter" class="form-select form-select-sm" onchange="filterAndRender()">
                             <option value="">すべて</option>
@@ -419,6 +438,7 @@
             creator: '',
             type: '',
             label: '',
+            tag: '',
             method: '',
             unownedOnly: false
         };
@@ -643,6 +663,7 @@
             filters.creator = document.getElementById('creator-filter')?.value || '';
             filters.type = document.getElementById('type-filter')?.value || '';
             filters.label = document.getElementById('label-filter')?.value || '';
+            filters.tag = document.getElementById('tag-filter')?.value || '';
             filters.method = document.getElementById('method-filter')?.value || '';
             updateDynamicFilterOptions(allBadges);
 
@@ -676,6 +697,10 @@
                 if (filters.creator && b.discord_user_id !== filters.creator) return false;
                 if (filters.type && b.sales_type !== filters.type) return false;
                 if (filters.label && (b.label || '').trim() !== filters.label) return false;
+                if (filters.tag) {
+                    const tags = getBadgeTags(b);
+                    if (!tags.includes(filters.tag)) return false;
+                }
                 if (filters.unownedOnly && ownedBadgeIds.size > 0 && ownedBadgeIds.has(b.id)) return false;
 
                 return true;
@@ -761,6 +786,7 @@
             document.getElementById('sort-select').value = 'price_asc';
             document.getElementById('type-filter').value = '';
             document.getElementById('label-filter').value = '';
+            document.getElementById('tag-filter').value = '';
             document.getElementById('method-filter').value = '';
             const rarityInput = document.getElementById('rarity-filter');
             if (rarityInput) rarityInput.value = '';
@@ -786,6 +812,13 @@
             return result.rarityName;
         }
 
+        function getBadgeTags(badge) {
+            if (!badge) return [];
+            const tags = badge.tags;
+            if (!Array.isArray(tags)) return [];
+            return tags.map(t => (t || '').trim()).filter(Boolean);
+        }
+
         function matchesMethodFilter(badge, method) {
             if (!method) return true;
             if (method === 'shop') return badge.is_shop_listed;
@@ -808,6 +841,10 @@
             if (excludeKey !== 'creator' && opts.creator && b.discord_user_id !== opts.creator) return false;
             if (excludeKey !== 'type' && opts.type && b.sales_type !== opts.type) return false;
             if (excludeKey !== 'label' && opts.label && (b.label || '').trim() !== opts.label) return false;
+            if (excludeKey !== 'tag' && opts.tag) {
+                const tags = getBadgeTags(b);
+                if (!tags.includes(opts.tag)) return false;
+            }
             if (excludeKey !== 'unownedOnly' && opts.unownedOnly && ownedBadgeIds.size > 0 && ownedBadgeIds.has(b.id)) return false;
             return true;
         }
@@ -816,6 +853,7 @@
             const searchVal = document.getElementById('search-box')?.value.toLowerCase() || '';
             const currentType = document.getElementById('type-filter')?.value || '';
             const currentLabel = document.getElementById('label-filter')?.value || '';
+            const currentTag = document.getElementById('tag-filter')?.value || '';
             const currentMethod = document.getElementById('method-filter')?.value || '';
             const baseOpts = {
                 searchVal,
@@ -823,6 +861,7 @@
                 creator: filters.creator,
                 type: filters.type,
                 label: filters.label,
+                tag: filters.tag,
                 method: filters.method,
                 unownedOnly: filters.unownedOnly
             };
@@ -831,6 +870,7 @@
             const baseForCreator = sourceBadges.filter(b => matchesFilters(b, baseOpts, 'creator'));
             const baseForType = sourceBadges.filter(b => matchesFilters(b, baseOpts, 'type'));
             const baseForLabel = sourceBadges.filter(b => matchesFilters(b, baseOpts, 'label'));
+            const baseForTag = sourceBadges.filter(b => matchesFilters(b, baseOpts, 'tag'));
             const baseForMethod = sourceBadges.filter(b => matchesFilters(b, baseOpts, 'method'));
 
             // レアリティメニュー
@@ -882,6 +922,28 @@
                     labelSelect.value = currentLabel;
                 } else {
                     labelSelect.value = '';
+                }
+            }
+
+            // タグ
+            const tagSelect = document.getElementById('tag-filter');
+            if (tagSelect) {
+                const counts = {};
+                baseForTag.forEach(b => {
+                    getBadgeTags(b).forEach(tag => {
+                        counts[tag] = (counts[tag] || 0) + 1;
+                    });
+                });
+                const options = Object.entries(counts)
+                    .filter(([, c]) => c > 0)
+                    .sort((a, b) => a[0].localeCompare(b[0], 'ja'))
+                    .map(([t, c]) => `<option value="${t}">${t} (${c})</option>`)
+                    .join('');
+                tagSelect.innerHTML = `<option value="">すべて</option>${options}`;
+                if ([...tagSelect.options].some(o => o.value === currentTag)) {
+                    tagSelect.value = currentTag;
+                } else {
+                    tagSelect.value = '';
                 }
             }
 

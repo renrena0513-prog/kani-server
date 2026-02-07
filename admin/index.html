@@ -554,6 +554,8 @@
                                         class="btn btn-outline-success btn-sm">
                                         🖼️ 画像一括アップロード
                                     </button>
+                                    <input type="text" id="badge-bulk-tags" class="form-control form-control-sm"
+                                        style="max-width: 240px;" placeholder="一括タグ (例: 麻雀|ポーカー)">
                                     <input type="file" id="badge-bulk-upload" style="display: none;" accept="image/*"
                                         multiple onchange="handleBulkBadgeUpload(event)">
                                     <button onclick="document.getElementById('badge-csv-import').click()"
@@ -1157,6 +1159,11 @@
                                 <label for="badge-label" class="form-label">ラベル</label>
                                 <input type="text" class="form-control" id="badge-label" maxlength="20" placeholder="例: NEW / 注目">
                                 <small class="text-muted">空欄なら表示されません</small>
+                            </div>
+                            <div class="mb-3">
+                                <label for="badge-tags" class="form-label">タグ（複数可）</label>
+                                <input type="text" class="form-control" id="badge-tags" placeholder="例: 麻雀|ポーカー|かに">
+                                <small class="text-muted">区切りは「|」を推奨（例: 麻雀|ポーカー）</small>
                             </div>
                         </form>
                     </div>
