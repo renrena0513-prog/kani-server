@@ -179,6 +179,8 @@
             align-items: center;
             gap: 8px;
             flex-wrap: nowrap;
+            justify-content: flex-start;
+            width: 100%;
         }
 
         .rights-action-row .btn {
@@ -187,6 +189,15 @@
             white-space: nowrap;
             font-size: 0.75rem;
             padding: 6px 8px;
+        }
+
+        .rights-item-meta {
+            max-width: 100%;
+        }
+
+        .rights-item .fw-bold.text-truncate {
+            max-width: 100%;
+            display: block;
         }
 
         .badge-type-pill {
@@ -920,21 +931,21 @@
                     </div>
                     <div class="small text-muted mb-2">既存タグから選ぶか、自由入力してください（最大4つ）</div>
                     <div class="d-grid gap-2">
-                        <div class="d-flex gap-2">
+                        <div>
                             <select class="form-select form-select-sm" id="tag-request-select-1"></select>
-                            <input type="text" class="form-control form-control-sm" id="tag-request-input-1" placeholder="自由入力">
+                            <input type="text" class="form-control form-control-sm mt-1 tag-request-input" id="tag-request-input-1" placeholder="自由入力" style="display:none;">
                         </div>
-                        <div class="d-flex gap-2">
+                        <div>
                             <select class="form-select form-select-sm" id="tag-request-select-2"></select>
-                            <input type="text" class="form-control form-control-sm" id="tag-request-input-2" placeholder="自由入力">
+                            <input type="text" class="form-control form-control-sm mt-1 tag-request-input" id="tag-request-input-2" placeholder="自由入力" style="display:none;">
                         </div>
-                        <div class="d-flex gap-2">
+                        <div>
                             <select class="form-select form-select-sm" id="tag-request-select-3"></select>
-                            <input type="text" class="form-control form-control-sm" id="tag-request-input-3" placeholder="自由入力">
+                            <input type="text" class="form-control form-control-sm mt-1 tag-request-input" id="tag-request-input-3" placeholder="自由入力" style="display:none;">
                         </div>
-                        <div class="d-flex gap-2">
+                        <div>
                             <select class="form-select form-select-sm" id="tag-request-select-4"></select>
-                            <input type="text" class="form-control form-control-sm" id="tag-request-input-4" placeholder="自由入力">
+                            <input type="text" class="form-control form-control-sm mt-1 tag-request-input" id="tag-request-input-4" placeholder="自由入力" style="display:none;">
                         </div>
                     </div>
                 </div>
@@ -1293,7 +1304,8 @@
 
         function buildTagRequestOptions(presetTags = []) {
             const tags = collectAllAvailableTags();
-            const options = ['<option value="">(選択)</option>'].concat(tags.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`));
+            const options = ['<option value="">(選択)</option>', '<option value="__custom__">自由入力</option>']
+                .concat(tags.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`));
             for (let i = 1; i <= 4; i++) {
                 const select = document.getElementById(`tag-request-select-${i}`);
                 const input = document.getElementById(`tag-request-input-${i}`);
@@ -1305,10 +1317,22 @@
                     const value = String(presetTags[i - 1]).trim();
                     const lower = value.toLowerCase();
                     const exists = tags.some(t => t.toLowerCase() === lower);
-                    select.value = exists ? value : '';
-                    if (!exists && input) input.value = value;
+                    if (exists) {
+                        select.value = value;
+                        if (input) {
+                            input.value = '';
+                            input.style.display = 'none';
+                        }
+                    } else {
+                        select.value = '__custom__';
+                        if (input) {
+                            input.value = value;
+                            input.style.display = 'block';
+                        }
+                    }
                 } else if (input) {
                     input.value = '';
+                    input.style.display = 'none';
                 }
             }
             updateTagRequestDropdowns();
@@ -1320,22 +1344,30 @@
             for (let i = 1; i <= 4; i++) {
                 const select = document.getElementById(`tag-request-select-${i}`);
                 const val = select?.value || '';
-                if (val) selected.add(val.toLowerCase());
+                if (val && val !== '__custom__') selected.add(val.toLowerCase());
             }
             for (let i = 1; i <= 4; i++) {
                 const select = document.getElementById(`tag-request-select-${i}`);
+                const input = document.getElementById(`tag-request-input-${i}`);
                 if (!select) continue;
-                const current = (select.value || '').toLowerCase();
-                const options = ['<option value="">(選択)</option>'].concat(
+                const currentRaw = select.value || '';
+                const current = currentRaw.toLowerCase();
+                const options = ['<option value="">(選択)</option>', '<option value="__custom__">自由入力</option>'].concat(
                     tags.filter(t => {
                         const lower = t.toLowerCase();
                         return lower === current || !selected.has(lower);
                     }).map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`)
                 );
                 select.innerHTML = options.join('');
-                if (current) {
+                if (currentRaw === '__custom__') {
+                    select.value = '__custom__';
+                    if (input) input.style.display = 'block';
+                } else if (current) {
                     const match = tags.find(t => t.toLowerCase() === current);
                     select.value = match || '';
+                    if (input) input.style.display = 'none';
+                } else if (input) {
+                    input.style.display = 'none';
                 }
             }
         }
