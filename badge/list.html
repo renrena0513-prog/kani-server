@@ -681,7 +681,7 @@
             if (input) input.value = id || '';
             if (label) label.textContent = name || 'すべて';
             if (img) {
-                if (avatar) {
+                if (avatar && /^https?:\/\//.test(avatar)) {
                     img.src = avatar;
                     img.style.display = 'block';
                 } else {
@@ -836,7 +836,6 @@
         }
 
         document.addEventListener('DOMContentLoaded', initBadgeList);
-    </script>
         function getRarityForBadge(badge) {
             const circulationCount = cachedCirculationCounts[badge.id] || 0;
             const result = BadgeUtils.calculateBadgeValues(badge, circulationCount, rarityThresholds);
