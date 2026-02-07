@@ -398,11 +398,18 @@
         /* モバイル用レイアウト調整 */
         @media (max-width: 767.98px) {
             .shop-item {
-                flex-direction: row;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                grid-template-areas:
+                    "meta meta"
+                    "name name"
+                    "image details"
+                    "tags action";
+                row-gap: 6px;
+                column-gap: 12px;
                 text-align: left;
-                padding: 15px;
-                align-items: center;
-                min-height: 150px;
+                padding: 14px;
+                min-height: 0;
             }
 
             .shop-item:hover {
@@ -410,45 +417,55 @@
                 /* モバイルでは浮き上がり無効化（誤タップ防止） */
             }
 
-            /* 左側: バッジ画像と名前 */
             .shop-item-badge-area {
-                width: 42%;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                margin-right: 15px;
-                flex-shrink: 0;
+                display: contents;
             }
 
             .shop-img {
-                width: 96px;
-                height: 96px;
-                margin-bottom: 6px;
+                width: 112px;
+                height: 112px;
+                margin-bottom: 0;
+                grid-area: image;
+                justify-self: center;
             }
 
             .shop-name {
-                font-size: 0.85rem;
+                font-size: 0.95rem;
                 height: auto;
                 margin-bottom: 0;
                 -webkit-line-clamp: 2;
                 line-clamp: 2;
-                text-align: center;
+                text-align: left;
+                grid-area: name;
             }
 
             .rarity-pill {
                 font-size: 0.6rem;
                 padding: 1px 8px;
-                margin-bottom: 5px;
+                margin-bottom: 0;
             }
 
-            /* 右側: 詳細とボタン */
+            .badge-meta-row {
+                grid-area: meta;
+                justify-content: flex-start;
+            }
+
+            .badge-tag-list {
+                grid-area: tags;
+                justify-content: flex-start;
+            }
+
             .shop-item-details {
-                width: 65%;
-                display: flex;
-                flex-direction: column;
-                justify-content: space-between;
-                height: 100%;
+                display: contents;
+            }
+
+            .shop-item-pricing {
+                grid-area: details;
+            }
+
+            .btn-buy {
+                grid-area: action;
+                width: 100%;
             }
         }
     </style>
@@ -1593,13 +1610,13 @@
                                     ${badge.label ? `<span class="badge-label-strong">${badge.label}</span>` : ''}
                                 </div>
                                 ${tagHtml}
-                                <img src="${badge.image_url}" class="shop-img" alt="${badge.name}" style="filter: drop-shadow(0 5px 15px rgba(0,0,0,0.2));">
                                 <div class="shop-name" style="color: inherit;">${badge.name}</div>
+                                <img src="${badge.image_url}" class="shop-img" alt="${badge.name}" style="filter: drop-shadow(0 5px 15px rgba(0,0,0,0.2));">
                             </a>
 
                             <!-- 詳細エリア（モバイルでは右側） -->
                             <div class="shop-item-details">
-                                <div class="w-100 px-2 small mb-2 text-start">
+                                <div class="w-100 px-2 small mb-2 text-start shop-item-pricing">
                                     ${badge.sales_type === '変動型' ? `
                                     <div class="d-flex justify-content-between opacity-75" style="font-size: 0.7rem;">
                                         <span>初期価格: 🪙${badge.price.toLocaleString()}</span>
