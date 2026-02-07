@@ -2332,24 +2332,23 @@ function buildLogActionButtons() {
     const labels = {
         gacha_draw: '🎰 ガチャ',
         coin_transfer: '💸 コイン送金・受取',
-        badge_purchase: '🛒 バッジ購入・売却',
-        badge_transfer: '🎁 バッジ譲渡・受取',
-        omikuji: '⛩️ おみくじ',
-        admin_edit: '🔧 管理者調整',
-        admin_coin_adjust: '🔧 管理者調整',
-        mahjong: '🀄 麻雀',
-        badge_sell: '💰 バッジ売却',
-        badge_receive: '📥 バッジ受取',
-        badge_purchase_only: '🛒 バッジ購入',
         coin_receive: '📩 コイン受取',
         transfer_send: '💸 送金',
         transfer_receive: '📩 受取',
+        badge_purchase: '🛒 バッジ購入',
+        badge_sell: '💰 バッジ売却',
+        badge_transfer: '🎁 バッジ譲渡',
+        badge_receive: '📥 バッジ受取',
         ticket_transfer: '🎟️ チケット譲渡',
-        ticket_receive: '🎫 チケット受取'
+        ticket_receive: '🎫 チケット受取',
+        omikuji: '⛩️ おみくじ',
+        mahjong: '🀄 麻雀',
+        admin_edit: '🔧 管理者調整',
+        admin_coin_adjust: '🔧 管理者調整'
     };
     const preferredOrder = [
         'gacha_draw', 'mahjong', 'omikuji',
-        'coin_transfer', 'transfer_send', 'transfer_receive', 'coin_receive',
+        'coin_transfer', 'coin_receive', 'transfer_send', 'transfer_receive',
         'badge_purchase', 'badge_sell', 'badge_transfer', 'badge_receive',
         'ticket_transfer', 'ticket_receive',
         'admin_edit', 'admin_coin_adjust'
@@ -2372,22 +2371,23 @@ function buildLogActionButtons() {
 
 async function loadLogActionTypes() {
     if (logActionTypes.length) return;
-    try {
-        const { data, error } = await supabaseClient
-            .from('activity_logs')
-            .select('action_type')
-            .order('created_at', { ascending: false })
-            .limit(10000);
-        if (error) throw error;
-        const set = new Set();
-        (data || []).forEach(r => {
-            if (r.action_type) set.add(r.action_type);
-        });
-        logActionTypes = Array.from(set);
-    } catch (err) {
-        console.error('action_type 取得エラー:', err);
-        logActionTypes = [];
-    }
+    logActionTypes = [
+        'gacha_draw',
+        'coin_transfer',
+        'coin_receive',
+        'transfer_send',
+        'transfer_receive',
+        'badge_purchase',
+        'badge_sell',
+        'badge_transfer',
+        'badge_receive',
+        'ticket_transfer',
+        'ticket_receive',
+        'omikuji',
+        'mahjong',
+        'admin_edit',
+        'admin_coin_adjust'
+    ];
 }
 
 function handleLogUserFilterChange() {
@@ -2443,21 +2443,7 @@ async function fetchActivityLogs(page = 1) {
 
     // アクションフィルターの適用
     if (actionFilter.length > 0) {
-        const actionGroups = {
-            coin_transfer: ['coin_transfer', 'coin_receive', 'transfer_send', 'transfer_receive'],
-            badge_purchase: ['badge_purchase', 'badge_sell'],
-            badge_transfer: ['badge_transfer', 'badge_receive']
-        };
-        const types = new Set();
-        actionFilter.forEach(key => {
-            const group = actionGroups[key];
-            if (group) {
-                group.forEach(t => types.add(t));
-            } else {
-                types.add(key);
-            }
-        });
-        query = query.in('action_type', Array.from(types));
+        query = query.in('action_type', actionFilter);
     }
 
     const { data: logs, count } = await query.order('created_at', { ascending: false }).range(from, to);
@@ -2545,6 +2531,12 @@ async function fetchActivityLogs(page = 1) {
             if (details?.buyer) detailParts.push(`購入者: ${details.buyer}`);
             if (details?.is_mutant === true) detailParts.push('変異: あり');
             if (details?.badge_uuid) detailParts.push(`UUID: ${details.badge_uuid}`);
+            if (log.action_type === 'omikuji') {
+                if (details?.rank) detailParts.push(`結果: ${details.rank}`);
+                if (details?.message) detailParts.push(`文言: ${details.message}`);
+                if (details?.ticket_reward !== undefined) detailParts.push(`🎫: ${details.ticket_reward}枚`);
+                if (details?.mangan_ticket_reward !== undefined) detailParts.push(`🧧: ${details.mangan_ticket_reward}枚`);
+            }
             const detailsText = detailParts.length
                 ? `<div class="small text-muted mt-1">${detailParts.map(t => escapeHtml(t)).join(' / ')}</div>`
                 : '';

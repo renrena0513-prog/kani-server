@@ -824,7 +824,22 @@
                                 <h2 class="mb-0" style="font-family: var(--font-title); color: var(--deep-gray);">📝
                                     全ユーザー活動ログ</h2>
                                 <div class="d-flex gap-2 log-toolbar">
-                                    <div class="d-flex flex-wrap gap-2" id="log-action-buttons"></div>
+                                    <div class="d-flex flex-wrap gap-2" id="log-action-buttons">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary log-filter-btn" data-action="gacha_draw">🎰 ガチャ</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary log-filter-btn" data-action="coin_transfer">💸 コイン送金・受取</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary log-filter-btn" data-action="coin_receive">📩 コイン受取</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary log-filter-btn" data-action="transfer_send">💸 送金</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary log-filter-btn" data-action="transfer_receive">📩 受取</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary log-filter-btn" data-action="badge_purchase">🛒 バッジ購入</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary log-filter-btn" data-action="badge_sell">💰 バッジ売却</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary log-filter-btn" data-action="badge_transfer">🎁 バッジ譲渡</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary log-filter-btn" data-action="badge_receive">📥 バッジ受取</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary log-filter-btn" data-action="ticket_transfer">🎟️ チケット譲渡</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary log-filter-btn" data-action="ticket_receive">🎫 チケット受取</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary log-filter-btn" data-action="omikuji">⛩️ おみくじ</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary log-filter-btn" data-action="mahjong">🀄 麻雀</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary log-filter-btn" data-action="admin_edit">🔧 管理者調整</button>
+                                    </div>
                                     <select id="log-user-filter" class="form-select form-select-sm" style="width: 180px;"
                                         onchange="handleLogUserFilterChange()">
                                         <option value="all">👤 すべてのユーザー</option>
