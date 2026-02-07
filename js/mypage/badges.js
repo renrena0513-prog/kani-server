@@ -449,21 +449,16 @@
                     case 'price_asc':
                         return (Number(valA._assetValue) || 0) - (Number(valB._assetValue) || 0);
                     case 'count':
+                    case 'count_desc':
                         return (Number(valB.count) || 0) - (Number(valA.count) || 0);
+                    case 'count_asc':
+                        return (Number(valA.count) || 0) - (Number(valB.count) || 0);
                     case 'circulation_desc':
                         return (Number(valB.n) || 0) - (Number(valA.n) || 0);
                     case 'circulation_asc':
                         return (Number(valA.n) || 0) - (Number(valB.n) || 0);
                     case 'name':
                         return (valA.badge.name || '').localeCompare(valB.badge.name || '');
-                    case 'rarity':
-                        if (valA.badge.fixed_rarity_name && !valB.badge.fixed_rarity_name) return 1;
-                        if (!valA.badge.fixed_rarity_name && valB.badge.fixed_rarity_name) return -1;
-                        if ((valB._starLevel || 0) !== (valA._starLevel || 0)) return (valB._starLevel || 0) - (valA._starLevel || 0);
-                        if ((valB._assetValue || 0) !== (valA._assetValue || 0)) {
-                            return (valB._assetValue || 0) - (valA._assetValue || 0);
-                        }
-                        return (Number(valA.badge.sort_order ?? valA.badge.id) || 0) - (Number(valB.badge.sort_order ?? valB.badge.id) || 0);
                     default:
                         return 0;
                 }
