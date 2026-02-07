@@ -264,8 +264,6 @@
                         <div class="d-flex align-items-center gap-2">
                             <label class="small text-muted flex-shrink-0">並び替え:</label>
                             <select id="sort-select" class="form-select form-select-sm" onchange="filterAndRender()">
-                                <option value="number">ナンバー順 (#0〜)</option>
-                                <option value="rarity">レアリティ順 (高〜)</option>
                                 <option value="price_asc">価格順（低→高）</option>
                                 <option value="price_desc">価格順（高→低）</option>
                                 <option value="circulation_asc">流通数順（低→高）</option>
@@ -288,9 +286,14 @@
                 <div class="row g-3">
                     <div class="col-12 col-md-3">
                         <label class="small text-muted">レアリティ</label>
-                        <select id="rarity-filter" class="form-select form-select-sm" onchange="filterAndRender()">
-                            <option value="">すべて</option>
-                        </select>
+                        <div class="creator-dropdown">
+                            <button class="creator-dropdown-btn" type="button" id="rarity-filter-btn">
+                                <span id="rarity-filter-label">すべて</span>
+                                <i class="bi bi-caret-down-fill ms-auto"></i>
+                            </button>
+                            <input type="hidden" id="rarity-filter" value="">
+                            <div class="creator-menu" id="rarity-filter-menu"></div>
+                        </div>
                     </div>
                     <div class="col-12 col-md-3">
                         <label class="small text-muted">クリエイター</label>
@@ -308,10 +311,6 @@
                         <label class="small text-muted">タイプ</label>
                         <select id="type-filter" class="form-select form-select-sm" onchange="filterAndRender()">
                             <option value="">すべて</option>
-                            <option value="変動型">変動型</option>
-                            <option value="固定型">固定型</option>
-                            <option value="換金品">換金品</option>
-                            <option value="限定品">限定品</option>
                         </select>
                     </div>
                     <div class="col-12 col-md-3">
@@ -327,14 +326,22 @@
                     </div>
                 </div>
 
-                <!-- カテゴリタブ -->
-                <div class="category-tabs" id="category-tabs">
-                    <button class="tab-btn active" onclick="setCategory('all', this)">全件</button>
-                    <button class="tab-btn" onclick="setCategory('shop', this)">ショップ販売中</button>
-                    <button class="tab-btn" onclick="setCategory('gacha', this)">ガチャ排出バッジ</button>
-                    <button class="tab-btn" onclick="setCategory('exchange', this)">換金アイテム</button>
-                    <button class="tab-btn" onclick="setCategory('limited', this)">限定品</button>
-                    <button class="tab-btn" onclick="setCategory('not_for_sale', this)">非売品</button>
+                <!-- 入手方法フィルター -->
+                <div class="row g-3 mt-1">
+                    <div class="col-12 col-md-3">
+                        <label class="small text-muted">入手方法</label>
+                        <select id="method-filter" class="form-select form-select-sm" onchange="filterAndRender()">
+                            <option value="">すべて</option>
+                            <option value="shop">ショップ販売中</option>
+                            <option value="gacha">ガチャ排出</option>
+                            <option value="not_for_sale">非売品</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-3 d-flex align-items-end">
+                        <button class="btn btn-outline-secondary btn-sm w-100" type="button" onclick="resetAllFilters()">
+                            フィルターをリセット
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -366,7 +373,6 @@
         });
 
         let allBadges = [];
-        let currentCategory = 'all';
         let rarityThresholds = [];
         let creatorMap = new Map();
         let ownedBadgeIds = new Set();
@@ -376,6 +382,7 @@
             creator: '',
             type: '',
             label: '',
+            method: '',
             unownedOnly: false
         };
 
@@ -426,14 +433,6 @@
                 }
             }
             return current;
-        }
-
-        function setCategory(cat, btn) {
-            currentCategory = cat;
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            currentPage = 1;
-            filterAndRender();
         }
 
         const rarityOrder = ['測定不能', '神話', '至高', '幻想', '伝説', '極上', '特上', '貴重', '希少・Ⅱ', '希少・Ⅰ', '良質', '一般', '-'];
@@ -548,17 +547,43 @@
         function buildFilterOptions() {
             const raritySelect = document.getElementById('rarity-filter');
             const labelSelect = document.getElementById('label-filter');
+            const methodSelect = document.getElementById('method-filter');
             if (raritySelect) {
-                const raritySet = new Set();
-                rarityThresholds.forEach(r => raritySet.add(r.rarity_name));
-                raritySelect.innerHTML = '<option value="">すべて</option>' + [...raritySet].map(r => `<option value="${r}">${r}</option>`).join('');
+                // handled by custom menu
             }
             if (labelSelect) {
                 const labelSet = new Set(allBadges.map(b => (b.label || '').trim()).filter(Boolean));
-                labelSelect.innerHTML = '<option value="">すべて</option>' + [...labelSet].map(l => `<option value="${l}">${l}</option>`).join('');
+                labelSelect.innerHTML = '<option value="">すべて</option>' + [...labelSet].map(l => {
+                    const count = allBadges.filter(b => (b.label || '').trim() === l).length;
+                    return `<option value="${l}">${l} (${count})</option>`;
+                }).join('');
             }
 
             buildCreatorMenu();
+            buildRarityMenu();
+
+            if (methodSelect) {
+                const counts = {
+                    shop: allBadges.filter(b => b.is_shop_listed).length,
+                    gacha: allBadges.filter(b => b.is_gacha_eligible).length,
+                    not_for_sale: allBadges.filter(b => !b.is_shop_listed && !b.is_gacha_eligible && b.sales_type !== '限定品' && b.sales_type !== '換金品').length
+                };
+                methodSelect.innerHTML = `
+                    <option value="">すべて</option>
+                    <option value="shop">ショップ販売中 (${counts.shop})</option>
+                    <option value="gacha">ガチャ排出 (${counts.gacha})</option>
+                    <option value="not_for_sale">非売品 (${counts.not_for_sale})</option>
+                `;
+            }
+
+            const typeSelect = document.getElementById('type-filter');
+            if (typeSelect) {
+                const typeSet = new Set(allBadges.map(b => b.sales_type).filter(Boolean));
+                typeSelect.innerHTML = '<option value="">すべて</option>' + [...typeSet].map(t => {
+                    const count = allBadges.filter(b => b.sales_type === t).length;
+                    return `<option value="${t}">${t} (${count})</option>`;
+                }).join('');
+            }
         }
 
         function buildCreatorMenu() {
@@ -591,6 +616,61 @@
             });
         }
 
+        function buildRarityMenu() {
+            const menu = document.getElementById('rarity-filter-menu');
+            const btn = document.getElementById('rarity-filter-btn');
+            if (!menu || !btn) return;
+            const rarityCounts = {};
+            allBadges.forEach(b => {
+                const circulationCount = cachedCirculationCounts[b.id] || 0;
+                const result = BadgeUtils.calculateBadgeValues(b, circulationCount, rarityThresholds);
+                const r = result.rarityName || '-';
+                rarityCounts[r] = (rarityCounts[r] || 0) + 1;
+            });
+            const items = [{ name: 'すべて', value: '' }]
+                .concat(Object.keys(rarityCounts).map(r => ({ name: r, value: r, count: rarityCounts[r] })))
+                .sort((a, b) => {
+                    if (a.value === '') return -1;
+                    if (b.value === '') return 1;
+                    return rarityOrder.indexOf(a.name) - rarityOrder.indexOf(b.name);
+                });
+            menu.innerHTML = items.map(item => {
+                if (item.value === '') {
+                    return `<div class="creator-item" data-value="" data-name="すべて"><span>すべて</span></div>`;
+                }
+                const cls = getRarityClass(item.name);
+                return `
+                    <div class="creator-item" data-value="${item.value}" data-name="${item.name}">
+                        <span class="badge ${cls} text-white">${item.name}</span>
+                        <span class="ms-auto text-muted small">(${item.count})</span>
+                    </div>
+                `;
+            }).join('');
+            menu.querySelectorAll('.creator-item').forEach(el => {
+                el.addEventListener('click', () => {
+                    setRarityFilter(el.dataset.value, el.dataset.name);
+                    menu.style.display = 'none';
+                });
+            });
+            btn.addEventListener('click', () => {
+                menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+            });
+            document.addEventListener('click', (e) => {
+                if (!menu.contains(e.target) && !btn.contains(e.target)) {
+                    menu.style.display = 'none';
+                }
+            });
+        }
+
+        function setRarityFilter(value, name) {
+            const input = document.getElementById('rarity-filter');
+            const label = document.getElementById('rarity-filter-label');
+            if (input) input.value = value || '';
+            if (label) label.textContent = name || 'すべて';
+            currentPage = 1;
+            filterAndRender();
+        }
+
         function setCreatorFilter(id, name, avatar) {
             const input = document.getElementById('creator-filter');
             const label = document.getElementById('creator-filter-label');
@@ -617,38 +697,26 @@
             filters.creator = document.getElementById('creator-filter')?.value || '';
             filters.type = document.getElementById('type-filter')?.value || '';
             filters.label = document.getElementById('label-filter')?.value || '';
+            filters.method = document.getElementById('method-filter')?.value || '';
 
             // 1. フィルタリング
             let filtered = allBadges.filter(b => {
                 // 名前検索
                 if (searchVal && !b.name.toLowerCase().includes(searchVal)) return false;
 
-                // カテゴリフィルター
-                switch (currentCategory) {
+                // 入手方法フィルター
+                switch (filters.method) {
                     case 'shop':
-                        // ショップ販売中: is_shop_listed = true
                         if (!b.is_shop_listed) return false;
                         break;
                     case 'gacha':
-                        // ガチャ排出バッジ: is_gacha_eligible = true
                         if (!b.is_gacha_eligible) return false;
                         break;
-                    case 'exchange':
-                        // 換金アイテム: sales_type = '換金品'
-                        if (b.sales_type !== '換金品') return false;
-                        break;
-                    case 'limited':
-                        // 限定品: sales_type = '限定品'
-                        if (b.sales_type !== '限定品') return false;
-                        break;
                     case 'not_for_sale':
-                        // 非売品: is_shop_listed = false AND is_gacha_eligible = false AND 限定品・換金品以外
                         if (b.is_shop_listed || b.is_gacha_eligible) return false;
                         if (b.sales_type === '限定品' || b.sales_type === '換金品') return false;
                         break;
-                    case 'all':
                     default:
-                        // 全件: フィルタなし
                         break;
                 }
 
@@ -739,6 +807,28 @@
                     </div>
                 `;
             }).join('');
+        }
+
+        function resetAllFilters() {
+            document.getElementById('search-box').value = '';
+            document.getElementById('sort-select').value = 'price_asc';
+            document.getElementById('type-filter').value = '';
+            document.getElementById('label-filter').value = '';
+            document.getElementById('method-filter').value = '';
+            const rarityInput = document.getElementById('rarity-filter');
+            if (rarityInput) rarityInput.value = '';
+            const rarityLabel = document.getElementById('rarity-filter-label');
+            if (rarityLabel) rarityLabel.textContent = 'すべて';
+            setCreatorFilter('', 'すべて', '');
+            filters.unownedOnly = false;
+            const btn = document.getElementById('unowned-toggle');
+            if (btn) {
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-outline-secondary');
+                btn.textContent = '未所持のみ表示';
+            }
+            currentPage = 1;
+            filterAndRender();
         }
 
         document.addEventListener('DOMContentLoaded', initBadgeList);
