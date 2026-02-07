@@ -571,6 +571,11 @@
             if (btn) btn.style.display = 'inline-block';
         }
 
+        // fail-safe: avoid ReferenceError if script order/cached build is stale
+        if (typeof window.updateDynamicFilterOptions !== 'function') {
+            window.updateDynamicFilterOptions = function () {};
+        }
+
         function buildFilterOptions() {
             const raritySelect = document.getElementById('rarity-filter');
             const labelSelect = document.getElementById('label-filter');
