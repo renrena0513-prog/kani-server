@@ -175,17 +175,16 @@
         }
 
         .rights-action-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: nowrap;
-            justify-content: flex-start;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 6px;
             width: 100%;
         }
 
         .rights-action-row .btn {
-            flex: 0 0 88px;
-            width: 88px;
+            width: 100%;
+            max-width: 88px;
+            justify-self: stretch;
             white-space: nowrap;
             font-size: 0.75rem;
             padding: 6px 8px;
