@@ -147,6 +147,21 @@
             flex-wrap: wrap;
         }
 
+        .badge-tag-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            justify-content: center;
+            font-size: 0.7rem;
+            color: #6c757d;
+        }
+
+        .badge-tag {
+            background: #f1f3f5;
+            border-radius: 10px;
+            padding: 1px 6px;
+        }
+
         .badge-meta-row .rarity-pill {
             margin-bottom: 0;
         }
@@ -1358,6 +1373,15 @@
             return tags.map(t => (t || '').trim()).filter(Boolean);
         }
 
+        function escapeHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         function populateShopCreatorOptions(creatorMap) {
             const menu = document.getElementById('shop-creator-menu');
             if (!menu) return;
@@ -1550,6 +1574,10 @@
             grid.innerHTML = items.map(badge => {
                 const rarityClass = getRarityClass(badge.rarity);
                 const isSoldOut = badge.remaining_count !== null && badge.remaining_count <= 0;
+                const tags = getBadgeTags(badge);
+                const tagHtml = tags.length
+                    ? `<div class="badge-tag-list">${tags.map(t => `<span class="badge-tag">#${escapeHtml(t)}</span>`).join('')}</div>`
+                    : '';
                 return `
                     <div class="col-12 col-md-4 col-lg-3">
                         <div class="shop-item position-relative badge-card ${rarityClass} ${isSoldOut ? 'sold-out' : ''}">
@@ -1564,6 +1592,7 @@
                                     </span>
                                     ${badge.label ? `<span class="badge-label-strong">${badge.label}</span>` : ''}
                                 </div>
+                                ${tagHtml}
                                 <img src="${badge.image_url}" class="shop-img" alt="${badge.name}" style="filter: drop-shadow(0 5px 15px rgba(0,0,0,0.2));">
                                 <div class="shop-name" style="color: inherit;">${badge.name}</div>
                             </a>
