@@ -184,8 +184,8 @@
         }
 
         .rights-action-row .btn {
-            flex: 1 1 0;
-            min-width: 88px;
+            flex: 0 0 88px;
+            width: 88px;
             white-space: nowrap;
             font-size: 0.75rem;
             padding: 6px 8px;
@@ -198,6 +198,16 @@
         .rights-item .fw-bold.text-truncate {
             max-width: 100%;
             display: block;
+        }
+
+        .rights-item .flex-grow-1 {
+            min-width: 0;
+        }
+
+        .rights-item .fw-bold.text-truncate {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .badge-type-pill {
