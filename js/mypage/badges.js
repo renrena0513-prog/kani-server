@@ -222,7 +222,7 @@
                 // バッジの総資産を更新
                 const totalAssetsEl = document.getElementById('total-assets-value');
                 if (totalAssetsEl) {
-                    totalAssetsEl.textContent = (totalBadgeAssetValue + (profile?.coins || 0)).toLocaleString();
+                    totalAssetsEl.textContent = (totalBadgeAssetValue + userCoins).toLocaleString();
                 }
 
             } catch (err) {
