@@ -837,9 +837,6 @@
 
         document.addEventListener('DOMContentLoaded', initBadgeList);
     </script>
-</body>
-
-</html>
         function getRarityForBadge(badge) {
             const circulationCount = cachedCirculationCounts[badge.id] || 0;
             const result = BadgeUtils.calculateBadgeValues(badge, circulationCount, rarityThresholds);
@@ -983,12 +980,12 @@
                     menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
                 });
                 document.addEventListener('click', (e) => {
-                    if (!menu.contains(e.target) && !btn.contains(e.target)) {
-                        menu.style.display = 'none';
-                    }
-                });
-                btn.dataset.bound = '1';
-            }
+                if (!menu.contains(e.target) && !btn.contains(e.target)) {
+                    menu.style.display = 'none';
+                }
+            });
+            btn.dataset.bound = '1';
+        }
         }
 
         function buildRarityMenuFromCounts(rarityCounts) {
@@ -1039,3 +1036,7 @@
                 btn.dataset.bound = '1';
             }
         }
+    </script>
+</body>
+
+</html>
