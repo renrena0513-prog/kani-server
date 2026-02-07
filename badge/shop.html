@@ -175,19 +175,23 @@
         }
 
         .rights-action-row {
-            display: grid;
-            grid-template-columns: repeat(2, 94px);
-            gap: 8px;
+            display: flex;
+            gap: 6px;
             width: 100%;
-            justify-content: start;
+            box-sizing: border-box;
         }
 
         .rights-action-row .btn {
-            width: 94px;
-            justify-self: stretch;
+            flex: 1 1 0;
+            min-width: 0;
             white-space: nowrap;
-            font-size: 0.75rem;
-            padding: 6px 8px;
+            font-size: 0.7rem;
+            padding: 4px 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1.1;
+            box-sizing: border-box;
         }
 
         .rights-action-row .btn.tag-request-btn {
