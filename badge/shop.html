@@ -188,6 +188,10 @@
                 width: 100%;
             }
 
+            .shop-item-badge-area .badge-tag-list {
+                margin-bottom: 8px;
+            }
+
             .shop-item-pricing {
                 margin-top: auto;
             }
@@ -825,6 +829,47 @@
         </div>
     </div>
 
+    <!-- タグ申請モーダル -->
+    <div class="modal fade" id="tagRequestModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg border-0" style="border-radius: 20px;">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold">タグ申請</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <div class="small text-muted">対象バッジ</div>
+                        <div class="fw-bold" id="tag-request-badge-name">-</div>
+                    </div>
+                    <div class="small text-muted mb-2">既存タグから選ぶか、自由入力してください（最大4つ）</div>
+                    <div class="d-grid gap-2">
+                        <div class="d-flex gap-2">
+                            <select class="form-select form-select-sm" id="tag-request-select-1"></select>
+                            <input type="text" class="form-control form-control-sm" id="tag-request-input-1" placeholder="自由入力">
+                        </div>
+                        <div class="d-flex gap-2">
+                            <select class="form-select form-select-sm" id="tag-request-select-2"></select>
+                            <input type="text" class="form-control form-control-sm" id="tag-request-input-2" placeholder="自由入力">
+                        </div>
+                        <div class="d-flex gap-2">
+                            <select class="form-select form-select-sm" id="tag-request-select-3"></select>
+                            <input type="text" class="form-control form-control-sm" id="tag-request-input-3" placeholder="自由入力">
+                        </div>
+                        <div class="d-flex gap-2">
+                            <select class="form-select form-select-sm" id="tag-request-select-4"></select>
+                            <input type="text" class="form-control form-control-sm" id="tag-request-input-4" placeholder="自由入力">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">キャンセル</button>
+                    <button type="button" class="btn btn-primary" onclick="submitTagRequest()">申請する</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 所持アイテムモーダル（チケット・引換券） -->
         <div class="modal fade" id="itemInventoryModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
@@ -1079,6 +1124,10 @@
                                             onclick="openRightsBadgeEdit('${badge.id}', '${encodeURIComponent(badge.name || '')}', '${encodeURIComponent(badge.description || '')}')">
                                             ✏️ 編集
                                         </button>
+                                        <button class="btn btn-sm btn-outline-warning ms-1"
+                                            onclick="openTagRequestModal('${badge.id}', '${encodeURIComponent(badge.name || '')}')">
+                                            🏷️ タグ申請
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -1100,6 +1149,65 @@
             document.getElementById('rights-badge-description').value = description || '';
             updateRightsBadgeDescCount();
             new bootstrap.Modal(document.getElementById('rightsBadgeEditModal')).show();
+        }
+
+        let currentTagRequestBadgeId = null;
+
+        function openTagRequestModal(badgeId, nameEncoded) {
+            currentTagRequestBadgeId = badgeId;
+            const name = decodeURIComponent(nameEncoded || '');
+            document.getElementById('tag-request-badge-name').textContent = name || 'バッジ';
+            buildTagRequestOptions();
+            new bootstrap.Modal(document.getElementById('tagRequestModal')).show();
+        }
+
+        function buildTagRequestOptions() {
+            const tags = collectAllAvailableTags();
+            const options = ['<option value="">(選択)</option>'].concat(tags.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`));
+            for (let i = 1; i <= 4; i++) {
+                const select = document.getElementById(`tag-request-select-${i}`);
+                const input = document.getElementById(`tag-request-input-${i}`);
+                if (select) select.innerHTML = options.join('');
+                if (input) input.value = '';
+            }
+        }
+
+        function collectAllAvailableTags() {
+            const set = new Set();
+            (shopBadges || []).forEach(b => {
+                getBadgeTags(b).forEach(t => set.add(t));
+            });
+            return Array.from(set).sort((a, b) => a.localeCompare(b, 'ja'));
+        }
+
+        async function submitTagRequest() {
+            if (!currentTagRequestBadgeId) return;
+            const tags = [];
+            for (let i = 1; i <= 4; i++) {
+                const selectVal = document.getElementById(`tag-request-select-${i}`)?.value || '';
+                const inputVal = document.getElementById(`tag-request-input-${i}`)?.value || '';
+                const chosen = (inputVal || selectVal || '').trim();
+                if (chosen) tags.push(chosen);
+            }
+            const uniqueTags = Array.from(new Set(tags));
+            if (uniqueTags.length === 0) {
+                alert('タグを1つ以上選択または入力してください。');
+                return;
+            }
+            try {
+                const { error } = await supabaseClient.from('badge_tag_requests').insert([{
+                    badge_id: currentTagRequestBadgeId,
+                    requester_id: currentUserId,
+                    requested_tags: uniqueTags,
+                    status: 'pending'
+                }]);
+                if (error) throw error;
+                alert('タグ申請を送信しました。');
+                bootstrap.Modal.getInstance(document.getElementById('tagRequestModal'))?.hide();
+            } catch (err) {
+                console.error('Tag request error:', err);
+                alert('タグ申請に失敗しました。');
+            }
         }
 
         function updateRightsBadgeDescCount() {

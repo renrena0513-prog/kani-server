@@ -1563,6 +1563,7 @@ async function fetchBadges() {
         updateAdminFilterOptions();
         renderBadgeTagButtons();
         applyAdminBadgeFilters();
+        await fetchBadgeTagRequests();
     } catch (err) {
         console.error(err);
         list.innerHTML = '<div class="col-12 text-center text-danger py-5">読み込みエラーが発生しました</div>';
@@ -1606,6 +1607,102 @@ function renderAdminBadges() {
         </div>
     `).join('');
     updateBadgesPagination(filtered.length, totalPages);
+}
+
+async function fetchBadgeTagRequests() {
+    const container = document.getElementById('badge-tag-requests');
+    if (!container) return;
+    try {
+        const { data: requests, error } = await supabaseClient
+            .from('badge_tag_requests')
+            .select('*')
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+
+        if (!requests || requests.length === 0) {
+            container.innerHTML = '<p class="text-muted mb-0">申請はありません</p>';
+            return;
+        }
+
+        const requesterIds = [...new Set(requests.map(r => r.requester_id).filter(Boolean))];
+        const profileMap = new Map();
+        if (requesterIds.length) {
+            const { data: profiles } = await supabaseClient
+                .from('profiles')
+                .select('discord_user_id, account_name, avatar_url')
+                .in('discord_user_id', requesterIds);
+            (profiles || []).forEach(p => profileMap.set(p.discord_user_id, p));
+        }
+
+        const badgeMap = new Map((allAdminBadges || []).map(b => [b.id, b]));
+
+        container.innerHTML = requests.map(req => {
+            const badge = badgeMap.get(req.badge_id);
+            const requester = profileMap.get(req.requester_id);
+            const requesterName = requester?.account_name || req.requester_id || '不明';
+            const tags = Array.isArray(req.requested_tags) ? req.requested_tags : [];
+            const tagText = tags.map(t => `#${escapeHtml(t)}`).join(' ');
+            const encodedTags = tags.join('|').replace(/'/g, "\\'");
+            const badgeImg = badge?.image_url || '';
+            return `
+                <div class="d-flex align-items-center gap-3 p-2 border rounded mb-2">
+                    <img src="${escapeHtml(badgeImg)}" alt="" style="width: 40px; height: 40px; object-fit: contain; border-radius: 6px; background: #f8f9fa;">
+                    <div class="flex-grow-1">
+                        <div class="fw-bold">${escapeHtml(requesterName)}</div>
+                        <div class="small text-muted">${tagText || '-'}</div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-success"
+                            onclick="approveBadgeTagRequest('${req.id}', '${req.badge_id}', '${encodedTags}')">許可</button>
+                        <button class="btn btn-sm btn-outline-danger"
+                            onclick="rejectBadgeTagRequest('${req.id}')">拒否</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (err) {
+        console.error('タグ申請取得エラー:', err);
+        container.innerHTML = '<p class="text-danger mb-0">タグ申請の取得に失敗しました</p>';
+    }
+}
+
+async function approveBadgeTagRequest(requestId, badgeId, tagsPipe) {
+    const tags = (tagsPipe || '').split('|').map(t => t.trim()).filter(Boolean);
+    try {
+        if (tags.length === 0) return;
+        const { error: badgeErr } = await supabaseClient
+            .from('badges')
+            .update({ tags })
+            .eq('id', badgeId);
+        if (badgeErr) throw badgeErr;
+
+        const { error: reqErr } = await supabaseClient
+            .from('badge_tag_requests')
+            .update({ status: 'approved' })
+            .eq('id', requestId);
+        if (reqErr) throw reqErr;
+
+        await fetchBadges();
+        await fetchBadgeTagRequests();
+    } catch (err) {
+        console.error('タグ申請許可エラー:', err);
+        alert('許可に失敗しました');
+    }
+}
+
+async function rejectBadgeTagRequest(requestId) {
+    try {
+        const { error } = await supabaseClient
+            .from('badge_tag_requests')
+            .update({ status: 'rejected' })
+            .eq('id', requestId);
+        if (error) throw error;
+        await fetchBadgeTagRequests();
+    } catch (err) {
+        console.error('タグ申請拒否エラー:', err);
+        alert('拒否に失敗しました');
+    }
 }
 
 let currentGrantBadge = null;
