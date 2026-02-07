@@ -842,6 +842,13 @@
                         <div class="small text-muted">対象バッジ</div>
                         <div class="fw-bold" id="tag-request-badge-name">-</div>
                     </div>
+                    <div class="mb-2 small">
+                        <span class="text-muted">現在のタグ:</span>
+                        <span id="tag-request-current-tags" class="fw-bold">-</span>
+                    </div>
+                    <div class="alert alert-warning py-2 px-3 small" id="tag-request-pending" style="display:none;">
+                        申請中です。承認までお待ちください。
+                    </div>
                     <div class="small text-muted mb-2">既存タグから選ぶか、自由入力してください（最大4つ）</div>
                     <div class="d-grid gap-2">
                         <div class="d-flex gap-2">
@@ -1152,32 +1159,61 @@
         }
 
         let currentTagRequestBadgeId = null;
+        let currentTagRequestBadgeTags = [];
 
-        function openTagRequestModal(badgeId, nameEncoded) {
+        async function openTagRequestModal(badgeId, nameEncoded) {
             currentTagRequestBadgeId = badgeId;
+            const badge = (shopBadges || []).find(b => b.id === badgeId);
+            currentTagRequestBadgeTags = getBadgeTags(badge);
             const name = decodeURIComponent(nameEncoded || '');
             document.getElementById('tag-request-badge-name').textContent = name || 'バッジ';
-            buildTagRequestOptions();
+            const pendingInfo = document.getElementById('tag-request-pending');
+            if (pendingInfo) pendingInfo.style.display = 'none';
+
+            try {
+                const { data: pending } = await supabaseClient
+                    .from('badge_tag_requests')
+                    .select('id, requested_tags')
+                    .eq('badge_id', badgeId)
+                    .eq('requester_id', currentUserId)
+                    .eq('status', 'pending')
+                    .maybeSingle();
+                if (pending && pendingInfo) {
+                    pendingInfo.style.display = 'block';
+                }
+                buildTagRequestOptions(pending?.requested_tags || []);
+            } catch (err) {
+                console.warn('Pending tag request fetch failed:', err);
+                buildTagRequestOptions([]);
+            }
             new bootstrap.Modal(document.getElementById('tagRequestModal')).show();
         }
 
-        function buildTagRequestOptions() {
-            const tags = collectAllAvailableTags();
+        function buildTagRequestOptions(presetTags = []) {
+            const tags = collectAllAvailableTags(currentTagRequestBadgeTags);
             const options = ['<option value="">(選択)</option>'].concat(tags.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`));
             for (let i = 1; i <= 4; i++) {
                 const select = document.getElementById(`tag-request-select-${i}`);
                 const input = document.getElementById(`tag-request-input-${i}`);
                 if (select) select.innerHTML = options.join('');
-                if (input) input.value = '';
+                if (input) input.value = presetTags[i - 1] || '';
+            }
+            const currentTagInfo = document.getElementById('tag-request-current-tags');
+            if (currentTagInfo) {
+                const display = currentTagRequestBadgeTags.map(t => `#${escapeHtml(t)}`).join(' ');
+                currentTagInfo.textContent = display || 'なし';
             }
         }
 
-        function collectAllAvailableTags() {
+        function collectAllAvailableTags(excludeTags = []) {
             const set = new Set();
             (shopBadges || []).forEach(b => {
                 getBadgeTags(b).forEach(t => set.add(t));
             });
-            return Array.from(set).sort((a, b) => a.localeCompare(b, 'ja'));
+            const exclude = new Set((excludeTags || []).map(t => t.toLowerCase()));
+            return Array.from(set)
+                .filter(t => !exclude.has(t.toLowerCase()))
+                .sort((a, b) => a.localeCompare(b, 'ja'));
         }
 
         async function submitTagRequest() {
