@@ -384,16 +384,16 @@ function displayRecords(records, highlightingIds = []) {
         `).join('');
 
         tr.innerHTML = `
-            <td>${dateStr}</td>
-            <td>${accountsHtml}</td>
-            <td>
+            <td data-label="日時">${dateStr}</td>
+            <td data-label="プレイヤー">${accountsHtml}</td>
+            <td data-label="大会 / モード">
                 <div class="small fw-bold">${first.tournament_type || '-'}</div>
                 <div class="small text-muted">${first.mahjong_mode || ''} / ${first.match_mode || ''}</div>
             </td>
-            <td>${scoresHtml}</td>
-            <td>${ranksHtml}</td>
-            <td>${first.hand_count || 1}局</td>
-            <td>
+            <td data-label="スコア">${scoresHtml}</td>
+            <td data-label="順位">${ranksHtml}</td>
+            <td data-label="局数">${first.hand_count || 1}局</td>
+            <td data-label="操作">
                 <div class="d-flex flex-column gap-1">
                     <button onclick='editMatch("${mid}")' class="btn btn-sm btn-outline-primary">編集</button>
                     <button onclick='deleteMatch("${mid}")' class="btn btn-sm btn-outline-danger">削除</button>
