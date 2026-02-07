@@ -2312,6 +2312,7 @@ const LOGS_PER_PAGE = 10;
 let profilesCache = {};
 let badgesCache = {};
 let logActionTypes = [];
+let selectedLogUsers = new Set();
 
 async function loadProfilesCache() {
     const { data } = await supabaseClient.from('profiles').select('discord_user_id, account_name, avatar_url');
@@ -2331,7 +2332,6 @@ function buildLogActionButtons() {
     const current = new Set(getSelectedLogActions());
     const labels = {
         gacha_draw: '🎰 ガチャ',
-        coin_receive: '📩 コイン受取',
         transfer_send: '💸 送金',
         transfer_receive: '📩 受取',
         badge_purchase: '🛒 バッジ購入',
@@ -2342,12 +2342,11 @@ function buildLogActionButtons() {
         ticket_receive: '🎫 チケット受取',
         omikuji: '⛩️ おみくじ',
         mahjong: '🀄 麻雀',
-        admin_edit: '🔧 管理者調整',
-        admin_coin_adjust: '🪙 管理者コイン調整'
+        admin_edit: '🔧 管理者調整'
     };
     const preferredOrder = [
         'gacha_draw', 'mahjong', 'omikuji',
-        'coin_receive', 'transfer_send', 'transfer_receive',
+        'transfer_send', 'transfer_receive',
         'badge_purchase', 'badge_sell', 'badge_transfer', 'badge_receive',
         'ticket_transfer', 'ticket_receive',
         'admin_edit', 'admin_coin_adjust'
@@ -2372,7 +2371,6 @@ async function loadLogActionTypes() {
     if (logActionTypes.length) return;
     logActionTypes = [
         'gacha_draw',
-        'coin_receive',
         'transfer_send',
         'transfer_receive',
         'badge_purchase',
@@ -2384,17 +2382,16 @@ async function loadLogActionTypes() {
         'omikuji',
         'mahjong',
         'admin_edit',
-        'admin_coin_adjust'
+        'admin_edit'
     ];
 }
 
 function handleLogUserFilterChange() {
-    fetchActivityLogs(1); // フィルター変更時は1ページ目に戻す
+    fetchActivityLogs(1);
 }
 
-function getSelectedLogUserId() {
-    const userFilter = document.getElementById('log-user-filter');
-    return userFilter?.value || 'all';
+function getSelectedLogUserIds() {
+    return Array.from(selectedLogUsers);
 }
 
 function getSelectedLogActions() {
@@ -2406,16 +2403,83 @@ function getSelectedLogActions() {
 }
 
 function populateLogUserFilterOptions() {
-    const userFilter = document.getElementById('log-user-filter');
-    if (!userFilter) return;
-    const current = userFilter.value || 'all';
+    const list = document.getElementById('log-user-list');
+    if (!list) return;
+    const search = (document.getElementById('log-user-search')?.value || '').toLowerCase();
     const options = Object.entries(profilesCache)
-        .map(([id, info]) => ({ id, name: info.name || id }))
+        .map(([id, info]) => ({ id, name: info.name || id, avatar: info.avatar || '' }))
+        .filter(o => !search || (o.name || '').toLowerCase().includes(search) || o.id.includes(search))
         .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));
-    userFilter.innerHTML = ['<option value="all">👤 すべてのユーザー</option>']
-        .concat(options.map(o => `<option value="${o.id}">${escapeHtml(o.name)}</option>`))
-        .join('');
-    userFilter.value = options.some(o => o.id === current) ? current : 'all';
+    list.innerHTML = options.map(o => `
+        <label class="log-user-item">
+            <input type="checkbox" class="form-check-input" data-id="${o.id}" ${selectedLogUsers.has(o.id) ? 'checked' : ''}>
+            <img src="${escapeHtml(o.avatar)}" class="log-user-avatar" onerror="this.style.display='none'">
+            <span>${escapeHtml(o.name)}</span>
+        </label>
+    `).join('');
+}
+
+function renderLogUserChips() {
+    const wrap = document.getElementById('log-user-chips');
+    if (!wrap) return;
+    if (selectedLogUsers.size === 0) {
+        wrap.innerHTML = '';
+        return;
+    }
+    wrap.innerHTML = Array.from(selectedLogUsers).map(id => {
+        const info = profilesCache[id] || { name: id, avatar: '' };
+        return `
+            <span class="log-user-chip">
+                ${info.avatar ? `<img src="${escapeHtml(info.avatar)}" class="log-user-avatar" onerror="this.style.display='none'">` : ''}
+                ${escapeHtml(info.name || id)}
+                <button type="button" onclick="removeLogUser('${id}')">×</button>
+            </span>
+        `;
+    }).join('');
+}
+
+function removeLogUser(id) {
+    selectedLogUsers.delete(id);
+    populateLogUserFilterOptions();
+    renderLogUserChips();
+    fetchActivityLogs(1);
+}
+
+function initLogUserFilter() {
+    const btn = document.getElementById('log-user-filter-btn');
+    const dropdown = document.getElementById('log-user-dropdown');
+    const search = document.getElementById('log-user-search');
+    const applyBtn = document.getElementById('log-user-apply');
+    const clearBtn = document.getElementById('log-user-clear');
+    if (!btn || !dropdown) return;
+
+    btn.addEventListener('click', () => {
+        dropdown.classList.toggle('show');
+        populateLogUserFilterOptions();
+    });
+    document.addEventListener('click', (e) => {
+        if (!dropdown.contains(e.target) && !btn.contains(e.target)) {
+            dropdown.classList.remove('show');
+        }
+    });
+    search?.addEventListener('input', populateLogUserFilterOptions);
+    clearBtn?.addEventListener('click', () => {
+        selectedLogUsers.clear();
+        populateLogUserFilterOptions();
+        renderLogUserChips();
+    });
+    applyBtn?.addEventListener('click', () => {
+        const list = document.getElementById('log-user-list');
+        if (list) {
+            selectedLogUsers.clear();
+            list.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                if (cb.checked) selectedLogUsers.add(cb.getAttribute('data-id'));
+            });
+        }
+        dropdown.classList.remove('show');
+        renderLogUserChips();
+        fetchActivityLogs(1);
+    });
 }
 
 async function fetchActivityLogs(page = 1) {
@@ -2424,19 +2488,21 @@ async function fetchActivityLogs(page = 1) {
     if (Object.keys(badgesCache).length === 0) await loadBadgesCache();
     await loadLogActionTypes();
     buildLogActionButtons();
+    initLogUserFilter();
     populateLogUserFilterOptions();
+    renderLogUserChips();
 
     const from = (page - 1) * LOGS_PER_PAGE;
     const to = from + LOGS_PER_PAGE - 1;
 
     // フィルターの取得
     const actionFilter = getSelectedLogActions();
-    const userFilter = getSelectedLogUserId();
+    const userFilter = getSelectedLogUserIds();
 
     let query = supabaseClient.from('activity_logs').select('*', { count: 'exact' });
 
-    if (userFilter !== 'all') {
-        query = query.eq('user_id', userFilter);
+    if (userFilter.length > 0) {
+        query = query.in('user_id', userFilter);
     }
 
     // アクションフィルターの適用

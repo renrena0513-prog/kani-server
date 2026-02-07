@@ -402,6 +402,74 @@
             border-color: var(--gold);
         }
 
+        .log-user-filter {
+            position: relative;
+            min-width: 220px;
+        }
+
+        .log-user-dropdown {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            padding: 10px;
+            box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+            display: none;
+            z-index: 2000;
+        }
+
+        .log-user-dropdown.show {
+            display: block;
+        }
+
+        .log-user-list {
+            max-height: 220px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .log-user-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 8px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .log-user-item:hover {
+            background: #f6f7fb;
+        }
+
+        .log-user-avatar {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1px solid #e2e6ef;
+        }
+
+        .log-user-chip {
+            background: #f1f3f5;
+            border-radius: 14px;
+            padding: 4px 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+        }
+
+        .log-user-chip button {
+            border: none;
+            background: transparent;
+            cursor: pointer;
+        }
+
         @media (max-width: 768px) {
             .log-toolbar {
                 flex-direction: column;
@@ -418,6 +486,10 @@
 
             #log-user-filter,
             .log-toolbar .btn {
+                width: 100%;
+            }
+
+            .log-user-filter {
                 width: 100%;
             }
         }
@@ -826,7 +898,6 @@
                                 <div class="d-flex gap-2 log-toolbar">
                                     <div class="d-flex flex-wrap gap-2" id="log-action-buttons">
                                         <button type="button" class="btn btn-sm btn-outline-secondary log-filter-btn" data-action="gacha_draw">🎰 ガチャ</button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary log-filter-btn" data-action="coin_receive">📩 コイン受取</button>
                                         <button type="button" class="btn btn-sm btn-outline-secondary log-filter-btn" data-action="transfer_send">💸 送金</button>
                                         <button type="button" class="btn btn-sm btn-outline-secondary log-filter-btn" data-action="transfer_receive">📩 受取</button>
                                         <button type="button" class="btn btn-sm btn-outline-secondary log-filter-btn" data-action="badge_purchase">🛒 バッジ購入</button>
@@ -839,13 +910,25 @@
                                         <button type="button" class="btn btn-sm btn-outline-secondary log-filter-btn" data-action="mahjong">🀄 麻雀</button>
                                         <button type="button" class="btn btn-sm btn-outline-secondary log-filter-btn" data-action="admin_edit">🔧 管理者調整</button>
                                     </div>
-                                    <select id="log-user-filter" class="form-select form-select-sm" style="width: 180px;"
-                                        onchange="handleLogUserFilterChange()">
-                                        <option value="all">👤 すべてのユーザー</option>
-                                    </select>
-                                    <button onclick="fetchActivityLogs()" class="btn btn-outline-primary btn-sm">🔄
-                                        更新</button>
+                                    <div class="log-user-filter" id="log-user-filter">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm w-100 text-start"
+                                            id="log-user-filter-btn">
+                                            👤 ユーザーを選択
+                                        </button>
+                                        <div class="log-user-dropdown" id="log-user-dropdown">
+                                            <input type="text" class="form-control form-control-sm mb-2"
+                                                id="log-user-search" placeholder="ユーザー検索...">
+                                            <div class="log-user-list" id="log-user-list"></div>
+                                            <div class="d-flex gap-2 mt-2">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary w-100"
+                                                    id="log-user-clear">クリア</button>
+                                                <button type="button" class="btn btn-sm btn-primary w-100"
+                                                    id="log-user-apply">適用</button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
+                                <div class="mt-2 d-flex flex-wrap gap-2" id="log-user-chips"></div>
                             </div>
                             <div class="table-responsive">
                                 <table class="table table-hover align-middle" style="font-size: 0.9rem;">
