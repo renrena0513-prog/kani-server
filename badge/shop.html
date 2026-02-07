@@ -174,6 +174,13 @@
             line-height: 1;
         }
 
+        .rights-action-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: nowrap;
+        }
+
         .badge-type-pill {
             border-radius: 10px;
             padding: 0.2rem 0.5rem;
@@ -842,10 +849,6 @@
                         <div class="small text-muted">対象バッジ</div>
                         <div class="fw-bold" id="tag-request-badge-name">-</div>
                     </div>
-                    <div class="mb-2 small">
-                        <span class="text-muted">現在のタグ:</span>
-                        <span id="tag-request-current-tags" class="fw-bold">-</span>
-                    </div>
                     <div class="alert alert-warning py-2 px-3 small" id="tag-request-pending" style="display:none;">
                         申請中です。承認までお待ちください。
                     </div>
@@ -1095,6 +1098,13 @@
                     }
                 }
 
+                const { data: pendingReqs } = await supabaseClient
+                    .from('badge_tag_requests')
+                    .select('badge_id')
+                    .eq('requester_id', currentUserId)
+                    .eq('status', 'pending');
+                const pendingSet = new Set((pendingReqs || []).map(r => r.badge_id));
+
                 grid.innerHTML = badges.map(badge => {
                     const circulationCount = marketCounts[badge.id] || 0;
                     const result = BadgeUtils.calculateBadgeValues(badge, circulationCount, thresholds);
@@ -1126,15 +1136,17 @@
                                         <div class="fw-bold">累計利益: 🪙${totalRoyalty.toLocaleString()}</div>
                                         <div class="opacity-75">売れた: ${soldCount}個 | 所持: ${myCounts[badge.id] || 0}個</div>
                                     </div>
-                                    <div class="mt-2">
+                                    <div class="mt-2 rights-action-row">
                                         <button class="btn btn-sm btn-outline-primary"
                                             onclick="openRightsBadgeEdit('${badge.id}', '${encodeURIComponent(badge.name || '')}', '${encodeURIComponent(badge.description || '')}')">
                                             ✏️ 編集
                                         </button>
-                                        <button class="btn btn-sm btn-outline-warning ms-1"
-                                            onclick="openTagRequestModal('${badge.id}', '${encodeURIComponent(badge.name || '')}')">
-                                            🏷️ タグ申請
-                                        </button>
+                                        ${pendingSet.has(badge.id)
+                        ? `<button class="btn btn-sm btn-outline-secondary ms-1" disabled>⏳ 申請中</button>`
+                        : `<button class="btn btn-sm btn-outline-warning ms-1"
+                                                onclick="openTagRequestModal('${badge.id}', '${encodeURIComponent(badge.name || '')}')">
+                                                🏷️ タグ申請
+                                            </button>`}
                                     </div>
                                 </div>
                             </div>
@@ -1181,10 +1193,11 @@
                 if (pending && pendingInfo) {
                     pendingInfo.style.display = 'block';
                 }
-                buildTagRequestOptions(pending?.requested_tags || []);
+                const preset = pending?.requested_tags || currentTagRequestBadgeTags;
+                buildTagRequestOptions(preset);
             } catch (err) {
                 console.warn('Pending tag request fetch failed:', err);
-                buildTagRequestOptions([]);
+                buildTagRequestOptions(currentTagRequestBadgeTags);
             }
             new bootstrap.Modal(document.getElementById('tagRequestModal')).show();
         }
@@ -1197,11 +1210,6 @@
                 const input = document.getElementById(`tag-request-input-${i}`);
                 if (select) select.innerHTML = options.join('');
                 if (input) input.value = presetTags[i - 1] || '';
-            }
-            const currentTagInfo = document.getElementById('tag-request-current-tags');
-            if (currentTagInfo) {
-                const display = currentTagRequestBadgeTags.map(t => `#${escapeHtml(t)}`).join(' ');
-                currentTagInfo.textContent = display || 'なし';
             }
         }
 
