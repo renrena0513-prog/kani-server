@@ -190,6 +190,10 @@
             padding: 6px 8px;
         }
 
+        .rights-action-row .btn.tag-request-btn {
+            font-size: 0.7rem;
+        }
+
         .rights-item-meta {
             max-width: 100%;
         }
@@ -1251,8 +1255,8 @@
                                             ✏️ 編集
                                         </button>
                                         ${pendingSet.has(badge.id)
-                        ? `<button class="btn btn-sm btn-outline-secondary ms-1" disabled>⏳ 申請中</button>`
-                        : `<button class="btn btn-sm btn-outline-warning ms-1"
+                        ? `<button class="btn btn-sm btn-outline-secondary ms-1 tag-request-btn" disabled>⏳ 申請中</button>`
+                        : `<button class="btn btn-sm btn-outline-warning ms-1 tag-request-btn"
                                                 onclick="openTagRequestModal('${badge.id}', '${encodeURIComponent(badge.name || '')}')">
                                                 🏷️ タグ申請
                                             </button>`}
