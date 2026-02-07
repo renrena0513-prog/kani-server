@@ -5,6 +5,17 @@ let allInventoryBadges = [];
 let currentInventoryPage = 1;
 const INVENTORY_ITEMS_PER_PAGE = 10;
 let expandedBadgeId = null;
+let inventoryMutantOnly = false;
+let inventoryRarityOrder = [];
+const inventoryCreatorMap = new Map();
+const inventoryFilters = {
+    rarity: '',
+    creator: '',
+    type: '',
+    label: '',
+    tag: '',
+    method: ''
+};
 
 function openInventoryModalFor(mode) {
     if (typeof isViewMode !== 'undefined' && isViewMode) return;
@@ -42,6 +53,7 @@ async function loadInventory() {
             .from('rarity_thresholds')
             .select('*')
             .order('threshold_value', { ascending: true });
+        inventoryRarityOrder = getInventoryRarityOrder();
 
         const badgeIds = [...new Set((myBadges || []).map(ub => ub.badge_id))];
         const marketCounts = {};
@@ -56,13 +68,13 @@ async function loadInventory() {
         }
 
         const creatorIds = [...new Set((myBadges || []).map(ub => ub.badges?.discord_user_id).filter(Boolean))];
-        const creatorMap = new Map();
+        inventoryCreatorMap.clear();
         if (creatorIds.length > 0) {
             const { data: creators } = await supabaseClient
                 .from('profiles')
                 .select('discord_user_id, account_name, avatar_url')
                 .in('discord_user_id', creatorIds);
-            (creators || []).forEach(c => creatorMap.set(c.discord_user_id, {
+            (creators || []).forEach(c => inventoryCreatorMap.set(c.discord_user_id, {
                 name: c.account_name || c.discord_user_id,
                 avatar: c.avatar_url || ''
             }));
@@ -83,7 +95,7 @@ async function loadInventory() {
             const sellPrice = valResult.sellPrice * (inventoryItem.is_mutant ? 3 : 1);
             const sellStar = Math.max((valResult.starLevel || 1) - 2, 1);
             const sellRarity = thresholds?.[sellStar - 1]?.rarity_name || valResult.rarityName || '';
-            const creatorInfo = creatorMap.get(badge.discord_user_id) || { name: '不明', avatar: '' };
+            const creatorInfo = inventoryCreatorMap.get(badge.discord_user_id) || { name: '不明', avatar: '' };
             const isConvertible = badge.sales_type === '換金品';
             const marketValue = isConvertible ? badge.price : valResult.marketValue;
             const sellValue = isConvertible ? badge.price : sellPrice;
@@ -100,6 +112,11 @@ async function loadInventory() {
                 fixed_rarity_name: badge.fixed_rarity_name,
                 sales_type: badge.sales_type,
                 is_gacha_eligible: badge.is_gacha_eligible,
+                is_shop_listed: badge.is_shop_listed,
+                label: badge.label,
+                tags: badge.tags,
+                sort_order: badge.sort_order,
+                creator_id: badge.discord_user_id,
                 market_value: marketValue,
                 sell_price: sellValue,
                 purchased_price: inventoryItem.purchased_price,
@@ -121,36 +138,34 @@ function filterAndRenderInventoryBadges() {
     const listEl = document.getElementById('inventory-list');
     const searchVal = document.getElementById('inventory-search')?.value.toLowerCase() || '';
     const sortVal = document.getElementById('inventory-sort')?.value || 'acquired_desc';
-    const filterVal = document.getElementById('inventory-filter')?.value || 'all';
+    const typeSelect = document.getElementById('inventory-type-filter');
+    const labelSelect = document.getElementById('inventory-label-filter');
+    const tagSelect = document.getElementById('inventory-tag-filter');
+    const methodSelect = document.getElementById('inventory-method-filter');
+    inventoryFilters.rarity = document.getElementById('inventory-rarity-filter')?.value || '';
+    inventoryFilters.creator = document.getElementById('inventory-creator-filter')?.value || '';
+    inventoryFilters.type = typeSelect?.value || '';
+    inventoryFilters.label = labelSelect?.value || '';
+    inventoryFilters.tag = tagSelect?.value || '';
+    inventoryFilters.method = methodSelect?.value || '';
+    updateInventoryDynamicFilterOptions(allInventoryBadges);
 
     let filtered = allInventoryBadges.filter(item => {
         if (searchVal && !item.badge_name.toLowerCase().includes(searchVal)) return false;
-
-        switch (filterVal) {
-            case 'fixed':
-                return item.sales_type === '固定型';
-            case 'variable':
-                return item.sales_type === '変動型';
-            case 'shrine':
-                return item.is_gacha_eligible === true;
-            case 'mutant':
-                return item.is_mutant;
-            case 'all':
-            default:
-                return true;
+        if (inventoryFilters.method && !matchesInventoryMethod(item, inventoryFilters.method)) return false;
+        if (inventoryFilters.rarity) {
+            const r = getInventoryRarity(item);
+            if (r !== inventoryFilters.rarity) return false;
         }
-    });
-
-    filtered.sort((a, b) => {
-        if (sortVal === 'acquired_desc') return b.acquired_at - a.acquired_at;
-        if (sortVal === 'acquired_asc') return a.acquired_at - b.acquired_at;
-        if (sortVal === 'name_asc') return a.badge_name.localeCompare(b.badge_name);
-        if (sortVal === 'rarity_desc' || sortVal === 'rarity_asc') {
-            const pA = a.market_value || 0;
-            const pB = b.market_value || 0;
-            return sortVal === 'rarity_desc' ? pB - pA : pA - pB;
+        if (inventoryFilters.creator && item.creator_id !== inventoryFilters.creator) return false;
+        if (inventoryFilters.type && item.sales_type !== inventoryFilters.type) return false;
+        if (inventoryFilters.label && (item.label || '').trim() !== inventoryFilters.label) return false;
+        if (inventoryFilters.tag) {
+            const tags = getInventoryBadgeTags(item);
+            if (!tags.includes(inventoryFilters.tag)) return false;
         }
-        return 0;
+        if (inventoryMutantOnly && !item.is_mutant) return false;
+        return true;
     });
 
     const groups = new Map();
@@ -160,13 +175,50 @@ function filterAndRenderInventoryBadges() {
                 badge_id: item.badge_id,
                 badge_name: item.badge_name,
                 badge_image_url: item.badge_image_url,
+                latestAcquiredAt: item.acquired_at,
+                repItem: item,
                 items: []
             });
         }
-        groups.get(item.badge_id).items.push(item);
+        const group = groups.get(item.badge_id);
+        group.items.push(item);
+        if (item.acquired_at > group.latestAcquiredAt) {
+            group.latestAcquiredAt = item.acquired_at;
+            group.repItem = item;
+        }
     });
 
     const groupArray = Array.from(groups.values());
+    groupArray.sort((a, b) => {
+        const aItem = a.repItem;
+        const bItem = b.repItem;
+        switch (sortVal) {
+            case 'acquired_desc':
+                return b.latestAcquiredAt - a.latestAcquiredAt;
+            case 'acquired_asc':
+                return a.latestAcquiredAt - b.latestAcquiredAt;
+            case 'id_asc':
+                return (Number(a.badge_id) || 0) - (Number(b.badge_id) || 0);
+            case 'id_desc':
+                return (Number(b.badge_id) || 0) - (Number(a.badge_id) || 0);
+            case 'price_desc':
+                return (Number(bItem.market_value) || 0) - (Number(aItem.market_value) || 0);
+            case 'price_asc':
+                return (Number(aItem.market_value) || 0) - (Number(bItem.market_value) || 0);
+            case 'count_desc':
+                return b.items.length - a.items.length;
+            case 'count_asc':
+                return a.items.length - b.items.length;
+            case 'circulation_desc':
+                return (Number(bItem.market_count) || 0) - (Number(aItem.market_count) || 0);
+            case 'circulation_asc':
+                return (Number(aItem.market_count) || 0) - (Number(bItem.market_count) || 0);
+            case 'name':
+                return (a.badge_name || '').localeCompare(b.badge_name || '');
+            default:
+                return 0;
+        }
+    });
     const totalPages = Math.ceil(groupArray.length / INVENTORY_ITEMS_PER_PAGE);
     if (currentInventoryPage > totalPages && totalPages > 0) currentInventoryPage = totalPages;
     if (currentInventoryPage < 1) currentInventoryPage = 1;
@@ -186,7 +238,7 @@ function filterAndRenderInventoryBadges() {
         const isExpanded = expandedBadgeId === group.badge_id;
         const totalCount = group.items.length;
         const mutantCount = group.items.filter(i => i.is_mutant).length;
-        const repItem = group.items[0];
+        const repItem = group.repItem || group.items[0];
 
         let actionArea = '';
         let detailHtml = '';
@@ -323,6 +375,338 @@ function renderInventoryPagination(totalPages) {
         <a class="page-link" href="javascript:void(0)" onclick="goToInventoryPage(${currentInventoryPage + 1})">›</a></li>`;
 
     ul.innerHTML = html;
+}
+
+function toggleInventoryMutantFilter() {
+    inventoryMutantOnly = !inventoryMutantOnly;
+    const btn = document.getElementById('inventory-mutant-btn');
+    if (btn) {
+        if (inventoryMutantOnly) {
+            btn.classList.add('active');
+            btn.style.background = 'linear-gradient(135deg, var(--deep-purple), var(--soft-purple))';
+            btn.style.color = 'white';
+            btn.style.borderColor = 'transparent';
+        } else {
+            btn.classList.remove('active');
+            btn.style.background = 'white';
+            btn.style.color = '#333';
+            btn.style.borderColor = '#dee2e6';
+        }
+    }
+    currentInventoryPage = 1;
+    filterAndRenderInventoryBadges();
+}
+
+function resetInventoryFilters() {
+    const search = document.getElementById('inventory-search');
+    const sort = document.getElementById('inventory-sort');
+    const typeSelect = document.getElementById('inventory-type-filter');
+    const labelSelect = document.getElementById('inventory-label-filter');
+    const tagSelect = document.getElementById('inventory-tag-filter');
+    const methodSelect = document.getElementById('inventory-method-filter');
+    if (search) search.value = '';
+    if (sort) sort.value = 'acquired_desc';
+    if (typeSelect) typeSelect.value = '';
+    if (labelSelect) labelSelect.value = '';
+    if (tagSelect) tagSelect.value = '';
+    if (methodSelect) methodSelect.value = '';
+    setInventoryRarityFilter('', 'すべて');
+    setInventoryCreatorFilter('', 'すべて', '');
+    inventoryMutantOnly = false;
+    const btn = document.getElementById('inventory-mutant-btn');
+    if (btn) {
+        btn.classList.remove('active');
+        btn.style.background = 'white';
+        btn.style.color = '#333';
+        btn.style.borderColor = '#dee2e6';
+    }
+    currentInventoryPage = 1;
+    filterAndRenderInventoryBadges();
+}
+
+function isValidAvatarUrl(url) {
+    return typeof url === 'string' && /^https?:\/\//.test(url);
+}
+
+function setInventoryRarityFilter(value, name) {
+    const input = document.getElementById('inventory-rarity-filter');
+    const label = document.getElementById('inventory-rarity-filter-label');
+    if (input) input.value = value || '';
+    if (label) label.textContent = name || 'すべて';
+    currentInventoryPage = 1;
+    filterAndRenderInventoryBadges();
+}
+
+function setInventoryCreatorFilter(id, name, avatar) {
+    const input = document.getElementById('inventory-creator-filter');
+    const label = document.getElementById('inventory-creator-filter-label');
+    const img = document.getElementById('inventory-creator-filter-avatar');
+    if (input) input.value = id || '';
+    if (label) label.textContent = name || 'すべて';
+    if (img) {
+        if (avatar && isValidAvatarUrl(avatar)) {
+            img.src = avatar;
+            img.style.display = 'block';
+        } else {
+            img.style.display = 'none';
+        }
+    }
+    currentInventoryPage = 1;
+    filterAndRenderInventoryBadges();
+}
+
+function getInventoryRarityOrder() {
+    if (rarityThresholds && rarityThresholds.length) {
+        return rarityThresholds.map(r => r.rarity_name).concat(['-']);
+    }
+    return ['-'];
+}
+
+function getInventoryBadgeTags(item) {
+    if (!item) return [];
+    const tags = item.tags;
+    if (!Array.isArray(tags)) return [];
+    return tags.map(t => (t || '').trim()).filter(Boolean);
+}
+
+function getInventoryRarity(item) {
+    const r = (item.rarity_name || '').trim();
+    return r || '-';
+}
+
+function matchesInventoryMethod(item, method) {
+    if (!method) return true;
+    if (method === 'shop') return item.is_shop_listed;
+    if (method === 'gacha') return item.is_gacha_eligible;
+    if (method === 'not_for_sale') {
+        if (item.is_shop_listed || item.is_gacha_eligible) return false;
+        if (item.sales_type === '限定品' || item.sales_type === '換金品') return false;
+        return true;
+    }
+    return true;
+}
+
+function matchesInventoryFilters(item, opts, excludeKey = '') {
+    if (opts.searchVal && !item.badge_name.toLowerCase().includes(opts.searchVal)) return false;
+    if (excludeKey !== 'method' && opts.method && !matchesInventoryMethod(item, opts.method)) return false;
+    if (excludeKey !== 'rarity' && opts.rarity) {
+        const r = getInventoryRarity(item);
+        if (r !== opts.rarity) return false;
+    }
+    if (excludeKey !== 'creator' && opts.creator && item.creator_id !== opts.creator) return false;
+    if (excludeKey !== 'type' && opts.type && item.sales_type !== opts.type) return false;
+    if (excludeKey !== 'label' && opts.label && (item.label || '').trim() !== opts.label) return false;
+    if (excludeKey !== 'tag' && opts.tag) {
+        const tags = getInventoryBadgeTags(item);
+        if (!tags.includes(opts.tag)) return false;
+    }
+    return true;
+}
+
+function updateInventoryDynamicFilterOptions(sourceItems) {
+    const searchVal = document.getElementById('inventory-search')?.value.toLowerCase() || '';
+    const currentType = document.getElementById('inventory-type-filter')?.value || '';
+    const currentLabel = document.getElementById('inventory-label-filter')?.value || '';
+    const currentTag = document.getElementById('inventory-tag-filter')?.value || '';
+    const currentMethod = document.getElementById('inventory-method-filter')?.value || '';
+    const baseOpts = {
+        searchVal,
+        rarity: inventoryFilters.rarity,
+        creator: inventoryFilters.creator,
+        type: inventoryFilters.type,
+        label: inventoryFilters.label,
+        tag: inventoryFilters.tag,
+        method: inventoryFilters.method
+    };
+
+    const baseForRarity = sourceItems.filter(b => matchesInventoryFilters(b, baseOpts, 'rarity'));
+    const baseForCreator = sourceItems.filter(b => matchesInventoryFilters(b, baseOpts, 'creator'));
+    const baseForType = sourceItems.filter(b => matchesInventoryFilters(b, baseOpts, 'type'));
+    const baseForLabel = sourceItems.filter(b => matchesInventoryFilters(b, baseOpts, 'label'));
+    const baseForTag = sourceItems.filter(b => matchesInventoryFilters(b, baseOpts, 'tag'));
+    const baseForMethod = sourceItems.filter(b => matchesInventoryFilters(b, baseOpts, 'method'));
+
+    const rarityCounts = {};
+    baseForRarity.forEach(b => {
+        const r = getInventoryRarity(b) || '-';
+        rarityCounts[r] = (rarityCounts[r] || 0) + 1;
+    });
+    buildInventoryRarityMenuFromCounts(rarityCounts);
+
+    buildInventoryCreatorMenuFromBase(baseForCreator);
+
+    const typeSelect = document.getElementById('inventory-type-filter');
+    if (typeSelect) {
+        const counts = {};
+        baseForType.forEach(info => {
+            const t = info.sales_type;
+            if (!t) return;
+            counts[t] = (counts[t] || 0) + 1;
+        });
+        const options = Object.entries(counts)
+            .filter(([, c]) => c > 0)
+            .map(([t, c]) => `<option value="${t}">${t} (${c})</option>`)
+            .join('');
+        typeSelect.innerHTML = `<option value="">すべて</option>${options}`;
+        if ([...typeSelect.options].some(o => o.value === currentType)) {
+            typeSelect.value = currentType;
+        } else {
+            typeSelect.value = '';
+        }
+    }
+
+    const labelSelect = document.getElementById('inventory-label-filter');
+    if (labelSelect) {
+        const counts = {};
+        baseForLabel.forEach(info => {
+            const label = (info.label || '').trim();
+            if (!label) return;
+            counts[label] = (counts[label] || 0) + 1;
+        });
+        const options = Object.entries(counts)
+            .filter(([, c]) => c > 0)
+            .map(([l, c]) => `<option value="${l}">${l} (${c})</option>`)
+            .join('');
+        labelSelect.innerHTML = `<option value="">すべて</option>${options}`;
+        if ([...labelSelect.options].some(o => o.value === currentLabel)) {
+            labelSelect.value = currentLabel;
+        } else {
+            labelSelect.value = '';
+        }
+    }
+
+    const tagSelect = document.getElementById('inventory-tag-filter');
+    if (tagSelect) {
+        const counts = {};
+        baseForTag.forEach(info => {
+            getInventoryBadgeTags(info).forEach(tag => {
+                counts[tag] = (counts[tag] || 0) + 1;
+            });
+        });
+        const options = Object.entries(counts)
+            .filter(([, c]) => c > 0)
+            .sort((a, b) => a[0].localeCompare(b[0], 'ja'))
+            .map(([t, c]) => `<option value="${t}">${t} (${c})</option>`)
+            .join('');
+        tagSelect.innerHTML = `<option value="">すべて</option>${options}`;
+        if ([...tagSelect.options].some(o => o.value === currentTag)) {
+            tagSelect.value = currentTag;
+        } else {
+            tagSelect.value = '';
+        }
+    }
+
+    const methodSelect = document.getElementById('inventory-method-filter');
+    if (methodSelect) {
+        const counts = {
+            shop: baseForMethod.filter(b => b.is_shop_listed).length,
+            gacha: baseForMethod.filter(b => b.is_gacha_eligible).length,
+            not_for_sale: baseForMethod.filter(b => !b.is_shop_listed && !b.is_gacha_eligible && b.sales_type !== '限定品' && b.sales_type !== '換金品').length
+        };
+        const options = [];
+        if (counts.shop > 0) options.push(`<option value="shop">ショップ販売中 (${counts.shop})</option>`);
+        if (counts.gacha > 0) options.push(`<option value="gacha">ガチャ排出 (${counts.gacha})</option>`);
+        if (counts.not_for_sale > 0) options.push(`<option value="not_for_sale">非売品 (${counts.not_for_sale})</option>`);
+        methodSelect.innerHTML = `<option value="">すべて</option>${options.join('')}`;
+        if ([...methodSelect.options].some(o => o.value === currentMethod)) {
+            methodSelect.value = currentMethod;
+        } else {
+            methodSelect.value = '';
+        }
+    }
+}
+
+function buildInventoryCreatorMenuFromBase(baseItems) {
+    const menu = document.getElementById('inventory-creator-filter-menu');
+    const btn = document.getElementById('inventory-creator-filter-btn');
+    if (!menu || !btn) return;
+    const counts = {};
+    baseItems.forEach(info => {
+        const id = info.creator_id;
+        if (!id) return;
+        counts[id] = (counts[id] || 0) + 1;
+    });
+    const creatorIds = new Set(Object.keys(counts));
+    const items = [{ id: '', name: 'すべて', avatar: '' }]
+        .concat(
+            [...creatorIds].map(id => {
+                const info = inventoryCreatorMap.get(id) || { name: id, avatar: '' };
+                return { id, name: info.name, avatar: info.avatar, count: counts[id] };
+            }).sort((a, b) => a.name.localeCompare(b.name))
+        );
+    menu.innerHTML = items.map(item => `
+        <div class="creator-item" data-id="${item.id}" data-name="${item.name}" data-avatar="${item.avatar || ''}">
+            ${isValidAvatarUrl(item.avatar) ? `<img src="${item.avatar}" class="creator-avatar" style="display:block;">` : '<span class="creator-avatar" style="display:inline-block;"></span>'}
+            <span>${item.name}</span>
+            ${item.id ? `<span class="ms-auto text-muted small">(${item.count})</span>` : ''}
+        </div>
+    `).join('');
+    menu.querySelectorAll('.creator-item').forEach(el => {
+        el.addEventListener('click', () => {
+            setInventoryCreatorFilter(el.dataset.id, el.dataset.name, el.dataset.avatar);
+            menu.style.display = 'none';
+        });
+    });
+    if (!btn.dataset.bound) {
+        btn.addEventListener('click', () => {
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        });
+        document.addEventListener('click', (e) => {
+            if (!menu.contains(e.target) && !btn.contains(e.target)) {
+                menu.style.display = 'none';
+            }
+        });
+        btn.dataset.bound = '1';
+    }
+}
+
+function buildInventoryRarityMenuFromCounts(rarityCounts) {
+    const menu = document.getElementById('inventory-rarity-filter-menu');
+    const btn = document.getElementById('inventory-rarity-filter-btn');
+    if (!menu || !btn) return;
+    const items = [{ name: 'すべて', value: '' }]
+        .concat(Object.keys(rarityCounts).map(r => ({ name: r, value: r, count: rarityCounts[r] })))
+        .sort((a, b) => {
+            if (a.value === '') return -1;
+            if (b.value === '') return 1;
+            const aIdx = inventoryRarityOrder.indexOf(a.name);
+            const bIdx = inventoryRarityOrder.indexOf(b.name);
+            if (aIdx === -1 && bIdx === -1) return a.name.localeCompare(b.name);
+            if (aIdx === -1) return 1;
+            if (bIdx === -1) return -1;
+            return aIdx - bIdx;
+        });
+    menu.innerHTML = items.map(item => {
+        if (item.value === '') {
+            return `<div class="creator-item" data-value="" data-name="すべて"><span>すべて</span></div>`;
+        }
+        const cls = getRarityClass(item.name);
+        const displayName = cls ? item.name : '★???';
+        const badgeClass = cls ? cls : 'rarity-unknown';
+        return `
+            <div class="creator-item" data-value="${item.value}" data-name="${item.name}">
+                <span class="badge ${badgeClass} text-white" title="${item.name}">${displayName}</span>
+                <span class="ms-auto text-muted small">(${item.count})</span>
+            </div>
+        `;
+    }).join('');
+    menu.querySelectorAll('.creator-item').forEach(el => {
+        el.addEventListener('click', () => {
+            setInventoryRarityFilter(el.dataset.value, el.dataset.name);
+            menu.style.display = 'none';
+        });
+    });
+    if (!btn.dataset.bound) {
+        btn.addEventListener('click', () => {
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        });
+        document.addEventListener('click', (e) => {
+            if (!menu.contains(e.target) && !btn.contains(e.target)) {
+                menu.style.display = 'none';
+            }
+        });
+        btn.dataset.bound = '1';
+    }
 }
 
 function showShopActionModal(contentHtml, onConfirm, confirmLabel) {

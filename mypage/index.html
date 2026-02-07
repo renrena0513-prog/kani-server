@@ -1736,30 +1736,104 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body pt-2 bg-light">
-                    <div class="row g-2 mb-3">
-                        <div class="col-12 col-md-5">
-                            <input type="text" id="inventory-search" class="form-control form-control-sm"
-                                placeholder="バッジ名で検索..." oninput="filterAndRenderInventoryBadges()">
+                    <div class="filter-controls badge-control-panel mb-3">
+                        <div class="row g-3 filter-row-top">
+                            <div class="col-12 col-md-5">
+                                <div class="position-relative">
+                                    <i class="bi bi-search search-icon"></i>
+                                    <input type="text" id="inventory-search" class="form-control form-control-sm search-input"
+                                        placeholder="バッジ名で検索..." oninput="filterAndRenderInventoryBadges()">
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <div class="d-flex align-items-center gap-2">
+                                    <label class="filter-label flex-shrink-0">並び替え</label>
+                                    <select id="inventory-sort" class="form-select form-select-sm"
+                                        onchange="filterAndRenderInventoryBadges()">
+                                        <option value="acquired_desc">入手順（新→古）</option>
+                                        <option value="acquired_asc">入手順（古→新）</option>
+                                        <option value="id_asc">ナンバー順（低→高）</option>
+                                        <option value="id_desc">ナンバー順（高→低）</option>
+                                        <option value="price_desc">価格順（高→低）</option>
+                                        <option value="price_asc">価格順（低→高）</option>
+                                        <option value="count_desc">所持数順（多→少）</option>
+                                        <option value="count_asc">所持数順（少→多）</option>
+                                        <option value="circulation_desc">流通数順（多→少）</option>
+                                        <option value="circulation_asc">流通数順（少→多）</option>
+                                        <option value="name">名前順</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-6 col-md-4">
-                            <select id="inventory-sort" class="form-select form-select-sm"
-                                onchange="filterAndRenderInventoryBadges()">
-                                <option value="acquired_desc">入手順（新→古）</option>
-                                <option value="acquired_asc">入手順（古→新）</option>
-                                <option value="name_asc">名前順</option>
-                                <option value="rarity_desc">レア順（高→低）</option>
-                                <option value="rarity_asc">レア順（低→高）</option>
-                            </select>
-                        </div>
-                        <div class="col-6 col-md-3">
-                            <select id="inventory-filter" class="form-select form-select-sm"
-                                onchange="filterAndRenderInventoryBadges()">
-                                <option value="all">フィルター: 全件</option>
-                                <option value="fixed">固定型</option>
-                                <option value="variable">変動型</option>
-                                <option value="shrine">お賽銭限定</option>
-                                <option value="mutant">ミュータント</option>
-                            </select>
+
+                        <hr class="my-3">
+
+                        <div class="row g-3">
+                            <div class="col-12 col-md-3">
+                                <label class="filter-label">レアリティ</label>
+                                <div class="creator-dropdown">
+                                    <button class="creator-dropdown-btn" type="button" id="inventory-rarity-filter-btn">
+                                        <span id="inventory-rarity-filter-label">すべて</span>
+                                        <i class="bi bi-caret-down-fill ms-auto"></i>
+                                    </button>
+                                    <input type="hidden" id="inventory-rarity-filter" value="">
+                                    <div class="creator-menu" id="inventory-rarity-filter-menu"></div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="filter-label">クリエイター</label>
+                                <div class="creator-dropdown">
+                                    <button class="creator-dropdown-btn" type="button" id="inventory-creator-filter-btn">
+                                        <img src="" class="creator-avatar" id="inventory-creator-filter-avatar" alt="">
+                                        <span id="inventory-creator-filter-label">すべて</span>
+                                        <i class="bi bi-caret-down-fill ms-auto"></i>
+                                    </button>
+                                    <input type="hidden" id="inventory-creator-filter" value="">
+                                    <div class="creator-menu" id="inventory-creator-filter-menu"></div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="filter-label">バッジタイプ</label>
+                                <select id="inventory-type-filter" class="form-select form-select-sm"
+                                    onchange="filterAndRenderInventoryBadges()">
+                                    <option value="">すべて</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="filter-label">ラベル</label>
+                                <select id="inventory-label-filter" class="form-select form-select-sm"
+                                    onchange="filterAndRenderInventoryBadges()">
+                                    <option value="">すべて</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="filter-label">タグ</label>
+                                <select id="inventory-tag-filter" class="form-select form-select-sm"
+                                    onchange="filterAndRenderInventoryBadges()">
+                                    <option value="">すべて</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="filter-label">入手方法</label>
+                                <select id="inventory-method-filter" class="form-select form-select-sm"
+                                    onchange="filterAndRenderInventoryBadges()">
+                                    <option value="">すべて</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="filter-label">ミュータント</label>
+                                <button id="inventory-mutant-btn" class="btn btn-sm w-100 btn-mutant-filter py-1"
+                                    onclick="toggleInventoryMutantFilter()"
+                                    style="font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    ✨ ミュータント
+                                </button>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="filter-label"> </label>
+                                <button class="btn btn-sm w-100 btn-outline-secondary" onclick="resetInventoryFilters()">
+                                    リセット
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div id="inventory-list" class="vstack gap-2">
