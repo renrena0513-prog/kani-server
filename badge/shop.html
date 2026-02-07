@@ -180,6 +180,19 @@
             font-size: 0.6rem;
         }
 
+        @media (min-width: 768px) {
+            .shop-item-details {
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+                width: 100%;
+            }
+
+            .btn-buy {
+                margin-top: auto;
+            }
+        }
+
         /* 権利バッジセクション */
         .rights-section {
             background: #fff;
@@ -1609,9 +1622,9 @@
                                     </span>
                                     ${badge.label ? `<span class="badge-label-strong">${badge.label}</span>` : ''}
                                 </div>
-                                ${tagHtml}
                                 <div class="shop-name" style="color: inherit;">${badge.name}</div>
                                 <img src="${badge.image_url}" class="shop-img" alt="${badge.name}" style="filter: drop-shadow(0 5px 15px rgba(0,0,0,0.2));">
+                                ${tagHtml}
                             </a>
 
                             <!-- 詳細エリア（モバイルでは右側） -->
