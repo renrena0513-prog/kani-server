@@ -1126,7 +1126,7 @@
             try {
                 const { data: badges, error } = await supabaseClient
                     .from('badges')
-                    .select('id, name, description, image_url, price, remaining_count, fixed_rarity_name, sales_type')
+                    .select('id, name, description, image_url, price, remaining_count, fixed_rarity_name, sales_type, tags')
                     .eq('discord_user_id', currentUserId);
 
                 if (error) throw error;
@@ -1203,12 +1203,17 @@
                     const rarityClass = getRarityClass(rarity);
                     const soldCount = soldCounts[badge.id] || 0;
                     const totalRoyalty = royaltySums[badge.id] || 0;
+                    const tags = getBadgeTags(badge);
+                    const tagHtml = tags.length
+                        ? `<div class="badge-tag-list">${tags.map(t => `<span class="badge-tag">#${escapeHtml(t)}</span>`).join('')}</div>`
+                        : '';
                     return `
                         <div class="col-12 col-md-3 col-lg-3">
                             <div class="rights-item badge-card ${rarityClass}">
                                 <a href="./index.html?id=${badge.id}" class="text-decoration-none d-flex flex-column align-items-center" style="color: inherit;">
                                     <span class="rarity-pill mb-1" style="background: rgba(0,0,0,0.2);">${rarity}</span>
                                     <img src="${badge.image_url}" alt="${badge.name}" class="rights-item-img">
+                                    ${tagHtml}
                                 </a>
                                 <div class="flex-grow-1">
                                     <div class="d-flex align-items-center gap-2 mb-1">
