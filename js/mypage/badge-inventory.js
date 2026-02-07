@@ -362,14 +362,14 @@ async function executeSellFromMyPage() {
         if (error) throw error;
         if (!data.ok) throw new Error(data.error);
 
-        alert(`売却しました！ (🪙 +${data.sell_price.toLocaleString()})`);
+        showNotice(`売却しました！ (🪙 +${data.sell_price.toLocaleString()})`, 'success');
 
         await loadOwnedBadges();
         await loadActivityLogs();
         await loadTargetUserInfo();
         await loadInventory();
     } catch (err) {
-        alert('エラーが発生しました: ' + err.message);
+        showNotice('エラーが発生しました: ' + err.message, 'error');
     } finally {
         toggleLoading(false);
     }

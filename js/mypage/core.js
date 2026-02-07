@@ -111,6 +111,24 @@
             document.getElementById('profile-content').style.display = 'none';
         }
 
+        function showNotice(message, type = 'info') {
+            const modal = document.getElementById('notice-modal');
+            const dialog = document.getElementById('notice-dialog');
+            const title = document.getElementById('notice-title');
+            const body = document.getElementById('notice-message');
+            if (!modal || !dialog || !title || !body) return;
+            dialog.classList.remove('success', 'warning', 'error', 'info');
+            dialog.classList.add(type);
+            title.textContent = type === 'success' ? '完了' : type === 'warning' ? '注意' : type === 'error' ? 'エラー' : 'お知らせ';
+            body.textContent = message;
+            modal.classList.add('active');
+        }
+
+        function closeNotice() {
+            const modal = document.getElementById('notice-modal');
+            if (modal) modal.classList.remove('active');
+        }
+
         function renderExchangeTickets(tickets) {
             const container = document.getElementById('exchange-tickets-list');
             if (!container) return;

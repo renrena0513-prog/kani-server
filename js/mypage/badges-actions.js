@@ -247,7 +247,7 @@
                 if (error) throw error;
                 if (!data.ok) throw new Error(data.error);
 
-                alert(`バッジを 🪙${data.sell_price.toLocaleString()} で売却しました。`);
+                showNotice(`バッジを 🪙${data.sell_price.toLocaleString()} で売却しました。`, 'success');
                 // 活動ログ記録
                 if (typeof logActivity === 'function') {
                     await logActivity(targetId, 'badge_sell', {
@@ -269,7 +269,7 @@
                 if (user) displayMyInfo(user);
             } catch (err) {
                 console.error('売却エラー:', err);
-                alert('売却に失敗しました: ' + err.message);
+                showNotice('売却に失敗しました: ' + err.message, 'error');
             } finally {
                 toggleLoading(false);
                 isSellingBadge = false;
@@ -285,12 +285,12 @@
 
             const count = parseInt(quantity);
             if (isNaN(count) || count <= 0) {
-                alert('有効な個数を入力してください。');
+                showNotice('有効な個数を入力してください。', 'warning');
                 return;
             }
 
             if (count > totalCount) {
-                alert(`所持数（${totalCount} 個）を超えています。`);
+                showNotice(`所持数（${totalCount} 個）を超えています。`, 'warning');
                 return;
             }
 
@@ -329,7 +329,7 @@
 
                 if (successCount > 0) {
                     const actualTotalPrice = fixedPrice * successCount;
-                    alert(`「${badgeName}」を ${successCount} 個売却しました。（合計: 💰${actualTotalPrice.toLocaleString()} C）`);
+                    showNotice(`「${badgeName}」を ${successCount} 個売却しました。（合計: 💰${actualTotalPrice.toLocaleString()} C）`, 'success');
 
                     // 活動ログ記録
                     if (typeof logActivity === 'function') {
@@ -361,7 +361,7 @@
                 }
             } catch (err) {
                 console.error('換金品売却エラー:', err);
-                alert('売却に失敗しました: ' + err.message);
+                showNotice('売却に失敗しました: ' + err.message, 'error');
             } finally {
                 toggleLoading(false);
                 isSellingConvertible = false;

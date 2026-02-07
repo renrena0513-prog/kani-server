@@ -431,6 +431,55 @@
             border-radius: 4px;
         }
 
+        /* 中央ダイアログ */
+        #notice-modal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.45);
+            z-index: 10050;
+        }
+
+        #notice-modal.active {
+            display: flex;
+        }
+
+        .notice-dialog {
+            width: min(92vw, 420px);
+            background: #fff;
+            border-radius: 16px;
+            padding: 18px 20px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+            border: 1px solid #eef0f3;
+        }
+
+        .notice-title {
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .notice-message {
+            color: #333;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin-bottom: 14px;
+        }
+
+        .notice-actions {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .notice-actions .btn {
+            min-width: 96px;
+        }
+
+        .notice-dialog.success .notice-title { color: #2e7d32; }
+        .notice-dialog.warning .notice-title { color: #b26a00; }
+        .notice-dialog.error .notice-title { color: #b3261e; }
+
         /* モバイル用レイアウト調整 */
         @media (max-width: 767.98px) {
             .shop-item {
@@ -512,6 +561,15 @@
     <div id="loading-overlay">
         <div class="spinner-border text-light" style="width: 3rem; height: 3rem;" role="status"></div>
         <div class="h4">処理中...</div>
+    </div>
+    <div id="notice-modal" role="dialog" aria-modal="true" aria-labelledby="notice-title">
+        <div class="notice-dialog info" id="notice-dialog">
+            <div class="notice-title" id="notice-title">お知らせ</div>
+            <div class="notice-message" id="notice-message">-</div>
+            <div class="notice-actions">
+                <button class="btn btn-outline-dark" type="button" onclick="closeNotice()">OK</button>
+            </div>
+        </div>
     </div>
 
     <!-- 右上のナビゲーションドロップダウン -->
@@ -980,11 +1038,29 @@
             unowned: false
         };
 
+        function showNotice(message, type = 'info') {
+            const modal = document.getElementById('notice-modal');
+            const dialog = document.getElementById('notice-dialog');
+            const title = document.getElementById('notice-title');
+            const body = document.getElementById('notice-message');
+            if (!modal || !dialog || !title || !body) return;
+            dialog.classList.remove('success', 'warning', 'error', 'info');
+            dialog.classList.add(type);
+            title.textContent = type === 'success' ? '完了' : type === 'warning' ? '注意' : type === 'error' ? 'エラー' : 'お知らせ';
+            body.textContent = message;
+            modal.classList.add('active');
+        }
+
+        function closeNotice() {
+            const modal = document.getElementById('notice-modal');
+            if (modal) modal.classList.remove('active');
+        }
+
         // ページ初期化
         async function initShop() {
             const user = await getCurrentUser();
             if (!user) {
-                alert('ショップを利用するにはログインが必要です');
+                showNotice('ショップを利用するにはログインが必要です', 'warning');
                 window.location.href = '../index.html';
                 return;
             }
@@ -1278,7 +1354,7 @@
             }
             const uniqueTags = Array.from(new Set(tags));
             if (uniqueTags.length === 0) {
-                alert('タグを1つ以上選択または入力してください。');
+                showNotice('タグを1つ以上選択または入力してください。', 'warning');
                 return;
             }
             try {
@@ -1289,11 +1365,11 @@
                     status: 'pending'
                 }]);
                 if (error) throw error;
-                alert('タグ申請を送信しました。');
                 bootstrap.Modal.getInstance(document.getElementById('tagRequestModal'))?.hide();
+                await loadMyRightsBadges();
             } catch (err) {
                 console.error('Tag request error:', err);
-                alert('タグ申請に失敗しました。');
+                showNotice('タグ申請に失敗しました。', 'error');
             }
         }
 
@@ -1314,8 +1390,8 @@
             const description = document.getElementById('rights-badge-description').value.trim();
 
             if (!badgeId) return;
-            if (!nameInput) return alert('バッジ名を入力してください');
-            if (description.length > 200) return alert('説明文は200文字以内で入力してください');
+            if (!nameInput) return showNotice('バッジ名を入力してください', 'warning');
+            if (description.length > 200) return showNotice('説明文は200文字以内で入力してください', 'warning');
 
             try {
                 const { error } = await supabaseClient
@@ -1330,7 +1406,7 @@
                 await fetchShopBadges();
             } catch (err) {
                 console.error('権利バッジ更新エラー:', err);
-                alert('更新に失敗しました');
+                showNotice('更新に失敗しました', 'error');
             }
         }
 
@@ -2030,7 +2106,7 @@
 
             // 正確な情報を再構築
             const { data: badgeData } = await supabaseClient.from('badges').select('*').eq('id', badgeId).single();
-            if (!badgeData) return alert('バッジが見つかりません');
+            if (!badgeData) return showNotice('バッジが見つかりません', 'error');
 
             const circulationCount = marketCounts[badgeId] || 0;
             const result = BadgeUtils.calculateBadgeValues(badgeData, circulationCount, thresholds);
@@ -2095,7 +2171,7 @@
             if (!currentSelectedBadge) return;
             const { id: badgeId, price, name } = currentSelectedBadge;
 
-            if (!confirm(`「${name}」を 🪙${price.toLocaleString()} で購入しますか？`)) return;
+            // confirm を使わずに即購入
 
             bootstrap.Modal.getInstance(document.getElementById('purchaseOptionModal'))?.hide();
             await runPurchaseRPC('purchase_badge_v2', {
@@ -2111,7 +2187,7 @@
             if (!currentSelectedBadge) return;
             const { id: badgeId, name } = currentSelectedBadge;
 
-            if (!confirm(`「${name}」を「${rarity}引換券」1枚で購入（交換）しますか？`)) return;
+            // confirm を使わずに即購入
 
             bootstrap.Modal.getInstance(document.getElementById('purchaseOptionModal'))?.hide();
             await runPurchaseRPC('purchase_badge_with_ticket', {
@@ -2131,7 +2207,7 @@
             try {
                 const allowed = await canPurchaseToday();
                 if (!allowed) {
-                    alert('本日の購入上限（5個）に達しています。');
+                    showNotice('本日の購入上限（5個）に達しています。', 'warning');
                     return;
                 }
                 const { data, error } = await supabaseClient.rpc(rpcName, params);
@@ -2140,9 +2216,9 @@
                 if (!data.ok) throw new Error(data.error || '購入に失敗しました');
 
                 if (data.is_mutant) {
-                    alert('🎉 おめでとうございます！ミュータント（変異種）個体を引き当てました！売却価格が3倍になります。');
+                    showNotice('🎉 ミュータント個体です！売却価格が3倍になります。', 'success', 4000);
                 } else {
-                    alert('購入が完了しました！');
+                    showNotice('購入が完了しました！', 'success');
                 }
 
                 await logActivity(currentUserId, 'badge_purchase', {
@@ -2209,7 +2285,7 @@
                 await refreshMarketContext();
 
             } catch (err) {
-                alert('エラーが発生しました: ' + err.message);
+                showNotice('エラーが発生しました: ' + err.message, 'error');
                 console.error(err);
             } finally {
                 overlay.classList.remove('active');
@@ -2633,7 +2709,7 @@
                 if (error) throw error;
                 if (!data.ok) throw new Error(data.error);
 
-                alert(`売却しました！ (🪙 +${data.sell_price.toLocaleString()})`);
+                showNotice(`売却しました！ (🪙 +${data.sell_price.toLocaleString()})`, 'success');
 
                 if (typeof logActivity === 'function') {
                     await logActivity(currentUserId, 'badge_sell', {
@@ -2651,7 +2727,7 @@
                 await loadInventory();        // 所持品リスト更新 (インベントリモーダルは開いたまま)
 
             } catch (err) {
-                alert('エラーが発生しました: ' + err.message);
+                showNotice('エラーが発生しました: ' + err.message, 'error');
             } finally {
                 if (loadingOverlay) loadingOverlay.classList.remove('active');
             }
