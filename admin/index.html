@@ -32,6 +32,7 @@
             background: linear-gradient(180deg, #3a3a4a 0%, #2d2d3a 50%, #252530 100%);
             min-height: 100vh;
             background-attachment: fixed;
+            overflow-x: hidden;
         }
 
         .page-header {
@@ -228,6 +229,59 @@
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(212, 168, 83, 0.6);
             color: white;
+        }
+
+        @media (max-width: 768px) {
+            .content-card {
+                padding: 20px;
+            }
+
+            .page-header {
+                font-size: 2rem;
+            }
+
+            .badge-toolbar {
+                flex-direction: column;
+                align-items: stretch !important;
+                gap: 12px;
+            }
+
+            .badge-toolbar .d-flex.gap-2 {
+                flex-wrap: wrap;
+            }
+
+            .badge-toolbar .btn {
+                width: 100%;
+            }
+
+            #admin-content {
+                overflow-x: hidden;
+            }
+
+            .table-responsive {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .table-responsive table {
+                min-width: 600px;
+            }
+
+            #badge-tag-requests .d-flex.align-items-center {
+                flex-direction: column;
+                align-items: flex-start !important;
+            }
+
+            #badge-tag-requests img {
+                margin-bottom: 6px;
+            }
+
+            #badge-tag-requests .badge-request-actions {
+                width: 100%;
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 6px;
+            }
         }
 
         .nav-dropdown-menu {
@@ -546,7 +600,7 @@
 
                         <!-- バッジ管理タブ -->
                         <div class="tab-pane fade" id="badges-pane" role="tabpanel" tabindex="0">
-                            <div class="d-flex justify-content-between align-items-center mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-4 badge-toolbar">
                                 <h2 class="mb-0" style="font-family: var(--font-title); color: var(--deep-gray);">📛
                                     バッジマスター管理</h2>
                                 <div class="d-flex gap-2">
