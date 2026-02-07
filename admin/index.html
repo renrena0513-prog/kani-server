@@ -554,8 +554,6 @@
                                         class="btn btn-outline-success btn-sm">
                                         🖼️ 画像一括アップロード
                                     </button>
-                                    <input type="text" id="badge-bulk-tags" class="form-control form-control-sm"
-                                        style="max-width: 240px;" placeholder="一括タグ (例: 麻雀|ポーカー)">
                                     <input type="file" id="badge-bulk-upload" style="display: none;" accept="image/*"
                                         multiple onchange="handleBulkBadgeUpload(event)">
                                     <button onclick="document.getElementById('badge-csv-import').click()"
@@ -570,45 +568,78 @@
                                     <button onclick="openBadgeModal()" class="btn btn-primary">新規バッジ登録</button>
                                 </div>
                             </div>
-                            <!-- フィルタータブ -->
-                            <div class="mb-3">
-                                <div class="d-flex flex-wrap gap-2" id="admin-badge-filter-tabs">
-                                    <button class="btn btn-sm btn-outline-secondary active"
-                                        onclick="setAdminBadgeFilter('all', this)">全件</button>
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                        onclick="setAdminBadgeFilter('shop', this)">ショップ販売中</button>
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                        onclick="setAdminBadgeFilter('gacha', this)">ガチャ排出バッジ</button>
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                        onclick="setAdminBadgeFilter('exchange', this)">換金アイテム</button>
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                        onclick="setAdminBadgeFilter('limited', this)">限定品</button>
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                        onclick="setAdminBadgeFilter('not_for_sale', this)">非売品</button>
-                                </div>
-                                <div class="d-flex flex-wrap gap-3 align-items-center mt-2">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <label class="small text-muted mb-0">並び替え</label>
-                                        <select id="admin-badge-sort" class="form-select form-select-sm" style="width: auto;">
-                                            <option value="sort_order_asc">表示順（小→大）</option>
-                                            <option value="sort_order_desc">表示順（大→小）</option>
-                                            <option value="id_desc">バッジID（高→低）</option>
-                                            <option value="id_asc">バッジID（低→高）</option>
-                                            <option value="price_asc">価格（低→高）</option>
-                                            <option value="price_desc">価格（高→低）</option>
-                                            <option value="name_asc">名前（昇順）</option>
+                            <!-- フィルター -->
+                            <div class="mb-3 p-3 bg-white rounded-3 shadow-sm">
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-12 col-md-5">
+                                        <label class="small text-muted mb-1">検索</label>
+                                        <input type="text" id="admin-badge-search" class="form-control form-control-sm"
+                                            placeholder="バッジ名で検索...">
+                                    </div>
+                                    <div class="col-12 col-md-4">
+                                        <label class="small text-muted mb-1">並び替え</label>
+                                        <select id="admin-badge-sort" class="form-select form-select-sm">
+                                            <option value="price_asc">価格順（低→高）</option>
+                                            <option value="price_desc">価格順（高→低）</option>
+                                            <option value="circulation_asc">流通数順（低→高）</option>
+                                            <option value="circulation_desc">流通数順（高→低）</option>
+                                            <option value="id_asc">バッジID順（低→高）</option>
+                                            <option value="id_desc">バッジID順（高→低）</option>
+                                            <option value="name">名前順</option>
                                         </select>
                                     </div>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <label class="small text-muted mb-0">タイプ</label>
-                                        <select id="admin-badge-type" class="form-select form-select-sm" style="width: auto;">
-                                            <option value="all">全タイプ</option>
-                                            <option value="変動型">変動型</option>
-                                            <option value="固定型">固定型</option>
-                                            <option value="限定品">限定品</option>
-                                            <option value="換金品">換金品</option>
-                                            <option value="none">未設定</option>
+                                    <div class="col-12 col-md-3 d-flex align-items-center justify-content-md-end">
+                                        <span class="badge bg-secondary" id="admin-badge-count">0 / 0 件</span>
+                                    </div>
+                                </div>
+                                <hr class="my-3">
+                                <div class="row g-2">
+                                    <div class="col-12 col-md-3">
+                                        <label class="small text-muted mb-1">レアリティ</label>
+                                        <select id="admin-badge-rarity" class="form-select form-select-sm">
+                                            <option value="">すべて</option>
                                         </select>
+                                    </div>
+                                    <div class="col-12 col-md-3">
+                                        <label class="small text-muted mb-1">クリエイター</label>
+                                        <select id="admin-badge-creator" class="form-select form-select-sm">
+                                            <option value="">すべて</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12 col-md-3">
+                                        <label class="small text-muted mb-1">バッジタイプ</label>
+                                        <select id="admin-badge-type" class="form-select form-select-sm">
+                                            <option value="">すべて</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12 col-md-3">
+                                        <label class="small text-muted mb-1">ラベル</label>
+                                        <select id="admin-badge-label" class="form-select form-select-sm">
+                                            <option value="">すべて</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12 col-md-3">
+                                        <label class="small text-muted mb-1">タグ</label>
+                                        <select id="admin-badge-tag" class="form-select form-select-sm">
+                                            <option value="">すべて</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12 col-md-3">
+                                        <label class="small text-muted mb-1">入手方法</label>
+                                        <select id="admin-badge-method" class="form-select form-select-sm">
+                                            <option value="">すべて</option>
+                                            <option value="shop">ショップ販売中</option>
+                                            <option value="gacha">ガチャ排出</option>
+                                            <option value="not_for_sale">非売品</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12 col-md-3 d-flex align-items-end gap-2">
+                                        <button id="admin-badge-unowned" class="btn btn-outline-secondary btn-sm w-100"
+                                            type="button">未所持のみ表示</button>
+                                    </div>
+                                    <div class="col-12 col-md-3 d-flex align-items-end">
+                                        <button id="admin-badge-reset" class="btn btn-outline-secondary btn-sm w-100"
+                                            type="button">フィルターをリセット</button>
                                     </div>
                                 </div>
                             </div>
@@ -1305,6 +1336,7 @@
         <script src="../js/auth-guard.js"></script>
         <!-- 【一時的】アンケートモーダル（撤去時は下1行を削除） -->
         <script src="../js/survey-modal.js"></script>
+        <script src="../js/badge-utils.js"></script>
         <script src="../js/navigation.js"></script>
         <!-- 管理ロジック -->
         <script src="../js/admin_v2.js?v=20260111_04"></script>

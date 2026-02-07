@@ -54,23 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    const adminBadgeSort = document.getElementById('admin-badge-sort');
-    if (adminBadgeSort) {
-        adminBadgeSort.addEventListener('change', () => {
-            currentAdminBadgeSort = adminBadgeSort.value || 'sort_order_asc';
-            currentBadgesPage = 1;
-            renderAdminBadges();
-        });
-    }
-
-    const adminBadgeType = document.getElementById('admin-badge-type');
-    if (adminBadgeType) {
-        adminBadgeType.addEventListener('change', () => {
-            currentAdminBadgeType = adminBadgeType.value || 'all';
-            currentBadgesPage = 1;
-            renderAdminBadges();
-        });
-    }
+    initAdminBadgeFilters();
 });
 
 // 最終スコアの自動計算
@@ -1203,70 +1187,380 @@ async function revokeBadge(userId, badgeId, badgeName) {
 }
 
 let allAdminBadges = [];
-let currentAdminBadgeFilter = 'all';
-let currentAdminBadgeSort = 'sort_order_asc';
-let currentAdminBadgeType = 'all';
+let adminBadgeFilters = {
+    search: '',
+    sort: 'price_asc',
+    rarity: '',
+    creator: '',
+    type: '',
+    label: '',
+    tag: '',
+    method: '',
+    unownedOnly: false
+};
+let adminRarityThresholds = [];
+let adminRarityOrder = [];
+let adminCirculationCounts = {};
+let adminOwnedBadgeIds = new Set();
+let adminCreatorMap = new Map();
+let adminFilteredBadges = [];
 let currentBadgesPage = 1;
 const BADGES_PER_PAGE = 24;
+
+function initAdminBadgeFilters() {
+    const searchEl = document.getElementById('admin-badge-search');
+    const sortEl = document.getElementById('admin-badge-sort');
+    const rarityEl = document.getElementById('admin-badge-rarity');
+    const creatorEl = document.getElementById('admin-badge-creator');
+    const typeEl = document.getElementById('admin-badge-type');
+    const labelEl = document.getElementById('admin-badge-label');
+    const tagEl = document.getElementById('admin-badge-tag');
+    const methodEl = document.getElementById('admin-badge-method');
+    const unownedBtn = document.getElementById('admin-badge-unowned');
+    const resetBtn = document.getElementById('admin-badge-reset');
+
+    const onChange = () => {
+        currentBadgesPage = 1;
+        applyAdminBadgeFilters();
+    };
+
+    searchEl?.addEventListener('input', onChange);
+    sortEl?.addEventListener('change', onChange);
+    rarityEl?.addEventListener('change', onChange);
+    creatorEl?.addEventListener('change', onChange);
+    typeEl?.addEventListener('change', onChange);
+    labelEl?.addEventListener('change', onChange);
+    tagEl?.addEventListener('change', onChange);
+    methodEl?.addEventListener('change', onChange);
+    unownedBtn?.addEventListener('click', () => {
+        adminBadgeFilters.unownedOnly = !adminBadgeFilters.unownedOnly;
+        updateAdminUnownedButton();
+        onChange();
+    });
+    resetBtn?.addEventListener('click', () => {
+        resetAdminBadgeFilters();
+        onChange();
+    });
+}
+
+function resetAdminBadgeFilters() {
+    const searchEl = document.getElementById('admin-badge-search');
+    const sortEl = document.getElementById('admin-badge-sort');
+    const rarityEl = document.getElementById('admin-badge-rarity');
+    const creatorEl = document.getElementById('admin-badge-creator');
+    const typeEl = document.getElementById('admin-badge-type');
+    const labelEl = document.getElementById('admin-badge-label');
+    const tagEl = document.getElementById('admin-badge-tag');
+    const methodEl = document.getElementById('admin-badge-method');
+
+    if (searchEl) searchEl.value = '';
+    if (sortEl) sortEl.value = 'price_asc';
+    if (rarityEl) rarityEl.value = '';
+    if (creatorEl) creatorEl.value = '';
+    if (typeEl) typeEl.value = '';
+    if (labelEl) labelEl.value = '';
+    if (tagEl) tagEl.value = '';
+    if (methodEl) methodEl.value = '';
+
+    adminBadgeFilters = {
+        search: '',
+        sort: 'price_asc',
+        rarity: '',
+        creator: '',
+        type: '',
+        label: '',
+        tag: '',
+        method: '',
+        unownedOnly: false
+    };
+    updateAdminUnownedButton();
+}
+
+function updateAdminUnownedButton() {
+    const unownedBtn = document.getElementById('admin-badge-unowned');
+    if (!unownedBtn) return;
+    unownedBtn.classList.toggle('btn-primary', adminBadgeFilters.unownedOnly);
+    unownedBtn.classList.toggle('btn-outline-secondary', !adminBadgeFilters.unownedOnly);
+    unownedBtn.textContent = adminBadgeFilters.unownedOnly ? '未所持のみ表示中' : '未所持のみ表示';
+}
+
+function getAdminBadgeTags(badge) {
+    if (!badge) return [];
+    const tags = badge.tags;
+    if (!Array.isArray(tags)) return [];
+    return tags.map(t => (t || '').trim()).filter(Boolean);
+}
+
+function getAdminRarityOrder() {
+    if (adminRarityThresholds && adminRarityThresholds.length) {
+        return adminRarityThresholds.map(r => r.rarity_name).concat(['-']);
+    }
+    return ['測定不能', '神話', '至高', '幻想', '伝説', '極上', '特上', '貴重', '希少・Ⅱ', '希少・Ⅰ', '良質', '一般', '-'];
+}
+
+function getAdminDerived(badge) {
+    const circulationCount = adminCirculationCounts[badge.id] || 0;
+    const result = BadgeUtils.calculateBadgeValues(badge, circulationCount, adminRarityThresholds);
+    return {
+        assetValue: result.marketValue,
+        rarityName: result.rarityName
+    };
+}
+
+function getAdminRarityForBadge(badge) {
+    return getAdminDerived(badge).rarityName;
+}
+
+function matchesAdminBadgeFilters(badge, opts, excludeKey = '') {
+    if (opts.search && !(badge.name || '').toLowerCase().includes(opts.search)) return false;
+    if (excludeKey !== 'method' && opts.method) {
+        if (opts.method === 'shop' && !badge.is_shop_listed) return false;
+        if (opts.method === 'gacha' && !badge.is_gacha_eligible) return false;
+        if (opts.method === 'not_for_sale') {
+            if (badge.is_shop_listed || badge.is_gacha_eligible) return false;
+            if (badge.sales_type === '限定品' || badge.sales_type === '換金品') return false;
+        }
+    }
+    if (excludeKey !== 'rarity' && opts.rarity) {
+        if (getAdminRarityForBadge(badge) !== opts.rarity) return false;
+    }
+    if (excludeKey !== 'creator' && opts.creator && badge.discord_user_id !== opts.creator) return false;
+    if (excludeKey !== 'type' && opts.type && badge.sales_type !== opts.type) return false;
+    if (excludeKey !== 'label' && opts.label && (badge.label || '').trim() !== opts.label) return false;
+    if (excludeKey !== 'tag' && opts.tag) {
+        if (!getAdminBadgeTags(badge).includes(opts.tag)) return false;
+    }
+    if (excludeKey !== 'unownedOnly' && opts.unownedOnly && adminOwnedBadgeIds.has(badge.id)) return false;
+    return true;
+}
+
+function updateAdminFilterOptions() {
+    const searchVal = (document.getElementById('admin-badge-search')?.value || '').toLowerCase();
+    const currentRarity = document.getElementById('admin-badge-rarity')?.value || '';
+    const currentCreator = document.getElementById('admin-badge-creator')?.value || '';
+    const currentType = document.getElementById('admin-badge-type')?.value || '';
+    const currentLabel = document.getElementById('admin-badge-label')?.value || '';
+    const currentTag = document.getElementById('admin-badge-tag')?.value || '';
+    const currentMethod = document.getElementById('admin-badge-method')?.value || '';
+
+    const baseOpts = {
+        search: searchVal,
+        rarity: adminBadgeFilters.rarity,
+        creator: adminBadgeFilters.creator,
+        type: adminBadgeFilters.type,
+        label: adminBadgeFilters.label,
+        tag: adminBadgeFilters.tag,
+        method: adminBadgeFilters.method,
+        unownedOnly: adminBadgeFilters.unownedOnly
+    };
+
+    const baseForRarity = allAdminBadges.filter(b => matchesAdminBadgeFilters(b, baseOpts, 'rarity'));
+    const baseForCreator = allAdminBadges.filter(b => matchesAdminBadgeFilters(b, baseOpts, 'creator'));
+    const baseForType = allAdminBadges.filter(b => matchesAdminBadgeFilters(b, baseOpts, 'type'));
+    const baseForLabel = allAdminBadges.filter(b => matchesAdminBadgeFilters(b, baseOpts, 'label'));
+    const baseForTag = allAdminBadges.filter(b => matchesAdminBadgeFilters(b, baseOpts, 'tag'));
+    const baseForMethod = allAdminBadges.filter(b => matchesAdminBadgeFilters(b, baseOpts, 'method'));
+
+    const raritySelect = document.getElementById('admin-badge-rarity');
+    if (raritySelect) {
+        const counts = {};
+        baseForRarity.forEach(b => {
+            const r = getAdminRarityForBadge(b) || '-';
+            counts[r] = (counts[r] || 0) + 1;
+        });
+        const ordered = adminRarityOrder.filter(r => counts[r]);
+        const extras = Object.keys(counts).filter(r => !ordered.includes(r)).sort((a, b) => a.localeCompare(b, 'ja'));
+        const options = ordered.concat(extras)
+            .map(r => `<option value="${r}">${r} (${counts[r]})</option>`)
+            .join('');
+        raritySelect.innerHTML = `<option value="">すべて</option>${options}`;
+        raritySelect.value = (ordered.concat(extras).includes(currentRarity)) ? currentRarity : '';
+    }
+
+    const creatorSelect = document.getElementById('admin-badge-creator');
+    if (creatorSelect) {
+        const counts = {};
+        baseForCreator.forEach(b => {
+            if (!b.discord_user_id) return;
+            counts[b.discord_user_id] = (counts[b.discord_user_id] || 0) + 1;
+        });
+        const items = Object.entries(counts)
+            .map(([id, count]) => {
+                const info = adminCreatorMap.get(id) || { name: id };
+                return { id, name: info.name || id, count };
+            })
+            .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+        creatorSelect.innerHTML = `<option value="">すべて</option>${items.map(i => `<option value="${i.id}">${i.name} (${i.count})</option>`).join('')}`;
+        creatorSelect.value = items.some(i => i.id === currentCreator) ? currentCreator : '';
+    }
+
+    const typeSelect = document.getElementById('admin-badge-type');
+    if (typeSelect) {
+        const counts = {};
+        baseForType.forEach(b => {
+            if (!b.sales_type) return;
+            counts[b.sales_type] = (counts[b.sales_type] || 0) + 1;
+        });
+        const options = Object.entries(counts)
+            .filter(([, c]) => c > 0)
+            .sort((a, b) => a[0].localeCompare(b[0], 'ja'))
+            .map(([t, c]) => `<option value="${t}">${t} (${c})</option>`)
+            .join('');
+        typeSelect.innerHTML = `<option value="">すべて</option>${options}`;
+        typeSelect.value = Object.prototype.hasOwnProperty.call(counts, currentType) ? currentType : '';
+    }
+
+    const labelSelect = document.getElementById('admin-badge-label');
+    if (labelSelect) {
+        const counts = {};
+        baseForLabel.forEach(b => {
+            const label = (b.label || '').trim();
+            if (!label) return;
+            counts[label] = (counts[label] || 0) + 1;
+        });
+        const options = Object.entries(counts)
+            .filter(([, c]) => c > 0)
+            .sort((a, b) => a[0].localeCompare(b[0], 'ja'))
+            .map(([l, c]) => `<option value="${l}">${l} (${c})</option>`)
+            .join('');
+        labelSelect.innerHTML = `<option value="">すべて</option>${options}`;
+        labelSelect.value = Object.prototype.hasOwnProperty.call(counts, currentLabel) ? currentLabel : '';
+    }
+
+    const tagSelect = document.getElementById('admin-badge-tag');
+    if (tagSelect) {
+        const counts = {};
+        baseForTag.forEach(b => {
+            getAdminBadgeTags(b).forEach(tag => {
+                counts[tag] = (counts[tag] || 0) + 1;
+            });
+        });
+        const options = Object.entries(counts)
+            .filter(([, c]) => c > 0)
+            .sort((a, b) => a[0].localeCompare(b[0], 'ja'))
+            .map(([t, c]) => `<option value="${t}">${t} (${c})</option>`)
+            .join('');
+        tagSelect.innerHTML = `<option value="">すべて</option>${options}`;
+        tagSelect.value = Object.prototype.hasOwnProperty.call(counts, currentTag) ? currentTag : '';
+    }
+
+    const methodSelect = document.getElementById('admin-badge-method');
+    if (methodSelect) {
+        const counts = {
+            shop: baseForMethod.filter(b => b.is_shop_listed).length,
+            gacha: baseForMethod.filter(b => b.is_gacha_eligible).length,
+            not_for_sale: baseForMethod.filter(b => !b.is_shop_listed && !b.is_gacha_eligible && b.sales_type !== '限定品' && b.sales_type !== '換金品').length
+        };
+        const options = [];
+        if (counts.shop > 0) options.push(`<option value="shop">ショップ販売中 (${counts.shop})</option>`);
+        if (counts.gacha > 0) options.push(`<option value="gacha">ガチャ排出 (${counts.gacha})</option>`);
+        if (counts.not_for_sale > 0) options.push(`<option value="not_for_sale">非売品 (${counts.not_for_sale})</option>`);
+        methodSelect.innerHTML = `<option value="">すべて</option>${options.join('')}`;
+        methodSelect.value = Object.keys(counts).includes(currentMethod) ? currentMethod : '';
+    }
+}
+
+function applyAdminBadgeFilters() {
+    const searchVal = (document.getElementById('admin-badge-search')?.value || '').toLowerCase();
+    const sortVal = document.getElementById('admin-badge-sort')?.value || 'price_asc';
+    adminBadgeFilters.search = searchVal;
+    adminBadgeFilters.sort = sortVal;
+    adminBadgeFilters.rarity = document.getElementById('admin-badge-rarity')?.value || '';
+    adminBadgeFilters.creator = document.getElementById('admin-badge-creator')?.value || '';
+    adminBadgeFilters.type = document.getElementById('admin-badge-type')?.value || '';
+    adminBadgeFilters.label = document.getElementById('admin-badge-label')?.value || '';
+    adminBadgeFilters.tag = document.getElementById('admin-badge-tag')?.value || '';
+    adminBadgeFilters.method = document.getElementById('admin-badge-method')?.value || '';
+
+    updateAdminFilterOptions();
+
+    let filtered = allAdminBadges.filter(b => matchesAdminBadgeFilters(b, adminBadgeFilters));
+
+    filtered.forEach(b => {
+        const derived = getAdminDerived(b);
+        b._assetValue = derived.assetValue;
+    });
+
+    const sorters = {
+        price_asc: (a, b) => (a._assetValue || 0) - (b._assetValue || 0),
+        price_desc: (a, b) => (b._assetValue || 0) - (a._assetValue || 0),
+        circulation_asc: (a, b) => (adminCirculationCounts[a.id] || 0) - (adminCirculationCounts[b.id] || 0),
+        circulation_desc: (a, b) => (adminCirculationCounts[b.id] || 0) - (adminCirculationCounts[a.id] || 0),
+        id_asc: (a, b) => (a.sort_order || 0) - (b.sort_order || 0),
+        id_desc: (a, b) => (b.sort_order || 0) - (a.sort_order || 0),
+        name: (a, b) => (a.name || '').localeCompare(b.name || '', 'ja')
+    };
+    filtered.sort(sorters[sortVal] || sorters.price_asc);
+
+    adminFilteredBadges = filtered;
+    renderAdminBadges();
+}
+
+async function hydrateAdminCreators() {
+    adminCreatorMap = new Map();
+    const creatorIds = [...new Set(allAdminBadges.map(b => b.discord_user_id).filter(Boolean))];
+    if (creatorIds.length === 0) return;
+    const { data } = await supabaseClient
+        .from('profiles')
+        .select('discord_user_id, account_name, avatar_url, is_hidden')
+        .in('discord_user_id', creatorIds);
+    (data || []).filter(c => !c.is_hidden).forEach(c => {
+        adminCreatorMap.set(c.discord_user_id, { name: c.account_name || c.discord_user_id, avatar: c.avatar_url || '' });
+    });
+    creatorIds.forEach(id => {
+        if (!adminCreatorMap.has(id)) {
+            adminCreatorMap.set(id, { name: id, avatar: '' });
+        }
+    });
+}
 
 async function fetchBadges() {
     const list = document.getElementById('badges-list');
     if (!list) return;
     try {
-        const { data: badges } = await supabaseClient.from('badges').select('*').order('sort_order', { ascending: true });
-        allAdminBadges = badges || [];
-        currentBadgesPage = 1;
-        renderAdminBadges();
-    } catch (err) { console.error(err); }
-}
+        const user = await getCurrentUser();
+        const currentUserId = user?.user_metadata?.provider_id || null;
+        const [badgesRes, thresholdsRes, circulationRes, ownedRes] = await Promise.all([
+            supabaseClient.from('badges').select('*').order('sort_order', { ascending: true }),
+            supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true }),
+            supabaseClient.from('user_badges_new').select('badge_id'),
+            currentUserId ? supabaseClient.from('user_badges_new').select('badge_id').eq('user_id', currentUserId) : Promise.resolve({ data: [] })
+        ]);
 
-function setAdminBadgeFilter(filter, btn) {
-    currentAdminBadgeFilter = filter;
-    // ボタンのアクティブ状態を更新
-    document.querySelectorAll('#admin-badge-filter-tabs button').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    currentBadgesPage = 1;
-    renderAdminBadges();
+        if (badgesRes.error) throw badgesRes.error;
+        if (thresholdsRes.error) throw thresholdsRes.error;
+
+        allAdminBadges = badgesRes.data || [];
+        adminRarityThresholds = thresholdsRes.data || [];
+        adminRarityOrder = getAdminRarityOrder();
+
+        const counts = {};
+        (circulationRes.data || []).forEach(item => {
+            counts[item.badge_id] = (counts[item.badge_id] || 0) + 1;
+        });
+        adminCirculationCounts = counts;
+
+        adminOwnedBadgeIds = new Set();
+        (ownedRes.data || []).forEach(item => adminOwnedBadgeIds.add(item.badge_id));
+        updateAdminUnownedButton();
+
+        await hydrateAdminCreators();
+        updateAdminFilterOptions();
+        currentBadgesPage = 1;
+        applyAdminBadgeFilters();
+    } catch (err) {
+        console.error(err);
+        list.innerHTML = '<div class="col-12 text-center text-danger py-5">読み込みエラーが発生しました</div>';
+    }
 }
 
 function renderAdminBadges() {
     const list = document.getElementById('badges-list');
     if (!list) return;
+    const filtered = adminFilteredBadges || [];
 
-    // フィルタリング
-    const filtered = allAdminBadges.filter(b => {
-        switch (currentAdminBadgeFilter) {
-            case 'shop':
-                return b.is_shop_listed === true;
-            case 'gacha':
-                return b.is_gacha_eligible === true;
-            case 'exchange':
-                return b.sales_type === '換金品';
-            case 'limited':
-                return b.sales_type === '限定品';
-            case 'not_for_sale':
-                // 非売品: ショップにもガチャにも出ない、かつ限定品・換金品以外
-                return !b.is_shop_listed && !b.is_gacha_eligible && b.sales_type !== '限定品' && b.sales_type !== '換金品';
-            case 'all':
-            default:
-                return true;
-        }
-    }).filter(b => {
-        if (!currentAdminBadgeType || currentAdminBadgeType === 'all') return true;
-        if (currentAdminBadgeType === 'none') return !b.sales_type;
-        return b.sales_type === currentAdminBadgeType;
-    });
-
-    const sorters = {
-        sort_order_asc: (a, b) => (a.sort_order || 0) - (b.sort_order || 0),
-        sort_order_desc: (a, b) => (b.sort_order || 0) - (a.sort_order || 0),
-        id_desc: (a, b) => (b.id || '').localeCompare(a.id || ''),
-        id_asc: (a, b) => (a.id || '').localeCompare(b.id || ''),
-        price_asc: (a, b) => (a.price || 0) - (b.price || 0),
-        price_desc: (a, b) => (b.price || 0) - (a.price || 0),
-        name_asc: (a, b) => (a.name || '').localeCompare(b.name || '', 'ja')
-    };
-    filtered.sort(sorters[currentAdminBadgeSort] || sorters.sort_order_asc);
+    const countEl = document.getElementById('admin-badge-count');
+    if (countEl) countEl.textContent = `${filtered.length} / ${allAdminBadges.length} 件`;
 
     if (filtered.length === 0) {
         list.innerHTML = '<div class="col-12 text-center text-muted py-5">該当するバッジがありません</div>';
@@ -1548,8 +1842,6 @@ async function deleteBadge(id) {
 
 async function handleBulkBadgeUpload(event) {
     const files = Array.from(event.target.files);
-    const bulkTagsInput = document.getElementById('badge-bulk-tags')?.value || '';
-    const bulkTags = parseTags(bulkTagsInput);
     toggleLoading(true);
     for (const file of files) {
         try {
@@ -1560,7 +1852,7 @@ async function handleBulkBadgeUpload(event) {
                 name: file.name.replace(/\.[^/.]+$/, ''),
                 image_url: data.publicUrl,
                 label: null,
-                tags: bulkTags.length ? bulkTags : null
+                tags: null
             }]);
         } catch (err) { console.error(err); }
     }
