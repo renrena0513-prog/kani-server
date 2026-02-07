@@ -175,6 +175,27 @@
             color: #aaa;
         }
 
+        .filter-controls .form-select,
+        .filter-controls .form-control,
+        .filter-controls .creator-dropdown-btn {
+            border-radius: 12px;
+            border: 1px solid #d9dde3;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);
+            background: #fff;
+        }
+
+        .filter-label {
+            font-size: 0.75rem;
+            color: #6c757d;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            margin-bottom: 4px;
+        }
+
+        .filter-row-top {
+            align-items: end;
+        }
+
         .creator-dropdown {
             position: relative;
         }
@@ -226,6 +247,11 @@
         .creator-item:hover {
             background: #f8f9fa;
         }
+
+        .rarity-unknown {
+            background: #495057;
+            color: #fff;
+        }
     </style>
 </head>
 
@@ -250,7 +276,7 @@
         <div class="badge-list-card">
             <!-- フィルタ・コントロール -->
             <div class="filter-controls">
-                <div class="row g-3">
+                <div class="row g-3 filter-row-top">
                     <!-- 検索 -->
                     <div class="col-12 col-md-5">
                         <div class="position-relative">
@@ -260,9 +286,9 @@
                         </div>
                     </div>
                     <!-- ソート -->
-                    <div class="col-12 col-md-4">
+                    <div class="col-12 col-md-3">
                         <div class="d-flex align-items-center gap-2">
-                            <label class="small text-muted flex-shrink-0">並び替え:</label>
+                            <label class="filter-label flex-shrink-0">並び替え</label>
                             <select id="sort-select" class="form-select form-select-sm" onchange="filterAndRender()">
                                 <option value="price_asc">価格順（低→高）</option>
                                 <option value="price_desc">価格順（高→低）</option>
@@ -274,8 +300,18 @@
                             </select>
                         </div>
                     </div>
+                    <!-- 入手方法 -->
+                    <div class="col-12 col-md-2">
+                        <label class="filter-label">入手方法</label>
+                        <select id="method-filter" class="form-select form-select-sm" onchange="filterAndRender()">
+                            <option value="">すべて</option>
+                            <option value="shop">ショップ販売中</option>
+                            <option value="gacha">ガチャ排出</option>
+                            <option value="not_for_sale">非売品</option>
+                        </select>
+                    </div>
                     <!-- 表示統計 -->
-                    <div class="col-12 col-md-3 d-flex align-items-center justify-content-md-end">
+                    <div class="col-12 col-md-2 d-flex align-items-center justify-content-md-end">
                         <span class="badge bg-secondary" id="badge-count-status">0 / 0 件</span>
                     </div>
                 </div>
@@ -285,7 +321,7 @@
                 <!-- 追加フィルター -->
                 <div class="row g-3">
                     <div class="col-12 col-md-3">
-                        <label class="small text-muted">レアリティ</label>
+                        <label class="filter-label">レアリティ</label>
                         <div class="creator-dropdown">
                             <button class="creator-dropdown-btn" type="button" id="rarity-filter-btn">
                                 <span id="rarity-filter-label">すべて</span>
@@ -296,7 +332,7 @@
                         </div>
                     </div>
                     <div class="col-12 col-md-3">
-                        <label class="small text-muted">クリエイター</label>
+                        <label class="filter-label">クリエイター</label>
                         <div class="creator-dropdown">
                             <button class="creator-dropdown-btn" type="button" id="creator-filter-btn">
                                 <img src="" class="creator-avatar" id="creator-filter-avatar" alt="">
@@ -308,13 +344,13 @@
                         </div>
                     </div>
                     <div class="col-12 col-md-3">
-                        <label class="small text-muted">タイプ</label>
+                        <label class="filter-label">タイプ</label>
                         <select id="type-filter" class="form-select form-select-sm" onchange="filterAndRender()">
                             <option value="">すべて</option>
                         </select>
                     </div>
                     <div class="col-12 col-md-3">
-                        <label class="small text-muted">ラベル</label>
+                        <label class="filter-label">ラベル</label>
                         <select id="label-filter" class="form-select form-select-sm" onchange="filterAndRender()">
                             <option value="">すべて</option>
                         </select>
@@ -328,15 +364,6 @@
 
                 <!-- 入手方法フィルター -->
                 <div class="row g-3 mt-1">
-                    <div class="col-12 col-md-3">
-                        <label class="small text-muted">入手方法</label>
-                        <select id="method-filter" class="form-select form-select-sm" onchange="filterAndRender()">
-                            <option value="">すべて</option>
-                            <option value="shop">ショップ販売中</option>
-                            <option value="gacha">ガチャ排出</option>
-                            <option value="not_for_sale">非売品</option>
-                        </select>
-                    </div>
                     <div class="col-12 col-md-3 d-flex align-items-end">
                         <button class="btn btn-outline-secondary btn-sm w-100" type="button" onclick="resetAllFilters()">
                             フィルターをリセット
@@ -551,39 +578,7 @@
             if (raritySelect) {
                 // handled by custom menu
             }
-            if (labelSelect) {
-                const labelSet = new Set(allBadges.map(b => (b.label || '').trim()).filter(Boolean));
-                labelSelect.innerHTML = '<option value="">すべて</option>' + [...labelSet].map(l => {
-                    const count = allBadges.filter(b => (b.label || '').trim() === l).length;
-                    return `<option value="${l}">${l} (${count})</option>`;
-                }).join('');
-            }
-
-            buildCreatorMenu();
-            buildRarityMenu();
-
-            if (methodSelect) {
-                const counts = {
-                    shop: allBadges.filter(b => b.is_shop_listed).length,
-                    gacha: allBadges.filter(b => b.is_gacha_eligible).length,
-                    not_for_sale: allBadges.filter(b => !b.is_shop_listed && !b.is_gacha_eligible && b.sales_type !== '限定品' && b.sales_type !== '換金品').length
-                };
-                methodSelect.innerHTML = `
-                    <option value="">すべて</option>
-                    <option value="shop">ショップ販売中 (${counts.shop})</option>
-                    <option value="gacha">ガチャ排出 (${counts.gacha})</option>
-                    <option value="not_for_sale">非売品 (${counts.not_for_sale})</option>
-                `;
-            }
-
-            const typeSelect = document.getElementById('type-filter');
-            if (typeSelect) {
-                const typeSet = new Set(allBadges.map(b => b.sales_type).filter(Boolean));
-                typeSelect.innerHTML = '<option value="">すべて</option>' + [...typeSet].map(t => {
-                    const count = allBadges.filter(b => b.sales_type === t).length;
-                    return `<option value="${t}">${t} (${count})</option>`;
-                }).join('');
-            }
+            updateDynamicFilterOptions(allBadges);
         }
 
         function buildCreatorMenu() {
@@ -598,6 +593,7 @@
                 <div class="creator-item" data-id="${item.id}" data-name="${item.name}" data-avatar="${item.avatar || ''}">
                     ${item.avatar ? `<img src="${item.avatar}" class="creator-avatar" style="display:block;">` : '<span class="creator-avatar" style="display:inline-block;"></span>'}
                     <span>${item.name}</span>
+                    ${item.id ? `<span class="ms-auto text-muted small">(${allBadges.filter(b => b.discord_user_id === item.id).length})</span>` : ''}
                 </div>
             `).join('');
             menu.querySelectorAll('.creator-item').forEach(el => {
@@ -632,16 +628,23 @@
                 .sort((a, b) => {
                     if (a.value === '') return -1;
                     if (b.value === '') return 1;
-                    return rarityOrder.indexOf(a.name) - rarityOrder.indexOf(b.name);
+                    const aIdx = rarityOrder.indexOf(a.name);
+                    const bIdx = rarityOrder.indexOf(b.name);
+                    if (aIdx === -1 && bIdx === -1) return a.name.localeCompare(b.name);
+                    if (aIdx === -1) return 1;
+                    if (bIdx === -1) return -1;
+                    return aIdx - bIdx;
                 });
             menu.innerHTML = items.map(item => {
                 if (item.value === '') {
                     return `<div class="creator-item" data-value="" data-name="すべて"><span>すべて</span></div>`;
                 }
                 const cls = getRarityClass(item.name);
+                const displayName = cls ? item.name : '★???';
+                const badgeClass = cls ? cls : 'rarity-unknown';
                 return `
                     <div class="creator-item" data-value="${item.value}" data-name="${item.name}">
-                        <span class="badge ${cls} text-white">${item.name}</span>
+                        <span class="badge ${badgeClass} text-white" title="${item.name}">${displayName}</span>
                         <span class="ms-auto text-muted small">(${item.count})</span>
                     </div>
                 `;
@@ -698,6 +701,7 @@
             filters.type = document.getElementById('type-filter')?.value || '';
             filters.label = document.getElementById('label-filter')?.value || '';
             filters.method = document.getElementById('method-filter')?.value || '';
+            updateDynamicFilterOptions(allBadges);
 
             // 1. フィルタリング
             let filtered = allBadges.filter(b => {
@@ -836,3 +840,202 @@
 </body>
 
 </html>
+        function getRarityForBadge(badge) {
+            const circulationCount = cachedCirculationCounts[badge.id] || 0;
+            const result = BadgeUtils.calculateBadgeValues(badge, circulationCount, rarityThresholds);
+            return result.rarityName;
+        }
+
+        function matchesMethodFilter(badge, method) {
+            if (!method) return true;
+            if (method === 'shop') return badge.is_shop_listed;
+            if (method === 'gacha') return badge.is_gacha_eligible;
+            if (method === 'not_for_sale') {
+                if (badge.is_shop_listed || badge.is_gacha_eligible) return false;
+                if (badge.sales_type === '限定品' || badge.sales_type === '換金品') return false;
+                return true;
+            }
+            return true;
+        }
+
+        function matchesFilters(b, opts, excludeKey = '') {
+            if (opts.searchVal && !b.name.toLowerCase().includes(opts.searchVal)) return false;
+            if (excludeKey !== 'method' && opts.method && !matchesMethodFilter(b, opts.method)) return false;
+            if (excludeKey !== 'rarity' && opts.rarity) {
+                const r = getRarityForBadge(b);
+                if (r !== opts.rarity) return false;
+            }
+            if (excludeKey !== 'creator' && opts.creator && b.discord_user_id !== opts.creator) return false;
+            if (excludeKey !== 'type' && opts.type && b.sales_type !== opts.type) return false;
+            if (excludeKey !== 'label' && opts.label && (b.label || '').trim() !== opts.label) return false;
+            if (excludeKey !== 'unownedOnly' && opts.unownedOnly && ownedBadgeIds.size > 0 && ownedBadgeIds.has(b.id)) return false;
+            return true;
+        }
+
+        function updateDynamicFilterOptions(sourceBadges) {
+            const searchVal = document.getElementById('search-box')?.value.toLowerCase() || '';
+            const baseOpts = {
+                searchVal,
+                rarity: filters.rarity,
+                creator: filters.creator,
+                type: filters.type,
+                label: filters.label,
+                method: filters.method,
+                unownedOnly: filters.unownedOnly
+            };
+
+            const baseForRarity = sourceBadges.filter(b => matchesFilters(b, baseOpts, 'rarity'));
+            const baseForCreator = sourceBadges.filter(b => matchesFilters(b, baseOpts, 'creator'));
+            const baseForType = sourceBadges.filter(b => matchesFilters(b, baseOpts, 'type'));
+            const baseForLabel = sourceBadges.filter(b => matchesFilters(b, baseOpts, 'label'));
+            const baseForMethod = sourceBadges.filter(b => matchesFilters(b, baseOpts, 'method'));
+
+            // レアリティメニュー
+            const rarityCounts = {};
+            baseForRarity.forEach(b => {
+                const r = getRarityForBadge(b) || '-';
+                rarityCounts[r] = (rarityCounts[r] || 0) + 1;
+            });
+            buildRarityMenuFromCounts(rarityCounts);
+
+            // クリエイター
+            buildCreatorMenuFromBase(baseForCreator);
+
+            // タイプ
+            const typeSelect = document.getElementById('type-filter');
+            if (typeSelect) {
+                const counts = {};
+                baseForType.forEach(b => {
+                    if (!b.sales_type) return;
+                    counts[b.sales_type] = (counts[b.sales_type] || 0) + 1;
+                });
+                const options = Object.entries(counts)
+                    .filter(([, c]) => c > 0)
+                    .map(([t, c]) => `<option value="${t}">${t} (${c})</option>`)
+                    .join('');
+                typeSelect.innerHTML = `<option value="">すべて</option>${options}`;
+            }
+
+            // ラベル
+            const labelSelect = document.getElementById('label-filter');
+            if (labelSelect) {
+                const counts = {};
+                baseForLabel.forEach(b => {
+                    const label = (b.label || '').trim();
+                    if (!label) return;
+                    counts[label] = (counts[label] || 0) + 1;
+                });
+                const options = Object.entries(counts)
+                    .filter(([, c]) => c > 0)
+                    .map(([l, c]) => `<option value="${l}">${l} (${c})</option>`)
+                    .join('');
+                labelSelect.innerHTML = `<option value="">すべて</option>${options}`;
+            }
+
+            // 入手方法
+            const methodSelect = document.getElementById('method-filter');
+            if (methodSelect) {
+                const counts = {
+                    shop: baseForMethod.filter(b => b.is_shop_listed).length,
+                    gacha: baseForMethod.filter(b => b.is_gacha_eligible).length,
+                    not_for_sale: baseForMethod.filter(b => !b.is_shop_listed && !b.is_gacha_eligible && b.sales_type !== '限定品' && b.sales_type !== '換金品').length
+                };
+                const options = [];
+                if (counts.shop > 0) options.push(`<option value="shop">ショップ販売中 (${counts.shop})</option>`);
+                if (counts.gacha > 0) options.push(`<option value="gacha">ガチャ排出 (${counts.gacha})</option>`);
+                if (counts.not_for_sale > 0) options.push(`<option value="not_for_sale">非売品 (${counts.not_for_sale})</option>`);
+                methodSelect.innerHTML = `<option value="">すべて</option>${options.join('')}`;
+            }
+        }
+
+        function buildCreatorMenuFromBase(baseBadges) {
+            const menu = document.getElementById('creator-filter-menu');
+            const btn = document.getElementById('creator-filter-btn');
+            if (!menu || !btn) return;
+            const counts = {};
+            baseBadges.forEach(b => {
+                if (!b.discord_user_id) return;
+                counts[b.discord_user_id] = (counts[b.discord_user_id] || 0) + 1;
+            });
+            const creatorIds = new Set(Object.keys(counts));
+            const items = [{ id: '', name: 'すべて', avatar: '' }]
+                .concat(
+                    [...creatorIds].map(id => {
+                        const info = creatorMap.get(id) || { name: id, avatar: '' };
+                        return { id, name: info.name, avatar: info.avatar, count: counts[id] };
+                    }).sort((a, b) => a.name.localeCompare(b.name))
+                );
+            menu.innerHTML = items.map(item => `
+                <div class="creator-item" data-id="${item.id}" data-name="${item.name}" data-avatar="${item.avatar || ''}">
+                    ${item.avatar ? `<img src="${item.avatar}" class="creator-avatar" style="display:block;">` : '<span class="creator-avatar" style="display:inline-block;"></span>'}
+                    <span>${item.name}</span>
+                    ${item.id ? `<span class="ms-auto text-muted small">(${item.count})</span>` : ''}
+                </div>
+            `).join('');
+            menu.querySelectorAll('.creator-item').forEach(el => {
+                el.addEventListener('click', () => {
+                    setCreatorFilter(el.dataset.id, el.dataset.name, el.dataset.avatar);
+                    menu.style.display = 'none';
+                });
+            });
+            if (!btn.dataset.bound) {
+                btn.addEventListener('click', () => {
+                    menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+                });
+                document.addEventListener('click', (e) => {
+                    if (!menu.contains(e.target) && !btn.contains(e.target)) {
+                        menu.style.display = 'none';
+                    }
+                });
+                btn.dataset.bound = '1';
+            }
+        }
+
+        function buildRarityMenuFromCounts(rarityCounts) {
+            const menu = document.getElementById('rarity-filter-menu');
+            const btn = document.getElementById('rarity-filter-btn');
+            if (!menu || !btn) return;
+            const items = [{ name: 'すべて', value: '' }]
+                .concat(Object.keys(rarityCounts).map(r => ({ name: r, value: r, count: rarityCounts[r] })))
+                .sort((a, b) => {
+                    if (a.value === '') return -1;
+                    if (b.value === '') return 1;
+                    const aIdx = rarityOrder.indexOf(a.name);
+                    const bIdx = rarityOrder.indexOf(b.name);
+                    if (aIdx === -1 && bIdx === -1) return a.name.localeCompare(b.name);
+                    if (aIdx === -1) return 1;
+                    if (bIdx === -1) return -1;
+                    return aIdx - bIdx;
+                });
+            menu.innerHTML = items.map(item => {
+                if (item.value === '') {
+                    return `<div class="creator-item" data-value="" data-name="すべて"><span>すべて</span></div>`;
+                }
+                const cls = getRarityClass(item.name);
+                const displayName = cls ? item.name : '★???';
+                const badgeClass = cls ? cls : 'rarity-unknown';
+                return `
+                    <div class="creator-item" data-value="${item.value}" data-name="${item.name}">
+                        <span class="badge ${badgeClass} text-white" title="${item.name}">${displayName}</span>
+                        <span class="ms-auto text-muted small">(${item.count})</span>
+                    </div>
+                `;
+            }).join('');
+            menu.querySelectorAll('.creator-item').forEach(el => {
+                el.addEventListener('click', () => {
+                    setRarityFilter(el.dataset.value, el.dataset.name);
+                    menu.style.display = 'none';
+                });
+            });
+            if (!btn.dataset.bound) {
+                btn.addEventListener('click', () => {
+                    menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+                });
+                document.addEventListener('click', (e) => {
+                    if (!menu.contains(e.target) && !btn.contains(e.target)) {
+                        menu.style.display = 'none';
+                    }
+                });
+                btn.dataset.bound = '1';
+            }
+        }
