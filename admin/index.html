@@ -395,6 +395,32 @@
             border-radius: 10px;
             margin-left: auto;
         }
+
+        .log-filter-btn.active {
+            background: var(--gold);
+            color: white;
+            border-color: var(--gold);
+        }
+
+        @media (max-width: 768px) {
+            .log-toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            #log-action-buttons {
+                width: 100%;
+            }
+
+            #log-action-buttons .log-filter-btn {
+                flex: 1 1 48%;
+            }
+
+            #log-user-filter,
+            .log-toolbar .btn {
+                width: 100%;
+            }
+        }
     </style>
 
 </head>
@@ -797,17 +823,15 @@
                             <div class="d-flex justify-content-between align-items-center mb-4 gap-3 flex-wrap section-toolbar">
                                 <h2 class="mb-0" style="font-family: var(--font-title); color: var(--deep-gray);">📝
                                     全ユーザー活動ログ</h2>
-                                <div class="d-flex gap-2">
-                                    <select id="log-action-filter" class="form-select form-select-sm"
-                                        style="width: auto;" onchange="handleLogActionFilterChange()">
-                                        <option value="all">🔍 すべてのアクション</option>
-                                        <option value="gacha_draw">🎰 ガチャ</option>
-                                        <option value="coin_transfer">💸 コイン送金・受取</option>
-                                        <option value="badge_purchase">🛒 バッジ購入・売却</option>
-                                        <option value="badge_transfer">🎁 バッジ譲渡・受取</option>
-                                        <option value="omikuji">⛩️ おみくじ</option>
-                                        <option value="admin_edit">🔧 管理者調整</option>
-                                    </select>
+                                <div class="d-flex gap-2 log-toolbar">
+                                    <div class="d-flex flex-wrap gap-2" id="log-action-buttons">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary log-filter-btn" data-action="gacha_draw">🎰 ガチャ</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary log-filter-btn" data-action="coin_transfer">💸 コイン送金・受取</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary log-filter-btn" data-action="badge_purchase">🛒 バッジ購入・売却</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary log-filter-btn" data-action="badge_transfer">🎁 バッジ譲渡・受取</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary log-filter-btn" data-action="omikuji">⛩️ おみくじ</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary log-filter-btn" data-action="admin_edit">🔧 管理者調整</button>
+                                    </div>
                                     <select id="log-user-filter" class="form-select form-select-sm" style="width: 180px;"
                                         onchange="handleLogUserFilterChange()">
                                         <option value="all">👤 すべてのユーザー</option>

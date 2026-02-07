@@ -55,6 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     initAdminBadgeFilters();
+    initLogActionButtons();
 });
 
 // 最終スコアの自動計算
@@ -2323,8 +2324,15 @@ async function loadBadgesCache() {
     if (data) data.forEach(b => badgesCache[b.id] = { name: b.name, image: b.image_url });
 }
 
-function handleLogActionFilterChange() {
-    fetchActivityLogs(1); // フィルター変更時は1ページ目に戻す
+function initLogActionButtons() {
+    const container = document.getElementById('log-action-buttons');
+    if (!container) return;
+    container.querySelectorAll('.log-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            btn.classList.toggle('active');
+            fetchActivityLogs(1);
+        });
+    });
 }
 
 function handleLogUserFilterChange() {
@@ -2334,6 +2342,14 @@ function handleLogUserFilterChange() {
 function getSelectedLogUserId() {
     const userFilter = document.getElementById('log-user-filter');
     return userFilter?.value || 'all';
+}
+
+function getSelectedLogActions() {
+    const container = document.getElementById('log-action-buttons');
+    if (!container) return [];
+    return Array.from(container.querySelectorAll('.log-filter-btn.active'))
+        .map(btn => btn.getAttribute('data-action'))
+        .filter(Boolean);
 }
 
 function populateLogUserFilterOptions() {
@@ -2359,7 +2375,7 @@ async function fetchActivityLogs(page = 1) {
     const to = from + LOGS_PER_PAGE - 1;
 
     // フィルターの取得
-    const actionFilter = document.getElementById('log-action-filter')?.value || 'all';
+    const actionFilter = getSelectedLogActions();
     const userFilter = getSelectedLogUserId();
 
     let query = supabaseClient.from('activity_logs').select('*', { count: 'exact' });
@@ -2369,16 +2385,22 @@ async function fetchActivityLogs(page = 1) {
     }
 
     // アクションフィルターの適用
-    if (actionFilter !== 'all') {
-        if (actionFilter === 'coin_transfer') {
-            query = query.in('action_type', ['coin_transfer', 'coin_receive', 'transfer_send', 'transfer_receive']);
-        } else if (actionFilter === 'badge_purchase') {
-            query = query.in('action_type', ['badge_purchase', 'badge_sell']);
-        } else if (actionFilter === 'badge_transfer') {
-            query = query.in('action_type', ['badge_transfer', 'badge_receive']);
-        } else {
-            query = query.eq('action_type', actionFilter);
-        }
+    if (actionFilter.length > 0) {
+        const actionGroups = {
+            coin_transfer: ['coin_transfer', 'coin_receive', 'transfer_send', 'transfer_receive'],
+            badge_purchase: ['badge_purchase', 'badge_sell'],
+            badge_transfer: ['badge_transfer', 'badge_receive']
+        };
+        const types = new Set();
+        actionFilter.forEach(key => {
+            const group = actionGroups[key];
+            if (group) {
+                group.forEach(t => types.add(t));
+            } else {
+                types.add(key);
+            }
+        });
+        query = query.in('action_type', Array.from(types));
     }
 
     const { data: logs, count } = await query.order('created_at', { ascending: false }).range(from, to);
