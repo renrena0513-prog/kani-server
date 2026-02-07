@@ -1653,6 +1653,8 @@ async function fetchBadgeTagRequests() {
                         <div class="small text-muted">${tagText || '-'}</div>
                     </div>
                     <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-primary"
+                            onclick='event.stopPropagation(); openBadgeModal(${JSON.stringify(badge || {}).replace(/'/g, "&apos;")})'>編集</button>
                         <button class="btn btn-sm btn-success"
                             onclick="approveBadgeTagRequest('${req.id}', '${req.badge_id}', '${encodedTags}')">許可</button>
                         <button class="btn btn-sm btn-outline-danger"
