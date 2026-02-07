@@ -174,6 +174,58 @@
             transform: translateY(-50%);
             color: #aaa;
         }
+
+        .creator-dropdown {
+            position: relative;
+        }
+
+        .creator-dropdown-btn {
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 6px 10px;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+
+        .creator-avatar {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            object-fit: cover;
+            display: none;
+        }
+
+        .creator-menu {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            max-height: 280px;
+            overflow-y: auto;
+            z-index: 2000;
+            display: none;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        .creator-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f1f1;
+        }
+
+        .creator-item:hover {
+            background: #f8f9fa;
+        }
     </style>
 </head>
 
@@ -214,6 +266,12 @@
                             <select id="sort-select" class="form-select form-select-sm" onchange="filterAndRender()">
                                 <option value="number">ナンバー順 (#0〜)</option>
                                 <option value="rarity">レアリティ順 (高〜)</option>
+                                <option value="price_asc">価格順（低→高）</option>
+                                <option value="price_desc">価格順（高→低）</option>
+                                <option value="circulation_asc">流通数順（低→高）</option>
+                                <option value="circulation_desc">流通数順（高→低）</option>
+                                <option value="id_asc">バッジID順（低→高）</option>
+                                <option value="id_desc">バッジID順（高→低）</option>
                                 <option value="name">名前順</option>
                             </select>
                         </div>
@@ -225,6 +283,49 @@
                 </div>
 
                 <hr class="my-3">
+
+                <!-- 追加フィルター -->
+                <div class="row g-3">
+                    <div class="col-12 col-md-3">
+                        <label class="small text-muted">レアリティ</label>
+                        <select id="rarity-filter" class="form-select form-select-sm" onchange="filterAndRender()">
+                            <option value="">すべて</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="small text-muted">クリエイター</label>
+                        <div class="creator-dropdown">
+                            <button class="creator-dropdown-btn" type="button" id="creator-filter-btn">
+                                <img src="" class="creator-avatar" id="creator-filter-avatar" alt="">
+                                <span id="creator-filter-label">すべて</span>
+                                <i class="bi bi-caret-down-fill ms-auto"></i>
+                            </button>
+                            <input type="hidden" id="creator-filter" value="">
+                            <div class="creator-menu" id="creator-filter-menu"></div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="small text-muted">タイプ</label>
+                        <select id="type-filter" class="form-select form-select-sm" onchange="filterAndRender()">
+                            <option value="">すべて</option>
+                            <option value="変動型">変動型</option>
+                            <option value="固定型">固定型</option>
+                            <option value="換金品">換金品</option>
+                            <option value="限定品">限定品</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="small text-muted">ラベル</label>
+                        <select id="label-filter" class="form-select form-select-sm" onchange="filterAndRender()">
+                            <option value="">すべて</option>
+                        </select>
+                    </div>
+                    <div class="col-12 d-flex align-items-center gap-2">
+                        <button id="unowned-toggle" class="btn btn-outline-secondary btn-sm" type="button" onclick="toggleUnownedFilter()" style="display:none;">
+                            未所持のみ表示
+                        </button>
+                    </div>
+                </div>
 
                 <!-- カテゴリタブ -->
                 <div class="category-tabs" id="category-tabs">
@@ -245,6 +346,10 @@
                     </div>
                 </div>
             </div>
+            <nav aria-label="Page navigation" class="mt-3" id="badge-pagination-area" style="display:none;">
+                <div class="small text-muted text-center mb-2" id="badge-page-info"></div>
+                <ul class="pagination pagination-sm justify-content-center mb-0" id="badge-pagination"></ul>
+            </nav>
         </div>
     </div>
 
@@ -263,6 +368,16 @@
         let allBadges = [];
         let currentCategory = 'all';
         let rarityThresholds = [];
+        let creatorMap = new Map();
+        let ownedBadgeIds = new Set();
+        let currentPage = 1;
+        const filters = {
+            rarity: '',
+            creator: '',
+            type: '',
+            label: '',
+            unownedOnly: false
+        };
 
         let cachedCirculationCounts = {}; // バッジごとの流通数
 
@@ -287,6 +402,10 @@
                     counts[item.badge_id] = (counts[item.badge_id] || 0) + 1;
                 });
                 cachedCirculationCounts = counts;
+
+                await hydrateCreators();
+                await hydrateOwnedBadges();
+                buildFilterOptions();
 
                 filterAndRender();
             } catch (err) {
@@ -313,15 +432,191 @@
             currentCategory = cat;
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
+            currentPage = 1;
             filterAndRender();
         }
 
         const rarityOrder = ['測定不能', '神話', '至高', '幻想', '伝説', '極上', '特上', '貴重', '希少・Ⅱ', '希少・Ⅰ', '良質', '一般', '-'];
 
+        function toggleUnownedFilter() {
+            filters.unownedOnly = !filters.unownedOnly;
+            const btn = document.getElementById('unowned-toggle');
+            if (btn) {
+                btn.classList.toggle('btn-primary', filters.unownedOnly);
+                btn.classList.toggle('btn-outline-secondary', !filters.unownedOnly);
+                btn.textContent = filters.unownedOnly ? '未所持のみ表示中' : '未所持のみ表示';
+            }
+            currentPage = 1;
+            filterAndRender();
+        }
+
+        function getPageSize() {
+            return window.innerWidth < 768 ? 20 : 48;
+        }
+
+        function renderPagination(total) {
+            const area = document.getElementById('badge-pagination-area');
+            const info = document.getElementById('badge-page-info');
+            const pagination = document.getElementById('badge-pagination');
+            const pageSize = getPageSize();
+            if (!area || !info || !pagination) return;
+
+            if (total <= pageSize) {
+                area.style.display = 'none';
+                pagination.innerHTML = '';
+                info.textContent = '';
+                return;
+            }
+
+            const totalPages = Math.ceil(total / pageSize);
+            if (currentPage > totalPages) currentPage = totalPages;
+            area.style.display = 'block';
+            const start = (currentPage - 1) * pageSize + 1;
+            const end = Math.min(currentPage * pageSize, total);
+            info.textContent = `${start} - ${end} / ${total} 件`;
+
+            const pages = [];
+            if (totalPages <= 7) {
+                for (let i = 1; i <= totalPages; i++) pages.push(i);
+            } else {
+                pages.push(1);
+                let startPage = Math.max(2, currentPage - 1);
+                let endPage = Math.min(totalPages - 1, currentPage + 1);
+                if (startPage > 2) pages.push('...');
+                for (let i = startPage; i <= endPage; i++) pages.push(i);
+                if (endPage < totalPages - 1) pages.push('...');
+                pages.push(totalPages);
+            }
+
+            const buildItem = (label, page, disabled = false, active = false) => `
+                <li class="page-item ${disabled ? 'disabled' : ''} ${active ? 'active' : ''}">
+                    <button class="page-link" type="button" ${disabled ? 'disabled' : ''} data-page="${page}">${label}</button>
+                </li>
+            `;
+
+            let html = '';
+            html += buildItem('‹', currentPage - 1, currentPage === 1);
+            html += pages.map(p => {
+                if (p === '...') {
+                    return buildItem('…', 'ellipsis', true);
+                }
+                return buildItem(p, p, false, p === currentPage);
+            }).join('');
+            html += buildItem('›', currentPage + 1, currentPage === totalPages);
+            pagination.innerHTML = html;
+            pagination.querySelectorAll('button[data-page]').forEach(btn => {
+                const page = btn.getAttribute('data-page');
+                if (page === 'ellipsis') return;
+                btn.addEventListener('click', () => {
+                    const nextPage = parseInt(page, 10);
+                    if (!Number.isNaN(nextPage)) {
+                        currentPage = nextPage;
+                        filterAndRender();
+                    }
+                });
+            });
+        }
+
+        async function hydrateCreators() {
+            const creatorIds = [...new Set(allBadges.map(b => b.discord_user_id).filter(Boolean))];
+            if (creatorIds.length === 0) return;
+            const { data } = await supabaseClient
+                .from('profiles')
+                .select('discord_user_id, account_name, avatar_url, is_hidden')
+                .in('discord_user_id', creatorIds);
+            (data || []).filter(c => !c.is_hidden).forEach(c => {
+                creatorMap.set(c.discord_user_id, { name: c.account_name || c.discord_user_id, avatar: c.avatar_url || '' });
+            });
+        }
+
+        async function hydrateOwnedBadges() {
+            const user = await getCurrentUser();
+            const btn = document.getElementById('unowned-toggle');
+            if (!user) {
+                if (btn) btn.style.display = 'none';
+                return;
+            }
+            const targetId = user.user_metadata.provider_id;
+            const { data } = await supabaseClient
+                .from('user_badges_new')
+                .select('badge_id')
+                .eq('user_id', targetId);
+            (data || []).forEach(r => ownedBadgeIds.add(r.badge_id));
+            if (btn) btn.style.display = 'inline-block';
+        }
+
+        function buildFilterOptions() {
+            const raritySelect = document.getElementById('rarity-filter');
+            const labelSelect = document.getElementById('label-filter');
+            if (raritySelect) {
+                const raritySet = new Set();
+                rarityThresholds.forEach(r => raritySet.add(r.rarity_name));
+                raritySelect.innerHTML = '<option value="">すべて</option>' + [...raritySet].map(r => `<option value="${r}">${r}</option>`).join('');
+            }
+            if (labelSelect) {
+                const labelSet = new Set(allBadges.map(b => (b.label || '').trim()).filter(Boolean));
+                labelSelect.innerHTML = '<option value="">すべて</option>' + [...labelSet].map(l => `<option value="${l}">${l}</option>`).join('');
+            }
+
+            buildCreatorMenu();
+        }
+
+        function buildCreatorMenu() {
+            const menu = document.getElementById('creator-filter-menu');
+            const btn = document.getElementById('creator-filter-btn');
+            if (!menu || !btn) return;
+            const items = [{ id: '', name: 'すべて', avatar: '' }]
+                .concat([...creatorMap.entries()]
+                    .map(([id, info]) => ({ id, name: info.name, avatar: info.avatar }))
+                    .sort((a, b) => a.name.localeCompare(b.name)));
+            menu.innerHTML = items.map(item => `
+                <div class="creator-item" data-id="${item.id}" data-name="${item.name}" data-avatar="${item.avatar || ''}">
+                    ${item.avatar ? `<img src="${item.avatar}" class="creator-avatar" style="display:block;">` : '<span class="creator-avatar" style="display:inline-block;"></span>'}
+                    <span>${item.name}</span>
+                </div>
+            `).join('');
+            menu.querySelectorAll('.creator-item').forEach(el => {
+                el.addEventListener('click', () => {
+                    setCreatorFilter(el.dataset.id, el.dataset.name, el.dataset.avatar);
+                    menu.style.display = 'none';
+                });
+            });
+            btn.addEventListener('click', () => {
+                menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+            });
+            document.addEventListener('click', (e) => {
+                if (!menu.contains(e.target) && !btn.contains(e.target)) {
+                    menu.style.display = 'none';
+                }
+            });
+        }
+
+        function setCreatorFilter(id, name, avatar) {
+            const input = document.getElementById('creator-filter');
+            const label = document.getElementById('creator-filter-label');
+            const img = document.getElementById('creator-filter-avatar');
+            if (input) input.value = id || '';
+            if (label) label.textContent = name || 'すべて';
+            if (img) {
+                if (avatar) {
+                    img.src = avatar;
+                    img.style.display = 'block';
+                } else {
+                    img.style.display = 'none';
+                }
+            }
+            currentPage = 1;
+            filterAndRender();
+        }
+
         function filterAndRender() {
             const grid = document.getElementById('badge-list-grid');
             const searchVal = document.getElementById('search-box').value.toLowerCase();
             const sortBy = document.getElementById('sort-select').value;
+            filters.rarity = document.getElementById('rarity-filter')?.value || '';
+            filters.creator = document.getElementById('creator-filter')?.value || '';
+            filters.type = document.getElementById('type-filter')?.value || '';
+            filters.label = document.getElementById('label-filter')?.value || '';
 
             // 1. フィルタリング
             let filtered = allBadges.filter(b => {
@@ -356,6 +651,17 @@
                         // 全件: フィルタなし
                         break;
                 }
+
+                if (filters.rarity) {
+                    const circulationCount = cachedCirculationCounts[b.id] || 0;
+                    const result = BadgeUtils.calculateBadgeValues(b, circulationCount, rarityThresholds);
+                    if (result.rarityName !== filters.rarity) return false;
+                }
+
+                if (filters.creator && b.discord_user_id !== filters.creator) return false;
+                if (filters.type && b.sales_type !== filters.type) return false;
+                if (filters.label && (b.label || '').trim() !== filters.label) return false;
+                if (filters.unownedOnly && ownedBadgeIds.size > 0 && ownedBadgeIds.has(b.id)) return false;
 
                 return true;
             });
@@ -393,6 +699,14 @@
                 filtered.sort((a, b) => (a._assetValue || 0) - (b._assetValue || 0));
             } else if (sortBy === 'price_desc') {
                 filtered.sort((a, b) => (b._assetValue || 0) - (a._assetValue || 0));
+            } else if (sortBy === 'circulation_asc') {
+                filtered.sort((a, b) => (cachedCirculationCounts[a.id] || 0) - (cachedCirculationCounts[b.id] || 0));
+            } else if (sortBy === 'circulation_desc') {
+                filtered.sort((a, b) => (cachedCirculationCounts[b.id] || 0) - (cachedCirculationCounts[a.id] || 0));
+            } else if (sortBy === 'id_asc') {
+                filtered.sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
+            } else if (sortBy === 'id_desc') {
+                filtered.sort((a, b) => (b.sort_order ?? 9999) - (a.sort_order ?? 9999));
             } else if (sortBy === 'name') {
                 filtered.sort((a, b) => a.name.localeCompare(b.name));
             }
@@ -405,7 +719,13 @@
                 return;
             }
 
-            grid.innerHTML = filtered.map(badge => {
+            renderPagination(filtered.length);
+            const pageSize = getPageSize();
+            const startIdx = (currentPage - 1) * pageSize;
+            const endIdx = startIdx + pageSize;
+            const pageItems = filtered.slice(startIdx, endIdx);
+
+            grid.innerHTML = pageItems.map(badge => {
                 const rarity = badge._rarity;
                 const rarityClass = getRarityClass(rarity);
                 return `
