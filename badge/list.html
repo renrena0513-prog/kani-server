@@ -148,6 +148,7 @@
         .badge-tag-link {
             text-decoration: none;
             color: inherit;
+            cursor: pointer;
         }
 
         .rarity-pill {
@@ -791,7 +792,7 @@
                 const rarityClass = getRarityClass(rarity);
                 const tags = getBadgeTags(badge);
                 const tagHtml = tags.length
-                    ? `<div class="badge-tag-list">${tags.map(t => `<a class="badge-tag-link" href="./list.html?tag=${encodeURIComponent(t)}"><span class="badge-tag">#${escapeHtml(t)}</span></a>`).join('')}</div>`
+                    ? `<div class="badge-tag-list">${tags.map(t => `<span class="badge-tag badge-tag-link" role="button" tabindex="0" onclick="event.preventDefault(); event.stopPropagation(); window.location.href='./list.html?tag=${encodeURIComponent(t)}';">#${escapeHtml(t)}</span>`).join('')}</div>`
                     : '';
                 return `
                     <div class="col-6 col-sm-4 col-md-3 col-lg-2">

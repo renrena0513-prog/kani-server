@@ -165,6 +165,7 @@
         .badge-tag-link {
             text-decoration: none;
             color: inherit;
+            cursor: pointer;
         }
 
         .badge-meta-row .rarity-pill {
@@ -1940,7 +1941,7 @@
                 const isSoldOut = badge.remaining_count !== null && badge.remaining_count <= 0;
                 const tags = getBadgeTags(badge);
                 const tagHtml = tags.length
-                    ? `<div class="badge-tag-list">${tags.map(t => `<a class="badge-tag-link" href="./list.html?tag=${encodeURIComponent(t)}"><span class="badge-tag">#${escapeHtml(t)}</span></a>`).join('')}</div>`
+                    ? `<div class="badge-tag-list">${tags.map(t => `<span class="badge-tag badge-tag-link" role="button" tabindex="0" onclick="event.preventDefault(); event.stopPropagation(); window.location.href='./list.html?tag=${encodeURIComponent(t)}';">#${escapeHtml(t)}</span>`).join('')}</div>`
                     : '';
                 return `
                     <div class="col-12 col-md-4 col-lg-3">
