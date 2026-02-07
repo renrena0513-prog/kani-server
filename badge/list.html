@@ -301,16 +301,6 @@
                             </select>
                         </div>
                     </div>
-                    <!-- 入手方法 -->
-                    <div class="col-12 col-md-2">
-                        <label class="filter-label">入手方法</label>
-                        <select id="method-filter" class="form-select form-select-sm" onchange="filterAndRender()">
-                            <option value="">すべて</option>
-                            <option value="shop">ショップ販売中</option>
-                            <option value="gacha">ガチャ排出</option>
-                            <option value="not_for_sale">非売品</option>
-                        </select>
-                    </div>
                     <!-- 表示統計 -->
                     <div class="col-12 col-md-2 d-flex align-items-center justify-content-md-end">
                         <span class="badge bg-secondary" id="badge-count-status">0 / 0 件</span>
@@ -345,7 +335,7 @@
                         </div>
                     </div>
                     <div class="col-12 col-md-3">
-                        <label class="filter-label">タイプ</label>
+                        <label class="filter-label">バッジタイプ</label>
                         <select id="type-filter" class="form-select form-select-sm" onchange="filterAndRender()">
                             <option value="">すべて</option>
                         </select>
@@ -354,6 +344,15 @@
                         <label class="filter-label">ラベル</label>
                         <select id="label-filter" class="form-select form-select-sm" onchange="filterAndRender()">
                             <option value="">すべて</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="filter-label">入手方法</label>
+                        <select id="method-filter" class="form-select form-select-sm" onchange="filterAndRender()">
+                            <option value="">すべて</option>
+                            <option value="shop">ショップ販売中</option>
+                            <option value="gacha">ガチャ排出</option>
+                            <option value="not_for_sale">非売品</option>
                         </select>
                     </div>
                     <div class="col-12 d-flex align-items-center gap-2">
@@ -802,6 +801,9 @@
 
         function updateDynamicFilterOptions(sourceBadges) {
             const searchVal = document.getElementById('search-box')?.value.toLowerCase() || '';
+            const currentType = document.getElementById('type-filter')?.value || '';
+            const currentLabel = document.getElementById('label-filter')?.value || '';
+            const currentMethod = document.getElementById('method-filter')?.value || '';
             const baseOpts = {
                 searchVal,
                 rarity: filters.rarity,
@@ -842,6 +844,11 @@
                     .map(([t, c]) => `<option value="${t}">${t} (${c})</option>`)
                     .join('');
                 typeSelect.innerHTML = `<option value="">すべて</option>${options}`;
+                if ([...typeSelect.options].some(o => o.value === currentType)) {
+                    typeSelect.value = currentType;
+                } else {
+                    typeSelect.value = '';
+                }
             }
 
             // ラベル
@@ -858,6 +865,11 @@
                     .map(([l, c]) => `<option value="${l}">${l} (${c})</option>`)
                     .join('');
                 labelSelect.innerHTML = `<option value="">すべて</option>${options}`;
+                if ([...labelSelect.options].some(o => o.value === currentLabel)) {
+                    labelSelect.value = currentLabel;
+                } else {
+                    labelSelect.value = '';
+                }
             }
 
             // 入手方法
@@ -873,6 +885,11 @@
                 if (counts.gacha > 0) options.push(`<option value="gacha">ガチャ排出 (${counts.gacha})</option>`);
                 if (counts.not_for_sale > 0) options.push(`<option value="not_for_sale">非売品 (${counts.not_for_sale})</option>`);
                 methodSelect.innerHTML = `<option value="">すべて</option>${options.join('')}`;
+                if ([...methodSelect.options].some(o => o.value === currentMethod)) {
+                    methodSelect.value = currentMethod;
+                } else {
+                    methodSelect.value = '';
+                }
             }
         }
 
