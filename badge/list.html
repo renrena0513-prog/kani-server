@@ -581,6 +581,10 @@
             updateDynamicFilterOptions(allBadges);
         }
 
+        function isValidAvatarUrl(url) {
+            return typeof url === 'string' && /^https?:\/\//.test(url);
+        }
+
         function buildCreatorMenu() {
             const menu = document.getElementById('creator-filter-menu');
             const btn = document.getElementById('creator-filter-btn');
@@ -591,7 +595,7 @@
                     .sort((a, b) => a.name.localeCompare(b.name)));
             menu.innerHTML = items.map(item => `
                 <div class="creator-item" data-id="${item.id}" data-name="${item.name}" data-avatar="${item.avatar || ''}">
-                    ${item.avatar ? `<img src="${item.avatar}" class="creator-avatar" style="display:block;">` : '<span class="creator-avatar" style="display:inline-block;"></span>'}
+                    ${isValidAvatarUrl(item.avatar) ? `<img src="${item.avatar}" class="creator-avatar" style="display:block;">` : '<span class="creator-avatar" style="display:inline-block;"></span>'}
                     <span>${item.name}</span>
                     ${item.id ? `<span class="ms-auto text-muted small">(${allBadges.filter(b => b.discord_user_id === item.id).length})</span>` : ''}
                 </div>
@@ -836,6 +840,7 @@
         }
 
         document.addEventListener('DOMContentLoaded', initBadgeList);
+
         function getRarityForBadge(badge) {
             const circulationCount = cachedCirculationCounts[badge.id] || 0;
             const result = BadgeUtils.calculateBadgeValues(badge, circulationCount, rarityThresholds);
@@ -963,7 +968,7 @@
                 );
             menu.innerHTML = items.map(item => `
                 <div class="creator-item" data-id="${item.id}" data-name="${item.name}" data-avatar="${item.avatar || ''}">
-                    ${item.avatar ? `<img src="${item.avatar}" class="creator-avatar" style="display:block;">` : '<span class="creator-avatar" style="display:inline-block;"></span>'}
+                    ${isValidAvatarUrl(item.avatar) ? `<img src="${item.avatar}" class="creator-avatar" style="display:block;">` : '<span class="creator-avatar" style="display:inline-block;"></span>'}
                     <span>${item.name}</span>
                     ${item.id ? `<span class="ms-auto text-muted small">(${item.count})</span>` : ''}
                 </div>
