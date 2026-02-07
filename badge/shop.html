@@ -1211,12 +1211,15 @@
         }
 
         function buildTagRequestOptions(presetTags = []) {
-            const tags = collectAllAvailableTags(currentTagRequestBadgeTags);
+            const tags = collectAllAvailableTags();
             const options = ['<option value="">(選択)</option>'].concat(tags.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`));
             for (let i = 1; i <= 4; i++) {
                 const select = document.getElementById(`tag-request-select-${i}`);
                 const input = document.getElementById(`tag-request-input-${i}`);
-                if (select) select.innerHTML = options.join('');
+                if (select) {
+                    select.innerHTML = options.join('');
+                    select.onchange = () => updateTagRequestDropdowns();
+                }
                 if (select && presetTags[i - 1]) {
                     const value = String(presetTags[i - 1]).trim();
                     const lower = value.toLowerCase();
@@ -1227,17 +1230,41 @@
                     input.value = '';
                 }
             }
+            updateTagRequestDropdowns();
         }
 
-        function collectAllAvailableTags(excludeTags = []) {
+        function updateTagRequestDropdowns() {
+            const tags = collectAllAvailableTags();
+            const selected = new Set();
+            for (let i = 1; i <= 4; i++) {
+                const select = document.getElementById(`tag-request-select-${i}`);
+                const val = select?.value || '';
+                if (val) selected.add(val.toLowerCase());
+            }
+            for (let i = 1; i <= 4; i++) {
+                const select = document.getElementById(`tag-request-select-${i}`);
+                if (!select) continue;
+                const current = (select.value || '').toLowerCase();
+                const options = ['<option value="">(選択)</option>'].concat(
+                    tags.filter(t => {
+                        const lower = t.toLowerCase();
+                        return lower === current || !selected.has(lower);
+                    }).map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`)
+                );
+                select.innerHTML = options.join('');
+                if (current) {
+                    const match = tags.find(t => t.toLowerCase() === current);
+                    select.value = match || '';
+                }
+            }
+        }
+
+        function collectAllAvailableTags() {
             const set = new Set();
             (shopBadges || []).forEach(b => {
                 getBadgeTags(b).forEach(t => set.add(t));
             });
-            const exclude = new Set((excludeTags || []).map(t => t.toLowerCase()));
-            return Array.from(set)
-                .filter(t => !exclude.has(t.toLowerCase()))
-                .sort((a, b) => a.localeCompare(b, 'ja'));
+            return Array.from(set).sort((a, b) => a.localeCompare(b, 'ja'));
         }
 
         async function submitTagRequest() {
