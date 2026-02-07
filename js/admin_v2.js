@@ -2331,7 +2331,6 @@ function buildLogActionButtons() {
     const current = new Set(getSelectedLogActions());
     const labels = {
         gacha_draw: '🎰 ガチャ',
-        coin_transfer: '💸 コイン送金・受取',
         coin_receive: '📩 コイン受取',
         transfer_send: '💸 送金',
         transfer_receive: '📩 受取',
@@ -2344,11 +2343,11 @@ function buildLogActionButtons() {
         omikuji: '⛩️ おみくじ',
         mahjong: '🀄 麻雀',
         admin_edit: '🔧 管理者調整',
-        admin_coin_adjust: '🔧 管理者調整'
+        admin_coin_adjust: '🪙 管理者コイン調整'
     };
     const preferredOrder = [
         'gacha_draw', 'mahjong', 'omikuji',
-        'coin_transfer', 'coin_receive', 'transfer_send', 'transfer_receive',
+        'coin_receive', 'transfer_send', 'transfer_receive',
         'badge_purchase', 'badge_sell', 'badge_transfer', 'badge_receive',
         'ticket_transfer', 'ticket_receive',
         'admin_edit', 'admin_coin_adjust'
@@ -2373,7 +2372,6 @@ async function loadLogActionTypes() {
     if (logActionTypes.length) return;
     logActionTypes = [
         'gacha_draw',
-        'coin_transfer',
         'coin_receive',
         'transfer_send',
         'transfer_receive',
