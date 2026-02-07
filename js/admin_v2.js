@@ -1546,6 +1546,7 @@ async function fetchBadges() {
 
         await hydrateAdminCreators();
         updateAdminFilterOptions();
+        renderBadgeTagButtons();
         currentBadgesPage = 1;
         applyAdminBadgeFilters();
     } catch (err) {
@@ -1703,6 +1704,7 @@ async function openBadgeModal(badge = null) {
         document.getElementById('badge-gacha-eligible').checked = false;
         document.getElementById('badge-shop-listed').checked = true; // 新規作成時はデフォルトで true
     }
+    renderBadgeTagButtons();
     window.badgeModal.show();
 }
 
@@ -1778,6 +1780,55 @@ function parseTags(value) {
     if (!raw) return [];
     const sep = raw.includes('|') ? '|' : ',';
     return raw.split(sep).map(t => t.trim()).filter(Boolean);
+}
+
+function collectAllBadgeTags() {
+    const set = new Set();
+    (allAdminBadges || []).forEach(b => {
+        const tags = Array.isArray(b.tags) ? b.tags : [];
+        tags.forEach(t => {
+            const tag = (t || '').trim();
+            if (tag) set.add(tag);
+        });
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'ja'));
+}
+
+function renderBadgeTagButtons() {
+    const container = document.getElementById('badge-tag-buttons');
+    if (!container) return;
+    const input = document.getElementById('badge-tags');
+    const current = new Set(parseTags(input?.value || '').map(t => t.toLowerCase()));
+    const tags = collectAllBadgeTags();
+    if (tags.length === 0) {
+        container.innerHTML = '<span class="text-muted small">既存タグなし</span>';
+        return;
+    }
+    container.innerHTML = tags.map(t => {
+        const active = current.has(t.toLowerCase());
+        const cls = active ? 'btn-primary' : 'btn-outline-secondary';
+        return `<button type="button" class="btn btn-sm ${cls}" data-tag="${t}">${t}</button>`;
+    }).join('');
+    container.querySelectorAll('button[data-tag]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tag = btn.getAttribute('data-tag') || '';
+            toggleTagInInput(tag);
+            renderBadgeTagButtons();
+        });
+    });
+}
+
+function toggleTagInInput(tag) {
+    const input = document.getElementById('badge-tags');
+    if (!input || !tag) return;
+    const tags = parseTags(input.value);
+    const idx = tags.findIndex(t => t.toLowerCase() === tag.toLowerCase());
+    if (idx >= 0) {
+        tags.splice(idx, 1);
+    } else {
+        tags.push(tag);
+    }
+    input.value = tags.join('|');
 }
 
 async function saveBadge() {
