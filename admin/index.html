@@ -282,6 +282,52 @@
                 grid-template-columns: repeat(2, minmax(0, 1fr));
                 gap: 6px;
             }
+
+            #users-pane .table-responsive,
+            #logs-pane .table-responsive {
+                overflow-x: hidden;
+            }
+
+            #users-pane table thead,
+            #logs-pane table thead {
+                display: none;
+            }
+
+            #users-pane table,
+            #users-pane tbody,
+            #users-pane tr,
+            #users-pane td,
+            #logs-pane table,
+            #logs-pane tbody,
+            #logs-pane tr,
+            #logs-pane td {
+                display: block;
+                width: 100%;
+            }
+
+            #users-pane tbody tr,
+            #logs-pane tbody tr {
+                background: #fff;
+                border-radius: 12px;
+                padding: 10px 12px;
+                margin-bottom: 10px;
+                box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+            }
+
+            #users-pane td,
+            #logs-pane td {
+                border: none;
+                padding: 6px 0;
+            }
+
+            #users-pane td::before,
+            #logs-pane td::before {
+                content: attr(data-label);
+                display: block;
+                font-size: 0.75rem;
+                color: #777;
+                margin-bottom: 2px;
+            }
         }
 
         .nav-dropdown-menu {

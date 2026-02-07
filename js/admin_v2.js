@@ -884,14 +884,14 @@ async function fetchUsers() {
             const updatedAt = user.updated_at ? new Date(user.updated_at).toLocaleString('ja-JP') : '-';
 
             tr.innerHTML = `
-                <td>
+                <td data-label="アバター">
                     <img src="${escapeHtml(avatarUrl)}" class="rounded-circle border" style="width: 32px; height: 32px;" onerror="this.style.display='none'">
                 </td>
-                <td class="fw-bold">${escapeHtml(name)}</td>
-                <td>${escapeHtml(discordId)}</td>
-                <td>${escapeHtml(updatedAt)}</td>
-                <td><span class="badge bg-light text-dark border">🪙 ${coins.toLocaleString()}</span></td>
-                <td>
+                <td class="fw-bold" data-label="Discord名 / ニックネーム">${escapeHtml(name)}</td>
+                <td data-label="Discord ID">${escapeHtml(discordId)}</td>
+                <td data-label="最終更新">${escapeHtml(updatedAt)}</td>
+                <td data-label="所持金"><span class="badge bg-light text-dark border">🪙 ${coins.toLocaleString()}</span></td>
+                <td data-label="操作">
                     <div class="d-flex gap-1 flex-wrap">
                         <button class="btn btn-sm btn-outline-warning btn-coin" data-id="${escapeHtml(discordId)}" data-name="${escapeHtml(name)}" data-coins="${coins}">コイン</button>
                         <button class="btn btn-sm btn-outline-primary btn-items" data-id="${escapeHtml(discordId)}" data-name="${escapeHtml(name)}">アイテム</button>
@@ -2472,27 +2472,27 @@ async function fetchActivityLogs(page = 1) {
 
             return `
                 <tr>
-                    <td>
+                    <td data-label="選択">
                         <input type="checkbox" class="form-check-input log-checkbox" value="${log.id}" onchange="updateSelectedCount()">
                     </td>
-                    <td>
+                    <td data-label="日時">
                         <div class="small">${new Date(log.created_at).toLocaleDateString('ja-JP')}</div>
                         <div class="small text-muted">${new Date(log.created_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}</div>
                     </td>
-                    <td>
+                    <td data-label="ユーザー">
                         <a href="../mypage/index.html?user=${log.user_id}" class="d-flex align-items-center gap-2 text-decoration-none">
                             <img src="${u.avatar || ''}" class="rounded-circle" style="width: 28px; height: 28px;" onerror="this.style.display='none'">
                             <span class="fw-bold text-primary">${escapeHtml(u.name)}</span>
                         </a>
                     </td>
-                    <td>
+                    <td data-label="アクション">
                         <span class="badge bg-light text-dark border">
                             ${action.icon} ${action.label}
                         </span>
                     </td>
-                    <td class="small text-muted">${targetDisplay}${detailsText}</td>
-                    <td class="fw-bold ${amountColor}">${amountDisplay}</td>
-                    <td><button onclick="revertLog('${log.id}')" class="btn btn-sm btn-outline-danger">🔄</button></td>
+                    <td data-label="内容 / 対象" class="small text-muted">${targetDisplay}${detailsText}</td>
+                    <td data-label="金額" class="fw-bold ${amountColor}">${amountDisplay}</td>
+                    <td data-label="操作"><button onclick="revertLog('${log.id}')" class="btn btn-sm btn-outline-danger">🔄</button></td>
                 </tr>
             `;
         }).join('');
