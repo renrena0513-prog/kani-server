@@ -265,3 +265,77 @@ async function updateNavTeamIcon() {
         console.error('Menu icon update failed:', e);
     }
 }
+
+// ===== 共通ダイアログ通知 =====
+function ensureNoticeModal() {
+    if (document.getElementById('notice-modal')) return;
+
+    const styleId = 'notice-modal-style';
+    if (!document.getElementById(styleId)) {
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.textContent = `
+            #notice-modal {
+                position: fixed;
+                inset: 0;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                background: rgba(0, 0, 0, 0.45);
+                z-index: 10050;
+            }
+            #notice-modal.active { display: flex; }
+            .notice-dialog {
+                width: min(92vw, 420px);
+                background: #fff;
+                border-radius: 16px;
+                padding: 18px 20px;
+                box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+                border: 1px solid #eef0f3;
+            }
+            .notice-title { font-weight: 700; margin-bottom: 8px; }
+            .notice-message { color: #333; font-size: 0.95rem; line-height: 1.5; margin-bottom: 14px; }
+            .notice-actions { display: flex; justify-content: flex-end; }
+            .notice-actions .btn { min-width: 96px; }
+            .notice-dialog.success .notice-title { color: #2e7d32; }
+            .notice-dialog.warning .notice-title { color: #b26a00; }
+            .notice-dialog.error .notice-title { color: #b3261e; }
+        `;
+        document.head.appendChild(style);
+    }
+
+    const modal = document.createElement('div');
+    modal.id = 'notice-modal';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'notice-title');
+    modal.innerHTML = `
+        <div class="notice-dialog info" id="notice-dialog">
+            <div class="notice-title" id="notice-title">お知らせ</div>
+            <div class="notice-message" id="notice-message">-</div>
+            <div class="notice-actions">
+                <button class="btn btn-outline-dark" type="button" onclick="closeNotice()">OK</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+function showNotice(message, type = 'info') {
+    ensureNoticeModal();
+    const modal = document.getElementById('notice-modal');
+    const dialog = document.getElementById('notice-dialog');
+    const title = document.getElementById('notice-title');
+    const body = document.getElementById('notice-message');
+    if (!modal || !dialog || !title || !body) return;
+    dialog.classList.remove('success', 'warning', 'error', 'info');
+    dialog.classList.add(type);
+    title.textContent = type === 'success' ? '完了' : type === 'warning' ? '注意' : type === 'error' ? 'エラー' : 'お知らせ';
+    body.textContent = message;
+    modal.classList.add('active');
+}
+
+function closeNotice() {
+    const modal = document.getElementById('notice-modal');
+    if (modal) modal.classList.remove('active');
+}

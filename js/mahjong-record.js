@@ -45,6 +45,24 @@ const YAKUMAN_BADGE_MAP_SANMA = {
 };
 let yakumanRowSeq = 0;
 
+function showNotice(message, type = 'info') {
+    const modal = document.getElementById('notice-modal');
+    const dialog = document.getElementById('notice-dialog');
+    const title = document.getElementById('notice-title');
+    const body = document.getElementById('notice-message');
+    if (!modal || !dialog || !title || !body) return;
+    dialog.classList.remove('success', 'warning', 'error', 'info');
+    dialog.classList.add(type);
+    title.textContent = type === 'success' ? '完了' : type === 'warning' ? '注意' : type === 'error' ? 'エラー' : 'お知らせ';
+    body.textContent = message;
+    modal.classList.add('active');
+}
+
+function closeNotice() {
+    const modal = document.getElementById('notice-modal');
+    if (modal) modal.classList.remove('active');
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     await checkAdminStatus();
     await fetchProfiles();
@@ -792,7 +810,7 @@ function addYakumanRow() {
     if (!list) return;
     const players = getSelectedPlayersForYakuman();
     if (players.length === 0) {
-        alert('先にプレイヤーを選択してください。');
+        showNotice('先にプレイヤーを選択してください。', 'warning');
         return;
     }
     const rowId = `yakuman-row-${++yakumanRowSeq}`;
@@ -965,7 +983,7 @@ async function submitScores() {
         if (accountName && !isNaN(rawPoints)) {
             // 100点単位チェック
             if (rawPoints % 100 !== 0) {
-                alert('得点は100点単位で入力してください。');
+                showNotice('得点は100点単位で入力してください。', 'warning');
                 document.getElementById('loading-overlay').style.display = 'none';
                 return;
             }
@@ -997,7 +1015,7 @@ async function submitScores() {
     // 1. 同一Discord IDの重複チェック
     const discordIds = tempData.filter(p => p.discord_user_id).map(p => p.discord_user_id);
     if (new Set(discordIds).size !== discordIds.length) {
-        alert('同じユーザーが複数選択されています。');
+        showNotice('同じユーザーが複数選択されています。', 'warning');
         resetSubmitBtn();
         return;
     }
@@ -1005,7 +1023,7 @@ async function submitScores() {
     // 2. 同一アカウント名の重複チェック (ゲストプレイヤー含む)
     const names = tempData.map(p => p.account_name);
     if (new Set(names).size !== names.length) {
-        alert('アカウント名が重複しています。ゲストプレイヤーの名前も一意にする必要があります。');
+        showNotice('アカウント名が重複しています。ゲストプレイヤーの名前も一意にする必要があります。', 'warning');
         resetSubmitBtn();
         return;
     }
@@ -1015,7 +1033,7 @@ async function submitScores() {
         // 3-1. チーム未入力チェック
         const missingTeam = tempData.some(p => !p.team_name);
         if (missingTeam) {
-            alert('チーム戦では全員のチームを選択してください。');
+            showNotice('チーム戦では全員のチームを選択してください。', 'warning');
             resetSubmitBtn();
             return;
         }
@@ -1023,7 +1041,7 @@ async function submitScores() {
         // 3-2. チーム重複チェック
         const teams = tempData.map(p => p.team_name);
         if (new Set(teams).size !== teams.length) {
-            alert('同じチームが複数選択されています。チーム戦では異なるチームを選択してください。');
+            showNotice('同じチームが複数選択されています。チーム戦では異なるチームを選択してください。', 'warning');
             resetSubmitBtn();
             return;
         }
@@ -1059,7 +1077,7 @@ async function submitScores() {
                         }
                     }));
                 } catch (err) {
-                    alert(err.message);
+                    showNotice(err.message, 'error');
                     resetSubmitBtn();
                     return;
                 }
@@ -1076,20 +1094,20 @@ async function submitScores() {
     // ⑧局数未入力エラー
     const handsInput = document.getElementById('form-hands');
     if (!handsInput.value || handsInput.value === '' || Number(handsInput.value) <= 0) {
-        alert('局数を入力してください。');
+        showNotice('局数を入力してください。', 'warning');
         resetSubmitBtn();
         return;
     }
 
     // バリデーションチェック
     if (!isAdmin && filledCount < targetCount) {
-        alert(`${targetCount}人分のデータ（アカウント名と得点）をすべて入力してください。`);
+        showNotice(`${targetCount}人分のデータ（アカウント名と得点）をすべて入力してください。`, 'warning');
         resetSubmitBtn();
         return;
     }
 
     if (tempData.length === 0) {
-        alert('データを入力してください');
+        showNotice('データを入力してください', 'warning');
         resetSubmitBtn();
         return;
     }
@@ -1098,7 +1116,7 @@ async function submitScores() {
     const expectedTotal = mode === '三麻' ? 105000 : 100000;
     const actualTotal = tempData.reduce((sum, p) => sum + p.raw_points, 0);
     if (!isAdmin && actualTotal !== expectedTotal) {
-        alert(`合計点数が${expectedTotal.toLocaleString()}点ではありません。
+        showNotice(`合計点数が${expectedTotal.toLocaleString()}点ではありません。
 現在の合計: ${actualTotal.toLocaleString()}点
 差分: ${(actualTotal - expectedTotal).toLocaleString()}点`);
         resetSubmitBtn();
@@ -1386,7 +1404,7 @@ async function submitScores() {
             }
         }
 
-        alert('スコアを送信しました！コインが各プレイヤーに付与されました。');
+        showNotice('スコアを送信しました！コインが各プレイヤーに付与されました。', 'success');
 
         // Discord通知を送信
         if (typeof DISCORD_WEBHOOK_URL !== 'undefined' && DISCORD_WEBHOOK_URL) {
@@ -1397,7 +1415,7 @@ async function submitScores() {
         clearFormExceptTeamAndAccount();
         resetSubmitBtn();
     } catch (err) {
-        alert('送信エラー: ' + err.message);
+        showNotice('送信エラー: ' + err.message, 'error');
         resetSubmitBtn();
     } finally {
         document.getElementById('loading-overlay').style.display = 'none';
