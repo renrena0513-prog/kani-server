@@ -183,6 +183,12 @@
             border: 1px solid #d9dde3;
             box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
             background: #fff;
+            min-height: 38px;
+        }
+
+        .filter-active {
+            background: #f6ead6 !important;
+            border-color: var(--gold) !important;
         }
 
         .filter-label {
@@ -465,7 +471,12 @@
             return current;
         }
 
-        const rarityOrder = ['測定不能', '神話', '至高', '幻想', '伝説', '極上', '特上', '貴重', '希少・Ⅱ', '希少・Ⅰ', '良質', '一般', '-'];
+        function getRarityOrder() {
+            if (rarityThresholds && rarityThresholds.length) {
+                return rarityThresholds.map(r => r.rarity_name).concat(['-']);
+            }
+            return ['測定不能', '神話', '至高', '幻想', '伝説', '極上', '特上', '貴重', '希少・Ⅱ', '希少・Ⅰ', '良質', '一般', '-'];
+        }
 
         function toggleUnownedFilter() {
             filters.unownedOnly = !filters.unownedOnly;
