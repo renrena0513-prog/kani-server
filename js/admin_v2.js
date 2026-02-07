@@ -1204,6 +1204,7 @@ let adminCirculationCounts = {};
 let adminOwnedBadgeIds = new Set();
 let adminCreatorMap = new Map();
 let adminFilteredBadges = [];
+const ADMIN_TAG_NONE = '__none__';
 let currentBadgesPage = 1;
 const BADGES_PER_PAGE = 24;
 
@@ -1220,7 +1221,6 @@ function initAdminBadgeFilters() {
     const resetBtn = document.getElementById('admin-badge-reset');
 
     const onChange = () => {
-        currentBadgesPage = 1;
         applyAdminBadgeFilters();
     };
 
@@ -1328,7 +1328,11 @@ function matchesAdminBadgeFilters(badge, opts, excludeKey = '') {
     if (excludeKey !== 'type' && opts.type && badge.sales_type !== opts.type) return false;
     if (excludeKey !== 'label' && opts.label && (badge.label || '').trim() !== opts.label) return false;
     if (excludeKey !== 'tag' && opts.tag) {
-        if (!getAdminBadgeTags(badge).includes(opts.tag)) return false;
+        if (opts.tag === ADMIN_TAG_NONE) {
+            if (getAdminBadgeTags(badge).length > 0) return false;
+        } else if (!getAdminBadgeTags(badge).includes(opts.tag)) {
+            return false;
+        }
     }
     if (excludeKey !== 'unownedOnly' && opts.unownedOnly && adminOwnedBadgeIds.has(badge.id)) return false;
     return true;
@@ -1430,18 +1434,29 @@ function updateAdminFilterOptions() {
     const tagSelect = document.getElementById('admin-badge-tag');
     if (tagSelect) {
         const counts = {};
+        let noneCount = 0;
         baseForTag.forEach(b => {
-            getAdminBadgeTags(b).forEach(tag => {
-                counts[tag] = (counts[tag] || 0) + 1;
-            });
+            const tags = getAdminBadgeTags(b);
+            if (tags.length === 0) {
+                noneCount += 1;
+            } else {
+                tags.forEach(tag => {
+                    counts[tag] = (counts[tag] || 0) + 1;
+                });
+            }
         });
-        const options = Object.entries(counts)
+        const tagOptions = Object.entries(counts)
             .filter(([, c]) => c > 0)
             .sort((a, b) => a[0].localeCompare(b[0], 'ja'))
             .map(([t, c]) => `<option value="${t}">${t} (${c})</option>`)
             .join('');
-        tagSelect.innerHTML = `<option value="">すべて</option>${options}`;
-        tagSelect.value = Object.prototype.hasOwnProperty.call(counts, currentTag) ? currentTag : '';
+        const noneOption = noneCount > 0 ? `<option value="${ADMIN_TAG_NONE}">未設定 (${noneCount})</option>` : '';
+        tagSelect.innerHTML = `<option value="">すべて</option>${noneOption}${tagOptions}`;
+        if (currentTag === ADMIN_TAG_NONE && noneCount > 0) {
+            tagSelect.value = ADMIN_TAG_NONE;
+        } else {
+            tagSelect.value = Object.prototype.hasOwnProperty.call(counts, currentTag) ? currentTag : '';
+        }
     }
 
     const methodSelect = document.getElementById('admin-badge-method');
@@ -1547,7 +1562,6 @@ async function fetchBadges() {
         await hydrateAdminCreators();
         updateAdminFilterOptions();
         renderBadgeTagButtons();
-        currentBadgesPage = 1;
         applyAdminBadgeFilters();
     } catch (err) {
         console.error(err);
