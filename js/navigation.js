@@ -339,3 +339,8 @@ function closeNotice() {
     const modal = document.getElementById('notice-modal');
     if (modal) modal.classList.remove('active');
 }
+
+// 既存の alert を中央ダイアログに置き換え
+window.showNotice = showNotice;
+window.closeNotice = closeNotice;
+window.alert = (msg) => window.showNotice(String(msg || ''), 'info');
