@@ -1212,8 +1212,6 @@ const BADGES_PER_PAGE = 24;
 function initAdminBadgeFilters() {
     const searchEl = document.getElementById('admin-badge-search');
     const sortEl = document.getElementById('admin-badge-sort');
-    const rarityEl = document.getElementById('admin-badge-rarity');
-    const creatorEl = document.getElementById('admin-badge-creator');
     const typeEl = document.getElementById('admin-badge-type');
     const labelEl = document.getElementById('admin-badge-label');
     const tagEl = document.getElementById('admin-badge-tag');
@@ -1227,8 +1225,6 @@ function initAdminBadgeFilters() {
 
     searchEl?.addEventListener('input', onChange);
     sortEl?.addEventListener('change', onChange);
-    rarityEl?.addEventListener('change', onChange);
-    creatorEl?.addEventListener('change', onChange);
     typeEl?.addEventListener('change', onChange);
     labelEl?.addEventListener('change', onChange);
     tagEl?.addEventListener('change', onChange);
@@ -1247,8 +1243,6 @@ function initAdminBadgeFilters() {
 function resetAdminBadgeFilters() {
     const searchEl = document.getElementById('admin-badge-search');
     const sortEl = document.getElementById('admin-badge-sort');
-    const rarityEl = document.getElementById('admin-badge-rarity');
-    const creatorEl = document.getElementById('admin-badge-creator');
     const typeEl = document.getElementById('admin-badge-type');
     const labelEl = document.getElementById('admin-badge-label');
     const tagEl = document.getElementById('admin-badge-tag');
@@ -1256,8 +1250,8 @@ function resetAdminBadgeFilters() {
 
     if (searchEl) searchEl.value = '';
     if (sortEl) sortEl.value = 'price_asc';
-    if (rarityEl) rarityEl.value = '';
-    if (creatorEl) creatorEl.value = '';
+    setAdminRarityFilter('', 'すべて');
+    setAdminCreatorFilter('', 'すべて', '');
     if (typeEl) typeEl.value = '';
     if (labelEl) labelEl.value = '';
     if (tagEl) tagEl.value = '';
@@ -1290,6 +1284,10 @@ function getAdminBadgeTags(badge) {
     const tags = badge.tags;
     if (!Array.isArray(tags)) return [];
     return tags.map(t => (t || '').trim()).filter(Boolean);
+}
+
+function isValidAvatarUrl(url) {
+    return typeof url === 'string' && /^https?:\/\//.test(url);
 }
 
 function getAdminRarityOrder() {
@@ -1366,38 +1364,19 @@ function updateAdminFilterOptions() {
     const baseForTag = allAdminBadges.filter(b => matchesAdminBadgeFilters(b, baseOpts, 'tag'));
     const baseForMethod = allAdminBadges.filter(b => matchesAdminBadgeFilters(b, baseOpts, 'method'));
 
-    const raritySelect = document.getElementById('admin-badge-rarity');
-    if (raritySelect) {
-        const counts = {};
-        baseForRarity.forEach(b => {
-            const r = getAdminRarityForBadge(b) || '-';
-            counts[r] = (counts[r] || 0) + 1;
-        });
-        const ordered = adminRarityOrder.filter(r => counts[r]);
-        const extras = Object.keys(counts).filter(r => !ordered.includes(r)).sort((a, b) => a.localeCompare(b, 'ja'));
-        const options = ordered.concat(extras)
-            .map(r => `<option value="${r}">${r} (${counts[r]})</option>`)
-            .join('');
-        raritySelect.innerHTML = `<option value="">すべて</option>${options}`;
-        raritySelect.value = (ordered.concat(extras).includes(currentRarity)) ? currentRarity : '';
-    }
+    const rarityCounts = {};
+    baseForRarity.forEach(b => {
+        const r = getAdminRarityForBadge(b) || '-';
+        rarityCounts[r] = (rarityCounts[r] || 0) + 1;
+    });
+    buildAdminRarityMenuFromCounts(rarityCounts, currentRarity);
 
-    const creatorSelect = document.getElementById('admin-badge-creator');
-    if (creatorSelect) {
-        const counts = {};
-        baseForCreator.forEach(b => {
-            if (!b.discord_user_id) return;
-            counts[b.discord_user_id] = (counts[b.discord_user_id] || 0) + 1;
-        });
-        const items = Object.entries(counts)
-            .map(([id, count]) => {
-                const info = adminCreatorMap.get(id) || { name: id };
-                return { id, name: info.name || id, count };
-            })
-            .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-        creatorSelect.innerHTML = `<option value="">すべて</option>${items.map(i => `<option value="${i.id}">${i.name} (${i.count})</option>`).join('')}`;
-        creatorSelect.value = items.some(i => i.id === currentCreator) ? currentCreator : '';
-    }
+    const creatorCounts = {};
+    baseForCreator.forEach(b => {
+        if (!b.discord_user_id) return;
+        creatorCounts[b.discord_user_id] = (creatorCounts[b.discord_user_id] || 0) + 1;
+    });
+    buildAdminCreatorMenuFromCounts(creatorCounts, currentCreator);
 
     const typeSelect = document.getElementById('admin-badge-type');
     if (typeSelect) {
@@ -1473,6 +1452,123 @@ function updateAdminFilterOptions() {
         if (counts.not_for_sale > 0) options.push(`<option value="not_for_sale">非売品 (${counts.not_for_sale})</option>`);
         methodSelect.innerHTML = `<option value="">すべて</option>${options.join('')}`;
         methodSelect.value = Object.keys(counts).includes(currentMethod) ? currentMethod : '';
+    }
+}
+
+function setAdminRarityFilter(value, name) {
+    const input = document.getElementById('admin-badge-rarity');
+    const label = document.getElementById('admin-rarity-filter-label');
+    if (input) input.value = value || '';
+    if (label) label.textContent = name || 'すべて';
+    applyAdminBadgeFilters();
+}
+
+function setAdminCreatorFilter(id, name, avatar) {
+    const input = document.getElementById('admin-badge-creator');
+    const label = document.getElementById('admin-creator-filter-label');
+    const img = document.getElementById('admin-creator-filter-avatar');
+    if (input) input.value = id || '';
+    if (label) label.textContent = name || 'すべて';
+    if (img) {
+        if (avatar && isValidAvatarUrl(avatar)) {
+            img.src = avatar;
+            img.style.display = 'block';
+        } else {
+            img.style.display = 'none';
+        }
+    }
+    applyAdminBadgeFilters();
+}
+
+function buildAdminCreatorMenuFromCounts(counts, currentCreator) {
+    const menu = document.getElementById('admin-creator-filter-menu');
+    const btn = document.getElementById('admin-creator-filter-btn');
+    if (!menu || !btn) return;
+    const items = Object.entries(counts)
+        .map(([id, count]) => {
+            const info = adminCreatorMap.get(id) || { name: id, avatar: '' };
+            return { id, name: info.name || id, avatar: info.avatar || '', count };
+        })
+        .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+    const merged = [{ id: '', name: 'すべて', avatar: '', count: 0 }].concat(items);
+    menu.innerHTML = merged.map(item => `
+        <div class="creator-item" data-id="${item.id}" data-name="${item.name}" data-avatar="${item.avatar || ''}">
+            ${isValidAvatarUrl(item.avatar) ? `<img src="${item.avatar}" class="creator-avatar" style="display:block;">` : '<span class="creator-avatar" style="display:inline-block;"></span>'}
+            <span>${item.name}</span>
+            ${item.id ? `<span class="ms-auto text-muted small">(${item.count})</span>` : ''}
+        </div>
+    `).join('');
+    menu.querySelectorAll('.creator-item').forEach(el => {
+        el.addEventListener('click', () => {
+            setAdminCreatorFilter(el.dataset.id, el.dataset.name, el.dataset.avatar);
+            menu.style.display = 'none';
+        });
+    });
+    if (!btn.dataset.bound) {
+        btn.addEventListener('click', () => {
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        });
+        document.addEventListener('click', (e) => {
+            if (!menu.contains(e.target) && !btn.contains(e.target)) {
+                menu.style.display = 'none';
+            }
+        });
+        btn.dataset.bound = '1';
+    }
+    if (!currentCreator || !items.some(i => i.id === currentCreator)) {
+        const input = document.getElementById('admin-badge-creator');
+        const label = document.getElementById('admin-creator-filter-label');
+        const img = document.getElementById('admin-creator-filter-avatar');
+        if (input) input.value = '';
+        if (label) label.textContent = 'すべて';
+        if (img) img.style.display = 'none';
+    }
+}
+
+function buildAdminRarityMenuFromCounts(rarityCounts, currentRarity) {
+    const menu = document.getElementById('admin-rarity-filter-menu');
+    const btn = document.getElementById('admin-rarity-filter-btn');
+    if (!menu || !btn) return;
+    const ordered = adminRarityOrder.filter(r => rarityCounts[r]);
+    const extras = Object.keys(rarityCounts).filter(r => !ordered.includes(r)).sort((a, b) => a.localeCompare(b, 'ja'));
+    const items = [{ name: 'すべて', value: '' }]
+        .concat(ordered.concat(extras).map(r => ({ name: r, value: r, count: rarityCounts[r] })));
+    menu.innerHTML = items.map(item => {
+        if (item.value === '') {
+            return `<div class="creator-item" data-value="" data-name="すべて"><span>すべて</span></div>`;
+        }
+        const cls = getRarityClass(item.name);
+        const displayName = cls ? item.name : '★???';
+        const badgeClass = cls ? cls : 'rarity-unknown';
+        return `
+            <div class="creator-item" data-value="${item.value}" data-name="${item.name}">
+                <span class="badge ${badgeClass} text-white" title="${item.name}">${displayName}</span>
+                <span class="ms-auto text-muted small">(${item.count})</span>
+            </div>
+        `;
+    }).join('');
+    menu.querySelectorAll('.creator-item').forEach(el => {
+        el.addEventListener('click', () => {
+            setAdminRarityFilter(el.dataset.value, el.dataset.name);
+            menu.style.display = 'none';
+        });
+    });
+    if (!btn.dataset.bound) {
+        btn.addEventListener('click', () => {
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        });
+        document.addEventListener('click', (e) => {
+            if (!menu.contains(e.target) && !btn.contains(e.target)) {
+                menu.style.display = 'none';
+            }
+        });
+        btn.dataset.bound = '1';
+    }
+    if (!currentRarity || !ordered.concat(extras).includes(currentRarity)) {
+        const input = document.getElementById('admin-badge-rarity');
+        const label = document.getElementById('admin-rarity-filter-label');
+        if (input) input.value = '';
+        if (label) label.textContent = 'すべて';
     }
 }
 

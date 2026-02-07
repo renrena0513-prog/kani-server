@@ -231,6 +231,62 @@
             color: white;
         }
 
+        .filter-label {
+            font-size: 0.75rem;
+            opacity: 0.8;
+            margin-bottom: 4px;
+            display: block;
+        }
+        .creator-dropdown {
+            position: relative;
+        }
+        .creator-dropdown-btn {
+            width: 100%;
+            border: 1px solid #ddd;
+            background: #fff;
+            padding: 6px 10px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+        }
+        .creator-dropdown-btn .bi-caret-down-fill {
+            font-size: 0.7rem;
+        }
+        .creator-avatar {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            object-fit: cover;
+            display: none;
+            background: #eee;
+        }
+        .creator-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 240px;
+            overflow: auto;
+            border: 1px solid #ddd;
+            background: #fff;
+            border-radius: 8px;
+            z-index: 10;
+            display: none;
+        }
+        .creator-item {
+            padding: 8px 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+        .creator-item:hover {
+            background: #f5f5f5;
+        }
+
         @media (max-width: 768px) {
             .content-card {
                 padding: 20px;
@@ -831,16 +887,27 @@
                                 <hr class="my-3">
                                 <div class="row g-2">
                                     <div class="col-12 col-md-3">
-                                        <label class="small text-muted mb-1">レアリティ</label>
-                                        <select id="admin-badge-rarity" class="form-select form-select-sm">
-                                            <option value="">すべて</option>
-                                        </select>
+                                        <label class="filter-label">レアリティ</label>
+                                        <div class="creator-dropdown">
+                                            <button class="creator-dropdown-btn" type="button" id="admin-rarity-filter-btn">
+                                                <span id="admin-rarity-filter-label">すべて</span>
+                                                <i class="bi bi-caret-down-fill ms-auto"></i>
+                                            </button>
+                                            <input type="hidden" id="admin-badge-rarity" value="">
+                                            <div class="creator-menu" id="admin-rarity-filter-menu"></div>
+                                        </div>
                                     </div>
                                     <div class="col-12 col-md-3">
-                                        <label class="small text-muted mb-1">クリエイター</label>
-                                        <select id="admin-badge-creator" class="form-select form-select-sm">
-                                            <option value="">すべて</option>
-                                        </select>
+                                        <label class="filter-label">クリエイター</label>
+                                        <div class="creator-dropdown">
+                                            <button class="creator-dropdown-btn" type="button" id="admin-creator-filter-btn">
+                                                <img src="" class="creator-avatar" id="admin-creator-filter-avatar" alt="">
+                                                <span id="admin-creator-filter-label">すべて</span>
+                                                <i class="bi bi-caret-down-fill ms-auto"></i>
+                                            </button>
+                                            <input type="hidden" id="admin-badge-creator" value="">
+                                            <div class="creator-menu" id="admin-creator-filter-menu"></div>
+                                        </div>
                                     </div>
                                     <div class="col-12 col-md-3">
                                         <label class="small text-muted mb-1">バッジタイプ</label>
