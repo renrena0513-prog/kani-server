@@ -2311,6 +2311,7 @@ let currentLogsPage = 1;
 const LOGS_PER_PAGE = 10;
 let profilesCache = {};
 let badgesCache = {};
+let logActionTypes = [];
 
 async function loadProfilesCache() {
     const { data } = await supabaseClient.from('profiles').select('discord_user_id, account_name, avatar_url');
@@ -2324,15 +2325,69 @@ async function loadBadgesCache() {
     if (data) data.forEach(b => badgesCache[b.id] = { name: b.name, image: b.image_url });
 }
 
-function initLogActionButtons() {
+function buildLogActionButtons() {
     const container = document.getElementById('log-action-buttons');
     if (!container) return;
+    const current = new Set(getSelectedLogActions());
+    const labels = {
+        gacha_draw: '🎰 ガチャ',
+        coin_transfer: '💸 コイン送金・受取',
+        badge_purchase: '🛒 バッジ購入・売却',
+        badge_transfer: '🎁 バッジ譲渡・受取',
+        omikuji: '⛩️ おみくじ',
+        admin_edit: '🔧 管理者調整',
+        admin_coin_adjust: '🔧 管理者調整',
+        mahjong: '🀄 麻雀',
+        badge_sell: '💰 バッジ売却',
+        badge_receive: '📥 バッジ受取',
+        badge_purchase_only: '🛒 バッジ購入',
+        coin_receive: '📩 コイン受取',
+        transfer_send: '💸 送金',
+        transfer_receive: '📩 受取',
+        ticket_transfer: '🎟️ チケット譲渡',
+        ticket_receive: '🎫 チケット受取'
+    };
+    const preferredOrder = [
+        'gacha_draw', 'mahjong', 'omikuji',
+        'coin_transfer', 'transfer_send', 'transfer_receive', 'coin_receive',
+        'badge_purchase', 'badge_sell', 'badge_transfer', 'badge_receive',
+        'ticket_transfer', 'ticket_receive',
+        'admin_edit', 'admin_coin_adjust'
+    ];
+    const known = logActionTypes.filter(t => preferredOrder.includes(t));
+    const unknown = logActionTypes.filter(t => !preferredOrder.includes(t)).sort((a, b) => a.localeCompare(b));
+    const ordered = [...new Set([...known, ...unknown])];
+    container.innerHTML = ordered.map(type => {
+        const label = labels[type] || type;
+        const active = current.has(type);
+        return `<button type="button" class="btn btn-sm btn-outline-secondary log-filter-btn ${active ? 'active' : ''}" data-action="${type}">${label}</button>`;
+    }).join('');
     container.querySelectorAll('.log-filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             btn.classList.toggle('active');
             fetchActivityLogs(1);
         });
     });
+}
+
+async function loadLogActionTypes() {
+    if (logActionTypes.length) return;
+    try {
+        const { data, error } = await supabaseClient
+            .from('activity_logs')
+            .select('action_type')
+            .order('created_at', { ascending: false })
+            .limit(10000);
+        if (error) throw error;
+        const set = new Set();
+        (data || []).forEach(r => {
+            if (r.action_type) set.add(r.action_type);
+        });
+        logActionTypes = Array.from(set);
+    } catch (err) {
+        console.error('action_type 取得エラー:', err);
+        logActionTypes = [];
+    }
 }
 
 function handleLogUserFilterChange() {
@@ -2369,6 +2424,8 @@ async function fetchActivityLogs(page = 1) {
     currentLogsPage = page;
     if (Object.keys(profilesCache).length === 0) await loadProfilesCache();
     if (Object.keys(badgesCache).length === 0) await loadBadgesCache();
+    await loadLogActionTypes();
+    buildLogActionButtons();
     populateLogUserFilterOptions();
 
     const from = (page - 1) * LOGS_PER_PAGE;
