@@ -183,7 +183,7 @@
 
         .rights-action-row .btn {
             flex: 1 1 0;
-            min-width: 96px;
+            min-width: 88px;
             white-space: nowrap;
             font-size: 0.75rem;
             padding: 6px 8px;
@@ -1217,7 +1217,15 @@
                 const select = document.getElementById(`tag-request-select-${i}`);
                 const input = document.getElementById(`tag-request-input-${i}`);
                 if (select) select.innerHTML = options.join('');
-                if (input) input.value = presetTags[i - 1] || '';
+                if (select && presetTags[i - 1]) {
+                    const value = String(presetTags[i - 1]).trim();
+                    const lower = value.toLowerCase();
+                    const exists = tags.some(t => t.toLowerCase() === lower);
+                    select.value = exists ? value : '';
+                    if (!exists && input) input.value = value;
+                } else if (input) {
+                    input.value = '';
+                }
             }
         }
 
