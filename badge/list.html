@@ -578,95 +578,13 @@
             if (raritySelect) {
                 // handled by custom menu
             }
-            updateDynamicFilterOptions(allBadges);
+            if (typeof updateDynamicFilterOptions === 'function') {
+                updateDynamicFilterOptions(allBadges);
+            }
         }
 
         function isValidAvatarUrl(url) {
             return typeof url === 'string' && /^https?:\/\//.test(url);
-        }
-
-        function buildCreatorMenu() {
-            const menu = document.getElementById('creator-filter-menu');
-            const btn = document.getElementById('creator-filter-btn');
-            if (!menu || !btn) return;
-            const items = [{ id: '', name: 'すべて', avatar: '' }]
-                .concat([...creatorMap.entries()]
-                    .map(([id, info]) => ({ id, name: info.name, avatar: info.avatar }))
-                    .sort((a, b) => a.name.localeCompare(b.name)));
-            menu.innerHTML = items.map(item => `
-                <div class="creator-item" data-id="${item.id}" data-name="${item.name}" data-avatar="${item.avatar || ''}">
-                    ${isValidAvatarUrl(item.avatar) ? `<img src="${item.avatar}" class="creator-avatar" style="display:block;">` : '<span class="creator-avatar" style="display:inline-block;"></span>'}
-                    <span>${item.name}</span>
-                    ${item.id ? `<span class="ms-auto text-muted small">(${allBadges.filter(b => b.discord_user_id === item.id).length})</span>` : ''}
-                </div>
-            `).join('');
-            menu.querySelectorAll('.creator-item').forEach(el => {
-                el.addEventListener('click', () => {
-                    setCreatorFilter(el.dataset.id, el.dataset.name, el.dataset.avatar);
-                    menu.style.display = 'none';
-                });
-            });
-            btn.addEventListener('click', () => {
-                menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-            });
-            document.addEventListener('click', (e) => {
-                if (!menu.contains(e.target) && !btn.contains(e.target)) {
-                    menu.style.display = 'none';
-                }
-            });
-        }
-
-        function buildRarityMenu() {
-            const menu = document.getElementById('rarity-filter-menu');
-            const btn = document.getElementById('rarity-filter-btn');
-            if (!menu || !btn) return;
-            const rarityCounts = {};
-            allBadges.forEach(b => {
-                const circulationCount = cachedCirculationCounts[b.id] || 0;
-                const result = BadgeUtils.calculateBadgeValues(b, circulationCount, rarityThresholds);
-                const r = result.rarityName || '-';
-                rarityCounts[r] = (rarityCounts[r] || 0) + 1;
-            });
-            const items = [{ name: 'すべて', value: '' }]
-                .concat(Object.keys(rarityCounts).map(r => ({ name: r, value: r, count: rarityCounts[r] })))
-                .sort((a, b) => {
-                    if (a.value === '') return -1;
-                    if (b.value === '') return 1;
-                    const aIdx = rarityOrder.indexOf(a.name);
-                    const bIdx = rarityOrder.indexOf(b.name);
-                    if (aIdx === -1 && bIdx === -1) return a.name.localeCompare(b.name);
-                    if (aIdx === -1) return 1;
-                    if (bIdx === -1) return -1;
-                    return aIdx - bIdx;
-                });
-            menu.innerHTML = items.map(item => {
-                if (item.value === '') {
-                    return `<div class="creator-item" data-value="" data-name="すべて"><span>すべて</span></div>`;
-                }
-                const cls = getRarityClass(item.name);
-                const displayName = cls ? item.name : '★???';
-                const badgeClass = cls ? cls : 'rarity-unknown';
-                return `
-                    <div class="creator-item" data-value="${item.value}" data-name="${item.name}">
-                        <span class="badge ${badgeClass} text-white" title="${item.name}">${displayName}</span>
-                        <span class="ms-auto text-muted small">(${item.count})</span>
-                    </div>
-                `;
-            }).join('');
-            menu.querySelectorAll('.creator-item').forEach(el => {
-                el.addEventListener('click', () => {
-                    setRarityFilter(el.dataset.value, el.dataset.name);
-                    menu.style.display = 'none';
-                });
-            });
-            btn.addEventListener('click', () => {
-                menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-            });
-            document.addEventListener('click', (e) => {
-                if (!menu.contains(e.target) && !btn.contains(e.target)) {
-                    menu.style.display = 'none';
-                }
-            });
         }
 
         function setRarityFilter(value, name) {
