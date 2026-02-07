@@ -410,6 +410,7 @@
 
         let allBadges = [];
         let rarityThresholds = [];
+        let rarityOrder = getRarityOrder();
         let creatorMap = new Map();
         let ownedBadgeIds = new Set();
         let currentPage = 1;
@@ -438,6 +439,7 @@
 
                 allBadges = badgesRes.data || [];
                 rarityThresholds = thresholdsRes.data || [];
+                rarityOrder = getRarityOrder();
 
                 // 流通数のカウント
                 const counts = {};
