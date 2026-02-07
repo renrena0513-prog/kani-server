@@ -354,6 +354,9 @@ async function executeSellFromMyPage() {
     toggleLoading(true);
 
     try {
+        const sellItem = allInventoryBadges.find(i => i.uuid === currentShopActionUUID) || null;
+        const badgeIdForLog = sellItem?.badge_id || null;
+        const badgeNameForLog = sellItem?.badge_name || '';
         const { data, error } = await supabaseClient.rpc('sell_badge_v2', {
             p_user_id: targetId,
             p_badge_uuid: currentShopActionUUID
@@ -363,6 +366,13 @@ async function executeSellFromMyPage() {
         if (!data.ok) throw new Error(data.error);
 
         showNotice(`売却しました！ (🪙 +${data.sell_price.toLocaleString()})`, 'success');
+        if (typeof logActivity === 'function') {
+            await logActivity(targetId, 'badge_sell', {
+                amount: data.sell_price,
+                badgeId: badgeIdForLog,
+                details: { badge_uuid: currentShopActionUUID, badge_name: badgeNameForLog }
+            });
+        }
 
         await loadOwnedBadges();
         await loadActivityLogs();

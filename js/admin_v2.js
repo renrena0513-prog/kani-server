@@ -2338,18 +2338,20 @@ function buildLogActionButtons() {
         badge_sell: '💰 バッジ売却',
         badge_transfer: '🎁 バッジ譲渡',
         badge_receive: '📥 バッジ受取',
+        royalty_receive: '💎 ロイヤリティ受取',
         ticket_transfer: '🎟️ チケット譲渡',
         ticket_receive: '🎫 チケット受取',
         omikuji: '⛩️ おみくじ',
         mahjong: '🀄 麻雀',
-        admin_edit: '🔧 管理者調整'
+        admin_edit: '🔧 管理者調整',
+        'レアリティ改定調整': '🧪 レアリティ改定調整'
     };
     const preferredOrder = [
         'gacha_draw', 'mahjong', 'omikuji',
         'transfer_send', 'transfer_receive',
-        'badge_purchase', 'badge_sell', 'badge_transfer', 'badge_receive',
+        'badge_purchase', 'badge_sell', 'badge_transfer', 'badge_receive', 'royalty_receive',
         'ticket_transfer', 'ticket_receive',
-        'admin_edit', 'admin_coin_adjust'
+        'admin_edit', 'レアリティ改定調整'
     ];
     const known = logActionTypes.filter(t => preferredOrder.includes(t));
     const unknown = logActionTypes.filter(t => !preferredOrder.includes(t)).sort((a, b) => a.localeCompare(b));
@@ -2377,12 +2379,13 @@ async function loadLogActionTypes() {
         'badge_sell',
         'badge_transfer',
         'badge_receive',
+        'royalty_receive',
         'ticket_transfer',
         'ticket_receive',
         'omikuji',
         'mahjong',
         'admin_edit',
-        'admin_edit'
+        'レアリティ改定調整'
     ];
 }
 
@@ -2551,6 +2554,7 @@ async function fetchActivityLogs(page = 1) {
                 'badge_sell': { icon: '💰', label: 'バッジ売却' },
                 'badge_transfer': { icon: '🎁', label: 'バッジ譲渡' },
                 'badge_receive': { icon: '📥', label: 'バッジ受取' },
+                'royalty_receive': { icon: '💎', label: 'ロイヤリティ受取' },
                 'gacha_draw': { icon: '🎰', label: 'ガチャ' },
                 'coin_transfer': { icon: '💸', label: 'コイン送金' },
                 'coin_receive': { icon: '📩', label: 'コイン受取' },
@@ -2560,7 +2564,7 @@ async function fetchActivityLogs(page = 1) {
                 'ticket_transfer': { icon: '🎟️', label: 'チケット譲渡' },
                 'ticket_receive': { icon: '🎫', label: 'チケット受取' },
                 'admin_edit': { icon: '🔧', label: '管理者調整' },
-                'admin_coin_adjust': { icon: '🔧', label: '管理者調整' }
+                'レアリティ改定調整': { icon: '🧪', label: 'レアリティ改定調整' }
             };
             const action = actionMap[log.action_type] || { icon: '📋', label: log.action_type };
 
