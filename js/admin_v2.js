@@ -2608,7 +2608,8 @@ async function fetchActivityLogs(page = 1) {
     let query = supabaseClient.from('activity_logs').select('*', { count: 'exact' });
 
     if (userFilter.length > 0) {
-        query = query.in('user_id', userFilter);
+        const safeIds = userFilter.map(id => `"${String(id).replace(/"/g, '\\"')}"`).join(',');
+        query = query.or(`user_id.in.(${safeIds}),target_user_id.in.(${safeIds})`);
     }
 
     // アクションフィルターの適用
