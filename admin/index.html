@@ -536,6 +536,20 @@
             border-color: #1f2325;
             color: #fff;
         }
+        #log-action-buttons .log-filter-btn:not(.active) {
+            background: #fff;
+            color: #6c757d;
+        }
+        #log-action-buttons .log-filter-btn:not(.active):focus,
+        #log-action-buttons .log-filter-btn:not(.active):active,
+        #log-action-buttons .log-filter-btn:not(.active):focus-visible {
+            background: #fff;
+            color: #6c757d;
+            box-shadow: none;
+        }
+        #log-action-buttons .log-filter-btn:focus {
+            box-shadow: none;
+        }
 
         @media (max-width: 768px) {
             .log-toolbar {
