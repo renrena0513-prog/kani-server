@@ -2551,10 +2551,16 @@ function initLogUserFilter() {
     const applyBtn = document.getElementById('log-user-apply');
     const clearBtn = document.getElementById('log-user-clear');
     if (!btn || !dropdown) return;
+    if (btn.dataset.bound) return;
 
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         dropdown.classList.toggle('show');
         populateLogUserFilterOptions();
+    });
+    dropdown.addEventListener('click', (e) => {
+        e.stopPropagation();
     });
     document.addEventListener('click', (e) => {
         if (!dropdown.contains(e.target) && !btn.contains(e.target)) {
@@ -2579,6 +2585,7 @@ function initLogUserFilter() {
         renderLogUserChips();
         fetchActivityLogs(1);
     });
+    btn.dataset.bound = '1';
 }
 
 async function fetchActivityLogs(page = 1) {
