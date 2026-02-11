@@ -491,8 +491,8 @@
             <div id="osaisen-box-area" class="osaisen-box-wrapper mx-auto mb-4"
                 style="position: relative; width: fit-content;">
                 <div id="coin" class="coin-animation">🪙</div>
-                <div id="osaisen-box" class="gacha-hero" style="cursor: default;">
-                    <img id="gacha-hero-image" src="../images/妖怪ガチャバナー.png" alt="妖怪ガチャ">
+                <div id="osaisen-box" class="gacha-hero" style="cursor: default; opacity: 0;">
+                    <img id="gacha-hero-image" src="../images/妖怪シリーズバナー.png" alt="妖怪ガチャ">
                     <div id="gacha-hero-emoji" class="gacha-hero-emoji" style="display:none;">📘✨</div>
                 </div>
             </div>
@@ -504,7 +504,7 @@
 
             <div class="mt-2" id="draw-area">
                 <div class="d-flex flex-column align-items-center gap-3">
-                    <div class="d-flex flex-wrap justify-content-center gap-2" id="draw-options">
+                    <div class="d-flex flex-wrap justify-content-center gap-2" id="draw-options" style="display: none;">
                         <button class="draw-option-btn active" data-payment="gacha_ticket" data-count="1"
                             onclick="setDrawOption('gacha_ticket', 1)">🎫 祈願符 1枚</button>
                         <button class="draw-option-btn" data-payment="gacha_ticket" data-count="10"
@@ -732,6 +732,7 @@
         let gachaCoinPrice = null;
         let gachaConfigMap = new Map();
         let cachedThresholds = [];
+        let gachaLoading = false;
 
         document.addEventListener('DOMContentLoaded', async function () {
             initAccordionNav('../');
@@ -748,7 +749,6 @@
             cachedThresholds = await safeFetchThresholds();
             await fetchGachaConfigs();
             await fetchBalances();
-            applyGachaTypeUI();
             await refreshGachaContext();
         });
 
@@ -869,13 +869,18 @@
         }
 
         async function refreshGachaContext() {
+            if (gachaLoading) return;
+            gachaLoading = true;
+            setGachaLoadingState(true);
             applyGachaTypeUI();
             updateGachaPriceUI();
             await fetchGachaCoinPrice();
+            await updateGachaHero();
             if (document.getElementById('badge-pool-area').style.display === 'block') {
                 await fetchBadgePool();
             }
-            updateGachaHero();
+            setGachaLoadingState(false);
+            gachaLoading = false;
         }
 
         function syncDrawOptionButtons() {
@@ -888,6 +893,7 @@
 
         function setGachaType(type) {
             if (!type) return;
+            if (gachaLoading) return;
             currentGachaType = type;
             refreshGachaContext();
         }
@@ -901,6 +907,13 @@
             currentDrawCount = count;
             syncDrawOptionButtons();
             updateGachaPriceUI();
+        }
+
+        function setGachaLoadingState(loading) {
+            const drawOptions = document.getElementById('draw-options');
+            const hero = document.getElementById('osaisen-box');
+            if (drawOptions) drawOptions.style.display = loading ? 'none' : 'flex';
+            if (hero) hero.style.opacity = loading ? '0' : '1';
         }
 
         function updateGachaPriceUI() {
@@ -1104,14 +1117,27 @@
             if (!img || !emoji) return;
 
             if (currentGachaType === '妖怪') {
-                img.style.display = 'block';
-                img.src = '../images/妖怪ガチャバナー.png';
-                emoji.style.display = 'none';
+                return swapHeroImage('../images/妖怪シリーズバナー.png');
             } else {
-                img.style.display = 'none';
-                emoji.style.display = 'block';
-                emoji.textContent = '📘✨';
+                return swapHeroImage('../images/じゃれ本シリーズバナー.png');
             }
+        }
+
+        function swapHeroImage(src) {
+            const img = document.getElementById('gacha-hero-image');
+            const emoji = document.getElementById('gacha-hero-emoji');
+            if (!img) return Promise.resolve();
+            return new Promise(resolve => {
+                const loader = new Image();
+                loader.onload = () => {
+                    img.style.display = 'block';
+                    img.src = src;
+                    if (emoji) emoji.style.display = 'none';
+                    resolve();
+                };
+                loader.onerror = () => resolve();
+                loader.src = src;
+            });
         }
 
         async function handleDraw() {
