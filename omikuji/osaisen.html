@@ -377,6 +377,19 @@
             background: rgba(0, 0, 0, 0.35);
         }
 
+        body.gacha-loading #draw-options {
+            display: none !important;
+        }
+
+        body.gacha-loading #osaisen-box {
+            opacity: 0 !important;
+        }
+
+        body.gacha-loading .gacha-tab-btn {
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
         .gacha-hero img {
             width: 100%;
             height: auto;
@@ -416,7 +429,7 @@
     </style>
 </head>
 
-<body>
+<body class="gacha-loading">
     <!-- ローディング -->
     <div id="loading-overlay">
         <div class="spinner-border text-light" style="width: 3rem; height: 3rem;" role="status"></div>
@@ -708,6 +721,7 @@
         </div>
     </div>
 
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../js/supabase-config.js"></script>
@@ -768,6 +782,37 @@
         function closeNotice() {
             const modal = document.getElementById('notice-modal');
             if (modal) modal.classList.remove('active');
+        }
+
+        function openGachaConfirm(message) {
+            return new Promise(resolve => {
+                const modalEl = document.getElementById('shopActionModal');
+                const content = document.getElementById('shopActionContent');
+                const btnExec = document.getElementById('btnShopActionExec');
+                if (!modalEl || !content || !btnExec) {
+                    resolve(false);
+                    return;
+                }
+                let settled = false;
+                content.innerHTML = `
+                    <div class="fw-bold mb-2">奉納の確認</div>
+                    <div class="text-muted">${message}</div>
+                `;
+                btnExec.textContent = '奉納する';
+                btnExec.className = 'btn btn-warning rounded-pill px-4';
+                btnExec.onclick = () => {
+                    if (settled) return;
+                    settled = true;
+                    bootstrap.Modal.getInstance(modalEl)?.hide();
+                    resolve(true);
+                };
+                modalEl.addEventListener('hidden.bs.modal', () => {
+                    if (settled) return;
+                    settled = true;
+                    resolve(false);
+                }, { once: true });
+                new bootstrap.Modal(modalEl).show();
+            });
         }
 
         async function fetchBalances() {
@@ -914,6 +959,7 @@
             const hero = document.getElementById('osaisen-box');
             if (drawOptions) drawOptions.style.display = loading ? 'none' : 'flex';
             if (hero) hero.style.opacity = loading ? '0' : '1';
+            document.body.classList.toggle('gacha-loading', loading);
         }
 
         function updateGachaPriceUI() {
@@ -1170,7 +1216,8 @@
                 return `祈願符${count}枚を消費します。よろしいですか？`;
             })();
 
-            if (!confirm(confirmLabel)) return;
+            const confirmed = await openGachaConfirm(confirmLabel);
+            if (!confirmed) return;
 
             isDrawing = true;
 
