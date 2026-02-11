@@ -475,19 +475,6 @@
                     <button class="gacha-tab-btn" data-type="じゃれ本" onclick="setGachaType('じゃれ本')">📘 じゃれ本</button>
                 </div>
                 <div id="gacha-type-note" class="gacha-mode-note"></div>
-                <div class="mt-3">
-                    <div class="small text-white-50 mb-2">みんなのじゃれ本アーカイブはこちら</div>
-                    <div class="d-flex flex-wrap justify-content-center gap-2">
-                        <a class="btn btn-sm btn-outline-light rounded-pill" href="https://kanisaba.my.canva.site/03-a">【A】掟やぶり姫~そんな事してはいけませんシンデレラｧ！~</a>
-                        <a class="btn btn-sm btn-outline-light rounded-pill" href="https://kanisaba.my.canva.site/04-b">【B】掟やぶり姫~そんな事してはいけませんシンデレラｧ！~</a>
-                        <a class="btn btn-sm btn-outline-light rounded-pill" href="https://kanisaba.my.canva.site/05-a">【A】注意※このじゃれ本を読んではいけません</a>
-                        <a class="btn btn-sm btn-outline-light rounded-pill" href="https://kanisaba.my.canva.site/06-b">【B】注意※このじゃれ本を読んではいけません</a>
-                        <a class="btn btn-sm btn-outline-light rounded-pill" href="https://kanisaba.my.canva.site/07-a">【A】毎朝同じ電車。気になる、あのコ。</a>
-                        <a class="btn btn-sm btn-outline-light rounded-pill" href="https://kanisaba.my.canva.site/08-b">【B】毎朝同じ電車。気になる、あのコ。</a>
-                        <a class="btn btn-sm btn-outline-light rounded-pill" href="https://kanisaba.my.canva.site/01">やまおかのたまご拾いました。うゆゆだよ。</a>
-                        <a class="btn btn-sm btn-outline-light rounded-pill" href="https://kanisaba.my.canva.site/02">カニ鯖版、関ヶ原の戦い🦀</a>
-                    </div>
-                </div>
             </div>
 
             <div id="osaisen-box-area" class="osaisen-box-wrapper mx-auto mb-4"
@@ -534,6 +521,34 @@
                     style="background: rgba(0,0,0,0.3); display: none; max-width: 800px; border: 1px solid rgba(255,255,255,0.1);">
                     <div id="badge-pool-list">
                         <p class="text-white-50">読み込み中...</p>
+                    </div>
+                    <div id="jarebon-links" class="mt-4" style="display: none;">
+                        <div class="small text-white-50 mb-2">みんなのじゃれ本アーカイブはこちら</div>
+                        <div class="d-flex flex-column gap-3">
+                            <div>
+                                <button class="btn btn-sm btn-outline-light rounded-pill mb-2" type="button">Aチームの作品</button>
+                                <div class="d-flex flex-wrap justify-content-center gap-2">
+                                    <a class="btn btn-sm btn-outline-light rounded-pill" href="https://kanisaba.my.canva.site/03-a">掟やぶり姫~そんな事してはいけませんシンデレラｧ！~</a>
+                                    <a class="btn btn-sm btn-outline-light rounded-pill" href="https://kanisaba.my.canva.site/05-a">注意※このじゃれ本を読んではいけません</a>
+                                    <a class="btn btn-sm btn-outline-light rounded-pill" href="https://kanisaba.my.canva.site/07-a">毎朝同じ電車。気になる、あのコ。</a>
+                                </div>
+                            </div>
+                            <div>
+                                <button class="btn btn-sm btn-outline-light rounded-pill mb-2" type="button">Bチームの作品</button>
+                                <div class="d-flex flex-wrap justify-content-center gap-2">
+                                    <a class="btn btn-sm btn-outline-light rounded-pill" href="https://kanisaba.my.canva.site/04-b">掟やぶり姫~そんな事してはいけませんシンデレラｧ！~</a>
+                                    <a class="btn btn-sm btn-outline-light rounded-pill" href="https://kanisaba.my.canva.site/06-b">注意※このじゃれ本を読んではいけません</a>
+                                    <a class="btn btn-sm btn-outline-light rounded-pill" href="https://kanisaba.my.canva.site/08-b">毎朝同じ電車。気になる、あのコ。</a>
+                                </div>
+                            </div>
+                            <div>
+                                <button class="btn btn-sm btn-outline-light rounded-pill mb-2" type="button">みんなの作品</button>
+                                <div class="d-flex flex-wrap justify-content-center gap-2">
+                                    <a class="btn btn-sm btn-outline-light rounded-pill" href="https://kanisaba.my.canva.site/01">やまおかのたまご拾いました。うゆゆだよ。</a>
+                                    <a class="btn btn-sm btn-outline-light rounded-pill" href="https://kanisaba.my.canva.site/02">カニ鯖版、関ヶ原の戦い🦀</a>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -843,6 +858,11 @@
                 } else {
                     noteEl.textContent = 'じゃれ本ガチャはコイン専用です';
                 }
+            }
+
+            const jarebonLinks = document.getElementById('jarebon-links');
+            if (jarebonLinks) {
+                jarebonLinks.style.display = currentGachaType === 'じゃれ本' ? '' : 'none';
             }
 
             const cfg = gachaConfigMap.get(currentGachaType);
