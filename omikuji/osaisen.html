@@ -495,7 +495,7 @@
             <div class="mt-4 text-center">
                 <a href="javascript:void(0)" class="text-white-50 small text-decoration-none"
                     onclick="toggleBadgePool()">
-                    <i class="bi bi-collection me-1"></i> 排出バッジ一覧を見る
+                    <i class="bi bi-collection me-1"></i> 提供割合を見る
                 </a>
                 <div id="badge-pool-area" class="mt-4 p-4 rounded shadow-lg mx-auto"
                     style="background: rgba(0,0,0,0.3); display: none; max-width: 800px; border: 1px solid rgba(255,255,255,0.1);">
@@ -934,7 +934,7 @@
                 const [badgesRes, thresholdsRes, circulationRes] = await Promise.all([
                     supabaseClient
                         .from('badges')
-                        .select('id, name, image_url, price, fixed_rarity_name, sales_type, is_gacha_eligible, remaining_count')
+                        .select('id, name, image_url, price, fixed_rarity_name, sales_type, is_gacha_eligible, remaining_count, gacha_weight')
                         .eq('is_gacha_eligible', currentGachaType),
                     fetchRarityThresholds(),
                     supabaseClient.from('user_badges_new').select('badge_id')
@@ -968,8 +968,11 @@
                 }
 
                 const grouped = {};
+                let totalWeight = 0;
                 badges.forEach(b => {
-                    const rarity = getDynamicRarity(b);
+                    const weight = Number(b.gacha_weight ?? 1);
+                    totalWeight += weight > 0 ? weight : 0;
+                    const rarity = b.sales_type === '換金品' ? '換金品' : getDynamicRarity(b);
                     if (!grouped[rarity]) grouped[rarity] = [];
                     grouped[rarity].push(b);
                 });
@@ -978,6 +981,7 @@
                     .sort((a, b) => a.threshold_value - b.threshold_value)
                     .map(t => t.rarity_name)
                     .reverse();
+                if (grouped['換金品']) rarityOrder.unshift('換金品');
 
                 const listEl = document.getElementById('badge-pool-list');
                 let html = '';
@@ -985,23 +989,32 @@
                 for (const rarity of rarityOrder) {
                     if (!grouped[rarity] || grouped[rarity].length === 0) continue;
                     const badgesInRarity = grouped[rarity];
-                    const rarityPercent = (badgesInRarity.length / badges.length) * 100;
-                    const perBadgePercent = badgesInRarity.length > 0 ? (rarityPercent / badgesInRarity.length) : 0;
+                    const rarityWeight = badgesInRarity.reduce((sum, b) => {
+                        const w = Number(b.gacha_weight ?? 1);
+                        return sum + (w > 0 ? w : 0);
+                    }, 0);
+                    const rarityPercent = totalWeight > 0 ? (rarityWeight / totalWeight) * 100 : 0;
                     const rarityClass = getRarityClass(rarity);
 
                     html += `
                         <div class="mb-3">
                             <div class="text-start mb-2">
                                 <span class="badge ${rarityClass} text-white">${rarity}</span>
-                                <span class="small text-white-50">(${badgesInRarity.length}種)</span>
+                                <span class="small text-white-50">(${badgesInRarity.length}種 / 合計 ${rarityPercent.toFixed(2)}%)</span>
                             </div>
                             <div class="d-flex flex-wrap gap-2 justify-content-start">
                                 ${badgesInRarity.map(b => `
+                                    ${(() => {
+                                        const w = Number(b.gacha_weight ?? 1);
+                                        const pct = totalWeight > 0 && w > 0 ? (w / totalWeight) * 100 : 0;
+                                        return `
                                     <div class="text-center" style="width: 70px; cursor: pointer;" onclick="window.location.href='../badge/index.html?id=${b.id}'">
                                         <img src="${b.image_url}" style="width: 50px; height: 50px; object-fit: contain; border-radius: 8px; background: rgba(255,255,255,0.1);">
-                                        <div class="small text-truncate" style="font-size: 0.65rem; color: #ffc107;">${perBadgePercent.toFixed(2)}%</div>
+                                        <div class="small text-truncate" style="font-size: 0.65rem; color: #ffc107;">${pct.toFixed(2)}%</div>
                                         <div class="small text-white-50 text-truncate" style="font-size: 0.6rem;">${b.name}</div>
                                     </div>
+                                        `;
+                                    })()}
                                 `).join('')}
                             </div>
                         </div>
