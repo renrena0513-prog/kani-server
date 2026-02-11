@@ -14,49 +14,17 @@
     <style>
         /* ガチャアニメーション */
         @keyframes shake {
-            0% {
-                transform: translate(1px, 1px) rotate(0deg);
-            }
-
-            10% {
-                transform: translate(-1px, -2px) rotate(-1deg);
-            }
-
-            20% {
-                transform: translate(-3px, 0px) rotate(1deg);
-            }
-
-            30% {
-                transform: translate(3px, 2px) rotate(0deg);
-            }
-
-            40% {
-                transform: translate(1px, -1px) rotate(1deg);
-            }
-
-            50% {
-                transform: translate(-1px, 2px) rotate(-1deg);
-            }
-
-            60% {
-                transform: translate(-3px, 1px) rotate(0deg);
-            }
-
-            70% {
-                transform: translate(3px, 1px) rotate(-1deg);
-            }
-
-            80% {
-                transform: translate(-1px, -1px) rotate(1deg);
-            }
-
-            90% {
-                transform: translate(1px, 2px) rotate(0deg);
-            }
-
-            100% {
-                transform: translate(1px, -2px) rotate(-1deg);
-            }
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
         }
 
         .shaking {
@@ -64,20 +32,9 @@
         }
 
         @keyframes coin-toss {
-            0% {
-                transform: translateY(0) scale(1);
-                opacity: 1;
-            }
-
-            50% {
-                transform: translateY(-100px) scale(1.5);
-                opacity: 1;
-            }
-
-            100% {
-                transform: translateY(150px) scale(0.5);
-                opacity: 0;
-            }
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            50% { transform: translateY(-100px) scale(1.5); opacity: 1; }
+            100% { transform: translateY(150px) scale(0.5); opacity: 0; }
         }
 
         .coin-animation {
@@ -121,40 +78,13 @@
         }
 
         /* レアリティ別背景 */
-        .rarity-wood {
-            background: #d7ccc8;
-            color: #5d4037;
-        }
-
-        .rarity-stone {
-            background: #cfd8dc;
-            color: #455a64;
-        }
-
-        .rarity-bronze {
-            background: #ffe0b2;
-            color: #e65100;
-        }
-
-        .rarity-silver {
-            background: #f5f5f5;
-            color: #616161;
-        }
-
-        .rarity-gold {
-            background: linear-gradient(135deg, #fff9c4 0%, #fbc02d 100%);
-            color: #f57f17;
-        }
-
-        .rarity-platinum {
-            background: linear-gradient(135deg, #e1f5fe 0%, #b3e5fc 100%);
-            color: #0277bd;
-        }
-
-        .rarity-gem {
-            background: linear-gradient(135deg, #f3e5f5 0%, #ce93d8 100%);
-            color: #7b1fa2;
-        }
+        .rarity-wood { background: #d7ccc8; color: #5d4037; }
+        .rarity-stone { background: #cfd8dc; color: #455a64; }
+        .rarity-bronze { background: #ffe0b2; color: #e65100; }
+        .rarity-silver { background: #f5f5f5; color: #616161; }
+        .rarity-gold { background: linear-gradient(135deg, #fff9c4 0%, #fbc02d 100%); color: #f57f17; }
+        .rarity-platinum { background: linear-gradient(135deg, #e1f5fe 0%, #b3e5fc 100%); color: #0277bd; }
+        .rarity-gem { background: linear-gradient(135deg, #f3e5f5 0%, #ce93d8 100%); color: #7b1fa2; }
 
         .odds-item {
             background: rgba(255, 255, 255, 0.1);
@@ -172,13 +102,8 @@
         }
 
         /* 支払い方法選択カード */
-        .payment-option {
-            cursor: pointer;
-        }
-
-        .payment-option input[type="radio"] {
-            display: none;
-        }
+        .payment-option { cursor: pointer; }
+        .payment-option input[type="radio"] { display: none; }
 
         .payment-card {
             display: flex;
@@ -193,7 +118,7 @@
             transition: all 0.3s ease;
         }
 
-        .payment-option input:checked+.payment-card {
+        .payment-option input:checked + .payment-card {
             background: rgba(212, 168, 83, 0.3);
             border-color: var(--gold);
             box-shadow: 0 0 15px rgba(212, 168, 83, 0.4);
@@ -298,84 +223,230 @@
             box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
         }
 
-        .gacha-tab-btn.disabled {
-            cursor: not-allowed;
-            opacity: 0.4;
-        }
-
         .gacha-mode-note {
             color: #f8f9fa;
             font-weight: 600;
             margin-top: 12px;
         }
+
+        .balance-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+        }
+
+        .balance-card {
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .balance-card .label {
+            color: rgba(255, 255, 255, 0.65);
+            font-size: 0.85rem;
+        }
+
+        .balance-card .value {
+            color: #fff;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .ticket-badge {
+            font-size: 0.8rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 999px;
+            padding: 2px 10px;
+        }
+
+        /* notice dialog (shop準拠) */
+        #notice-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        #notice-modal.active { display: flex; }
+
+        .notice-dialog {
+            background: #fff;
+            border-radius: 12px;
+            min-width: min(480px, 90vw);
+            padding: 18px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
+        }
+
+        .notice-title {
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .notice-message {
+            color: #333;
+            margin-bottom: 14px;
+        }
+
+        .notice-actions {
+            text-align: right;
+        }
+
+        .notice-dialog.success .notice-title { color: #2e7d32; }
+        .notice-dialog.warning .notice-title { color: #b26a00; }
+        .notice-dialog.error .notice-title { color: #b3261e; }
+
+        #loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.65);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 12px;
+            color: #fff;
+            z-index: 2100;
+        }
+
+        #loading-overlay.active { display: flex; }
     </style>
 </head>
 
 <body>
+    <!-- ローディング -->
+    <div id="loading-overlay">
+        <div class="spinner-border text-light" style="width: 3rem; height: 3rem;" role="status"></div>
+        <div class="h4">処理中...</div>
+    </div>
+    <div id="notice-modal" role="dialog" aria-modal="true" aria-labelledby="notice-title">
+        <div class="notice-dialog info" id="notice-dialog">
+            <div class="notice-title" id="notice-title">お知らせ</div>
+            <div class="notice-message" id="notice-message">-</div>
+            <div class="notice-actions">
+                <button class="btn btn-outline-dark" type="button" onclick="closeNotice()">OK</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ナビゲーション（JSで挿入） -->
     <div class="nav-dropdown"></div>
 
     <div class="container py-5">
-        <header class="text-center">
+        <header class="text-center mb-4">
             <h1 class="page-header display-4 fw-bold">⛩️ お賽銭箱</h1>
-            <p class="text-white-50">祈願符を捧げて、縁を授かりましょう</p>
+            <p class="text-white-50">チケットガチャから始まります。ガチャ種別はいつでも切替できます。</p>
+            <div class="d-flex flex-column align-items-center gap-3 mt-3">
+                <button class="btn btn-sm btn-outline-dark" style="border-radius: 20px; font-weight: bold;"
+                    onclick="openPriceListModal()">
+                    📊 レアリティ価格表を見る
+                </button>
+                <div class="d-inline-flex flex-wrap justify-content-center gap-3 mt-1">
+                    <button class="btn btn-sm btn-outline-primary" style="border-radius: 20px; font-weight: bold;"
+                        onclick="openInventoryModal()">
+                        🎒 所持バッジ
+                    </button>
+                </div>
+            </div>
         </header>
+
+        <div class="mb-4">
+            <div class="balance-grid">
+                <div class="balance-card">
+                    <div>
+                        <div class="label">コイン</div>
+                        <div class="value" id="coin-count">-</div>
+                    </div>
+                    <div class="fs-3">🪙</div>
+                </div>
+                <div class="balance-card">
+                    <div>
+                        <div class="label">祈願符</div>
+                        <div class="value" id="ticket-gacha-count">-</div>
+                    </div>
+                    <div class="fs-3">🎫</div>
+                </div>
+                <div class="balance-card">
+                    <div>
+                        <div class="label">満願符</div>
+                        <div class="value" id="ticket-mangan-count">-</div>
+                    </div>
+                    <div class="fs-3">🎟️</div>
+                </div>
+            </div>
+        </div>
 
         <div class="gacha-container text-center">
             <div class="mb-4">
                 <div class="gacha-tabs mx-auto">
-                    <button class="gacha-tab-btn active" data-mode="coin" onclick="setGachaMode('coin')">🪙 コインで回す</button>
-                    <button class="gacha-tab-btn disabled" data-mode="ticket" onclick="setGachaMode('ticket')">🎫 チケットで回す</button>
+                    <button class="gacha-tab-btn active" data-type="妖怪" onclick="setGachaType('妖怪')">👹 妖怪</button>
+                    <button class="gacha-tab-btn" data-type="じゃれ本" onclick="setGachaType('じゃれ本')">📘 じゃれ本</button>
                 </div>
-                <div id="gacha-mode-note" class="gacha-mode-note">チケットで回す機能はアップデート待ちです</div>
+                <div id="gacha-type-note" class="gacha-mode-note"></div>
             </div>
+
             <div id="osaisen-box-area" class="osaisen-box-wrapper mx-auto mb-4"
                 style="position: relative; width: fit-content;">
                 <div id="coin" class="coin-animation">🪙</div>
                 <div id="osaisen-box" style="cursor: default;">
-                    <img id="osaisen-badge" src="../images/placeholder-badge.png" alt="排出バッジ" style="width: min(480px, 90vw); height: min(480px, 90vw); object-fit: contain;">
+                    <img id="osaisen-badge" src="../images/placeholder-badge.png" alt="排出バッジ"
+                        style="width: min(480px, 90vw); height: min(480px, 90vw); object-fit: contain;">
                 </div>
             </div>
 
             <div class="mb-4">
                 <h3 class="fw-bold" style="color: var(--crimson);">幸運を願って、お賽銭を奉納しましょう</h3>
-                <p class="text-muted" id="gacha-price-note">コインでお賽銭を投げることができます。</p>
+                <p class="text-muted" id="gacha-price-note">チケットで奉納できます。</p>
             </div>
 
-            <div
-                class="ticket-balance d-inline-flex align-items-center bg-dark bg-opacity-25 px-4 py-2 rounded-pill mb-3 border border-secondary border-opacity-25">
-                <span class="fs-4 me-2">🪙</span>
-                <span class="me-2 text-white-50">コイン:</span>
-                <span id="coin-count" class="fw-bold text-white fs-5">- C</span>
-            </div>
-
-            <div class="mb-4 d-flex justify-content-center">
-                <div class="payment-card">
-                    <span class="fs-3">🪙</span>
-                    <span class="fw-bold" id="coin-price-label">コイン - 枚</span>
+            <div class="mb-4 d-flex justify-content-center" id="payment-area">
+                <div id="ticket-payment-area" class="d-flex flex-wrap justify-content-center gap-3">
+                    <label class="payment-option">
+                        <input type="radio" name="payment" value="gacha_ticket" checked
+                            onchange="setPaymentType('gacha_ticket')">
+                        <div class="payment-card">
+                            <span class="fs-3">🎫</span>
+                            <span class="fw-bold">祈願符 1枚</span>
+                            <span class="ticket-badge">妖怪ガチャ専用</span>
+                        </div>
+                    </label>
+                    <label class="payment-option">
+                        <input type="radio" name="payment" value="mangan_ticket"
+                            onchange="setPaymentType('mangan_ticket')">
+                        <div class="payment-card">
+                            <span class="fs-3">🎟️</span>
+                            <span class="fw-bold">満願符 1枚</span>
+                            <span class="ticket-badge">換金品は除外</span>
+                        </div>
+                    </label>
+                </div>
+                <div id="coin-payment-area" style="display: none;">
+                    <div class="payment-card">
+                        <span class="fs-3">🪙</span>
+                        <span class="fw-bold" id="coin-price-label">コイン - 枚</span>
+                    </div>
                 </div>
             </div>
 
             <div class="mt-2" id="draw-area">
                 <div class="d-flex flex-column align-items-center gap-3">
                     <div class="draw-mode-toggle">
-                        <button class="draw-mode-btn active" data-mode="single" onclick="setDrawMode('single')">1回</button>
+                        <button class="draw-mode-btn active" data-mode="single"
+                            onclick="setDrawMode('single')">1回</button>
                         <button class="draw-mode-btn" data-mode="ten" onclick="setDrawMode('ten')">10連</button>
                     </div>
-                    <div id="draw-mode-note" class="draw-mode-note" style="display:none;">
-                        10連はミュータント確率が5%になります
-                    </div>
+                    <div id="draw-mode-note" class="draw-mode-note">ミュータント確率 3%</div>
                     <button id="draw-btn" class="gacha-btn" onclick="handleDraw()">
                         🙏 お賽銭を奉納する
                     </button>
                 </div>
-                <div id="not-started-msg" class="alert alert-warning mt-3 mx-auto"
-                    style="display: none; max-width: 400px;">
-                    ✨ 現在、神事の準備をしています。お賽銭箱はまだ開いていないようです。r
-                </div>
             </div>
-
-            <!-- 提供割合は非表示（コインガチャ専用） -->
 
             <!-- 排出バッジ一覧セクション -->
             <div class="mt-4 text-center">
@@ -390,8 +461,6 @@
                     </div>
                 </div>
             </div>
-
-
         </div>
     </div>
 
@@ -411,7 +480,8 @@
                 <button type="button" class="btn btn-primary rounded-pill px-5" data-bs-dismiss="modal">
                     ありがたく受け取る
                 </button>
-                <button type="button" class="btn btn-outline-danger rounded-pill px-5 mt-2" id="result-sell-btn" style="display:none;">
+                <button type="button" class="btn btn-outline-danger rounded-pill px-5 mt-2" id="result-sell-btn"
+                    style="display:none;">
                     その場で売却する
                 </button>
             </div>
@@ -426,10 +496,12 @@
                     <span class="fs-4 fw-bold">✨ 10連の結果</span>
                 </div>
                 <div id="result-ten-total" class="text-dark fw-bold mb-2"></div>
-                <div id="result-ten-list" class="d-grid gap-2" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
+                <div id="result-ten-list" class="d-grid gap-2"
+                    style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
                     <!-- JSで挿入 -->
                 </div>
-                <button type="button" class="btn btn-outline-danger rounded-pill px-5 mt-3" id="result-ten-sell-btn" style="display:none;">
+                <button type="button" class="btn btn-outline-danger rounded-pill px-5 mt-3" id="result-ten-sell-btn"
+                    style="display:none;">
                     選択したものをまとめて売却
                 </button>
                 <button type="button" class="btn btn-primary rounded-pill px-5 mt-3" data-bs-dismiss="modal">
@@ -452,15 +524,127 @@
         </div>
     </div>
 
+    <!-- 価格一覧モーダル -->
+    <div class="modal fade" id="priceListModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+                <div class="modal-header border-0 bg-light" style="border-radius: 20px 20px 0 0;">
+                    <h5 class="modal-title fw-bold">📊 レアリティ価格一覧表</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover mb-0 text-center align-middle">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col">レアリティ名</th>
+                                    <th scope="col">基準価格 (資産価値)</th>
+                                    <th scope="col">通常売却目安 (2段階下)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="price-list-tbody">
+                                <!-- JSで描画 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <small class="text-muted w-100 text-start">
+                        ※ 変動型バッジの「ランク」は、基本ランク + (流通数 - 1) で決まります。<br>
+                        ※ 売却価格は、現在のランクの2段階下の価格になります（下限★1）。<br>
+                        ※ ミュータントはバッジ入手時3％の確率で変異し、売却価格が3倍になります。
+                    </small>
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">閉じる</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 所持品一覧モーダル -->
+    <div class="modal fade" id="inventoryModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title" id="inventoryModalLabel">🎒 あなたの所持バッジ</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body pt-2 bg-light">
+                    <!-- フィルターUI -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-12 col-md-5">
+                            <input type="text" id="inventory-search" class="form-control form-control-sm"
+                                placeholder="バッジ名で検索..." oninput="filterAndRenderInventoryBadges()">
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <select id="inventory-sort" class="form-select form-select-sm"
+                                onchange="filterAndRenderInventoryBadges()">
+                                <option value="acquired_desc">入手順（新→古）</option>
+                                <option value="acquired_asc">入手順（古→新）</option>
+                                <option value="rarity_desc">レアリティ（高→低）</option>
+                                <option value="rarity_asc">レアリティ（低→高）</option>
+                                <option value="name_asc">名前（A→Z）</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <select id="inventory-filter" class="form-select form-select-sm"
+                                onchange="filterAndRenderInventoryBadges()">
+                                <option value="all">すべて</option>
+                                <option value="fixed">固定型</option>
+                                <option value="variable">変動型</option>
+                                <option value="shrine">お賽銭限定</option>
+                                <option value="mutant">✨ ミュータント</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="inventory-list" class="vstack gap-2">
+                        <!-- JSで描画 -->
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status"></div>
+                        </div>
+                    </div>
+
+                    <!-- ページネーション -->
+                    <nav aria-label="Page navigation" class="mt-3" id="inventory-pagination-area"
+                        style="display: none;">
+                        <ul class="pagination pagination-sm justify-content-center mb-0" id="inventory-pagination"></ul>
+                    </nav>
+                </div>
+                <div class="modal-footer border-0 bg-light" style="border-radius: 0 0 20px 20px;">
+                    <div class="small text-muted w-100">
+                        ※ ここから直接売却して、資金に充てることもできます。
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ショップ用アクションモーダル（売却確認など） -->
+    <div class="modal fade" id="shopActionModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg border-0" style="border-radius: 20px;">
+                <div class="modal-body p-4 text-center">
+                    <div id="shopActionContent"></div>
+                    <div class="mt-4 d-flex justify-content-center gap-2">
+                        <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">キャンセル</button>
+                        <button type="button" id="btnShopActionExec" class="btn btn-danger rounded-pill px-4">実行</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../js/supabase-config.js"></script>
     <script src="../js/badge-utils.js"></script>
+    <script src="../js/badge-sell-ui.js"></script>
     <script src="../js/effects/mutant-badge.js"></script>
     <script src="../js/auth-guard.js"></script>
     <script src="../js/navigation.js"></script>
     <script>
         let currentUser = null;
+        let currentUserId = null;
         let isDrawing = false;
         let provisionData = null;
         let osaisenBadgeList = [];
@@ -471,30 +655,52 @@
         let lastDrawnBadgeMeta = null;
         let lastTenResults = [];
         let isSelling = false;
-        let currentGachaMode = 'coin';
-        let gachaCoinPrice = 50;
+        let currentGachaType = '妖怪';
+        let currentPaymentType = 'gacha_ticket';
+        let gachaCoinPrice = null;
+        let cachedThresholds = [];
 
         document.addEventListener('DOMContentLoaded', async function () {
             initAccordionNav('../');
 
             const user = await getCurrentUser();
             if (!user) {
-                alert('ログインが必要です。');
+                showNotice('ログインが必要です。', 'warning');
                 window.location.href = '../index.html';
                 return;
             }
             currentUser = user;
-            fetchTicketCount();
-            fetchGachaCoinPrice();
-            initOsaisenBadgeShowcase();
+            currentUserId = user.user_metadata.provider_id;
+
+            cachedThresholds = await safeFetchThresholds();
+            await fetchBalances();
+            applyGachaTypeUI();
+            await refreshGachaContext();
         });
 
-        async function fetchTicketCount() {
-            const discordId = currentUser.user_metadata.provider_id;
+        function showNotice(message, type = 'info') {
+            const modal = document.getElementById('notice-modal');
+            const dialog = document.getElementById('notice-dialog');
+            const title = document.getElementById('notice-title');
+            const body = document.getElementById('notice-message');
+            if (!modal || !dialog || !title || !body) return;
+            dialog.classList.remove('success', 'warning', 'error', 'info');
+            dialog.classList.add(type);
+            title.textContent = type === 'success' ? '完了' : type === 'warning' ? '注意' : type === 'error' ? 'エラー' : 'お知らせ';
+            body.textContent = message;
+            modal.classList.add('active');
+        }
+
+        function closeNotice() {
+            const modal = document.getElementById('notice-modal');
+            if (modal) modal.classList.remove('active');
+        }
+
+        async function fetchBalances() {
             const { data, error } = await supabaseClient
                 .from('profiles')
-                .select('coins')
-                .eq('discord_user_id', discordId)
+                .select('coins, gacha_tickets, mangan_tickets')
+                .eq('discord_user_id', currentUserId)
                 .maybeSingle();
 
             if (error) {
@@ -503,21 +709,157 @@
             }
 
             const coinCount = data?.coins || 0;
+            const gachaTickets = data?.gacha_tickets || 0;
+            const manganTickets = data?.mangan_tickets || 0;
 
             const coinEl = document.getElementById('coin-count');
+            const gachaEl = document.getElementById('ticket-gacha-count');
+            const manganEl = document.getElementById('ticket-mangan-count');
 
             if (coinEl) coinEl.textContent = `${coinCount.toLocaleString()} C`;
+            if (gachaEl) gachaEl.textContent = `${gachaTickets.toLocaleString()} 枚`;
+            if (manganEl) manganEl.textContent = `${manganTickets.toLocaleString()} 枚`;
         }
 
-        // 提供割合は非表示（コインガチャ専用）
+        async function safeFetchThresholds() {
+            try {
+                const thresholds = await fetchRarityThresholds();
+                const map = {};
+                thresholds.forEach(t => { map[t.rarity_name] = Number(t.threshold_value || 0); });
+                rarityValueMap = map;
+                return thresholds;
+            } catch (err) {
+                console.error('レアリティ取得エラー:', err);
+                return [];
+            }
+        }
 
-        let badgePoolData = null;
+        function applyGachaTypeUI() {
+            document.querySelectorAll('.gacha-tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.type === currentGachaType);
+            });
+
+            const noteEl = document.getElementById('gacha-type-note');
+            if (noteEl) {
+                if (currentGachaType === '妖怪') {
+                    noteEl.textContent = '妖怪ガチャはチケット専用（祈願符 / 満願符）です';
+                } else {
+                    noteEl.textContent = 'じゃれ本ガチャはコイン専用です';
+                }
+            }
+
+            const ticketArea = document.getElementById('ticket-payment-area');
+            const coinArea = document.getElementById('coin-payment-area');
+            if (currentGachaType === '妖怪') {
+                if (ticketArea) ticketArea.style.display = 'flex';
+                if (coinArea) coinArea.style.display = 'none';
+                if (!['gacha_ticket', 'mangan_ticket'].includes(currentPaymentType)) {
+                    currentPaymentType = 'gacha_ticket';
+                }
+                syncPaymentRadios();
+            } else {
+                if (ticketArea) ticketArea.style.display = 'none';
+                if (coinArea) coinArea.style.display = 'block';
+                currentPaymentType = 'coin';
+            }
+        }
+
+        async function refreshGachaContext() {
+            applyGachaTypeUI();
+            updateGachaPriceUI();
+            await fetchGachaCoinPrice();
+            await initOsaisenBadgeShowcase();
+            if (document.getElementById('badge-pool-area').style.display === 'block') {
+                await fetchBadgePool();
+            }
+        }
+
+        function syncPaymentRadios() {
+            document.querySelectorAll('input[name="payment"]').forEach(radio => {
+                radio.checked = radio.value === currentPaymentType;
+            });
+        }
+
+        function setGachaType(type) {
+            if (!type) return;
+            currentGachaType = type;
+            if (currentGachaType === 'じゃれ本') {
+                currentPaymentType = 'coin';
+            }
+            refreshGachaContext();
+        }
+
+        function setPaymentType(type) {
+            if (currentGachaType !== '妖怪') return;
+            currentPaymentType = type;
+            updateGachaPriceUI();
+            initOsaisenBadgeShowcase();
+            if (document.getElementById('badge-pool-area').style.display === 'block') {
+                fetchBadgePool();
+            }
+        }
+
+        function setDrawMode(mode) {
+            currentDrawMode = mode;
+            document.querySelectorAll('.draw-mode-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+            updateGachaPriceUI();
+        }
+
+        function updateGachaPriceUI() {
+            const note = document.getElementById('gacha-price-note');
+            const coinLabel = document.getElementById('coin-price-label');
+
+            if (currentGachaType === '妖怪') {
+                if (note) {
+                    note.textContent = currentPaymentType === 'mangan_ticket'
+                        ? '満願符1枚で奉納できます（換金品は排出除外）'
+                        : '祈願符1枚で奉納できます';
+                }
+            } else {
+                if (!gachaCoinPrice || gachaCoinPrice < 1) {
+                    if (coinLabel) coinLabel.textContent = 'コイン 未設定';
+                    if (note) note.textContent = 'コイン価格が未設定です';
+                    return;
+                }
+                const price = currentDrawMode === 'ten' ? gachaCoinPrice * 10 : gachaCoinPrice;
+                if (coinLabel) coinLabel.textContent = `コイン ${price.toLocaleString()}枚`;
+                if (note) note.textContent = `コイン${price.toLocaleString()}枚で奉納できます。`;
+            }
+        }
+
+        async function fetchGachaCoinPrice() {
+            if (currentGachaType !== 'じゃれ本') return;
+            try {
+                const { data, error } = await supabaseClient
+                    .from('gacha_configs')
+                    .select('coin_price')
+                    .eq('gacha_type', currentGachaType)
+                    .maybeSingle();
+                if (error) throw error;
+                gachaCoinPrice = data?.coin_price ?? null;
+                updateGachaPriceUI();
+            } catch (err) {
+                console.error('ガチャ価格取得エラー:', err);
+                updateGachaPriceUI();
+            }
+        }
+
+        async function fetchRarityThresholds() {
+            const { data, error } = await supabaseClient
+                .from('rarity_thresholds')
+                .select('rarity_name, threshold_value')
+                .order('threshold_value', { ascending: true });
+            if (error) throw error;
+            return data || [];
+        }
 
         function toggleBadgePool() {
             const area = document.getElementById('badge-pool-area');
             if (area.style.display === 'none') {
                 area.style.display = 'block';
-                if (!badgePoolData) fetchBadgePool();
+                fetchBadgePool();
             } else {
                 area.style.display = 'none';
             }
@@ -525,29 +867,33 @@
 
         async function fetchBadgePool() {
             try {
-                // レアリティ閾値、バッジ、流通数、ガチャ重みを取得
                 const [badgesRes, thresholdsRes, circulationRes] = await Promise.all([
-                    supabaseClient.from('badges').select('id, name, image_url, price, fixed_rarity_name, sales_type, is_gacha_eligible, remaining_count').eq('is_gacha_eligible', true),
+                    supabaseClient
+                        .from('badges')
+                        .select('id, name, image_url, price, fixed_rarity_name, sales_type, is_gacha_eligible, remaining_count')
+                        .eq('is_gacha_eligible', currentGachaType),
                     fetchRarityThresholds(),
                     supabaseClient.from('user_badges_new').select('badge_id')
                 ]);
 
                 if (badgesRes.error) throw badgesRes.error;
 
-                // ガチャ対象バッジは is_gacha_eligible のみ（在庫制限は無視）
-                const badges = badgesRes.data || [];
+                let badges = badgesRes.data || [];
                 const thresholds = thresholdsRes || [];
+                if (currentPaymentType === 'mangan_ticket') {
+                    badges = badges.filter(b => b.sales_type !== '換金品');
+                }
+
                 if (thresholds.length === 0) {
                     document.getElementById('badge-pool-list').innerHTML = '<p class="text-danger">レアリティ情報が取得できません</p>';
                     return;
                 }
-                // 流通数カウント
+
                 const circulation = {};
                 (circulationRes.data || []).forEach(r => {
                     circulation[r.badge_id] = (circulation[r.badge_id] || 0) + 1;
                 });
 
-                // 動的レアリティ計算（BadgeUtils使用）
                 function getDynamicRarity(badge) {
                     const n = circulation[badge.id] || 0;
                     if (typeof BadgeUtils !== 'undefined' && BadgeUtils.calculateBadgeValues) {
@@ -557,7 +903,6 @@
                     return badge.fixed_rarity_name || thresholds[0]?.rarity_name || '不明';
                 }
 
-                // レアリティ別にグループ化
                 const grouped = {};
                 badges.forEach(b => {
                     const rarity = getDynamicRarity(b);
@@ -565,10 +910,11 @@
                     grouped[rarity].push(b);
                 });
 
-                // レアリティ順序（閾値順の逆）
-                const rarityOrder = [...thresholds].sort((a, b) => a.threshold_value - b.threshold_value).map(t => t.rarity_name).reverse();
+                const rarityOrder = [...thresholds]
+                    .sort((a, b) => a.threshold_value - b.threshold_value)
+                    .map(t => t.rarity_name)
+                    .reverse();
 
-                // HTML生成
                 const listEl = document.getElementById('badge-pool-list');
                 let html = '';
 
@@ -600,8 +946,6 @@
 
                 if (!html) html = '<p class="text-white-50">排出対象のバッジがありません</p>';
                 listEl.innerHTML = html;
-                badgePoolData = grouped;
-
             } catch (err) {
                 console.error('排出バッジ取得エラー:', err);
                 document.getElementById('badge-pool-list').innerHTML = '<p class="text-danger">読み込みエラー</p>';
@@ -612,10 +956,15 @@
             try {
                 const { data, error } = await supabaseClient
                     .from('badges')
-                    .select('id, image_url')
-                    .eq('is_gacha_eligible', true);
+                    .select('id, image_url, sales_type')
+                    .eq('is_gacha_eligible', currentGachaType);
                 if (error) throw error;
-                osaisenBadgeList = (data || []).filter(b => b.image_url);
+
+                let pool = (data || []).filter(b => b.image_url);
+                if (currentPaymentType === 'mangan_ticket') {
+                    pool = pool.filter(b => b.sales_type !== '換金品');
+                }
+                osaisenBadgeList = pool;
                 if (osaisenBadgeList.length === 0) return;
 
                 const imgEl = document.getElementById('osaisen-badge');
@@ -636,110 +985,24 @@
             }
         }
 
-        async function fetchGachaCoinPrice() {
-            try {
-                const [badgesRes, thresholdsRes, circulationRes] = await Promise.all([
-                    supabaseClient.from('badges').select('id, price, fixed_rarity_name, sales_type, is_gacha_eligible').eq('is_gacha_eligible', true),
-                    fetchRarityThresholds(),
-                    supabaseClient.from('user_badges_new').select('badge_id')
-                ]);
-
-                if (badgesRes.error) throw badgesRes.error;
-
-                const badges = badgesRes.data || [];
-                const thresholds = thresholdsRes || [];
-                rarityValueMap = {};
-                thresholds.forEach(t => {
-                    rarityValueMap[t.rarity_name] = Number(t.threshold_value || 0);
-                });
-                const circulation = {};
-                (circulationRes.data || []).forEach(r => {
-                    circulation[r.badge_id] = (circulation[r.badge_id] || 0) + 1;
-                });
-
-                if (badges.length === 0) {
-                    updateGachaPriceUI();
-                    return;
-                }
-
-                let total = 0;
-                if (thresholds.length > 0 && typeof BadgeUtils !== 'undefined' && BadgeUtils.calculateBadgeValues) {
-                    badges.forEach(badge => {
-                        const count = circulation[badge.id] || 0;
-                        const values = BadgeUtils.calculateBadgeValues(badge, count, thresholds);
-                        total += values.marketValue;
-                    });
-                } else {
-                    badges.forEach(badge => {
-                        total += Number(badge.price || 0);
-                    });
-                }
-
-                gachaCoinPrice = Math.max(1, Math.round(total / badges.length));
-                updateGachaPriceUI();
-            } catch (err) {
-                console.error('ガチャ価格取得エラー:', err);
-                updateGachaPriceUI();
-            }
-        }
-
-        function updateGachaPriceUI() {
-            const coinLabel = document.getElementById('coin-price-label');
-            const note = document.getElementById('gacha-price-note');
-            const price = currentDrawMode === 'ten' ? gachaCoinPrice * 10 : gachaCoinPrice;
-            if (coinLabel) coinLabel.textContent = `コイン ${price.toLocaleString()}枚`;
-            if (note) note.textContent = `コイン${price.toLocaleString()}枚でお賽銭を投げることができます。`;
-        }
-
-        async function fetchRarityThresholds() {
-            const { data, error } = await supabaseClient
-                .from('rarity_thresholds')
-                .select('rarity_name, threshold_value')
-                .order('threshold_value', { ascending: true });
-            if (error) throw error;
-            return data || [];
-        }
-
-        function setGachaMode(mode) {
-            if (mode === 'ticket') {
-                return;
-            }
-            currentGachaMode = mode;
-            document.querySelectorAll('.gacha-tab-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.mode === mode);
-            });
-        }
-
-        function setDrawMode(mode) {
-            currentDrawMode = mode;
-            document.querySelectorAll('.draw-mode-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.mode === mode);
-            });
-            const note = document.getElementById('draw-mode-note');
-            if (note) note.style.display = mode === 'ten' ? 'block' : 'none';
-            updateGachaPriceUI();
-        }
-
         async function handleDraw() {
             if (isDrawing) return;
 
-            if (currentGachaMode === 'ticket') {
-                alert('チケットで回す機能はアップデート待ちです。');
+            const count = currentDrawMode === 'ten' ? 10 : 1;
+            let paymentType = currentPaymentType;
+            if (currentGachaType === 'じゃれ本') {
+                paymentType = 'coin';
+            }
+
+            if (currentGachaType === '妖怪' && paymentType === 'coin') {
+                showNotice('妖怪ガチャはチケット専用です', 'warning');
                 return;
             }
 
-            // お賽銭の制限を解除 - 全員がガチャを回せるように
-            // const discordId = currentUser.user_metadata.provider_id;
-            // const isAdmin = ADMIN_DISCORD_IDS.includes(discordId);
-            // const notStartedMsg = document.getElementById('not-started-msg');
-            // if (!isAdmin) {
-            //     notStartedMsg.style.display = 'block';
-            //     setTimeout(() => { notStartedMsg.style.display = 'none'; }, 5000);
-            //     return;
-            // }
-
-            // 支払い方法を取得
-            const paymentType = currentGachaMode === 'coin' ? 'coin' : 'ticket';
+            if (currentGachaType === 'じゃれ本' && (!gachaCoinPrice || gachaCoinPrice < 1)) {
+                showNotice('コイン価格が未設定です', 'warning');
+                return;
+            }
 
             isDrawing = true;
 
@@ -750,48 +1013,51 @@
             btn.disabled = true;
 
             try {
-                // 1. コイン投げアニメーション
                 coin.classList.add('active');
+                setTimeout(() => { box.classList.add('shaking'); }, 400);
 
-                // 2. 賽銭箱の揺れ
-                setTimeout(() => {
-                    box.classList.add('shaking');
-                }, 400);
+                const { data, error } = await supabaseClient.rpc('draw_gacha_v2', {
+                    p_user_id: currentUserId,
+                    p_gacha_type: currentGachaType,
+                    p_payment_type: paymentType,
+                    p_count: count
+                });
 
-                let data, error;
-                if (currentDrawMode === 'ten') {
-                    ({ data, error } = await supabaseClient.rpc('draw_gacha_multi', {
-                        p_user_id: currentUser.user_metadata.provider_id,
-                        p_draw_count: 10
-                    }));
-                } else {
-                    ({ data, error } = await supabaseClient.rpc('draw_gacha', {
-                        p_user_id: currentUser.user_metadata.provider_id,
-                        p_payment_type: paymentType
-                    }));
-                }
-
-                // アニメーションを見せるための待機
                 await new Promise(resolve => setTimeout(resolve, 1500));
 
                 if (error) throw error;
-                if (!data.ok) throw new Error(data.error);
+                if (!data || !data.ok) throw new Error(data?.error || '不明なエラー');
 
-                if (currentDrawMode === 'ten') {
-                    showTenResults(data.results || []);
+                const results = data.results || [];
+
+                if (count === 10) {
+                    showTenResults(results);
                 } else {
-                    showResult(data);
+                    showResult(results[0]);
+                }
+
+                if (typeof logActivity === 'function') {
+                    const coinCost = paymentType === 'coin' ? (data.coin_cost || 0) : 0;
+                    await logActivity(currentUserId, 'gacha_draw', {
+                        amount: coinCost,
+                        details: {
+                            gacha_type: currentGachaType,
+                            payment_type: paymentType,
+                            count,
+                            source: 'osaisen'
+                        }
+                    });
                 }
 
             } catch (err) {
                 console.error('ガチャエラー:', err);
-                alert('奉納に失敗しました: ' + (err.message || '不明なエラー'));
+                showNotice('奉納に失敗しました: ' + (err.message || '不明なエラー'), 'error');
             } finally {
                 isDrawing = false;
                 coin.classList.remove('active');
                 box.classList.remove('shaking');
                 btn.disabled = false;
-                fetchTicketCount();
+                await fetchBalances();
             }
         }
 
@@ -813,7 +1079,6 @@
             const sellBtn = document.getElementById('result-ten-sell-btn');
             if (sellBtn) sellBtn.style.display = 'none';
 
-            // 1秒ごとにバッジ画像を表示（レアリティ先出しはしない）
             results.forEach((r, idx) => {
                 const card = document.createElement('div');
                 card.className = 'text-center ten-result-item';
@@ -830,7 +1095,7 @@
                         <div class="fw-bold ${rarityClass} text-dark mb-2">${rarityText}</div>
                         <div class="mutant-badge-container mini ${r?.is_mutant ? 'active' : ''}" style="width: 96px; height: 96px; margin: 0 auto;">
                             <img src="${r?.image_url || '../images/placeholder-badge.png'}" alt="${r?.name || ''}" style="width: 100%; height: 100%; object-fit: contain;">
-                            ${window.MutantBadge ? window.MutantBadge.renderShine(!!r?.is_mutant) : '<div class=\"mutant-badge-shine\"></div>'}
+                            ${window.MutantBadge ? window.MutantBadge.renderShine(!!r?.is_mutant) : '<div class="mutant-badge-shine"></div>'}
                         </div>
                     `;
                     card.dataset.uuid = r?.uuid || '';
@@ -846,6 +1111,7 @@
         }
 
         function showResult(result) {
+            if (!result) return;
             const rarityEl = document.getElementById('result-rarity-badge');
             const headerEl = document.getElementById('result-header');
             const rarity = result.rarity || 'レアリティ不明';
@@ -857,7 +1123,7 @@
                 resultBody.innerHTML = `
                     <div class="mutant-badge-container large ${isMutant ? 'active' : ''}" style="width: 140px; height: 140px; margin: 0 auto;">
                         <img src="${result.image_url || '../images/placeholder-badge.png'}" alt="${result.name || ''}" style="width: 100%; height: 100%; object-fit: contain;">
-                        ${window.MutantBadge ? window.MutantBadge.renderShine(isMutant) : '<div class=\"mutant-badge-shine\"></div>'}
+                        ${window.MutantBadge ? window.MutantBadge.renderShine(isMutant) : '<div class="mutant-badge-shine"></div>'}
                     </div>
                     <h3 id="result-name" class="fw-bold mb-3">${result.name || ''}</h3>
                     <p id="result-msg" class="text-muted mb-4"></p>
@@ -873,18 +1139,10 @@
             const sellBtn = document.getElementById('result-sell-btn');
             if (sellBtn) sellBtn.style.display = lastDrawnBadgeUuid ? 'inline-block' : 'none';
 
-            if (result.type === 'stone') {
-                headerEl.innerHTML = '<span class="fs-4 fw-bold">💠 換金できる石を授かりました</span>';
-                msgEl.textContent = '換金用の価値ある石です。所持品から確認・売却できます。';
-            } else if (result.type === 'exchange_ticket') {
-                headerEl.innerHTML = '<span class="fs-4 fw-bold">🎫 引換券を授かりました</span>';
-                msgEl.textContent = `該当レアリティのバッジが不在だったため、${rarity}引換券を獲得しました。`;
-            } else {
-                headerEl.innerHTML = '<span class="fs-4 fw-bold">✨ 新しい縁を授かりました</span>';
-                const value = rarityValueMap[rarity] || 0;
-                const mutantLabel = result.is_mutant ? ' <span class="mutant-label">ミュータント</span>' : '';
-                msgEl.innerHTML = `新しいバッジを獲得しました！${mutantLabel}<br>価値: 🪙 ${value.toLocaleString()}`;
-            }
+            headerEl.innerHTML = '<span class="fs-4 fw-bold">✨ 新しい縁を授かりました</span>';
+            const value = rarityValueMap[rarity] || 0;
+            const mutantLabel = result.is_mutant ? ' <span class="mutant-label">ミュータント</span>' : '';
+            msgEl.innerHTML = `新しいバッジを獲得しました！${mutantLabel}<br>価値: 🪙 ${value.toLocaleString()}`;
 
             const modal = new bootstrap.Modal(document.getElementById('resultModal'));
             modal.show();
@@ -899,7 +1157,7 @@
 
         async function sellBadgeByUuid(badgeUuid) {
             const { data, error } = await supabaseClient.rpc('sell_badge_v2', {
-                p_user_id: currentUser.user_metadata.provider_id,
+                p_user_id: currentUserId,
                 p_badge_uuid: badgeUuid
             });
             if (error || (data && data.error)) {
@@ -917,7 +1175,7 @@
                 const sellBtn = document.getElementById('result-sell-btn');
                 if (sellBtn) sellBtn.disabled = true;
                 const data = await sellBadgeByUuid(lastDrawnBadgeUuid);
-                await logActivity(currentUser.user_metadata.provider_id, 'badge_sell', {
+                await logActivity(currentUserId, 'badge_sell', {
                     amount: data.sell_price,
                     badgeId: lastDrawnBadgeMeta?.badgeId || null,
                     details: { badge_name: lastDrawnBadgeMeta?.name || null, source: 'osaisen' }
@@ -956,7 +1214,7 @@
                     const data = await sellBadgeByUuid(uuid);
                     total += data.sell_price || 0;
                     const meta = lastTenResults.find(r => r.uuid === uuid);
-                    await logActivity(currentUser.user_metadata.provider_id, 'badge_sell', {
+                    await logActivity(currentUserId, 'badge_sell', {
                         amount: data.sell_price,
                         badgeId: meta?.badge_id || null,
                         details: { badge_name: meta?.name || null, source: 'osaisen' }
@@ -994,6 +1252,408 @@
             const sellTenBtn = document.getElementById('result-ten-sell-btn');
             if (sellTenBtn) sellTenBtn.addEventListener('click', handleSellTenSelected);
         });
+
+        // ======= 価格表モーダル =======
+        function openPriceListModal() {
+            const thresholds = cachedThresholds || [];
+            const tbody = document.getElementById('price-list-tbody');
+
+            if (thresholds.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4">データを読み込み中...</td></tr>';
+                new bootstrap.Modal(document.getElementById('priceListModal')).show();
+                return;
+            }
+
+            const rows = thresholds.map((t, index) => {
+                const star = index + 1;
+                const sellStar = Math.max(star - 2, 1);
+                let sellPrice = thresholds[sellStar - 1]?.threshold_value || 50;
+                if (star === 1) sellPrice = 30;
+                const rarityName = t.rarity_name;
+                const rarityClass = getRarityClass(rarityName);
+
+                return `
+                    <tr>
+                        <td>
+                            <span class="badge rounded-pill ${rarityClass}" style="font-size: 0.9rem; padding: 6px 12px;">
+                                ${rarityName}
+                            </span>
+                        </td>
+                        <td class="fw-bold">🪙 ${t.threshold_value.toLocaleString()}</td>
+                        <td class="text-muted">🪙 ${sellPrice.toLocaleString()}</td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = rows.reverse().join('');
+            new bootstrap.Modal(document.getElementById('priceListModal')).show();
+        }
+
+        // ======= 所持品・売却機能 =======
+        let currentShopActionUUID = null;
+        let currentShopActionBadgeId = null;
+        let currentShopActionBadgeName = null;
+
+        async function openInventoryModal() {
+            const modal = new bootstrap.Modal(document.getElementById('inventoryModal'));
+            modal.show();
+            await loadInventory();
+        }
+
+        let allInventoryBadges = [];
+        let groupedInventory = [];
+        let currentInventoryPage = 1;
+        const INVENTORY_ITEMS_PER_PAGE = 10;
+        let expandedBadgeId = null;
+
+        async function loadInventory() {
+            const listEl = document.getElementById('inventory-list');
+            try {
+                const { data: myBadges, error } = await supabaseClient
+                    .from('user_badges_new')
+                    .select('*, badges(*)')
+                    .eq('user_id', currentUserId)
+                    .order('acquired_at', { ascending: false });
+
+                if (error) throw error;
+
+                const { data: thresholds } = await supabaseClient
+                    .from('rarity_thresholds')
+                    .select('*')
+                    .order('threshold_value', { ascending: true });
+
+                const badgeIds = [...new Set(myBadges.map(ub => ub.badge_id))];
+                let marketCounts = {};
+
+                if (badgeIds.length > 0) {
+                    const { data: allOwned } = await supabaseClient.from('user_badges_new').select('badge_id');
+                    if (allOwned) {
+                        allOwned.forEach(o => {
+                            marketCounts[o.badge_id] = (marketCounts[o.badge_id] || 0) + 1;
+                        });
+                    }
+                }
+
+                const creatorIds = [...new Set((myBadges || []).map(ub => ub.badges?.discord_user_id).filter(Boolean))];
+                const creatorMap = new Map();
+                if (creatorIds.length > 0) {
+                    const { data: creators } = await supabaseClient
+                        .from('profiles')
+                        .select('discord_user_id, account_name, avatar_url')
+                        .in('discord_user_id', creatorIds);
+                    (creators || []).forEach(c => creatorMap.set(c.discord_user_id, {
+                        name: c.account_name || c.discord_user_id,
+                        avatar: c.avatar_url || ''
+                    }));
+                }
+
+                allInventoryBadges = myBadges.map(inventoryItem => {
+                    const badge = inventoryItem.badges;
+                    if (!badge) return null;
+                    if (badge.sales_type === '限定品') return null;
+
+                    const count = marketCounts[badge.id] || 1;
+                    const circulationCount = marketCounts[badge.id] || 0;
+                    const valResult = BadgeUtils.calculateBadgeValues(badge, count, thresholds || []);
+                    const sellPrice = valResult.sellPrice * (inventoryItem.is_mutant ? 3 : 1);
+                    const sellStar = Math.max((valResult.starLevel || 1) - 2, 1);
+                    const sellRarity = thresholds?.[sellStar - 1]?.rarity_name || valResult.rarityName || '';
+                    const creatorInfo = creatorMap.get(badge.discord_user_id) || { name: '不明', avatar: '' };
+                    const isConvertible = badge.sales_type === '換金品';
+                    const marketValue = isConvertible ? badge.price : valResult.marketValue;
+                    const sellValue = isConvertible ? badge.price : sellPrice;
+                    const displayRarity = isConvertible ? '' : valResult.rarityName;
+                    const displaySellRarity = isConvertible ? '' : sellRarity;
+
+                    return {
+                        ...inventoryItem,
+                        badge_name: badge.name,
+                        badge_image_url: badge.image_url,
+                        rarity: badge.rarity,
+                        rarity_name: displayRarity,
+                        sell_rarity_name: displaySellRarity,
+                        price: badge.price,
+                        fixed_rarity_name: badge.fixed_rarity_name,
+                        sales_type: badge.sales_type,
+                        is_gacha_eligible: badge.is_gacha_eligible,
+                        market_value: marketValue,
+                        sell_price: sellValue,
+                        purchased_price: inventoryItem.purchased_price,
+                        creator_name: creatorInfo.name,
+                        creator_avatar: creatorInfo.avatar,
+                        market_count: circulationCount,
+                        acquired_at: new Date(inventoryItem.acquired_at)
+                    };
+                }).filter(i => i !== null);
+
+                filterAndRenderInventoryBadges();
+
+            } catch (err) {
+                console.error('Error loading inventory:', err);
+                listEl.innerHTML = '<div class="text-center py-4 text-danger">読み込みエラーが発生しました</div>';
+            }
+        }
+
+        function filterAndRenderInventoryBadges() {
+            const listEl = document.getElementById('inventory-list');
+            const searchVal = document.getElementById('inventory-search').value.toLowerCase();
+            const sortVal = document.getElementById('inventory-sort').value;
+            const filterVal = document.getElementById('inventory-filter').value;
+
+            let filtered = allInventoryBadges.filter(item => {
+                if (searchVal && !item.badge_name.toLowerCase().includes(searchVal)) return false;
+
+                switch (filterVal) {
+                    case 'fixed':
+                        return item.sales_type === '固定型';
+                    case 'variable':
+                        return item.sales_type === '変動型';
+                    case 'shrine':
+                        return !!item.is_gacha_eligible;
+                    case 'mutant':
+                        return item.is_mutant;
+                    case 'all':
+                    default:
+                        return true;
+                }
+            });
+
+            filtered.sort((a, b) => {
+                if (sortVal === 'acquired_desc') return b.acquired_at - a.acquired_at;
+                if (sortVal === 'acquired_asc') return a.acquired_at - b.acquired_at;
+                if (sortVal === 'name_asc') return a.badge_name.localeCompare(b.badge_name);
+                if (sortVal === 'rarity_desc' || sortVal === 'rarity_asc') {
+                    const pA = a.market_value || 0;
+                    const pB = b.market_value || 0;
+                    return sortVal === 'rarity_desc' ? pB - pA : pA - pB;
+                }
+                return 0;
+            });
+
+            const groups = new Map();
+            filtered.forEach(item => {
+                if (!groups.has(item.badge_id)) {
+                    groups.set(item.badge_id, {
+                        badge_id: item.badge_id,
+                        badge_name: item.badge_name,
+                        badge_image_url: item.badge_image_url,
+                        items: []
+                    });
+                }
+                groups.get(item.badge_id).items.push(item);
+            });
+
+            const groupArray = Array.from(groups.values());
+            const totalPages = Math.ceil(groupArray.length / INVENTORY_ITEMS_PER_PAGE);
+            if (currentInventoryPage > totalPages && totalPages > 0) currentInventoryPage = totalPages;
+            if (currentInventoryPage < 1) currentInventoryPage = 1;
+
+            const start = (currentInventoryPage - 1) * INVENTORY_ITEMS_PER_PAGE;
+            const end = start + INVENTORY_ITEMS_PER_PAGE;
+            const pageGroups = groupArray.slice(start, end);
+
+            if (pageGroups.length === 0) {
+                listEl.innerHTML = '<div class="text-center py-4 text-muted">該当するバッジがありません</div>';
+                document.getElementById('inventory-pagination-area').style.display = 'none';
+                return;
+            }
+
+            listEl.innerHTML = pageGroups.map(group => {
+                const isExpanded = expandedBadgeId === group.badge_id;
+                const totalCount = group.items.length;
+                const mutantCount = group.items.filter(i => i.is_mutant).length;
+                const repItem = group.items[0];
+
+                let actionArea = '';
+                let detailHtml = '';
+
+                if (totalCount === 1) {
+                    const item = repItem;
+                    if (item.sales_type === '限定品') {
+                        actionArea = '<span class="badge bg-secondary text-nowrap">売却不可</span>';
+                    } else if (item.sales_type === '換金品') {
+                        actionArea = `<button class="btn btn-sm btn-outline-success rounded-pill text-nowrap" style="flex-shrink: 0;"
+                            onclick="confirmSellFromShop('${item.uuid}')">換金</button>`;
+                    } else {
+                        actionArea = `<button class="btn btn-sm btn-outline-danger rounded-pill text-nowrap" style="flex-shrink: 0;"
+                            onclick="confirmSellFromShop('${item.uuid}')">売却</button>`;
+                    }
+                } else {
+                    actionArea = `<button class="btn btn-sm ${isExpanded ? 'btn-secondary' : 'btn-primary'} rounded-pill text-nowrap" style="flex-shrink: 0;"
+                        onclick="toggleInventoryExpand('${group.badge_id}')">${isExpanded ? '閉じる' : '選択'}</button>`;
+
+                    if (isExpanded) {
+                        const listItemsHtml = group.items.map(item => {
+                            if (item.sales_type === '限定品') return '';
+
+                            const isMutant = item.is_mutant;
+                            let imgHtml = '';
+                            if (isMutant) {
+                                imgHtml = `
+                                    <div class="mutant-badge-container mini active me-3" style="width: 40px; height: 40px;">
+                                        <div class="mutant-badge-shine"></div>
+                                        <img src="${group.badge_image_url}" class="w-100 h-100 object-fit-contain">
+                                    </div>
+                                `;
+                            } else {
+                                imgHtml = `<img src="${group.badge_image_url}" class="rounded me-3" style="width: 40px; height: 40px; object-fit: contain;">`;
+                            }
+
+                            const mutantStyle = isMutant ? 'border: 2px solid gold; background: #fffdf5;' : 'border: 1px solid #eee;';
+                            const pPrice = item.purchased_price || 0;
+                            const sPrice = item.sell_price;
+
+                            return `
+                                <div class="d-flex align-items-center justify-content-between p-2 rounded bg-white" style="${mutantStyle}">
+                                    <div class="d-flex align-items-center overflow-hidden">
+                                        ${imgHtml}
+                                        <div class="small">
+                                            <div class="text-muted">購入: 🪙${pPrice.toLocaleString()}</div>
+                                            <div class="text-danger fw-bold">売却: 🪙${Math.floor(sPrice).toLocaleString()}</div>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-danger rounded-pill ms-2 text-nowrap" style="font-size: 0.8rem; flex-shrink: 0;"
+                                        onclick="confirmSellFromShop('${item.uuid}')">売却</button>
+                                </div>
+                            `;
+                        }).join('');
+
+                        detailHtml = `
+                            <div class="mt-3 border-top pt-2">
+                                <div class="small fw-bold text-muted mb-2">所持リスト (${totalCount}個)</div>
+                                <div class="vstack gap-2">
+                                    ${listItemsHtml}
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+
+                const rarityClass = getRarityClass(repItem.rarity_name || '');
+
+                return `
+                <div class="p-2 rounded shadow-sm bg-white border mb-2">
+                    <div class="d-flex align-items-center">
+                        <div style="width: 50px; height: 50px; flex-shrink: 0;" class="me-3">
+                             <img src="${group.badge_image_url}" class="w-100 h-100 object-fit-contain rounded">
+                        </div>
+                        <div class="flex-grow-1" style="min-width: 0; margin-right: 10px;">
+                            <div class="fw-bold text-truncate">${group.badge_name}</div>
+                            <div class="small text-muted d-flex align-items-center flex-wrap gap-2">
+                                <span class="badge ${rarityClass || 'bg-light text-dark border'}">${repItem.rarity_name || '-'}</span>
+                                <div>所持: <span class="fw-bold text-dark">${totalCount}</span>個</div>
+                                ${mutantCount > 0 ? `<span class="badge bg-warning text-dark">内ミュータント: ${mutantCount}</span>` : ''}
+                            </div>
+                        </div>
+                        <div style="flex-shrink: 0;">
+                             ${actionArea}
+                        </div>
+                    </div>
+                    ${detailHtml}
+                </div>
+                `;
+            }).join('');
+
+            renderInventoryPagination(totalPages);
+        }
+
+        function toggleInventoryExpand(badgeId) {
+            if (expandedBadgeId === badgeId) {
+                expandedBadgeId = null;
+            } else {
+                expandedBadgeId = badgeId;
+            }
+            filterAndRenderInventoryBadges();
+        }
+
+        function goToInventoryPage(page) {
+            currentInventoryPage = page;
+            filterAndRenderInventoryBadges();
+        }
+
+        function renderInventoryPagination(totalPages) {
+            const nav = document.getElementById('inventory-pagination-area');
+            const ul = document.getElementById('inventory-pagination');
+
+            if (totalPages <= 1) {
+                nav.style.display = 'none';
+                return;
+            }
+
+            nav.style.display = 'block';
+            let html = '';
+
+            html += `<li class="page-item ${currentInventoryPage === 1 ? 'disabled' : ''}">
+                <a class="page-link" href="javascript:void(0)" onclick="goToInventoryPage(${currentInventoryPage - 1})">‹</a></li>`;
+
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= currentInventoryPage - 1 && i <= currentInventoryPage + 1)) {
+                    html += `<li class="page-item ${i === currentInventoryPage ? 'active' : ''}">
+                        <a class="page-link" href="javascript:void(0)" onclick="goToInventoryPage(${i})">${i}</a></li>`;
+                } else if (i === currentInventoryPage - 2 || i === currentInventoryPage + 2) {
+                    html += `<li class="page-item disabled"><a class="page-link">...</a></li>`;
+                }
+            }
+
+            html += `<li class="page-item ${currentInventoryPage === totalPages ? 'disabled' : ''}">
+                <a class="page-link" href="javascript:void(0)" onclick="goToInventoryPage(${currentInventoryPage + 1})">›</a></li>`;
+
+            ul.innerHTML = html;
+        }
+
+        async function executeSellFromShop() {
+            bootstrap.Modal.getInstance(document.getElementById('shopActionModal')).hide();
+            const loadingOverlay = document.getElementById('loading-overlay');
+            if (loadingOverlay) loadingOverlay.classList.add('active');
+
+            try {
+                const { data, error } = await supabaseClient.rpc('sell_badge_v2', {
+                    p_user_id: currentUserId,
+                    p_badge_uuid: currentShopActionUUID
+                });
+
+                if (error) throw error;
+                if (!data.ok) throw new Error(data.error);
+
+                showNotice(`売却しました！ (🪙 +${data.sell_price.toLocaleString()})`, 'success');
+
+                if (typeof logActivity === 'function') {
+                    await logActivity(currentUserId, 'badge_sell', {
+                        amount: data.sell_price,
+                        badgeId: currentShopActionBadgeId,
+                        details: {
+                            badge_uuid: currentShopActionUUID,
+                            badge_name: currentShopActionBadgeName
+                        }
+                    });
+                }
+
+                await fetchBalances();
+                await loadInventory();
+
+            } catch (err) {
+                showNotice('エラーが発生しました: ' + err.message, 'error');
+            } finally {
+                if (loadingOverlay) loadingOverlay.classList.remove('active');
+            }
+        }
+
+        function confirmSellFromShop(uuid) {
+            const item = allInventoryBadges.find(i => i.uuid === uuid);
+            if (!item) {
+                console.error('Item not found for uuid:', uuid);
+                return;
+            }
+
+            const name = item.badge_name;
+            currentShopActionUUID = uuid;
+            currentShopActionBadgeId = item.badge_id || null;
+            currentShopActionBadgeName = name || '';
+            BadgeSellUI.renderSellConfirmModal(item, () => executeSellFromShop(), {
+                confirmLabel: '売却する',
+                confirmClass: 'btn-warning'
+            });
+        }
     </script>
 </body>
 

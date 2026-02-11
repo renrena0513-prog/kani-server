@@ -1899,7 +1899,7 @@ async function openBadgeModal(badge = null) {
         document.getElementById('badge-requirements').value = badge.requirements || '';
         document.getElementById('badge-sort-order').value = badge.sort_order || 0;
         document.getElementById('badge-sales-type').value = badge.sales_type || '';
-        document.getElementById('badge-gacha-eligible').checked = badge.is_gacha_eligible || false;
+        document.getElementById('badge-gacha-eligible').value = badge.is_gacha_eligible || '';
         document.getElementById('badge-shop-listed').checked = badge.is_shop_listed !== false; // デフォルト true
         document.getElementById('badge-owner').value = badge.discord_user_id || '';
         document.getElementById('badge-tags').value = Array.isArray(badge.tags) ? badge.tags.join('|') : '';
@@ -1911,7 +1911,7 @@ async function openBadgeModal(badge = null) {
         document.getElementById('badge-sales-type').value = '';
         document.getElementById('badge-label').value = '';
         document.getElementById('badge-tags').value = '';
-        document.getElementById('badge-gacha-eligible').checked = false;
+        document.getElementById('badge-gacha-eligible').value = '';
         document.getElementById('badge-shop-listed').checked = true; // 新規作成時はデフォルトで true
     }
     renderBadgeTagButtons();
@@ -2073,7 +2073,7 @@ async function saveBadge() {
             discord_user_id: document.getElementById('badge-owner').value || null,
             fixed_rarity_name: document.getElementById('badge-fixed-rarity').value.trim() || null,
             sales_type: document.getElementById('badge-sales-type').value || null,
-            is_gacha_eligible: document.getElementById('badge-gacha-eligible').checked,
+            is_gacha_eligible: document.getElementById('badge-gacha-eligible').value || null,
             is_shop_listed: document.getElementById('badge-shop-listed').checked,
             tags: tags.length ? tags : null
         };

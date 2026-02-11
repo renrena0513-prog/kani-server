@@ -1,11 +1,3 @@
--- 売却機能 (sell_badge_v2) の更新
--- 資産価値ランクの2段階下の価格で売却するロジック
--- ミュータントは3倍
-
--- 既存関数の削除（戻り値の型変更対応）
-DROP FUNCTION IF EXISTS public.sell_badge_v2(text, uuid);
-DROP FUNCTION IF EXISTS public.sell_badge_v2(text, text);
-
 CREATE OR REPLACE FUNCTION public.sell_badge_v2(p_user_id text, p_badge_uuid uuid)
  RETURNS json
  LANGUAGE plpgsql
@@ -98,7 +90,10 @@ BEGIN
     END IF;
 
     -- 売却実行
-    UPDATE public.profiles SET coins = coins + v_sell_price WHERE discord_user_id = v_target_user_id;
+    UPDATE public.profiles
+    SET coins = coins + v_sell_price,
+        total_assets = total_assets + v_sell_price
+    WHERE discord_user_id = v_target_user_id;
     DELETE FROM public.user_badges_new WHERE uuid = p_badge_uuid;
     
     RETURN json_build_object('ok', true, 'sell_price', v_sell_price);

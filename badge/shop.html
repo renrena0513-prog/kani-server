@@ -2479,7 +2479,7 @@
                     const creatorInfo = creatorMap.get(badge.discord_user_id) || { name: '不明', avatar: '' };
                     const isConvertible = badge.sales_type === '換金品';
                     const marketValue = isConvertible ? badge.price : valResult.marketValue;
-                    const sellValue = isConvertible ? badge.price : sellPrice;
+                    const sellValue = sellPrice;
                     const displayRarity = isConvertible ? '' : valResult.rarityName;
                     const displaySellRarity = isConvertible ? '' : sellRarity;
 
@@ -2529,8 +2529,8 @@
                     case 'variable':
                         return item.sales_type === '変動型';
                     case 'shrine':
-                        // ユーザー仕様: is_gacha_eligible が true ならお賽銭限定
-                        return item.is_gacha_eligible === true;
+                        // ユーザー仕様: is_gacha_eligible が設定済みならお賽銭限定
+                        return !!item.is_gacha_eligible;
                     case 'mutant':
                         return item.is_mutant;
                     case 'all':

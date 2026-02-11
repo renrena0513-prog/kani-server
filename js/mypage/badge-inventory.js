@@ -98,7 +98,7 @@ async function loadInventory() {
             const creatorInfo = inventoryCreatorMap.get(badge.discord_user_id) || { name: '不明', avatar: '' };
             const isConvertible = badge.sales_type === '換金品';
             const marketValue = isConvertible ? badge.price : valResult.marketValue;
-            const sellValue = isConvertible ? badge.price : sellPrice;
+            const sellValue = sellPrice;
             const displayRarity = isConvertible ? '' : valResult.rarityName;
             const displaySellRarity = isConvertible ? '' : sellRarity;
 
