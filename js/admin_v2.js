@@ -2111,14 +2111,25 @@ async function handleBulkBadgeUpload(event) {
             const fileName = `${Math.random().toString(36).substring(2)}.${file.name.split('.').pop()}`;
             await supabaseClient.storage.from('badges').upload(fileName, file);
             const { data } = supabaseClient.storage.from('badges').getPublicUrl(fileName);
-            await supabaseClient.from('badges').insert([{
+            const badgeData = {
                 name: file.name.replace(/\.[^/.]+$/, ''),
                 image_url: data.publicUrl,
+                description: null,
                 label: null,
                 tags: null,
+                price: null,
+                requirements: null,
+                remaining_count: null,
+                sort_order: null,
+                discord_user_id: null,
+                fixed_rarity_name: null,
+                sales_type: null,
                 is_gacha_eligible: null,
-                gacha_weight: 1
-            }]);
+                gacha_weight: null,
+                is_shop_listed: null
+            };
+            const { error } = await supabaseClient.from('badges').insert([badgeData]);
+            if (error) throw error;
         } catch (err) { console.error(err); }
     }
     toggleLoading(false);
@@ -2230,7 +2241,21 @@ async function handleBadgeCSVImport(event) {
                 return;
             }
 
-            const headers = rows[0];
+            const headerMap = {
+                'gacha weight': 'gacha_weight',
+                'gacha_weight': 'gacha_weight',
+                'gacha-weight': 'gacha_weight',
+                'gachaeligible': 'is_gacha_eligible',
+                'gacha_eligible': 'is_gacha_eligible',
+                'gacha-eligible': 'is_gacha_eligible'
+            };
+            const normalizeHeader = (raw) => {
+                const cleaned = String(raw || '').trim().replace(/^"|"$/g, '');
+                if (!cleaned) return '';
+                const key = cleaned.toLowerCase().replace(/\s+/g, ' ').trim();
+                return headerMap[key] || cleaned;
+            };
+            const headers = rows[0].map(normalizeHeader);
             const items = [];
 
             for (let i = 1; i < rows.length; i++) {
@@ -2238,6 +2263,7 @@ async function handleBadgeCSVImport(event) {
                 const obj = {};
 
                 headers.forEach((h, idx) => {
+                    if (!h) return;
                     const value = values[idx] || '';
                     // 数値型カラムの変換
                     if (['price', 'remaining_count', 'sort_order'].includes(h)) {
@@ -2441,6 +2467,14 @@ async function loadBadgesCache() {
     const { data } = await supabaseClient.from('badges').select('id, name, image_url');
     badgesCache = {};
     if (data) data.forEach(b => badgesCache[b.id] = { name: b.name, image: b.image_url });
+}
+
+function initLogActionButtons() {
+    const container = document.getElementById('log-action-buttons');
+    if (!container) return;
+    loadLogActionTypes()
+        .then(buildLogActionButtons)
+        .catch(err => console.error('ログ種別の初期化に失敗:', err));
 }
 
 function buildLogActionButtons() {
