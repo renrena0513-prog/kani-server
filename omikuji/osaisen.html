@@ -316,6 +316,52 @@
         }
 
         #loading-overlay.active { display: flex; }
+
+        .gacha-hero {
+            width: min(720px, 92vw);
+            border-radius: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.35);
+        }
+
+        .gacha-hero img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .gacha-hero-emoji {
+            font-size: clamp(3rem, 9vw, 7rem);
+            padding: 28px 12px;
+            text-align: center;
+            color: #fff;
+            text-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .gacha-main-btn {
+            font-size: 1.2rem;
+            font-weight: 800;
+            padding: 16px 46px;
+            border-radius: 999px;
+            border: none;
+            color: #2b0c00;
+            background: linear-gradient(135deg, #ffd86b 0%, #ff9f1a 100%);
+            box-shadow: 0 18px 35px rgba(255, 154, 33, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+            transition: transform 0.15s ease, box-shadow 0.2s ease;
+        }
+
+        .gacha-main-btn:hover {
+            transform: translateY(-2px) scale(1.01);
+            box-shadow: 0 24px 40px rgba(255, 154, 33, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+        }
+
+        .gacha-main-btn:disabled {
+            opacity: 0.6;
+            box-shadow: none;
+            transform: none;
+        }
     </style>
 </head>
 
@@ -343,11 +389,11 @@
             <h1 class="page-header display-4 fw-bold">⛩️ お賽銭箱</h1>
             <p class="text-white-50">チケットガチャから始まります。ガチャ種別はいつでも切替できます。</p>
             <div class="d-flex flex-column align-items-center gap-3 mt-3">
-                <button class="btn btn-sm btn-outline-dark" style="border-radius: 20px; font-weight: bold;"
-                    onclick="openPriceListModal()">
-                    📊 レアリティ価格表を見る
-                </button>
                 <div class="d-inline-flex flex-wrap justify-content-center gap-3 mt-1">
+                    <button class="btn btn-sm btn-outline-dark" style="border-radius: 20px; font-weight: bold;"
+                        onclick="openPriceListModal()">
+                        📊 レアリティ価格表を見る
+                    </button>
                     <button class="btn btn-sm btn-outline-primary" style="border-radius: 20px; font-weight: bold;"
                         onclick="openInventoryModal()">
                         🎒 所持バッジ
@@ -394,9 +440,9 @@
             <div id="osaisen-box-area" class="osaisen-box-wrapper mx-auto mb-4"
                 style="position: relative; width: fit-content;">
                 <div id="coin" class="coin-animation">🪙</div>
-                <div id="osaisen-box" style="cursor: default;">
-                    <img id="osaisen-badge" src="../images/placeholder-badge.png" alt="排出バッジ"
-                        style="width: min(480px, 90vw); height: min(480px, 90vw); object-fit: contain;">
+                <div id="osaisen-box" class="gacha-hero" style="cursor: default;">
+                    <img id="gacha-hero-image" src="../images/妖怪ガチャバナー.png" alt="妖怪ガチャ">
+                    <div id="gacha-hero-emoji" class="gacha-hero-emoji" style="display:none;">📘✨</div>
                 </div>
             </div>
 
@@ -421,7 +467,6 @@
                         <div class="payment-card">
                             <span class="fs-3">🎟️</span>
                             <span class="fw-bold">満願符 1枚</span>
-                            <span class="ticket-badge">バッジ確定</span>
                         </div>
                     </label>
                 </div>
@@ -440,8 +485,7 @@
                             onclick="setDrawMode('single')">1回</button>
                         <button class="draw-mode-btn" data-mode="ten" onclick="setDrawMode('ten')">10連</button>
                     </div>
-                    <div id="draw-mode-note" class="draw-mode-note">ミュータント確率 3%</div>
-                    <button id="draw-btn" class="gacha-btn" onclick="handleDraw()">
+                    <button id="draw-btn" class="gacha-btn gacha-main-btn" onclick="handleDraw()">
                         🙏 お賽銭を奉納する
                     </button>
                 </div>
@@ -551,7 +595,7 @@
                     <small class="text-muted w-100 text-start">
                         ※ 変動型バッジの「ランク」は、基本ランク + (流通数 - 1) で決まります。<br>
                         ※ 売却価格は、現在のランクの2段階下の価格になります（下限★1）。<br>
-                        ※ ミュータントはバッジ入手時3％の確率で変異し、売却価格が3倍になります。
+                        ※ ミュータントは売却価格が3倍になります。
                     </small>
                     <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">閉じる</button>
                 </div>
@@ -646,8 +690,6 @@
         let currentUserId = null;
         let isDrawing = false;
         let provisionData = null;
-        let osaisenBadgeList = [];
-        let osaisenBadgeTimer = null;
         let currentDrawMode = 'single';
         let rarityValueMap = {};
         let lastDrawnBadgeUuid = null;
@@ -792,10 +834,10 @@
             applyGachaTypeUI();
             updateGachaPriceUI();
             await fetchGachaCoinPrice();
-            await initOsaisenBadgeShowcase();
             if (document.getElementById('badge-pool-area').style.display === 'block') {
                 await fetchBadgePool();
             }
+            updateGachaHero();
         }
 
         function syncPaymentRadios() {
@@ -816,7 +858,6 @@
             if (!allowed.includes(type)) return;
             currentPaymentType = type;
             updateGachaPriceUI();
-            initOsaisenBadgeShowcase();
             if (document.getElementById('badge-pool-area').style.display === 'block') {
                 fetchBadgePool();
             }
@@ -837,7 +878,7 @@
             if (currentGachaType === '妖怪') {
                 if (note) {
                     note.textContent = currentPaymentType === 'mangan_ticket'
-                        ? '満願符1枚で奉納できます（バッジ確定）'
+                        ? '満願符1枚で奉納できます'
                         : '祈願符1枚で奉納できます';
                 }
             } else {
@@ -975,36 +1016,19 @@
             }
         }
 
-        async function initOsaisenBadgeShowcase() {
-            try {
-                const { data, error } = await supabaseClient
-                    .from('badges')
-                    .select('id, image_url, sales_type')
-                    .eq('is_gacha_eligible', currentGachaType);
-                if (error) throw error;
+        function updateGachaHero() {
+            const img = document.getElementById('gacha-hero-image');
+            const emoji = document.getElementById('gacha-hero-emoji');
+            if (!img || !emoji) return;
 
-                let pool = (data || []).filter(b => b.image_url);
-                if (currentPaymentType === 'mangan_ticket') {
-                    pool = pool.filter(b => b.sales_type !== '換金品');
-                }
-                osaisenBadgeList = pool;
-                if (osaisenBadgeList.length === 0) return;
-
-                const imgEl = document.getElementById('osaisen-badge');
-                if (!imgEl) return;
-                imgEl.classList.add('badge-fade');
-
-                let idx = Math.floor(Math.random() * osaisenBadgeList.length);
-                imgEl.src = osaisenBadgeList[idx].image_url;
-
-                if (osaisenBadgeTimer) clearInterval(osaisenBadgeTimer);
-                osaisenBadgeTimer = setInterval(() => {
-                    if (osaisenBadgeList.length === 0) return;
-                    idx = (idx + 1) % osaisenBadgeList.length;
-                    imgEl.src = osaisenBadgeList[idx].image_url;
-                }, 5000);
-            } catch (err) {
-                console.error('バッジ表示エラー:', err);
+            if (currentGachaType === '妖怪') {
+                img.style.display = 'block';
+                img.src = '../images/妖怪ガチャバナー.png';
+                emoji.style.display = 'none';
+            } else {
+                img.style.display = 'none';
+                emoji.style.display = 'block';
+                emoji.textContent = '📘✨';
             }
         }
 
