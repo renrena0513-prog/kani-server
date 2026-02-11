@@ -982,6 +982,12 @@
                     .map(t => t.rarity_name)
                     .reverse();
                 if (grouped['換金品']) rarityOrder.unshift('換金品');
+                const rarityRankMap = {};
+                thresholds
+                    .sort((a, b) => a.threshold_value - b.threshold_value)
+                    .forEach((t, idx) => {
+                        rarityRankMap[t.rarity_name] = idx + 1;
+                    });
 
                 const listEl = document.getElementById('badge-pool-list');
                 let html = '';
@@ -995,11 +1001,15 @@
                     }, 0);
                     const rarityPercent = totalWeight > 0 ? (rarityWeight / totalWeight) * 100 : 0;
                     const rarityClass = getRarityClass(rarity);
+                    const rarityRank = rarityRankMap[rarity];
+                    const rarityLabel = rarity === '換金品'
+                        ? '換金品'
+                        : `レアリティ${rarityRank}（${rarity}）`;
 
                     html += `
                         <div class="mb-3">
                             <div class="text-start mb-2">
-                                <span class="badge ${rarityClass} text-white">${rarity}</span>
+                                <span class="badge ${rarityClass} text-white">${rarityLabel}</span>
                                 <span class="small text-white-50">(${badgesInRarity.length}種 / 合計 ${rarityPercent.toFixed(2)}%)</span>
                             </div>
                             <div class="d-flex flex-wrap gap-2 justify-content-start">
