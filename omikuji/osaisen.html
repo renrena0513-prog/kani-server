@@ -969,25 +969,23 @@
 
                 const grouped = {};
                 let totalWeight = 0;
+                const baseName = (name) => (name || '').replace(/\s*\d+$/, '');
+
                 badges.forEach(b => {
                     const weight = Number(b.gacha_weight ?? 1);
                     totalWeight += weight > 0 ? weight : 0;
                     const rarity = b.sales_type === '換金品' ? '換金品' : getDynamicRarity(b);
-                    if (!grouped[rarity]) grouped[rarity] = [];
-                    grouped[rarity].push(b);
+                    const groupKey = rarity === '換金品' ? '換金品' : baseName(rarity);
+                    if (!grouped[groupKey]) grouped[groupKey] = [];
+                    grouped[groupKey].push({ ...b, _rarity: rarity });
                 });
 
                 const rarityOrder = [...thresholds]
                     .sort((a, b) => a.threshold_value - b.threshold_value)
-                    .map(t => t.rarity_name)
+                    .map(t => baseName(t.rarity_name))
+                    .filter((v, i, arr) => v && arr.indexOf(v) === i)
                     .reverse();
                 if (grouped['換金品']) rarityOrder.unshift('換金品');
-                const rarityRankMap = {};
-                thresholds
-                    .sort((a, b) => a.threshold_value - b.threshold_value)
-                    .forEach((t, idx) => {
-                        rarityRankMap[t.rarity_name] = idx + 1;
-                    });
 
                 const listEl = document.getElementById('badge-pool-list');
                 let html = '';
@@ -1000,11 +998,9 @@
                         return sum + (w > 0 ? w : 0);
                     }, 0);
                     const rarityPercent = totalWeight > 0 ? (rarityWeight / totalWeight) * 100 : 0;
-                    const rarityClass = getRarityClass(rarity);
-                    const rarityRank = rarityRankMap[rarity];
-                    const rarityLabel = rarity === '換金品'
-                        ? '換金品'
-                        : `レアリティ${rarityRank}（${rarity}）`;
+                    const representative = badgesInRarity[0];
+                    const rarityClass = getRarityClass(representative?._rarity || rarity);
+                    const rarityLabel = rarity;
 
                     html += `
                         <div class="mb-3">
