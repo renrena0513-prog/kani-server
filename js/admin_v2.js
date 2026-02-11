@@ -1900,12 +1900,13 @@ async function openBadgeModal(badge = null) {
         document.getElementById('badge-sort-order').value = badge.sort_order || 0;
         document.getElementById('badge-sales-type').value = badge.sales_type || '';
         document.getElementById('badge-gacha-eligible').value = badge.is_gacha_eligible || '';
+        document.getElementById('badge-gacha-weight').value = badge.gacha_weight ?? 1;
         document.getElementById('badge-shop-listed').checked = badge.is_shop_listed !== false; // デフォルト true
         document.getElementById('badge-owner').value = badge.discord_user_id || '';
         document.getElementById('badge-tags').value = Array.isArray(badge.tags) ? badge.tags.join('|') : '';
     } else {
         document.getElementById('badge-id').value = '';
-        document.getElementById('badge-weight').value = '';
+        document.getElementById('badge-gacha-weight').value = 1;
         document.getElementById('badge-price').value = 0;
         document.getElementById('badge-sort-order').value = 0;
         document.getElementById('badge-sales-type').value = '';
@@ -2074,6 +2075,7 @@ async function saveBadge() {
             fixed_rarity_name: document.getElementById('badge-fixed-rarity').value.trim() || null,
             sales_type: document.getElementById('badge-sales-type').value || null,
             is_gacha_eligible: document.getElementById('badge-gacha-eligible').value || null,
+            gacha_weight: parseFloat(document.getElementById('badge-gacha-weight').value) || 1,
             is_shop_listed: document.getElementById('badge-shop-listed').checked,
             tags: tags.length ? tags : null
         };
@@ -2113,7 +2115,9 @@ async function handleBulkBadgeUpload(event) {
                 name: file.name.replace(/\.[^/.]+$/, ''),
                 image_url: data.publicUrl,
                 label: null,
-                tags: null
+                tags: null,
+                is_gacha_eligible: null,
+                gacha_weight: 1
             }]);
         } catch (err) { console.error(err); }
     }
@@ -2127,7 +2131,7 @@ async function exportBadgesToCSV() {
     const headers = [
         'id', 'name', 'description', 'label', 'tags', 'image_url', 'price',
         'requirements', 'remaining_count', 'sort_order', 'discord_user_id',
-        'fixed_rarity_name', 'sales_type', 'is_gacha_eligible', 'is_shop_listed'
+        'fixed_rarity_name', 'sales_type', 'is_gacha_eligible', 'gacha_weight', 'is_shop_listed'
     ];
     const csvRows = [headers.join(',')];
     badges.forEach(b => csvRows.push(headers.map(h => {
@@ -2239,9 +2243,26 @@ async function handleBadgeCSVImport(event) {
                     if (['price', 'remaining_count', 'sort_order'].includes(h)) {
                         obj[h] = value ? parseInt(value) : null;
                     }
+                    else if (h === 'gacha_weight') {
+                        obj[h] = value ? parseFloat(value) : null;
+                    }
                     // ブール型カラムの変換
-                    else if (h === 'is_gacha_eligible' || h === 'is_shop_listed') {
+                    else if (h === 'is_shop_listed') {
                         obj[h] = value.toUpperCase() === 'TRUE' || value === '1';
+                    }
+                    // ガチャ対象（テキスト）
+                    else if (h === 'is_gacha_eligible') {
+                        const raw = value.trim();
+                        if (!raw) {
+                            obj[h] = null;
+                        } else if (['true', '1', 'yes'].includes(raw.toLowerCase())) {
+                            // 旧CSV互換: true の場合は妖怪として扱う
+                            obj[h] = '妖怪';
+                        } else if (['false', '0', 'no'].includes(raw.toLowerCase())) {
+                            obj[h] = null;
+                        } else {
+                            obj[h] = raw;
+                        }
                     }
                     // タグ配列
                     else if (h === 'tags') {

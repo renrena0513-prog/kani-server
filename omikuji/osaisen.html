@@ -413,7 +413,6 @@
                         <div class="payment-card">
                             <span class="fs-3">🎫</span>
                             <span class="fw-bold">祈願符 1枚</span>
-                            <span class="ticket-badge">妖怪ガチャ専用</span>
                         </div>
                     </label>
                     <label class="payment-option">
@@ -422,7 +421,7 @@
                         <div class="payment-card">
                             <span class="fs-3">🎟️</span>
                             <span class="fw-bold">満願符 1枚</span>
-                            <span class="ticket-badge">換金品は除外</span>
+                            <span class="ticket-badge">バッジ確定</span>
                         </div>
                     </label>
                 </div>
@@ -658,6 +657,7 @@
         let currentGachaType = '妖怪';
         let currentPaymentType = 'gacha_ticket';
         let gachaCoinPrice = null;
+        let gachaConfigMap = new Map();
         let cachedThresholds = [];
 
         document.addEventListener('DOMContentLoaded', async function () {
@@ -673,6 +673,7 @@
             currentUserId = user.user_metadata.provider_id;
 
             cachedThresholds = await safeFetchThresholds();
+            await fetchGachaConfigs();
             await fetchBalances();
             applyGachaTypeUI();
             await refreshGachaContext();
@@ -734,10 +735,31 @@
             }
         }
 
+        async function fetchGachaConfigs() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('gacha_configs')
+                    .select('gacha_type, allowed_payment_types, coin_price');
+                if (error) throw error;
+                gachaConfigMap = new Map((data || []).map(row => [row.gacha_type, row]));
+            } catch (err) {
+                console.error('ガチャ設定取得エラー:', err);
+                gachaConfigMap = new Map();
+            }
+        }
+
         function applyGachaTypeUI() {
+            const availableTypes = Array.from(gachaConfigMap.keys());
             document.querySelectorAll('.gacha-tab-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.type === currentGachaType);
+                const type = btn.dataset.type;
+                const enabled = availableTypes.length === 0 || availableTypes.includes(type);
+                btn.style.display = enabled ? '' : 'none';
+                btn.classList.toggle('active', enabled && type === currentGachaType);
             });
+
+            if (availableTypes.length > 0 && !availableTypes.includes(currentGachaType)) {
+                currentGachaType = availableTypes[0];
+            }
 
             const noteEl = document.getElementById('gacha-type-note');
             if (noteEl) {
@@ -748,20 +770,22 @@
                 }
             }
 
+            const cfg = gachaConfigMap.get(currentGachaType);
+            const allowed = cfg?.allowed_payment_types || [];
             const ticketArea = document.getElementById('ticket-payment-area');
             const coinArea = document.getElementById('coin-payment-area');
-            if (currentGachaType === '妖怪') {
-                if (ticketArea) ticketArea.style.display = 'flex';
-                if (coinArea) coinArea.style.display = 'none';
-                if (!['gacha_ticket', 'mangan_ticket'].includes(currentPaymentType)) {
-                    currentPaymentType = 'gacha_ticket';
-                }
-                syncPaymentRadios();
-            } else {
-                if (ticketArea) ticketArea.style.display = 'none';
-                if (coinArea) coinArea.style.display = 'block';
-                currentPaymentType = 'coin';
+            const gachaLabel = document.querySelector('input[name="payment"][value="gacha_ticket"]')?.closest('label');
+            const manganLabel = document.querySelector('input[name="payment"][value="mangan_ticket"]')?.closest('label');
+
+            if (gachaLabel) gachaLabel.style.display = allowed.includes('gacha_ticket') ? '' : 'none';
+            if (manganLabel) manganLabel.style.display = allowed.includes('mangan_ticket') ? '' : 'none';
+            if (ticketArea) ticketArea.style.display = (allowed.includes('gacha_ticket') || allowed.includes('mangan_ticket')) ? 'flex' : 'none';
+            if (coinArea) coinArea.style.display = allowed.includes('coin') ? 'block' : 'none';
+
+            if (!allowed.includes(currentPaymentType)) {
+                currentPaymentType = allowed[0] || 'coin';
             }
+            syncPaymentRadios();
         }
 
         async function refreshGachaContext() {
@@ -783,14 +807,13 @@
         function setGachaType(type) {
             if (!type) return;
             currentGachaType = type;
-            if (currentGachaType === 'じゃれ本') {
-                currentPaymentType = 'coin';
-            }
             refreshGachaContext();
         }
 
         function setPaymentType(type) {
-            if (currentGachaType !== '妖怪') return;
+            const cfg = gachaConfigMap.get(currentGachaType);
+            const allowed = cfg?.allowed_payment_types || [];
+            if (!allowed.includes(type)) return;
             currentPaymentType = type;
             updateGachaPriceUI();
             initOsaisenBadgeShowcase();
@@ -814,7 +837,7 @@
             if (currentGachaType === '妖怪') {
                 if (note) {
                     note.textContent = currentPaymentType === 'mangan_ticket'
-                        ? '満願符1枚で奉納できます（換金品は排出除外）'
+                        ? '満願符1枚で奉納できます（バッジ確定）'
                         : '祈願符1枚で奉納できます';
                 }
             } else {
@@ -830,7 +853,7 @@
         }
 
         async function fetchGachaCoinPrice() {
-            if (currentGachaType !== 'じゃれ本') return;
+            if (!gachaConfigMap.get(currentGachaType)?.allowed_payment_types?.includes('coin')) return;
             try {
                 const { data, error } = await supabaseClient
                     .from('gacha_configs')
