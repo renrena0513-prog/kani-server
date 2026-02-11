@@ -969,22 +969,49 @@
 
                 const grouped = {};
                 let totalWeight = 0;
-                const baseName = (name) => (name || '').replace(/\s*\d+$/, '');
+                const rarityStarMap = {};
+                thresholds
+                    .sort((a, b) => a.threshold_value - b.threshold_value)
+                    .forEach((t, idx) => {
+                        rarityStarMap[t.rarity_name] = idx + 1;
+                    });
+
+                const getRarityGroupLabel = (star) => {
+                    if (!star || star <= 0) return '不明';
+                    if (star <= 5) return '★1〜★5 並品';
+                    if (star <= 10) return '★6〜★10 名品';
+                    if (star <= 15) return '★11〜★15 逸品';
+                    if (star <= 20) return '★16〜★20 絶品';
+                    if (star <= 25) return '★21〜★25 至高';
+                    if (star <= 30) return '★26〜★30 国宝';
+                    if (star <= 35) return '★31〜★35 秘宝';
+                    if (star <= 40) return '★36〜★40 神秘';
+                    if (star <= 45) return '★41〜★45 英雄';
+                    return '★46 伝説';
+                };
 
                 badges.forEach(b => {
                     const weight = Number(b.gacha_weight ?? 1);
                     totalWeight += weight > 0 ? weight : 0;
                     const rarity = b.sales_type === '換金品' ? '換金品' : getDynamicRarity(b);
-                    const groupKey = rarity === '換金品' ? '換金品' : baseName(rarity);
+                    const star = rarityStarMap[rarity];
+                    const groupKey = rarity === '換金品' ? '換金品' : getRarityGroupLabel(star);
                     if (!grouped[groupKey]) grouped[groupKey] = [];
-                    grouped[groupKey].push({ ...b, _rarity: rarity });
+                    grouped[groupKey].push({ ...b, _rarity: rarity, _star: star });
                 });
 
-                const rarityOrder = [...thresholds]
-                    .sort((a, b) => a.threshold_value - b.threshold_value)
-                    .map(t => baseName(t.rarity_name))
-                    .filter((v, i, arr) => v && arr.indexOf(v) === i)
-                    .reverse();
+                const rarityOrder = [
+                    '★46 伝説',
+                    '★41〜★45 英雄',
+                    '★36〜★40 神秘',
+                    '★31〜★35 秘宝',
+                    '★26〜★30 国宝',
+                    '★21〜★25 至高',
+                    '★16〜★20 絶品',
+                    '★11〜★15 逸品',
+                    '★6〜★10 名品',
+                    '★1〜★5 並品'
+                ];
                 if (grouped['換金品']) rarityOrder.unshift('換金品');
 
                 const listEl = document.getElementById('badge-pool-list');
