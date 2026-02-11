@@ -183,6 +183,21 @@
             margin-top: 10px;
         }
 
+        .draw-option-btn {
+            border-radius: 999px;
+            font-weight: 700;
+            padding: 8px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+        }
+
+        .draw-option-btn.active {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255, 255, 255, 0.7);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+        }
+
         .ten-result-item {
             cursor: pointer;
             border-radius: 10px;
@@ -476,39 +491,19 @@
                 <p class="text-muted" id="gacha-price-note">チケットで奉納できます。</p>
             </div>
 
-            <div class="mb-4 d-flex justify-content-center" id="payment-area">
-                <div id="ticket-payment-area" class="d-flex flex-wrap justify-content-center gap-3">
-                    <label class="payment-option">
-                        <input type="radio" name="payment" value="gacha_ticket" checked
-                            onchange="setPaymentType('gacha_ticket')">
-                        <div class="payment-card">
-                            <span class="fs-3">🎫</span>
-                            <span class="fw-bold">祈願符 1枚</span>
-                        </div>
-                    </label>
-                    <label class="payment-option">
-                        <input type="radio" name="payment" value="mangan_ticket"
-                            onchange="setPaymentType('mangan_ticket')">
-                        <div class="payment-card">
-                            <span class="fs-3">🎟️</span>
-                            <span class="fw-bold">満願符 1枚</span>
-                        </div>
-                    </label>
-                </div>
-                <div id="coin-payment-area" style="display: none;">
-                    <div class="payment-card">
-                        <span class="fs-3">🪙</span>
-                        <span class="fw-bold" id="coin-price-label">コイン - 枚</span>
-                    </div>
-                </div>
-            </div>
-
             <div class="mt-2" id="draw-area">
                 <div class="d-flex flex-column align-items-center gap-3">
-                    <div class="draw-mode-toggle">
-                        <button class="draw-mode-btn active" data-mode="single"
-                            onclick="setDrawMode('single')">1回</button>
-                        <button class="draw-mode-btn" data-mode="ten" onclick="setDrawMode('ten')">10連</button>
+                    <div class="d-flex flex-wrap justify-content-center gap-2" id="draw-options">
+                        <button class="draw-option-btn active" data-payment="gacha_ticket" data-count="1"
+                            onclick="setDrawOption('gacha_ticket', 1)">🎫 祈願符 1枚</button>
+                        <button class="draw-option-btn" data-payment="gacha_ticket" data-count="10"
+                            onclick="setDrawOption('gacha_ticket', 10)">🎫 祈願符 10枚</button>
+                        <button class="draw-option-btn" data-payment="mangan_ticket" data-count="1"
+                            onclick="setDrawOption('mangan_ticket', 1)">🎟️ 満願符 1枚</button>
+                        <button class="draw-option-btn" data-payment="coin" data-count="1" id="coin-btn-1"
+                            onclick="setDrawOption('coin', 1)">🪙 コイン 1回</button>
+                        <button class="draw-option-btn" data-payment="coin" data-count="10" id="coin-btn-10"
+                            onclick="setDrawOption('coin', 10)">🪙 コイン 10回</button>
                     </div>
                     <button id="draw-btn" class="gacha-btn gacha-main-btn" onclick="handleDraw()">
                         🙏 お賽銭を奉納する
@@ -715,7 +710,7 @@
         let currentUserId = null;
         let isDrawing = false;
         let provisionData = null;
-        let currentDrawMode = 'single';
+        let currentDrawCount = 1;
         let rarityValueMap = {};
         let lastDrawnBadgeUuid = null;
         let lastDrawnBadgeMeta = null;
@@ -839,20 +834,22 @@
 
             const cfg = gachaConfigMap.get(currentGachaType);
             const allowed = cfg?.allowed_payment_types || [];
-            const ticketArea = document.getElementById('ticket-payment-area');
-            const coinArea = document.getElementById('coin-payment-area');
-            const gachaLabel = document.querySelector('input[name="payment"][value="gacha_ticket"]')?.closest('label');
-            const manganLabel = document.querySelector('input[name="payment"][value="mangan_ticket"]')?.closest('label');
-
-            if (gachaLabel) gachaLabel.style.display = allowed.includes('gacha_ticket') ? '' : 'none';
-            if (manganLabel) manganLabel.style.display = allowed.includes('mangan_ticket') ? '' : 'none';
-            if (ticketArea) ticketArea.style.display = (allowed.includes('gacha_ticket') || allowed.includes('mangan_ticket')) ? 'flex' : 'none';
-            if (coinArea) coinArea.style.display = allowed.includes('coin') ? 'block' : 'none';
+            const options = document.querySelectorAll('.draw-option-btn');
+            options.forEach(btn => {
+                const payment = btn.dataset.payment;
+                const count = Number(btn.dataset.count || 1);
+                const allowedPayment = allowed.includes(payment);
+                const allowedCount = !(payment === 'mangan_ticket' && count === 10);
+                btn.style.display = allowedPayment && allowedCount ? '' : 'none';
+            });
 
             if (!allowed.includes(currentPaymentType)) {
                 currentPaymentType = allowed[0] || 'coin';
             }
-            syncPaymentRadios();
+            if (currentPaymentType === 'mangan_ticket' && currentDrawCount === 10) {
+                currentDrawCount = 1;
+            }
+            syncDrawOptionButtons();
         }
 
         async function refreshGachaContext() {
@@ -865,9 +862,11 @@
             updateGachaHero();
         }
 
-        function syncPaymentRadios() {
-            document.querySelectorAll('input[name="payment"]').forEach(radio => {
-                radio.checked = radio.value === currentPaymentType;
+        function syncDrawOptionButtons() {
+            document.querySelectorAll('.draw-option-btn').forEach(btn => {
+                const payment = btn.dataset.payment;
+                const count = Number(btn.dataset.count || 1);
+                btn.classList.toggle('active', payment === currentPaymentType && count === currentDrawCount);
             });
         }
 
@@ -877,44 +876,40 @@
             refreshGachaContext();
         }
 
-        function setPaymentType(type) {
+        function setDrawOption(paymentType, count) {
             const cfg = gachaConfigMap.get(currentGachaType);
             const allowed = cfg?.allowed_payment_types || [];
-            if (!allowed.includes(type)) return;
-            currentPaymentType = type;
-            updateGachaPriceUI();
-            if (document.getElementById('badge-pool-area').style.display === 'block') {
-                fetchBadgePool();
-            }
-        }
-
-        function setDrawMode(mode) {
-            currentDrawMode = mode;
-            document.querySelectorAll('.draw-mode-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.mode === mode);
-            });
+            if (!allowed.includes(paymentType)) return;
+            if (paymentType === 'mangan_ticket' && count === 10) return;
+            currentPaymentType = paymentType;
+            currentDrawCount = count;
+            syncDrawOptionButtons();
             updateGachaPriceUI();
         }
 
         function updateGachaPriceUI() {
             const note = document.getElementById('gacha-price-note');
-            const coinLabel = document.getElementById('coin-price-label');
+            const coinBtn1 = document.getElementById('coin-btn-1');
+            const coinBtn10 = document.getElementById('coin-btn-10');
 
             if (currentGachaType === '妖怪') {
                 if (note) {
-                    note.textContent = currentPaymentType === 'mangan_ticket'
-                        ? '満願符1枚で奉納できます'
-                        : '祈願符1枚で奉納できます';
+                    if (currentPaymentType === 'mangan_ticket') {
+                        note.textContent = '満願符1枚で奉納できます';
+                    } else {
+                        note.textContent = currentDrawCount === 10 ? '祈願符10枚で奉納できます' : '祈願符1枚で奉納できます';
+                    }
                 }
             } else {
                 if (!gachaCoinPrice || gachaCoinPrice < 1) {
-                    if (coinLabel) coinLabel.textContent = 'コイン 未設定';
                     if (note) note.textContent = 'コイン価格が未設定です';
                     return;
                 }
-                const price = currentDrawMode === 'ten' ? gachaCoinPrice * 10 : gachaCoinPrice;
-                if (coinLabel) coinLabel.textContent = `コイン ${price.toLocaleString()}枚`;
-                if (note) note.textContent = `コイン${price.toLocaleString()}枚で奉納できます。`;
+                const price1 = gachaCoinPrice;
+                const price10 = gachaCoinPrice * 10;
+                if (coinBtn1) coinBtn1.textContent = `🪙 コイン ${price1.toLocaleString()}枚`;
+                if (coinBtn10) coinBtn10.textContent = `🪙 コイン ${price10.toLocaleString()}枚`;
+                if (note) note.textContent = `コイン${(currentDrawCount === 10 ? price10 : price1).toLocaleString()}枚で奉納できます。`;
             }
         }
 
@@ -1106,7 +1101,7 @@
         async function handleDraw() {
             if (isDrawing) return;
 
-            const count = currentDrawMode === 'ten' ? 10 : 1;
+            const count = currentDrawCount || 1;
             let paymentType = currentPaymentType;
             if (currentGachaType === 'じゃれ本') {
                 paymentType = 'coin';
