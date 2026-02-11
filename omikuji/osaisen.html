@@ -936,8 +936,8 @@
                 }
                 const price1 = gachaCoinPrice;
                 const price10 = gachaCoinPrice * 10;
-                if (coinBtn1) coinBtn1.textContent = `🪙 コイン ${price1.toLocaleString()}枚`;
-                if (coinBtn10) coinBtn10.textContent = `🪙 コイン ${price10.toLocaleString()}枚`;
+                if (coinBtn1) coinBtn1.textContent = `🪙 コイン ${price1.toLocaleString()}枚 1回祈る`;
+                if (coinBtn10) coinBtn10.textContent = `🪙 コイン ${price10.toLocaleString()}枚 10回祈る`;
                 if (note) note.textContent = `コイン${(currentDrawCount === 10 ? price10 : price1).toLocaleString()}枚で奉納できます。`;
             }
         }
@@ -1158,6 +1158,19 @@
                 showNotice('コイン価格が未設定です', 'warning');
                 return;
             }
+
+            const confirmLabel = (() => {
+                if (paymentType === 'coin') {
+                    const price = gachaCoinPrice ? gachaCoinPrice * count : 0;
+                    return `コイン${price.toLocaleString()}枚を消費します。よろしいですか？`;
+                }
+                if (paymentType === 'mangan_ticket') {
+                    return `満願符${count}枚を消費します。よろしいですか？`;
+                }
+                return `祈願符${count}枚を消費します。よろしいですか？`;
+            })();
+
+            if (!confirm(confirmLabel)) return;
 
             isDrawing = true;
 
