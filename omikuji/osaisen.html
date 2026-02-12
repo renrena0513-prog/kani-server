@@ -952,6 +952,10 @@
             currentDrawCount = count;
             syncDrawOptionButtons();
             updateGachaPriceUI();
+            const area = document.getElementById('badge-pool-area');
+            if (area && area.style.display === 'block') {
+                fetchBadgePool();
+            }
         }
 
         function setGachaLoadingState(loading) {
