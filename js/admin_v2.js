@@ -2138,14 +2138,25 @@ async function handleBulkBadgeUpload(event) {
 
 async function exportBadgesToCSV() {
     const { data: badges } = await supabaseClient.from('badges').select('*');
-    // 全カラムを含める
     const headers = [
-        'id', 'name', 'description', 'label', 'tags', 'image_url', 'price',
-        'requirements', 'remaining_count', 'sort_order', 'discord_user_id',
-        'fixed_rarity_name', 'sales_type', 'is_gacha_eligible', 'gacha_weight', 'is_shop_listed'
+        'id', 'image_url', 'discord_user_id', 'sort_order', 'label', 'tags',
+        'name', 'description', 'requirements', 'price', 'is_shop_listed',
+        'sales_type', 'fixed_rarity_name', 'is_gacha_eligible', 'gacha_weight',
+        'remaining_count'
     ];
+    const rows = Array.isArray(badges) ? badges.slice() : [];
+    rows.sort((a, b) => {
+        const aVal = a?.sort_order;
+        const bVal = b?.sort_order;
+        const aNum = aVal === null || aVal === undefined || aVal === '' ? Infinity : Number(aVal);
+        const bNum = bVal === null || bVal === undefined || bVal === '' ? Infinity : Number(bVal);
+        if (!Number.isNaN(aNum) && !Number.isNaN(bNum) && aNum !== bNum) return aNum - bNum;
+        const aId = String(a?.id || '');
+        const bId = String(b?.id || '');
+        return aId.localeCompare(bId);
+    });
     const csvRows = [headers.join(',')];
-    badges.forEach(b => csvRows.push(headers.map(h => {
+    rows.forEach(b => csvRows.push(headers.map(h => {
         const value = b[h];
         if (h === 'tags') {
             const tags = Array.isArray(value) ? value : [];
