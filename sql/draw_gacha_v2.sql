@@ -112,15 +112,25 @@ BEGIN
             FROM public.badges
             WHERE is_gacha_eligible = p_gacha_type
               AND (p_payment_type <> 'mangan_ticket' OR sales_type <> '換金品')
-        ), weights AS (
-            SELECT *,
-                   SUM(weight) OVER () AS total_weight,
-                   SUM(weight) OVER (ORDER BY id) AS running_weight
+              AND COALESCE(gacha_weight, 1) > 0
+        ), totals AS (
+            SELECT SUM(weight) AS total_weight
             FROM pool
+        ), pick AS (
+            SELECT random() * total_weight AS threshold
+            FROM totals
+        ), weights AS (
+            SELECT p.*,
+                   t.total_weight,
+                   SUM(weight) OVER (ORDER BY id) AS running_weight
+            FROM pool p
+            CROSS JOIN totals t
         )
         SELECT * INTO v_badge
         FROM weights
-        WHERE running_weight >= random() * total_weight
+        CROSS JOIN pick
+        WHERE total_weight > 0
+          AND running_weight >= pick.threshold
         ORDER BY running_weight
         LIMIT 1;
 

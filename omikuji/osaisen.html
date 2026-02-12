@@ -1257,13 +1257,19 @@
 
                 if (typeof logActivity === 'function') {
                     const coinCost = paymentType === 'coin' ? (data.coin_cost || 0) : 0;
+                    const resultUuids = results.map(r => r?.uuid).filter(Boolean);
+                    const resultBadgeIds = results.map(r => r?.badge_id).filter(Boolean);
                     await logActivity(currentUserId, 'gacha_draw', {
                         amount: coinCost,
+                        badgeId: results?.length === 1 ? (results[0]?.badge_id || null) : null,
                         details: {
                             gacha_type: currentGachaType,
                             payment_type: paymentType,
                             count,
-                            source: 'osaisen'
+                            source: 'osaisen',
+                            coin_cost: coinCost,
+                            result_uuids: resultUuids,
+                            result_badge_ids: resultBadgeIds
                         }
                     });
                 }

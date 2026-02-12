@@ -8,10 +8,13 @@ DECLARE
     v_coin_delta bigint := 0;
     v_asset_delta bigint := 0;
     v_ticket_delta int := 0;
+    v_mangan_delta int := 0;
     v_ex_ticket_rarity text := NULL;
     v_ex_ticket_delta int := 0;
     v_badge_uuid uuid := NULL;
     v_payment_type text;
+    v_count int := 1;
+    v_coin_refund bigint := 0;
 BEGIN
     SELECT * INTO v_log FROM activity_logs WHERE id = p_log_id;
     IF NOT FOUND THEN RETURN json_build_object('ok', false, 'error', '対象のログが見つかりません'); END IF;
@@ -28,15 +31,21 @@ BEGIN
     -- 【ガチャ取消処理】
     IF v_log.action_type = 'gacha_draw' THEN
         -- 支払い方法を確認
-        v_payment_type := COALESCE(v_log.details->>'payment_type', 'ticket');
+        v_payment_type := COALESCE(v_log.details->>'payment_type', 'gacha_ticket');
+        v_count := COALESCE((v_log.details->>'count')::int, 1);
         
         IF v_payment_type = 'coin' THEN
-            -- コイン支払いだった場合はコインを返却（amountが-50なので、-(-50)=+50になる）
-            -- v_coin_deltaは既に -v_log.amount で計算済みなのでそのまま
-            NULL;
+            v_coin_refund := COALESCE((v_log.details->>'coin_cost')::bigint, 0);
+            IF v_coin_refund <= 0 THEN
+                v_coin_refund := ABS(COALESCE(v_log.amount, 0));
+            END IF;
+            v_coin_delta := v_coin_refund;
         ELSE
-            -- 祈願符支払いだった場合は祈願符を返却
-            v_ticket_delta := v_ticket_delta + 1;
+            IF v_payment_type = 'mangan_ticket' THEN
+                v_mangan_delta := v_mangan_delta + v_count;
+            ELSE
+                v_ticket_delta := v_ticket_delta + v_count;
+            END IF;
         END IF;
         
         -- 引換券が当たっていた場合は剥奪
@@ -45,12 +54,18 @@ BEGIN
             v_ex_ticket_delta := -1;
         END IF;
         
-        -- バッジが当たっていた場合は剥奪
-        IF v_log.badge_id IS NOT NULL THEN
-            SELECT uuid INTO v_badge_uuid FROM user_badges_new 
-            WHERE user_id = v_log.user_id AND badge_id = v_log.badge_id 
+        -- バッジが当たっていた場合は剥奪（ログにuuid配列があれば優先）
+        IF v_log.details ? 'result_uuids' THEN
+            DELETE FROM user_badges_new
+            WHERE user_id = v_log.user_id
+              AND uuid IN (
+                SELECT (jsonb_array_elements_text(v_log.details->'result_uuids'))::uuid
+              );
+        ELSIF v_log.badge_id IS NOT NULL THEN
+            SELECT uuid INTO v_badge_uuid FROM user_badges_new
+            WHERE user_id = v_log.user_id AND badge_id = v_log.badge_id
             LIMIT 1;
-            
+
             IF v_badge_uuid IS NOT NULL THEN
                 DELETE FROM user_badges_new WHERE uuid = v_badge_uuid;
             END IF;
@@ -80,6 +95,7 @@ BEGIN
         coins = coins + v_coin_delta,
         total_assets = total_assets + v_asset_delta,
         gacha_tickets = gacha_tickets + v_ticket_delta,
+        mangan_tickets = mangan_tickets + v_mangan_delta,
         exchange_tickets = CASE WHEN v_ex_ticket_rarity IS NOT NULL THEN
             jsonb_set(COALESCE(exchange_tickets, '{}'::jsonb), ARRAY[v_ex_ticket_rarity],
                 (GREATEST(0, COALESCE((exchange_tickets->>v_ex_ticket_rarity)::int, 0) + v_ex_ticket_delta))::text::jsonb)
