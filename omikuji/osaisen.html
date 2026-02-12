@@ -739,6 +739,7 @@
         let rarityValueMap = {};
         let lastDrawnBadgeUuid = null;
         let lastDrawnBadgeMeta = null;
+        let lastDrawnBadgeResult = null;
         let lastTenResults = [];
         let isSelling = false;
         let currentGachaType = '妖怪';
@@ -800,6 +801,37 @@
                 `;
                 btnExec.textContent = '奉納する';
                 btnExec.className = 'btn btn-warning rounded-pill px-4';
+                btnExec.onclick = () => {
+                    if (settled) return;
+                    settled = true;
+                    bootstrap.Modal.getInstance(modalEl)?.hide();
+                    resolve(true);
+                };
+                modalEl.addEventListener('hidden.bs.modal', () => {
+                    if (settled) return;
+                    settled = true;
+                    resolve(false);
+                }, { once: true });
+                new bootstrap.Modal(modalEl).show();
+            });
+        }
+
+        function openSellConfirm(message) {
+            return new Promise(resolve => {
+                const modalEl = document.getElementById('shopActionModal');
+                const content = document.getElementById('shopActionContent');
+                const btnExec = document.getElementById('btnShopActionExec');
+                if (!modalEl || !content || !btnExec) {
+                    resolve(false);
+                    return;
+                }
+                let settled = false;
+                content.innerHTML = `
+                    <div class="fw-bold mb-2">売却の確認</div>
+                    <div class="text-muted">${message}</div>
+                `;
+                btnExec.textContent = '売却する';
+                btnExec.className = 'btn btn-danger rounded-pill px-4';
                 btnExec.onclick = () => {
                     if (settled) return;
                     settled = true;
@@ -1119,6 +1151,12 @@
                 for (const rarity of rarityOrder) {
                     if (!grouped[rarity] || grouped[rarity].length === 0) continue;
                     const badgesInRarity = grouped[rarity];
+                    badgesInRarity.sort((a, b) => {
+                        const pA = Number(a.price || 0);
+                        const pB = Number(b.price || 0);
+                        if (pA !== pB) return pA - pB;
+                        return (a.name || '').localeCompare(b.name || '');
+                    });
                     const rarityWeight = badgesInRarity.reduce((sum, b) => {
                         const w = Number(b.gacha_weight ?? 1);
                         return sum + (w > 0 ? w : 0);
@@ -1361,6 +1399,7 @@
                 badgeId: result.badge_id || null,
                 name: result.name || null
             };
+            lastDrawnBadgeResult = result;
             const sellBtn = document.getElementById('result-sell-btn');
             if (sellBtn) sellBtn.style.display = lastDrawnBadgeUuid ? 'inline-block' : 'none';
 
@@ -1391,10 +1430,86 @@
             return data;
         }
 
-        async function handleSellSingle() {
+        async function buildSellItemFromResult(result) {
+            if (!result?.badge_id) return null;
+            const thresholds = cachedThresholds?.length ? cachedThresholds : await safeFetchThresholds();
+            const [badgeRes, countRes, ownRes] = await Promise.all([
+                supabaseClient
+                    .from('badges')
+                    .select('id, name, image_url, price, fixed_rarity_name, sales_type, is_gacha_eligible')
+                    .eq('id', result.badge_id)
+                    .maybeSingle(),
+                supabaseClient
+                    .from('user_badges_new')
+                    .select('badge_id', { count: 'exact', head: true })
+                    .eq('badge_id', result.badge_id),
+                supabaseClient
+                    .from('user_badges_new')
+                    .select('purchased_price, is_mutant')
+                    .eq('uuid', result.uuid)
+                    .maybeSingle()
+            ]);
+            if (badgeRes.error) throw badgeRes.error;
+            const badge = badgeRes.data;
+            if (!badge) return null;
+            const circulationCount = countRes.count || 0;
+            const valResult = BadgeUtils.calculateBadgeValues(badge, circulationCount, thresholds || []);
+            const isMutant = ownRes?.data?.is_mutant ?? result?.is_mutant ?? false;
+            const sellPrice = valResult.sellPrice * (isMutant ? 3 : 1);
+            const sellStar = Math.max((valResult.starLevel || 1) - 2, 1);
+            const sellRarity = thresholds?.[sellStar - 1]?.rarity_name || valResult.rarityName || '';
+            const isConvertible = badge.sales_type === '換金品';
+            const marketValue = isConvertible ? badge.price : valResult.marketValue;
+            const sellValue = isConvertible ? badge.price : sellPrice;
+            const displayRarity = isConvertible ? '' : valResult.rarityName;
+            const displaySellRarity = isConvertible ? '' : sellRarity;
+
+            return {
+                uuid: result.uuid,
+                badge_id: badge.id,
+                badge_name: badge.name,
+                badge_image_url: badge.image_url,
+                rarity: badge.rarity,
+                rarity_name: displayRarity,
+                sell_rarity_name: displaySellRarity,
+                price: badge.price,
+                fixed_rarity_name: badge.fixed_rarity_name,
+                sales_type: badge.sales_type,
+                is_gacha_eligible: badge.is_gacha_eligible,
+                market_value: marketValue,
+                sell_price: sellValue,
+                purchased_price: ownRes?.data?.purchased_price ?? 0,
+                creator_name: '',
+                creator_avatar: '',
+                market_count: circulationCount,
+                is_mutant: isMutant
+            };
+        }
+
+        async function confirmSellSingle() {
+            if (isSelling) return;
+            if (!lastDrawnBadgeUuid || !lastDrawnBadgeResult) return;
+            try {
+                const item = await buildSellItemFromResult(lastDrawnBadgeResult);
+                if (!item) {
+                    showNotice('売却情報を取得できませんでした。', 'error');
+                    return;
+                }
+                currentShopActionUUID = lastDrawnBadgeUuid;
+                currentShopActionBadgeId = item.badge_id || null;
+                currentShopActionBadgeName = item.badge_name || '';
+                BadgeSellUI.renderSellConfirmModal(item, () => executeSellSingleFromGacha(), {
+                    confirmLabel: '売却する',
+                    confirmClass: 'btn-warning'
+                });
+            } catch (err) {
+                showNotice('売却情報の取得に失敗しました: ' + (err.message || '不明なエラー'), 'error');
+            }
+        }
+
+        async function executeSellSingleFromGacha() {
             if (isSelling) return;
             if (!lastDrawnBadgeUuid) return;
-            if (!confirm('このバッジを売却しますか？')) return;
             try {
                 isSelling = true;
                 const sellBtn = document.getElementById('result-sell-btn');
@@ -1402,12 +1517,13 @@
                 const data = await sellBadgeByUuid(lastDrawnBadgeUuid);
                 await logActivity(currentUserId, 'badge_sell', {
                     amount: data.sell_price,
-                    badgeId: lastDrawnBadgeMeta?.badgeId || null,
-                    details: { badge_name: lastDrawnBadgeMeta?.name || null, source: 'osaisen' }
+                    badgeId: currentShopActionBadgeId || lastDrawnBadgeMeta?.badgeId || null,
+                    details: { badge_name: currentShopActionBadgeName || lastDrawnBadgeMeta?.name || null, source: 'osaisen' }
                 });
                 showSellResult(`売却しました！ (🪙 +${data.sell_price.toLocaleString()})`);
                 lastDrawnBadgeUuid = null;
                 lastDrawnBadgeMeta = null;
+                lastDrawnBadgeResult = null;
                 if (sellBtn) sellBtn.style.display = 'none';
                 bootstrap.Modal.getOrCreateInstance(document.getElementById('resultModal')).hide();
             } catch (err) {
@@ -1425,7 +1541,8 @@
                 .map(el => el.dataset.uuid)
                 .filter(Boolean);
             if (selected.length === 0) return;
-            if (!confirm(`選択した ${selected.length} 個を売却しますか？`)) return;
+            const confirmed = await openSellConfirm(`選択した ${selected.length} 個を売却しますか？`);
+            if (!confirmed) return;
             try {
                 isSelling = true;
                 const sellTenBtn = document.getElementById('result-ten-sell-btn');
@@ -1473,7 +1590,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             const sellBtn = document.getElementById('result-sell-btn');
-            if (sellBtn) sellBtn.addEventListener('click', handleSellSingle);
+        if (sellBtn) sellBtn.addEventListener('click', confirmSellSingle);
             const sellTenBtn = document.getElementById('result-ten-sell-btn');
             if (sellTenBtn) sellTenBtn.addEventListener('click', handleSellTenSelected);
         });
