@@ -222,6 +222,32 @@
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
+        .badge-pool-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            background: rgba(255, 255, 255, 0.08);
+            color: #f8f9fa;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+        }
+
+        .badge-pool-toggle:hover {
+            transform: translateY(-1px);
+            background: rgba(255, 255, 255, 0.16);
+            border-color: rgba(255, 255, 255, 0.45);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+            color: #fff;
+        }
+
+        .badge-pool-toggle:active {
+            transform: translateY(0);
+        }
+
         .gacha-tab-btn {
             border: none;
             background: transparent;
@@ -538,7 +564,7 @@
 
             <!-- 排出バッジ一覧セクション -->
             <div class="mt-4 text-center">
-                <a href="javascript:void(0)" class="text-white-50 small text-decoration-none"
+                <a href="javascript:void(0)" class="badge-pool-toggle text-decoration-none"
                     onclick="toggleBadgePool()">
                     <i class="bi bi-collection me-1"></i> 提供割合を見る
                 </a>
