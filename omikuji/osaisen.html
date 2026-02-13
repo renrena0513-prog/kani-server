@@ -271,6 +271,12 @@
             margin-top: 12px;
         }
 
+        .gacha-price-note.emphasis {
+            color: #ff3b3b;
+            font-weight: 800;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+        }
+
         .balance-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -1033,12 +1039,15 @@
             if (currentGachaType === '妖怪') {
                 if (note) {
                     if (currentPaymentType === 'mangan_ticket') {
-                        note.textContent = '満願符1枚で奉納できます';
+                        note.textContent = 'バッジ確定！満願符1枚で奉納できます';
+                        note.classList.add('emphasis');
                     } else {
                         note.textContent = currentDrawCount === 10 ? '祈願符10枚で奉納できます' : '祈願符1枚で奉納できます';
+                        note.classList.remove('emphasis');
                     }
                 }
             } else {
+                if (note) note.classList.remove('emphasis');
                 if (!gachaCoinPrice || gachaCoinPrice < 1) {
                     if (note) note.textContent = 'コイン価格が未設定です';
                     return;
