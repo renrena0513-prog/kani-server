@@ -2780,7 +2780,7 @@ async function fetchActivityLogs(page = 1) {
                         }))
                         .filter(b => b.image)
                         .slice(0, 10)
-                        .map(b => `<img src="${b.image}" title="${escapeHtml(b.name || '')}" style="width: 18px; height: 18px; object-fit: contain; border-radius: 4px; background: #fff; border: 1px solid #eee;">`)
+                        .map(b => `<span class="log-badge-thumb" data-tooltip="${escapeHtml(b.name || '')}"><img src="${b.image}" style="width: 18px; height: 18px; object-fit: contain; border-radius: 4px; background: #fff; border: 1px solid #eee;"></span>`)
                         .join('');
                     if (images) {
                         const suffix = badgeIds.length > 10 ? `<span class="text-muted" style="font-size: 0.7rem;">+${badgeIds.length - 10}</span>` : '';

@@ -525,6 +525,37 @@
             background: transparent;
             cursor: pointer;
         }
+
+        .log-badge-thumb {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .log-badge-thumb::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: 50%;
+            bottom: 130%;
+            transform: translateX(-50%);
+            background: rgba(20, 20, 20, 0.95);
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            box-shadow: 0 8px 18px rgba(0,0,0,0.35);
+            transition: opacity 0.12s ease, transform 0.12s ease;
+        }
+
+        .log-badge-thumb:hover::after {
+            opacity: 1;
+            transform: translateX(-50%) translateY(-4px);
+        }
         #log-action-buttons .log-filter-btn.active {
             background: #2d3436;
             border-color: #2d3436;
