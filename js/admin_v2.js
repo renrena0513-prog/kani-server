@@ -2762,6 +2762,7 @@ async function fetchActivityLogs(page = 1) {
             }
 
             const detailParts = [];
+            let extraDetailsHtml = '';
             if (details?.badge_name) detailParts.push(`バッジ: ${details.badge_name}`);
             if (details?.quantity) detailParts.push(`数量: ${details.quantity}`);
             if (details?.unit_price) detailParts.push(`単価: ${Number(details.unit_price).toLocaleString()}`);
@@ -2769,6 +2770,21 @@ async function fetchActivityLogs(page = 1) {
             if (details?.buyer) detailParts.push(`購入者: ${details.buyer}`);
             if (details?.is_mutant === true) detailParts.push('変異: あり');
             if (details?.badge_uuid) detailParts.push(`UUID: ${details.badge_uuid}`);
+            if (log.action_type === 'gacha_draw') {
+                const badgeIds = Array.isArray(details?.result_badge_ids) ? details.result_badge_ids : [];
+                if (badgeIds.length > 1) {
+                    const images = badgeIds
+                        .map(id => badgesCache[id]?.image)
+                        .filter(Boolean)
+                        .slice(0, 10)
+                        .map(src => `<img src="${src}" style="width: 18px; height: 18px; object-fit: contain; border-radius: 4px; background: #fff; border: 1px solid #eee;">`)
+                        .join('');
+                    if (images) {
+                        const suffix = badgeIds.length > 10 ? `<span class="text-muted" style="font-size: 0.7rem;">+${badgeIds.length - 10}</span>` : '';
+                        extraDetailsHtml = `<div class="d-inline-flex align-items-center gap-1 mt-1">${images}${suffix}</div>`;
+                    }
+                }
+            }
             if (log.action_type === 'omikuji') {
                 if (details?.rank) detailParts.push(`結果: ${details.rank}`);
                 if (details?.message) detailParts.push(`文言: ${details.message}`);
@@ -2776,8 +2792,8 @@ async function fetchActivityLogs(page = 1) {
                 if (details?.mangan_ticket_reward !== undefined) detailParts.push(`🧧: ${details.mangan_ticket_reward}枚`);
             }
             const detailsText = detailParts.length
-                ? `<div class="small text-muted mt-1">${detailParts.map(t => escapeHtml(t)).join(' / ')}</div>`
-                : '';
+                ? `<div class="small text-muted mt-1">${detailParts.map(t => escapeHtml(t)).join(' / ')}</div>${extraDetailsHtml}`
+                : extraDetailsHtml;
 
             return `
                 <tr>
