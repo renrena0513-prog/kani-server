@@ -1065,7 +1065,7 @@
                 const [badgesRes, thresholdsRes, circulationRes] = await Promise.all([
                     supabaseClient
                         .from('badges')
-                        .select('id, name, image_url, price, fixed_rarity_name, sales_type, is_gacha_eligible, remaining_count, gacha_weight')
+                        .select('id, name, image_url, price, fixed_rarity_name, sales_type, is_gacha_eligible, remaining_count, gacha_weight, sort_order')
                         .eq('is_gacha_eligible', currentGachaType),
                     fetchRarityThresholds(),
                     supabaseClient.from('user_badges_new').select('badge_id')
@@ -1442,7 +1442,7 @@
             const [badgeRes, countRes, ownRes] = await Promise.all([
                 supabaseClient
                     .from('badges')
-                    .select('id, name, image_url, price, fixed_rarity_name, sales_type, is_gacha_eligible')
+                    .select('id, name, image_url, price, fixed_rarity_name, sales_type, is_gacha_eligible, sort_order')
                     .eq('id', result.badge_id)
                     .maybeSingle(),
                 supabaseClient
