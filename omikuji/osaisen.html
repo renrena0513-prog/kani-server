@@ -1155,9 +1155,12 @@
                         const pA = Number(a.price || 0);
                         const pB = Number(b.price || 0);
                         if (pA !== pB) return pA - pB;
-                        const sA = Number.isFinite(a.sort_order) ? a.sort_order : 999999;
-                        const sB = Number.isFinite(b.sort_order) ? b.sort_order : 999999;
-                        if (sA !== sB) return sA - sB;
+                        const sA = Number(a.sort_order);
+                        const sB = Number(b.sort_order);
+                        const aHas = Number.isFinite(sA);
+                        const bHas = Number.isFinite(sB);
+                        if (aHas && bHas && sA !== sB) return sA - sB;
+                        if (aHas !== bHas) return aHas ? -1 : 1;
                         return (a.name || '').localeCompare(b.name || '');
                     });
                     const rarityWeight = badgesInRarity.reduce((sum, b) => {
