@@ -2774,10 +2774,13 @@ async function fetchActivityLogs(page = 1) {
                 const badgeIds = Array.isArray(details?.result_badge_ids) ? details.result_badge_ids : [];
                 if (badgeIds.length > 1) {
                     const images = badgeIds
-                        .map(id => badgesCache[id]?.image)
-                        .filter(Boolean)
+                        .map(id => ({
+                            image: badgesCache[id]?.image,
+                            name: badgesCache[id]?.name
+                        }))
+                        .filter(b => b.image)
                         .slice(0, 10)
-                        .map(src => `<img src="${src}" style="width: 18px; height: 18px; object-fit: contain; border-radius: 4px; background: #fff; border: 1px solid #eee;">`)
+                        .map(b => `<img src="${b.image}" title="${escapeHtml(b.name || '')}" style="width: 18px; height: 18px; object-fit: contain; border-radius: 4px; background: #fff; border: 1px solid #eee;">`)
                         .join('');
                     if (images) {
                         const suffix = badgeIds.length > 10 ? `<span class="text-muted" style="font-size: 0.7rem;">+${badgeIds.length - 10}</span>` : '';
