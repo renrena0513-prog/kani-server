@@ -49,9 +49,27 @@
             section.style.display = 'block';
 
             try {
+                const fetchAllBadgeCounts = async () => {
+                    const batchSize = 1000;
+                    let all = [];
+                    let from = 0;
+                    while (true) {
+                        const { data, error } = await supabaseClient
+                            .from('user_badges_new')
+                            .select('uuid, badge_id')
+                            .order('uuid', { ascending: true })
+                            .range(from, from + batchSize - 1);
+                        if (error) throw error;
+                        all = all.concat(data || []);
+                        if (!data || data.length < batchSize) break;
+                        from += batchSize;
+                    }
+                    return all;
+                };
+
                 const [ownedRes, marketCountRes, profileRes, thresholdsRes] = await Promise.all([
                     supabaseClient.from('user_badges_new').select('*, badges(*)').eq('user_id', targetId),
-                    supabaseClient.from('user_badges_new').select('*'),
+                    fetchAllBadgeCounts(),
                     supabaseClient.from('profiles').select('coins, equipped_badge_id, equipped_badge_id_right, total_assets').eq('discord_user_id', targetId).maybeSingle(),
                     supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true })
                 ]);
@@ -97,7 +115,7 @@
 
                 // 各バッジの現在流通数 n を集計
                 const marketCounts = {};
-                (marketCountRes.data || []).forEach(s => {
+                (marketCountRes || []).forEach(s => {
                     marketCounts[s.badge_id] = (marketCounts[s.badge_id] || 0) + 1;
                 });
 
