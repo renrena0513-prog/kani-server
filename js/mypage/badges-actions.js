@@ -56,13 +56,16 @@
 
                     if (item.badges.sales_type === '換金品') {
                         const badgeId = item.badges.id;
-                        if (!convertibleGroups.has(badgeId)) {
-                            convertibleGroups.set(badgeId, {
+                        const isMutant = !!item.is_mutant;
+                        const key = `${badgeId}:${isMutant ? '1' : '0'}`;
+                        if (!convertibleGroups.has(key)) {
+                            convertibleGroups.set(key, {
                                 badge: item.badges,
-                                count: 0
+                                count: 0,
+                                is_mutant: isMutant
                             });
                         }
-                        convertibleGroups.get(badgeId).count++;
+                        convertibleGroups.get(key).count++;
                     } else {
                         normalItems.push(item);
                     }
@@ -88,14 +91,16 @@
                 convertibleGroups.forEach(group => {
                     const badge = group.badge;
                     const count = group.count;
-                    const sellPrice = badge.price;
+                    const isMutant = !!group.is_mutant;
+                    const sellPrice = badge.price * (isMutant ? 3 : 1);
                     const totalSell = sellPrice * count;
+                    const mutantLabel = isMutant ? ' <span class="badge bg-warning text-dark">ミュータント</span>' : '';
 
                     htmlParts.push(`
-                        <div class="user-select-item" onclick="openConvertibleSellModal('${badge.id}', '${badge.name.replace(/'/g, "\\'")}', ${count}, ${sellPrice})">
+                        <div class="user-select-item" onclick="openConvertibleSellModal('${badge.id}', '${badge.name.replace(/'/g, "\\'")}', ${count}, ${sellPrice}, ${isMutant})">
                             <img src="${badge.image_url}" class="user-select-avatar" style="border-radius: 8px;">
                             <div class="flex-grow-1">
-                                <div class="user-select-name">${badge.name} <span class="badge bg-dark">×${count}</span></div>
+                                <div class="user-select-name">${badge.name}${mutantLabel} <span class="badge bg-dark">×${count}</span></div>
                                 <div class="small text-muted" style="font-size: 0.75rem;">
                                     売却: 🪙${sellPrice.toLocaleString()} C × ${count} = 🪙${totalSell.toLocaleString()} C
                                 </div>
@@ -278,8 +283,9 @@
 
         // ============ 換金品の売却 ============
         let isSellingConvertible = false;
-        async function openConvertibleSellModal(badgeId, badgeName, totalCount, fixedPrice) {
-            const quantity = prompt(`「${badgeName}」を何個売却しますか？（所持数: ${totalCount} 個、売却価格: ${fixedPrice.toLocaleString()} C / 個）`, '1');
+        async function openConvertibleSellModal(badgeId, badgeName, totalCount, fixedPrice, isMutant) {
+            const mutantLabel = isMutant ? ' (ミュータント)' : '';
+            const quantity = prompt(`「${badgeName}${mutantLabel}」を何個売却しますか？（所持数: ${totalCount} 個、売却価格: ${fixedPrice.toLocaleString()} C / 個）`, '1');
 
             if (!quantity) return;
 
@@ -295,7 +301,7 @@
             }
 
             const totalPrice = fixedPrice * count;
-            if (!confirm(`「${badgeName}」を ${count} 個売却しますか？（合計: 💰${totalPrice.toLocaleString()} C）`)) return;
+            if (!confirm(`「${badgeName}${mutantLabel}」を ${count} 個売却しますか？（合計: 💰${totalPrice.toLocaleString()} C）`)) return;
 
             if (isSellingConvertible) return;
             isSellingConvertible = true;
@@ -307,6 +313,7 @@
                     .select('uuid')
                     .eq('user_id', targetId)
                     .eq('badge_id', badgeId)
+                    .eq('is_mutant', !!isMutant)
                     .limit(count);
 
                 if (fetchError) throw fetchError;
@@ -329,7 +336,7 @@
 
                 if (successCount > 0) {
                     const actualTotalPrice = fixedPrice * successCount;
-                    showNotice(`「${badgeName}」を ${successCount} 個売却しました。（合計: 💰${actualTotalPrice.toLocaleString()} C）`, 'success');
+                    showNotice(`「${badgeName}${mutantLabel}」を ${successCount} 個売却しました。（合計: 💰${actualTotalPrice.toLocaleString()} C）`, 'success');
 
                     // 活動ログ記録
                     if (typeof logActivity === 'function') {
@@ -340,7 +347,8 @@
                                 badge_id: badgeId,
                                 badge_name: badgeName,
                                 quantity: successCount,
-                                unit_price: fixedPrice
+                                unit_price: fixedPrice,
+                                is_mutant: !!isMutant
                             }
                         });
                     }
