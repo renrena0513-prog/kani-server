@@ -535,7 +535,7 @@
                 // 2. 全バッジ個体データを取得（資産価値計算用）
                 const userBadges = await fetchAllRows(
                     'user_badges_new',
-                    'uuid, user_id, badge_id, is_mutant',
+                    'uuid, user_id, badge_id, is_mutant, badges(price, sales_type, fixed_rarity_name)',
                     'uuid'
                 );
 
@@ -571,6 +571,12 @@
                     }
                 });
 
+                // バッジマップ（フォールバック用）
+                const badgeMap = {};
+                masterBadges.forEach(mb => {
+                    badgeMap[mb.id] = mb;
+                });
+
                 // 各バッジの「現在価値(P_value)」を事前に計算
                 const badgeValues = {};
                 masterBadges.forEach(mb => {
@@ -586,7 +592,10 @@
                 });
 
                 userBadges.forEach(ub => {
-                    const baseValue = badgeValues[ub.badge_id] || 0;
+                    const badge = ub.badges || badgeMap[ub.badge_id];
+                    if (!badge) return;
+                    const n = marketCounts[ub.badge_id] || 0;
+                    const baseValue = badgeValues[ub.badge_id] ?? BadgeUtils.calculateBadgeValues(badge, n, thresholds).marketValue;
                     // ミュータントは資産価値3倍
                     const value = baseValue * (ub.is_mutant ? 3 : 1);
 
