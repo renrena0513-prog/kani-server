@@ -392,6 +392,25 @@
             try {
                 setTableHeader(currentMode);
 
+                const fetchAllRows = async (table, select, orderCol) => {
+                    const batchSize = 1000;
+                    let all = [];
+                    let from = 0;
+                    while (true) {
+                        let query = supabaseClient
+                            .from(table)
+                            .select(select)
+                            .order(orderCol, { ascending: true })
+                            .range(from, from + batchSize - 1);
+                        const { data, error } = await query;
+                        if (error) throw error;
+                        all = all.concat(data || []);
+                        if (!data || data.length < batchSize) break;
+                        from += batchSize;
+                    }
+                    return all;
+                };
+
                 if (currentMode === 'creator') {
                     const { data: badges, error: bError } = await supabaseClient
                         .from('badges')
@@ -506,20 +525,26 @@
                 }
 
                 // 1. プロフィール情報を取得
-                const { data: profiles, error: pError } = await supabaseClient
-                    .from('profiles')
-                    .select('discord_user_id, account_name, avatar_url, coins, total_assets, is_hidden, equipped_badge_id, equipped_badge_id_right, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name)');
-                if (pError) throw pError;
+                const profiles = await fetchAllRows(
+                    'profiles',
+                    'discord_user_id, account_name, avatar_url, coins, total_assets, is_hidden, equipped_badge_id, equipped_badge_id_right, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name)',
+                    'discord_user_id'
+                );
                 const filteredProfiles = (profiles || []).filter(p => !EXCLUDED_RANKING_USERS.has(p.discord_user_id) && !p.is_hidden);
 
                 // 2. 全バッジ個体データを取得（資産価値計算用）
-                const { data: userBadges, error: bError } = await supabaseClient
-                    .from('user_badges_new')
-                    .select('user_id, badge_id, is_mutant, badges(price, sales_type)');
-                if (bError) throw bError;
+                const userBadges = await fetchAllRows(
+                    'user_badges_new',
+                    'uuid, user_id, badge_id, is_mutant',
+                    'uuid'
+                );
 
                 // 3. バッジマスター情報を取得（固定価格対応）
-                const { data: masterBadges } = await supabaseClient.from('badges').select('id, price, sales_type, fixed_rarity_name');
+                const masterBadges = await fetchAllRows(
+                    'badges',
+                    'id, price, sales_type, fixed_rarity_name',
+                    'id'
+                );
 
                 // 4. レアリティ閾値データを取得（エラー修正：これが不足していた）
                 const { data: thresholds } = await supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true });
