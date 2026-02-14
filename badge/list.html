@@ -464,6 +464,7 @@
             method: '',
             unownedOnly: false
         };
+        const FILTER_STORAGE_KEY = 'badge_list_filters_v1';
 
         let cachedCirculationCounts = {}; // バッジごとの流通数
 
@@ -493,7 +494,8 @@
                 await hydrateCreators();
                 await hydrateOwnedBadges();
                 buildFilterOptions();
-                applyTagFromUrl();
+                const restored = loadFilterState();
+                applyTagFromUrl(restored);
                 filterAndRender();
             } catch (err) {
                 console.error('Error fetching badges:', err);
@@ -677,6 +679,79 @@
             filterAndRender();
         }
 
+        function saveFilterState() {
+            try {
+                const state = {
+                    search: document.getElementById('search-box')?.value || '',
+                    sort: document.getElementById('sort-select')?.value || 'price_asc',
+                    rarity: document.getElementById('rarity-filter')?.value || '',
+                    rarityLabel: document.getElementById('rarity-filter-label')?.textContent || 'すべて',
+                    creator: document.getElementById('creator-filter')?.value || '',
+                    creatorLabel: document.getElementById('creator-filter-label')?.textContent || 'すべて',
+                    creatorAvatar: document.getElementById('creator-filter-avatar')?.src || '',
+                    type: document.getElementById('type-filter')?.value || '',
+                    label: document.getElementById('label-filter')?.value || '',
+                    tag: document.getElementById('tag-filter')?.value || '',
+                    method: document.getElementById('method-filter')?.value || '',
+                    unownedOnly: !!filters.unownedOnly,
+                    page: currentPage
+                };
+                sessionStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(state));
+            } catch (err) {
+                console.warn('Failed to save filter state', err);
+            }
+        }
+
+        function loadFilterState() {
+            try {
+                const raw = sessionStorage.getItem(FILTER_STORAGE_KEY);
+                if (!raw) return false;
+                const state = JSON.parse(raw);
+                const search = document.getElementById('search-box');
+                const sort = document.getElementById('sort-select');
+                const rarityInput = document.getElementById('rarity-filter');
+                const rarityLabel = document.getElementById('rarity-filter-label');
+                const creatorInput = document.getElementById('creator-filter');
+                const creatorLabel = document.getElementById('creator-filter-label');
+                const creatorAvatar = document.getElementById('creator-filter-avatar');
+                const type = document.getElementById('type-filter');
+                const label = document.getElementById('label-filter');
+                const tag = document.getElementById('tag-filter');
+                const method = document.getElementById('method-filter');
+                const unownedBtn = document.getElementById('unowned-toggle');
+
+                if (search) search.value = state.search || '';
+                if (sort) sort.value = state.sort || 'price_asc';
+                if (rarityInput) rarityInput.value = state.rarity || '';
+                if (rarityLabel) rarityLabel.textContent = state.rarityLabel || (state.rarity ? state.rarity : 'すべて');
+                if (creatorInput) creatorInput.value = state.creator || '';
+                if (creatorLabel) creatorLabel.textContent = state.creatorLabel || (state.creator ? state.creator : 'すべて');
+                if (creatorAvatar) {
+                    if (state.creatorAvatar && /^https?:\/\//.test(state.creatorAvatar)) {
+                        creatorAvatar.src = state.creatorAvatar;
+                        creatorAvatar.style.display = 'block';
+                    } else {
+                        creatorAvatar.style.display = 'none';
+                    }
+                }
+                if (type) type.value = state.type || '';
+                if (label) label.value = state.label || '';
+                if (tag) tag.value = state.tag || '';
+                if (method) method.value = state.method || '';
+                filters.unownedOnly = !!state.unownedOnly;
+                if (unownedBtn) {
+                    unownedBtn.classList.toggle('btn-primary', filters.unownedOnly);
+                    unownedBtn.classList.toggle('btn-outline-secondary', !filters.unownedOnly);
+                    unownedBtn.textContent = filters.unownedOnly ? '未所持のみ表示中' : '未所持のみ表示';
+                }
+                currentPage = Number(state.page) || 1;
+                return true;
+            } catch (err) {
+                console.warn('Failed to load filter state', err);
+                return false;
+            }
+        }
+
         function filterAndRender() {
             const grid = document.getElementById('badge-list-grid');
             const searchVal = document.getElementById('search-box').value.toLowerCase();
@@ -806,6 +881,8 @@
                     </div>
                 `;
             }).join('');
+
+            saveFilterState();
         }
 
         function resetAllFilters() {
@@ -846,7 +923,7 @@
             return tags.map(t => (t || '').trim()).filter(Boolean);
         }
 
-        function applyTagFromUrl() {
+        function applyTagFromUrl(hasRestored) {
             const params = new URLSearchParams(window.location.search);
             const tag = (params.get('tag') || '').trim();
             if (!tag) return;
@@ -861,6 +938,9 @@
             tagSelect.value = tag;
             filters.tag = tag;
             currentPage = 1;
+            if (hasRestored) {
+                saveFilterState();
+            }
         }
 
         function escapeHtml(value) {
