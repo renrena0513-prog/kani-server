@@ -24,6 +24,24 @@
             min-height: 100vh;
         }
 
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 10px 20px;
+            border-radius: 30px;
+            background: rgba(255, 255, 255, 0.15);
+            transition: all 0.3s;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.25);
+            color: white;
+        }
+
         .page-header {
             color: #fff;
             font-family: var(--font-title);
@@ -310,6 +328,11 @@
     </div>
 
     <div class="container py-5">
+        <div class="mb-4" id="back-to-shop-wrap" style="display:none;">
+            <a href="#" onclick="goBack(); return false;" class="back-button">
+                ← 戻る
+            </a>
+        </div>
         <header class="text-center">
             <h1 class="page-header display-4 fw-bold">📛 バッジ図鑑</h1>
             <p class="text-white-50 mb-4">かに鯖で獲得・購入できるバッジの一覧です</p>
@@ -938,10 +961,31 @@
             tagSelect.value = tag;
             filters.tag = tag;
             currentPage = 1;
-            if (hasRestored) {
-                saveFilterState();
+            // タグ遷移時は、保存済みのクリエイターフィルタをクリアして混在を防ぐ
+            const creatorInput = document.getElementById('creator-filter');
+            const creatorLabel = document.getElementById('creator-filter-label');
+            const creatorAvatar = document.getElementById('creator-filter-avatar');
+            if (creatorInput) creatorInput.value = '';
+            if (creatorLabel) creatorLabel.textContent = 'すべて';
+            if (creatorAvatar) creatorAvatar.style.display = 'none';
+            filters.creator = '';
+            saveFilterState();
+        }
+
+        function goBack() {
+            if (document.referrer && document.referrer.includes(window.location.hostname)) {
+                history.back();
+            } else {
+                window.location.href = '../badge/shop.html';
             }
         }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const tag = (params.get('tag') || '').trim();
+            const wrap = document.getElementById('back-to-shop-wrap');
+            if (wrap && tag) wrap.style.display = 'block';
+        });
 
         function escapeHtml(value) {
             return String(value || '')
