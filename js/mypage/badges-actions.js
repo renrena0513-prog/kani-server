@@ -105,7 +105,16 @@
                                     売却: 🪙${sellPrice.toLocaleString()} C × ${count} = 🪙${totalSell.toLocaleString()} C
                                 </div>
                             </div>
-                            <div class="text-danger fw-bold">売却</div>
+                            <div class="d-flex align-items-center gap-2">
+                                <button class="btn btn-sm btn-outline-danger rounded-pill text-nowrap" style="font-size: 0.8rem;"
+                                    onclick="event.stopPropagation(); openConvertibleSellModal('${badge.id}', '${badge.name.replace(/'/g, "\\'")}', ${count}, ${sellPrice}, ${isMutant});">
+                                    売却
+                                </button>
+                                <button class="btn btn-sm btn-outline-success rounded-pill text-nowrap" style="font-size: 0.8rem;"
+                                    onclick="event.stopPropagation(); openConvertibleSellModal('${badge.id}', '${badge.name.replace(/'/g, "\\'")}', ${count}, ${sellPrice}, ${isMutant}, true);">
+                                    一括売却
+                                </button>
+                            </div>
                         </div>
                     `);
                 });
@@ -283,16 +292,18 @@
 
         // ============ 換金品の売却 ============
         let isSellingConvertible = false;
-        async function openConvertibleSellModal(badgeId, badgeName, totalCount, fixedPrice, isMutant) {
+        async function openConvertibleSellModal(badgeId, badgeName, totalCount, fixedPrice, isMutant, forceAll = false) {
             const mutantLabel = isMutant ? ' (ミュータント)' : '';
-            const quantity = prompt(`「${badgeName}${mutantLabel}」を何個売却しますか？（所持数: ${totalCount} 個、売却価格: ${fixedPrice.toLocaleString()} C / 個）`, '1');
+            let count = totalCount;
+            if (!forceAll) {
+                const quantity = prompt(`「${badgeName}${mutantLabel}」を何個売却しますか？（所持数: ${totalCount} 個、売却価格: ${fixedPrice.toLocaleString()} C / 個）`, '1');
+                if (!quantity) return;
 
-            if (!quantity) return;
-
-            const count = parseInt(quantity);
-            if (isNaN(count) || count <= 0) {
-                showNotice('有効な個数を入力してください。', 'warning');
-                return;
+                count = parseInt(quantity);
+                if (isNaN(count) || count <= 0) {
+                    showNotice('有効な個数を入力してください。', 'warning');
+                    return;
+                }
             }
 
             if (count > totalCount) {
