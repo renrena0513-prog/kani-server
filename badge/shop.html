@@ -281,6 +281,24 @@
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
         }
 
+        .rights-item-left,
+        .rights-item-right {
+            width: 50%;
+        }
+
+        .rights-item-left {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            text-align: center;
+        }
+
+        .rights-item-right {
+            display: flex;
+            flex-direction: column;
+        }
+
         .rights-item-img {
             width: 70px;
             height: 70px;
@@ -1289,12 +1307,12 @@
                     return `
                         <div class="col-12 col-md-4 col-lg-4">
                             <div class="rights-item badge-card ${rarityClass}">
-                                <a href="./index.html?id=${badge.id}" class="text-decoration-none d-flex flex-column align-items-center" style="color: inherit;">
+                                <a href="./index.html?id=${badge.id}" class="text-decoration-none rights-item-left" style="color: inherit;">
                                     <span class="rarity-pill mb-1" style="background: rgba(0,0,0,0.2);">${rarity}</span>
                                     <img src="${badge.image_url}" alt="${badge.name}" class="rights-item-img">
                                     ${tagHtml}
                                 </a>
-                                <div class="flex-grow-1">
+                                <div class="rights-item-right">
                                     <div class="d-flex align-items-center gap-2 mb-1">
                                         <span class="fw-bold text-truncate">${badge.name}</span>
                                     </div>
