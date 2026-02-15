@@ -493,11 +493,10 @@
 
         async function initBadgeList() {
             try {
-                // レアリティ閾値とバッジ情報、流通数の取得
-                const [badgesRes, thresholdsRes, circulationRes] = await Promise.all([
+                // レアリティ閾値とバッジ情報の取得
+                const [badgesRes, thresholdsRes] = await Promise.all([
                     supabaseClient.from('badges').select('*').order('sort_order', { ascending: true }),
-                    supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true }),
-                    supabaseClient.from('user_badges_new').select('badge_id')
+                    supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true })
                 ]);
 
                 if (badgesRes.error) throw badgesRes.error;
@@ -507,23 +506,40 @@
                 rarityThresholds = thresholdsRes.data || [];
                 rarityOrder = getRarityOrder();
 
-                // 流通数のカウント
-                const counts = {};
-                (circulationRes.data || []).forEach(item => {
-                    counts[item.badge_id] = (counts[item.badge_id] || 0) + 1;
-                });
-                cachedCirculationCounts = counts;
+                cachedCirculationCounts = await fetchCirculationCounts();
 
                 await hydrateCreators();
                 await hydrateOwnedBadges();
                 buildFilterOptions();
                 const restored = loadFilterState();
                 applyTagFromUrl(restored);
+                clearStaleCreatorFilter(restored);
                 filterAndRender();
             } catch (err) {
                 console.error('Error fetching badges:', err);
                 document.getElementById('badge-list-grid').innerHTML = '<div class="col-12 text-center text-danger py-5">読み込みエラーが発生しました</div>';
             }
+        }
+
+        async function fetchCirculationCounts() {
+            const counts = {};
+            const pageSize = 1000;
+            let from = 0;
+            while (true) {
+                const { data, error } = await supabaseClient
+                    .from('user_badges_new')
+                    .select('badge_id')
+                    .range(from, from + pageSize - 1);
+                if (error) throw error;
+
+                (data || []).forEach(item => {
+                    counts[item.badge_id] = (counts[item.badge_id] || 0) + 1;
+                });
+
+                if (!data || data.length < pageSize) break;
+                from += pageSize;
+            }
+            return counts;
         }
 
         function getDynamicRarity(assetValue, fixedRarity) {
@@ -962,6 +978,31 @@
             filters.tag = tag;
             currentPage = 1;
             // タグ遷移時は、保存済みのクリエイターフィルタをクリアして混在を防ぐ
+            const creatorInput = document.getElementById('creator-filter');
+            const creatorLabel = document.getElementById('creator-filter-label');
+            const creatorAvatar = document.getElementById('creator-filter-avatar');
+            if (creatorInput) creatorInput.value = '';
+            if (creatorLabel) creatorLabel.textContent = 'すべて';
+            if (creatorAvatar) creatorAvatar.style.display = 'none';
+            filters.creator = '';
+            saveFilterState();
+        }
+
+        function clearStaleCreatorFilter(hasRestored) {
+            if (!hasRestored) return;
+            const params = new URLSearchParams(window.location.search);
+            const hasTag = !!(params.get('tag') || '').trim();
+            if (hasTag) return;
+
+            const ref = document.referrer || '';
+            const sameOrigin = ref.includes(window.location.hostname);
+            const isReturnFromBadgePage = sameOrigin && (
+                ref.includes('/badge/list.html') ||
+                ref.includes('/badge/index.html')
+            );
+
+            if (isReturnFromBadgePage) return;
+
             const creatorInput = document.getElementById('creator-filter');
             const creatorLabel = document.getElementById('creator-filter-label');
             const creatorAvatar = document.getElementById('creator-filter-avatar');
