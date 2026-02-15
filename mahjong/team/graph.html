@@ -46,6 +46,7 @@
             border-radius: 18px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
             padding: 20px;
+            width: 100%;
         }
 
         .team-toggle-bar {
@@ -120,9 +121,9 @@
 </head>
 
 <body>
-    <div id="nav-container"></div>
+    <div class="nav-dropdown"></div>
 
-    <div class="container py-5">
+    <div class="container-fluid py-5 px-3 px-md-4">
         <div class="text-center mb-4">
             <h1 class="page-header">📈 チーム戦グラフ</h1>
             <div class="subtitle">チーム戦の「日次合算 → 累計ポイント」の推移</div>
@@ -247,7 +248,7 @@
                     maintainAspectRatio: false,
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
-                        legend: { position: 'bottom' },
+                        legend: { display: false },
                         tooltip: {
                             callbacks: {
                                 label: (ctx) => {
