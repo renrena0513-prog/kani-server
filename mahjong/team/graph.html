@@ -50,10 +50,9 @@
         }
 
         .team-toggle-bar {
-            display: flex;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
             gap: 8px;
-            justify-content: center;
             margin-top: 16px;
         }
 
@@ -69,6 +68,7 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
+            justify-content: center;
         }
 
         .team-toggle.active {
@@ -109,10 +109,7 @@
         }
 
         .team-toggle-hint {
-            text-align: center;
-            color: #f8f9fa;
-            font-size: 0.85rem;
-            margin-top: 6px;
+            display: none;
         }
 
         .graph-wrapper {
@@ -154,7 +151,7 @@
                 <canvas id="team-chart"></canvas>
             </div>
             <div id="team-toggles" class="team-toggle-bar"></div>
-            <div class="team-toggle-hint">チーム名を押すと表示/非表示を切り替えできます</div>
+            <div class="team-toggle-hint"></div>
         </div>
         <div class="legend-note mt-3 text-center">
             同日の複数対局は合算し、日次合計を累計した折れ線です（JST基準）。
@@ -164,6 +161,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="../../js/supabase-config.js"></script>
     <script src="../../js/auth-guard.js"></script>
