@@ -66,6 +66,9 @@
             padding: 6px 14px;
             box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
             transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .team-toggle.active {
@@ -88,6 +91,23 @@
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
         }
 
+        .team-toggle .team-color-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.6);
+        }
+
+        .team-toggle .team-icon {
+            width: 18px;
+            height: 18px;
+            object-fit: contain;
+            border-radius: 4px;
+            background: #fff;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
         .team-toggle-hint {
             text-align: center;
             color: #f8f9fa;
@@ -98,7 +118,7 @@
         .graph-wrapper {
             position: relative;
             width: 100%;
-            min-height: 360px;
+            min-height: 720px;
         }
 
         .loading {
@@ -194,6 +214,18 @@
             return all;
         }
 
+        async function fetchTeamLogos() {
+            const { data, error } = await supabaseClient
+                .from('teams')
+                .select('team_name, logo_badge:badges!logo_badge_id(image_url)');
+            if (error) throw error;
+            const map = {};
+            (data || []).forEach(t => {
+                if (t.team_name) map[t.team_name] = t.logo_badge?.image_url || '';
+            });
+            return map;
+        }
+
         function buildSeries(records) {
             const dailyByTeam = new Map();
             const dateSet = new Set();
@@ -274,12 +306,16 @@
             return chart;
         }
 
-        function renderTeamToggles(chart, datasets) {
+        function renderTeamToggles(chart, datasets, teamLogoMap) {
             const area = document.getElementById('team-toggles');
             if (!area) return;
             area.innerHTML = datasets.map((ds, idx) => {
+                const logo = teamLogoMap?.[ds.label] || '';
+                const iconHtml = logo ? `<img src="${logo}" class="team-icon" alt="">` : '';
                 return `
                     <button class="btn btn-sm btn-outline-light team-toggle active" data-index="${idx}">
+                        <span class="team-color-dot" style="background:${ds.borderColor}"></span>
+                        ${iconHtml}
                         ${ds.label}
                     </button>
                 `;
@@ -298,11 +334,14 @@
         async function init() {
             initAccordionNav('../../');
             try {
-                const records = await fetchAllMatchResults();
+                const [records, teamLogoMap] = await Promise.all([
+                    fetchAllMatchResults(),
+                    fetchTeamLogos()
+                ]);
                 const { dates, datasets } = buildSeries(records);
                 const labels = dates.map(shortDayLabel);
                 const chart = renderChart(labels, datasets);
-                renderTeamToggles(chart, datasets);
+                renderTeamToggles(chart, datasets, teamLogoMap);
             } catch (err) {
                 console.error('team graph load error:', err);
                 document.getElementById('loading').textContent = '読み込みに失敗しました';
