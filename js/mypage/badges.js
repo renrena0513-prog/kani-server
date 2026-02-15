@@ -47,9 +47,8 @@
         function buildBadgeMetaRowHtml(badge, rarity) {
             const label = (badge?.label || '').trim();
             const labelHtml = label
-                ? `<span class="badge-label-strong badge-tag-link" role="button" tabindex="0"
-                    onclick="event.preventDefault(); event.stopPropagation(); window.location.href='../badge/list.html?label=${encodeURIComponent(label)}';">
-                    ${label}</span>`
+                ? `<a class="badge-label-strong badge-tag-link" href="../badge/list.html?label=${encodeURIComponent(label)}"
+                    onclick="event.stopPropagation();">${label}</a>`
                 : '';
             const typeLabel = badge?.sales_type === '変動型' ? '変動型' : '固定型';
             const typeClass = badge?.sales_type === '変動型' ? 'rarity-epic' : 'bg-light text-dark border';
@@ -67,8 +66,8 @@
             if (!tags.length) return '';
             return `
                 <div class="badge-tag-list">
-                    ${tags.map(t => `<span class="badge-tag badge-tag-link" role="button" tabindex="0"
-                        onclick="event.preventDefault(); event.stopPropagation(); window.location.href='../badge/list.html?tag=${encodeURIComponent(t)}';">#${t}</span>`).join('')}
+                    ${tags.map(t => `<a class="badge-tag badge-tag-link" href="../badge/list.html?tag=${encodeURIComponent(t)}"
+                        onclick="event.stopPropagation();">#${t}</a>`).join('')}
                 </div>
             `;
         }
@@ -342,9 +341,9 @@
             return `
                 <div class="col-6 col-sm-4 col-md-3 mb-3">
                     <div class="card h-100 shadow-sm border-0 position-relative badge-card ${rarityClass}" style="border-radius: 12px; overflow: hidden; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
-                        <a href="../badge/index.html?id=${badge.id}${hasMutant ? '&view=mutant' : ''}" class="text-decoration-none w-100 h-100 d-flex flex-column align-items-center justify-content-center" style="color: inherit;">
-                            <div class="card-body p-2 d-flex flex-column align-items-center justify-content-center text-center">
-                                ${metaRowHtml}
+                        <div class="card-body p-2 d-flex flex-column align-items-center justify-content-center text-center">
+                            ${metaRowHtml}
+                            <a href="../badge/index.html?id=${badge.id}${hasMutant ? '&view=mutant' : ''}" class="text-decoration-none w-100 d-flex flex-column align-items-center justify-content-center" style="color: inherit;">
                                 <div class="small opacity-75 text-truncate w-100 px-1 mt-1" style="font-size: 0.65rem; line-height: 1.2;">${badge.name}</div>
                                 <div class="position-relative mb-1 mt-1">
                                     <div class="badge-item ${isEquipped ? 'equipped' : ''} ${hasMutant ? 'mutant-badge-container active' : ''}" style="width: 70px; height: 70px; padding: 5px; background: transparent; border-width: 2px; border-radius: 50%;">
@@ -357,9 +356,9 @@
                                         </span>` : ''}
                                     ${countLabel}
                                 </div>
-                                ${tagHtml}
-                            </div>
-                        </a>
+                            </a>
+                            ${tagHtml}
+                        </div>
 
                         ${(!isViewMode && !isNonSaleable) ? `
                             <div class="dropdown position-absolute top-0 end-0" style="z-index: 5;">
@@ -409,9 +408,9 @@
                 html += `
                     <div class="col-6 col-sm-4 col-md-3 mb-3">
                         <div class="card h-100 shadow-sm border-0 ${rarityClass}" style="border-radius: 12px; overflow: hidden; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
-                            <a href="../badge/index.html?id=${badge.id}" class="text-decoration-none w-100 h-100" style="color: inherit;">
-                                <div class="card-body p-3 d-flex flex-column align-items-center justify-content-center text-center">
-                                    ${metaRowHtml}
+                            <div class="card-body p-3 d-flex flex-column align-items-center justify-content-center text-center">
+                                ${metaRowHtml}
+                                <a href="../badge/index.html?id=${badge.id}" class="text-decoration-none w-100 d-flex flex-column align-items-center justify-content-center" style="color: inherit;">
                                     <div class="small fw-bold text-truncate w-100 mt-1" style="font-size: 0.75rem; line-height: 1.2;">${badge.name}</div>
                                     <div class="d-flex align-items-center justify-content-center mb-2" style="gap: 8px;">
                                         <div style="width: 70px; height: 70px;">
@@ -420,9 +419,9 @@
                                         <span class="badge bg-dark" style="font-size:0.75rem; padding: 4px 8px;">×${count}</span>
                                     </div>
                                     <div class="small text-muted mt-1" style="font-size: 0.7rem;">💰 ${fixedSellPrice.toLocaleString()} C</div>
-                                    ${tagHtml}
-                                </div>
-                            </a>
+                                </a>
+                                ${tagHtml}
+                            </div>
                         </div>
                     </div>
                 `;

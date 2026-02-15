@@ -2027,7 +2027,7 @@
                                     <span class="badge badge-type-pill ${badge.sales_type === '変動型' ? 'rarity-epic' : 'bg-light text-dark border'}">
                                         ${badge.sales_type === '変動型' ? '変動型' : '固定型'}
                                     </span>
-                                    ${badge.label ? `<span class="badge-label-strong">${badge.label}</span>` : ''}
+                                    ${badge.label ? `<a class="badge-label-strong badge-tag-link" href="./list.html?label=${encodeURIComponent(badge.label)}" onclick="event.stopPropagation();">${badge.label}</a>` : ''}
                                 </div>
                                 <div class="shop-name" style="color: inherit;">${badge.name}</div>
                                 <img src="${badge.image_url}" class="shop-img" alt="${badge.name}" style="filter: drop-shadow(0 5px 15px rgba(0,0,0,0.2));">

@@ -261,39 +261,37 @@
             <!-- バッジヘッダー -->
             <div class="badge-header">
                 <div class="d-flex flex-column align-items-center">
-                    <!-- レアリティ -->
-                    <div id="badge-rarity-badge" class="badge rounded-pill mb-3"
-                        style="font-size: 0.9rem; padding: 6px 15px; display: none;">Normal</div>
+                    <!-- 1行目: レアリティ / タイプ / ラベル -->
+                    <div id="badge-top-meta" class="d-flex flex-wrap justify-content-center gap-2 mb-2">
+                        <div id="badge-rarity-badge" class="badge rounded-pill"
+                            style="font-size: 0.9rem; padding: 6px 15px; display: none;">Normal</div>
+                        <div id="sales-type-badge" class="badge rounded-pill"
+                            style="display: none; font-size: 0.8rem;"></div>
+                        <div id="badge-label-wrap" class="badge-meta-item" style="display: none;">
+                            <a class="meta-chip meta-label" id="badge-label" href="#" onclick="event.stopPropagation();"></a>
+                        </div>
+                    </div>
 
-                    <!-- バッジ画像 -->
+                    <!-- 2行目: 名称 -->
+                    <h1 id="badge-name" class="badge-name">読み込み中...</h1>
+
+                    <!-- 3行目: 画像 -->
                     <div id="badge-image-container" class="mutant-badge-container large">
                         <img id="badge-image" src="" alt="バッジ" class="badge-image-large">
                         <div id="mutant-shine" class="mutant-badge-shine" style="display: none;"></div>
                     </div>
 
-                    <!-- 名称 -->
-                    <h1 id="badge-name" class="badge-name">読み込み中...</h1>
-
-                    <!-- バッジナンバー -->
+                    <!-- 4行目: バッジナンバー -->
                     <div id="badge-number" class="text-white-50 small mb-2"
                         style="font-family: inherit; font-weight: bold; font-size: 0.9rem;"></div>
 
-                    <!-- 販売タイプバッジ -->
-                    <div id="sales-type-badge" class="badge rounded-pill mb-2"
-                        style="display: none; font-size: 0.8rem;"></div>
-
-                    <!-- 説明 -->
-                    <p id="badge-description" class="badge-description mb-4"></p>
-
-                    <!-- ラベル・タグ -->
-                    <div id="badge-meta" class="d-flex flex-wrap justify-content-center gap-2 mb-4" style="display: none;">
-                        <div id="badge-label-wrap" class="badge-meta-item" style="display: none;">
-                            <span class="meta-chip meta-label" id="badge-label"></span>
-                        </div>
-                        <div id="badge-tags-wrap" class="badge-meta-item d-flex flex-wrap gap-2" style="display: none;">
-                            <!-- tags injected -->
-                        </div>
+                    <!-- 5行目: タグ -->
+                    <div id="badge-tags-wrap" class="badge-meta-item d-flex flex-wrap gap-2 mb-3" style="display: none;">
+                        <!-- tags injected -->
                     </div>
+
+                    <!-- 6行目: 説明 -->
+                    <p id="badge-description" class="badge-description mb-4"></p>
 
                     <!-- 獲得条件と権利者 (横並び) -->
                     <div class="d-flex flex-wrap justify-content-center gap-4 w-100">
@@ -455,34 +453,31 @@
                 document.getElementById('badge-description').textContent = badge.description || '説明なし';
 
                 // ラベル・タグ表示
-                const metaWrap = document.getElementById('badge-meta');
                 const labelWrap = document.getElementById('badge-label-wrap');
                 const labelEl = document.getElementById('badge-label');
                 const tagsWrap = document.getElementById('badge-tags-wrap');
                 const tags = getBadgeTags(badge);
                 const label = (badge.label || '').trim();
-                let hasMeta = false;
 
                 if (label) {
-                    if (labelEl) labelEl.textContent = label;
+                    if (labelEl) {
+                        labelEl.textContent = label;
+                        labelEl.href = `./list.html?label=${encodeURIComponent(label)}`;
+                    }
                     if (labelWrap) labelWrap.style.display = 'block';
-                    hasMeta = true;
                 } else if (labelWrap) {
                     labelWrap.style.display = 'none';
                 }
 
                 if (tagsWrap) {
                     if (tags.length) {
-                        tagsWrap.innerHTML = tags.map(t => `<span class="meta-chip meta-tag">#${escapeHtml(t)}</span>`).join('');
+                        tagsWrap.innerHTML = tags.map(t => `<a class="meta-chip meta-tag" href="./list.html?tag=${encodeURIComponent(t)}" onclick="event.stopPropagation();">#${escapeHtml(t)}</a>`).join('');
                         tagsWrap.style.display = 'flex';
-                        hasMeta = true;
                     } else {
                         tagsWrap.innerHTML = '';
                         tagsWrap.style.display = 'none';
                     }
                 }
-
-                if (metaWrap) metaWrap.style.display = hasMeta ? 'flex' : 'none';
 
                 // バッジナンバー
                 if (badge.sort_order !== null) {
