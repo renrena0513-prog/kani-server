@@ -53,18 +53,45 @@
             flex-wrap: wrap;
             gap: 8px;
             justify-content: center;
-            margin-bottom: 16px;
+            margin-top: 16px;
         }
 
         .team-toggle {
             border-radius: 999px;
-            font-weight: 700;
+            font-weight: 800;
+            border: 2px solid rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            padding: 6px 14px;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
         }
 
         .team-toggle.active {
             background: #ffffff;
             color: #1e6b47;
             border-color: #ffffff;
+            box-shadow: 0 8px 20px rgba(255, 255, 255, 0.35);
+        }
+
+        .team-toggle:hover {
+            transform: translateY(-1px);
+            background: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+        }
+
+        .team-toggle:not(.active) {
+            background: rgba(0, 0, 0, 0.15);
+            color: #ffffff;
+            border-color: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+        }
+
+        .team-toggle-hint {
+            text-align: center;
+            color: #f8f9fa;
+            font-size: 0.85rem;
+            margin-top: 6px;
         }
 
         .graph-wrapper {
@@ -102,10 +129,11 @@
         </div>
 
         <div class="graph-card">
-            <div id="team-toggles" class="team-toggle-bar"></div>
             <div class="graph-wrapper">
                 <canvas id="team-chart"></canvas>
             </div>
+            <div id="team-toggles" class="team-toggle-bar"></div>
+            <div class="team-toggle-hint">チーム名を押すと表示/非表示を切り替えできます</div>
         </div>
         <div class="legend-note mt-3 text-center">
             同日の複数対局は合算し、日次合計を累計した折れ線です（JST基準）。
