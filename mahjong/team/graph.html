@@ -153,9 +153,7 @@
             <div id="team-toggles" class="team-toggle-bar"></div>
             <div class="team-toggle-hint"></div>
         </div>
-        <div class="legend-note mt-3 text-center">
-            同日の複数対局は合算し、日次合計を累計した折れ線です（JST基準）。
-        </div>
+        <div class="legend-note mt-3 text-center"></div>
 
         <div id="loading" class="loading">読み込み中...</div>
     </div>
@@ -280,6 +278,7 @@
                     plugins: {
                         legend: { display: false },
                         tooltip: {
+                            itemSort: (a, b) => (b.parsed?.y || 0) - (a.parsed?.y || 0),
                             callbacks: {
                                 label: (ctx) => {
                                     const label = ctx.dataset.label || '';
