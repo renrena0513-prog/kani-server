@@ -488,6 +488,8 @@
             unownedOnly: false
         };
         const FILTER_STORAGE_KEY = 'badge_list_filters_v1';
+        const FILTER_URL_APPLIED_KEY = 'badge_list_url_applied_v1';
+        let lastLoadedFilterState = null;
 
         let cachedCirculationCounts = {}; // バッジごとの流通数
 
@@ -734,7 +736,8 @@
                     tag: document.getElementById('tag-filter')?.value || '',
                     method: document.getElementById('method-filter')?.value || '',
                     unownedOnly: !!filters.unownedOnly,
-                    page: currentPage
+                    page: currentPage,
+                    updatedAt: Date.now()
                 };
                 sessionStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(state));
             } catch (err) {
@@ -747,6 +750,7 @@
                 const raw = sessionStorage.getItem(FILTER_STORAGE_KEY);
                 if (!raw) return false;
                 const state = JSON.parse(raw);
+                lastLoadedFilterState = state;
                 const search = document.getElementById('search-box');
                 const sort = document.getElementById('sort-select');
                 const rarityInput = document.getElementById('rarity-filter');
@@ -993,6 +997,7 @@
             const params = new URLSearchParams(window.location.search);
             const tag = (params.get('tag') || '').trim();
             if (!tag) return;
+            if (shouldSkipUrlApply(hasRestored, `tag:${tag}`)) return;
             resetAllFiltersForExternalNav();
             const tagSelect = document.getElementById('tag-filter');
             if (!tagSelect) return;
@@ -1016,6 +1021,7 @@
                 creatorAvatar.style.display = 'none';
             }
             filters.creator = '';
+            markUrlApplied(`tag:${tag}`);
             saveFilterState();
         }
 
@@ -1023,6 +1029,7 @@
             const params = new URLSearchParams(window.location.search);
             const label = (params.get('label') || '').trim();
             if (!label) return;
+            if (shouldSkipUrlApply(hasRestored, `label:${label}`)) return;
             resetAllFiltersForExternalNav();
             const labelSelect = document.getElementById('label-filter');
             if (!labelSelect) return;
@@ -1045,7 +1052,33 @@
                 creatorAvatar.style.display = 'none';
             }
             filters.creator = '';
+            markUrlApplied(`label:${label}`);
             saveFilterState();
+        }
+
+        function shouldSkipUrlApply(hasRestored, urlKey) {
+            if (!hasRestored || !lastLoadedFilterState) return false;
+            try {
+                const raw = sessionStorage.getItem(FILTER_URL_APPLIED_KEY);
+                const info = raw ? JSON.parse(raw) : null;
+                if (!info || info.key !== urlKey) return false;
+                const lastAppliedAt = info.appliedAt || 0;
+                const lastUpdatedAt = lastLoadedFilterState.updatedAt || 0;
+                return lastUpdatedAt > lastAppliedAt;
+            } catch (_) {
+                return false;
+            }
+        }
+
+        function markUrlApplied(urlKey) {
+            try {
+                sessionStorage.setItem(FILTER_URL_APPLIED_KEY, JSON.stringify({
+                    key: urlKey,
+                    appliedAt: Date.now()
+                }));
+            } catch (_) {
+                // noop
+            }
         }
 
         function resetAllFiltersForExternalNav() {
