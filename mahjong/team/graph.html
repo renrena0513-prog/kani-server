@@ -49,6 +49,16 @@
             width: 100%;
         }
 
+        .graph-scroll {
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .graph-inner {
+            min-width: 1200px;
+        }
+
         .team-toggle-bar {
             display: grid;
             grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -147,11 +157,15 @@
         </div>
 
         <div class="graph-card">
-            <div class="graph-wrapper">
-                <canvas id="team-chart"></canvas>
+            <div class="graph-scroll">
+                <div class="graph-inner">
+                    <div class="graph-wrapper">
+                        <canvas id="team-chart"></canvas>
+                    </div>
+                    <div id="team-toggles" class="team-toggle-bar"></div>
+                    <div class="team-toggle-hint"></div>
+                </div>
             </div>
-            <div id="team-toggles" class="team-toggle-bar"></div>
-            <div class="team-toggle-hint"></div>
         </div>
         <div class="legend-note mt-3 text-center"></div>
 
