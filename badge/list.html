@@ -993,6 +993,7 @@
             const params = new URLSearchParams(window.location.search);
             const tag = (params.get('tag') || '').trim();
             if (!tag) return;
+            resetAllFiltersForExternalNav();
             const tagSelect = document.getElementById('tag-filter');
             if (!tagSelect) return;
             if (![...tagSelect.options].some(o => o.value === tag)) {
@@ -1022,6 +1023,7 @@
             const params = new URLSearchParams(window.location.search);
             const label = (params.get('label') || '').trim();
             if (!label) return;
+            resetAllFiltersForExternalNav();
             const labelSelect = document.getElementById('label-filter');
             if (!labelSelect) return;
             if (![...labelSelect.options].some(o => o.value === label)) {
@@ -1044,6 +1046,43 @@
             }
             filters.creator = '';
             saveFilterState();
+        }
+
+        function resetAllFiltersForExternalNav() {
+            const search = document.getElementById('search-box');
+            const sort = document.getElementById('sort-select');
+            const rarityInput = document.getElementById('rarity-filter');
+            const rarityLabel = document.getElementById('rarity-filter-label');
+            const creatorInput = document.getElementById('creator-filter');
+            const creatorLabel = document.getElementById('creator-filter-label');
+            const creatorAvatar = document.getElementById('creator-filter-avatar');
+            const type = document.getElementById('type-filter');
+            const label = document.getElementById('label-filter');
+            const tag = document.getElementById('tag-filter');
+            const method = document.getElementById('method-filter');
+            const unownedBtn = document.getElementById('unowned-toggle');
+
+            if (search) search.value = '';
+            if (sort) sort.value = 'price_asc';
+            if (rarityInput) rarityInput.value = '';
+            if (rarityLabel) rarityLabel.textContent = 'すべて';
+            if (creatorInput) creatorInput.value = '';
+            if (creatorLabel) creatorLabel.textContent = 'すべて';
+            if (creatorAvatar) {
+                creatorAvatar.src = '';
+                creatorAvatar.style.display = 'none';
+            }
+            if (type) type.value = '';
+            if (label) label.value = '';
+            if (tag) tag.value = '';
+            if (method) method.value = '';
+            filters.unownedOnly = false;
+            if (unownedBtn) {
+                unownedBtn.classList.remove('btn-primary');
+                unownedBtn.classList.add('btn-outline-secondary');
+                unownedBtn.textContent = '未所持のみ表示';
+            }
+            currentPage = 1;
         }
 
         function clearStaleCreatorFilter(hasRestored) {
