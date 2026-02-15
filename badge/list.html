@@ -967,8 +967,26 @@
         function getBadgeTags(badge) {
             if (!badge) return [];
             const tags = badge.tags;
-            if (!Array.isArray(tags)) return [];
-            return tags.map(t => (t || '').trim()).filter(Boolean);
+            if (Array.isArray(tags)) {
+                return tags.map(t => (t || '').trim()).filter(Boolean);
+            }
+            if (typeof tags === 'string') {
+                const trimmed = tags.trim();
+                if (!trimmed) return [];
+                try {
+                    const parsed = JSON.parse(trimmed);
+                    if (Array.isArray(parsed)) {
+                        return parsed.map(t => (t || '').trim()).filter(Boolean);
+                    }
+                } catch (_) {
+                    // ignore JSON parse errors
+                }
+                return trimmed
+                    .split(/[,\s]+/g)
+                    .map(t => t.trim())
+                    .filter(Boolean);
+            }
+            return [];
         }
 
         function applyTagFromUrl(hasRestored) {
@@ -1048,7 +1066,10 @@
             const creatorAvatar = document.getElementById('creator-filter-avatar');
             if (creatorInput) creatorInput.value = '';
             if (creatorLabel) creatorLabel.textContent = 'すべて';
-            if (creatorAvatar) creatorAvatar.style.display = 'none';
+            if (creatorAvatar) {
+                creatorAvatar.src = '';
+                creatorAvatar.style.display = 'none';
+            }
             filters.creator = '';
             saveFilterState();
         }
