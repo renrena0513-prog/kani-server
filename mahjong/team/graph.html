@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>チーム戦グラフ | かにサーバー</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../styles.css">
+    <style>
+        :root {
+            --primary-green: #2d8a5e;
+            --deep-green: #1e6b47;
+            --cream: #faf5e8;
+            --gold: #d4a853;
+            --font-title: 'Noto Serif JP', serif;
+            --font-body: 'M PLUS Rounded 1c', sans-serif;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: linear-gradient(180deg, #2d8a5e 0%, #256b4a 50%, #1e5538 100%);
+            min-height: 100vh;
+            background-attachment: fixed;
+            color: #333;
+        }
+
+        .page-header {
+            font-family: var(--font-title);
+            color: var(--cream);
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: #e6f5ef;
+        }
+
+        .graph-card {
+            background: #ffffff;
+            border-radius: 18px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+        }
+
+        .graph-wrapper {
+            position: relative;
+            width: 100%;
+            min-height: 360px;
+        }
+
+        .loading {
+            color: #fff;
+            text-align: center;
+            margin-top: 2rem;
+        }
+
+        .legend-note {
+            color: #f8f9fa;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .graph-card {
+                padding: 14px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="nav-container"></div>
+
+    <div class="container py-5">
+        <div class="text-center mb-4">
+            <h1 class="page-header">📈 チーム戦グラフ</h1>
+            <div class="subtitle">チーム戦の「日次合算 → 累計ポイント」の推移</div>
+        </div>
+
+        <div class="graph-card">
+            <div class="graph-wrapper">
+                <canvas id="team-chart"></canvas>
+            </div>
+        </div>
+        <div class="legend-note mt-3 text-center">
+            同日の複数対局は合算し、日次合計を累計した折れ線です（JST基準）。
+        </div>
+
+        <div id="loading" class="loading">読み込み中...</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="../../js/supabase-config.js"></script>
+    <script src="../../js/auth-guard.js"></script>
+    <script src="../../js/navigation.js"></script>
+    <script>
+        const JST_DATE_FORMAT = new Intl.DateTimeFormat('sv-SE', {
+            timeZone: 'Asia/Tokyo',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        });
+
+        function formatDateJST(dateStr) {
+            if (!dateStr) return null;
+            const d = new Date(dateStr);
+            if (Number.isNaN(d.getTime())) return null;
+            return JST_DATE_FORMAT.format(d);
+        }
+
+        function colorForIndex(i) {
+            const palette = [
+                '#ff6b6b', '#4dabf7', '#51cf66', '#ff922b', '#845ef7',
+                '#20c997', '#e64980', '#fab005', '#15aabf', '#adb5bd'
+            ];
+            return palette[i % palette.length];
+        }
+
+        async function fetchAllMatchResults() {
+            const batchSize = 1000;
+            let all = [];
+            let from = 0;
+            while (true) {
+                const { data, error } = await supabaseClient
+                    .from('match_results')
+                    .select('event_datetime, match_mode, team_name, final_score')
+                    .order('event_datetime', { ascending: true })
+                    .range(from, from + batchSize - 1);
+                if (error) throw error;
+                all = all.concat(data || []);
+                if (!data || data.length < batchSize) break;
+                from += batchSize;
+            }
+            return all;
+        }
+
+        function buildSeries(records) {
+            const dailyByTeam = new Map();
+            const dateSet = new Set();
+
+            records.forEach(r => {
+                if (r.match_mode !== 'チーム戦') return;
+                if (!r.team_name) return;
+                const dateKey = formatDateJST(r.event_datetime);
+                if (!dateKey) return;
+                dateSet.add(dateKey);
+                if (!dailyByTeam.has(r.team_name)) dailyByTeam.set(r.team_name, new Map());
+                const teamMap = dailyByTeam.get(r.team_name);
+                const prev = teamMap.get(dateKey) || 0;
+                const add = Number(r.final_score || 0);
+                teamMap.set(dateKey, prev + add);
+            });
+
+            const dates = Array.from(dateSet).sort((a, b) => a.localeCompare(b));
+            const datasets = Array.from(dailyByTeam.entries()).map(([team, dateMap], idx) => {
+                let running = 0;
+                const data = dates.map(d => {
+                    const dayVal = dateMap.get(d) || 0;
+                    running += dayVal;
+                    return running;
+                });
+                const color = colorForIndex(idx);
+                return {
+                    label: team,
+                    data,
+                    borderColor: color,
+                    backgroundColor: color,
+                    borderWidth: 2,
+                    pointRadius: 2,
+                    tension: 0.25
+                };
+            });
+
+            return { dates, datasets };
+        }
+
+        function renderChart(labels, datasets) {
+            const ctx = document.getElementById('team-chart');
+            if (!ctx) return;
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => {
+                                    const label = ctx.dataset.label || '';
+                                    const value = ctx.parsed.y || 0;
+                                    return `${label}: ${value.toLocaleString()}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 10 }
+                        },
+                        y: {
+                            ticks: {
+                                callback: (val) => Number(val).toLocaleString()
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        async function init() {
+            initAccordionNav('../../');
+            try {
+                const records = await fetchAllMatchResults();
+                const { dates, datasets } = buildSeries(records);
+                renderChart(dates, datasets);
+            } catch (err) {
+                console.error('team graph load error:', err);
+                document.getElementById('loading').textContent = '読み込みに失敗しました';
+                return;
+            } finally {
+                const loading = document.getElementById('loading');
+                if (loading) loading.style.display = 'none';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+
+</html>

@@ -685,7 +685,7 @@ function renderDropdownItems(idx, profiles) {
                 <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}" style="margin-left: 5px;">
                     <img src="${badge.image_url}" title="${badge.name}" 
                          style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
-                    ${MutantBadge.renderShine(isMutant)}
+                    ${isMutant ? MutantBadge.renderShine(true) : ''}
                 </div>`;
         }
 
@@ -696,7 +696,7 @@ function renderDropdownItems(idx, profiles) {
                 <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}" style="margin-left: 5px;">
                     <img src="${badgeRight.image_url}" title="${badgeRight.name}" 
                          style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
-                    ${MutantBadge.renderShine(isMutant)}
+                    ${isMutant ? MutantBadge.renderShine(true) : ''}
                 </div>`;
         }
 
@@ -737,8 +737,12 @@ function selectPlayer(idx, discordUserId, accountName) {
         badgeLeftContainer.innerHTML = `
             <img src="${badgeLeft.image_url}" title="${badgeLeft.name}" 
                  style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
-            ${MutantBadge.renderShine(isMutantLeft)}`;
-        badgeLeftContainer.classList.toggle('active', isMutantLeft);
+            ${isMutantLeft ? MutantBadge.renderShine(true) : ''}`;
+        if (window.MutantBadge?.setActive) {
+            MutantBadge.setActive(badgeLeftContainer, !!isMutantLeft);
+        } else {
+            badgeLeftContainer.classList.toggle('active', !!isMutantLeft);
+        }
         badgeLeftContainer.style.display = 'inline-block';
     } else if (badgeLeftContainer) {
         badgeLeftContainer.style.display = 'none';
@@ -752,8 +756,12 @@ function selectPlayer(idx, discordUserId, accountName) {
         badgeRightContainer.innerHTML = `
             <img src="${badgeRight.image_url}" title="${badgeRight.name}" 
                  style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
-            ${MutantBadge.renderShine(isMutantRight)}`;
-        badgeRightContainer.classList.toggle('active', isMutantRight);
+            ${isMutantRight ? MutantBadge.renderShine(true) : ''}`;
+        if (window.MutantBadge?.setActive) {
+            MutantBadge.setActive(badgeRightContainer, !!isMutantRight);
+        } else {
+            badgeRightContainer.classList.toggle('active', !!isMutantRight);
+        }
         badgeRightContainer.style.display = 'inline-block';
     } else if (badgeRightContainer) {
         badgeRightContainer.style.display = 'none';
@@ -869,7 +877,7 @@ function buildYakumanDropdownItem(player, rowId) {
         badgeHtmlLeft = `
             <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}" style="margin-left: 5px;">
                 <img src="${badgeLeft.image_url}" title="${badgeLeft.name}" style="width: 22px; height: 22px; object-fit: contain; border-radius: 4px;">
-                ${MutantBadge.renderShine(isMutant)}
+                ${isMutant ? MutantBadge.renderShine(true) : ''}
             </div>`;
     }
     let badgeHtmlRight = '';
@@ -878,7 +886,7 @@ function buildYakumanDropdownItem(player, rowId) {
         badgeHtmlRight = `
             <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}" style="margin-left: 5px;">
                 <img src="${badgeRight.image_url}" title="${badgeRight.name}" style="width: 22px; height: 22px; object-fit: contain; border-radius: 4px;">
-                ${MutantBadge.renderShine(isMutant)}
+                ${isMutant ? MutantBadge.renderShine(true) : ''}
             </div>`;
     }
     return `
@@ -920,7 +928,7 @@ function selectYakumanPlayer(rowId, discordUserId, accountName) {
             badgeHtmlLeft = `
                 <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}" style="margin-left: 5px;">
                     <img src="${badgeLeft.image_url}" title="${badgeLeft.name}" style="width: 22px; height: 22px; object-fit: contain; border-radius: 4px;">
-                    ${MutantBadge.renderShine(isMutant)}
+                    ${isMutant ? MutantBadge.renderShine(true) : ''}
                 </div>`;
         }
         let badgeHtmlRight = '';
@@ -929,7 +937,7 @@ function selectYakumanPlayer(rowId, discordUserId, accountName) {
             badgeHtmlRight = `
                 <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}" style="margin-left: 5px;">
                     <img src="${badgeRight.image_url}" title="${badgeRight.name}" style="width: 22px; height: 22px; object-fit: contain; border-radius: 4px;">
-                    ${MutantBadge.renderShine(isMutant)}
+                    ${isMutant ? MutantBadge.renderShine(true) : ''}
                 </div>`;
         }
         display.innerHTML = `

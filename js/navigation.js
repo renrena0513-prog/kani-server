@@ -31,6 +31,7 @@ function generateAccordionNav(basePath = '../') {
                         <li><a class="dropdown-item sub-item" href="${basePath}mahjong/users/index.html">👥 ユーザー一覧</a></li>
                         <li><a class="dropdown-item sub-item" href="${basePath}mahjong/team/index.html"><span id="nav-team-icon" style="margin-right: 4px; display: inline-flex; align-items: center;">🏅</span> チーム管理 <span id="team-notification-badge" class="notification-badge" style="display:none;">0</span></a></li>
                         <li><a class="dropdown-item sub-item" href="${basePath}mahjong/team/divide.html">🧩 チーム分け</a></li>
+                        <li><a class="dropdown-item sub-item" href="${basePath}mahjong/team/graph.html">📈 チーム戦グラフ</a></li>
                     </ul>
                 </li>
                 
