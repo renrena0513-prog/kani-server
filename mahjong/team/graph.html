@@ -48,6 +48,25 @@
             padding: 20px;
         }
 
+        .team-toggle-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+
+        .team-toggle {
+            border-radius: 999px;
+            font-weight: 700;
+        }
+
+        .team-toggle.active {
+            background: #ffffff;
+            color: #1e6b47;
+            border-color: #ffffff;
+        }
+
         .graph-wrapper {
             position: relative;
             width: 100%;
@@ -83,6 +102,7 @@
         </div>
 
         <div class="graph-card">
+            <div id="team-toggles" class="team-toggle-bar"></div>
             <div class="graph-wrapper">
                 <canvas id="team-chart"></canvas>
             </div>
@@ -112,6 +132,11 @@
             const d = new Date(dateStr);
             if (Number.isNaN(d.getTime())) return null;
             return JST_DATE_FORMAT.format(d);
+        }
+
+        function shortDayLabel(yyyyMmDd) {
+            if (!yyyyMmDd || yyyyMmDd.length !== 10) return yyyyMmDd || '';
+            return yyyyMmDd.slice(8, 10);
         }
 
         function colorForIndex(i) {
@@ -183,7 +208,7 @@
         function renderChart(labels, datasets) {
             const ctx = document.getElementById('team-chart');
             if (!ctx) return;
-            new Chart(ctx, {
+            const chart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels,
@@ -207,7 +232,7 @@
                     },
                     scales: {
                         x: {
-                            ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 10 }
+                            ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 31 }
                         },
                         y: {
                             ticks: {
@@ -217,6 +242,28 @@
                     }
                 }
             });
+            return chart;
+        }
+
+        function renderTeamToggles(chart, datasets) {
+            const area = document.getElementById('team-toggles');
+            if (!area) return;
+            area.innerHTML = datasets.map((ds, idx) => {
+                return `
+                    <button class="btn btn-sm btn-outline-light team-toggle active" data-index="${idx}">
+                        ${ds.label}
+                    </button>
+                `;
+            }).join('');
+            area.querySelectorAll('.team-toggle').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const i = Number(btn.dataset.index);
+                    const meta = chart.getDatasetMeta(i);
+                    meta.hidden = meta.hidden === null ? true : !meta.hidden;
+                    btn.classList.toggle('active', !meta.hidden);
+                    chart.update();
+                });
+            });
         }
 
         async function init() {
@@ -224,7 +271,9 @@
             try {
                 const records = await fetchAllMatchResults();
                 const { dates, datasets } = buildSeries(records);
-                renderChart(dates, datasets);
+                const labels = dates.map(shortDayLabel);
+                const chart = renderChart(labels, datasets);
+                renderTeamToggles(chart, datasets);
             } catch (err) {
                 console.error('team graph load error:', err);
                 document.getElementById('loading').textContent = '読み込みに失敗しました';
