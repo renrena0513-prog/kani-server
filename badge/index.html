@@ -108,6 +108,30 @@
             color: #4a3a3a;
         }
 
+        .meta-chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            line-height: 1;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            background: rgba(0, 0, 0, 0.25);
+            color: #fff;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+        }
+
+        .meta-label {
+            background: rgba(255, 193, 7, 0.2);
+            border-color: rgba(255, 193, 7, 0.5);
+        }
+
+        .meta-tag {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
         .owner-avatar {
             width: 48px;
             height: 48px;
@@ -261,6 +285,16 @@
                     <!-- 説明 -->
                     <p id="badge-description" class="badge-description mb-4"></p>
 
+                    <!-- ラベル・タグ -->
+                    <div id="badge-meta" class="d-flex flex-wrap justify-content-center gap-2 mb-4" style="display: none;">
+                        <div id="badge-label-wrap" class="badge-meta-item" style="display: none;">
+                            <span class="meta-chip meta-label" id="badge-label"></span>
+                        </div>
+                        <div id="badge-tags-wrap" class="badge-meta-item d-flex flex-wrap gap-2" style="display: none;">
+                            <!-- tags injected -->
+                        </div>
+                    </div>
+
                     <!-- 獲得条件と権利者 (横並び) -->
                     <div class="d-flex flex-wrap justify-content-center gap-4 w-100">
                         <div id="badge-requirements-section" class="badge-extra-info" style="display: none;">
@@ -359,6 +393,40 @@
             }
         }
 
+        function escapeHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function getBadgeTags(badge) {
+            if (!badge) return [];
+            const raw = badge.tags;
+            if (Array.isArray(raw)) {
+                return raw.map(t => (t || '').trim()).filter(Boolean);
+            }
+            if (typeof raw === 'string') {
+                const trimmed = raw.trim();
+                if (!trimmed) return [];
+                try {
+                    const parsed = JSON.parse(trimmed);
+                    if (Array.isArray(parsed)) {
+                        return parsed.map(t => (t || '').trim()).filter(Boolean);
+                    }
+                } catch (_) {
+                    // ignore JSON parse errors
+                }
+                return trimmed
+                    .split(/[,\s]+/g)
+                    .map(t => t.trim())
+                    .filter(Boolean);
+            }
+            return [];
+        }
+
         async function initPage() {
             const urlParams = new URLSearchParams(window.location.search);
             const badgeId = urlParams.get('id');
@@ -385,6 +453,36 @@
                 document.getElementById('badge-image').src = badge.image_url;
                 document.getElementById('badge-name').textContent = badge.name;
                 document.getElementById('badge-description').textContent = badge.description || '説明なし';
+
+                // ラベル・タグ表示
+                const metaWrap = document.getElementById('badge-meta');
+                const labelWrap = document.getElementById('badge-label-wrap');
+                const labelEl = document.getElementById('badge-label');
+                const tagsWrap = document.getElementById('badge-tags-wrap');
+                const tags = getBadgeTags(badge);
+                const label = (badge.label || '').trim();
+                let hasMeta = false;
+
+                if (label) {
+                    if (labelEl) labelEl.textContent = label;
+                    if (labelWrap) labelWrap.style.display = 'block';
+                    hasMeta = true;
+                } else if (labelWrap) {
+                    labelWrap.style.display = 'none';
+                }
+
+                if (tagsWrap) {
+                    if (tags.length) {
+                        tagsWrap.innerHTML = tags.map(t => `<span class="meta-chip meta-tag">#${escapeHtml(t)}</span>`).join('');
+                        tagsWrap.style.display = 'flex';
+                        hasMeta = true;
+                    } else {
+                        tagsWrap.innerHTML = '';
+                        tagsWrap.style.display = 'none';
+                    }
+                }
+
+                if (metaWrap) metaWrap.style.display = hasMeta ? 'flex' : 'none';
 
                 // バッジナンバー
                 if (badge.sort_order !== null) {

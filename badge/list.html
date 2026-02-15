@@ -512,6 +512,7 @@
                 await hydrateOwnedBadges();
                 buildFilterOptions();
                 const restored = loadFilterState();
+                applyLabelFromUrl(restored);
                 applyTagFromUrl(restored);
                 clearStaleCreatorFilter(restored);
                 filterAndRender();
@@ -986,6 +987,34 @@
             filters.tag = tag;
             currentPage = 1;
             // タグ遷移時は、保存済みのクリエイターフィルタをクリアして混在を防ぐ
+            const creatorInput = document.getElementById('creator-filter');
+            const creatorLabel = document.getElementById('creator-filter-label');
+            const creatorAvatar = document.getElementById('creator-filter-avatar');
+            if (creatorInput) creatorInput.value = '';
+            if (creatorLabel) creatorLabel.textContent = 'すべて';
+            if (creatorAvatar) {
+                creatorAvatar.src = '';
+                creatorAvatar.style.display = 'none';
+            }
+            filters.creator = '';
+            saveFilterState();
+        }
+
+        function applyLabelFromUrl(hasRestored) {
+            const params = new URLSearchParams(window.location.search);
+            const label = (params.get('label') || '').trim();
+            if (!label) return;
+            const labelSelect = document.getElementById('label-filter');
+            if (!labelSelect) return;
+            if (![...labelSelect.options].some(o => o.value === label)) {
+                const opt = document.createElement('option');
+                opt.value = label;
+                opt.textContent = label;
+                labelSelect.appendChild(opt);
+            }
+            labelSelect.value = label;
+            filters.label = label;
+            currentPage = 1;
             const creatorInput = document.getElementById('creator-filter');
             const creatorLabel = document.getElementById('creator-filter-label');
             const creatorAvatar = document.getElementById('creator-filter-avatar');

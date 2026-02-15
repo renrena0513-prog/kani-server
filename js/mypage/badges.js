@@ -19,6 +19,60 @@
             method: ''
         };
 
+        function getBadgeTagsFromBadge(badge) {
+            if (!badge) return [];
+            const raw = badge.tags;
+            if (Array.isArray(raw)) {
+                return raw.map(t => (t || '').trim()).filter(Boolean);
+            }
+            if (typeof raw === 'string') {
+                const trimmed = raw.trim();
+                if (!trimmed) return [];
+                try {
+                    const parsed = JSON.parse(trimmed);
+                    if (Array.isArray(parsed)) {
+                        return parsed.map(t => (t || '').trim()).filter(Boolean);
+                    }
+                } catch (_) {
+                    // ignore JSON parse errors
+                }
+                return trimmed
+                    .split(/[,\s]+/g)
+                    .map(t => t.trim())
+                    .filter(Boolean);
+            }
+            return [];
+        }
+
+        function buildBadgeMetaRowHtml(badge, rarity) {
+            const label = (badge?.label || '').trim();
+            const labelHtml = label
+                ? `<span class="badge-label-strong badge-tag-link" role="button" tabindex="0"
+                    onclick="event.preventDefault(); event.stopPropagation(); window.location.href='../badge/list.html?label=${encodeURIComponent(label)}';">
+                    ${label}</span>`
+                : '';
+            const typeLabel = badge?.sales_type === '変動型' ? '変動型' : '固定型';
+            const typeClass = badge?.sales_type === '変動型' ? 'rarity-epic' : 'bg-light text-dark border';
+            return `
+                <div class="badge-meta-row">
+                    <div class="rarity-pill" style="background: rgba(0,0,0,0.2);">${rarity}</div>
+                    <span class="badge badge-type-pill ${typeClass}">${typeLabel}</span>
+                    ${labelHtml}
+                </div>
+            `;
+        }
+
+        function buildBadgeTagListHtml(badge) {
+            const tags = getBadgeTagsFromBadge(badge);
+            if (!tags.length) return '';
+            return `
+                <div class="badge-tag-list">
+                    ${tags.map(t => `<span class="badge-tag badge-tag-link" role="button" tabindex="0"
+                        onclick="event.preventDefault(); event.stopPropagation(); window.location.href='../badge/list.html?tag=${encodeURIComponent(t)}';">#${t}</span>`).join('')}
+                </div>
+            `;
+        }
+
         function toggleMutantFilter() {
             isMutantFilterActive = !isMutantFilterActive;
             const btn = document.getElementById('filter-mutant-btn');
@@ -282,13 +336,17 @@
             const isEquipped = isEquippedLeft || isEquippedRight;
             const isNonSaleable = (badge.sales_type === '限定品');
             const countLabel = count > 1 ? `<span class="badge bg-dark position-absolute bottom-0 end-0 m-1" style="font-size:0.6rem; z-index:4; opacity: 0.9;">x${count}</span>` : '';
+            const metaRowHtml = buildBadgeMetaRowHtml(badge, rarity);
+            const tagHtml = buildBadgeTagListHtml(badge);
 
             return `
                 <div class="col-6 col-sm-4 col-md-3 mb-3">
                     <div class="card h-100 shadow-sm border-0 position-relative badge-card ${rarityClass}" style="border-radius: 12px; overflow: hidden; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
                         <a href="../badge/index.html?id=${badge.id}${hasMutant ? '&view=mutant' : ''}" class="text-decoration-none w-100 h-100 d-flex flex-column align-items-center justify-content-center" style="color: inherit;">
                             <div class="card-body p-2 d-flex flex-column align-items-center justify-content-center text-center">
-                                <div class="position-relative mb-1">
+                                ${metaRowHtml}
+                                <div class="small opacity-75 text-truncate w-100 px-1 mt-1" style="font-size: 0.65rem; line-height: 1.2;">${badge.name}</div>
+                                <div class="position-relative mb-1 mt-1">
                                     <div class="badge-item ${isEquipped ? 'equipped' : ''} ${hasMutant ? 'mutant-badge-container active' : ''}" style="width: 70px; height: 70px; padding: 5px; background: transparent; border-width: 2px; border-radius: 50%;">
                                         <img src="${badge.image_url}" alt="${badge.name}" style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.2)); ${hasMutant ? 'position: relative; z-index: 1;' : ''}">
                                         ${hasMutant ? (window.MutantBadge ? window.MutantBadge.renderShine(true) : '<div class="mutant-badge-shine"></div>') : ''}
@@ -299,11 +357,10 @@
                                         </span>` : ''}
                                     ${countLabel}
                                 </div>
-                                <div class="small opacity-75 text-truncate w-100 px-1" style="font-size: 0.65rem; line-height: 1.2;">${badge.name}</div>
-                                <span class="badge mt-1" style="background: rgba(0,0,0,0.2); font-size: 0.45rem; padding: 2px 5px;">${rarity}</span>
+                                ${tagHtml}
                             </div>
                         </a>
-                        
+
                         ${(!isViewMode && !isNonSaleable) ? `
                             <div class="dropdown position-absolute top-0 end-0" style="z-index: 5;">
                                 <button class="btn btn-link btn-sm p-1" data-bs-toggle="dropdown" style="font-size: 0.7rem; color: inherit; opacity: 0.5;">
@@ -346,21 +403,24 @@
                 const { badge, count, rarity } = badgeInfo;
                 const rarityClass = getRarityClass(rarity);
                 const fixedSellPrice = badge.price;
+                const metaRowHtml = buildBadgeMetaRowHtml(badge, rarity);
+                const tagHtml = buildBadgeTagListHtml(badge);
 
                 html += `
                     <div class="col-6 col-sm-4 col-md-3 mb-3">
                         <div class="card h-100 shadow-sm border-0 ${rarityClass}" style="border-radius: 12px; overflow: hidden; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
                             <a href="../badge/index.html?id=${badge.id}" class="text-decoration-none w-100 h-100" style="color: inherit;">
                                 <div class="card-body p-3 d-flex flex-column align-items-center justify-content-center text-center">
-                                    <div class="small text-muted mb-1" style="font-size: 0.65rem;">${rarity}</div>
+                                    ${metaRowHtml}
+                                    <div class="small fw-bold text-truncate w-100 mt-1" style="font-size: 0.75rem; line-height: 1.2;">${badge.name}</div>
                                     <div class="d-flex align-items-center justify-content-center mb-2" style="gap: 8px;">
                                         <div style="width: 70px; height: 70px;">
                                             <img src="${badge.image_url}" alt="${badge.name}" style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.2));">
                                         </div>
                                         <span class="badge bg-dark" style="font-size:0.75rem; padding: 4px 8px;">×${count}</span>
                                     </div>
-                                    <div class="small fw-bold text-truncate w-100" style="font-size: 0.75rem; line-height: 1.2;">${badge.name}</div>
                                     <div class="small text-muted mt-1" style="font-size: 0.7rem;">💰 ${fixedSellPrice.toLocaleString()} C</div>
+                                    ${tagHtml}
                                 </div>
                             </a>
                         </div>
