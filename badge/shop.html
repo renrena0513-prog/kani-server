@@ -1071,6 +1071,50 @@
             tag: '',
             unowned: false
         };
+        const SHOP_FILTER_STORAGE_KEY = 'badge_shop_filters_v1';
+
+        function saveShopFilterState() {
+            try {
+                const state = {
+                    sort: document.getElementById('shop-sort')?.value || shopFilters.sort || 'price_asc',
+                    rarity: getSelectedRarityId(),
+                    rarityLabel: document.getElementById('shop-rarity-label')?.textContent || '',
+                    creator: getSelectedCreatorId(),
+                    creatorLabel: document.getElementById('shop-creator-label')?.textContent || '',
+                    creatorAvatar: document.getElementById('shop-creator-avatar')?.src || '',
+                    type: document.getElementById('shop-type')?.value || '',
+                    label: document.getElementById('shop-label')?.value || '',
+                    tag: document.getElementById('shop-tag')?.value || '',
+                    unowned: !!(document.getElementById('shop-unowned-btn')?.dataset?.active === 'true'),
+                    page: currentShopPage
+                };
+                sessionStorage.setItem(SHOP_FILTER_STORAGE_KEY, JSON.stringify(state));
+            } catch (err) {
+                console.warn('Failed to save shop filter state', err);
+            }
+        }
+
+        function loadShopFilterState() {
+            try {
+                const raw = sessionStorage.getItem(SHOP_FILTER_STORAGE_KEY);
+                if (!raw) return false;
+                const state = JSON.parse(raw);
+                shopFilters = {
+                    sort: state.sort || 'price_asc',
+                    rarity: state.rarity || '',
+                    creator: state.creator || '',
+                    type: state.type || '',
+                    label: state.label || '',
+                    tag: state.tag || '',
+                    unowned: !!state.unowned
+                };
+                currentShopPage = Number(state.page) || 1;
+                return true;
+            } catch (err) {
+                console.warn('Failed to load shop filter state', err);
+                return false;
+            }
+        }
 
         function showNotice(message, type = 'info') {
             const modal = document.getElementById('notice-modal');
@@ -1100,6 +1144,7 @@
             }
             currentUserId = user.user_metadata.provider_id;
 
+            loadShopFilterState();
             setupShopFilters();
             try {
                 await refreshMarketContext();
@@ -1242,7 +1287,7 @@
                         ? `<div class="badge-tag-list">${tags.map(t => `<span class="badge-tag">#${escapeHtml(t)}</span>`).join('')}</div>`
                         : '';
                     return `
-                        <div class="col-12 col-md-3 col-lg-3">
+                        <div class="col-12 col-md-4 col-lg-4">
                             <div class="rights-item badge-card ${rarityClass}">
                                 <a href="./index.html?id=${badge.id}" class="text-decoration-none d-flex flex-column align-items-center" style="color: inherit;">
                                     <span class="rarity-pill mb-1" style="background: rgba(0,0,0,0.2);">${rarity}</span>
@@ -1560,6 +1605,13 @@
                 unownedBtn.dataset.active = shopFilters.unowned ? 'true' : 'false';
                 unownedBtn.classList.toggle('active', shopFilters.unowned);
             }
+            const saved = (() => {
+                try { return JSON.parse(sessionStorage.getItem(SHOP_FILTER_STORAGE_KEY) || 'null'); } catch { return null; }
+            })();
+            if (saved) {
+                if (saved.rarity) setRaritySelection(saved.rarity, saved.rarityLabel || 'すべて');
+                if (saved.creator) setCreatorSelection(saved.creator, saved.creatorLabel || 'すべて', saved.creatorAvatar || '');
+            }
 
             const refreshFilterActiveStyles = () => {
                 if (sortEl) sortEl.classList.toggle('is-active', (sortEl.value || 'price_asc') !== 'price_asc');
@@ -1586,6 +1638,7 @@
                 currentShopPage = 1;
                 applyShopFilters();
                 refreshFilterActiveStyles();
+                saveShopFilterState();
             };
 
             sortEl?.addEventListener('change', updateFilters);
@@ -1914,6 +1967,7 @@
 
             shopFilteredBadges = filtered;
             renderShopPage();
+            saveShopFilterState();
         }
 
         function renderShopPage() {
@@ -1993,6 +2047,7 @@
             }).join('');
 
             renderShopPagination(total, start + 1, end);
+            saveShopFilterState();
         }
 
         function renderShopPagination(total, startIndex, endIndex) {
