@@ -4,6 +4,11 @@ let allProfiles = [];
 let allTeams = [];
 let isAdmin = false;
 let userMutantMap = {}; // ミュータント情報を格納
+
+function isMutantBadge(userId, badgeId) {
+    if (!userId || !badgeId) return false;
+    return userMutantMap[`${userId}_${badgeId}`] === true;
+}
 const YAKUMAN_TYPES = [
     '天和',
     '地和',
@@ -675,7 +680,7 @@ function renderDropdownItems(idx, profiles) {
         // ⑩ミュータントバッジ対応
         let badgeHtmlLeft = '';
         if (badge) {
-            const isMutant = userMutantMap[`${p.discord_user_id}_${badge.id}`];
+            const isMutant = isMutantBadge(p.discord_user_id, badge.id);
             badgeHtmlLeft = `
                 <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}" style="margin-left: 5px;">
                     <img src="${badge.image_url}" title="${badge.name}" 
@@ -686,7 +691,7 @@ function renderDropdownItems(idx, profiles) {
 
         let badgeHtmlRight = '';
         if (badgeRight) {
-            const isMutant = userMutantMap[`${p.discord_user_id}_${badgeRight.id}`];
+            const isMutant = isMutantBadge(p.discord_user_id, badgeRight.id);
             badgeHtmlRight = `
                 <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}" style="margin-left: 5px;">
                     <img src="${badgeRight.image_url}" title="${badgeRight.name}" 
@@ -728,7 +733,7 @@ function selectPlayer(idx, discordUserId, accountName) {
     const badgeLeftContainer = badgeContainer.querySelector('.badge-left-container');
     const badgeLeft = profile?.badges;
     if (badgeLeft && badgeLeftContainer) {
-        const isMutantLeft = userMutantMap[`${discordUserId}_${badgeLeft.id}`];
+        const isMutantLeft = isMutantBadge(discordUserId, badgeLeft.id);
         badgeLeftContainer.innerHTML = `
             <img src="${badgeLeft.image_url}" title="${badgeLeft.name}" 
                  style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
@@ -743,7 +748,7 @@ function selectPlayer(idx, discordUserId, accountName) {
     const badgeRightContainer = badgeContainer.querySelector('.badge-right-container');
     const badgeRight = profile?.badges_right;
     if (badgeRight && badgeRightContainer) {
-        const isMutantRight = userMutantMap[`${discordUserId}_${badgeRight.id}`];
+        const isMutantRight = isMutantBadge(discordUserId, badgeRight.id);
         badgeRightContainer.innerHTML = `
             <img src="${badgeRight.image_url}" title="${badgeRight.name}" 
                  style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;">
@@ -860,7 +865,7 @@ function buildYakumanDropdownItem(player, rowId) {
     const badgeRight = profile.badges_right;
     let badgeHtmlLeft = '';
     if (badgeLeft) {
-        const isMutant = userMutantMap[`${player.id}_${badgeLeft.id}`];
+        const isMutant = isMutantBadge(player.id, badgeLeft.id);
         badgeHtmlLeft = `
             <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}" style="margin-left: 5px;">
                 <img src="${badgeLeft.image_url}" title="${badgeLeft.name}" style="width: 22px; height: 22px; object-fit: contain; border-radius: 4px;">
@@ -869,7 +874,7 @@ function buildYakumanDropdownItem(player, rowId) {
     }
     let badgeHtmlRight = '';
     if (badgeRight) {
-        const isMutant = userMutantMap[`${player.id}_${badgeRight.id}`];
+        const isMutant = isMutantBadge(player.id, badgeRight.id);
         badgeHtmlRight = `
             <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}" style="margin-left: 5px;">
                 <img src="${badgeRight.image_url}" title="${badgeRight.name}" style="width: 22px; height: 22px; object-fit: contain; border-radius: 4px;">
@@ -911,7 +916,7 @@ function selectYakumanPlayer(rowId, discordUserId, accountName) {
         const badgeRight = profile.badges_right;
         let badgeHtmlLeft = '';
         if (badgeLeft) {
-            const isMutant = userMutantMap[`${discordUserId}_${badgeLeft.id}`];
+            const isMutant = isMutantBadge(discordUserId, badgeLeft.id);
             badgeHtmlLeft = `
                 <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}" style="margin-left: 5px;">
                     <img src="${badgeLeft.image_url}" title="${badgeLeft.name}" style="width: 22px; height: 22px; object-fit: contain; border-radius: 4px;">
@@ -920,7 +925,7 @@ function selectYakumanPlayer(rowId, discordUserId, accountName) {
         }
         let badgeHtmlRight = '';
         if (badgeRight) {
-            const isMutant = userMutantMap[`${discordUserId}_${badgeRight.id}`];
+            const isMutant = isMutantBadge(discordUserId, badgeRight.id);
             badgeHtmlRight = `
                 <div class="mutant-badge-container mini ${isMutant ? 'active' : ''}" style="margin-left: 5px;">
                     <img src="${badgeRight.image_url}" title="${badgeRight.name}" style="width: 22px; height: 22px; object-fit: contain; border-radius: 4px;">
