@@ -770,8 +770,16 @@
                         creatorAvatar.src = state.creatorAvatar;
                         creatorAvatar.style.display = 'block';
                     } else {
+                        creatorAvatar.src = '';
                         creatorAvatar.style.display = 'none';
                     }
+                }
+                if (creatorInput && !creatorInput.value) {
+                    if (creatorAvatar) {
+                        creatorAvatar.src = '';
+                        creatorAvatar.style.display = 'none';
+                    }
+                    if (creatorLabel) creatorLabel.textContent = 'すべて';
                 }
                 if (type) type.value = state.type || '';
                 if (label) label.value = state.label || '';
@@ -983,7 +991,10 @@
             const creatorAvatar = document.getElementById('creator-filter-avatar');
             if (creatorInput) creatorInput.value = '';
             if (creatorLabel) creatorLabel.textContent = 'すべて';
-            if (creatorAvatar) creatorAvatar.style.display = 'none';
+            if (creatorAvatar) {
+                creatorAvatar.src = '';
+                creatorAvatar.style.display = 'none';
+            }
             filters.creator = '';
             saveFilterState();
         }
