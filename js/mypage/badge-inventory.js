@@ -256,7 +256,16 @@ function filterAndRenderInventoryBadges() {
                 actionArea = `<button class="btn btn-sm ${btnClass} rounded-pill text-nowrap" onclick="${handler}">${btnLabel}</button>`;
             }
         } else {
-            actionArea = `<button class="btn btn-sm ${isExpanded ? 'btn-secondary' : 'btn-primary'} rounded-pill text-nowrap" onclick="toggleInventoryExpand('${group.badge_id}')">${isExpanded ? '閉じる' : '選択'}</button>`;
+            if (inventoryMode === 'sell' && repItem.sales_type === '換金品') {
+                actionArea = `
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button class="btn btn-sm ${isExpanded ? 'btn-secondary' : 'btn-primary'} rounded-pill text-nowrap" onclick="toggleInventoryExpand('${group.badge_id}')">${isExpanded ? '閉じる' : '選択'}</button>
+                        <button class="btn btn-sm btn-outline-success rounded-pill text-nowrap" onclick="confirmSellAllConvertibleFromMyPage('${group.badge_id}')">一括売却</button>
+                    </div>
+                `;
+            } else {
+                actionArea = `<button class="btn btn-sm ${isExpanded ? 'btn-secondary' : 'btn-primary'} rounded-pill text-nowrap" onclick="toggleInventoryExpand('${group.badge_id}')">${isExpanded ? '閉じる' : '選択'}</button>`;
+            }
 
             if (isExpanded) {
                 const listItemsHtml = group.items.map(item => {
@@ -731,6 +740,66 @@ function confirmSellFromMyPage(uuid) {
     const profitStr = (profit >= 0 ? '+' : '') + profit.toLocaleString();
     currentShopActionUUID = uuid;
     BadgeSellUI.renderSellConfirmModal(item, executeSellFromMyPage, { confirmLabel: '売却する' });
+}
+
+let isBulkSellingConvertible = false;
+async function confirmSellAllConvertibleFromMyPage(badgeId) {
+    const targets = allInventoryBadges.filter(i => i.badge_id === badgeId && i.sales_type === '換金品');
+    if (!targets.length) {
+        showNotice('一括売却できる換金品が見つかりませんでした。', 'warning');
+        return;
+    }
+
+    const badgeName = targets[0].badge_name || '';
+    const total = targets.reduce((sum, item) => sum + (item.sell_price || 0), 0);
+    const confirmed = confirm(`「${badgeName}」を ${targets.length} 個一括売却しますか？（合計: 🪙${Math.floor(total).toLocaleString()}）`);
+    if (!confirmed) return;
+
+    if (isBulkSellingConvertible) return;
+    isBulkSellingConvertible = true;
+    toggleLoading(true);
+
+    try {
+        let successCount = 0;
+        let actualTotal = 0;
+        for (const item of targets) {
+            const { data, error } = await supabaseClient.rpc('sell_badge_v2', {
+                p_user_id: targetId,
+                p_badge_uuid: item.uuid
+            });
+            if (error || !data.ok) {
+                console.error('一括売却エラー:', error || data.error);
+                continue;
+            }
+            successCount++;
+            actualTotal += data.sell_price || 0;
+        }
+
+        if (successCount > 0) {
+            showNotice(`「${badgeName}」を ${successCount} 個一括売却しました。（合計: 🪙${Math.floor(actualTotal).toLocaleString()}）`, 'success');
+            if (typeof logActivity === 'function') {
+                await logActivity(targetId, 'badge_sell', {
+                    amount: actualTotal,
+                    badgeId: badgeId,
+                    details: {
+                        badge_id: badgeId,
+                        badge_name: badgeName,
+                        quantity: successCount
+                    }
+                });
+            }
+        }
+
+        await loadOwnedBadges();
+        await loadActivityLogs();
+        await loadTargetUserInfo();
+        await loadInventory();
+    } catch (err) {
+        showNotice('エラーが発生しました: ' + err.message, 'error');
+    } finally {
+        toggleLoading(false);
+        isBulkSellingConvertible = false;
+    }
 }
 
 async function executeSellFromMyPage() {
