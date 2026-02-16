@@ -94,6 +94,12 @@
                     });
                 }
 
+                // 譲渡確認モーダルを閉じる（表示されていれば）
+                const shopActionModal = document.getElementById('shopActionModal');
+                if (shopActionModal) {
+                    bootstrap.Modal.getInstance(shopActionModal)?.hide();
+                }
+
                 alert(`${toUserName} さんにバッジを譲渡しました！`);
                 // ヘッダーの所持金・バッジ情報も更新
                 await loadOwnedBadges();
