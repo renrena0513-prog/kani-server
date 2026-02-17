@@ -91,8 +91,8 @@
             border-radius: 999px;
             font-weight: 800;
             border: 2px solid rgba(255, 255, 255, 0.9);
-            background: rgba(0, 0, 0, 0.2);
-            color: #ffffff;
+            background: #ffffff;
+            color: #1e6b47;
             padding: 6px 16px;
             box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
             transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
@@ -102,7 +102,7 @@
             background: #ffffff;
             color: #1e6b47;
             border-color: #ffffff;
-            box-shadow: 0 8px 20px rgba(255, 255, 255, 0.35);
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.9), 0 0 24px rgba(255, 255, 255, 0.6);
         }
 
         .group-toggle {
@@ -501,10 +501,13 @@
             return chart;
         }
 
-        function renderTeamToggles(chart, datasets, teamLogoMap, selectedTeams, groupMode, playerAvatarMap) {
+        function renderTeamToggles(chart, datasets, teamLogoMap, selectedTeams, groupMode, playerAvatarMap, playerTeamMap, selectedPlayerTeam) {
             const area = document.getElementById('team-toggles');
             if (!area) return;
-            area.innerHTML = datasets.map((ds, idx) => {
+            const visibleDatasets = (groupMode === 'player' && selectedPlayerTeam && playerTeamMap)
+                ? datasets.filter(ds => playerTeamMap.get(ds.key || ds.label) === selectedPlayerTeam)
+                : datasets;
+            area.innerHTML = visibleDatasets.map((ds, idx) => {
                 const logo = teamLogoMap?.[ds.label] || '';
                 let iconHtml = '';
                 if (groupMode === 'player') {
@@ -538,8 +541,8 @@
                     } else {
                         selectedTeams.add(team);
                     }
-                    applyTeamSelection(chart, datasets, selectedTeams);
-                    renderTeamToggles(chart, datasets, teamLogoMap, selectedTeams);
+                    applyTeamSelection(chart, datasets, selectedTeams, groupMode, playerTeamMap, selectedPlayerTeam);
+                    renderTeamToggles(chart, datasets, teamLogoMap, selectedTeams, groupMode, playerAvatarMap, playerTeamMap, selectedPlayerTeam);
                 });
             });
         }
@@ -657,7 +660,7 @@
                     chart = renderChart(labels, datasets, isMatchMode);
                     applyTeamSelection(chart, datasets, selectedTeams, currentGroup, playerTeamMap, selectedPlayerTeam);
                     const logoMap = currentGroup === 'team' ? teamLogoMap : {};
-                    renderTeamToggles(chart, datasets, logoMap, selectedTeams, currentGroup, playerAvatarMap);
+                    renderTeamToggles(chart, datasets, logoMap, selectedTeams, currentGroup, playerAvatarMap, playerTeamMap, selectedPlayerTeam);
                     if (currentGroup === 'player') {
                         renderPlayerTeamFilters(playerTeams, selectedPlayerTeam, teamLogoMap);
                     } else {
@@ -688,7 +691,7 @@
                     playerTeamArea.addEventListener('teamFilterChange', (e) => {
                         selectedPlayerTeam = e.detail?.team || null;
                         applyTeamSelection(chart, chart.data.datasets, selectedTeams, currentGroup, playerTeamMap, selectedPlayerTeam);
-                        renderTeamToggles(chart, chart.data.datasets, currentGroup === 'team' ? teamLogoMap : {}, selectedTeams, currentGroup, playerAvatarMap);
+                        renderTeamToggles(chart, chart.data.datasets, currentGroup === 'team' ? teamLogoMap : {}, selectedTeams, currentGroup, playerAvatarMap, playerTeamMap, selectedPlayerTeam);
                         renderPlayerTeamFilters(playerTeams, selectedPlayerTeam, teamLogoMap);
                     });
                 }
