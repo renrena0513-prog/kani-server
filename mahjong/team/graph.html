@@ -425,7 +425,7 @@
         }
 
         function buildSeriesMatch(records, groupMode, matchLimit) {
-            const events = [];
+            const matchMap = new Map();
             const labelMap = new Map();
             records.forEach(r => {
                 if (r.match_mode !== 'チーム戦') return;
@@ -433,26 +433,37 @@
                 if (!groupKey) return;
                 const dateKey = formatDateJST(r.event_datetime);
                 if (!dateKey) return;
-                events.push({
-                    team: groupKey,
-                    score: Number(r.final_score || 0),
-                    date: dateKey
-                });
+                const matchId = r.match_id || `${dateKey}-${groupKey}-${Math.random()}`;
+                if (!matchMap.has(matchId)) {
+                    matchMap.set(matchId, {
+                        id: matchId,
+                        date: dateKey,
+                        ts: new Date(r.event_datetime).getTime(),
+                        perKey: new Map()
+                    });
+                }
+                const match = matchMap.get(matchId);
+                const prev = match.perKey.get(groupKey) || 0;
+                match.perKey.set(groupKey, prev + Number(r.final_score || 0));
                 if (groupMode === 'player' && !labelMap.has(groupKey)) {
                     labelMap.set(groupKey, getPlayerLabel(r));
                 }
             });
 
-            const limitedEvents = Number.isFinite(matchLimit) && matchLimit > 0
-                ? events.slice(0, matchLimit)
-                : events;
+            const matches = Array.from(matchMap.values())
+                .sort((a, b) => (a.ts || 0) - (b.ts || 0));
+            const limitedMatches = Number.isFinite(matchLimit) && matchLimit > 0
+                ? matches.slice(0, matchLimit)
+                : matches;
 
-            const teamNames = Array.from(new Set(limitedEvents.map(e => e.team))).sort((a, b) => a.localeCompare(b));
-            const labels = limitedEvents.map((_, i) => `${i + 1}`);
+            const teamNames = Array.from(new Set(limitedMatches.flatMap(m => Array.from(m.perKey.keys()))))
+                .sort((a, b) => a.localeCompare(b));
+            const labels = limitedMatches.map((_, i) => `${i + 1}`);
             const datasets = teamNames.map((team, idx) => {
                 let running = 0;
-                const data = limitedEvents.map(e => {
-                    if (e.team === team) running += e.score;
+                const data = limitedMatches.map(m => {
+                    const add = m.perKey.get(team) || 0;
+                    running += add;
                     return running;
                 });
                 const color = colorForIndex(idx);
