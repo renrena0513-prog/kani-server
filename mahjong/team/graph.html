@@ -196,6 +196,7 @@
         .admin-add-match {
             display: flex;
             justify-content: flex-end;
+            gap: 8px;
             margin-bottom: 12px;
         }
 
@@ -237,7 +238,8 @@
             <div class="graph-scroll">
                 <div class="graph-inner">
                     <div class="admin-add-match admin-only" style="display:none;">
-                        <button id="admin-add-match-btn" class="btn btn-sm btn-warning">＋1試合</button>
+                        <button class="btn btn-sm btn-warning" data-match-inc="1">＋1試合</button>
+                        <button class="btn btn-sm btn-warning" data-match-inc="10">＋10試合</button>
                     </div>
                     <div id="view-toggles" class="view-toggle-bar">
                         <button class="btn btn-sm btn-outline-light view-toggle active" data-view="daily">日別</button>
@@ -713,13 +715,15 @@
                     render();
                 };
 
-                const addMatchBtn = document.getElementById('admin-add-match-btn');
-                if (addMatchBtn) {
-                    addMatchBtn.addEventListener('click', () => {
-                        matchLimit = Number.isFinite(matchLimit) ? matchLimit + 1 : 1;
+                const addMatchButtons = document.querySelectorAll('[data-match-inc]');
+                addMatchButtons.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const inc = Number(btn.dataset.matchInc || 0);
+                        if (!inc) return;
+                        matchLimit = Number.isFinite(matchLimit) ? matchLimit + inc : inc;
                         setViewMode('match');
                     });
-                }
+                });
 
                 const playerTeamArea = document.getElementById('player-team-filters');
                 if (playerTeamArea) {
