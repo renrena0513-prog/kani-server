@@ -66,6 +66,31 @@
             margin-top: 16px;
         }
 
+        .view-toggle-bar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .view-toggle {
+            border-radius: 999px;
+            font-weight: 800;
+            border: 2px solid rgba(255, 255, 255, 0.9);
+            background: rgba(0, 0, 0, 0.2);
+            color: #ffffff;
+            padding: 6px 16px;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+        }
+
+        .view-toggle.active {
+            background: #ffffff;
+            color: #1e6b47;
+            border-color: #ffffff;
+            box-shadow: 0 8px 20px rgba(255, 255, 255, 0.35);
+        }
+
         .team-toggle {
             border-radius: 999px;
             font-weight: 800;
@@ -159,6 +184,10 @@
         <div class="graph-card">
             <div class="graph-scroll">
                 <div class="graph-inner">
+                    <div id="view-toggles" class="view-toggle-bar">
+                        <button class="btn btn-sm btn-outline-light view-toggle active" data-view="daily">日別</button>
+                        <button class="btn btn-sm btn-outline-light view-toggle" data-view="match">試合別</button>
+                    </div>
                     <div class="graph-wrapper">
                         <canvas id="team-chart"></canvas>
                     </div>
@@ -237,6 +266,10 @@
         }
 
         function buildSeries(records) {
+            return buildSeriesDaily(records);
+        }
+
+        function buildSeriesDaily(records) {
             const dailyByTeam = new Map();
             const dateSet = new Set();
 
@@ -254,7 +287,9 @@
             });
 
             const dates = Array.from(dateSet).sort((a, b) => a.localeCompare(b));
-            const datasets = Array.from(dailyByTeam.entries()).map(([team, dateMap], idx) => {
+            const teamNames = Array.from(dailyByTeam.keys()).sort((a, b) => a.localeCompare(b));
+            const datasets = teamNames.map((team, idx) => {
+                const dateMap = dailyByTeam.get(team) || new Map();
                 let running = 0;
                 const data = dates.map(d => {
                     const dayVal = dateMap.get(d) || 0;
@@ -273,7 +308,44 @@
                 };
             });
 
-            return { dates, datasets };
+            return { labels: dates.map(shortDayLabel), datasets };
+        }
+
+        function buildSeriesMatch(records) {
+            const events = [];
+            records.forEach(r => {
+                if (r.match_mode !== 'チーム戦') return;
+                if (!r.team_name) return;
+                const dateKey = formatDateJST(r.event_datetime);
+                if (!dateKey) return;
+                events.push({
+                    team: r.team_name,
+                    score: Number(r.final_score || 0),
+                    date: dateKey
+                });
+            });
+
+            const teamNames = Array.from(new Set(events.map(e => e.team))).sort((a, b) => a.localeCompare(b));
+            const labels = events.map((_, i) => `${i + 1}`);
+            const datasets = teamNames.map((team, idx) => {
+                let running = 0;
+                const data = events.map(e => {
+                    if (e.team === team) running += e.score;
+                    return running;
+                });
+                const color = colorForIndex(idx);
+                return {
+                    label: team,
+                    data,
+                    borderColor: color,
+                    backgroundColor: color,
+                    borderWidth: 2,
+                    pointRadius: 2,
+                    tension: 0.25
+                };
+            });
+
+            return { labels, datasets };
         }
 
         function renderChart(labels, datasets) {
@@ -317,14 +389,15 @@
             return chart;
         }
 
-        function renderTeamToggles(chart, datasets, teamLogoMap) {
+        function renderTeamToggles(chart, datasets, teamLogoMap, selectedTeams) {
             const area = document.getElementById('team-toggles');
             if (!area) return;
             area.innerHTML = datasets.map((ds, idx) => {
                 const logo = teamLogoMap?.[ds.label] || '';
                 const iconHtml = logo ? `<img src="${logo}" class="team-icon" alt="">` : '';
+                const isActive = selectedTeams.size === 0 || selectedTeams.has(ds.label);
                 return `
-                    <button class="btn btn-sm btn-outline-light team-toggle active" data-index="${idx}">
+                    <button class="btn btn-sm btn-outline-light team-toggle ${isActive ? 'active' : ''}" data-index="${idx}" data-team="${ds.label}">
                         <span class="team-color-dot" style="background:${ds.borderColor}"></span>
                         ${iconHtml}
                         ${ds.label}
@@ -333,11 +406,50 @@
             }).join('');
             area.querySelectorAll('.team-toggle').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    const i = Number(btn.dataset.index);
-                    const meta = chart.getDatasetMeta(i);
-                    meta.hidden = meta.hidden === null ? true : !meta.hidden;
-                    btn.classList.toggle('active', !meta.hidden);
-                    chart.update();
+                    const team = btn.dataset.team;
+                    if (!team) return;
+                    if (selectedTeams.size === 0) {
+                        selectedTeams.add(team);
+                    } else if (selectedTeams.has(team)) {
+                        if (selectedTeams.size === 1) {
+                            selectedTeams.clear();
+                        } else {
+                            selectedTeams.delete(team);
+                        }
+                    } else {
+                        selectedTeams.add(team);
+                    }
+                    applyTeamSelection(chart, datasets, selectedTeams);
+                    renderTeamToggles(chart, datasets, teamLogoMap, selectedTeams);
+                });
+            });
+        }
+
+        function applyTeamSelection(chart, datasets, selectedTeams) {
+            datasets.forEach((ds, idx) => {
+                const meta = chart.getDatasetMeta(idx);
+                if (selectedTeams.size === 0) {
+                    meta.hidden = false;
+                } else {
+                    meta.hidden = !selectedTeams.has(ds.label);
+                }
+            });
+            chart.update();
+        }
+
+        function bindViewToggles(currentMode, onChange) {
+            const area = document.getElementById('view-toggles');
+            if (!area) return;
+            area.querySelectorAll('.view-toggle').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.view === currentMode);
+                btn.addEventListener('click', () => {
+                    const mode = btn.dataset.view;
+                    if (!mode || mode === currentMode) return;
+                    currentMode = mode;
+                    area.querySelectorAll('.view-toggle').forEach(b => {
+                        b.classList.toggle('active', b.dataset.view === currentMode);
+                    });
+                    onChange(currentMode);
                 });
             });
         }
@@ -349,10 +461,26 @@
                     fetchAllMatchResults(),
                     fetchTeamLogos()
                 ]);
-                const { dates, datasets } = buildSeries(records);
-                const labels = dates.map(shortDayLabel);
-                const chart = renderChart(labels, datasets);
-                renderTeamToggles(chart, datasets, teamLogoMap);
+                let currentMode = 'daily';
+                const selectedTeams = new Set();
+                let chart = null;
+
+                const render = () => {
+                    const { labels, datasets } = currentMode === 'daily'
+                        ? buildSeriesDaily(records)
+                        : buildSeriesMatch(records);
+                    if (chart) chart.destroy();
+                    chart = renderChart(labels, datasets);
+                    applyTeamSelection(chart, datasets, selectedTeams);
+                    renderTeamToggles(chart, datasets, teamLogoMap, selectedTeams);
+                };
+
+                bindViewToggles(currentMode, (mode) => {
+                    currentMode = mode;
+                    render();
+                });
+
+                render();
             } catch (err) {
                 console.error('team graph load error:', err);
                 document.getElementById('loading').textContent = '読み込みに失敗しました';
