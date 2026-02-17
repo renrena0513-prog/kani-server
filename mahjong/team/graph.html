@@ -73,6 +73,13 @@
             margin-bottom: 16px;
         }
 
+        .group-toggle-bar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
         .view-toggle {
             border-radius: 999px;
             font-weight: 800;
@@ -85,6 +92,24 @@
         }
 
         .view-toggle.active {
+            background: #ffffff;
+            color: #1e6b47;
+            border-color: #ffffff;
+            box-shadow: 0 8px 20px rgba(255, 255, 255, 0.35);
+        }
+
+        .group-toggle {
+            border-radius: 999px;
+            font-weight: 800;
+            border: 2px solid rgba(255, 255, 255, 0.9);
+            background: rgba(0, 0, 0, 0.2);
+            color: #ffffff;
+            padding: 6px 16px;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+        }
+
+        .group-toggle.active {
             background: #ffffff;
             color: #1e6b47;
             border-color: #ffffff;
@@ -188,6 +213,10 @@
                         <button class="btn btn-sm btn-outline-light view-toggle active" data-view="daily">日別</button>
                         <button class="btn btn-sm btn-outline-light view-toggle" data-view="match">試合別</button>
                     </div>
+                    <div id="group-toggles" class="group-toggle-bar">
+                        <button class="btn btn-sm btn-outline-light group-toggle active" data-group="team">チーム</button>
+                        <button class="btn btn-sm btn-outline-light group-toggle" data-group="player">個人</button>
+                    </div>
                     <div class="graph-wrapper">
                         <canvas id="team-chart"></canvas>
                     </div>
@@ -242,7 +271,7 @@
             while (true) {
                 const { data, error } = await supabaseClient
                     .from('match_results')
-                    .select('event_datetime, match_mode, team_name, final_score')
+                    .select('event_datetime, match_mode, team_name, final_score, discord_user_id, account_name, nickname')
                     .order('event_datetime', { ascending: true })
                     .range(from, from + batchSize - 1);
                 if (error) throw error;
@@ -265,25 +294,39 @@
             return map;
         }
 
-        function buildSeries(records) {
-            return buildSeriesDaily(records);
+        function getPlayerKey(r) {
+            return r.discord_user_id || r.nickname || r.account_name || '';
         }
 
-        function buildSeriesDaily(records) {
+        function getPlayerLabel(r) {
+            return r.nickname || r.account_name || r.discord_user_id || '';
+        }
+
+        function buildSeries(records) {
+            return buildSeriesDaily(records, 'team');
+        }
+
+        function buildSeriesDaily(records, groupMode) {
             const dailyByTeam = new Map();
             const dateSet = new Set();
+            const labelMap = new Map();
 
             records.forEach(r => {
                 if (r.match_mode !== 'チーム戦') return;
-                if (!r.team_name) return;
+                const groupKey = groupMode === 'player' ? getPlayerKey(r) : r.team_name;
+                if (!groupKey) return;
                 const dateKey = formatDateJST(r.event_datetime);
                 if (!dateKey) return;
                 dateSet.add(dateKey);
-                if (!dailyByTeam.has(r.team_name)) dailyByTeam.set(r.team_name, new Map());
-                const teamMap = dailyByTeam.get(r.team_name);
+                if (!dailyByTeam.has(groupKey)) dailyByTeam.set(groupKey, new Map());
+                const teamMap = dailyByTeam.get(groupKey);
                 const prev = teamMap.get(dateKey) || 0;
                 const add = Number(r.final_score || 0);
                 teamMap.set(dateKey, prev + add);
+
+                if (groupMode === 'player' && !labelMap.has(groupKey)) {
+                    labelMap.set(groupKey, getPlayerLabel(r));
+                }
             });
 
             const dates = Array.from(dateSet).sort((a, b) => a.localeCompare(b));
@@ -297,13 +340,17 @@
                     return running;
                 });
                 const color = colorForIndex(idx);
+                const displayLabel = groupMode === 'player' ? (labelMap.get(team) || team) : team;
                 return {
-                    label: team,
+                    key: team,
+                    label: displayLabel,
                     data,
                     borderColor: color,
                     backgroundColor: color,
                     borderWidth: 2,
                     pointRadius: 2,
+                    pointHoverRadius: 3,
+                    pointHitRadius: 6,
                     tension: 0.25
                 };
             });
@@ -311,18 +358,23 @@
             return { labels: dates.map(shortDayLabel), datasets };
         }
 
-        function buildSeriesMatch(records) {
+        function buildSeriesMatch(records, groupMode) {
             const events = [];
+            const labelMap = new Map();
             records.forEach(r => {
                 if (r.match_mode !== 'チーム戦') return;
-                if (!r.team_name) return;
+                const groupKey = groupMode === 'player' ? getPlayerKey(r) : r.team_name;
+                if (!groupKey) return;
                 const dateKey = formatDateJST(r.event_datetime);
                 if (!dateKey) return;
                 events.push({
-                    team: r.team_name,
+                    team: groupKey,
                     score: Number(r.final_score || 0),
                     date: dateKey
                 });
+                if (groupMode === 'player' && !labelMap.has(groupKey)) {
+                    labelMap.set(groupKey, getPlayerLabel(r));
+                }
             });
 
             const teamNames = Array.from(new Set(events.map(e => e.team))).sort((a, b) => a.localeCompare(b));
@@ -334,13 +386,17 @@
                     return running;
                 });
                 const color = colorForIndex(idx);
+                const displayLabel = groupMode === 'player' ? (labelMap.get(team) || team) : team;
                 return {
-                    label: team,
+                    key: team,
+                    label: displayLabel,
                     data,
                     borderColor: color,
                     backgroundColor: color,
                     borderWidth: 2,
-                    pointRadius: 2,
+                    pointRadius: 0,
+                    pointHoverRadius: 3,
+                    pointHitRadius: 6,
                     tension: 0.25
                 };
             });
@@ -348,7 +404,7 @@
             return { labels, datasets };
         }
 
-        function renderChart(labels, datasets) {
+        function renderChart(labels, datasets, isMatchMode) {
             const ctx = document.getElementById('team-chart');
             if (!ctx) return;
             const chart = new Chart(ctx, {
@@ -360,6 +416,8 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    normalized: true,
+                    animation: false,
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
                         legend: { display: false },
@@ -376,7 +434,7 @@
                     },
                     scales: {
                         x: {
-                            ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 31 }
+                            ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: isMatchMode ? 20 : 31 }
                         },
                         y: {
                             ticks: {
@@ -395,9 +453,10 @@
             area.innerHTML = datasets.map((ds, idx) => {
                 const logo = teamLogoMap?.[ds.label] || '';
                 const iconHtml = logo ? `<img src="${logo}" class="team-icon" alt="">` : '';
-                const isActive = selectedTeams.size === 0 || selectedTeams.has(ds.label);
+                const teamKey = ds.key || ds.label;
+                const isActive = selectedTeams.size === 0 || selectedTeams.has(teamKey);
                 return `
-                    <button class="btn btn-sm btn-outline-light team-toggle ${isActive ? 'active' : ''}" data-index="${idx}" data-team="${ds.label}">
+                    <button class="btn btn-sm btn-outline-light team-toggle ${isActive ? 'active' : ''}" data-index="${idx}" data-team="${teamKey}">
                         <span class="team-color-dot" style="background:${ds.borderColor}"></span>
                         ${iconHtml}
                         ${ds.label}
@@ -428,10 +487,11 @@
         function applyTeamSelection(chart, datasets, selectedTeams) {
             datasets.forEach((ds, idx) => {
                 const meta = chart.getDatasetMeta(idx);
+                const teamKey = ds.key || ds.label;
                 if (selectedTeams.size === 0) {
                     meta.hidden = false;
                 } else {
-                    meta.hidden = !selectedTeams.has(ds.label);
+                    meta.hidden = !selectedTeams.has(teamKey);
                 }
             });
             chart.update();
@@ -454,6 +514,23 @@
             });
         }
 
+        function bindGroupToggles(currentGroup, onChange) {
+            const area = document.getElementById('group-toggles');
+            if (!area) return;
+            area.querySelectorAll('.group-toggle').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.group === currentGroup);
+                btn.addEventListener('click', () => {
+                    const mode = btn.dataset.group;
+                    if (!mode || mode === currentGroup) return;
+                    currentGroup = mode;
+                    area.querySelectorAll('.group-toggle').forEach(b => {
+                        b.classList.toggle('active', b.dataset.group === currentGroup);
+                    });
+                    onChange(currentGroup);
+                });
+            });
+        }
+
         async function init() {
             initAccordionNav('../../');
             try {
@@ -462,21 +539,31 @@
                     fetchTeamLogos()
                 ]);
                 let currentMode = 'daily';
+                let currentGroup = 'team';
                 const selectedTeams = new Set();
                 let chart = null;
 
                 const render = () => {
-                    const { labels, datasets } = currentMode === 'daily'
-                        ? buildSeriesDaily(records)
-                        : buildSeriesMatch(records);
+                    const isMatchMode = currentMode === 'match';
+                    const { labels, datasets } = isMatchMode
+                        ? buildSeriesMatch(records, currentGroup)
+                        : buildSeriesDaily(records, currentGroup);
                     if (chart) chart.destroy();
-                    chart = renderChart(labels, datasets);
+                    chart = renderChart(labels, datasets, isMatchMode);
                     applyTeamSelection(chart, datasets, selectedTeams);
-                    renderTeamToggles(chart, datasets, teamLogoMap, selectedTeams);
+                    const logoMap = currentGroup === 'team' ? teamLogoMap : {};
+                    renderTeamToggles(chart, datasets, logoMap, selectedTeams);
                 };
 
                 bindViewToggles(currentMode, (mode) => {
                     currentMode = mode;
+                    selectedTeams.clear();
+                    render();
+                });
+
+                bindGroupToggles(currentGroup, (group) => {
+                    currentGroup = group;
+                    selectedTeams.clear();
                     render();
                 });
 
