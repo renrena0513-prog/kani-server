@@ -240,6 +240,7 @@
                     <div class="admin-add-match admin-only" style="display:none;">
                         <button class="btn btn-sm btn-warning" data-match-inc="1">＋1試合</button>
                         <button class="btn btn-sm btn-warning" data-match-inc="10">＋10試合</button>
+                        <button class="btn btn-sm btn-outline-light" data-match-reset="1">リセット</button>
                     </div>
                     <div id="view-toggles" class="view-toggle-bar">
                         <button class="btn btn-sm btn-outline-light view-toggle active" data-view="daily">日別</button>
@@ -721,9 +722,21 @@
                         const inc = Number(btn.dataset.matchInc || 0);
                         if (!inc) return;
                         matchLimit = Number.isFinite(matchLimit) ? matchLimit + inc : inc;
-                        setViewMode('match');
+                        if (currentMode === 'match') {
+                            render();
+                        } else {
+                            setViewMode('match');
+                        }
                     });
                 });
+
+                const resetMatchBtn = document.querySelector('[data-match-reset]');
+                if (resetMatchBtn) {
+                    resetMatchBtn.addEventListener('click', () => {
+                        matchLimit = null;
+                        render();
+                    });
+                }
 
                 const playerTeamArea = document.getElementById('player-team-filters');
                 if (playerTeamArea) {
