@@ -8,6 +8,7 @@ create table if not exists public.gift_codes (
     coin integer not null default 0,
     kiganfu integer not null default 0,
     manganfu integer not null default 0,
+    remaining_uses integer,          -- NULL=無制限, 0=使用不可
     is_active boolean not null default true,
     created_at timestamptz not null default now()
 );
@@ -16,6 +17,7 @@ create table if not exists public.gift_code_redemptions (
     id uuid primary key default gen_random_uuid(),
     gift_code_id uuid not null references public.gift_codes(id) on delete cascade,
     discord_user_id text not null,
+    account_name text,
     redeemed_at timestamptz not null default now(),
     coin integer not null default 0,
     kiganfu integer not null default 0,
@@ -30,16 +32,7 @@ immutable
 as $$
 DECLARE
     v text := coalesce(p_input, '');
-    v_norm text;
 BEGIN
-    BEGIN
-        EXECUTE 'select normalize($1, ''NFKC'')' INTO v_norm USING v;
-        v := v_norm;
-    EXCEPTION WHEN undefined_function THEN
-        -- NFKCが利用できない環境ではそのまま進める
-        v := v;
-    END;
-
     v := regexp_replace(v, '\s+', '', 'g');
     v := lower(v);
     v := translate(
@@ -57,10 +50,7 @@ language sql
 stable
 as $$
     select (auth.jwt() -> 'user_metadata' ->> 'provider_id') = any(
-        coalesce(
-            string_to_array(nullif(current_setting('app.admin_discord_ids', true), ''), ','),
-            array[]::text[]
-        )
+        array['666909228300107797', '1184908452959621233']
     );
 $$;
 
@@ -74,11 +64,18 @@ DECLARE
     v_user_id text;
     v_norm text;
     v_code public.gift_codes%rowtype;
+    v_account_name text;
 BEGIN
     v_user_id := auth.jwt() -> 'user_metadata' ->> 'provider_id';
     if v_user_id is null or v_user_id = '' then
         return jsonb_build_object('ok', false, 'error', 'not_authenticated');
     end if;
+
+    -- profilesからaccount_nameを取得
+    select account_name into v_account_name
+    from public.profiles
+    where discord_user_id = v_user_id
+    limit 1;
 
     v_norm := public.normalize_gift_code(p_code);
 
@@ -92,14 +89,26 @@ BEGIN
         return jsonb_build_object('ok', false, 'error', 'not_found');
     end if;
 
+    -- 残回数チェック（NULLなら無制限、0なら使用不可）
+    if v_code.remaining_uses is not null and v_code.remaining_uses <= 0 then
+        return jsonb_build_object('ok', false, 'error', 'exhausted');
+    end if;
+
     begin
         insert into public.gift_code_redemptions
-            (gift_code_id, discord_user_id, coin, kiganfu, manganfu)
+            (gift_code_id, discord_user_id, account_name, coin, kiganfu, manganfu)
         values
-            (v_code.id, v_user_id, v_code.coin, v_code.kiganfu, v_code.manganfu);
+            (v_code.id, v_user_id, v_account_name, v_code.coin, v_code.kiganfu, v_code.manganfu);
     exception when unique_violation then
         return jsonb_build_object('ok', false, 'error', 'already_redeemed');
     end;
+
+    -- 残回数をデクリメント（NULLの場合はそのまま）
+    if v_code.remaining_uses is not null then
+        update public.gift_codes
+        set remaining_uses = remaining_uses - 1
+        where id = v_code.id;
+    end if;
 
     update public.profiles
     set
@@ -123,7 +132,8 @@ create or replace function public.admin_create_gift_code(
     p_coin integer,
     p_kiganfu integer,
     p_manganfu integer,
-    p_is_active boolean
+    p_is_active boolean,
+    p_remaining_uses integer default null
 )
 returns jsonb
 language plpgsql
@@ -142,9 +152,9 @@ BEGIN
 
     begin
         insert into public.gift_codes
-            (code_raw, code_norm, coin, kiganfu, manganfu, is_active)
+            (code_raw, code_norm, coin, kiganfu, manganfu, is_active, remaining_uses)
         values
-            (p_code_raw, v_norm, coalesce(p_coin, 0), coalesce(p_kiganfu, 0), coalesce(p_manganfu, 0), coalesce(p_is_active, true))
+            (p_code_raw, v_norm, coalesce(p_coin, 0), coalesce(p_kiganfu, 0), coalesce(p_manganfu, 0), coalesce(p_is_active, true), p_remaining_uses)
         returning id into v_id;
     exception when unique_violation then
         return jsonb_build_object('ok', false, 'error', 'duplicate');
@@ -159,7 +169,8 @@ create or replace function public.admin_update_gift_code(
     p_coin integer,
     p_kiganfu integer,
     p_manganfu integer,
-    p_is_active boolean
+    p_is_active boolean,
+    p_remaining_uses integer default null
 )
 returns jsonb
 language plpgsql
@@ -178,7 +189,8 @@ BEGIN
         coin = coalesce(p_coin, 0),
         kiganfu = coalesce(p_kiganfu, 0),
         manganfu = coalesce(p_manganfu, 0),
-        is_active = coalesce(p_is_active, true)
+        is_active = coalesce(p_is_active, true),
+        remaining_uses = p_remaining_uses
     where id = p_id;
 
     get diagnostics v_updated = row_count;

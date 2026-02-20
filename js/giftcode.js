@@ -71,6 +71,7 @@
     function resolveRedeemErrorMessage(code) {
         if (code === 'not_found') return 'コードが違います。';
         if (code === 'already_redeemed') return 'この報酬は既に受け取り済みです';
+        if (code === 'exhausted') return 'このコードは使用回数の上限に達しました';
         if (code === 'not_authenticated') return 'ログインしてください';
         return 'エラーが発生しました。';
     }
@@ -157,6 +158,8 @@
                 const kiganfu = Number(document.getElementById('gift-add-kiganfu').value || 0);
                 const manganfu = Number(document.getElementById('gift-add-manganfu').value || 0);
                 const isActive = document.getElementById('gift-add-active').checked;
+                const remainingRaw = document.getElementById('gift-add-remaining').value.trim();
+                const remainingUses = remainingRaw === '' ? null : Number(remainingRaw);
 
                 addMessage.textContent = '';
                 addMessage.className = 'small mt-3';
@@ -172,7 +175,8 @@
                     p_coin: coin,
                     p_kiganfu: kiganfu,
                     p_manganfu: manganfu,
-                    p_is_active: isActive
+                    p_is_active: isActive,
+                    p_remaining_uses: remainingUses
                 });
 
                 if (error) {
@@ -208,6 +212,8 @@
                 const kiganfu = Number(row.querySelector('.gift-admin-kiganfu')?.value || 0);
                 const manganfu = Number(row.querySelector('.gift-admin-manganfu')?.value || 0);
                 const isActive = row.querySelector('.gift-admin-active')?.checked ?? false;
+                const remainingRaw = row.querySelector('.gift-admin-remaining')?.value?.trim();
+                const remainingUses = (remainingRaw === '' || remainingRaw === undefined) ? null : Number(remainingRaw);
 
                 button.disabled = true;
                 button.textContent = '保存中...';
@@ -218,7 +224,8 @@
                         p_coin: coin,
                         p_kiganfu: kiganfu,
                         p_manganfu: manganfu,
-                        p_is_active: isActive
+                        p_is_active: isActive,
+                        p_remaining_uses: remainingUses
                     });
 
                     if (error || !data?.ok) {
@@ -259,6 +266,7 @@
 
             listBody.innerHTML = data.map((row) => {
                 const createdAt = row.created_at ? new Date(row.created_at).toLocaleDateString('ja-JP') : '-';
+                const remainingVal = row.remaining_uses !== null && row.remaining_uses !== undefined ? row.remaining_uses : '';
                 return `
                     <tr data-id="${row.id}">
                         <td class="small">${escapeHtml(row.code_raw || '')}</td>
@@ -266,6 +274,7 @@
                         <td><input type="number" class="form-control form-control-sm gift-admin-coin" value="${row.coin ?? 0}" min="0"></td>
                         <td><input type="number" class="form-control form-control-sm gift-admin-kiganfu" value="${row.kiganfu ?? 0}" min="0"></td>
                         <td><input type="number" class="form-control form-control-sm gift-admin-manganfu" value="${row.manganfu ?? 0}" min="0"></td>
+                        <td><input type="number" class="form-control form-control-sm gift-admin-remaining" value="${remainingVal}" min="0" placeholder="∞"></td>
                         <td>
                             <div class="form-check form-switch">
                                 <input class="form-check-input gift-admin-active" type="checkbox" ${row.is_active ? 'checked' : ''}>
