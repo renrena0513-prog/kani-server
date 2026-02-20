@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ギフトコード - かに鯖</title>
+    <link rel="icon" type="image/png" href="../images/favicon.png">
+    <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kosugi+Maru&family=Noto+Sans+JP:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="../styles.css">
+    <style>
+        :root {
+            --gift-purple: #6a5acd;
+            --gift-pink: #ff7eb3;
+            --gift-gold: #d4a574;
+            --font-title: 'Kosugi Maru', sans-serif;
+        }
+
+        body {
+            background: radial-gradient(circle at top, #fff3c4 0%, #ffd6e7 35%, #b8d7ff 100%);
+            min-height: 100vh;
+        }
+
+        .page-header {
+            color: #fff;
+            font-family: var(--font-title);
+            text-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
+            margin-bottom: 30px;
+        }
+
+        .gift-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 32px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+            max-width: 720px;
+            margin: 0 auto;
+        }
+
+        .gift-card .form-control {
+            border-radius: 999px;
+            border: 2px solid #f1c7d8;
+            padding: 12px 18px;
+            font-size: 1.05rem;
+        }
+
+        .gift-card .btn-gift {
+            background: linear-gradient(135deg, var(--gift-pink) 0%, var(--gift-purple) 100%);
+            color: #fff;
+            border: none;
+            padding: 12px 32px;
+            font-weight: bold;
+            border-radius: 999px;
+            box-shadow: 0 6px 18px rgba(106, 90, 205, 0.35);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .gift-card .btn-gift:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 22px rgba(106, 90, 205, 0.45);
+        }
+
+        .gift-section-title {
+            font-family: var(--font-title);
+            color: #5a4a7a;
+        }
+
+        .history-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 18px;
+            padding: 24px;
+            box-shadow: 0 10px 26px rgba(0, 0, 0, 0.12);
+        }
+
+        .history-table th {
+            color: #6c5b7b;
+            font-weight: 700;
+        }
+
+        .history-empty {
+            color: #8b7a95;
+        }
+
+        .admin-panel {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 18px;
+            padding: 24px;
+            box-shadow: 0 10px 26px rgba(0, 0, 0, 0.15);
+        }
+
+        .admin-panel .btn {
+            border-radius: 999px;
+        }
+
+        .admin-table th {
+            font-size: 0.9rem;
+            color: #6b6b6b;
+        }
+
+        .admin-table td {
+            vertical-align: middle;
+        }
+
+        @media (max-width: 768px) {
+            .gift-card {
+                padding: 24px;
+            }
+
+            .history-card {
+                padding: 18px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="nav-dropdown"></div>
+
+    <div class="container py-5 mt-5">
+        <h1 class="page-header text-center">🎁 ギフトコード</h1>
+
+        <div class="gift-card mb-5">
+            <div class="text-center mb-4">
+                <h4 class="gift-section-title">コードを入力して受け取る</h4>
+                <div class="small text-muted">ひらがな/カタカナ・大小文字は自動で判定します</div>
+            </div>
+            <div class="input-group">
+                <input type="text" id="giftcode-input" class="form-control" placeholder="ギフトコードを入力">
+                <button class="btn btn-gift" id="giftcode-submit" type="button">送信</button>
+            </div>
+        </div>
+
+        <div class="history-card mb-5">
+            <h5 class="gift-section-title mb-3">過去受け取り一覧</h5>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle history-table">
+                    <thead>
+                        <tr>
+                            <th>コード</th>
+                            <th>受け取り日時</th>
+                            <th>受け取り内容</th>
+                        </tr>
+                    </thead>
+                    <tbody id="gift-history-body">
+                        <tr><td colspan="3" class="text-center history-empty">読み込み中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="gift-admin-section" class="admin-panel mb-5" style="display: none;">
+            <h5 class="gift-section-title mb-3">管理者セクション</h5>
+            <div class="d-flex flex-wrap gap-2">
+                <button class="btn btn-outline-primary" id="gift-admin-add-btn">ギフト追加</button>
+                <button class="btn btn-outline-secondary" id="gift-admin-list-btn">コード一覧</button>
+            </div>
+            <div class="small text-muted mt-3">※ 管理者のみ表示されます</div>
+        </div>
+    </div>
+
+    <!-- 結果モーダル（バッジ購入時のモーダルに合わせたデザイン） -->
+    <div class="modal fade" id="giftResultModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg border-0" style="border-radius: 20px;">
+                <div class="modal-body p-4 text-center">
+                    <div id="giftResultMessage" class="fw-bold"></div>
+                    <div class="mt-4 d-flex justify-content-center">
+                        <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">閉じる</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 管理者: ギフト追加モーダル -->
+    <div class="modal fade" id="giftAddModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold">🎁 ギフト追加</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body pt-2">
+                    <form id="gift-add-form">
+                        <div class="mb-3">
+                            <label class="form-label">コード名</label>
+                            <input type="text" id="gift-add-code" class="form-control" maxlength="80" required>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-4">
+                                <label class="form-label">コイン</label>
+                                <input type="number" id="gift-add-coin" class="form-control" min="0" value="0" required>
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label">祈願符</label>
+                                <input type="number" id="gift-add-kiganfu" class="form-control" min="0" value="0" required>
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label">満願符</label>
+                                <input type="number" id="gift-add-manganfu" class="form-control" min="0" value="0" required>
+                            </div>
+                        </div>
+                        <div class="form-check form-switch mt-3">
+                            <input class="form-check-input" type="checkbox" id="gift-add-active" checked>
+                            <label class="form-check-label" for="gift-add-active">有効</label>
+                        </div>
+                        <div class="text-end mt-4">
+                            <button type="submit" class="btn btn-primary">追加する</button>
+                        </div>
+                    </form>
+                    <div id="gift-add-message" class="small mt-3"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 管理者: コード一覧モーダル -->
+    <div class="modal fade" id="giftListModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold">📋 ギフトコード一覧</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body pt-2">
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle admin-table">
+                            <thead>
+                                <tr>
+                                    <th>code_raw</th>
+                                    <th>code_norm</th>
+                                    <th>コイン</th>
+                                    <th>祈願符</th>
+                                    <th>満願符</th>
+                                    <th>有効</th>
+                                    <th>作成日</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="gift-admin-table-body">
+                                <tr><td colspan="8" class="text-center text-muted">読み込み中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabase-config.js"></script>
+    <script src="../js/auth-guard.js"></script>
+    <script src="../js/navigation.js"></script>
+    <script src="../js/giftcode-utils.js"></script>
+    <script src="../js/giftcode.js"></script>
+</body>
+
+</html>
