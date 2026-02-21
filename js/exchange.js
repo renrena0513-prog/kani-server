@@ -14,9 +14,11 @@
     let allBadges = [];
     let myBadgeCounts = {};
     let exchangeList = [];
+    let rarityThresholds = [];
+    let rewardBadgeCounts = {};
 
     async function init() {
-        await Promise.all([fetchAllBadges(), fetchMyBadges()]);
+        await Promise.all([fetchAllBadges(), fetchMyBadges(), fetchRarityThresholds()]);
         await loadExchanges();
         if (isAdmin) setupAdmin();
     }
@@ -38,6 +40,40 @@
         });
     }
 
+    async function fetchRarityThresholds() {
+        const { data, error } = await supabaseClient
+            .from('rarity_thresholds')
+            .select('*')
+            .order('threshold_value', { ascending: true });
+        if (error) {
+            console.error('Failed to load rarity thresholds:', error);
+            rarityThresholds = [];
+            return;
+        }
+        rarityThresholds = data || [];
+    }
+
+    async function fetchRewardBadgeCounts(rewardIds) {
+        if (!rewardIds || rewardIds.length === 0) {
+            rewardBadgeCounts = {};
+            return;
+        }
+        const { data, error } = await supabaseClient
+            .from('user_badges_new')
+            .select('badge_id')
+            .in('badge_id', rewardIds);
+        if (error) {
+            console.error('Failed to load badge counts:', error);
+            rewardBadgeCounts = {};
+            return;
+        }
+        const counts = {};
+        (data || []).forEach(r => {
+            counts[r.badge_id] = (counts[r.badge_id] || 0) + 1;
+        });
+        rewardBadgeCounts = counts;
+    }
+
     // --- 交換リスト表示 ---
     async function loadExchanges() {
         if (!exchangeGrid) return;
@@ -47,7 +83,7 @@
             .from('badge_exchanges')
             .select(`
                 id, is_active, created_at,
-                reward:badges!reward_badge_id(id, name, image_url),
+                reward:badges!reward_badge_id(id, name, image_url, price, fixed_rarity_name, sales_type),
                 badge_exchange_materials(id, badge_id, quantity, badge:badges!badge_id(id, name, image_url))
             `)
             .eq('is_active', true)
@@ -60,6 +96,8 @@
         }
 
         exchangeList = data || [];
+        const rewardIds = exchangeList.map(ex => ex.reward?.id).filter(Boolean);
+        await fetchRewardBadgeCounts(rewardIds);
 
         if (exchangeList.length === 0) {
             exchangeGrid.innerHTML = '<div class="text-center text-muted py-4">現在交換できるレシピはありません</div>';
@@ -73,19 +111,28 @@
 
             const labelText = !discordId ? 'ログインしてください' : (canExchange ? '交換可能' : '交換不可');
             const labelClass = !discordId ? 'bg-secondary' : (canExchange ? 'bg-success' : 'bg-danger');
+            const rewardCount = rewardBadgeCounts[reward?.id] || 0;
+            const rarityName = reward
+                ? (window.BadgeUtils && rarityThresholds.length
+                    ? BadgeUtils.calculateBadgeValues(reward, rewardCount, rarityThresholds).rarityName
+                    : (reward.fixed_rarity_name || '-'))
+                : '-';
+            const rarityClass = getRarityClass(rarityName);
+            const rarityStyle = rarityClass ? '' : 'style="background: rgba(0,0,0,0.2);"';
 
             return `
                 <div class="col-12 col-md-6">
                     <div class="exchange-card">
                         <div class="exchange-card-reward">
+                            <div class="rarity-pill ${rarityClass}" ${rarityStyle}>${rarityName}</div>
                             <img src="${reward?.image_url || ''}" alt="${escapeHtml(reward?.name || '')}" class="exchange-reward-img">
                             <div class="fw-bold mt-2">${escapeHtml(reward?.name || '報酬バッジ')}</div>
                         </div>
                         <div class="exchange-card-arrow">⇐</div>
                         <div class="exchange-card-materials">
-                            <span class="badge ${labelClass}">${labelText}</span>
                         </div>
                         <div class="exchange-card-action">
+                            <span class="badge ${labelClass} exchange-status-label">${labelText}</span>
                             <button class="btn btn-exchange ${canExchange ? '' : 'btn-exchange-disabled'}"
                                 onclick="window._onExchangeClick('${ex.id}', ${canExchange})"
                                 ${!discordId ? 'disabled' : ''}>

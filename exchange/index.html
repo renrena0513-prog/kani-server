@@ -94,6 +94,8 @@
 
         .exchange-card-action {
             flex-shrink: 0;
+            text-align: center;
+            min-width: 140px;
         }
 
         .btn-exchange {
@@ -118,6 +120,11 @@
             background: linear-gradient(135deg, #9ca3af, #d1d5db) !important;
             box-shadow: none !important;
             cursor: not-allowed;
+        }
+
+        .exchange-status-label {
+            display: inline-block;
+            margin-bottom: 8px;
         }
 
         /* モーダル */
@@ -310,6 +317,7 @@
     <script src="../js/supabase-config.js"></script>
     <script src="../js/auth-guard.js"></script>
     <script src="../js/navigation.js"></script>
+    <script src="../js/badge-utils.js"></script>
     <script src="../js/exchange.js"></script>
 </body>
 
