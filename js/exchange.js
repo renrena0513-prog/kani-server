@@ -176,10 +176,11 @@
                 ? escapeHtml(reward?.name || '報酬バッジ')
                 : `${getMaterialLabel(rewardType)} ×${rewardAmount}`;
             const rewardIcon = isBadgeReward ? '' : getMaterialIcon(rewardType);
+            const lightCard = !isBadgeReward || !rarityClass;
 
             return `
                 <div class="col-12 col-md-6">
-                    <div class="exchange-card badge-card ${rarityClass}">
+                    <div class="exchange-card badge-card ${rarityClass} ${lightCard ? 'light' : ''}">
                         <div class="exchange-card-reward">
                             ${isBadgeReward ? `<div class="rarity-pill ${rarityClass}" ${rarityStyle}>${rarityName}</div>` : ''}
                             ${isBadgeReward
