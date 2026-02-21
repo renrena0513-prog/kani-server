@@ -69,20 +69,10 @@
         exchangeGrid.innerHTML = exchangeList.map(ex => {
             const reward = ex.reward;
             const materials = ex.badge_exchange_materials || [];
-            const materialsHtml = materials.map(m => {
-                const owned = myBadgeCounts[m.badge_id] || 0;
-                const enough = owned >= m.quantity;
-                const statusClass = enough ? 'text-success' : 'text-danger';
-                return `
-                    <div class="exchange-material d-flex align-items-center gap-2 mb-1">
-                        <img src="${m.badge?.image_url || ''}" alt="" class="exchange-material-img">
-                        <span class="small">${escapeHtml(m.badge?.name || '?')} ×${m.quantity}</span>
-                        <span class="small ${statusClass}">(所持: ${owned})</span>
-                    </div>
-                `;
-            }).join('');
-
             const canExchange = materials.every(m => (myBadgeCounts[m.badge_id] || 0) >= m.quantity);
+
+            const labelText = !discordId ? 'ログインしてください' : (canExchange ? '交換可能' : '交換不可');
+            const labelClass = !discordId ? 'bg-secondary' : (canExchange ? 'bg-success' : 'bg-danger');
 
             return `
                 <div class="col-12 col-md-6">
@@ -93,8 +83,7 @@
                         </div>
                         <div class="exchange-card-arrow">⇐</div>
                         <div class="exchange-card-materials">
-                            <div class="small text-muted mb-1">必要素材</div>
-                            ${materialsHtml}
+                            <span class="badge ${labelClass}">${labelText}</span>
                         </div>
                         <div class="exchange-card-action">
                             <button class="btn btn-exchange ${canExchange ? '' : 'btn-exchange-disabled'}"
