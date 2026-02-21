@@ -1857,13 +1857,16 @@
         }
 
 
-        function applyTeamLogFilters(memberId = 'all', mode = 'all') {
+        function applyTeamLogFilters(memberId = null, mode = null) {
+            const current = getCurrentTeamFilters();
+            const targetMember = memberId ?? current.memberId ?? 'all';
+            const targetMode = mode ?? current.mode ?? 'all';
             let filtered = teamLogMatches.slice();
-            if (memberId && memberId !== 'all') {
-                filtered = filtered.filter(m => m.players.some(p => p.discord_user_id === memberId));
+            if (targetMember && targetMember !== 'all') {
+                filtered = filtered.filter(m => m.players.some(p => p.discord_user_id === targetMember));
             }
-            if (mode && mode !== 'all') {
-                filtered = filtered.filter(m => (m.mode || '四麻') === mode);
+            if (targetMode && targetMode !== 'all') {
+                filtered = filtered.filter(m => (m.mode || '四麻') === targetMode);
             }
             renderTeamBattleLog(filtered);
         }
