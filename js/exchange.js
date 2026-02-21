@@ -410,7 +410,7 @@
     function searchBadges(query) {
         if (!query) return [];
         const q = query.toLowerCase();
-        return allBadges.filter(b => b.name && b.name.toLowerCase().includes(q)).slice(0, 20);
+        return allBadges.filter(b => b.name && b.name.toLowerCase().includes(q)).slice(0, 50);
     }
 
     // 報酬バッジ検索
