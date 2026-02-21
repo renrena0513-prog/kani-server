@@ -551,14 +551,14 @@
 
         const rewardType = document.getElementById('exchange-reward-type').value || 'badge';
         const rewardAmount = Number(document.getElementById('exchange-reward-amount').value || 1);
-        const rewardBadgeId = document.getElementById('exchange-reward-id').value;
+        const rewardBadgeIdRaw = document.getElementById('exchange-reward-id').value;
         const hasRewardType = rewardType && MATERIAL_DEFS[rewardType];
         if (!hasRewardType) {
             msg.textContent = '報酬タイプを選択してください';
             msg.classList.add('text-danger');
             return;
         }
-        if (rewardType === 'badge' && !rewardBadgeId) {
+        if (rewardType === 'badge' && !rewardBadgeIdRaw) {
             msg.textContent = '報酬バッジを選択してください';
             msg.classList.add('text-danger');
             return;
@@ -593,6 +593,7 @@
             return;
         }
 
+        const rewardBadgeId = rewardType === 'badge' ? rewardBadgeIdRaw : null;
         const { data, error } = await supabaseClient.rpc('admin_create_badge_exchange', {
             p_reward_badge_id: rewardBadgeId,
             p_reward_type: rewardType,
