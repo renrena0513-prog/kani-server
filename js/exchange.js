@@ -183,7 +183,7 @@
                         <div class="exchange-card-reward">
                             ${isBadgeReward ? `<div class="rarity-pill ${rarityClass}" ${rarityStyle}>${rarityName}</div>` : ''}
                             ${isBadgeReward
-                                ? `<img src="${reward?.image_url || ''}" alt="${escapeHtml(reward?.name || '')}" class="exchange-reward-img">`
+                                ? `<img src="${reward?.image_url || ''}" alt="${escapeHtml(reward?.name || '')}" class="exchange-reward-img is-badge">`
                                 : `<div class="exchange-reward-img d-flex align-items-center justify-content-center fs-1" aria-hidden="true">${rewardIcon}</div>`}
                             <div class="fw-bold mt-2">${rewardTitle}</div>
                         </div>
