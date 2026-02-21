@@ -896,7 +896,7 @@
                                         class="btn btn-outline-success btn-sm">
                                         🖼️ 画像一括アップロード
                                     </button>
-                                    <input type="file" id="badge-bulk-upload" style="display: none;" accept="image/*"
+                                    <input type="file" id="badge-bulk-upload" style="display: none;" accept="image/png,image/jpeg,image/gif,image/webp"
                                         multiple onchange="handleBulkBadgeUpload(event)">
                                     <button onclick="document.getElementById('badge-csv-import').click()"
                                         class="btn btn-outline-primary btn-sm">
@@ -1492,7 +1492,7 @@
                             </div>
                             <div class="mb-3">
                                 <label for="badge-image-file" class="form-label">画像アップロード</label>
-                                <input type="file" class="form-control" id="badge-image-file" accept="image/*">
+                                <input type="file" class="form-control" id="badge-image-file" accept="image/png,image/jpeg,image/gif,image/webp">
                                 <div id="badge-image-preview" class="mt-2 text-center" style="display: none;">
                                     <img src="" style="max-height: 100px; border-radius: 8px;" class="shadow-sm">
                                 </div>

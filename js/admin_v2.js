@@ -2057,7 +2057,9 @@ async function saveBadge() {
     try {
         if (imageFile) {
             const fileName = `${Math.random().toString(36).substring(2)}.${imageFile.name.split('.').pop()}`;
-            await supabaseClient.storage.from('badges').upload(fileName, imageFile);
+            await supabaseClient.storage.from('badges').upload(fileName, imageFile, {
+                contentType: imageFile.type || 'image/png'
+            });
             const { data } = supabaseClient.storage.from('badges').getPublicUrl(fileName);
             image_url = data.publicUrl;
         }
@@ -2109,7 +2111,9 @@ async function handleBulkBadgeUpload(event) {
     for (const file of files) {
         try {
             const fileName = `${Math.random().toString(36).substring(2)}.${file.name.split('.').pop()}`;
-            await supabaseClient.storage.from('badges').upload(fileName, file);
+            await supabaseClient.storage.from('badges').upload(fileName, file, {
+                contentType: file.type || 'image/png'
+            });
             const { data } = supabaseClient.storage.from('badges').getPublicUrl(fileName);
             const badgeData = {
                 name: file.name.replace(/\.[^/.]+$/, ''),
