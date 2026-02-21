@@ -16,9 +16,33 @@
     let exchangeList = [];
     let rarityThresholds = [];
     let rewardBadgeCounts = {};
+    let myProfile = { coins: 0, gacha_tickets: 0, mangan_tickets: 0 };
+
+    const MATERIAL_DEFS = {
+        badge: { label: 'バッジ', icon: '🏅' },
+        coins: { label: 'コイン', icon: '🪙' },
+        gacha_tickets: { label: '祈願符', icon: '🎫' },
+        mangan_tickets: { label: '満願符', icon: '🎴' }
+    };
+
+    function getMaterialLabel(type) {
+        return MATERIAL_DEFS[type]?.label || '素材';
+    }
+
+    function getMaterialIcon(type) {
+        return MATERIAL_DEFS[type]?.icon || '📦';
+    }
+
+    function getOwnedForMaterial(type, badgeId = null) {
+        if (!type || type === 'badge') return myBadgeCounts[badgeId] || 0;
+        if (type === 'coins') return myProfile.coins || 0;
+        if (type === 'gacha_tickets') return myProfile.gacha_tickets || 0;
+        if (type === 'mangan_tickets') return myProfile.mangan_tickets || 0;
+        return 0;
+    }
 
     async function init() {
-        await Promise.all([fetchAllBadges(), fetchMyBadges(), fetchRarityThresholds()]);
+        await Promise.all([fetchAllBadges(), fetchMyBadges(), fetchMyProfile(), fetchRarityThresholds()]);
         await loadExchanges();
         if (isAdmin) setupAdmin();
     }
@@ -38,6 +62,24 @@
         (data || []).forEach(r => {
             myBadgeCounts[r.badge_id] = (myBadgeCounts[r.badge_id] || 0) + 1;
         });
+    }
+
+    async function fetchMyProfile() {
+        if (!discordId) return;
+        const { data, error } = await supabaseClient
+            .from('profiles')
+            .select('coins, gacha_tickets, mangan_tickets')
+            .eq('discord_user_id', discordId)
+            .maybeSingle();
+        if (error) {
+            console.error('Failed to load profile:', error);
+            return;
+        }
+        myProfile = {
+            coins: data?.coins || 0,
+            gacha_tickets: data?.gacha_tickets || 0,
+            mangan_tickets: data?.mangan_tickets || 0
+        };
     }
 
     async function fetchRarityThresholds() {
@@ -84,7 +126,7 @@
             .select(`
                 id, is_active, created_at,
                 reward:badges!reward_badge_id(id, name, image_url, price, fixed_rarity_name, sales_type),
-                badge_exchange_materials(id, badge_id, quantity, badge:badges!badge_id(id, name, image_url))
+                badge_exchange_materials(id, badge_id, quantity, material_type, badge:badges!badge_id(id, name, image_url))
             `)
             .eq('is_active', true)
             .order('created_at', { ascending: false });
@@ -107,7 +149,11 @@
         exchangeGrid.innerHTML = exchangeList.map(ex => {
             const reward = ex.reward;
             const materials = ex.badge_exchange_materials || [];
-            const canExchange = materials.every(m => (myBadgeCounts[m.badge_id] || 0) >= m.quantity);
+            const canExchange = materials.every(m => {
+                const type = m.material_type || 'badge';
+                const owned = getOwnedForMaterial(type, m.badge_id);
+                return owned >= (m.quantity || 0);
+            });
 
             const labelText = !discordId ? 'ログインしてください' : (canExchange ? '交換可能' : '交換不可');
             const labelClass = !discordId ? 'bg-secondary' : (canExchange ? 'bg-success' : 'bg-danger');
@@ -122,7 +168,7 @@
 
             return `
                 <div class="col-12 col-md-6">
-                    <div class="exchange-card">
+                    <div class="exchange-card badge-card ${rarityClass}">
                         <div class="exchange-card-reward">
                             <div class="rarity-pill ${rarityClass}" ${rarityStyle}>${rarityName}</div>
                             <img src="${reward?.image_url || ''}" alt="${escapeHtml(reward?.name || '')}" class="exchange-reward-img">
@@ -154,12 +200,25 @@
 
         if (canExchange) {
             // 確認モーダル
-            const materialsText = materials.map(m =>
-                `<div class="d-flex align-items-center gap-2 mb-1">
-                    <img src="${m.badge?.image_url || ''}" class="exchange-modal-badge-img">
-                    <span>${escapeHtml(m.badge?.name || '?')} ×${m.quantity}</span>
-                </div>`
-            ).join('');
+            const materialsText = materials.map(m => {
+                const type = m.material_type || 'badge';
+                if (type === 'badge') {
+                    return `
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <img src="${m.badge?.image_url || ''}" class="exchange-modal-badge-img">
+                            <span>${escapeHtml(m.badge?.name || '?')} ×${m.quantity}</span>
+                        </div>
+                    `;
+                }
+                const label = getMaterialLabel(type);
+                const icon = getMaterialIcon(type);
+                return `
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <span class="fs-5">${icon}</span>
+                        <span>${label} ×${m.quantity}</span>
+                    </div>
+                `;
+            }).join('');
 
             document.getElementById('exchangeModalTitle').textContent = '交換しますか？';
             document.getElementById('exchangeModalBody').innerHTML = `
@@ -175,14 +234,28 @@
         } else {
             // 不足モーダル
             const missingHtml = materials
-                .filter(m => (myBadgeCounts[m.badge_id] || 0) < m.quantity)
+                .filter(m => {
+                    const type = m.material_type || 'badge';
+                    const owned = getOwnedForMaterial(type, m.badge_id);
+                    return owned < m.quantity;
+                })
                 .map(m => {
-                    const owned = myBadgeCounts[m.badge_id] || 0;
+                    const type = m.material_type || 'badge';
+                    const owned = getOwnedForMaterial(type, m.badge_id);
                     const short = m.quantity - owned;
+                    if (type === 'badge') {
+                        return `
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <img src="${m.badge?.image_url || ''}" class="exchange-modal-badge-img">
+                                <span>${escapeHtml(m.badge?.name || '?')} ×${short} が未所持です</span>
+                            </div>`;
+                    }
+                    const label = getMaterialLabel(type);
+                    const icon = getMaterialIcon(type);
                     return `
                         <div class="d-flex align-items-center gap-2 mb-1">
-                            <img src="${m.badge?.image_url || ''}" class="exchange-modal-badge-img">
-                            <span>${escapeHtml(m.badge?.name || '?')} ×${short} が未所持です</span>
+                            <span class="fs-5">${icon}</span>
+                            <span>${label} ×${short} が不足です</span>
                         </div>`;
                 }).join('');
 
@@ -215,12 +288,26 @@
 
             if (!data?.ok) {
                 if (data?.error === 'insufficient_materials' && data?.missing) {
-                    const missingHtml = data.missing.map(m =>
-                        `<div class="d-flex align-items-center gap-2 mb-1">
-                            <img src="${m.image_url || ''}" class="exchange-modal-badge-img">
-                            <span>${escapeHtml(m.badge_name || '?')} ×${m.required - m.owned} が未所持です</span>
-                        </div>`
-                    ).join('');
+                    const missingHtml = data.missing.map(m => {
+                        const type = m.material_type || 'badge';
+                        const short = (m.required || 0) - (m.owned || 0);
+                        if (type === 'badge') {
+                            return `
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <img src="${m.image_url || ''}" class="exchange-modal-badge-img">
+                                    <span>${escapeHtml(m.badge_name || '?')} ×${short} が未所持です</span>
+                                </div>
+                            `;
+                        }
+                        const label = getMaterialLabel(type);
+                        const icon = getMaterialIcon(type);
+                        return `
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <span class="fs-5">${icon}</span>
+                                <span>${label} ×${short} が不足です</span>
+                            </div>
+                        `;
+                    }).join('');
                     document.getElementById('exchangeModalTitle').textContent = '交換できません';
                     document.getElementById('exchangeModalBody').innerHTML = missingHtml;
                     document.getElementById('exchangeModalCancel').style.display = 'none';
@@ -248,6 +335,7 @@
 
             // データ再取得
             await fetchMyBadges();
+            await fetchMyProfile();
             await loadExchanges();
         } catch (err) {
             console.error(err);
@@ -338,8 +426,18 @@
         row.id = `mat-row-${rowId}`;
         row.innerHTML = `
             <div class="flex-grow-1">
-                <input type="text" class="form-control form-control-sm mat-search" placeholder="バッジ名で検索" data-row="${rowId}">
-                <div class="badge-search-results mat-results" id="mat-results-${rowId}"></div>
+                <div class="d-flex gap-2 align-items-center mb-1">
+                    <select class="form-select form-select-sm mat-type" data-row="${rowId}">
+                        <option value="badge">バッジ</option>
+                        <option value="coins">コイン</option>
+                        <option value="gacha_tickets">祈願符</option>
+                        <option value="mangan_tickets">満願符</option>
+                    </select>
+                </div>
+                <div class="mat-badge-fields">
+                    <input type="text" class="form-control form-control-sm mat-search" placeholder="バッジ名で検索" data-row="${rowId}">
+                    <div class="badge-search-results mat-results" id="mat-results-${rowId}"></div>
+                </div>
                 <div class="mat-selected small mt-1" id="mat-selected-${rowId}"><span class="text-muted">未選択</span></div>
                 <input type="hidden" class="mat-badge-id" id="mat-id-${rowId}">
             </div>
@@ -349,6 +447,30 @@
             <button type="button" class="btn btn-sm btn-outline-danger mat-remove" onclick="this.closest('.exchange-material-row').remove()">✕</button>
         `;
         container.appendChild(row);
+
+        const typeSelect = row.querySelector('.mat-type');
+        const badgeFields = row.querySelector('.mat-badge-fields');
+        const selectedEl = row.querySelector('.mat-selected');
+        const badgeIdEl = row.querySelector('.mat-badge-id');
+        const resultsEl = row.querySelector('.mat-results');
+        const searchInput = row.querySelector('.mat-search');
+
+        const applyType = () => {
+            const type = typeSelect.value;
+            if (type === 'badge') {
+                badgeFields.style.display = '';
+                selectedEl.innerHTML = '<span class="text-muted">未選択</span>';
+                return;
+            }
+            badgeFields.style.display = 'none';
+            if (searchInput) searchInput.value = '';
+            if (resultsEl) resultsEl.innerHTML = '';
+            if (badgeIdEl) badgeIdEl.value = '';
+            selectedEl.innerHTML = `<span class="text-muted">${getMaterialLabel(type)}</span>`;
+        };
+
+        typeSelect.addEventListener('change', applyType);
+        applyType();
 
         // 検索イベント
         row.querySelector('.mat-search').addEventListener('input', function () {
@@ -398,14 +520,19 @@
         const materialRows = document.querySelectorAll('.exchange-material-row');
         const materials = [];
         for (const row of materialRows) {
+            const type = row.querySelector('.mat-type')?.value || 'badge';
             const badgeId = row.querySelector('.mat-badge-id')?.value;
             const qty = Number(row.querySelector('.mat-qty')?.value || 1);
-            if (!badgeId) {
+            if (type === 'badge' && !badgeId) {
                 msg.textContent = '素材バッジをすべて選択してください';
                 msg.classList.add('text-danger');
                 return;
             }
-            materials.push({ badge_id: badgeId, quantity: qty });
+            materials.push({
+                material_type: type,
+                badge_id: type === 'badge' ? badgeId : null,
+                quantity: qty
+            });
         }
 
         if (materials.length === 0) {
@@ -450,7 +577,7 @@
             .select(`
                 id, is_active, created_at,
                 reward:badges!reward_badge_id(id, name, image_url),
-                badge_exchange_materials(badge_id, quantity, badge:badges!badge_id(name, image_url))
+                badge_exchange_materials(badge_id, quantity, material_type, badge:badges!badge_id(name, image_url))
             `)
             .order('created_at', { ascending: false });
 
@@ -465,9 +592,13 @@
         }
 
         body.innerHTML = data.map(ex => {
-            const materials = (ex.badge_exchange_materials || []).map(m =>
-                `<span class="small">${escapeHtml(m.badge?.name || '?')} ×${m.quantity}</span>`
-            ).join(', ');
+            const materials = (ex.badge_exchange_materials || []).map(m => {
+                const type = m.material_type || 'badge';
+                if (type === 'badge') {
+                    return `<span class="small">${escapeHtml(m.badge?.name || '?')} ×${m.quantity}</span>`;
+                }
+                return `<span class="small">${getMaterialLabel(type)} ×${m.quantity}</span>`;
+            }).join(', ');
             return `
                 <div class="exchange-admin-item d-flex align-items-center gap-3 p-2 border-bottom">
                     <img src="${ex.reward?.image_url || ''}" style="width:40px;height:40px;object-fit:contain;">
