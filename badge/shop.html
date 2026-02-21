@@ -121,6 +121,22 @@
             box-shadow: 0 5px 15px rgba(212, 165, 116, 0.4);
         }
 
+        .shop-purchase-unavailable {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 999px;
+            background: rgba(220, 53, 69, 0.12);
+            color: #b02a37;
+            border: 1px solid rgba(220, 53, 69, 0.35);
+            margin-bottom: 8px;
+            width: 100%;
+        }
+
         .rarity-pill {
             font-size: 0.7rem;
             padding: 2px 12px;
@@ -145,6 +161,13 @@
             justify-content: center;
             gap: 6px;
             flex-wrap: wrap;
+        }
+
+        .badge-rarity-over {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            margin-bottom: 4px;
         }
 
         .badge-tag-list {
@@ -2015,6 +2038,7 @@
                 const tagHtml = tags.length
                     ? `<div class="badge-tag-list">${tags.map(t => `<span class="badge-tag badge-tag-link" role="button" tabindex="0" onclick="event.preventDefault(); event.stopPropagation(); window.location.href='./list.html?tag=${encodeURIComponent(t)}';">#${escapeHtml(t)}</span>`).join('')}</div>`
                     : '';
+                const purchaseUnavailableLabel = badge.label && /購入不可可能|購入不可|購入不可能/.test(badge.label) ? badge.label : '';
                 return `
                     <div class="col-12 col-md-4 col-lg-3">
                         <div class="shop-item position-relative badge-card ${rarityClass} ${isSoldOut ? 'sold-out' : ''}">
@@ -2023,14 +2047,16 @@
                             <!-- バッジエリア（モバイルでは左側） -->
                             <a href="./index.html?id=${badge.id}" class="text-decoration-none shop-item-badge-area" style="color: inherit;">
                                 <div class="badge-meta-row">
-                                    <div class="rarity-pill" style="background: rgba(0,0,0,0.2);">${badge.rarity}</div>
                                     <span class="badge badge-type-pill ${badge.sales_type === '変動型' ? 'rarity-epic' : 'bg-light text-dark border'}">
                                         ${badge.sales_type === '変動型' ? '変動型' : '固定型'}
                                     </span>
-                                    ${badge.label ? `<span class="badge-label-strong badge-tag-link" role="button" tabindex="0"
+                                    ${badge.label && !purchaseUnavailableLabel ? `<span class="badge-label-strong badge-tag-link" role="button" tabindex="0"
                                         onclick="event.preventDefault(); event.stopPropagation(); window.location.href='./list.html?label=${encodeURIComponent(badge.label)}';">${badge.label}</span>` : ''}
                                 </div>
                                 <div class="shop-name" style="color: inherit;">${badge.name}</div>
+                                <div class="badge-rarity-over">
+                                    <div class="rarity-pill" style="background: rgba(0,0,0,0.2);">${badge.rarity}</div>
+                                </div>
                                 <img src="${badge.image_url}" class="shop-img" alt="${badge.name}" style="filter: drop-shadow(0 5px 15px rgba(0,0,0,0.2));">
                                 ${tagHtml}
                             </a>
@@ -2054,6 +2080,7 @@
                                     </div>
                                 </div>
                                 
+                                ${purchaseUnavailableLabel ? `<div class="shop-purchase-unavailable">${escapeHtml(purchaseUnavailableLabel)}</div>` : ''}
                                 <button class="btn btn-buy ${isSoldOut ? 'btn-secondary' : 'btn-light'}" 
                                         onclick="buyBadgeV2('${badge.id}', ${badge.pBuy}, '${badge.name.replace(/'/g, "\\'")}')"
                                         ${isSoldOut ? 'disabled' : ''}>
