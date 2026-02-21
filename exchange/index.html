@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>交換所 - かに鯖</title>
+    <link rel="icon" type="image/png" href="../images/favicon.png">
+    <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kosugi+Maru&family=Noto+Sans+JP:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="../styles.css">
+    <style>
+        :root {
+            --exchange-teal: #0d9488;
+            --exchange-amber: #f59e0b;
+            --font-title: 'Kosugi Maru', sans-serif;
+        }
+
+        body {
+            background: radial-gradient(circle at top, #e0f7fa 0%, #b2ebf2 35%, #e8f5e9 100%);
+            min-height: 100vh;
+        }
+
+        .page-header {
+            color: #fff;
+            font-family: var(--font-title);
+            text-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
+            margin-bottom: 30px;
+        }
+
+        .page-header h1 {
+            font-size: 2.2rem;
+            background: linear-gradient(135deg, var(--exchange-teal), #2dd4bf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: drop-shadow(0 2px 6px rgba(13, 148, 136, 0.3));
+        }
+
+        /* 交換カード */
+        .exchange-card {
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(13, 148, 136, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-bottom: 16px;
+        }
+
+        .exchange-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(13, 148, 136, 0.15);
+        }
+
+        .exchange-card-reward {
+            text-align: center;
+            min-width: 100px;
+            flex-shrink: 0;
+        }
+
+        .exchange-reward-img {
+            width: 72px;
+            height: 72px;
+            object-fit: contain;
+            border-radius: 12px;
+            border: 2px solid rgba(13, 148, 136, 0.2);
+            background: #f0fdfa;
+            padding: 4px;
+        }
+
+        .exchange-card-arrow {
+            font-size: 1.5rem;
+            color: var(--exchange-teal);
+            flex-shrink: 0;
+        }
+
+        .exchange-card-materials {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .exchange-material-img {
+            width: 28px;
+            height: 28px;
+            object-fit: contain;
+            border-radius: 6px;
+        }
+
+        .exchange-card-action {
+            flex-shrink: 0;
+        }
+
+        .btn-exchange {
+            background: linear-gradient(135deg, var(--exchange-teal) 0%, #2dd4bf 100%);
+            color: #fff;
+            border: none;
+            border-radius: 20px;
+            padding: 8px 24px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            box-shadow: 0 4px 14px rgba(13, 148, 136, 0.3);
+            transition: all 0.2s;
+        }
+
+        .btn-exchange:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(13, 148, 136, 0.4);
+            color: #fff;
+        }
+
+        .btn-exchange-disabled {
+            background: linear-gradient(135deg, #9ca3af, #d1d5db) !important;
+            box-shadow: none !important;
+            cursor: not-allowed;
+        }
+
+        /* モーダル */
+        .exchange-modal-badge-img {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+            border-radius: 6px;
+        }
+
+        .exchange-result-img {
+            width: 96px;
+            height: 96px;
+            object-fit: contain;
+        }
+
+        /* 管理者セクション */
+        .admin-section {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(8px);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid rgba(13, 148, 136, 0.15);
+        }
+
+        /* バッジ検索 */
+        .badge-search-results {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .badge-search-results:empty {
+            display: none;
+        }
+
+        .badge-search-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .badge-search-item:hover {
+            background: #f0fdfa;
+        }
+
+        .badge-search-img {
+            width: 28px;
+            height: 28px;
+            object-fit: contain;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 576px) {
+            .exchange-card {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .exchange-card-arrow {
+                transform: rotate(90deg);
+            }
+
+            .exchange-card-materials {
+                width: 100%;
+            }
+
+            .exchange-material {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- ナビゲーション -->
+    <div class="nav-dropdown dropdown">
+        <button class="record-button dropdown-toggle btn" type="button" id="navDropdown" data-bs-toggle="dropdown"
+            aria-expanded="false">📝 メニュー</button>
+        <ul class="dropdown-menu"></ul>
+    </div>
+
+    <div class="container py-5" style="max-width: 900px;">
+        <!-- ヘッダー -->
+        <div class="page-header text-center">
+            <h1>🔄 交換所</h1>
+            <p class="text-muted">指定のバッジを集めて特別なバッジと交換しよう！</p>
+        </div>
+
+        <!-- 交換リスト -->
+        <div class="row" id="exchange-grid">
+            <div class="text-center text-muted py-4">読み込み中...</div>
+        </div>
+
+        <!-- 管理者セクション -->
+        <div id="exchange-admin-section" style="display:none;" class="mt-5">
+            <div class="admin-section">
+                <h5 class="fw-bold mb-3">🛠️ 管理者メニュー</h5>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary" id="exchange-admin-add-btn">＋ レシピ追加</button>
+                    <button class="btn btn-outline-secondary" id="exchange-admin-list-btn">📋 レシピ一覧</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 交換確認モーダル -->
+    <div class="modal fade" id="exchangeModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content"
+                style="border-radius: 16px; border: none; box-shadow: 0 20px 60px rgba(0,0,0,0.2);">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold" id="exchangeModalTitle">交換しますか？</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="exchangeModalBody"></div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"
+                        id="exchangeModalCancel">キャンセル</button>
+                    <button type="button" class="btn btn-exchange" id="exchangeModalExec">交換する</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- レシピ追加モーダル -->
+    <div class="modal fade" id="exchangeAddModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content" style="border-radius: 16px; border: none;">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">レシピ追加</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="exchange-add-form">
+                        <!-- 報酬バッジ -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">報酬バッジ（もらえるバッジ）</label>
+                            <input type="text" class="form-control" id="exchange-reward-search"
+                                placeholder="バッジ名で検索...">
+                            <div class="badge-search-results" id="exchange-reward-results"></div>
+                            <div class="mt-2" id="exchange-reward-selected"><span class="text-muted small">未選択</span>
+                            </div>
+                            <input type="hidden" id="exchange-reward-id">
+                        </div>
+
+                        <!-- 素材バッジ -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">必要素材（消費するバッジ）</label>
+                            <div id="exchange-materials-container"></div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary mt-1"
+                                id="exchange-add-material-btn">＋ 素材を追加</button>
+                        </div>
+
+                        <div id="exchange-add-message" class="small mt-3"></div>
+                        <div class="text-end mt-4">
+                            <button type="submit" class="btn btn-primary">追加する</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- レシピ一覧モーダル -->
+    <div class="modal fade" id="exchangeListModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content" style="border-radius: 16px; border: none;">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">レシピ一覧</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="exchange-admin-list-body">
+                    <div class="text-center text-muted py-3">読み込み中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/supabase-config.js"></script>
+    <script src="../js/auth-guard.js"></script>
+    <script src="../js/navigation.js"></script>
+    <script src="../js/exchange.js"></script>
+</body>
+
+</html>

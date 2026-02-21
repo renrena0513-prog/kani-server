@@ -48,6 +48,7 @@ function generateAccordionNav(basePath = '../') {
                         <li><a class="dropdown-item sub-item" href="${basePath}giftcode/index.html">🎁 ギフトコード</a></li>
                         <li><a class="dropdown-item sub-item" href="${basePath}badge/list.html">📛 バッジ一覧</a></li>
                         <li><a class="dropdown-item sub-item" href="${basePath}badge/shop.html">🛒 バッジショップ</a></li>
+                        <li><a class="dropdown-item sub-item" href="${basePath}exchange/index.html">🔄 交換所</a></li>
                     </ul>
                 </li>
                 
