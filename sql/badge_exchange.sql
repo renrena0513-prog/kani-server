@@ -3,10 +3,36 @@
 -- 交換レシピ
 create table if not exists public.badge_exchanges (
     id uuid primary key default gen_random_uuid(),
-    reward_badge_id uuid not null references public.badges(id) on delete cascade,
+    reward_badge_id uuid references public.badges(id) on delete cascade,
+    reward_type text not null default 'badge',
+    reward_amount integer not null default 1,
     is_active boolean not null default true,
     created_at timestamptz not null default now()
 );
+
+alter table public.badge_exchanges
+    add column if not exists reward_type text not null default 'badge';
+
+alter table public.badge_exchanges
+    add column if not exists reward_amount integer not null default 1;
+
+alter table public.badge_exchanges
+    alter column reward_badge_id drop not null;
+
+do $$
+begin
+    if not exists (
+        select 1 from pg_constraint
+        where conname = 'badge_exchanges_reward_type_check'
+    ) then
+        alter table public.badge_exchanges
+            add constraint badge_exchanges_reward_type_check
+            check (
+                (reward_type = 'badge' and reward_badge_id is not null) or
+                (reward_type in ('coins', 'gacha_tickets', 'mangan_tickets') and reward_badge_id is null)
+            );
+    end if;
+end $$;
 
 -- 交換に必要な素材バッジ（1レシピに複数行）
 create table if not exists public.badge_exchange_materials (
@@ -72,6 +98,8 @@ DECLARE
     v_coins integer;
     v_gacha integer;
     v_mangan integer;
+    v_reward_type text;
+    v_reward_amount integer;
 BEGIN
     -- 認証チェック
     v_user_id := auth.jwt() -> 'user_metadata' ->> 'provider_id';
@@ -100,6 +128,9 @@ BEGIN
     if not found then
         return jsonb_build_object('ok', false, 'error', 'not_found');
     end if;
+
+    v_reward_type := coalesce(v_exchange.reward_type, 'badge');
+    v_reward_amount := coalesce(v_exchange.reward_amount, 1);
 
     -- 素材チェック：各素材の所持数を確認
     for v_mat in
@@ -194,14 +225,29 @@ BEGIN
     -- ミュータント判定
     v_is_mutant := (random() < 0.03);
 
-    -- 報酬バッジ付与
-    insert into public.user_badges_new (user_id, badge_id, acquired_at, is_mutant, purchased_price)
-    values (v_user_id, v_exchange.reward_badge_id, now(), v_is_mutant, 0)
-    returning uuid into v_reward_uuid;
+    if v_reward_type = 'badge' then
+        -- 報酬バッジ付与
+        insert into public.user_badges_new (user_id, badge_id, acquired_at, is_mutant, purchased_price)
+        values (v_user_id, v_exchange.reward_badge_id, now(), v_is_mutant, 0)
+        returning uuid into v_reward_uuid;
 
-    -- 報酬バッジ情報取得
-    select name, image_url into v_reward_name, v_reward_image
-    from public.badges where id = v_exchange.reward_badge_id;
+        -- 報酬バッジ情報取得
+        select name, image_url into v_reward_name, v_reward_image
+        from public.badges where id = v_exchange.reward_badge_id;
+    elsif v_reward_type = 'coins' then
+        update public.profiles
+        set coins = coins + v_reward_amount,
+            total_assets = total_assets + v_reward_amount
+        where discord_user_id = v_user_id;
+    elsif v_reward_type = 'gacha_tickets' then
+        update public.profiles
+        set gacha_tickets = coalesce(gacha_tickets, 0) + v_reward_amount
+        where discord_user_id = v_user_id;
+    elsif v_reward_type = 'mangan_tickets' then
+        update public.profiles
+        set mangan_tickets = coalesce(mangan_tickets, 0) + v_reward_amount
+        where discord_user_id = v_user_id;
+    end if;
 
     -- 交換ログ記録
     insert into public.badge_exchange_logs (exchange_id, discord_user_id)
@@ -210,6 +256,8 @@ BEGIN
     return jsonb_build_object(
         'ok', true,
         'reward_uuid', v_reward_uuid,
+        'reward_type', v_reward_type,
+        'reward_amount', v_reward_amount,
         'reward_name', v_reward_name,
         'reward_image', v_reward_image,
         'is_mutant', v_is_mutant
@@ -220,6 +268,8 @@ $$;
 -- 管理者：レシピ作成（素材は別途追加）
 create or replace function public.admin_create_badge_exchange(
     p_reward_badge_id uuid,
+    p_reward_type text,
+    p_reward_amount integer,
     p_materials jsonb,  -- [{"material_type":"badge","badge_id":"...","quantity":1}, {"material_type":"coins","quantity":100}, ...]
     p_is_active boolean default true
 )
@@ -236,14 +286,21 @@ BEGIN
         return jsonb_build_object('ok', false, 'error', 'not_admin');
     end if;
 
-    -- バッジ存在チェック
-    if not exists(select 1 from public.badges where id = p_reward_badge_id) then
-        return jsonb_build_object('ok', false, 'error', 'reward_badge_not_found');
+    if coalesce(p_reward_type, 'badge') = 'badge' then
+        -- バッジ存在チェック
+        if not exists(select 1 from public.badges where id = p_reward_badge_id) then
+            return jsonb_build_object('ok', false, 'error', 'reward_badge_not_found');
+        end if;
     end if;
 
     -- レシピ作成
-    insert into public.badge_exchanges (reward_badge_id, is_active)
-    values (p_reward_badge_id, coalesce(p_is_active, true))
+    insert into public.badge_exchanges (reward_badge_id, reward_type, reward_amount, is_active)
+    values (
+        case when coalesce(p_reward_type, 'badge') = 'badge' then p_reward_badge_id else null end,
+        coalesce(p_reward_type, 'badge'),
+        greatest(coalesce(p_reward_amount, 1), 1),
+        coalesce(p_is_active, true)
+    )
     returning id into v_exchange_id;
 
     -- 素材登録

@@ -125,6 +125,7 @@
             .from('badge_exchanges')
             .select(`
                 id, is_active, created_at,
+                reward_type, reward_amount,
                 reward:badges!reward_badge_id(id, name, image_url, price, fixed_rarity_name, sales_type),
                 badge_exchange_materials(id, badge_id, quantity, material_type, badge:badges!badge_id(id, name, image_url))
             `)
@@ -138,7 +139,10 @@
         }
 
         exchangeList = data || [];
-        const rewardIds = exchangeList.map(ex => ex.reward?.id).filter(Boolean);
+        const rewardIds = exchangeList
+            .filter(ex => (ex.reward_type || 'badge') === 'badge')
+            .map(ex => ex.reward?.id)
+            .filter(Boolean);
         await fetchRewardBadgeCounts(rewardIds);
 
         if (exchangeList.length === 0) {
@@ -147,6 +151,8 @@
         }
 
         exchangeGrid.innerHTML = exchangeList.map(ex => {
+            const rewardType = ex.reward_type || 'badge';
+            const rewardAmount = ex.reward_amount || 1;
             const reward = ex.reward;
             const materials = ex.badge_exchange_materials || [];
             const canExchange = materials.every(m => {
@@ -158,21 +164,28 @@
             const labelText = !discordId ? 'ログインしてください' : (canExchange ? '交換可能' : '交換不可');
             const labelClass = !discordId ? 'bg-secondary' : (canExchange ? 'bg-success' : 'bg-danger');
             const rewardCount = rewardBadgeCounts[reward?.id] || 0;
-            const rarityName = reward
+            const isBadgeReward = rewardType === 'badge';
+            const rarityName = isBadgeReward && reward
                 ? (window.BadgeUtils && rarityThresholds.length
                     ? BadgeUtils.calculateBadgeValues(reward, rewardCount, rarityThresholds).rarityName
                     : (reward.fixed_rarity_name || '-'))
                 : '-';
-            const rarityClass = getRarityClass(rarityName);
+            const rarityClass = isBadgeReward ? getRarityClass(rarityName) : '';
             const rarityStyle = rarityClass ? '' : 'style="background: rgba(0,0,0,0.2);"';
+            const rewardTitle = isBadgeReward
+                ? escapeHtml(reward?.name || '報酬バッジ')
+                : `${getMaterialLabel(rewardType)} ×${rewardAmount}`;
+            const rewardIcon = isBadgeReward ? '' : getMaterialIcon(rewardType);
 
             return `
                 <div class="col-12 col-md-6">
                     <div class="exchange-card badge-card ${rarityClass}">
                         <div class="exchange-card-reward">
-                            <div class="rarity-pill ${rarityClass}" ${rarityStyle}>${rarityName}</div>
-                            <img src="${reward?.image_url || ''}" alt="${escapeHtml(reward?.name || '')}" class="exchange-reward-img">
-                            <div class="fw-bold mt-2">${escapeHtml(reward?.name || '報酬バッジ')}</div>
+                            ${isBadgeReward ? `<div class="rarity-pill ${rarityClass}" ${rarityStyle}>${rarityName}</div>` : ''}
+                            ${isBadgeReward
+                                ? `<img src="${reward?.image_url || ''}" alt="${escapeHtml(reward?.name || '')}" class="exchange-reward-img">`
+                                : `<div class="exchange-reward-img d-flex align-items-center justify-content-center fs-1" aria-hidden="true">${rewardIcon}</div>`}
+                            <div class="fw-bold mt-2">${rewardTitle}</div>
                         </div>
                         <div class="exchange-card-arrow">⇐</div>
                         <div class="exchange-card-materials">
@@ -323,11 +336,20 @@
 
             // 成功
             const mutantText = data.is_mutant ? ' ✨ミュータント！' : '';
+            const rewardType = data.reward_type || 'badge';
+            const rewardAmount = data.reward_amount || 1;
+            const isBadgeReward = rewardType === 'badge';
+            const rewardTitle = isBadgeReward
+                ? escapeHtml(data.reward_name || '報酬バッジ')
+                : `${getMaterialLabel(rewardType)} ×${rewardAmount}`;
+            const rewardIcon = isBadgeReward ? '' : getMaterialIcon(rewardType);
             document.getElementById('exchangeModalTitle').textContent = '交換しました！';
             document.getElementById('exchangeModalBody').innerHTML = `
                 <div class="text-center">
-                    <img src="${data.reward_image || ''}" class="exchange-result-img mb-2">
-                    <div class="fw-bold">${escapeHtml(data.reward_name || '報酬バッジ')}${mutantText}</div>
+                    ${isBadgeReward
+                        ? `<img src="${data.reward_image || ''}" class="exchange-result-img mb-2">`
+                        : `<div class="exchange-result-img mb-2 d-flex align-items-center justify-content-center fs-1">${rewardIcon}</div>`}
+                    <div class="fw-bold">${rewardTitle}${mutantText}</div>
                 </div>
             `;
             document.getElementById('exchangeModalCancel').style.display = 'none';
@@ -374,6 +396,9 @@
         document.getElementById('exchange-reward-results').innerHTML = '';
         document.getElementById('exchange-reward-selected').innerHTML = '<span class="text-muted small">未選択</span>';
         document.getElementById('exchange-reward-id').value = '';
+        document.getElementById('exchange-reward-type').value = 'badge';
+        document.getElementById('exchange-reward-amount').value = '1';
+        document.getElementById('exchange-reward-badge-fields').style.display = '';
         const materialsContainer = document.getElementById('exchange-materials-container');
         materialsContainer.innerHTML = '';
         addMaterialRow();
@@ -402,6 +427,20 @@
                 <span class="small">${escapeHtml(b.name)}</span>
             </div>
         `).join('');
+    });
+
+    document.getElementById('exchange-reward-type')?.addEventListener('change', function () {
+        const type = this.value;
+        const badgeFields = document.getElementById('exchange-reward-badge-fields');
+        if (type === 'badge') {
+            badgeFields.style.display = '';
+            return;
+        }
+        badgeFields.style.display = 'none';
+        document.getElementById('exchange-reward-search').value = '';
+        document.getElementById('exchange-reward-results').innerHTML = '';
+        document.getElementById('exchange-reward-selected').innerHTML = `<span class="text-muted small">${getMaterialLabel(type)}</span>`;
+        document.getElementById('exchange-reward-id').value = '';
     });
 
     window._selectRewardBadge = function (id, name, imageUrl) {
@@ -510,9 +549,22 @@
         msg.textContent = '';
         msg.className = 'small mt-3';
 
+        const rewardType = document.getElementById('exchange-reward-type').value || 'badge';
+        const rewardAmount = Number(document.getElementById('exchange-reward-amount').value || 1);
         const rewardBadgeId = document.getElementById('exchange-reward-id').value;
-        if (!rewardBadgeId) {
+        const hasRewardType = rewardType && MATERIAL_DEFS[rewardType];
+        if (!hasRewardType) {
+            msg.textContent = '報酬タイプを選択してください';
+            msg.classList.add('text-danger');
+            return;
+        }
+        if (rewardType === 'badge' && !rewardBadgeId) {
             msg.textContent = '報酬バッジを選択してください';
+            msg.classList.add('text-danger');
+            return;
+        }
+        if (!rewardAmount || rewardAmount <= 0) {
+            msg.textContent = '報酬数量を1以上で入力してください';
             msg.classList.add('text-danger');
             return;
         }
@@ -543,6 +595,8 @@
 
         const { data, error } = await supabaseClient.rpc('admin_create_badge_exchange', {
             p_reward_badge_id: rewardBadgeId,
+            p_reward_type: rewardType,
+            p_reward_amount: rewardAmount,
             p_materials: materials,
             p_is_active: true
         });
@@ -576,6 +630,7 @@
             .from('badge_exchanges')
             .select(`
                 id, is_active, created_at,
+                reward_type, reward_amount,
                 reward:badges!reward_badge_id(id, name, image_url),
                 badge_exchange_materials(badge_id, quantity, material_type, badge:badges!badge_id(name, image_url))
             `)
@@ -592,6 +647,12 @@
         }
 
         body.innerHTML = data.map(ex => {
+            const rewardType = ex.reward_type || 'badge';
+            const rewardAmount = ex.reward_amount || 1;
+            const rewardTitle = rewardType === 'badge'
+                ? escapeHtml(ex.reward?.name || '?')
+                : `${getMaterialLabel(rewardType)} ×${rewardAmount}`;
+            const rewardIcon = rewardType === 'badge' ? '' : getMaterialIcon(rewardType);
             const materials = (ex.badge_exchange_materials || []).map(m => {
                 const type = m.material_type || 'badge';
                 if (type === 'badge') {
@@ -601,9 +662,11 @@
             }).join(', ');
             return `
                 <div class="exchange-admin-item d-flex align-items-center gap-3 p-2 border-bottom">
-                    <img src="${ex.reward?.image_url || ''}" style="width:40px;height:40px;object-fit:contain;">
+                    ${rewardType === 'badge'
+                        ? `<img src="${ex.reward?.image_url || ''}" style="width:40px;height:40px;object-fit:contain;">`
+                        : `<div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;">${rewardIcon}</div>`}
                     <div class="flex-grow-1">
-                        <div class="fw-bold small">${escapeHtml(ex.reward?.name || '?')}</div>
+                        <div class="fw-bold small">${rewardTitle}</div>
                         <div class="text-muted" style="font-size:0.8rem;">← ${materials}</div>
                     </div>
                     <div class="form-check form-switch">

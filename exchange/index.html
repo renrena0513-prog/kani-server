@@ -274,12 +274,24 @@
                         <!-- 報酬バッジ -->
                         <div class="mb-4">
                             <label class="form-label fw-bold">報酬バッジ（もらえるバッジ）</label>
-                            <input type="text" class="form-control" id="exchange-reward-search"
-                                placeholder="バッジ名で検索...">
-                            <div class="badge-search-results" id="exchange-reward-results"></div>
-                            <div class="mt-2" id="exchange-reward-selected"><span class="text-muted small">未選択</span>
+                            <div class="d-flex gap-2 align-items-center mb-2">
+                                <select class="form-select form-select-sm" id="exchange-reward-type">
+                                    <option value="badge">バッジ</option>
+                                    <option value="coins">コイン</option>
+                                    <option value="gacha_tickets">祈願符</option>
+                                    <option value="mangan_tickets">満願符</option>
+                                </select>
+                                <input type="number" class="form-control form-control-sm" id="exchange-reward-amount"
+                                    min="1" value="1" style="max-width: 120px;" />
                             </div>
-                            <input type="hidden" id="exchange-reward-id">
+                            <div id="exchange-reward-badge-fields">
+                                <input type="text" class="form-control" id="exchange-reward-search"
+                                    placeholder="バッジ名で検索...">
+                                <div class="badge-search-results" id="exchange-reward-results"></div>
+                                <div class="mt-2" id="exchange-reward-selected"><span class="text-muted small">未選択</span>
+                                </div>
+                                <input type="hidden" id="exchange-reward-id">
+                            </div>
                         </div>
 
                         <!-- 素材バッジ -->
