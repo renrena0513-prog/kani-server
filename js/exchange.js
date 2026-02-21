@@ -603,7 +603,8 @@
 
         if (error) {
             console.error(error);
-            msg.textContent = '追加に失敗しました';
+            const detail = [error.message, error.details, error.hint].filter(Boolean).join(' / ');
+            msg.textContent = detail ? `追加に失敗しました: ${detail}` : '追加に失敗しました';
             msg.classList.add('text-danger');
             return;
         }
