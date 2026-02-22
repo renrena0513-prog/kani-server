@@ -33,6 +33,7 @@ create table if not exists public.slot_reel_positions (
 create table if not exists public.slot_sessions (
     id uuid primary key default gen_random_uuid(),
     user_id text not null,
+    account_name text,
     status text not null default 'active' check (status in ('active', 'bust', 'cashed_out')),
     cost integer not null,
     current_reel integer not null default 1 check (current_reel between 1 and 7),
@@ -48,6 +49,7 @@ create table if not exists public.slot_session_reels (
     id uuid primary key default gen_random_uuid(),
     session_id uuid not null references public.slot_sessions(id) on delete cascade,
     user_id text not null,
+    account_name text,
     reel_index integer not null check (reel_index between 1 and 7),
     position_id uuid references public.slot_reel_positions(id),
     is_bust boolean not null default false,
@@ -63,6 +65,7 @@ create table if not exists public.slot_session_results (
     id uuid primary key default gen_random_uuid(),
     session_id uuid not null unique references public.slot_sessions(id) on delete cascade,
     user_id text not null,
+    account_name text,
     outcome text not null check (outcome in ('bust', 'cashed_out')),
     reward_summary jsonb not null default '[]'::jsonb,
     created_at timestamptz not null default now()
@@ -151,6 +154,7 @@ declare
     v_coins integer;
     v_now timestamptz := now();
     v_is_admin boolean := false;
+    v_account_name text;
     v_reels jsonb := '[]'::jsonb;
 begin
     perform pg_advisory_xact_lock(hashtext('slot:' || p_user_id));
@@ -227,9 +231,14 @@ begin
     set coins = coins - v_settings.cost
     where discord_user_id = p_user_id;
 
+    select account_name into v_account_name
+    from public.profiles
+    where discord_user_id = p_user_id
+    limit 1;
+
     begin
-        insert into public.slot_sessions (user_id, status, cost, current_reel, created_at, updated_at)
-        values (p_user_id, 'active', v_settings.cost, 1, v_now, v_now)
+        insert into public.slot_sessions (user_id, account_name, status, cost, current_reel, created_at, updated_at)
+        values (p_user_id, v_account_name, 'active', v_settings.cost, 1, v_now, v_now)
         returning * into v_session;
     exception when unique_violation then
         select * into v_session
@@ -362,10 +371,10 @@ begin
 
     begin
         insert into public.slot_session_reels (
-            session_id, user_id, reel_index, position_id, is_bust,
+            session_id, user_id, account_name, reel_index, position_id, is_bust,
             reward_type, reward_name, reward_id, amount
         ) values (
-            v_session.id, p_user_id, v_reel_index, v_position.id, v_position.is_bust,
+            v_session.id, p_user_id, v_session.account_name, v_reel_index, v_position.id, v_position.is_bust,
             v_position.reward_type, v_position.reward_name, v_position.reward_id, v_position.amount
         );
     exception when unique_violation then
@@ -384,7 +393,7 @@ begin
         where id = v_session.id;
 
         insert into public.slot_session_results (session_id, user_id, outcome, reward_summary)
-        values (v_session.id, p_user_id, 'bust', '[]'::jsonb)
+        values (v_session.id, p_user_id, v_session.account_name, 'bust', '[]'::jsonb)
         on conflict (session_id) do nothing;
     else
         if v_reel_index >= 7 then
@@ -526,7 +535,7 @@ begin
     where id = v_session.id;
 
     insert into public.slot_session_results (session_id, user_id, outcome, reward_summary)
-    values (v_session.id, p_user_id, 'cashed_out', v_summary)
+    values (v_session.id, p_user_id, v_session.account_name, 'cashed_out', v_summary)
     on conflict (session_id) do nothing;
 
     select * into v_session from public.slot_sessions where id = v_session.id;
@@ -569,7 +578,7 @@ values
 (1, 6, false, 'coin', 'コイン +80', null, 80, 8),
 (1, 7, false, 'coin', 'コイン +120', null, 120, 6),
 (1, 8, false, 'gacha_ticket', '祈願符 +1', null, 1, 4),
-(1, 9, false, 'gacha_ticket', '祈願符 +2', null, 2, 2),
+(1, 9, true,  null, null, null, 0, 3),
 (1,10, false, 'coin', 'コイン +200', null, 200, 1),
 -- Reel 2
 (2, 1, true,  null, null, null, 0, 4),
@@ -580,7 +589,7 @@ values
 (2, 6, false, 'coin', 'コイン +80', null, 80, 8),
 (2, 7, false, 'coin', 'コイン +120', null, 120, 6),
 (2, 8, false, 'gacha_ticket', '祈願符 +1', null, 1, 4),
-(2, 9, false, 'gacha_ticket', '祈願符 +2', null, 2, 2),
+(2, 9, true,  null, null, null, 0, 3),
 (2,10, false, 'coin', 'コイン +200', null, 200, 1),
 -- Reel 3
 (3, 1, true,  null, null, null, 0, 4),
@@ -591,7 +600,7 @@ values
 (3, 6, false, 'coin', 'コイン +80', null, 80, 8),
 (3, 7, false, 'coin', 'コイン +120', null, 120, 6),
 (3, 8, false, 'gacha_ticket', '祈願符 +1', null, 1, 4),
-(3, 9, false, 'gacha_ticket', '祈願符 +2', null, 2, 2),
+(3, 9, true,  null, null, null, 0, 3),
 (3,10, false, 'coin', 'コイン +200', null, 200, 1),
 -- Reel 4
 (4, 1, true,  null, null, null, 0, 4),
@@ -602,7 +611,7 @@ values
 (4, 6, false, 'coin', 'コイン +80', null, 80, 8),
 (4, 7, false, 'coin', 'コイン +120', null, 120, 6),
 (4, 8, false, 'gacha_ticket', '祈願符 +1', null, 1, 4),
-(4, 9, false, 'gacha_ticket', '祈願符 +2', null, 2, 2),
+(4, 9, true,  null, null, null, 0, 3),
 (4,10, false, 'coin', 'コイン +200', null, 200, 1),
 -- Reel 5
 (5, 1, true,  null, null, null, 0, 4),
@@ -613,7 +622,7 @@ values
 (5, 6, false, 'coin', 'コイン +80', null, 80, 8),
 (5, 7, false, 'coin', 'コイン +120', null, 120, 6),
 (5, 8, false, 'gacha_ticket', '祈願符 +1', null, 1, 4),
-(5, 9, false, 'gacha_ticket', '祈願符 +2', null, 2, 2),
+(5, 9, true,  null, null, null, 0, 3),
 (5,10, false, 'coin', 'コイン +200', null, 200, 1),
 -- Reel 6
 (6, 1, true,  null, null, null, 0, 4),
@@ -624,7 +633,7 @@ values
 (6, 6, false, 'coin', 'コイン +80', null, 80, 8),
 (6, 7, false, 'coin', 'コイン +120', null, 120, 6),
 (6, 8, false, 'gacha_ticket', '祈願符 +1', null, 1, 4),
-(6, 9, false, 'gacha_ticket', '祈願符 +2', null, 2, 2),
+(6, 9, true,  null, null, null, 0, 3),
 (6,10, false, 'coin', 'コイン +200', null, 200, 1),
 -- Reel 7
 (7, 1, true,  null, null, null, 0, 4),
@@ -635,7 +644,7 @@ values
 (7, 6, false, 'coin', 'コイン +80', null, 80, 8),
 (7, 7, false, 'coin', 'コイン +120', null, 120, 6),
 (7, 8, false, 'gacha_ticket', '祈願符 +1', null, 1, 4),
-(7, 9, false, 'gacha_ticket', '祈願符 +2', null, 2, 2),
+(7, 9, true,  null, null, null, 0, 3),
 (7,10, false, 'coin', 'コイン +200', null, 200, 1)
 on conflict (reel_index, position_index) do update
 set is_bust = excluded.is_bust,
