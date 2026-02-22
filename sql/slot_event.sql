@@ -160,24 +160,27 @@ declare
     v_session record;
     v_coins integer;
     v_now timestamptz := now();
+    v_is_admin boolean := false;
     v_reels jsonb := '[]'::jsonb;
 begin
     perform pg_advisory_xact_lock(hashtext('slot:' || p_user_id));
+
+    select public.is_admin() into v_is_admin;
 
     select * into v_settings
     from public.slot_event_settings
     order by created_at desc
     limit 1;
 
-    if not found or v_settings.is_active is false then
+    if (not found or v_settings.is_active is false) and not v_is_admin then
         return jsonb_build_object('ok', false, 'error', 'EVENT_INACTIVE');
     end if;
 
-    if v_settings.start_at is not null and v_now < v_settings.start_at then
+    if v_settings.start_at is not null and v_now < v_settings.start_at and not v_is_admin then
         return jsonb_build_object('ok', false, 'error', 'EVENT_NOT_STARTED');
     end if;
 
-    if v_settings.end_at is not null and v_now > v_settings.end_at then
+    if v_settings.end_at is not null and v_now > v_settings.end_at and not v_is_admin then
         return jsonb_build_object('ok', false, 'error', 'EVENT_ENDED');
     end if;
 
