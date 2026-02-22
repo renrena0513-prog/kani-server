@@ -151,8 +151,25 @@
         }
 
         .reel-result {
-            font-size: 0.95rem;
-            min-height: 1.2rem;
+            font-size: 0.9rem;
+            min-height: 1.1rem;
+            color: var(--slot-muted);
+        }
+
+        .reel-btn {
+            width: 100%;
+            padding: 6px 8px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid rgba(246, 196, 83, 0.6);
+            background: transparent;
+            color: #f6c453;
+        }
+
+        .reel-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
         }
 
         @keyframes reel-spin {
@@ -209,7 +226,6 @@
                 </div>
                 <div class="d-flex flex-wrap gap-2">
                     <button class="btn btn-slot" id="btn-start" onclick="startSession()">開始（100コイン消費）</button>
-                    <button class="btn btn-slot" id="btn-spin" onclick="spinReel()" disabled>次のリールを回す</button>
                     <button class="btn btn-slot-secondary" id="btn-stop" onclick="cashout()" disabled>ストップ（精算）</button>
                 </div>
             </div>
@@ -335,18 +351,13 @@
         function setProcessing(state) {
             isProcessing = state;
             document.getElementById('btn-start').disabled = state;
-            document.getElementById('btn-spin').disabled = state || !currentSession || currentSession.status !== 'active';
             document.getElementById('btn-stop').disabled = state || !currentSession || currentSession.status !== 'active' || (currentSession.reels || []).length === 0;
+            updateReelButtons();
         }
 
         function isEventActiveNow() {
             if (isAdmin) return true;
             if (!eventSettings || !eventSettings.is_active) return false;
-            const now = new Date();
-            const startAt = eventSettings.start_at ? new Date(eventSettings.start_at) : null;
-            const endAt = eventSettings.end_at ? new Date(eventSettings.end_at) : null;
-            if (startAt && now < startAt) return false;
-            if (endAt && now > endAt) return false;
             return true;
         }
 
@@ -368,9 +379,9 @@
                 burstBanner.style.display = 'none';
                 setProcessing(false);
                 document.getElementById('btn-start').disabled = !isEventActiveNow();
-                document.getElementById('btn-spin').disabled = true;
                 document.getElementById('btn-stop').disabled = true;
                 renderReelState(reels);
+                updateReelButtons();
                 return;
             }
 
@@ -386,15 +397,23 @@
             if (currentSession.status === 'cashed_out') {
                 payoutSummary.style.display = 'block';
                 const payoutItems = currentSession.payout || [];
-                const items = payoutItems.length
-                    ? payoutItems.map(item => `${item.reward_name || item.type} +${item.amount}`).join('<br>')
-                    : '報酬なし';
-                payoutList.innerHTML = items;
+                const totals = { coin: 0, gacha_ticket: 0, mangan_ticket: 0, exchange_ticket: 0 };
+                payoutItems.forEach(item => {
+                    if (!item?.type) return;
+                    totals[item.type] = (totals[item.type] || 0) + Number(item.amount || 0);
+                });
+                const parts = [];
+                if (totals.coin) parts.push(`🪙 +${totals.coin}`);
+                if (totals.gacha_ticket) parts.push(`🎫 +${totals.gacha_ticket}`);
+                if (totals.mangan_ticket) parts.push(`🧧 +${totals.mangan_ticket}`);
+                if (totals.exchange_ticket) parts.push(`🎫 +${totals.exchange_ticket}`);
+                payoutList.innerHTML = parts.length ? parts.join(' / ') : '報酬なし';
             }
 
             messageEl.textContent = '';
             setProcessing(false);
             document.getElementById('btn-start').disabled = currentSession.status === 'active' || !isEventActiveNow();
+            updateReelButtons();
         }
 
         async function startSession() {
@@ -423,8 +442,10 @@
             }
         }
 
-        async function spinReel() {
+        async function spinReel(reelIndex) {
             if (isProcessing || !currentSession) return;
+            if (currentSession.status !== 'active') return;
+            if (typeof reelIndex === 'number' && reelIndex !== currentSession.current_reel) return;
             setProcessing(true);
             animateSpinSequence(currentSession.current_reel);
             try {
@@ -499,7 +520,8 @@
                             <div class="reel-symbols">${symbols}</div>
                             <div class="reel-stop"></div>
                         </div>
-                        <div class="reel-result slot-muted">未停止</div>
+                        <div class="reel-result">未停止</div>
+                        <button class="reel-btn" data-reel-btn="${reelIndex}" onclick="spinReel(${reelIndex})" disabled>回す</button>
                     </div>
                 `;
             }).join('');
@@ -519,14 +541,11 @@
                 windowEl.classList.remove('stopped');
                 if (!reel) {
                     resultEl.textContent = '未停止';
-                    resultEl.classList.add('slot-muted');
                     if (stopEl) stopEl.textContent = '';
                     return;
                 }
 
-                const label = reel.is_bust ? '☠ バースト' : (reel.reward_name || '報酬なし');
-                resultEl.textContent = label;
-                resultEl.classList.remove('slot-muted');
+                resultEl.textContent = '停止';
                 col.classList.add('done');
                 if (reel.is_bust) col.classList.add('bust');
                 if (stopEl) {
@@ -560,6 +579,14 @@
                     setTimeout(() => windowEl.classList.remove('spinning'), 1600);
                 }
             }
+        }
+
+        function updateReelButtons() {
+            const current = currentSession?.current_reel;
+            document.querySelectorAll('[data-reel-btn]').forEach(btn => {
+                const reelIndex = Number(btn.getAttribute('data-reel-btn'));
+                btn.disabled = isProcessing || !currentSession || currentSession.status !== 'active' || reelIndex !== current;
+            });
         }
     </script>
 </body>
