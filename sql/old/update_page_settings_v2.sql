@@ -7,7 +7,9 @@ values
   ('/badge/shop.html', 'バッジショップ', true),
   ('/omikuji/osaisen.html', 'お賽銭', true),
   ('/omikuji/index.html', 'おみくじ', true),
-  ('/mahjong/record.html', '対局記録入力', true)
+  ('/mahjong/record.html', '対局記録入力', true),
+  ('/event/drill.html', '期間限定イベント：ほりほりドリル', true),
+  ('/event/slot.html', '期間限定イベント：スロット', false)
 on conflict (path) do update 
 set name = excluded.name;
 
