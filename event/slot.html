@@ -65,29 +65,32 @@
 
         .reel-stage {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 16px;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: clamp(8px, 1.2vw, 16px);
+            width: 100%;
+            --reel-size: clamp(56px, 9vw, 120px);
         }
 
         .reel-col {
             background: rgba(255, 255, 255, 0.04);
             border-radius: 14px;
             border: 1px solid rgba(255, 255, 255, 0.08);
-            padding: 14px 12px;
+            padding: clamp(8px, 1.2vw, 14px) clamp(6px, 1vw, 12px);
             display: grid;
             gap: 10px;
             text-align: center;
+            min-width: 0;
         }
 
         .reel-window {
             background: #0b0f14;
             border-radius: 10px;
             border: 1px solid rgba(255, 255, 255, 0.1);
-            height: 96px;
+            height: var(--reel-size);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.8rem;
+            font-size: clamp(1.1rem, 3vw, 2rem);
             font-weight: 700;
             position: relative;
             overflow: hidden;
@@ -102,8 +105,8 @@
 
         .reel-symbols span {
             display: block;
-            height: 96px;
-            line-height: 96px;
+            height: var(--reel-size);
+            line-height: var(--reel-size);
             color: #cbd5e1;
             font-weight: 700;
         }
@@ -133,7 +136,7 @@
 
         @keyframes reel-spin {
             0% { transform: translateY(0); }
-            100% { transform: translateY(-960px); }
+            100% { transform: translateY(calc(var(--reel-size) * -10)); }
         }
 
         .btn-slot {
@@ -158,7 +161,7 @@
 
 <body>
     <div class="nav-dropdown"></div>
-    <div class="container py-5">
+    <div class="container-fluid py-4 px-3 px-lg-5">
         <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
             <div>
                 <h1 class="slot-header mb-2">🎰 期間限定イベント：スロット</h1>
