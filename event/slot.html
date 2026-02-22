@@ -151,7 +151,7 @@
         }
 
         .reel-result {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             min-height: 1.1rem;
             color: var(--slot-muted);
         }
@@ -223,6 +223,10 @@
                         <div>コスト: <span id="slot-cost">100</span>コイン / 回</div>
                         <div>リール: 7本 / 停止位置 10</div>
                     </div>
+                </div>
+                <div class="text-center flex-grow-1" style="min-width: 220px;">
+                    <div class="slot-muted">獲得合計</div>
+                    <div class="fs-2 fw-bold" id="reward-total">🪙 0 / 🎫 0 / 🧧 0</div>
                 </div>
                 <div class="d-flex flex-wrap gap-2">
                     <button class="btn btn-slot" id="btn-start" onclick="startSession()">開始（100コイン消費）</button>
@@ -370,6 +374,7 @@
             const payoutList = document.getElementById('payout-list');
             const burstBanner = document.getElementById('burst-banner');
             const messageEl = document.getElementById('session-message');
+            const totalEl = document.getElementById('reward-total');
 
             if (!currentSession) {
                 currentReelEl.textContent = '-';
@@ -382,6 +387,7 @@
                 document.getElementById('btn-stop').disabled = true;
                 renderReelState(reels);
                 updateReelButtons();
+                if (totalEl) totalEl.textContent = '🪙 0 / 🎫 0 / 🧧 0';
                 return;
             }
 
@@ -414,6 +420,17 @@
             setProcessing(false);
             document.getElementById('btn-start').disabled = currentSession.status === 'active' || !isEventActiveNow();
             updateReelButtons();
+
+            if (totalEl) {
+                const totals = { coin: 0, gacha_ticket: 0, mangan_ticket: 0 };
+                reels.forEach(reel => {
+                    if (reel.is_bust) return;
+                    if (reel.reward_type === 'coin') totals.coin += Number(reel.amount || 0);
+                    if (reel.reward_type === 'gacha_ticket') totals.gacha_ticket += Number(reel.amount || 0);
+                    if (reel.reward_type === 'mangan_ticket') totals.mangan_ticket += Number(reel.amount || 0);
+                });
+                totalEl.textContent = `🪙 ${totals.coin} / 🎫 ${totals.gacha_ticket} / 🧧 ${totals.mangan_ticket}`;
+            }
         }
 
         async function startSession() {
@@ -545,7 +562,7 @@
                     return;
                 }
 
-                resultEl.textContent = '停止';
+                resultEl.textContent = reel.is_bust ? '☠ バースト' : (reel.reward_name || '報酬なし');
                 col.classList.add('done');
                 if (reel.is_bust) col.classList.add('bust');
                 if (stopEl) {
