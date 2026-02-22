@@ -54,16 +54,6 @@
             color: var(--slot-muted);
         }
 
-        .slot-reel {
-            background: rgba(255, 255, 255, 0.04);
-            border-radius: 12px;
-            padding: 10px 14px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border: 1px dashed rgba(255, 255, 255, 0.08);
-        }
-
         .slot-burst {
             background: rgba(220, 53, 69, 0.15);
             border: 1px solid rgba(220, 53, 69, 0.5);
@@ -71,6 +61,80 @@
             border-radius: 12px;
             padding: 12px 16px;
             font-weight: 600;
+        }
+
+        .reel-stage {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(60px, 1fr));
+            gap: 12px;
+        }
+
+        .reel-col {
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 10px;
+            display: grid;
+            gap: 8px;
+            text-align: center;
+        }
+
+        .reel-window {
+            background: #0b0f14;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            font-weight: 700;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .reel-symbols {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+        }
+
+        .reel-symbols span {
+            display: block;
+            height: 64px;
+            line-height: 64px;
+            color: #cbd5e1;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+        }
+
+        .reel-window.spinning .reel-symbols {
+            animation: reel-spin 0.6s linear infinite;
+        }
+
+        .reel-col.done .reel-window {
+            box-shadow: inset 0 0 0 1px rgba(246, 196, 83, 0.5);
+        }
+
+        .reel-col.bust .reel-window {
+            box-shadow: inset 0 0 0 1px rgba(220, 53, 69, 0.6);
+            color: #ffb3b3;
+        }
+
+        .reel-label {
+            font-size: 0.8rem;
+            color: var(--slot-muted);
+        }
+
+        .reel-result {
+            font-size: 0.85rem;
+            min-height: 1.2rem;
+        }
+
+        @keyframes reel-spin {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-640px); }
         }
 
         .btn-slot {
@@ -134,9 +198,7 @@
                         <h5 class="mb-0">停止結果</h5>
                         <span class="slot-muted" id="session-status">待機中</span>
                     </div>
-                    <div class="d-grid gap-2" id="reel-results">
-                        <div class="slot-muted">まだ結果はありません。</div>
-                    </div>
+                    <div class="reel-stage" id="reel-stage"></div>
                     <div class="mt-4" id="payout-summary" style="display:none;">
                         <h6 class="mb-2">精算結果</h6>
                         <div class="slot-panel p-3" id="payout-list"></div>
@@ -159,6 +221,7 @@
         let currentSession = null;
         let eventSettings = null;
         let isProcessing = false;
+        const reelSymbols = ['🍒', '🔔', '🍋', '💎', '🍀', '⭐', '7', '🎯', '🍇', '💰'];
 
         async function initSlotPage() {
             const { data: { user } } = await supabaseClient.auth.getUser();
@@ -170,6 +233,7 @@
             currentUserId = user.user_metadata.provider_id;
             isAdmin = typeof ADMIN_DISCORD_IDS !== 'undefined' && ADMIN_DISCORD_IDS.includes(currentUserId);
             initAccordionNav('../');
+            buildReelStage();
 
             await loadEventSettings();
             await refreshCoinBalance();
@@ -269,7 +333,7 @@
             const reels = currentSession?.reels || [];
             const currentReelEl = document.getElementById('current-reel');
             const sessionStatusEl = document.getElementById('session-status');
-            const resultsEl = document.getElementById('reel-results');
+            const stageEl = document.getElementById('reel-stage');
             const payoutSummary = document.getElementById('payout-summary');
             const payoutList = document.getElementById('payout-list');
             const burstBanner = document.getElementById('burst-banner');
@@ -279,33 +343,20 @@
                 currentReelEl.textContent = '-';
                 sessionStatusEl.textContent = '待機中';
                 messageEl.textContent = '';
-                resultsEl.innerHTML = '<div class="slot-muted">まだ結果はありません。</div>';
                 payoutSummary.style.display = 'none';
                 burstBanner.style.display = 'none';
                 setProcessing(false);
                 document.getElementById('btn-start').disabled = !isEventActiveNow();
                 document.getElementById('btn-spin').disabled = true;
                 document.getElementById('btn-stop').disabled = true;
+                renderReelState(reels);
                 return;
             }
 
             currentReelEl.textContent = currentSession.status === 'active' ? `第 ${currentSession.current_reel} リール` : '終了';
             sessionStatusEl.textContent = currentSession.status === 'active' ? '進行中' : (currentSession.status === 'bust' ? 'バースト' : '精算済み');
 
-            if (reels.length === 0) {
-                resultsEl.innerHTML = '<div class="slot-muted">まだ結果はありません。</div>';
-            } else {
-                resultsEl.innerHTML = reels.map(reel => {
-                    const label = reel.is_bust ? 'はずれ（バースト）' : (reel.reward_name || '報酬なし');
-                    const badge = reel.is_bust ? 'bg-danger' : 'bg-success';
-                    return `
-                        <div class="slot-reel">
-                            <div>リール${reel.reel_index}</div>
-                            <div class="badge ${badge}">${label}</div>
-                        </div>
-                    `;
-                }).join('');
-            }
+            renderReelState(reels);
 
             burstBanner.style.display = currentSession.status === 'bust' ? 'block' : 'none';
             payoutSummary.style.display = 'none';
@@ -354,6 +405,7 @@
         async function spinReel() {
             if (isProcessing || !currentSession) return;
             setProcessing(true);
+            animateSpinSequence(currentSession.current_reel);
             try {
                 const { data, error } = await supabaseClient.rpc('slot_spin_reel', {
                     p_user_id: currentUserId,
@@ -413,6 +465,61 @@
         }
 
         window.addEventListener('DOMContentLoaded', initSlotPage);
+
+        function buildReelStage() {
+            const stageEl = document.getElementById('reel-stage');
+            stageEl.innerHTML = Array.from({ length: 7 }).map((_, idx) => {
+                const reelIndex = idx + 1;
+                const symbols = reelSymbols.concat(reelSymbols).map(symbol => `<span>${symbol}</span>`).join('');
+                return `
+                    <div class="reel-col" data-reel-index="${reelIndex}">
+                        <div class="reel-label">REEL ${reelIndex}</div>
+                        <div class="reel-window">
+                            <div class="reel-symbols">${symbols}</div>
+                        </div>
+                        <div class="reel-result slot-muted">未停止</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderReelState(reels) {
+            const reelMap = new Map((reels || []).map(reel => [reel.reel_index, reel]));
+            document.querySelectorAll('.reel-col').forEach(col => {
+                const reelIndex = Number(col.getAttribute('data-reel-index'));
+                const reel = reelMap.get(reelIndex);
+                const windowEl = col.querySelector('.reel-window');
+                const resultEl = col.querySelector('.reel-result');
+
+                col.classList.remove('done', 'bust');
+                windowEl.classList.remove('spinning');
+                if (!reel) {
+                    resultEl.textContent = '未停止';
+                    resultEl.classList.add('slot-muted');
+                    return;
+                }
+
+                const label = reel.is_bust ? 'バースト' : (reel.reward_name || '報酬なし');
+                resultEl.textContent = label;
+                resultEl.classList.remove('slot-muted');
+                col.classList.add('done');
+                if (reel.is_bust) col.classList.add('bust');
+            });
+        }
+
+        function animateSpinSequence(targetReel) {
+            const index = Math.max(1, Math.min(7, targetReel));
+            for (let i = 1; i <= 7; i++) {
+                const col = document.querySelector(`.reel-col[data-reel-index="${i}"]`);
+                if (!col) continue;
+                const windowEl = col.querySelector('.reel-window');
+                windowEl.classList.remove('spinning');
+                if (i === index) {
+                    windowEl.classList.add('spinning');
+                    setTimeout(() => windowEl.classList.remove('spinning'), 600);
+                }
+            }
+        }
     </script>
 </body>
 

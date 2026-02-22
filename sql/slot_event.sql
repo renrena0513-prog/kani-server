@@ -75,6 +75,11 @@ create unique index if not exists slot_sessions_active_user_uq
     on public.slot_sessions(user_id)
     where status = 'active';
 
+-- 既存テーブルへの account_name カラム追加
+alter table public.slot_sessions add column if not exists account_name text;
+alter table public.slot_session_reels add column if not exists account_name text;
+alter table public.slot_session_results add column if not exists account_name text;
+
 -- =============================
 -- 2) Helper: Secure random
 -- =============================
@@ -392,7 +397,7 @@ begin
             ended_at = now()
         where id = v_session.id;
 
-        insert into public.slot_session_results (session_id, user_id, outcome, reward_summary)
+        insert into public.slot_session_results (session_id, user_id, account_name, outcome, reward_summary)
         values (v_session.id, p_user_id, v_session.account_name, 'bust', '[]'::jsonb)
         on conflict (session_id) do nothing;
     else
@@ -534,7 +539,7 @@ begin
         ended_at = now()
     where id = v_session.id;
 
-    insert into public.slot_session_results (session_id, user_id, outcome, reward_summary)
+    insert into public.slot_session_results (session_id, user_id, account_name, outcome, reward_summary)
     values (v_session.id, p_user_id, v_session.account_name, 'cashed_out', v_summary)
     on conflict (session_id) do nothing;
 
