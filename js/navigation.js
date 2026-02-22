@@ -53,13 +53,14 @@ function generateAccordionNav(basePath = '../') {
                 </li>
                 
                 <!-- 期間限定イベント -->
-                <li class="nav-group admin-only" style="display:none;">
+                <li class="nav-group">
                     <div class="nav-group-header" onclick="toggleNavGroup(this, event)" data-group="event">
                         <span>⌛ 期間限定イベント</span>
                         <span class="nav-chevron">▼</span>
                     </div>
                     <ul class="nav-group-items" id="nav-group-event">
-                        <li><a class="dropdown-item sub-item" href="${basePath}event/drill.html">🏗️ ほりほりドリル</a></li>
+                        <li><a class="dropdown-item sub-item" href="${basePath}event/drill.html" data-page-path="/event/drill.html">🏗️ ほりほりドリル</a></li>
+                        <li><a class="dropdown-item sub-item" href="${basePath}event/slot.html" data-page-path="/event/slot.html">🎰 スロット</a></li>
                     </ul>
                 </li>
                 
@@ -238,6 +239,9 @@ function initAccordionNav(basePath = '../') {
 
     // チームアイコン更新
     updateNavTeamIcon();
+
+    // ページON/OFF設定でメニューを制御
+    applyPageSettingsToNav();
 }
 
 /**
@@ -266,6 +270,76 @@ async function updateNavTeamIcon() {
         }
     } catch (e) {
         console.error('Menu icon update failed:', e);
+    }
+}
+
+/**
+ * ページ設定に応じてメニュー項目を非表示にする（一般ユーザーのみ）
+ */
+async function applyPageSettingsToNav() {
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return;
+
+        const discordId = user.user_metadata.provider_id;
+        if (typeof ADMIN_DISCORD_IDS !== 'undefined' && ADMIN_DISCORD_IDS.includes(discordId)) {
+            return;
+        }
+
+        const CACHE_KEY = 'page_settings_cache';
+        const CACHE_TTL = 60 * 1000;
+
+        let settings = null;
+        const cache = sessionStorage.getItem(CACHE_KEY);
+        if (cache) {
+            try {
+                const parsed = JSON.parse(cache);
+                if (Date.now() - parsed.timestamp < CACHE_TTL) {
+                    settings = parsed.data;
+                }
+            } catch (e) {
+                settings = null;
+            }
+        }
+
+        if (!settings) {
+            const { data } = await supabaseClient
+                .from('page_settings')
+                .select('path, is_active');
+            if (data) {
+                settings = {};
+                data.forEach(item => {
+                    settings[item.path] = item.is_active;
+                });
+                sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+                    timestamp: Date.now(),
+                    data: settings
+                }));
+            }
+        }
+
+        if (!settings) return;
+
+        const guardedLinks = document.querySelectorAll('[data-page-path]');
+        guardedLinks.forEach(link => {
+            const pathKey = link.getAttribute('data-page-path');
+            if (pathKey && settings[pathKey] === false) {
+                const li = link.closest('li');
+                if (li) li.style.display = 'none';
+            }
+        });
+
+        const eventGroup = document.getElementById('nav-group-event');
+        if (eventGroup) {
+            const visibleItems = Array.from(eventGroup.querySelectorAll('li'))
+                .filter(item => item.style.display !== 'none');
+            if (visibleItems.length === 0) {
+                const groupRoot = eventGroup.closest('.nav-group');
+                if (groupRoot) groupRoot.style.display = 'none';
+            }
+        }
+    } catch (e) {
+        console.warn('applyPageSettingsToNav failed:', e);
     }
 }
 
