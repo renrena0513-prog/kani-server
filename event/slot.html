@@ -65,17 +65,17 @@
 
         .reel-stage {
             display: grid;
-            grid-template-columns: repeat(7, minmax(60px, 1fr));
-            gap: 12px;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 16px;
         }
 
         .reel-col {
             background: rgba(255, 255, 255, 0.04);
             border-radius: 14px;
             border: 1px solid rgba(255, 255, 255, 0.08);
-            padding: 10px;
+            padding: 14px 12px;
             display: grid;
-            gap: 8px;
+            gap: 10px;
             text-align: center;
         }
 
@@ -83,11 +83,11 @@
             background: #0b0f14;
             border-radius: 10px;
             border: 1px solid rgba(255, 255, 255, 0.1);
-            height: 64px;
+            height: 96px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.1rem;
+            font-size: 1.8rem;
             font-weight: 700;
             position: relative;
             overflow: hidden;
@@ -102,15 +102,14 @@
 
         .reel-symbols span {
             display: block;
-            height: 64px;
-            line-height: 64px;
+            height: 96px;
+            line-height: 96px;
             color: #cbd5e1;
             font-weight: 700;
-            letter-spacing: 0.08em;
         }
 
         .reel-window.spinning .reel-symbols {
-            animation: reel-spin 0.6s linear infinite;
+            animation: reel-spin 1.6s linear infinite;
         }
 
         .reel-col.done .reel-window {
@@ -128,13 +127,13 @@
         }
 
         .reel-result {
-            font-size: 0.85rem;
+            font-size: 0.95rem;
             min-height: 1.2rem;
         }
 
         @keyframes reel-spin {
             0% { transform: translateY(0); }
-            100% { transform: translateY(-640px); }
+            100% { transform: translateY(-960px); }
         }
 
         .btn-slot {
@@ -221,7 +220,7 @@
         let currentSession = null;
         let eventSettings = null;
         let isProcessing = false;
-        const reelSymbols = ['🍒', '🔔', '🍋', '💎', '🍀', '⭐', '7', '🎯', '🍇', '💰'];
+        const reelSymbols = ['🪙', '🎫', '🧧', '🪙', '🎫', '🧧', '🪙', '🎫', '☠', '🪙'];
 
         async function initSlotPage() {
             const { data: { user } } = await supabaseClient.auth.getUser();
@@ -499,7 +498,7 @@
                     return;
                 }
 
-                const label = reel.is_bust ? 'バースト' : (reel.reward_name || '報酬なし');
+                const label = reel.is_bust ? '☠ バースト' : (reel.reward_name || '報酬なし');
                 resultEl.textContent = label;
                 resultEl.classList.remove('slot-muted');
                 col.classList.add('done');
@@ -516,7 +515,7 @@
                 windowEl.classList.remove('spinning');
                 if (i === index) {
                     windowEl.classList.add('spinning');
-                    setTimeout(() => windowEl.classList.remove('spinning'), 600);
+                    setTimeout(() => windowEl.classList.remove('spinning'), 1600);
                 }
             }
         }
