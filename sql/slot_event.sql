@@ -43,15 +43,6 @@ create table if not exists public.slot_sessions (
     ended_at timestamptz
 );
 
-create table if not exists public.slot_session_results (
-    id uuid primary key default gen_random_uuid(),
-    session_id uuid not null unique references public.slot_sessions(id) on delete cascade,
-    user_id text not null,
-    account_name text,
-    outcome text not null check (outcome in ('bust', 'cashed_out')),
-    reward_summary jsonb not null default '[]'::jsonb,
-    created_at timestamptz not null default now()
-);
 
 create unique index if not exists slot_sessions_active_user_uq
     on public.slot_sessions(user_id)
@@ -60,7 +51,7 @@ create unique index if not exists slot_sessions_active_user_uq
 -- 既存テーブルへのカラム追加
 alter table public.slot_sessions add column if not exists account_name text;
 alter table public.slot_sessions add column if not exists reels_state jsonb default '[]'::jsonb;
-alter table public.slot_session_results add column if not exists account_name text;
+
 
 -- =============================
 -- 2) Helper: Secure random
@@ -329,9 +320,7 @@ begin
             ended_at = now()
         where id = v_session.id;
 
-        insert into public.slot_session_results (session_id, user_id, account_name, outcome, reward_summary)
-        values (v_session.id, p_user_id, v_session.account_name, 'bust', '[]'::jsonb)
-        on conflict (session_id) do nothing;
+
     else
         if v_reel_index >= 7 then
             update public.slot_sessions
@@ -500,9 +489,7 @@ begin
         ended_at = now()
     where id = v_session.id;
 
-    insert into public.slot_session_results (session_id, user_id, account_name, outcome, reward_summary)
-    values (v_session.id, p_user_id, v_session.account_name, 'cashed_out', v_summary)
-    on conflict (session_id) do nothing;
+
 
     select * into v_session from public.slot_sessions where id = v_session.id;
 
