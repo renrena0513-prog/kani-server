@@ -155,6 +155,7 @@
     <script src="../js/navigation.js"></script>
     <script>
         let currentUserId = null;
+        let isAdmin = false;
         let currentSession = null;
         let eventSettings = null;
         let isProcessing = false;
@@ -167,6 +168,7 @@
             }
 
             currentUserId = user.user_metadata.provider_id;
+            isAdmin = typeof ADMIN_DISCORD_IDS !== 'undefined' && ADMIN_DISCORD_IDS.includes(currentUserId);
             initAccordionNav('../');
 
             await loadEventSettings();
@@ -253,6 +255,7 @@
         }
 
         function isEventActiveNow() {
+            if (isAdmin) return true;
             if (!eventSettings || !eventSettings.is_active) return false;
             const now = new Date();
             const startAt = eventSettings.start_at ? new Date(eventSettings.start_at) : null;
