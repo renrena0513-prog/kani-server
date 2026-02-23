@@ -17,6 +17,7 @@ create table if not exists public.slot_reel_positions (
     reel_index integer not null check (reel_index between 1 and 7),
     position_index integer not null check (position_index between 1 and 10),
     is_bust boolean not null default false,
+    is_jackpot boolean not null default false,
     reward_type text,
     reward_name text,
     reward_id text,
@@ -27,16 +28,40 @@ create table if not exists public.slot_reel_positions (
     unique (reel_index, position_index)
 );
 
+create table if not exists public.slot_jackpot_rewards (
+    id uuid primary key default gen_random_uuid(),
+    reward_type text not null,
+    reward_name text,
+    reward_id text,
+    amount integer not null default 0,
+    is_active boolean not null default true,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
+create table if not exists public.slot_jackpot_positions (
+    id uuid primary key default gen_random_uuid(),
+    position_index integer not null check (position_index between 1 and 10),
+    jackpot_reward_id uuid references public.slot_jackpot_rewards(id),
+    is_active boolean not null default true,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    unique (position_index)
+);
+
 create table if not exists public.slot_sessions (
     id uuid primary key default gen_random_uuid(),
     user_id text not null,
     account_name text,
     status text not null default 'active' check (status in ('active', 'bust', 'cashed_out')),
     cost integer not null,
-    current_reel integer not null default 1 check (current_reel between 1 and 7),
+    current_reel integer not null default 1 check (current_reel between 1 and 8),
     bust_reel integer,
     bust_position_id uuid,
     reels_state jsonb not null default '[]'::jsonb,
+    jackpot_hits integer not null default 0,
+    jackpot_unlocked boolean not null default false,
+    jackpot_confirmed boolean not null default false,
     payout_summary jsonb not null default '{}'::jsonb,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
@@ -51,6 +76,12 @@ create unique index if not exists slot_sessions_active_user_uq
 -- 既存テーブルへのカラム追加
 alter table public.slot_sessions add column if not exists account_name text;
 alter table public.slot_sessions add column if not exists reels_state jsonb default '[]'::jsonb;
+alter table public.slot_sessions add column if not exists jackpot_hits integer default 0;
+alter table public.slot_sessions add column if not exists jackpot_unlocked boolean default false;
+alter table public.slot_sessions add column if not exists jackpot_confirmed boolean default false;
+alter table public.slot_reel_positions add column if not exists is_jackpot boolean default false;
+alter table public.slot_sessions drop constraint if exists slot_sessions_current_reel_check;
+alter table public.slot_sessions add constraint slot_sessions_current_reel_check check (current_reel between 1 and 8);
 
 
 -- =============================
@@ -98,6 +129,9 @@ begin
             'status', v_session.status,
             'cost', v_session.cost,
             'current_reel', v_session.current_reel,
+            'jackpot_hits', v_session.jackpot_hits,
+            'jackpot_unlocked', v_session.jackpot_unlocked,
+            'jackpot_confirmed', v_session.jackpot_confirmed,
             'created_at', v_session.created_at
         ),
         'reels', v_reels
@@ -150,18 +184,21 @@ begin
     if found then
         v_reels := coalesce(v_session.reels_state, '[]'::jsonb);
 
-        return jsonb_build_object(
-            'ok', true,
-            'session', jsonb_build_object(
-                'id', v_session.id,
-                'status', v_session.status,
-                'cost', v_session.cost,
-                'current_reel', v_session.current_reel,
-                'created_at', v_session.created_at
-            ),
-            'reels', v_reels,
-            'already_active', true
-        );
+    return jsonb_build_object(
+        'ok', true,
+        'session', jsonb_build_object(
+            'id', v_session.id,
+            'status', v_session.status,
+            'cost', v_session.cost,
+            'current_reel', v_session.current_reel,
+            'jackpot_hits', v_session.jackpot_hits,
+            'jackpot_unlocked', v_session.jackpot_unlocked,
+            'jackpot_confirmed', v_session.jackpot_confirmed,
+            'created_at', v_session.created_at
+        ),
+        'reels', v_reels,
+        'already_active', true
+    );
     end if;
 
     select coins into v_coins
@@ -187,8 +224,8 @@ begin
     limit 1;
 
     begin
-        insert into public.slot_sessions (user_id, account_name, status, cost, current_reel, reels_state, created_at, updated_at)
-        values (p_user_id, v_account_name, 'active', v_settings.cost, 1, '[]'::jsonb, v_now, v_now)
+        insert into public.slot_sessions (user_id, account_name, status, cost, current_reel, reels_state, jackpot_hits, jackpot_unlocked, jackpot_confirmed, created_at, updated_at)
+        values (p_user_id, v_account_name, 'active', v_settings.cost, 1, '[]'::jsonb, 0, false, false, v_now, v_now)
         returning * into v_session;
     exception when unique_violation then
         select * into v_session
@@ -205,6 +242,9 @@ begin
             'status', v_session.status,
             'cost', v_session.cost,
             'current_reel', v_session.current_reel,
+            'jackpot_hits', v_session.jackpot_hits,
+            'jackpot_unlocked', v_session.jackpot_unlocked,
+            'jackpot_confirmed', v_session.jackpot_confirmed,
             'created_at', v_session.created_at
         ),
         'reels', v_reels,
@@ -230,10 +270,13 @@ declare
     v_random_val integer;
     v_cumulative integer := 0;
     v_position record;
+    v_jp_pos record;
+    v_jp_reward record;
     v_existing jsonb;
     v_reels jsonb := '[]'::jsonb;
     v_payout jsonb := '[]'::jsonb;
     v_auto_cashout boolean := false;
+    v_new_hits integer := 0;
 begin
     perform pg_advisory_xact_lock(hashtext('slot:' || p_user_id));
 
@@ -252,6 +295,14 @@ begin
 
     v_reel_index := v_session.current_reel;
 
+    if v_session.jackpot_unlocked = true and v_session.jackpot_confirmed = false and v_reel_index <= 7 then
+        return jsonb_build_object('ok', false, 'error', 'JACKPOT_CONFIRM_REQUIRED');
+    end if;
+
+    if v_reel_index = 8 and v_session.jackpot_confirmed = false then
+        return jsonb_build_object('ok', false, 'error', 'JACKPOT_CONFIRM_REQUIRED');
+    end if;
+
     v_reels := coalesce(v_session.reels_state, '[]'::jsonb);
     select elem into v_existing
     from jsonb_array_elements(v_reels) elem
@@ -266,6 +317,9 @@ begin
                 'status', v_session.status,
                 'cost', v_session.cost,
                 'current_reel', v_session.current_reel,
+                'jackpot_hits', v_session.jackpot_hits,
+                'jackpot_unlocked', v_session.jackpot_unlocked,
+                'jackpot_confirmed', v_session.jackpot_confirmed,
                 'created_at', v_session.created_at
             ),
             'result', v_existing,
@@ -274,70 +328,133 @@ begin
         );
     end if;
 
-    select count(*) into v_total_weight
-    from public.slot_reel_positions
-    where reel_index = v_reel_index and is_active = true;
+    if v_reel_index = 8 then
+        select count(*) into v_total_weight
+        from public.slot_jackpot_positions
+        where is_active = true;
 
-    if v_total_weight is null or v_total_weight <= 0 then
-        return jsonb_build_object('ok', false, 'error', 'NO_REEL_CONFIG');
-    end if;
-
-    v_random_val := floor(public.slot_secure_random() * v_total_weight)::int;
-
-    for v_position in
-        select *
-        from public.slot_reel_positions
-        where reel_index = v_reel_index and is_active = true
-        order by position_index
-    loop
-        v_cumulative := v_cumulative + 1;
-        if v_random_val < v_cumulative then
-            exit;
+        if v_total_weight is null or v_total_weight <= 0 then
+            return jsonb_build_object('ok', false, 'error', 'NO_JACKPOT_CONFIG');
         end if;
-    end loop;
 
-    if v_position.id is null then
-        return jsonb_build_object('ok', false, 'error', 'SPIN_FAILED');
-    end if;
+        v_random_val := floor(public.slot_secure_random() * v_total_weight)::int;
 
-    v_reels := v_reels || jsonb_build_array(jsonb_build_object(
-        'reel_index', v_reel_index,
-        'position_id', v_position.id,
-        'is_bust', v_position.is_bust,
-        'reward_type', v_position.reward_type,
-        'reward_name', v_position.reward_name,
-        'reward_id', v_position.reward_id,
-        'amount', v_position.amount
-    ));
+        for v_jp_pos in
+            select *
+            from public.slot_jackpot_positions
+            where is_active = true
+            order by position_index
+        loop
+            v_cumulative := v_cumulative + 1;
+            if v_random_val < v_cumulative then
+                exit;
+            end if;
+        end loop;
 
-    if v_position.is_bust then
+        if v_jp_pos.id is null then
+            return jsonb_build_object('ok', false, 'error', 'JACKPOT_SPIN_FAILED');
+        end if;
+
+        select * into v_jp_reward
+        from public.slot_jackpot_rewards
+        where id = v_jp_pos.jackpot_reward_id and is_active = true;
+
+        if not found then
+            return jsonb_build_object('ok', false, 'error', 'JACKPOT_REWARD_NOT_FOUND');
+        end if;
+
+        v_reels := v_reels || jsonb_build_array(jsonb_build_object(
+            'reel_index', v_reel_index,
+            'position_id', v_jp_pos.id,
+            'is_bust', false,
+            'is_jackpot', true,
+            'reward_type', v_jp_reward.reward_type,
+            'reward_name', v_jp_reward.reward_name,
+            'reward_id', v_jp_reward.reward_id,
+            'amount', v_jp_reward.amount
+        ));
+
         update public.slot_sessions
-        set status = 'bust',
-            bust_reel = v_reel_index,
-            bust_position_id = v_position.id,
-            reels_state = v_reels,
-            updated_at = now(),
-            ended_at = now()
+        set reels_state = v_reels,
+            updated_at = now()
         where id = v_session.id;
 
+        v_auto_cashout := true;
+        v_payout := public.slot_cashout(p_user_id, v_session.id)->'payout';
 
     else
-        if v_reel_index >= 7 then
+        select count(*) into v_total_weight
+        from public.slot_reel_positions
+        where reel_index = v_reel_index and is_active = true;
+
+        if v_total_weight is null or v_total_weight <= 0 then
+            return jsonb_build_object('ok', false, 'error', 'NO_REEL_CONFIG');
+        end if;
+
+        v_random_val := floor(public.slot_secure_random() * v_total_weight)::int;
+
+        for v_position in
+            select *
+            from public.slot_reel_positions
+            where reel_index = v_reel_index and is_active = true
+            order by position_index
+        loop
+            v_cumulative := v_cumulative + 1;
+            if v_random_val < v_cumulative then
+                exit;
+            end if;
+        end loop;
+
+        if v_position.id is null then
+            return jsonb_build_object('ok', false, 'error', 'SPIN_FAILED');
+        end if;
+
+        v_reels := v_reels || jsonb_build_array(jsonb_build_object(
+            'reel_index', v_reel_index,
+            'position_id', v_position.id,
+            'is_bust', v_position.is_bust,
+            'is_jackpot', v_position.is_jackpot,
+            'reward_type', v_position.reward_type,
+            'reward_name', v_position.reward_name,
+            'reward_id', v_position.reward_id,
+            'amount', v_position.amount
+        ));
+
+        v_new_hits := v_session.jackpot_hits + case when v_position.is_jackpot then 1 else 0 end;
+
+        if v_position.is_bust then
             update public.slot_sessions
-            set reels_state = v_reels,
-                updated_at = now()
-            where id = v_session.id;
-            v_auto_cashout := true;
-            v_payout := public.slot_cashout(p_user_id, v_session.id)->'payout';
-        else
-            update public.slot_sessions
-            set current_reel = v_reel_index + 1,
+            set status = 'bust',
+                bust_reel = v_reel_index,
+                bust_position_id = v_position.id,
                 reels_state = v_reels,
-                updated_at = now()
+                updated_at = now(),
+                ended_at = now()
             where id = v_session.id;
+        else
+            if v_reel_index >= 7 and v_session.jackpot_confirmed = false then
+                update public.slot_sessions
+                set reels_state = v_reels,
+                    jackpot_hits = v_new_hits,
+                    jackpot_unlocked = (v_new_hits >= 4),
+                    current_reel = case when v_new_hits >= 4 then 8 else v_session.current_reel end,
+                    updated_at = now()
+                where id = v_session.id;
+                if v_new_hits < 4 then
+                    v_auto_cashout := true;
+                    v_payout := public.slot_cashout(p_user_id, v_session.id)->'payout';
+                end if;
+            else
+                update public.slot_sessions
+                set current_reel = v_reel_index + 1,
+                    reels_state = v_reels,
+                    jackpot_hits = v_new_hits,
+                    jackpot_unlocked = (v_new_hits >= 4),
+                    updated_at = now()
+                where id = v_session.id;
+            end if;
         end if;
     end if;
-
 
     select * into v_session
     from public.slot_sessions
@@ -350,16 +467,19 @@ begin
             'status', v_session.status,
             'cost', v_session.cost,
             'current_reel', v_session.current_reel,
+            'jackpot_hits', v_session.jackpot_hits,
+            'jackpot_unlocked', v_session.jackpot_unlocked,
+            'jackpot_confirmed', v_session.jackpot_confirmed,
             'created_at', v_session.created_at
         ),
         'result', jsonb_build_object(
             'reel_index', v_reel_index,
-            'position_id', v_position.id,
-            'is_bust', v_position.is_bust,
-            'reward_type', v_position.reward_type,
-            'reward_name', v_position.reward_name,
-            'reward_id', v_position.reward_id,
-            'amount', v_position.amount
+            'position_id', coalesce(v_position.id, v_jp_pos.id),
+            'is_bust', coalesce(v_position.is_bust, false),
+            'reward_type', coalesce(v_position.reward_type, v_jp_reward.reward_type),
+            'reward_name', coalesce(v_position.reward_name, v_jp_reward.reward_name),
+            'reward_id', coalesce(v_position.reward_id, v_jp_reward.reward_id),
+            'amount', coalesce(v_position.amount, v_jp_reward.amount)
         ),
         'reels', v_reels,
         'auto_cashout', v_auto_cashout,
@@ -369,7 +489,73 @@ end;
 $$;
 
 -- =============================
--- 6) RPC: Cashout (grant rewards)
+-- 6) RPC: Confirm jackpot (move to jackpot reel)
+-- =============================
+
+create or replace function public.slot_confirm_jackpot(p_user_id text, p_session_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path to 'public'
+as $$
+declare
+    v_session record;
+    v_reels jsonb := '[]'::jsonb;
+begin
+    perform pg_advisory_xact_lock(hashtext('slot:' || p_user_id));
+
+    select * into v_session
+    from public.slot_sessions
+    where id = p_session_id and user_id = p_user_id
+    for update;
+
+    if not found then
+        return jsonb_build_object('ok', false, 'error', 'SESSION_NOT_FOUND');
+    end if;
+
+    if v_session.status <> 'active' then
+        return jsonb_build_object('ok', false, 'error', 'SESSION_NOT_ACTIVE');
+    end if;
+
+    if v_session.jackpot_unlocked = false then
+        return jsonb_build_object('ok', false, 'error', 'JACKPOT_NOT_UNLOCKED');
+    end if;
+
+    if v_session.jackpot_confirmed = true then
+        return jsonb_build_object('ok', false, 'error', 'JACKPOT_ALREADY_CONFIRMED');
+    end if;
+
+    update public.slot_sessions
+    set jackpot_confirmed = true,
+        current_reel = 8,
+        updated_at = now()
+    where id = v_session.id;
+
+    v_reels := coalesce(v_session.reels_state, '[]'::jsonb);
+
+    select * into v_session
+    from public.slot_sessions
+    where id = v_session.id;
+
+    return jsonb_build_object(
+        'ok', true,
+        'session', jsonb_build_object(
+            'id', v_session.id,
+            'status', v_session.status,
+            'cost', v_session.cost,
+            'current_reel', v_session.current_reel,
+            'jackpot_hits', v_session.jackpot_hits,
+            'jackpot_unlocked', v_session.jackpot_unlocked,
+            'jackpot_confirmed', v_session.jackpot_confirmed,
+            'created_at', v_session.created_at
+        ),
+        'reels', v_reels
+    );
+end;
+$$;
+
+-- =============================
+-- 7) RPC: Cashout (grant rewards)
 -- =============================
 
 create or replace function public.slot_cashout(p_user_id text, p_session_id uuid)
@@ -397,14 +583,22 @@ begin
     if v_session.status = 'bust' then
         return jsonb_build_object('ok', true, 'session', jsonb_build_object(
             'id', v_session.id, 'status', v_session.status, 'cost', v_session.cost,
-            'current_reel', v_session.current_reel, 'created_at', v_session.created_at
+            'current_reel', v_session.current_reel,
+            'jackpot_hits', v_session.jackpot_hits,
+            'jackpot_unlocked', v_session.jackpot_unlocked,
+            'jackpot_confirmed', v_session.jackpot_confirmed,
+            'created_at', v_session.created_at
         ), 'payout', '[]'::jsonb, 'outcome', 'bust');
     end if;
 
     if v_session.status = 'cashed_out' then
         return jsonb_build_object('ok', true, 'session', jsonb_build_object(
             'id', v_session.id, 'status', v_session.status, 'cost', v_session.cost,
-            'current_reel', v_session.current_reel, 'created_at', v_session.created_at
+            'current_reel', v_session.current_reel,
+            'jackpot_hits', v_session.jackpot_hits,
+            'jackpot_unlocked', v_session.jackpot_unlocked,
+            'jackpot_confirmed', v_session.jackpot_confirmed,
+            'created_at', v_session.created_at
         ), 'payout', v_session.payout_summary, 'outcome', 'cashed_out');
     end if;
 
@@ -500,6 +694,9 @@ begin
             'status', v_session.status,
             'cost', v_session.cost,
             'current_reel', v_session.current_reel,
+            'jackpot_hits', v_session.jackpot_hits,
+            'jackpot_unlocked', v_session.jackpot_unlocked,
+            'jackpot_confirmed', v_session.jackpot_confirmed,
             'created_at', v_session.created_at
         ),
         'payout', v_summary,
@@ -605,6 +802,38 @@ set is_bust = excluded.is_bust,
     reward_name = excluded.reward_name,
     reward_id = excluded.reward_id,
     amount = excluded.amount,
+    updated_at = now();
+
+-- Jackpot symbol: position 1 on every reel (non-bust)
+update public.slot_reel_positions
+set is_jackpot = true
+where position_index = 1 and is_bust = false;
+
+-- Jackpot rewards
+insert into public.slot_jackpot_rewards (reward_type, reward_name, reward_id, amount, is_active)
+values
+  ('coin', 'ジャックポット +500', null, 500, true),
+  ('coin', 'ジャックポット +1000', null, 1000, true),
+  ('gacha_ticket', '祈願符 +5', null, 5, true),
+  ('mangan_ticket', '満願符 +1', null, 1, true)
+on conflict do nothing;
+
+-- Jackpot positions (10 stops, equal)
+insert into public.slot_jackpot_positions (position_index, jackpot_reward_id, is_active)
+values
+  (1, (select id from public.slot_jackpot_rewards where reward_name = 'ジャックポット +500' limit 1), true),
+  (2, (select id from public.slot_jackpot_rewards where reward_name = 'ジャックポット +500' limit 1), true),
+  (3, (select id from public.slot_jackpot_rewards where reward_name = 'ジャックポット +1000' limit 1), true),
+  (4, (select id from public.slot_jackpot_rewards where reward_name = 'ジャックポット +1000' limit 1), true),
+  (5, (select id from public.slot_jackpot_rewards where reward_name = '祈願符 +5' limit 1), true),
+  (6, (select id from public.slot_jackpot_rewards where reward_name = '祈願符 +5' limit 1), true),
+  (7, (select id from public.slot_jackpot_rewards where reward_name = '満願符 +1' limit 1), true),
+  (8, (select id from public.slot_jackpot_rewards where reward_name = '満願符 +1' limit 1), true),
+  (9, (select id from public.slot_jackpot_rewards where reward_name = 'ジャックポット +500' limit 1), true),
+  (10, (select id from public.slot_jackpot_rewards where reward_name = 'ジャックポット +1000' limit 1), true)
+on conflict (position_index) do update
+set jackpot_reward_id = excluded.jackpot_reward_id,
+    is_active = excluded.is_active,
     updated_at = now();
 
 -- page settings entry
