@@ -202,6 +202,10 @@
             font-weight: 600;
         }
 
+        .slot-mobile-summary {
+            display: none;
+        }
+
         @media (max-width: 768px) {
             .reel-stage {
                 grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -226,6 +230,33 @@
 
             .reel-result {
                 font-size: 0.8rem;
+            }
+
+            .slot-mobile-summary {
+                display: grid;
+                align-content: center;
+                gap: 6px;
+                padding: 12px;
+                border-radius: 14px;
+                background: rgba(246, 196, 83, 0.12);
+                border: 1px dashed rgba(246, 196, 83, 0.35);
+                color: #f7d07d;
+                min-height: clamp(88px, 24vw, 110px);
+                text-align: center;
+                font-weight: 700;
+            }
+
+            .slot-mobile-summary .slot-muted {
+                color: rgba(247, 208, 125, 0.8);
+                font-size: 0.75rem;
+            }
+
+            .slot-mobile-summary .slot-mobile-multiplier {
+                font-size: 1.05rem;
+            }
+
+            .slot-mobile-summary .slot-mobile-total {
+                font-size: 0.95rem;
             }
         }
     </style>
@@ -279,7 +310,14 @@
                 <h5 class="mb-0">停止結果</h5>
                 <span class="slot-muted" id="session-status">待機中</span>
             </div>
-            <div class="reel-stage" id="reel-stage"></div>
+            <div class="reel-stage" id="reel-stage">
+                <div class="slot-mobile-summary" id="mobile-summary">
+                    <div class="slot-muted">合計倍率</div>
+                    <div class="slot-mobile-multiplier" id="mobile-total-multiplier">×1.0</div>
+                    <div class="slot-muted">獲得合計</div>
+                    <div class="slot-mobile-total" id="mobile-reward-total">🪙 0 / 🎫 0 / 🧧 0</div>
+                </div>
+            </div>
             <div class="mt-4" id="payout-summary" style="display:none;">
                 <h6 class="mb-2">精算結果</h6>
                 <div class="slot-panel p-3" id="payout-list"></div>
@@ -472,6 +510,8 @@
             const messageEl = document.getElementById('session-message');
             const totalEl = document.getElementById('reward-total');
             const multiplierEl = document.getElementById('total-multiplier');
+            const mobileMultiplierEl = document.getElementById('mobile-total-multiplier');
+            const mobileTotalEl = document.getElementById('mobile-reward-total');
             const spinLocked = isSpinLocked();
 
             if (!currentSession) {
@@ -488,7 +528,9 @@
                 renderReelState(reels);
                 updateReelButtons();
                 if (multiplierEl) multiplierEl.textContent = '×1.0';
+                if (mobileMultiplierEl) mobileMultiplierEl.textContent = '×1.0';
                 if (totalEl) totalEl.textContent = '🪙 0 / 🎫 0 / 🧧 0';
+                if (mobileTotalEl) mobileTotalEl.textContent = '🪙 0 / 🎫 0 / 🧧 0';
                 return;
             }
 
@@ -543,17 +585,18 @@
                 updateReelButtons();
             }
 
-            if (multiplierEl && !spinLocked) {
+            if (!spinLocked) {
                 const multiplierSum = reels.reduce((sum, reel) => {
                     if (reel.reward_type !== 'multiplier') return sum;
                     return sum + (Number.parseFloat(reel.amount || 0) || 0);
                 }, 0);
                 const totalMultiplier = 1 + multiplierSum;
                 const formatted = totalMultiplier.toFixed(2).replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
-                multiplierEl.textContent = `×${formatted}`;
+                if (multiplierEl) multiplierEl.textContent = `×${formatted}`;
+                if (mobileMultiplierEl) mobileMultiplierEl.textContent = `×${formatted}`;
             }
 
-            if (totalEl && !spinLocked) {
+            if (!spinLocked) {
                 const totals = { coin: 0, gacha_ticket: 0, mangan_ticket: 0 };
                 reels.forEach(reel => {
                     if (reel.is_bust) return;
@@ -561,7 +604,9 @@
                     if (reel.reward_type === 'gacha_ticket') totals.gacha_ticket += Number(reel.amount || 0);
                     if (reel.reward_type === 'mangan_ticket') totals.mangan_ticket += Number(reel.amount || 0);
                 });
-                totalEl.textContent = `🪙 ${totals.coin} / 🎫 ${totals.gacha_ticket} / 🧧 ${totals.mangan_ticket}`;
+                const totalText = `🪙 ${totals.coin} / 🎫 ${totals.gacha_ticket} / 🧧 ${totals.mangan_ticket}`;
+                if (totalEl) totalEl.textContent = totalText;
+                if (mobileTotalEl) mobileTotalEl.textContent = totalText;
             }
 
             if (currentSession.jackpot_unlocked && !currentSession.free_spin_confirmed) {
@@ -703,6 +748,8 @@
 
         function buildReelStage() {
             const stageEl = document.getElementById('reel-stage');
+            const mobileSummary = stageEl.querySelector('#mobile-summary');
+            const summaryHtml = mobileSummary ? mobileSummary.outerHTML : '';
             stageEl.innerHTML = Array.from({ length: 7 }).map((_, idx) => {
                 const reelIndex = idx + 1;
                 const symbols = reelSymbols.concat(reelSymbols).map(symbol => `<span>${symbol}</span>`).join('');
@@ -717,7 +764,7 @@
                         <button class="reel-btn" data-reel-btn="${reelIndex}" onclick="spinReel(${reelIndex})" disabled>回す</button>
                     </div>
                 `;
-            }).join('');
+            }).join('') + summaryHtml;
         }
 
         function renderReelState(reels) {
