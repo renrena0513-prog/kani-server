@@ -631,6 +631,9 @@
                 const stillSpinning = lastSpinReel === reelIndex && Date.now() < spinLockUntil;
                 if (stillSpinning) {
                     windowEl.classList.add('spinning');
+                    resultEl.textContent = '回転中';
+                    if (stopEl) stopEl.textContent = '';
+                    return;
                 }
                 if (!reel) {
                     resultEl.textContent = '未停止';
