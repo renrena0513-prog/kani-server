@@ -21,7 +21,7 @@ create table if not exists public.slot_reel_positions (
     reward_type text,
     reward_name text,
     reward_id text,
-    amount integer default 0,
+    amount numeric(10,2) default 0,
     is_active boolean not null default true,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
@@ -33,7 +33,7 @@ create table if not exists public.slot_jackpot_rewards (
     reward_type text not null,
     reward_name text,
     reward_id text,
-    amount integer not null default 0,
+    amount numeric(10,2) not null default 0,
     is_active boolean not null default true,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
@@ -56,7 +56,7 @@ create table if not exists public.slot_free_reel_positions (
     reward_type text,
     reward_name text,
     reward_id text,
-    amount integer default 0,
+    amount numeric(10,2) default 0,
     is_active boolean not null default true,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
@@ -100,6 +100,9 @@ alter table public.slot_sessions add column if not exists free_spin_active boole
 alter table public.slot_sessions add column if not exists free_spins_remaining integer default 0;
 alter table public.slot_sessions add column if not exists free_spin_round integer default 0;
 alter table public.slot_reel_positions add column if not exists is_jackpot boolean default false;
+alter table public.slot_reel_positions alter column amount type numeric(10,2) using amount::numeric;
+alter table public.slot_free_reel_positions alter column amount type numeric(10,2) using amount::numeric;
+alter table public.slot_jackpot_rewards alter column amount type numeric(10,2) using amount::numeric;
 alter table public.slot_sessions drop constraint if exists slot_sessions_current_reel_check;
 alter table public.slot_sessions add constraint slot_sessions_current_reel_check check (current_reel between 1 and 7);
 
@@ -174,12 +177,14 @@ set search_path to 'public'
 as $$
 declare
     v_settings record;
+    v_settings_active boolean := false;
     v_session record;
     v_coins integer;
     v_now timestamptz := now();
     v_is_admin boolean := false;
     v_account_name text;
     v_reels jsonb := '[]'::jsonb;
+    v_page_active boolean := false;
 begin
     perform pg_advisory_xact_lock(hashtext('slot:' || p_user_id));
 
@@ -190,8 +195,14 @@ begin
     from public.slot_event_settings
     order by created_at desc
     limit 1;
+    v_settings_active := found and v_settings.is_active is true;
 
-    if (not found or v_settings.is_active is false) and not v_is_admin then
+    select is_active into v_page_active
+    from public.page_settings
+    where path = '/event/slot.html'
+    limit 1;
+
+    if (not v_page_active and not v_settings_active) and not v_is_admin then
         return jsonb_build_object('ok', false, 'error', 'EVENT_INACTIVE');
     end if;
 
@@ -675,14 +686,15 @@ begin
 
     -- マルチプライヤー判定：multiplier報酬がある場合、倍率を取得
     declare
-        v_multiplier integer := 1;
+        v_multiplier numeric := 1;
         v_elem jsonb;
+        v_mult_label text;
     begin
         for v_elem in
             select elem from jsonb_array_elements(coalesce(v_session.reels_state, '[]'::jsonb)) elem
             where elem->>'reward_type' = 'multiplier'
         loop
-            v_multiplier := v_multiplier * coalesce((v_elem->>'amount')::int, 1);
+            v_multiplier := v_multiplier + coalesce((v_elem->>'amount')::numeric, 0);
         end loop;
 
         for v_rewards in
@@ -690,17 +702,17 @@ begin
                 elem->>'reward_type' as reward_type,
                 elem->>'reward_id' as reward_id,
                 elem->>'reward_name' as reward_name,
-                sum((elem->>'amount')::int) as amount
+                sum((elem->>'amount')::numeric) as amount
             from jsonb_array_elements(coalesce(v_session.reels_state, '[]'::jsonb)) elem
             where (elem->>'is_bust')::boolean = false
               and elem->>'reward_type' is not null
               and elem->>'reward_type' <> 'multiplier'
-              and (elem->>'amount')::int > 0
+              and (elem->>'amount')::numeric > 0
             group by elem->>'reward_type', elem->>'reward_id', elem->>'reward_name'
             order by elem->>'reward_type', elem->>'reward_id'
         loop
             -- マルチプライヤー適用
-            v_rewards.amount := v_rewards.amount * v_multiplier;
+            v_rewards.amount := floor(v_rewards.amount * v_multiplier);
 
             v_summary := v_summary || jsonb_build_array(jsonb_build_object(
                 'type', v_rewards.reward_type,
@@ -711,37 +723,38 @@ begin
 
             if v_rewards.reward_type = 'coin' then
                 update public.profiles
-                set coins = coins + v_rewards.amount,
-                    total_assets = total_assets + v_rewards.amount
+                set coins = coins + v_rewards.amount::int,
+                    total_assets = total_assets + v_rewards.amount::int
                 where discord_user_id = p_user_id;
             elsif v_rewards.reward_type = 'gacha_ticket' then
                 update public.profiles
-                set gacha_tickets = coalesce(gacha_tickets, 0) + v_rewards.amount
+                set gacha_tickets = coalesce(gacha_tickets, 0) + v_rewards.amount::int
                 where discord_user_id = p_user_id;
             elsif v_rewards.reward_type = 'mangan_ticket' then
                 update public.profiles
-                set mangan_tickets = coalesce(mangan_tickets, 0) + v_rewards.amount
+                set mangan_tickets = coalesce(mangan_tickets, 0) + v_rewards.amount::int
                 where discord_user_id = p_user_id;
             elsif v_rewards.reward_type = 'exchange_ticket' then
                 update public.profiles
                 set exchange_tickets = jsonb_set(
                     coalesce(exchange_tickets, '{}'::jsonb),
                     array[v_rewards.reward_id],
-                    (coalesce((exchange_tickets->>v_rewards.reward_id)::int, 0) + v_rewards.amount)::text::jsonb
+                    (coalesce((exchange_tickets->>v_rewards.reward_id)::int, 0) + v_rewards.amount::int)::text::jsonb
                 )
                 where discord_user_id = p_user_id;
             elsif v_rewards.reward_type = 'badge' then
                 insert into public.user_badges_new (user_id, badge_id, purchased_price)
                 select p_user_id, v_rewards.reward_id::uuid, 0
-                from generate_series(1, v_rewards.amount);
+                from generate_series(1, v_rewards.amount::int);
             end if;
         end loop;
 
         -- マルチプライヤー情報をサマリーに追加
         if v_multiplier > 1 then
+            v_mult_label := trim(trailing '.' from trim(trailing '0' from to_char(v_multiplier, 'FM999999990.99')));
             v_summary := jsonb_build_array(jsonb_build_object(
                 'type', 'multiplier',
-                'reward_name', v_multiplier || '倍',
+                'reward_name', v_mult_label || '倍',
                 'amount', v_multiplier
             )) || v_summary;
         end if;

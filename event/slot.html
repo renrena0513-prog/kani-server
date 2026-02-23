@@ -232,7 +232,9 @@
                     </div>
                 </div>
                 <div class="text-center flex-grow-1" style="min-width: 220px;">
-                    <div class="slot-muted">獲得合計</div>
+                    <div class="slot-muted">合計倍率</div>
+                    <div class="fs-5 fw-semibold" id="total-multiplier">×1.0</div>
+                    <div class="slot-muted mt-1">獲得合計</div>
                     <div class="fs-2 fw-bold" id="reward-total">🪙 0 / 🎫 0 / 🧧 0</div>
                 </div>
                 <div class="d-flex flex-wrap gap-2">
@@ -341,14 +343,26 @@
                     .maybeSingle();
 
                 if (error) throw error;
-                eventSettings = data;
+                const { data: pageData, error: pageError } = await supabaseClient
+                    .from('page_settings')
+                    .select('is_active')
+                    .eq('path', '/event/slot.html')
+                    .maybeSingle();
+                if (pageError) throw pageError;
+
+                eventSettings = {
+                    ...(data || {}),
+                    page_active: pageData?.is_active ?? false
+                };
 
                 const now = new Date();
                 const startAt = data?.start_at ? new Date(data.start_at) : null;
                 const endAt = data?.end_at ? new Date(data.end_at) : null;
 
                 let label = 'イベント準備中';
-                if (!data || !data.is_active) {
+                if (eventSettings.page_active) {
+                    label = 'イベント開催中';
+                } else if (!data || !data.is_active) {
                     label = 'イベント停止中';
                 } else if (startAt && now < startAt) {
                     label = `開始待ち: ${startAt.toLocaleString('ja-JP')}`;
@@ -410,7 +424,9 @@
 
         function isEventActiveNow() {
             if (isAdmin) return true;
-            if (!eventSettings || !eventSettings.is_active) return false;
+            if (!eventSettings) return false;
+            if (eventSettings.page_active) return true;
+            if (!eventSettings.is_active) return false;
             return true;
         }
 
@@ -428,6 +444,7 @@
             const burstBanner = document.getElementById('burst-banner');
             const messageEl = document.getElementById('session-message');
             const totalEl = document.getElementById('reward-total');
+            const multiplierEl = document.getElementById('total-multiplier');
             const spinLocked = isSpinLocked();
 
             if (!currentSession) {
@@ -443,6 +460,7 @@
                 document.getElementById('btn-jackpot-confirm').disabled = true;
                 renderReelState(reels);
                 updateReelButtons();
+                if (multiplierEl) multiplierEl.textContent = '×1.0';
                 if (totalEl) totalEl.textContent = '🪙 0 / 🎫 0 / 🧧 0';
                 return;
             }
@@ -496,6 +514,16 @@
                 document.getElementById('btn-start').disabled = currentSession.status === 'active' || !isEventActiveNow();
                 document.getElementById('btn-jackpot-confirm').disabled = !currentSession.jackpot_unlocked || currentSession.free_spin_confirmed;
                 updateReelButtons();
+            }
+
+            if (multiplierEl && !spinLocked) {
+                const multiplierSum = reels.reduce((sum, reel) => {
+                    if (reel.reward_type !== 'multiplier') return sum;
+                    return sum + (Number.parseFloat(reel.amount || 0) || 0);
+                }, 0);
+                const totalMultiplier = 1 + multiplierSum;
+                const formatted = totalMultiplier.toFixed(2).replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
+                multiplierEl.textContent = `×${formatted}`;
             }
 
             if (totalEl && !spinLocked) {
@@ -844,7 +872,7 @@
                             </select>
                         </td>
                         <td><input type="text" class="form-control form-control-sm admin-reward-name" value="${rewardName}"></td>
-                        <td><input type="number" min="0" class="form-control form-control-sm admin-amount" value="${amount}"></td>
+                        <td><input type="number" min="0" step="0.1" class="form-control form-control-sm admin-amount" value="${amount}"></td>
                         <td><input type="text" class="form-control form-control-sm admin-reward-id" value="${rewardId}"></td>
                     </tr>
                 `;
@@ -899,7 +927,7 @@
                 const rewardIdRaw = row.querySelector('.admin-reward-id')?.value?.trim() || '';
                 const rewardId = isBust ? null : (rewardIdRaw || null);
                 const amountRaw = row.querySelector('.admin-amount')?.value;
-                const amountVal = isBust ? 0 : Number(amountRaw || 0);
+                const amountVal = isBust ? 0 : Number.parseFloat(amountRaw || 0);
 
                 const rowData = {
                     reel_index: reelIndex,
