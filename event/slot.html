@@ -207,6 +207,10 @@
         }
 
         @media (max-width: 768px) {
+            .slot-desktop-actions {
+                display: none !important;
+            }
+
             .reel-stage {
                 grid-template-columns: repeat(3, minmax(0, 1fr));
                 gap: 12px;
@@ -244,6 +248,7 @@
                 min-height: clamp(88px, 24vw, 110px);
                 text-align: center;
                 font-weight: 700;
+                grid-column: 2 / span 2;
             }
 
             .slot-mobile-summary .slot-muted {
@@ -257,6 +262,18 @@
 
             .slot-mobile-summary .slot-mobile-total {
                 font-size: 0.95rem;
+            }
+
+            .slot-mobile-actions {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 8px;
+                margin-top: 4px;
+            }
+
+            .slot-mobile-actions .btn {
+                padding: 8px 10px;
+                font-size: 0.85rem;
             }
         }
     </style>
@@ -295,7 +312,7 @@
                     <div class="slot-muted mt-1">獲得合計</div>
                     <div class="fs-2 fw-bold" id="reward-total">🪙 0 / 🎫 0 / 🧧 0</div>
                 </div>
-                <div class="d-flex flex-wrap gap-2">
+                <div class="d-flex flex-wrap gap-2 slot-desktop-actions">
                     <button class="btn btn-slot" id="btn-start" onclick="startSession()">開始（100コイン消費）</button>
                     <button class="btn btn-slot" id="btn-jackpot-confirm" onclick="confirmJackpot()"
                         disabled>フリースピンへ確定</button>
@@ -316,6 +333,10 @@
                     <div class="slot-mobile-multiplier" id="mobile-total-multiplier">×1.0</div>
                     <div class="slot-muted">獲得合計</div>
                     <div class="slot-mobile-total" id="mobile-reward-total">🪙 0 / 🎫 0 / 🧧 0</div>
+                    <div class="slot-mobile-actions">
+                        <button class="btn btn-slot" id="mobile-btn-start" type="button" onclick="startSession()">開始</button>
+                        <button class="btn btn-slot-secondary" id="mobile-btn-stop" type="button" onclick="cashout()" disabled>ストップ</button>
+                    </div>
                 </div>
             </div>
             <div class="mt-4" id="payout-summary" style="display:none;">
@@ -484,6 +505,10 @@
             document.getElementById('btn-start').disabled = state;
             document.getElementById('btn-stop').disabled = state || !currentSession || currentSession.status !== 'active' || (currentSession.reels || []).length === 0;
             document.getElementById('btn-jackpot-confirm').disabled = state || !currentSession || !currentSession.jackpot_unlocked || currentSession.free_spin_confirmed;
+            const mobileStart = document.getElementById('mobile-btn-start');
+            const mobileStop = document.getElementById('mobile-btn-stop');
+            if (mobileStart) mobileStart.disabled = state || !isEventActiveNow() || (currentSession && currentSession.status === 'active');
+            if (mobileStop) mobileStop.disabled = state || !currentSession || currentSession.status !== 'active' || (currentSession.reels || []).length === 0;
             updateReelButtons();
         }
 
@@ -523,6 +548,10 @@
                 // no jackpot stage
                 setProcessing(false);
                 document.getElementById('btn-start').disabled = !isEventActiveNow();
+                const mobileStart = document.getElementById('mobile-btn-start');
+                const mobileStop = document.getElementById('mobile-btn-stop');
+                if (mobileStart) mobileStart.disabled = !isEventActiveNow();
+                if (mobileStop) mobileStop.disabled = true;
                 document.getElementById('btn-stop').disabled = true;
                 document.getElementById('btn-jackpot-confirm').disabled = true;
                 renderReelState(reels);
@@ -577,11 +606,19 @@
                 setProcessing(true);
                 document.getElementById('btn-start').disabled = true;
                 document.getElementById('btn-jackpot-confirm').disabled = true;
+                const mobileStart = document.getElementById('mobile-btn-start');
+                const mobileStop = document.getElementById('mobile-btn-stop');
+                if (mobileStart) mobileStart.disabled = true;
+                if (mobileStop) mobileStop.disabled = true;
                 updateReelButtons();
             } else {
                 setProcessing(false);
                 document.getElementById('btn-start').disabled = currentSession.status === 'active' || !isEventActiveNow();
                 document.getElementById('btn-jackpot-confirm').disabled = !currentSession.jackpot_unlocked || currentSession.free_spin_confirmed;
+                const mobileStart = document.getElementById('mobile-btn-start');
+                const mobileStop = document.getElementById('mobile-btn-stop');
+                if (mobileStart) mobileStart.disabled = currentSession.status === 'active' || !isEventActiveNow();
+                if (mobileStop) mobileStop.disabled = currentSession.status !== 'active' || (currentSession.reels || []).length === 0;
                 updateReelButtons();
             }
 
