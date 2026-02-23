@@ -337,42 +337,6 @@ begin
 
     v_reel_index := v_session.current_reel;
 
-    if v_session.jackpot_unlocked = true and v_session.free_spin_confirmed = false then
-        update public.slot_sessions
-        set free_spin_confirmed = true,
-            free_spin_active = true,
-            free_spins_remaining = 3,
-            free_spin_round = 1,
-            current_reel = 1,
-            updated_at = now()
-        where id = v_session.id;
-
-        select * into v_session
-        from public.slot_sessions
-        where id = v_session.id;
-
-        v_reels := coalesce(v_session.reels_state, '[]'::jsonb);
-
-        return jsonb_build_object(
-            'ok', true,
-            'session', jsonb_build_object(
-                'id', v_session.id,
-                'status', v_session.status,
-                'cost', v_session.cost,
-                'current_reel', v_session.current_reel,
-                'jackpot_hits', v_session.jackpot_hits,
-                'jackpot_unlocked', v_session.jackpot_unlocked,
-                'free_spin_confirmed', v_session.free_spin_confirmed,
-                'free_spin_active', v_session.free_spin_active,
-                'free_spins_remaining', v_session.free_spins_remaining,
-                'free_spin_round', v_session.free_spin_round,
-                'created_at', v_session.created_at
-            ),
-            'reels', v_reels,
-            'already_spun', true
-        );
-    end if;
-
     v_reels := coalesce(v_session.reels_state, '[]'::jsonb);
     select elem into v_existing
     from jsonb_array_elements(v_reels) elem
@@ -580,16 +544,6 @@ begin
                     jackpot_unlocked = (v_new_hits >= 3),
                     updated_at = now()
                 where id = v_session.id;
-                if v_new_hits >= 3 then
-                    update public.slot_sessions
-                    set free_spin_confirmed = true,
-                        free_spin_active = true,
-                        free_spins_remaining = 3,
-                        free_spin_round = 1,
-                        current_reel = 1,
-                        updated_at = now()
-                    where id = v_session.id;
-                end if;
             end if;
         end if;
     end if;
@@ -747,6 +701,36 @@ begin
             'free_spin_round', v_session.free_spin_round,
             'created_at', v_session.created_at
         ), 'payout', v_session.payout_summary, 'outcome', 'cashed_out');
+    end if;
+
+    if v_session.jackpot_hits >= 3 and v_session.free_spin_confirmed = false then
+        update public.slot_sessions
+        set free_spin_confirmed = true,
+            free_spin_active = true,
+            free_spins_remaining = 3,
+            free_spin_round = 1,
+            current_reel = 1,
+            updated_at = now()
+        where id = v_session.id;
+
+        select * into v_session from public.slot_sessions where id = v_session.id;
+
+        return jsonb_build_object(
+            'ok', true,
+            'session', jsonb_build_object(
+                'id', v_session.id, 'status', v_session.status, 'cost', v_session.cost,
+                'current_reel', v_session.current_reel,
+                'jackpot_hits', v_session.jackpot_hits,
+                'jackpot_unlocked', v_session.jackpot_unlocked,
+                'free_spin_confirmed', v_session.free_spin_confirmed,
+                'free_spin_active', v_session.free_spin_active,
+                'free_spins_remaining', v_session.free_spins_remaining,
+                'free_spin_round', v_session.free_spin_round,
+                'created_at', v_session.created_at
+            ),
+            'payout', '[]'::jsonb,
+            'outcome', 'free_spin'
+        );
     end if;
 
     -- マルチプライヤー判定：multiplier報酬がある場合、倍率を取得

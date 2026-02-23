@@ -65,6 +65,56 @@
             font-weight: 600;
         }
 
+        .free-spin-cutin {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            background: radial-gradient(circle at center, rgba(246, 196, 83, 0.35), rgba(9, 12, 18, 0.85));
+            backdrop-filter: blur(2px);
+        }
+
+        .free-spin-cutin.show {
+            display: flex;
+            animation: cutin-fade 1.6s ease forwards;
+        }
+
+        .free-spin-cutin .cutin-card {
+            padding: 22px 32px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, #f8d47c 0%, #f0b741 50%, #d98c0d 100%);
+            color: #1a1306;
+            font-family: var(--slot-font-title);
+            font-size: clamp(1.4rem, 4vw, 2.2rem);
+            letter-spacing: 0.12em;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            transform: scale(0.9);
+            animation: cutin-pop 0.6s ease forwards;
+        }
+
+        @keyframes cutin-pop {
+            to {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes cutin-fade {
+            0% {
+                opacity: 0;
+            }
+            15% {
+                opacity: 1;
+            }
+            85% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0;
+            }
+        }
+
         .reel-stage {
             display: grid;
             grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -145,6 +195,28 @@
         .reel-col.bust .reel-window {
             box-shadow: inset 0 0 0 1px rgba(220, 53, 69, 0.6);
             color: #ffb3b3;
+        }
+
+        .reel-stage.free-spin .reel-col {
+            border: 1px solid rgba(246, 196, 83, 0.45);
+            background: linear-gradient(160deg, rgba(246, 196, 83, 0.08), rgba(255, 255, 255, 0.04));
+            box-shadow: 0 12px 26px rgba(246, 196, 83, 0.12);
+        }
+
+        .reel-stage.free-spin .reel-window {
+            box-shadow: 0 0 18px rgba(246, 196, 83, 0.4), inset 0 0 12px rgba(246, 196, 83, 0.25);
+            border-color: rgba(246, 196, 83, 0.5);
+            animation: free-glow 2.2s ease-in-out infinite;
+        }
+
+        @keyframes free-glow {
+            0%,
+            100% {
+                filter: drop-shadow(0 0 0 rgba(246, 196, 83, 0.2));
+            }
+            50% {
+                filter: drop-shadow(0 0 8px rgba(246, 196, 83, 0.6));
+            }
         }
 
         .reel-label {
@@ -384,6 +456,10 @@
         </div>
     </div>
 
+    <div class="free-spin-cutin" id="free-spin-cutin">
+        <div class="cutin-card">FREE SPIN!!</div>
+    </div>
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -396,6 +472,7 @@
         let currentSession = null;
         let eventSettings = null;
         let isProcessing = false;
+        let wasFreeSpinActive = false;
         const JACKPOT_SYMBOL = '🎰';
         const reelSymbols = ['🪙', '🎫', '🧧', '🪙', '🎫', '🧧', '🪙', JACKPOT_SYMBOL, '☠', '🪙'];
 
@@ -546,6 +623,8 @@
                 messageEl.textContent = '';
                 payoutSummary.style.display = 'none';
                 burstBanner.style.display = 'none';
+                if (stageEl) stageEl.classList.remove('free-spin');
+                wasFreeSpinActive = false;
                 // no jackpot stage
                 setProcessing(false);
                 document.getElementById('btn-start').disabled = !isEventActiveNow();
@@ -583,6 +662,15 @@
             burstBanner.style.display = currentSession.status === 'bust' ? 'block' : 'none';
             payoutSummary.style.display = 'none';
             payoutList.innerHTML = '';
+
+            if (stageEl) {
+                stageEl.classList.toggle('free-spin', !!currentSession.free_spin_active);
+            }
+
+            if (!wasFreeSpinActive && currentSession.free_spin_active) {
+                showFreeSpinCutin();
+            }
+            wasFreeSpinActive = !!currentSession.free_spin_active;
 
             if (spinLocked) {
                 sessionStatusEl.textContent = '回転中';
@@ -891,6 +979,17 @@
                 const reelIndex = Number(btn.getAttribute('data-reel-btn'));
                 btn.disabled = isProcessing || !currentSession || currentSession.status !== 'active' || reelIndex !== current;
             });
+        }
+
+        function showFreeSpinCutin() {
+            const cutin = document.getElementById('free-spin-cutin');
+            if (!cutin) return;
+            cutin.classList.remove('show');
+            void cutin.offsetWidth;
+            cutin.classList.add('show');
+            setTimeout(() => {
+                cutin.classList.remove('show');
+            }, 1600);
         }
 
         function setupAdminReelEditor() {
