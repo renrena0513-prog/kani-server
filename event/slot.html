@@ -481,6 +481,8 @@
         }
 
         const SPIN_DURATION_MS = 1600;
+        let spinLockUntil = 0;
+        let lastSpinReel = null;
 
         async function spinReel(reelIndex) {
             if (isProcessing || !currentSession) return;
@@ -514,12 +516,12 @@
                     await refreshCoinBalance();
                 }
 
-                setTimeout(updateUI, SPIN_DURATION_MS);
+                updateUI();
             } catch (err) {
                 console.error(err);
                 document.getElementById('session-message').textContent = 'リール停止に失敗しました。';
                 setProcessing(false);
-                setTimeout(updateUI, SPIN_DURATION_MS);
+                updateUI();
             }
         }
 
@@ -632,6 +634,10 @@
                 col.classList.remove('done', 'bust');
                 windowEl.classList.remove('spinning');
                 windowEl.classList.remove('stopped');
+                const stillSpinning = lastSpinReel === reelIndex && Date.now() < spinLockUntil;
+                if (stillSpinning) {
+                    windowEl.classList.add('spinning');
+                }
                 if (!reel) {
                     resultEl.textContent = '未停止';
                     if (stopEl) stopEl.textContent = '';
@@ -654,12 +660,16 @@
                         stopEl.textContent = '🎁';
                     }
                 }
-                windowEl.classList.add('stopped');
+                if (!stillSpinning) {
+                    windowEl.classList.add('stopped');
+                }
             });
         }
 
         function animateSpinSequence(targetReel) {
             const index = Math.max(1, Math.min(7, targetReel));
+            spinLockUntil = Date.now() + SPIN_DURATION_MS;
+            lastSpinReel = index;
             for (let i = 1; i <= 7; i++) {
                 const col = document.querySelector(`.reel-col[data-reel-index="${i}"]`);
                 if (!col) continue;
@@ -669,7 +679,10 @@
                 if (i === index) {
                     if (stopEl) stopEl.textContent = '';
                     windowEl.classList.add('spinning');
-                    setTimeout(() => windowEl.classList.remove('spinning'), SPIN_DURATION_MS);
+                    setTimeout(() => {
+                        windowEl.classList.remove('spinning');
+                        updateUI();
+                    }, SPIN_DURATION_MS);
                 }
             }
         }
