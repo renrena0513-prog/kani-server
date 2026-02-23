@@ -541,7 +541,7 @@ begin
                 set current_reel = v_reel_index + 1,
                     reels_state = v_reels,
                     jackpot_hits = v_new_hits,
-                    jackpot_unlocked = (v_new_hits >= 3),
+                    jackpot_unlocked = false,
                     updated_at = now()
                 where id = v_session.id;
             end if;
