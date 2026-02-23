@@ -375,6 +375,10 @@
             return true;
         }
 
+        function isSpinLocked() {
+            return lastSpinReel !== null && Date.now() < spinLockUntil;
+        }
+
         function updateUI() {
             const reels = currentSession?.reels || [];
             const currentReelEl = document.getElementById('current-reel');
@@ -385,6 +389,7 @@
             const burstBanner = document.getElementById('burst-banner');
             const messageEl = document.getElementById('session-message');
             const totalEl = document.getElementById('reward-total');
+            const spinLocked = isSpinLocked();
 
             if (!currentSession) {
                 currentReelEl.textContent = '-';
@@ -420,6 +425,11 @@
             payoutSummary.style.display = 'none';
             payoutList.innerHTML = '';
 
+            if (spinLocked) {
+                sessionStatusEl.textContent = '回転中';
+                burstBanner.style.display = 'none';
+            }
+
             if (currentSession.status === 'cashed_out') {
                 payoutSummary.style.display = 'block';
                 const payoutItems = currentSession.payout || [];
@@ -437,10 +447,17 @@
             }
 
             messageEl.textContent = '';
-            setProcessing(false);
-            document.getElementById('btn-start').disabled = currentSession.status === 'active' || !isEventActiveNow();
-            document.getElementById('btn-jackpot-confirm').disabled = !currentSession.jackpot_unlocked || currentSession.free_spin_confirmed;
-            updateReelButtons();
+            if (spinLocked) {
+                setProcessing(true);
+                document.getElementById('btn-start').disabled = true;
+                document.getElementById('btn-jackpot-confirm').disabled = true;
+                updateReelButtons();
+            } else {
+                setProcessing(false);
+                document.getElementById('btn-start').disabled = currentSession.status === 'active' || !isEventActiveNow();
+                document.getElementById('btn-jackpot-confirm').disabled = !currentSession.jackpot_unlocked || currentSession.free_spin_confirmed;
+                updateReelButtons();
+            }
 
             if (totalEl) {
                 const totals = { coin: 0, gacha_ticket: 0, mangan_ticket: 0 };
