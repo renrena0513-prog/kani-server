@@ -264,6 +264,11 @@
                 <span class="slot-muted">管理者のみ表示</span>
             </div>
             <div class="d-flex flex-wrap align-items-center gap-2">
+                <label class="slot-muted" for="admin-reel-mode">種別</label>
+                <select id="admin-reel-mode" class="form-select form-select-sm" style="width: 150px;">
+                    <option value="normal">通常リール</option>
+                    <option value="free">フリースピン</option>
+                </select>
                 <label class="slot-muted" for="admin-reel-select">対象リール</label>
                 <select id="admin-reel-select" class="form-select form-select-sm" style="width: 120px;"></select>
                 <button class="btn btn-sm btn-outline-light" id="admin-reel-load" type="button">読み込み</button>
@@ -276,8 +281,8 @@
                         <tr>
                             <th style="width: 70px;">位置</th>
                             <th style="width: 80px;">有効</th>
-                            <th style="width: 90px;">バースト</th>
-                            <th style="width: 110px;">ジャックポット</th>
+                            <th style="width: 90px;" data-admin-col="bust">バースト</th>
+                            <th style="width: 110px;" data-admin-col="jackpot">ジャックポット</th>
                             <th style="width: 160px;">報酬タイプ</th>
                             <th>報酬名</th>
                             <th style="width: 110px;">数量</th>
@@ -762,7 +767,26 @@
             document.getElementById('admin-reel-load').addEventListener('click', () => loadAdminReel());
             document.getElementById('admin-reel-save').addEventListener('click', () => saveAdminReel());
             selectEl.addEventListener('change', () => loadAdminReel());
+            const modeEl = document.getElementById('admin-reel-mode');
+            if (modeEl) {
+                modeEl.addEventListener('change', () => {
+                    updateAdminColumnVisibility(getAdminMode());
+                    loadAdminReel();
+                });
+            }
+            updateAdminColumnVisibility(getAdminMode());
             loadAdminReel();
+        }
+
+        function getAdminMode() {
+            return document.getElementById('admin-reel-mode')?.value || 'normal';
+        }
+
+        function updateAdminColumnVisibility(mode) {
+            const showSpecial = mode === 'normal';
+            document.querySelectorAll('[data-admin-col="bust"], [data-admin-col="jackpot"]').forEach(el => {
+                el.style.display = showSpecial ? '' : 'none';
+            });
         }
 
         function setAdminStatus(message) {
@@ -773,15 +797,17 @@
         async function loadAdminReel() {
             const selectEl = document.getElementById('admin-reel-select');
             const reelIndex = Number(selectEl?.value || 1);
+            const mode = getAdminMode();
             setAdminStatus('読み込み中...');
             try {
+                const tableName = mode === 'free' ? 'slot_free_reel_positions' : 'slot_reel_positions';
                 const { data, error } = await supabaseClient
-                    .from('slot_reel_positions')
+                    .from(tableName)
                     .select('*')
                     .eq('reel_index', reelIndex)
                     .order('position_index', { ascending: true });
                 if (error) throw error;
-                renderAdminReelRows(data || []);
+                renderAdminReelRows(data || [], mode);
                 setAdminStatus('読み込み完了');
             } catch (err) {
                 console.error(err);
@@ -789,7 +815,7 @@
             }
         }
 
-        function renderAdminReelRows(rows) {
+        function renderAdminReelRows(rows, mode) {
             const body = document.getElementById('admin-reel-body');
             if (!body) return;
             body.innerHTML = (rows || []).map(row => {
@@ -797,12 +823,15 @@
                 const rewardName = row.reward_name || '';
                 const rewardId = row.reward_id || '';
                 const amount = row.amount ?? '';
+                const isBust = row.is_bust || false;
+                const isJackpot = row.is_jackpot || false;
+                const hideSpecial = mode === 'free' ? 'style="display:none;"' : '';
                 return `
                     <tr data-position="${row.position_index}">
                         <td class="text-muted">#${row.position_index}</td>
                         <td><input type="checkbox" class="form-check-input admin-active" ${row.is_active ? 'checked' : ''}></td>
-                        <td><input type="checkbox" class="form-check-input admin-bust" ${row.is_bust ? 'checked' : ''}></td>
-                        <td><input type="checkbox" class="form-check-input admin-jackpot" ${row.is_jackpot ? 'checked' : ''}></td>
+                        <td data-admin-col="bust" ${hideSpecial}><input type="checkbox" class="form-check-input admin-bust" ${isBust ? 'checked' : ''}></td>
+                        <td data-admin-col="jackpot" ${hideSpecial}><input type="checkbox" class="form-check-input admin-jackpot" ${isJackpot ? 'checked' : ''}></td>
                         <td>
                             <select class="form-select form-select-sm admin-reward-type">
                                 <option value="">なし</option>
@@ -830,12 +859,13 @@
                 const rewardIdEl = row.querySelector('.admin-reward-id');
 
                 const applyRowState = () => {
-                    const isBust = bustEl?.checked;
-                    if (isBust && jackpotEl) jackpotEl.checked = false;
-                    if (rewardTypeEl) rewardTypeEl.disabled = !!isBust;
-                    if (rewardNameEl) rewardNameEl.disabled = !!isBust;
-                    if (amountEl) amountEl.disabled = !!isBust;
-                    if (rewardIdEl) rewardIdEl.disabled = !!isBust;
+                    const isBustChecked = bustEl?.checked;
+                    if (isBustChecked && jackpotEl) jackpotEl.checked = false;
+                    const disableRewards = mode === 'free' ? false : !!isBustChecked;
+                    if (rewardTypeEl) rewardTypeEl.disabled = disableRewards;
+                    if (rewardNameEl) rewardNameEl.disabled = disableRewards;
+                    if (amountEl) amountEl.disabled = disableRewards;
+                    if (rewardIdEl) rewardIdEl.disabled = disableRewards;
                 };
 
                 const clearBust = () => {
@@ -852,6 +882,7 @@
         async function saveAdminReel() {
             const selectEl = document.getElementById('admin-reel-select');
             const reelIndex = Number(selectEl?.value || 1);
+            const mode = getAdminMode();
             const body = document.getElementById('admin-reel-body');
             if (!body) return;
 
@@ -859,8 +890,8 @@
             body.querySelectorAll('tr').forEach(row => {
                 const positionIndex = Number(row.getAttribute('data-position'));
                 const isActive = row.querySelector('.admin-active')?.checked ?? false;
-                const isBust = row.querySelector('.admin-bust')?.checked ?? false;
-                const isJackpot = !isBust && (row.querySelector('.admin-jackpot')?.checked ?? false);
+                const isBust = mode === 'free' ? false : (row.querySelector('.admin-bust')?.checked ?? false);
+                const isJackpot = mode === 'free' ? false : (!isBust && (row.querySelector('.admin-jackpot')?.checked ?? false));
                 const rewardTypeRaw = row.querySelector('.admin-reward-type')?.value || '';
                 const rewardType = isBust ? null : (rewardTypeRaw || null);
                 const rewardNameRaw = row.querySelector('.admin-reward-name')?.value?.trim() || '';
@@ -870,23 +901,27 @@
                 const amountRaw = row.querySelector('.admin-amount')?.value;
                 const amountVal = isBust ? 0 : Number(amountRaw || 0);
 
-                payload.push({
+                const rowData = {
                     reel_index: reelIndex,
                     position_index: positionIndex,
                     is_active: isActive,
-                    is_bust: isBust,
-                    is_jackpot: isJackpot,
                     reward_type: rewardType,
                     reward_name: rewardName,
                     reward_id: rewardId,
                     amount: amountVal
-                });
+                };
+                if (mode !== 'free') {
+                    rowData.is_bust = isBust;
+                    rowData.is_jackpot = isJackpot;
+                }
+                payload.push(rowData);
             });
 
             setAdminStatus('保存中...');
             try {
+                const tableName = mode === 'free' ? 'slot_free_reel_positions' : 'slot_reel_positions';
                 const { error } = await supabaseClient
-                    .from('slot_reel_positions')
+                    .from(tableName)
                     .upsert(payload, { onConflict: 'reel_index,position_index' });
                 if (error) throw error;
                 setAdminStatus('保存完了');
