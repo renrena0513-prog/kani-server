@@ -510,10 +510,10 @@ begin
                 update public.slot_sessions
                 set reels_state = v_reels,
                     jackpot_hits = v_new_hits,
-                    jackpot_unlocked = (v_new_hits >= 4),
+                    jackpot_unlocked = (v_new_hits >= 3),
                     updated_at = now()
                 where id = v_session.id;
-                if v_new_hits < 4 then
+                if v_new_hits < 3 then
                     v_auto_cashout := true;
                     v_payout := public.slot_cashout(p_user_id, v_session.id)->'payout';
                 end if;
@@ -522,7 +522,7 @@ begin
                 set current_reel = v_reel_index + 1,
                     reels_state = v_reels,
                     jackpot_hits = v_new_hits,
-                    jackpot_unlocked = (v_new_hits >= 4),
+                    jackpot_unlocked = (v_new_hits >= 3),
                     updated_at = now()
                 where id = v_session.id;
             end if;
