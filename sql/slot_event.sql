@@ -542,6 +542,10 @@ begin
                     reels_state = v_reels,
                     jackpot_hits = v_new_hits,
                     jackpot_unlocked = false,
+                    free_spin_confirmed = false,
+                    free_spin_active = false,
+                    free_spins_remaining = 0,
+                    free_spin_round = 0,
                     updated_at = now()
                 where id = v_session.id;
             end if;

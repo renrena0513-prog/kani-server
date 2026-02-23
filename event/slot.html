@@ -473,6 +473,7 @@
         let eventSettings = null;
         let isProcessing = false;
         let wasFreeSpinActive = false;
+        let pendingFreeSpinCutin = false;
         const JACKPOT_SYMBOL = '🎰';
         const reelSymbols = ['🪙', '🎫', '🧧', '🪙', '🎫', '🧧', '🪙', JACKPOT_SYMBOL, '☠', '🪙'];
 
@@ -625,6 +626,7 @@
                 burstBanner.style.display = 'none';
                 if (stageEl) stageEl.classList.remove('free-spin');
                 wasFreeSpinActive = false;
+                pendingFreeSpinCutin = false;
                 // no jackpot stage
                 setProcessing(false);
                 document.getElementById('btn-start').disabled = !isEventActiveNow();
@@ -668,7 +670,16 @@
             }
 
             if (!wasFreeSpinActive && currentSession.free_spin_active) {
+                if (spinLocked) {
+                    pendingFreeSpinCutin = true;
+                } else {
+                    showFreeSpinCutin();
+                    pendingFreeSpinCutin = false;
+                }
+            }
+            if (!spinLocked && pendingFreeSpinCutin && currentSession.free_spin_active) {
                 showFreeSpinCutin();
+                pendingFreeSpinCutin = false;
             }
             wasFreeSpinActive = !!currentSession.free_spin_active;
 
