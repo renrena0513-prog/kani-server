@@ -563,16 +563,18 @@
                 return;
             }
 
-            if (currentSession.status === 'active') {
-                if (currentSession.free_spin_active) {
-                    currentReelEl.textContent = `フリースピン ${currentSession.free_spin_round} / 残り ${currentSession.free_spins_remaining} 回`;
+            if (!spinLocked) {
+                if (currentSession.status === 'active') {
+                    if (currentSession.free_spin_active) {
+                        currentReelEl.textContent = `フリースピン ${currentSession.free_spin_round} / 残り ${currentSession.free_spins_remaining} 回`;
+                    } else {
+                        currentReelEl.textContent = `第 ${currentSession.current_reel} リール`;
+                    }
                 } else {
-                    currentReelEl.textContent = `第 ${currentSession.current_reel} リール`;
+                    currentReelEl.textContent = '終了';
                 }
-            } else {
-                currentReelEl.textContent = '終了';
+                sessionStatusEl.textContent = currentSession.status === 'active' ? '進行中' : (currentSession.status === 'bust' ? 'バースト' : '精算済み');
             }
-            sessionStatusEl.textContent = currentSession.status === 'active' ? '進行中' : (currentSession.status === 'bust' ? 'バースト' : '精算済み');
 
             renderReelState(reels);
 
