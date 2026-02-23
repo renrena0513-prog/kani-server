@@ -474,6 +474,8 @@
         let isProcessing = false;
         let wasFreeSpinActive = false;
         let pendingFreeSpinCutin = false;
+        let freeSpinDisplayActive = false;
+        const CUTIN_DURATION_MS = 1600;
         const JACKPOT_SYMBOL = '🎰';
         const reelSymbols = ['🪙', '🎫', '🧧', '🪙', '🎫', '🧧', '🪙', JACKPOT_SYMBOL, '☠', '🪙'];
 
@@ -627,6 +629,7 @@
                 if (stageEl) stageEl.classList.remove('free-spin');
                 wasFreeSpinActive = false;
                 pendingFreeSpinCutin = false;
+                freeSpinDisplayActive = false;
                 // no jackpot stage
                 setProcessing(false);
                 document.getElementById('btn-start').disabled = !isEventActiveNow();
@@ -665,22 +668,31 @@
             payoutSummary.style.display = 'none';
             payoutList.innerHTML = '';
 
-            if (stageEl) {
-                stageEl.classList.toggle('free-spin', !!currentSession.free_spin_active);
-            }
-
             if (!wasFreeSpinActive && currentSession.free_spin_active) {
                 if (spinLocked) {
                     pendingFreeSpinCutin = true;
                 } else {
-                    showFreeSpinCutin();
-                    pendingFreeSpinCutin = false;
+                    pendingFreeSpinCutin = true;
                 }
             }
-            if (!spinLocked && pendingFreeSpinCutin && currentSession.free_spin_active) {
+
+            if (!spinLocked && pendingFreeSpinCutin && currentSession.free_spin_active && !freeSpinDisplayActive) {
                 showFreeSpinCutin();
                 pendingFreeSpinCutin = false;
+                setTimeout(() => {
+                    freeSpinDisplayActive = true;
+                    const stage = document.getElementById('reel-stage');
+                    if (stage) stage.classList.add('free-spin');
+                }, CUTIN_DURATION_MS);
             }
+
+            if (!currentSession.free_spin_active) {
+                freeSpinDisplayActive = false;
+                if (stageEl) stageEl.classList.remove('free-spin');
+            } else if (freeSpinDisplayActive && stageEl) {
+                stageEl.classList.add('free-spin');
+            }
+
             wasFreeSpinActive = !!currentSession.free_spin_active;
 
             if (spinLocked) {
