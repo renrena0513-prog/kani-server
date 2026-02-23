@@ -314,7 +314,7 @@
                 </div>
                 <div class="d-flex flex-wrap gap-2 slot-desktop-actions">
                     <button class="btn btn-slot" id="btn-start" onclick="startSession()">開始（100コイン消費）</button>
-                    <button class="btn btn-slot" id="btn-jackpot-confirm" onclick="confirmJackpot()"
+                    <button class="btn btn-slot d-none" id="btn-jackpot-confirm" onclick="confirmJackpot()"
                         disabled>フリースピンへ確定</button>
                     <button class="btn btn-slot-secondary" id="btn-stop" onclick="cashout()" disabled>ストップ（精算）</button>
                 </div>
@@ -504,7 +504,8 @@
             isProcessing = state;
             document.getElementById('btn-start').disabled = state;
             document.getElementById('btn-stop').disabled = state || !currentSession || currentSession.status !== 'active' || (currentSession.reels || []).length === 0;
-            document.getElementById('btn-jackpot-confirm').disabled = state || !currentSession || !currentSession.jackpot_unlocked || currentSession.free_spin_confirmed;
+            const jackpotBtn = document.getElementById('btn-jackpot-confirm');
+            if (jackpotBtn) jackpotBtn.disabled = state || !currentSession || !currentSession.jackpot_unlocked || currentSession.free_spin_confirmed;
             const mobileStart = document.getElementById('mobile-btn-start');
             const mobileStop = document.getElementById('mobile-btn-stop');
             if (mobileStart) mobileStart.disabled = state || !isEventActiveNow() || (currentSession && currentSession.status === 'active');
@@ -553,7 +554,8 @@
                 if (mobileStart) mobileStart.disabled = !isEventActiveNow();
                 if (mobileStop) mobileStop.disabled = true;
                 document.getElementById('btn-stop').disabled = true;
-                document.getElementById('btn-jackpot-confirm').disabled = true;
+                const jackpotBtn = document.getElementById('btn-jackpot-confirm');
+                if (jackpotBtn) jackpotBtn.disabled = true;
                 renderReelState(reels);
                 updateReelButtons();
                 if (multiplierEl) multiplierEl.textContent = '×1.0';
@@ -607,7 +609,8 @@
             if (spinLocked) {
                 setProcessing(true);
                 document.getElementById('btn-start').disabled = true;
-                document.getElementById('btn-jackpot-confirm').disabled = true;
+                const jackpotBtn = document.getElementById('btn-jackpot-confirm');
+                if (jackpotBtn) jackpotBtn.disabled = true;
                 const mobileStart = document.getElementById('mobile-btn-start');
                 const mobileStop = document.getElementById('mobile-btn-stop');
                 if (mobileStart) mobileStart.disabled = true;
@@ -616,7 +619,8 @@
             } else {
                 setProcessing(false);
                 document.getElementById('btn-start').disabled = currentSession.status === 'active' || !isEventActiveNow();
-                document.getElementById('btn-jackpot-confirm').disabled = !currentSession.jackpot_unlocked || currentSession.free_spin_confirmed;
+                const jackpotBtn = document.getElementById('btn-jackpot-confirm');
+                if (jackpotBtn) jackpotBtn.disabled = !currentSession.jackpot_unlocked || currentSession.free_spin_confirmed;
                 const mobileStart = document.getElementById('mobile-btn-start');
                 const mobileStop = document.getElementById('mobile-btn-stop');
                 if (mobileStart) mobileStart.disabled = currentSession.status === 'active' || !isEventActiveNow();
@@ -646,10 +650,6 @@
                 const totalText = `🪙 ${totals.coin} / 🎫 ${totals.gacha_ticket} / 🧧 ${totals.mangan_ticket}`;
                 if (totalEl) totalEl.textContent = totalText;
                 if (mobileTotalEl) mobileTotalEl.textContent = totalText;
-            }
-
-            if (currentSession.jackpot_unlocked && !currentSession.free_spin_confirmed) {
-                messageEl.textContent = '⚠️ フリースピンへ確定してください。';
             }
 
             if (currentSession.free_spin_active) {

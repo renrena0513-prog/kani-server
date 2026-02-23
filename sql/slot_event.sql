@@ -338,7 +338,39 @@ begin
     v_reel_index := v_session.current_reel;
 
     if v_session.jackpot_unlocked = true and v_session.free_spin_confirmed = false then
-        return jsonb_build_object('ok', false, 'error', 'JACKPOT_CONFIRM_REQUIRED');
+        update public.slot_sessions
+        set free_spin_confirmed = true,
+            free_spin_active = true,
+            free_spins_remaining = 5,
+            free_spin_round = 1,
+            current_reel = 1,
+            updated_at = now()
+        where id = v_session.id;
+
+        select * into v_session
+        from public.slot_sessions
+        where id = v_session.id;
+
+        v_reels := coalesce(v_session.reels_state, '[]'::jsonb);
+
+        return jsonb_build_object(
+            'ok', true,
+            'session', jsonb_build_object(
+                'id', v_session.id,
+                'status', v_session.status,
+                'cost', v_session.cost,
+                'current_reel', v_session.current_reel,
+                'jackpot_hits', v_session.jackpot_hits,
+                'jackpot_unlocked', v_session.jackpot_unlocked,
+                'free_spin_confirmed', v_session.free_spin_confirmed,
+                'free_spin_active', v_session.free_spin_active,
+                'free_spins_remaining', v_session.free_spins_remaining,
+                'free_spin_round', v_session.free_spin_round,
+                'created_at', v_session.created_at
+            ),
+            'reels', v_reels,
+            'already_spun', true
+        );
     end if;
 
     v_reels := coalesce(v_session.reels_state, '[]'::jsonb);
@@ -497,14 +529,28 @@ begin
         v_new_hits := v_session.jackpot_hits + case when v_position.is_jackpot then 1 else 0 end;
 
         if v_position.is_bust then
-            update public.slot_sessions
-            set status = 'bust',
-                bust_reel = v_reel_index,
-                bust_position_id = v_position.id,
-                reels_state = v_reels,
-                updated_at = now(),
-                ended_at = now()
-            where id = v_session.id;
+            if v_new_hits >= 3 then
+                update public.slot_sessions
+                set reels_state = v_reels,
+                    jackpot_hits = v_new_hits,
+                    jackpot_unlocked = true,
+                    free_spin_confirmed = true,
+                    free_spin_active = true,
+                    free_spins_remaining = 5,
+                    free_spin_round = 1,
+                    current_reel = 1,
+                    updated_at = now()
+                where id = v_session.id;
+            else
+                update public.slot_sessions
+                set status = 'bust',
+                    bust_reel = v_reel_index,
+                    bust_position_id = v_position.id,
+                    reels_state = v_reels,
+                    updated_at = now(),
+                    ended_at = now()
+                where id = v_session.id;
+            end if;
         else
             if v_reel_index >= 7 then
                 update public.slot_sessions
@@ -516,6 +562,15 @@ begin
                 if v_new_hits < 3 then
                     v_auto_cashout := true;
                     v_payout := public.slot_cashout(p_user_id, v_session.id)->'payout';
+                else
+                    update public.slot_sessions
+                    set free_spin_confirmed = true,
+                        free_spin_active = true,
+                        free_spins_remaining = 5,
+                        free_spin_round = 1,
+                        current_reel = 1,
+                        updated_at = now()
+                    where id = v_session.id;
                 end if;
             else
                 update public.slot_sessions
@@ -525,6 +580,16 @@ begin
                     jackpot_unlocked = (v_new_hits >= 3),
                     updated_at = now()
                 where id = v_session.id;
+                if v_new_hits >= 3 then
+                    update public.slot_sessions
+                    set free_spin_confirmed = true,
+                        free_spin_active = true,
+                        free_spins_remaining = 5,
+                        free_spin_round = 1,
+                        current_reel = 1,
+                        updated_at = now()
+                    where id = v_session.id;
+                end if;
             end if;
         end if;
     end if;
