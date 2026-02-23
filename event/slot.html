@@ -201,6 +201,36 @@
             background: transparent;
             font-weight: 600;
         }
+
+        @media (max-width: 768px) {
+            .reel-stage {
+                grid-template-columns: none;
+                grid-auto-flow: column;
+                grid-auto-columns: minmax(120px, 1fr);
+                gap: 14px;
+                overflow-x: auto;
+                padding-bottom: 8px;
+                scroll-snap-type: x proximity;
+            }
+
+            .reel-col {
+                scroll-snap-align: center;
+                padding: 10px 8px;
+            }
+
+            .reel-window {
+                height: clamp(90px, 26vw, 120px);
+                font-size: clamp(2rem, 7vw, 2.6rem);
+            }
+
+            .reel-label {
+                font-size: 0.75rem;
+            }
+
+            .reel-result {
+                font-size: 0.8rem;
+            }
+        }
     </style>
 </head>
 
