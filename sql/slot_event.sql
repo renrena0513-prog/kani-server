@@ -307,6 +307,7 @@ declare
     v_new_hits integer := 0;
     v_remaining integer := 0;
     v_round integer := 0;
+    v_result_json jsonb := '{}'::jsonb;
 begin
     perform pg_advisory_xact_lock(hashtext('slot:' || p_user_id));
 
@@ -501,6 +502,28 @@ begin
     from public.slot_sessions
     where id = v_session.id;
 
+    if v_session.free_spin_active then
+        v_result_json := jsonb_build_object(
+            'reel_index', v_reel_index,
+            'position_id', v_free_position.id,
+            'is_bust', false,
+            'reward_type', v_free_position.reward_type,
+            'reward_name', v_free_position.reward_name,
+            'reward_id', v_free_position.reward_id,
+            'amount', v_free_position.amount
+        );
+    else
+        v_result_json := jsonb_build_object(
+            'reel_index', v_reel_index,
+            'position_id', v_position.id,
+            'is_bust', v_position.is_bust,
+            'reward_type', v_position.reward_type,
+            'reward_name', v_position.reward_name,
+            'reward_id', v_position.reward_id,
+            'amount', v_position.amount
+        );
+    end if;
+
     return jsonb_build_object(
         'ok', true,
         'session', jsonb_build_object(
@@ -516,27 +539,7 @@ begin
             'free_spin_round', v_session.free_spin_round,
             'created_at', v_session.created_at
         ),
-        'result', case when v_session.free_spin_active then
-            jsonb_build_object(
-                'reel_index', v_reel_index,
-                'position_id', v_free_position.id,
-                'is_bust', false,
-                'reward_type', v_free_position.reward_type,
-                'reward_name', v_free_position.reward_name,
-                'reward_id', v_free_position.reward_id,
-                'amount', v_free_position.amount
-            )
-        else
-            jsonb_build_object(
-                'reel_index', v_reel_index,
-                'position_id', v_position.id,
-                'is_bust', v_position.is_bust,
-                'reward_type', v_position.reward_type,
-                'reward_name', v_position.reward_name,
-                'reward_id', v_position.reward_id,
-                'amount', v_position.amount
-            )
-        end,
+        'result', v_result_json,
         'reels', v_reels,
         'auto_cashout', v_auto_cashout,
         'payout', v_payout
