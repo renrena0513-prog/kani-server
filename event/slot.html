@@ -919,10 +919,13 @@
 
         function renderReelState(reels) {
             const reelMap = new Map();
+            const displayFreeSpin = !!currentSession?.free_spin_active && freeSpinDisplayActive;
             (reels || []).forEach(reel => {
-                const round = Number(reel.free_spin_round || 0);
-                if (round !== Number(currentSession?.free_spin_round || 0) && currentSession?.free_spin_active) {
-                    return;
+                if (displayFreeSpin) {
+                    const round = Number(reel.free_spin_round || 0);
+                    if (round !== Number(currentSession?.free_spin_round || 0)) {
+                        return;
+                    }
                 }
                 reelMap.set(reel.reel_index, reel);
             });
