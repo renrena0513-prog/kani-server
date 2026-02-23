@@ -49,19 +49,36 @@ create table if not exists public.slot_jackpot_positions (
     unique (position_index)
 );
 
+create table if not exists public.slot_free_reel_positions (
+    id uuid primary key default gen_random_uuid(),
+    reel_index integer not null check (reel_index between 1 and 7),
+    position_index integer not null check (position_index between 1 and 10),
+    reward_type text,
+    reward_name text,
+    reward_id text,
+    amount integer default 0,
+    is_active boolean not null default true,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    unique (reel_index, position_index)
+);
+
 create table if not exists public.slot_sessions (
     id uuid primary key default gen_random_uuid(),
     user_id text not null,
     account_name text,
     status text not null default 'active' check (status in ('active', 'bust', 'cashed_out')),
     cost integer not null,
-    current_reel integer not null default 1 check (current_reel between 1 and 8),
+    current_reel integer not null default 1 check (current_reel between 1 and 7),
     bust_reel integer,
     bust_position_id uuid,
     reels_state jsonb not null default '[]'::jsonb,
     jackpot_hits integer not null default 0,
     jackpot_unlocked boolean not null default false,
-    jackpot_confirmed boolean not null default false,
+    free_spin_confirmed boolean not null default false,
+    free_spin_active boolean not null default false,
+    free_spins_remaining integer not null default 0,
+    free_spin_round integer not null default 0,
     payout_summary jsonb not null default '{}'::jsonb,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
@@ -78,10 +95,13 @@ alter table public.slot_sessions add column if not exists account_name text;
 alter table public.slot_sessions add column if not exists reels_state jsonb default '[]'::jsonb;
 alter table public.slot_sessions add column if not exists jackpot_hits integer default 0;
 alter table public.slot_sessions add column if not exists jackpot_unlocked boolean default false;
-alter table public.slot_sessions add column if not exists jackpot_confirmed boolean default false;
+alter table public.slot_sessions add column if not exists free_spin_confirmed boolean default false;
+alter table public.slot_sessions add column if not exists free_spin_active boolean default false;
+alter table public.slot_sessions add column if not exists free_spins_remaining integer default 0;
+alter table public.slot_sessions add column if not exists free_spin_round integer default 0;
 alter table public.slot_reel_positions add column if not exists is_jackpot boolean default false;
 alter table public.slot_sessions drop constraint if exists slot_sessions_current_reel_check;
-alter table public.slot_sessions add constraint slot_sessions_current_reel_check check (current_reel between 1 and 8);
+alter table public.slot_sessions add constraint slot_sessions_current_reel_check check (current_reel between 1 and 7);
 
 
 -- =============================
@@ -131,7 +151,10 @@ begin
             'current_reel', v_session.current_reel,
             'jackpot_hits', v_session.jackpot_hits,
             'jackpot_unlocked', v_session.jackpot_unlocked,
-            'jackpot_confirmed', v_session.jackpot_confirmed,
+            'free_spin_confirmed', v_session.free_spin_confirmed,
+            'free_spin_active', v_session.free_spin_active,
+            'free_spins_remaining', v_session.free_spins_remaining,
+            'free_spin_round', v_session.free_spin_round,
             'created_at', v_session.created_at
         ),
         'reels', v_reels
@@ -193,7 +216,10 @@ begin
             'current_reel', v_session.current_reel,
             'jackpot_hits', v_session.jackpot_hits,
             'jackpot_unlocked', v_session.jackpot_unlocked,
-            'jackpot_confirmed', v_session.jackpot_confirmed,
+            'free_spin_confirmed', v_session.free_spin_confirmed,
+            'free_spin_active', v_session.free_spin_active,
+            'free_spins_remaining', v_session.free_spins_remaining,
+            'free_spin_round', v_session.free_spin_round,
             'created_at', v_session.created_at
         ),
         'reels', v_reels,
@@ -224,8 +250,8 @@ begin
     limit 1;
 
     begin
-        insert into public.slot_sessions (user_id, account_name, status, cost, current_reel, reels_state, jackpot_hits, jackpot_unlocked, jackpot_confirmed, created_at, updated_at)
-        values (p_user_id, v_account_name, 'active', v_settings.cost, 1, '[]'::jsonb, 0, false, false, v_now, v_now)
+        insert into public.slot_sessions (user_id, account_name, status, cost, current_reel, reels_state, jackpot_hits, jackpot_unlocked, free_spin_confirmed, free_spin_active, free_spins_remaining, free_spin_round, created_at, updated_at)
+        values (p_user_id, v_account_name, 'active', v_settings.cost, 1, '[]'::jsonb, 0, false, false, false, 0, 0, v_now, v_now)
         returning * into v_session;
     exception when unique_violation then
         select * into v_session
@@ -244,7 +270,10 @@ begin
             'current_reel', v_session.current_reel,
             'jackpot_hits', v_session.jackpot_hits,
             'jackpot_unlocked', v_session.jackpot_unlocked,
-            'jackpot_confirmed', v_session.jackpot_confirmed,
+            'free_spin_confirmed', v_session.free_spin_confirmed,
+            'free_spin_active', v_session.free_spin_active,
+            'free_spins_remaining', v_session.free_spins_remaining,
+            'free_spin_round', v_session.free_spin_round,
             'created_at', v_session.created_at
         ),
         'reels', v_reels,
@@ -270,13 +299,14 @@ declare
     v_random_val integer;
     v_cumulative integer := 0;
     v_position record;
-    v_jp_pos record;
-    v_jp_reward record;
+    v_free_position record;
     v_existing jsonb;
     v_reels jsonb := '[]'::jsonb;
     v_payout jsonb := '[]'::jsonb;
     v_auto_cashout boolean := false;
     v_new_hits integer := 0;
+    v_remaining integer := 0;
+    v_round integer := 0;
 begin
     perform pg_advisory_xact_lock(hashtext('slot:' || p_user_id));
 
@@ -295,11 +325,7 @@ begin
 
     v_reel_index := v_session.current_reel;
 
-    if v_session.jackpot_unlocked = true and v_session.jackpot_confirmed = false and v_reel_index <= 7 then
-        return jsonb_build_object('ok', false, 'error', 'JACKPOT_CONFIRM_REQUIRED');
-    end if;
-
-    if v_reel_index = 8 and v_session.jackpot_confirmed = false then
+    if v_session.jackpot_unlocked = true and v_session.free_spin_confirmed = false then
         return jsonb_build_object('ok', false, 'error', 'JACKPOT_CONFIRM_REQUIRED');
     end if;
 
@@ -307,6 +333,7 @@ begin
     select elem into v_existing
     from jsonb_array_elements(v_reels) elem
     where (elem->>'reel_index')::int = v_reel_index
+      and coalesce((elem->>'free_spin_round')::int, 0) = v_session.free_spin_round
     limit 1;
 
     if v_existing is not null then
@@ -319,7 +346,10 @@ begin
                 'current_reel', v_session.current_reel,
                 'jackpot_hits', v_session.jackpot_hits,
                 'jackpot_unlocked', v_session.jackpot_unlocked,
-                'jackpot_confirmed', v_session.jackpot_confirmed,
+                'free_spin_confirmed', v_session.free_spin_confirmed,
+                'free_spin_active', v_session.free_spin_active,
+                'free_spins_remaining', v_session.free_spins_remaining,
+                'free_spin_round', v_session.free_spin_round,
                 'created_at', v_session.created_at
             ),
             'result', v_existing,
@@ -328,21 +358,21 @@ begin
         );
     end if;
 
-    if v_reel_index = 8 then
+    if v_session.free_spin_active = true then
         select count(*) into v_total_weight
-        from public.slot_jackpot_positions
-        where is_active = true;
+        from public.slot_free_reel_positions
+        where reel_index = v_reel_index and is_active = true;
 
         if v_total_weight is null or v_total_weight <= 0 then
-            return jsonb_build_object('ok', false, 'error', 'NO_JACKPOT_CONFIG');
+            return jsonb_build_object('ok', false, 'error', 'NO_FREE_REEL_CONFIG');
         end if;
 
         v_random_val := floor(public.slot_secure_random() * v_total_weight)::int;
 
-        for v_jp_pos in
+        for v_free_position in
             select *
-            from public.slot_jackpot_positions
-            where is_active = true
+            from public.slot_free_reel_positions
+            where reel_index = v_reel_index and is_active = true
             order by position_index
         loop
             v_cumulative := v_cumulative + 1;
@@ -351,37 +381,47 @@ begin
             end if;
         end loop;
 
-        if v_jp_pos.id is null then
-            return jsonb_build_object('ok', false, 'error', 'JACKPOT_SPIN_FAILED');
-        end if;
-
-        select * into v_jp_reward
-        from public.slot_jackpot_rewards
-        where id = v_jp_pos.jackpot_reward_id and is_active = true;
-
-        if not found then
-            return jsonb_build_object('ok', false, 'error', 'JACKPOT_REWARD_NOT_FOUND');
+        if v_free_position.id is null then
+            return jsonb_build_object('ok', false, 'error', 'SPIN_FAILED');
         end if;
 
         v_reels := v_reels || jsonb_build_array(jsonb_build_object(
             'reel_index', v_reel_index,
-            'position_id', v_jp_pos.id,
+            'position_id', v_free_position.id,
             'is_bust', false,
-            'is_jackpot', true,
-            'reward_type', v_jp_reward.reward_type,
-            'reward_name', v_jp_reward.reward_name,
-            'reward_id', v_jp_reward.reward_id,
-            'amount', v_jp_reward.amount
+            'is_jackpot', false,
+            'is_free_spin', true,
+            'free_spin_round', v_session.free_spin_round,
+            'reward_type', v_free_position.reward_type,
+            'reward_name', v_free_position.reward_name,
+            'reward_id', v_free_position.reward_id,
+            'amount', v_free_position.amount
         ));
 
-        update public.slot_sessions
-        set reels_state = v_reels,
-            updated_at = now()
-        where id = v_session.id;
+        if v_reel_index >= 7 then
+            v_remaining := greatest(v_session.free_spins_remaining - 1, 0);
+            v_round := v_session.free_spin_round + 1;
 
-        v_auto_cashout := true;
-        v_payout := public.slot_cashout(p_user_id, v_session.id)->'payout';
+            update public.slot_sessions
+            set reels_state = v_reels,
+                free_spins_remaining = v_remaining,
+                free_spin_round = v_round,
+                current_reel = case when v_remaining > 0 then 1 else v_session.current_reel end,
+                free_spin_active = case when v_remaining > 0 then true else false end,
+                updated_at = now()
+            where id = v_session.id;
 
+            if v_remaining <= 0 then
+                v_auto_cashout := true;
+                v_payout := public.slot_cashout(p_user_id, v_session.id)->'payout';
+            end if;
+        else
+            update public.slot_sessions
+            set current_reel = v_reel_index + 1,
+                reels_state = v_reels,
+                updated_at = now()
+            where id = v_session.id;
+        end if;
     else
         select count(*) into v_total_weight
         from public.slot_reel_positions
@@ -414,6 +454,8 @@ begin
             'position_id', v_position.id,
             'is_bust', v_position.is_bust,
             'is_jackpot', v_position.is_jackpot,
+            'is_free_spin', false,
+            'free_spin_round', 0,
             'reward_type', v_position.reward_type,
             'reward_name', v_position.reward_name,
             'reward_id', v_position.reward_id,
@@ -432,12 +474,11 @@ begin
                 ended_at = now()
             where id = v_session.id;
         else
-            if v_reel_index >= 7 and v_session.jackpot_confirmed = false then
+            if v_reel_index >= 7 then
                 update public.slot_sessions
                 set reels_state = v_reels,
                     jackpot_hits = v_new_hits,
                     jackpot_unlocked = (v_new_hits >= 4),
-                    current_reel = case when v_new_hits >= 4 then 8 else v_session.current_reel end,
                     updated_at = now()
                 where id = v_session.id;
                 if v_new_hits < 4 then
@@ -469,17 +510,20 @@ begin
             'current_reel', v_session.current_reel,
             'jackpot_hits', v_session.jackpot_hits,
             'jackpot_unlocked', v_session.jackpot_unlocked,
-            'jackpot_confirmed', v_session.jackpot_confirmed,
+            'free_spin_confirmed', v_session.free_spin_confirmed,
+            'free_spin_active', v_session.free_spin_active,
+            'free_spins_remaining', v_session.free_spins_remaining,
+            'free_spin_round', v_session.free_spin_round,
             'created_at', v_session.created_at
         ),
         'result', jsonb_build_object(
             'reel_index', v_reel_index,
-            'position_id', coalesce(v_position.id, v_jp_pos.id),
+            'position_id', coalesce(v_position.id, v_free_position.id),
             'is_bust', coalesce(v_position.is_bust, false),
-            'reward_type', coalesce(v_position.reward_type, v_jp_reward.reward_type),
-            'reward_name', coalesce(v_position.reward_name, v_jp_reward.reward_name),
-            'reward_id', coalesce(v_position.reward_id, v_jp_reward.reward_id),
-            'amount', coalesce(v_position.amount, v_jp_reward.amount)
+            'reward_type', coalesce(v_position.reward_type, v_free_position.reward_type),
+            'reward_name', coalesce(v_position.reward_name, v_free_position.reward_name),
+            'reward_id', coalesce(v_position.reward_id, v_free_position.reward_id),
+            'amount', coalesce(v_position.amount, v_free_position.amount)
         ),
         'reels', v_reels,
         'auto_cashout', v_auto_cashout,
@@ -521,13 +565,16 @@ begin
         return jsonb_build_object('ok', false, 'error', 'JACKPOT_NOT_UNLOCKED');
     end if;
 
-    if v_session.jackpot_confirmed = true then
-        return jsonb_build_object('ok', false, 'error', 'JACKPOT_ALREADY_CONFIRMED');
+    if v_session.free_spin_confirmed = true then
+        return jsonb_build_object('ok', false, 'error', 'FREE_SPIN_ALREADY_CONFIRMED');
     end if;
 
     update public.slot_sessions
-    set jackpot_confirmed = true,
-        current_reel = 8,
+    set free_spin_confirmed = true,
+        free_spin_active = true,
+        free_spins_remaining = 5,
+        free_spin_round = 1,
+        current_reel = 1,
         updated_at = now()
     where id = v_session.id;
 
@@ -546,7 +593,10 @@ begin
             'current_reel', v_session.current_reel,
             'jackpot_hits', v_session.jackpot_hits,
             'jackpot_unlocked', v_session.jackpot_unlocked,
-            'jackpot_confirmed', v_session.jackpot_confirmed,
+            'free_spin_confirmed', v_session.free_spin_confirmed,
+            'free_spin_active', v_session.free_spin_active,
+            'free_spins_remaining', v_session.free_spins_remaining,
+            'free_spin_round', v_session.free_spin_round,
             'created_at', v_session.created_at
         ),
         'reels', v_reels
@@ -586,7 +636,10 @@ begin
             'current_reel', v_session.current_reel,
             'jackpot_hits', v_session.jackpot_hits,
             'jackpot_unlocked', v_session.jackpot_unlocked,
-            'jackpot_confirmed', v_session.jackpot_confirmed,
+            'free_spin_confirmed', v_session.free_spin_confirmed,
+            'free_spin_active', v_session.free_spin_active,
+            'free_spins_remaining', v_session.free_spins_remaining,
+            'free_spin_round', v_session.free_spin_round,
             'created_at', v_session.created_at
         ), 'payout', '[]'::jsonb, 'outcome', 'bust');
     end if;
@@ -597,7 +650,10 @@ begin
             'current_reel', v_session.current_reel,
             'jackpot_hits', v_session.jackpot_hits,
             'jackpot_unlocked', v_session.jackpot_unlocked,
-            'jackpot_confirmed', v_session.jackpot_confirmed,
+            'free_spin_confirmed', v_session.free_spin_confirmed,
+            'free_spin_active', v_session.free_spin_active,
+            'free_spins_remaining', v_session.free_spins_remaining,
+            'free_spin_round', v_session.free_spin_round,
             'created_at', v_session.created_at
         ), 'payout', v_session.payout_summary, 'outcome', 'cashed_out');
     end if;
@@ -696,7 +752,10 @@ begin
             'current_reel', v_session.current_reel,
             'jackpot_hits', v_session.jackpot_hits,
             'jackpot_unlocked', v_session.jackpot_unlocked,
-            'jackpot_confirmed', v_session.jackpot_confirmed,
+            'free_spin_confirmed', v_session.free_spin_confirmed,
+            'free_spin_active', v_session.free_spin_active,
+            'free_spins_remaining', v_session.free_spins_remaining,
+            'free_spin_round', v_session.free_spin_round,
             'created_at', v_session.created_at
         ),
         'payout', v_summary,
@@ -803,29 +862,88 @@ update public.slot_reel_positions
 set is_jackpot = true
 where position_index = 1 and is_bust = false;
 
--- Jackpot rewards
-delete from public.slot_jackpot_rewards;
-insert into public.slot_jackpot_rewards (reward_type, reward_name, reward_id, amount, is_active)
+-- Free spin reel positions (専用リール / バーストなし)
+delete from public.slot_free_reel_positions;
+insert into public.slot_free_reel_positions
+(reel_index, position_index, reward_type, reward_name, reward_id, amount)
 values
-  ('coin', 'ジャックポット +500', null, 500, true),
-  ('coin', 'ジャックポット +1000', null, 1000, true),
-  ('gacha_ticket', '祈願符 +5', null, 5, true),
-  ('mangan_ticket', '満願符 +1', null, 1, true);
-
--- Jackpot positions (10 stops, equal)
-delete from public.slot_jackpot_positions;
-insert into public.slot_jackpot_positions (position_index, jackpot_reward_id, is_active)
-values
-  (1, (select id from public.slot_jackpot_rewards where reward_name = 'ジャックポット +500' limit 1), true),
-  (2, (select id from public.slot_jackpot_rewards where reward_name = 'ジャックポット +500' limit 1), true),
-  (3, (select id from public.slot_jackpot_rewards where reward_name = 'ジャックポット +1000' limit 1), true),
-  (4, (select id from public.slot_jackpot_rewards where reward_name = 'ジャックポット +1000' limit 1), true),
-  (5, (select id from public.slot_jackpot_rewards where reward_name = '祈願符 +5' limit 1), true),
-  (6, (select id from public.slot_jackpot_rewards where reward_name = '祈願符 +5' limit 1), true),
-  (7, (select id from public.slot_jackpot_rewards where reward_name = '満願符 +1' limit 1), true),
-  (8, (select id from public.slot_jackpot_rewards where reward_name = '満願符 +1' limit 1), true),
-  (9, (select id from public.slot_jackpot_rewards where reward_name = 'ジャックポット +500' limit 1), true),
-  (10, (select id from public.slot_jackpot_rewards where reward_name = 'ジャックポット +1000' limit 1), true);
+-- Reel 1
+(1,  1, 'coin',         'コイン +50',   null,  50),
+(1,  2, 'coin',         'コイン +30',   null,  30),
+(1,  3, 'coin',         'コイン +20',   null,  20),
+(1,  4, 'coin',         'コイン +20',   null,  20),
+(1,  5, 'coin',         'コイン +10',   null,  10),
+(1,  6, 'coin',         'コイン +10',   null,  10),
+(1,  7, 'gacha_ticket', '祈願符 +1',    null,   1),
+(1,  8, 'gacha_ticket', '祈願符 +1',    null,   1),
+(1,  9, 'coin',         'コイン +5',    null,   5),
+(1, 10, 'coin',         'コイン +5',    null,   5),
+-- Reel 2
+(2,  1, 'coin',         'コイン +120',  null, 120),
+(2,  2, 'coin',         'コイン +80',   null,  80),
+(2,  3, 'coin',         'コイン +50',   null,  50),
+(2,  4, 'coin',         'コイン +30',   null,  30),
+(2,  5, 'coin',         'コイン +20',   null,  20),
+(2,  6, 'coin',         'コイン +20',   null,  20),
+(2,  7, 'gacha_ticket', '祈願符 +1',    null,   1),
+(2,  8, 'gacha_ticket', '祈願符 +1',    null,   1),
+(2,  9, 'coin',         'コイン +10',   null,  10),
+(2, 10, 'coin',         'コイン +10',   null,  10),
+-- Reel 3
+(3,  1, 'gacha_ticket', '祈願符 +2',    null,   2),
+(3,  2, 'coin',         'コイン +150',  null, 150),
+(3,  3, 'coin',         'コイン +100',  null, 100),
+(3,  4, 'coin',         'コイン +60',   null,  60),
+(3,  5, 'coin',         'コイン +40',   null,  40),
+(3,  6, 'coin',         'コイン +30',   null,  30),
+(3,  7, 'gacha_ticket', '祈願符 +1',    null,   1),
+(3,  8, 'gacha_ticket', '祈願符 +1',    null,   1),
+(3,  9, 'coin',         'コイン +20',   null,  20),
+(3, 10, 'coin',         'コイン +10',   null,  10),
+-- Reel 4
+(4,  1, 'gacha_ticket', '祈願符 +3',    null,   3),
+(4,  2, 'coin',         'コイン +200',  null, 200),
+(4,  3, 'coin',         'コイン +120',  null, 120),
+(4,  4, 'coin',         'コイン +80',   null,  80),
+(4,  5, 'coin',         'コイン +50',   null,  50),
+(4,  6, 'coin',         'コイン +40',   null,  40),
+(4,  7, 'gacha_ticket', '祈願符 +2',    null,   2),
+(4,  8, 'gacha_ticket', '祈願符 +2',    null,   2),
+(4,  9, 'coin',         'コイン +30',   null,  30),
+(4, 10, 'coin',         'コイン +20',   null,  20),
+-- Reel 5
+(5,  1, 'gacha_ticket', '祈願符 +4',    null,   4),
+(5,  2, 'coin',         'コイン +250',  null, 250),
+(5,  3, 'coin',         'コイン +150',  null, 150),
+(5,  4, 'coin',         'コイン +100',  null, 100),
+(5,  5, 'coin',         'コイン +60',   null,  60),
+(5,  6, 'coin',         'コイン +50',   null,  50),
+(5,  7, 'gacha_ticket', '祈願符 +2',    null,   2),
+(5,  8, 'gacha_ticket', '祈願符 +2',    null,   2),
+(5,  9, 'coin',         'コイン +40',   null,  40),
+(5, 10, 'coin',         'コイン +30',   null,  30),
+-- Reel 6
+(6,  1, 'mangan_ticket','満願符 +1',    null,   1),
+(6,  2, 'gacha_ticket', '祈願符 +4',    null,   4),
+(6,  3, 'gacha_ticket', '祈願符 +3',    null,   3),
+(6,  4, 'gacha_ticket', '祈願符 +2',    null,   2),
+(6,  5, 'coin',         'コイン +120',  null, 120),
+(6,  6, 'coin',         'コイン +80',   null,  80),
+(6,  7, 'coin',         'コイン +60',   null,  60),
+(6,  8, 'coin',         'コイン +50',   null,  50),
+(6,  9, 'coin',         'コイン +40',   null,  40),
+(6, 10, 'coin',         'コイン +30',   null,  30),
+-- Reel 7
+(7,  1, 'multiplier',   '2倍',          null,   2),
+(7,  2, 'mangan_ticket','満願符 +2',    null,   2),
+(7,  3, 'gacha_ticket', '祈願符 +8',    null,   8),
+(7,  4, 'coin',         'コイン +300',  null, 300),
+(7,  5, 'coin',         'コイン +200',  null, 200),
+(7,  6, 'coin',         'コイン +150',  null, 150),
+(7,  7, 'coin',         'コイン +100',  null, 100),
+(7,  8, 'coin',         'コイン +80',   null,  80),
+(7,  9, 'coin',         'コイン +60',   null,  60),
+(7, 10, 'coin',         'コイン +40',   null,  40);
 
 -- page settings entry
 insert into public.page_settings (path, name, is_active)

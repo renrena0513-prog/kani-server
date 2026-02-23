@@ -230,7 +230,7 @@
                 </div>
                 <div class="d-flex flex-wrap gap-2">
                     <button class="btn btn-slot" id="btn-start" onclick="startSession()">開始（100コイン消費）</button>
-                    <button class="btn btn-slot" id="btn-jackpot-confirm" onclick="confirmJackpot()" disabled>ジャックポットへ確定</button>
+                    <button class="btn btn-slot" id="btn-jackpot-confirm" onclick="confirmJackpot()" disabled>フリースピンへ確定</button>
                     <button class="btn btn-slot-secondary" id="btn-stop" onclick="cashout()" disabled>ストップ（精算）</button>
                 </div>
             </div>
@@ -243,10 +243,6 @@
                 <span class="slot-muted" id="session-status">待機中</span>
             </div>
             <div class="reel-stage" id="reel-stage"></div>
-            <div class="mt-4" id="jackpot-stage" style="display:none;">
-                <h6 class="mb-2">🎰 ジャックポットリール</h6>
-                <div class="reel-stage" id="jackpot-reel-stage"></div>
-            </div>
             <div class="mt-4" id="payout-summary" style="display:none;">
                 <h6 class="mb-2">精算結果</h6>
                 <div class="slot-panel p-3" id="payout-list"></div>
@@ -268,7 +264,6 @@
         let eventSettings = null;
         let isProcessing = false;
         const reelSymbols = ['🪙', '🎫', '🧧', '🪙', '🎫', '🧧', '🪙', '🎫', '☠', '🪙'];
-        const jackpotSymbols = ['⭐', '💎', '🔥', '👑', '🪙', '🎫', '🧧', '🌈', '✨', '🎯'];
 
         async function initSlotPage() {
             const { data: { user } } = await supabaseClient.auth.getUser();
@@ -362,7 +357,7 @@
             isProcessing = state;
             document.getElementById('btn-start').disabled = state;
             document.getElementById('btn-stop').disabled = state || !currentSession || currentSession.status !== 'active' || (currentSession.reels || []).length === 0;
-            document.getElementById('btn-jackpot-confirm').disabled = state || !currentSession || !currentSession.jackpot_unlocked || currentSession.jackpot_confirmed;
+            document.getElementById('btn-jackpot-confirm').disabled = state || !currentSession || !currentSession.jackpot_unlocked || currentSession.free_spin_confirmed;
             updateReelButtons();
         }
 
@@ -389,7 +384,7 @@
                 messageEl.textContent = '';
                 payoutSummary.style.display = 'none';
                 burstBanner.style.display = 'none';
-                document.getElementById('jackpot-stage').style.display = 'none';
+                // no jackpot stage
                 setProcessing(false);
                 document.getElementById('btn-start').disabled = !isEventActiveNow();
                 document.getElementById('btn-stop').disabled = true;
@@ -400,11 +395,18 @@
                 return;
             }
 
-            currentReelEl.textContent = currentSession.status === 'active' ? `第 ${currentSession.current_reel} リール` : '終了';
+            if (currentSession.status === 'active') {
+                if (currentSession.free_spin_active) {
+                    currentReelEl.textContent = `フリースピン ${currentSession.free_spin_round} / 残り ${currentSession.free_spins_remaining} 回`;
+                } else {
+                    currentReelEl.textContent = `第 ${currentSession.current_reel} リール`;
+                }
+            } else {
+                currentReelEl.textContent = '終了';
+            }
             sessionStatusEl.textContent = currentSession.status === 'active' ? '進行中' : (currentSession.status === 'bust' ? 'バースト' : '精算済み');
 
             renderReelState(reels);
-            document.getElementById('jackpot-stage').style.display = currentSession.jackpot_unlocked ? 'block' : 'none';
 
             burstBanner.style.display = currentSession.status === 'bust' ? 'block' : 'none';
             payoutSummary.style.display = 'none';
@@ -429,7 +431,7 @@
             messageEl.textContent = '';
             setProcessing(false);
             document.getElementById('btn-start').disabled = currentSession.status === 'active' || !isEventActiveNow();
-            document.getElementById('btn-jackpot-confirm').disabled = !currentSession.jackpot_unlocked || currentSession.jackpot_confirmed;
+            document.getElementById('btn-jackpot-confirm').disabled = !currentSession.jackpot_unlocked || currentSession.free_spin_confirmed;
             updateReelButtons();
 
             if (totalEl) {
@@ -443,8 +445,12 @@
                 totalEl.textContent = `🪙 ${totals.coin} / 🎫 ${totals.gacha_ticket} / 🧧 ${totals.mangan_ticket}`;
             }
 
-            if (currentSession.jackpot_unlocked && !currentSession.jackpot_confirmed) {
-                messageEl.textContent = '⚠️ ジャックポットへ確定してください。';
+            if (currentSession.jackpot_unlocked && !currentSession.free_spin_confirmed) {
+                messageEl.textContent = '⚠️ フリースピンへ確定してください。';
+            }
+
+            if (currentSession.free_spin_active) {
+                messageEl.textContent = `🎰 フリースピン残り ${currentSession.free_spins_remaining} 回`;
             }
         }
 
@@ -474,6 +480,8 @@
             }
         }
 
+        const SPIN_DURATION_MS = 1600;
+
         async function spinReel(reelIndex) {
             if (isProcessing || !currentSession) return;
             if (currentSession.status !== 'active') return;
@@ -488,7 +496,7 @@
                 if (error) throw error;
                 if (!data.ok) {
                     if (data.error === 'JACKPOT_CONFIRM_REQUIRED') {
-                        document.getElementById('session-message').textContent = '⚠️ ジャックポット確定が必要です。';
+                        document.getElementById('session-message').textContent = '⚠️ フリースピン確定が必要です。';
                     } else {
                         document.getElementById('session-message').textContent = `回せません: ${data.error}`;
                     }
@@ -506,11 +514,12 @@
                     await refreshCoinBalance();
                 }
 
-                setTimeout(updateUI, 900);
+                setTimeout(updateUI, SPIN_DURATION_MS);
             } catch (err) {
                 console.error(err);
                 document.getElementById('session-message').textContent = 'リール停止に失敗しました。';
                 setProcessing(false);
+                setTimeout(updateUI, SPIN_DURATION_MS);
             }
         }
 
@@ -544,7 +553,7 @@
 
         async function confirmJackpot() {
             if (isProcessing || !currentSession) return;
-            if (!currentSession.jackpot_unlocked || currentSession.jackpot_confirmed) return;
+            if (!currentSession.jackpot_unlocked || currentSession.free_spin_confirmed) return;
             setProcessing(true);
             try {
                 const { data, error } = await supabaseClient.rpc('slot_confirm_jackpot', {
@@ -605,7 +614,14 @@
         }
 
         function renderReelState(reels) {
-            const reelMap = new Map((reels || []).map(reel => [reel.reel_index, reel]));
+            const reelMap = new Map();
+            (reels || []).forEach(reel => {
+                const round = Number(reel.free_spin_round || 0);
+                if (round !== Number(currentSession?.free_spin_round || 0) && currentSession?.free_spin_active) {
+                    return;
+                }
+                reelMap.set(reel.reel_index, reel);
+            });
             document.querySelectorAll('.reel-col').forEach(col => {
                 const reelIndex = Number(col.getAttribute('data-reel-index'));
                 const reel = reelMap.get(reelIndex);
@@ -653,7 +669,7 @@
                 if (i === index) {
                     if (stopEl) stopEl.textContent = '';
                     windowEl.classList.add('spinning');
-                    setTimeout(() => windowEl.classList.remove('spinning'), 1600);
+                    setTimeout(() => windowEl.classList.remove('spinning'), SPIN_DURATION_MS);
                 }
             }
         }
@@ -663,9 +679,6 @@
             document.querySelectorAll('[data-reel-btn]').forEach(btn => {
                 const reelIndex = Number(btn.getAttribute('data-reel-btn'));
                 btn.disabled = isProcessing || !currentSession || currentSession.status !== 'active' || reelIndex !== current;
-                if (reelIndex === 8) {
-                    btn.disabled = btn.disabled || !currentSession?.jackpot_confirmed;
-                }
             });
         }
     </script>
