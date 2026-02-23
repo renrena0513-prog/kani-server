@@ -257,6 +257,38 @@
             </div>
             <div class="mt-4 slot-burst" id="burst-banner" style="display:none;">バースト！報酬はすべて没収されました。</div>
         </div>
+
+        <div class="slot-panel p-4 mt-4 admin-only" id="slot-admin-panel" style="display:none;">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                <h5 class="mb-0">管理者: リール編集</h5>
+                <span class="slot-muted">管理者のみ表示</span>
+            </div>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <label class="slot-muted" for="admin-reel-select">対象リール</label>
+                <select id="admin-reel-select" class="form-select form-select-sm" style="width: 120px;"></select>
+                <button class="btn btn-sm btn-outline-light" id="admin-reel-load" type="button">読み込み</button>
+                <button class="btn btn-sm btn-slot" id="admin-reel-save" type="button">保存</button>
+                <span class="slot-muted" id="admin-reel-status"></span>
+            </div>
+            <div class="table-responsive mt-3">
+                <table class="table table-sm table-dark align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 70px;">位置</th>
+                            <th style="width: 80px;">有効</th>
+                            <th style="width: 90px;">バースト</th>
+                            <th style="width: 110px;">ジャックポット</th>
+                            <th style="width: 160px;">報酬タイプ</th>
+                            <th>報酬名</th>
+                            <th style="width: 110px;">数量</th>
+                            <th style="width: 160px;">報酬ID</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-reel-body"></tbody>
+                </table>
+            </div>
+            <div class="slot-muted mt-2">※ バーストONの行は報酬が無視されます。</div>
+        </div>
     </div>
 
     <!-- Scripts -->
@@ -285,6 +317,7 @@
             isAdmin = typeof ADMIN_DISCORD_IDS !== 'undefined' && ADMIN_DISCORD_IDS.includes(currentUserId);
             initAccordionNav('../');
             buildReelStage();
+            setupAdminReelEditor();
 
             await loadEventSettings();
             await refreshCoinBalance();
@@ -712,6 +745,155 @@
                 const reelIndex = Number(btn.getAttribute('data-reel-btn'));
                 btn.disabled = isProcessing || !currentSession || currentSession.status !== 'active' || reelIndex !== current;
             });
+        }
+
+        function setupAdminReelEditor() {
+            const panel = document.getElementById('slot-admin-panel');
+            if (!panel) return;
+            panel.style.display = isAdmin ? 'block' : 'none';
+            if (!isAdmin) return;
+
+            const selectEl = document.getElementById('admin-reel-select');
+            selectEl.innerHTML = Array.from({ length: 7 }).map((_, i) => {
+                const idx = i + 1;
+                return `<option value="${idx}">REEL ${idx}</option>`;
+            }).join('');
+
+            document.getElementById('admin-reel-load').addEventListener('click', () => loadAdminReel());
+            document.getElementById('admin-reel-save').addEventListener('click', () => saveAdminReel());
+            selectEl.addEventListener('change', () => loadAdminReel());
+            loadAdminReel();
+        }
+
+        function setAdminStatus(message) {
+            const statusEl = document.getElementById('admin-reel-status');
+            if (statusEl) statusEl.textContent = message || '';
+        }
+
+        async function loadAdminReel() {
+            const selectEl = document.getElementById('admin-reel-select');
+            const reelIndex = Number(selectEl?.value || 1);
+            setAdminStatus('読み込み中...');
+            try {
+                const { data, error } = await supabaseClient
+                    .from('slot_reel_positions')
+                    .select('*')
+                    .eq('reel_index', reelIndex)
+                    .order('position_index', { ascending: true });
+                if (error) throw error;
+                renderAdminReelRows(data || []);
+                setAdminStatus('読み込み完了');
+            } catch (err) {
+                console.error(err);
+                setAdminStatus('読み込み失敗');
+            }
+        }
+
+        function renderAdminReelRows(rows) {
+            const body = document.getElementById('admin-reel-body');
+            if (!body) return;
+            body.innerHTML = (rows || []).map(row => {
+                const rewardType = row.reward_type || '';
+                const rewardName = row.reward_name || '';
+                const rewardId = row.reward_id || '';
+                const amount = row.amount ?? '';
+                return `
+                    <tr data-position="${row.position_index}">
+                        <td class="text-muted">#${row.position_index}</td>
+                        <td><input type="checkbox" class="form-check-input admin-active" ${row.is_active ? 'checked' : ''}></td>
+                        <td><input type="checkbox" class="form-check-input admin-bust" ${row.is_bust ? 'checked' : ''}></td>
+                        <td><input type="checkbox" class="form-check-input admin-jackpot" ${row.is_jackpot ? 'checked' : ''}></td>
+                        <td>
+                            <select class="form-select form-select-sm admin-reward-type">
+                                <option value="">なし</option>
+                                <option value="coin" ${rewardType === 'coin' ? 'selected' : ''}>coin</option>
+                                <option value="gacha_ticket" ${rewardType === 'gacha_ticket' ? 'selected' : ''}>gacha_ticket</option>
+                                <option value="mangan_ticket" ${rewardType === 'mangan_ticket' ? 'selected' : ''}>mangan_ticket</option>
+                                <option value="exchange_ticket" ${rewardType === 'exchange_ticket' ? 'selected' : ''}>exchange_ticket</option>
+                                <option value="badge" ${rewardType === 'badge' ? 'selected' : ''}>badge</option>
+                                <option value="multiplier" ${rewardType === 'multiplier' ? 'selected' : ''}>multiplier</option>
+                            </select>
+                        </td>
+                        <td><input type="text" class="form-control form-control-sm admin-reward-name" value="${rewardName}"></td>
+                        <td><input type="number" min="0" class="form-control form-control-sm admin-amount" value="${amount}"></td>
+                        <td><input type="text" class="form-control form-control-sm admin-reward-id" value="${rewardId}"></td>
+                    </tr>
+                `;
+            }).join('');
+
+            body.querySelectorAll('tr').forEach(row => {
+                const bustEl = row.querySelector('.admin-bust');
+                const jackpotEl = row.querySelector('.admin-jackpot');
+                const rewardTypeEl = row.querySelector('.admin-reward-type');
+                const rewardNameEl = row.querySelector('.admin-reward-name');
+                const amountEl = row.querySelector('.admin-amount');
+                const rewardIdEl = row.querySelector('.admin-reward-id');
+
+                const applyRowState = () => {
+                    const isBust = bustEl?.checked;
+                    if (isBust && jackpotEl) jackpotEl.checked = false;
+                    if (rewardTypeEl) rewardTypeEl.disabled = !!isBust;
+                    if (rewardNameEl) rewardNameEl.disabled = !!isBust;
+                    if (amountEl) amountEl.disabled = !!isBust;
+                    if (rewardIdEl) rewardIdEl.disabled = !!isBust;
+                };
+
+                const clearBust = () => {
+                    if (bustEl?.checked) bustEl.checked = false;
+                    applyRowState();
+                };
+
+                if (bustEl) bustEl.addEventListener('change', applyRowState);
+                if (jackpotEl) jackpotEl.addEventListener('change', clearBust);
+                applyRowState();
+            });
+        }
+
+        async function saveAdminReel() {
+            const selectEl = document.getElementById('admin-reel-select');
+            const reelIndex = Number(selectEl?.value || 1);
+            const body = document.getElementById('admin-reel-body');
+            if (!body) return;
+
+            const payload = [];
+            body.querySelectorAll('tr').forEach(row => {
+                const positionIndex = Number(row.getAttribute('data-position'));
+                const isActive = row.querySelector('.admin-active')?.checked ?? false;
+                const isBust = row.querySelector('.admin-bust')?.checked ?? false;
+                const isJackpot = !isBust && (row.querySelector('.admin-jackpot')?.checked ?? false);
+                const rewardTypeRaw = row.querySelector('.admin-reward-type')?.value || '';
+                const rewardType = isBust ? null : (rewardTypeRaw || null);
+                const rewardNameRaw = row.querySelector('.admin-reward-name')?.value?.trim() || '';
+                const rewardName = isBust ? null : (rewardNameRaw || null);
+                const rewardIdRaw = row.querySelector('.admin-reward-id')?.value?.trim() || '';
+                const rewardId = isBust ? null : (rewardIdRaw || null);
+                const amountRaw = row.querySelector('.admin-amount')?.value;
+                const amountVal = isBust ? 0 : Number(amountRaw || 0);
+
+                payload.push({
+                    reel_index: reelIndex,
+                    position_index: positionIndex,
+                    is_active: isActive,
+                    is_bust: isBust,
+                    is_jackpot: isJackpot,
+                    reward_type: rewardType,
+                    reward_name: rewardName,
+                    reward_id: rewardId,
+                    amount: amountVal
+                });
+            });
+
+            setAdminStatus('保存中...');
+            try {
+                const { error } = await supabaseClient
+                    .from('slot_reel_positions')
+                    .upsert(payload, { onConflict: 'reel_index,position_index' });
+                if (error) throw error;
+                setAdminStatus('保存完了');
+            } catch (err) {
+                console.error(err);
+                setAdminStatus('保存失敗');
+            }
         }
     </script>
 </body>
