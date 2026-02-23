@@ -271,7 +271,8 @@
         let currentSession = null;
         let eventSettings = null;
         let isProcessing = false;
-        const reelSymbols = ['🪙', '🎫', '🧧', '🪙', '🎫', '🧧', '🪙', '🎫', '☠', '🪙'];
+        const JACKPOT_SYMBOL = '🎰';
+        const reelSymbols = ['🪙', '🎫', '🧧', '🪙', '🎫', '🧧', '🪙', JACKPOT_SYMBOL, '☠', '🪙'];
 
         async function initSlotPage() {
             const { data: { user } } = await supabaseClient.auth.getUser();
@@ -459,7 +460,7 @@
                 updateReelButtons();
             }
 
-            if (totalEl) {
+            if (totalEl && !spinLocked) {
                 const totals = { coin: 0, gacha_ticket: 0, mangan_ticket: 0 };
                 reels.forEach(reel => {
                     if (reel.is_bust) return;
@@ -658,12 +659,16 @@
                     return;
                 }
 
-                resultEl.textContent = reel.is_bust ? '☠ バースト' : (reel.reward_name || '報酬なし');
+                resultEl.textContent = reel.is_bust
+                    ? '☠ バースト'
+                    : (reel.is_jackpot ? `${JACKPOT_SYMBOL} ${reel.reward_name || 'ジャックポット'}` : (reel.reward_name || '報酬なし'));
                 col.classList.add('done');
                 if (reel.is_bust) col.classList.add('bust');
                 if (stopEl) {
                     if (reel.is_bust) {
                         stopEl.textContent = '☠';
+                    } else if (reel.is_jackpot) {
+                        stopEl.textContent = JACKPOT_SYMBOL;
                     } else if (reel.reward_type === 'coin') {
                         stopEl.textContent = '🪙';
                     } else if (reel.reward_type === 'gacha_ticket') {
