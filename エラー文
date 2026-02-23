@@ -1,1 +1,1 @@
-追加に失敗しました: invalid input syntax for type uuid: ""
+Error: Failed to run sql query: ERROR: 42601: syntax error at or near "on" LINE 608: on conflict (reel_index, position_index) do update ^

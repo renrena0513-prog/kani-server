@@ -716,6 +716,7 @@ on conflict do nothing;
 
 -- reel positions (7 reels x 10 positions)
 -- リールが進むほどバースト率UP＆報酬UP、Reel6に満願符、Reel7にマルチプライヤー
+delete from public.slot_reel_positions;
 insert into public.slot_reel_positions
 (reel_index, position_index, is_bust, reward_type, reward_name, reward_id, amount)
 values
@@ -795,14 +796,7 @@ values
 (7,  7, true,  null,           null,           null,   0),
 (7,  8, true,  null,           null,           null,   0),
 (7,  9, true,  null,           null,           null,   0),
-(7, 10, true,  null,           null,           null,   0)
-on conflict (reel_index, position_index) do update
-set is_bust = excluded.is_bust,
-    reward_type = excluded.reward_type,
-    reward_name = excluded.reward_name,
-    reward_id = excluded.reward_id,
-    amount = excluded.amount,
-    updated_at = now();
+(7, 10, true,  null,           null,           null,   0);
 
 -- Jackpot symbol: position 1 on every reel (non-bust)
 update public.slot_reel_positions
@@ -810,15 +804,16 @@ set is_jackpot = true
 where position_index = 1 and is_bust = false;
 
 -- Jackpot rewards
+delete from public.slot_jackpot_rewards;
 insert into public.slot_jackpot_rewards (reward_type, reward_name, reward_id, amount, is_active)
 values
   ('coin', 'ジャックポット +500', null, 500, true),
   ('coin', 'ジャックポット +1000', null, 1000, true),
   ('gacha_ticket', '祈願符 +5', null, 5, true),
-  ('mangan_ticket', '満願符 +1', null, 1, true)
-on conflict do nothing;
+  ('mangan_ticket', '満願符 +1', null, 1, true);
 
 -- Jackpot positions (10 stops, equal)
+delete from public.slot_jackpot_positions;
 insert into public.slot_jackpot_positions (position_index, jackpot_reward_id, is_active)
 values
   (1, (select id from public.slot_jackpot_rewards where reward_name = 'ジャックポット +500' limit 1), true),
@@ -830,11 +825,7 @@ values
   (7, (select id from public.slot_jackpot_rewards where reward_name = '満願符 +1' limit 1), true),
   (8, (select id from public.slot_jackpot_rewards where reward_name = '満願符 +1' limit 1), true),
   (9, (select id from public.slot_jackpot_rewards where reward_name = 'ジャックポット +500' limit 1), true),
-  (10, (select id from public.slot_jackpot_rewards where reward_name = 'ジャックポット +1000' limit 1), true)
-on conflict (position_index) do update
-set jackpot_reward_id = excluded.jackpot_reward_id,
-    is_active = excluded.is_active,
-    updated_at = now();
+  (10, (select id from public.slot_jackpot_rewards where reward_name = 'ジャックポット +1000' limit 1), true);
 
 -- page settings entry
 insert into public.page_settings (path, name, is_active)
