@@ -202,7 +202,7 @@ begin
     where path = '/event/slot.html'
     limit 1;
 
-    if (not v_page_active and not v_settings_active) and not v_is_admin then
+    if (not coalesce(v_page_active, false) and not v_settings_active) and not v_is_admin then
         return jsonb_build_object('ok', false, 'error', 'EVENT_INACTIVE');
     end if;
 
