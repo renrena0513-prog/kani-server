@@ -475,6 +475,8 @@
         let wasFreeSpinActive = false;
         let pendingFreeSpinCutin = false;
         let freeSpinDisplayActive = false;
+        let lastFreeSpinSummary = null;
+        let lastFreeSpinSessionId = null;
         const CUTIN_DURATION_MS = 1600;
         const JACKPOT_SYMBOL = '🎰';
         const reelSymbols = ['🪙', '🎫', '🧧', '🪙', '🎫', '🧧', '🪙', JACKPOT_SYMBOL, '☠', '🪙'];
@@ -630,6 +632,8 @@
                 wasFreeSpinActive = false;
                 pendingFreeSpinCutin = false;
                 freeSpinDisplayActive = false;
+                lastFreeSpinSummary = null;
+                lastFreeSpinSessionId = null;
                 // no jackpot stage
                 setProcessing(false);
                 document.getElementById('btn-start').disabled = !isEventActiveNow();
@@ -691,6 +695,11 @@
                 if (stageEl) stageEl.classList.remove('free-spin');
             } else if (freeSpinDisplayActive && stageEl) {
                 stageEl.classList.add('free-spin');
+            }
+
+            if (lastFreeSpinSessionId && currentSession.id !== lastFreeSpinSessionId) {
+                lastFreeSpinSummary = null;
+                lastFreeSpinSessionId = null;
             }
 
             wasFreeSpinActive = !!currentSession.free_spin_active;
@@ -757,8 +766,13 @@
                     }, 0);
                     const totalMultiplier = 1 + multiplierSum;
                     const formatted = totalMultiplier.toFixed(2).replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
-                    if (multiplierEl) multiplierEl.textContent = `×${formatted}`;
-                    if (mobileMultiplierEl) mobileMultiplierEl.textContent = `×${formatted}`;
+                    if (displayFreeSpin) {
+                        lastFreeSpinSummary = {
+                            multiplierText: `×${formatted}`,
+                            totalsText: null
+                        };
+                        lastFreeSpinSessionId = currentSession.id;
+                    }
 
                     const totals = { coin: 0, gacha_ticket: 0, mangan_ticket: 0 };
                     displayReels.forEach(reel => {
@@ -768,8 +782,21 @@
                         if (reel.reward_type === 'mangan_ticket') totals.mangan_ticket += Number(reel.amount || 0);
                     });
                     const totalText = `🪙 ${totals.coin} / 🎫 ${totals.gacha_ticket} / 🧧 ${totals.mangan_ticket}`;
-                    if (totalEl) totalEl.textContent = totalText;
-                    if (mobileTotalEl) mobileTotalEl.textContent = totalText;
+                    if (displayFreeSpin) {
+                        if (lastFreeSpinSummary) lastFreeSpinSummary.totalsText = totalText;
+                    }
+
+                    if (!currentSession.free_spin_active && lastFreeSpinSummary && lastFreeSpinSessionId === currentSession.id) {
+                        if (multiplierEl) multiplierEl.textContent = lastFreeSpinSummary.multiplierText || '×1.0';
+                        if (mobileMultiplierEl) mobileMultiplierEl.textContent = lastFreeSpinSummary.multiplierText || '×1.0';
+                        if (totalEl) totalEl.textContent = lastFreeSpinSummary.totalsText || '🪙 0 / 🎫 0 / 🧧 0';
+                        if (mobileTotalEl) mobileTotalEl.textContent = lastFreeSpinSummary.totalsText || '🪙 0 / 🎫 0 / 🧧 0';
+                    } else {
+                        if (multiplierEl) multiplierEl.textContent = `×${formatted}`;
+                        if (mobileMultiplierEl) mobileMultiplierEl.textContent = `×${formatted}`;
+                        if (totalEl) totalEl.textContent = totalText;
+                        if (mobileTotalEl) mobileTotalEl.textContent = totalText;
+                    }
                 }
             }
 
