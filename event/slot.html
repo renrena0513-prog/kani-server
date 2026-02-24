@@ -649,6 +649,7 @@
         let lastFreeSpinSessionId = null;
         let lastFreeSpinsRemaining = null;
         let pendingFreeSpinPlusCutin = false;
+        let displayedFreeSpinsRemaining = null;
         const CUTIN_DURATION_MS = 1600;
         const JACKPOT_SYMBOL = '<img src="../images/slot/JACKPOT.png" alt="JACKPOT">';
         const BURST_SYMBOL = '<img src="../images/slot/Burst.png" alt="Burst">';
@@ -808,6 +809,7 @@
                 lastFreeSpinSessionId = null;
                 lastFreeSpinsRemaining = null;
                 pendingFreeSpinPlusCutin = false;
+                displayedFreeSpinsRemaining = null;
                 // no jackpot stage
                 setProcessing(false);
                 document.getElementById('btn-start').disabled = !isEventActiveNow();
@@ -829,7 +831,7 @@
 
             if (!spinLocked) {
                 if (currentSession.status === 'active') {
-                    if (currentSession.free_spin_active) {
+                    if (currentSession.free_spin_active && freeSpinDisplayActive) {
                         currentReelEl.textContent = `フリースピン ${currentSession.free_spin_round} / 残り ${currentSession.free_spins_remaining} 回`;
                     } else {
                         currentReelEl.textContent = `第 ${currentSession.current_reel} リール`;
@@ -921,7 +923,9 @@
                 sessionCashedOutDisplayed = false;
             }
 
-            messageEl.textContent = '';
+            if (!currentSession.free_spin_active && !spinLocked) {
+                messageEl.textContent = '';
+            }
             if (spinLocked) {
                 setProcessing(true);
                 document.getElementById('btn-start').disabled = true;
@@ -997,7 +1001,10 @@
             }
 
             if (currentSession.free_spin_active && freeSpinDisplayActive && !spinLocked) {
-                messageEl.textContent = `🎰 フリースピン残り ${currentSession.free_spins_remaining} 回`;
+                if (displayedFreeSpinsRemaining === null || displayedFreeSpinsRemaining !== currentSession.free_spins_remaining) {
+                    displayedFreeSpinsRemaining = currentSession.free_spins_remaining;
+                }
+                messageEl.textContent = `🎰 フリースピン残り ${displayedFreeSpinsRemaining} 回`;
             }
             updateFreeSpinStockBar();
         }

@@ -1,1 +1,19 @@
-Error: Failed to run sql query: ERROR: 42601: syntax error at or near "on" LINE 608: on conflict (reel_index, position_index) do update ^
+supabase-config.js:153 Profile synced successfully: 666909228300107797
+supabase.js:19  POST https://hbkacwpvnyqzsdzqphmy.supabase.co/rest/v1/rpc/slot_cashout 400 (Bad Request)
+(anonymous) @ supabase.js:19
+(anonymous) @ supabase.js:19
+await in (anonymous)
+then @ supabase.js:1
+slot.html:1148 {code: '42703', details: null, hint: null, message: 'record "v_session" has no field "free_spin_confirmed"'}code: "42703"details: nullhint: nullmessage: "record \"v_session\" has no field \"free_spin_confirmed\""[[Prototype]]: Object
+cashout @ slot.html:1148
+await in cashout
+onclick @ slot.html:545
+supabase.js:19  POST https://hbkacwpvnyqzsdzqphmy.supabase.co/rest/v1/rpc/slot_cashout 400 (Bad Request)
+(anonymous) @ supabase.js:19
+(anonymous) @ supabase.js:19
+await in (anonymous)
+then @ supabase.js:1
+slot.html:1148 {code: '42703', details: null, hint: null, message: 'record "v_session" has no field "free_spin_confirmed"'}
+cashout @ slot.html:1148
+await in cashout
+onclick @ slot.html:545

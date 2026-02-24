@@ -36,6 +36,7 @@ create table if not exists public.slot_sessions (
     -- ジャックポット / フリースピン
     jackpot_hits integer not null default 0,
     jackpot_unlocked boolean not null default false,
+    free_spin_confirmed boolean not null default false,
     free_spin_active boolean not null default false,
     free_spins_remaining integer not null default 0,
     free_spin_round integer not null default 0,
@@ -53,6 +54,7 @@ create unique index if not exists slot_sessions_active_user_uq
 
 -- page_settings に config カラム追加 (スロットコスト等の設定用)
 alter table public.page_settings add column if not exists config jsonb default '{}'::jsonb;
+alter table public.slot_sessions add column if not exists free_spin_confirmed boolean default false;
 
 
 -- =============================
@@ -503,6 +505,7 @@ declare
     v_rewards record;
     v_summary jsonb := '[]'::jsonb;
     v_source jsonb := '[]'::jsonb;
+    v_source_has_rewards boolean := false;
 begin
     perform pg_advisory_xact_lock(hashtext('slot:' || p_user_id));
 
@@ -578,6 +581,19 @@ begin
             v_source := coalesce(v_session.reels_state, '[]'::jsonb);
         end if;
     else
+        v_source := coalesce(v_session.reels_state, '[]'::jsonb);
+    end if;
+
+    select exists(
+        select 1
+        from jsonb_array_elements(v_source) elem
+        where (elem->>'is_bust')::boolean = false
+          and elem->>'reward_type' is not null
+          and elem->>'reward_type' <> 'multiplier'
+          and (elem->>'amount')::numeric > 0
+    ) into v_source_has_rewards;
+
+    if v_source_has_rewards = false then
         v_source := coalesce(v_session.reels_state, '[]'::jsonb);
     end if;
 
