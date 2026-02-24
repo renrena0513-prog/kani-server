@@ -649,6 +649,7 @@
         let lastFreeSpinSessionId = null;
         let lastFreeSpinsRemaining = null;
         let pendingFreeSpinPlusCutin = false;
+        let pendingFreeSpinPlusAmount = 0;
         let displayedFreeSpinsRemaining = null;
         const CUTIN_DURATION_MS = 1600;
         const JACKPOT_SYMBOL = '<img src="../images/slot/JACKPOT.png" alt="JACKPOT">';
@@ -809,6 +810,7 @@
                 lastFreeSpinSessionId = null;
                 lastFreeSpinsRemaining = null;
                 pendingFreeSpinPlusCutin = false;
+                pendingFreeSpinPlusAmount = 0;
                 displayedFreeSpinsRemaining = null;
                 // no jackpot stage
                 setProcessing(false);
@@ -857,10 +859,12 @@
             }
 
             if (lastFreeSpinsRemaining !== null && currentSession.free_spins_remaining > lastFreeSpinsRemaining) {
+                const delta = currentSession.free_spins_remaining - lastFreeSpinsRemaining;
                 if (spinLocked) {
                     pendingFreeSpinPlusCutin = true;
+                    pendingFreeSpinPlusAmount = delta;
                 } else if (!pendingFreeSpinPlusCutin) {
-                    showFreeSpinPlusCutin();
+                    showFreeSpinPlusCutin(delta);
                 }
             }
 
@@ -875,8 +879,10 @@
             }
 
             if (!spinLocked && pendingFreeSpinPlusCutin) {
-                showFreeSpinPlusCutin();
+                const amount = pendingFreeSpinPlusAmount || 1;
+                showFreeSpinPlusCutin(amount);
                 pendingFreeSpinPlusCutin = false;
+                pendingFreeSpinPlusAmount = 0;
             }
 
             if (!currentSession.free_spin_active) {
@@ -900,7 +906,7 @@
                 burstBanner.style.display = 'none';
             }
 
-            if (currentSession.status === 'cashed_out') {
+            if (currentSession.status === 'cashed_out' && !spinLocked) {
                 payoutSummary.style.display = 'block';
                 const payoutItems = currentSession.payout || [];
                 const totals = { coin: 0, gacha_ticket: 0, mangan_ticket: 0, exchange_ticket: 0 };
@@ -919,7 +925,14 @@
                 if (totals.gacha_ticket) parts.push(`🎫 +${totals.gacha_ticket}`);
                 if (totals.mangan_ticket) parts.push(`🧧 +${totals.mangan_ticket}`);
                 if (totals.exchange_ticket) parts.push(`🎫 +${totals.exchange_ticket}`);
-                payoutList.innerHTML = parts.length ? parts.join(' / ') : '報酬なし';
+                if (!parts.length && lastFreeSpinSummary && lastFreeSpinSessionId === currentSession.id) {
+                    const fallbackParts = [];
+                    if (lastFreeSpinSummary.multiplierText) fallbackParts.push(`✨ ${lastFreeSpinSummary.multiplierText}`);
+                    if (lastFreeSpinSummary.totalsText) fallbackParts.push(lastFreeSpinSummary.totalsText);
+                    payoutList.innerHTML = fallbackParts.length ? fallbackParts.join(' / ') : '報酬なし';
+                } else {
+                    payoutList.innerHTML = parts.length ? parts.join(' / ') : '報酬なし';
+                }
 
                 if (!sessionCashedOutDisplayed) {
                     showWinPopup(parts);
@@ -1333,11 +1346,12 @@
             }, 1600);
         }
 
-        function showFreeSpinPlusCutin() {
+        function showFreeSpinPlusCutin(amount) {
             const cutin = document.getElementById('free-spin-cutin');
             if (!cutin) return;
             const card = cutin.querySelector('.cutin-card');
-            if (card) card.textContent = 'FREE SPIN +1';
+            const value = Number.isFinite(amount) && amount > 0 ? amount : 1;
+            if (card) card.textContent = `FREE SPIN +${value}`;
             cutin.classList.remove('show');
             void cutin.offsetWidth;
             cutin.classList.add('show');

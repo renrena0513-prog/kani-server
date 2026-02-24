@@ -1,0 +1,141 @@
+id,mode,reel_index,position_index,is_bust,is_jackpot,is_free_spin_stock,reward_type,reward_name,reward_id,amount,is_active
+d7ba4773-8940-43fe-82ed-b64e4e55d98f,normal,6,1,false,true,false,mangan_ticket,満願符 +2,,2.00,true
+40bbc055-6519-400d-aea6-a4f4f7e70289,normal,6,2,false,true,false,mangan_ticket,満願符 +1,,1.00,true
+fa7ddd4a-21ae-4b03-a4fb-cda40e1219e5,normal,6,3,false,true,false,gacha_ticket,祈願符 +2,,2.00,true
+480396dd-093f-4602-9f6f-fb9b418512ce,normal,6,4,false,false,false,coin,コイン+300,,300.00,true
+a83f9651-ba83-4731-a8b1-6d8bbb8730ab,normal,6,5,true,false,false,,,,0.00,true
+a188548f-b016-40a4-a3a5-45b3c9f24147,normal,6,6,true,false,false,,,,0.00,true
+671ff3a6-865b-410d-a706-6228f8264051,normal,6,7,true,false,false,,,,0.00,true
+5c00cb4b-8fa8-4651-b446-ec9bd0b0053c,normal,6,8,true,false,false,,,,0.00,true
+6deabc64-d3f2-4d18-a4ca-f49b12be1492,normal,5,1,false,true,false,gacha_ticket,祈願符+3,,3.00,true
+e43fe69a-f9ff-4d7c-950e-abfbfd0c7618,normal,5,2,false,false,false,gacha_ticket,祈願符+2,,2.00,true
+97031555-a20b-4cad-94de-385cffba9f70,normal,5,3,false,false,false,gacha_ticket,祈願符+1,,1.00,true
+d63d6664-e610-49d9-b7e0-615ce118bae4,normal,5,4,false,false,false,coin,コイン +200,,200.00,true
+a8d8a651-29f4-4298-a101-46a28a6d1336,normal,5,5,false,false,false,coin,コイン +100,,100.00,true
+54868953-8571-4b15-8390-18663df9b2d1,normal,5,6,true,false,false,,,,0.00,true
+782e76e5-99c0-4565-8716-a323601c36a1,normal,5,7,true,false,false,,,,0.00,true
+63dc0f34-e5a5-4dbf-b7ec-f891d16ce9eb,normal,5,8,true,false,false,,,,0.00,true
+481d6299-517b-424c-b8ac-29183135a10a,normal,5,9,true,false,false,,,,0.00,true
+707a05eb-c98a-454e-8d27-67a0c97c9422,normal,5,10,true,false,false,,,,0.00,true
+eceb8214-866b-4460-b798-68a4cc6b5f81,normal,7,1,false,true,false,mangan_ticket,満願符 +3,,3.00,true
+baf888a9-9d8f-416b-9df3-3a34fca226b4,normal,7,2,false,true,false,mangan_ticket,満願符 +2,,2.00,true
+909554c5-7e1d-4e6f-85d3-78138a8d02ad,normal,7,3,false,true,false,gacha_ticket,祈願符 +5,,5.00,true
+a9f58acc-7212-417e-b60a-fb9def119753,normal,7,4,true,false,false,,,,0.00,true
+30e8619b-6c7c-46a0-8a31-c8b2cbe760c5,normal,7,5,true,false,false,,,,0.00,true
+f6bc56d7-dcb4-40ee-ac44-8e626367d6e5,normal,7,6,true,false,false,,,,0.00,true
+048f7cba-d706-4123-897d-860c1f194b6f,normal,7,7,true,false,false,,,,0.00,true
+b05e2ca5-03c5-4c1b-b300-739c1efa89ff,normal,7,8,true,false,false,,,,0.00,true
+676b8c05-c3c6-4cef-a20a-bef2655175f4,normal,7,9,true,false,false,,,,0.00,true
+2e98d619-9b97-4759-bf52-6b2b7469c97b,normal,7,10,true,false,false,,,,0.00,true
+14d8272c-920e-4b3b-953f-68460f7343a3,normal,6,9,true,false,false,,,,0.00,true
+85a0ae2f-6067-46ee-9ca1-bc4b977161c3,normal,6,10,true,false,false,,,,0.00,true
+b0c0577f-3402-4b8d-89b8-6e8274594af5,normal,4,1,false,true,false,gacha_ticket,祈願符+1,,1.00,true
+86a57b3a-add1-49a4-bfea-a0f77ce26fae,normal,4,2,false,false,false,gacha_ticket,祈願符+1,,1.00,true
+a7f7d5c9-33ba-47e9-8db9-1706602c2bd7,normal,4,3,false,false,false,coin,コイン +80,,80.00,true
+b70d1d01-1d0f-4170-928a-fc0060170c5f,normal,4,4,false,false,false,coin,コイン +50,,50.00,true
+bc50b5ef-d46e-4a73-87ed-e431b2c9900c,normal,4,5,false,false,false,coin,コイン +30,,30.00,true
+ddc10e3c-71a0-489d-b589-aaa971c60726,normal,4,6,false,false,false,coin,コイン +30,,30.00,true
+12267552-1001-463a-a4cd-01fc13b83645,normal,4,7,true,false,false,,,,0.00,true
+3a8346e3-747b-47cd-9210-a4c79cdf7b40,normal,4,8,true,false,false,,,,0.00,true
+06993752-3a01-45e3-8ed6-88eec53b9f9e,normal,4,9,true,false,false,,,,0.00,true
+990f1c83-fdfb-41e6-b12b-c001dd01f67a,normal,1,1,false,true,false,multiplier,倍率+2,,2.00,true
+ea38fbab-e73a-4304-bab2-97e78f44580e,normal,1,2,false,true,false,multiplier,倍率+1,,1.00,false
+02468ec3-fa73-40ec-8c0e-742df04c2828,normal,1,3,false,false,false,coin,コイン +30,,30.00,false
+f3eec2c9-d13a-4511-b754-d7ba780c78b9,normal,1,4,false,false,false,coin,コイン +20,,20.00,false
+360a2d73-a427-490c-8a89-adaaf9987ae9,normal,1,5,false,false,false,coin,コイン +20,,20.00,false
+5fc4fa2c-67a3-4dba-9971-de94be4395cc,normal,1,6,false,false,false,coin,コイン +10,,10.00,false
+cd1f4ea8-cc1e-4798-a6aa-6cfc229915a1,normal,1,7,false,false,false,coin,コイン +10,,10.00,false
+5c4c5149-b9d0-4a1c-9537-d23d1d89ede4,normal,1,8,false,false,false,coin,コイン +10,,10.00,false
+b6937906-735d-4530-8489-d9d21fed2e16,normal,1,9,false,false,false,coin,コイン +10,,10.00,false
+a4b14419-904e-4381-8189-344b940eb9ec,normal,2,1,false,true,false,multiplier,倍率+0.5,,0.50,true
+7be4ff27-78e6-4d4e-b551-2acbcc8ba80a,normal,2,2,false,false,false,coin,コイン +50,,50.00,false
+395a1d4d-cd96-4b8e-84e1-896e147a6b4f,normal,2,3,false,false,false,coin,コイン +30,,30.00,false
+d99ddaf6-7b84-4311-837d-8f16ab9d35e0,normal,2,4,false,false,false,coin,コイン +20,,20.00,false
+b6225949-d108-4b54-90d3-967d12e181e7,normal,2,5,false,false,false,coin,コイン +20,,20.00,false
+3109a7db-49a1-4536-97e6-be8339873e89,normal,2,6,false,false,false,coin,コイン +10,,10.00,false
+5d653eec-1ecc-48b3-a97a-ef7c1de02da1,normal,2,7,false,false,false,coin,コイン +10,,10.00,false
+5553f481-54cd-4aff-a08d-f81047ece672,normal,2,8,false,false,false,coin,コイン +10,,10.00,false
+b21c942c-c3c8-403f-be1e-c454792817fc,normal,2,9,true,false,false,,,,0.00,false
+24f60124-ffa1-4a04-851c-21b019a16945,normal,2,10,true,false,false,,,,0.00,false
+d9052818-0295-455d-abaf-3c911dbfd8cf,normal,3,1,false,true,false,coin,コイン +100,,100.00,true
+fa7bb3ff-592a-4bff-b35f-fe9685dae384,normal,3,2,false,false,false,coin,コイン +80,,80.00,false
+1ff03b89-73f6-446e-aed6-394367fc2798,normal,3,3,false,false,false,coin,コイン +50,,50.00,false
+f62a2de8-531b-4dac-b807-7c4d5acb5ddc,normal,3,4,false,false,false,coin,コイン +30,,30.00,false
+4fac9594-e888-41e5-915c-e78f0a5279a0,normal,3,5,false,false,false,coin,コイン +30,,30.00,false
+88e56945-5c6d-4a1b-a576-33ed7e4230c1,normal,3,6,false,false,false,coin,コイン +20,,20.00,false
+28967d4e-82c2-455b-a21a-bd0becd32c96,normal,3,7,false,false,false,coin,コイン +20,,20.00,false
+0b804d7e-1c0d-4594-80b5-e4bac0e4dc72,normal,3,8,true,false,false,,,,0.00,false
+26ed19db-926a-44dc-8ee2-d9c927bfec2f,normal,3,9,true,false,false,,,,0.00,false
+c6175623-92ea-4e70-b394-15783c54d740,normal,4,10,true,false,false,,,,0.00,true
+6a638fe8-71e2-4a5f-a53e-a18ae385f193,normal,1,10,true,false,false,,,,0.00,false
+1080ecd0-fe0e-4971-9f01-ce3a85799ec6,normal,3,10,true,false,false,,,,0.00,false
+062864ab-a2fa-4a98-abcd-af74d7ff85b7,free,7,4,false,false,false,gacha_ticket,祈願符+1,,1.00,true
+78c237ce-3f97-44f8-b6b1-8aa07e5ac930,free,7,5,false,false,false,gacha_ticket,祈願符+1,,1.00,true
+df9f6f63-e2cc-4f69-8700-5334ec06eacb,free,7,6,false,false,false,multiplier,倍率+1,,1.00,true
+5f887913-d192-42a3-bff1-83e97c032d76,free,7,7,false,false,false,multiplier,倍率+0.7,,0.70,true
+2b8d1931-da39-4b71-8061-c2800f8e9bb1,free,7,8,false,false,false,multiplier,倍率+0.4,,0.40,true
+b6ec0ec2-eeba-4a4f-8303-d7abf53e5efe,free,1,9,false,false,false,coin,コイン+20,,20.00,true
+6ddbad4c-a36c-4494-b941-aff82019932b,free,1,10,false,false,false,coin,コイン+30,,30.00,true
+01632383-566d-4124-8bd8-35c93c7f826c,free,2,1,false,false,false,multiplier,倍率+0.1,,0.10,true
+105a2756-1df8-4cd0-a366-070850cebee0,free,1,1,false,false,true,multiplier,倍率+0.1,,0.10,true
+b62acf57-78f2-480c-9a0d-cf07b0ca8b05,free,1,2,false,false,false,multiplier,倍率+0.2,,0.20,true
+d1ee1421-676c-4368-9689-247312cfd880,free,2,2,false,false,true,multiplier,倍率+0.2,,0.20,true
+ae09bbcf-f0e3-4cb1-84c0-3ac5bd52df14,free,2,3,false,false,false,multiplier,倍率+0.3,,0.30,true
+08c97186-4888-4403-af5c-c40e02e5276b,free,2,4,false,false,false,multiplier,倍率+0.4,,0.40,true
+85d9e342-8483-48eb-8291-a809ab55e972,free,2,5,false,false,false,multiplier,倍率+0.5,,0.50,true
+84731f2a-27ea-4178-89ca-8fcd2f495c63,free,2,6,false,false,false,coin,コイン+5,,5.00,true
+daaafc37-a464-4160-be9f-b27cc2ad97a1,free,2,7,false,false,false,coin,コイン+10,,10.00,true
+efd04f53-1a18-46aa-8e6f-d1ac77e6b95a,free,2,8,false,false,false,coin,コイン+15,,15.00,true
+7acd7a83-9a19-405c-9fe4-e310b5fad952,free,2,9,false,false,false,coin,コイン+20,,20.00,true
+ea183a6f-f5aa-4c15-b8a4-c5997233aea7,free,2,10,false,false,false,coin,コイン+30,,30.00,true
+3092b651-0636-41a4-b50e-f6632d96d59f,free,3,1,false,false,false,multiplier,倍率+0.1,,0.10,true
+f147ae70-6e8e-4d97-9522-bfc8f3638eef,free,3,2,false,false,false,multiplier,倍率+0.2,,0.20,true
+0168f2c8-7ff5-45d4-8bcc-60b5d3d0e016,free,7,9,false,false,false,coin,コイン+50,,50.00,true
+138d9640-47fa-4676-867c-23d70d2b29e5,free,3,3,false,false,true,multiplier,倍率+0.3,,0.30,true
+a3bcb2c2-2948-4396-8888-885ad5ee0074,free,3,4,false,false,false,multiplier,倍率+0.4,,0.40,true
+6246c86f-7572-488a-a276-b66f5258e2ae,free,3,5,false,false,false,multiplier,倍率+0.5,,0.50,true
+48338473-cc78-4186-9c6a-7c6f00a36797,free,3,6,false,false,false,coin,コイン+5,,5.00,true
+ed47cbf1-7c67-4cba-87ad-376195cfe4b9,free,3,7,false,false,false,coin,コイン+10,,10.00,true
+321d81e4-f879-45ce-89a9-7b5f8d5b4656,free,3,8,false,false,false,coin,コイン+15,,15.00,true
+f4274cd4-6d43-4286-a8f8-72f1afda81fd,free,3,9,false,false,false,coin,コイン+20,,20.00,true
+efa4cca1-942c-4195-855e-5a7d246b81b5,free,3,10,false,false,false,coin,コイン+30,,30.00,true
+d8754aa6-f25e-4607-838b-d760277c16e1,free,1,3,false,false,false,multiplier,倍率+0.3,,0.30,true
+02d41ffe-e74c-4ee3-a8af-b738e61a7e35,free,1,4,false,false,false,multiplier,倍率+0.4,,0.40,true
+d6bd6c0d-9f50-4ddb-b69b-33ff5e6a7724,free,1,5,false,false,false,multiplier,倍率+0.5,,0.50,true
+4523161b-5483-4130-9a88-c384a39c0b58,free,1,6,false,false,false,coin,コイン+5,,5.00,true
+4b50b27e-8216-45d3-a24d-aacc0038038e,free,1,7,false,false,false,coin,コイン+10,,10.00,true
+eaaf8d7d-51a4-4788-9c1c-b33f40cbd2eb,free,1,8,false,false,false,coin,コイン+15,,15.00,true
+887125d3-28e1-4973-b268-5aa9aa5a5497,free,4,1,false,false,false,multiplier,倍率+0.1,,0.10,true
+0acf9709-dcb7-4e18-924d-b2c839f4dcc3,free,4,2,false,false,false,multiplier,倍率+0.2,,0.20,true
+28b75b8a-7ee8-4435-8891-d1175c900d2f,free,4,3,false,false,false,multiplier,倍率+0.3,,0.30,true
+56bd7174-8423-4b9d-9901-b2d12057b002,free,4,4,false,false,true,multiplier,倍率+0.4,,0.40,true
+1c003dfc-0cd4-4b39-a45b-b6f11fbf5a6f,free,4,5,false,false,false,multiplier,倍率+0.5,,0.50,true
+bf8af57d-6532-42a6-85c4-3ddce1ee1531,free,4,6,false,false,false,coin,コイン+5,,5.00,true
+162c805d-a0bd-4965-a13a-2c2957b2cdeb,free,4,7,false,false,false,coin,コイン+10,,10.00,true
+a9982dda-92b2-40d0-9d21-6722b9e90598,free,4,8,false,false,false,coin,コイン+15,,15.00,true
+68aba117-4796-4ddf-b57f-f82c77e7c56d,free,4,9,false,false,false,coin,コイン+20,,20.00,true
+e562783e-1984-49cb-a0fb-24173bdd08b6,free,4,10,false,false,false,coin,コイン+30,,30.00,true
+55e7c0b2-548a-4bbd-8269-85a730285554,free,5,1,false,false,false,multiplier,倍率+0.1,,0.10,true
+ccb3d852-4fc5-4974-8699-8d5cb1721ad8,free,5,2,false,false,false,multiplier,倍率+0.2,,0.20,true
+fd56f11a-272b-41bb-83f2-aca7612492c1,free,5,3,false,false,false,multiplier,倍率+0.3,,0.30,true
+b469dee2-8104-4b5c-b325-53b4f6b23861,free,5,4,false,false,false,multiplier,倍率+0.4,,0.40,true
+826be7db-13ae-430e-ae14-ebcb84924fef,free,7,10,false,false,false,coin,コイン+100,,100.00,true
+f4116fc2-4c79-484c-a55c-3cd9fe8aebe0,free,6,1,false,false,true,multiplier,倍率+0.1,,0.10,true
+e7e4be4c-6ea2-47bb-b5f8-01ef950b3b98,free,6,2,false,false,false,multiplier,倍率+0.2,,0.20,true
+15a696b1-4c38-4c34-9678-d3d4ce634c5b,free,6,3,false,false,false,multiplier,倍率+0.3,,0.30,true
+d016aa8f-f6fc-46cd-adeb-dfa7ebf8914f,free,6,4,false,false,false,multiplier,倍率+0.4,,0.40,true
+44070866-64ff-449a-b525-2c4a3c5a10b1,free,6,5,false,false,false,multiplier,倍率+0.5,,0.50,true
+dcb7b85d-e5ce-4e15-aaae-b0c733c7f66d,free,6,6,false,false,false,multiplier,倍率+0.6,,0.60,true
+cbe2d505-aa75-439d-8894-aa5354ed1d58,free,6,7,false,false,false,multiplier,倍率+0.7,,0.70,true
+dca2d120-7115-4cfd-8587-ef172766da59,free,6,8,false,false,false,multiplier,倍率+0.8,,0.80,true
+a73aef81-048b-4532-8c8f-8614a43894f8,free,6,9,false,false,false,multiplier,倍率+0.9,,0.90,true
+aa5580c6-798f-4499-b659-303a9481662a,free,6,10,false,false,false,multiplier,倍率+1,,1.00,true
+1791f083-4c2e-4469-ab17-b97fc0c23127,free,5,5,false,false,true,multiplier,倍率+0.5,,0.50,true
+a6eb48c1-efff-4a8b-a0d4-ab88ca88c10e,free,5,6,false,false,false,coin,コイン+5,,5.00,true
+892db650-88d9-4572-bbf4-25d0c51e9b85,free,5,7,false,false,false,coin,コイン+10,,10.00,true
+3088d8c9-8b21-4884-9cc1-cbe5341e75d0,free,5,8,false,false,false,coin,コイン+15,,15.00,true
+0f03528c-5f5f-41b8-bc0d-a8fd64d40945,free,5,9,false,false,false,coin,コイン+20,,20.00,true
+6da13d99-9095-4494-82b7-abfaba455d35,free,5,10,false,false,false,coin,コイン+30,,30.00,true
+d0dc7e5d-7982-4040-8c23-9732d6be69f6,free,7,1,false,false,true,gacha_ticket,祈願符+1,,1.00,true
+4d7aee37-fcb5-43af-86ac-d18e9f6262d7,free,7,2,false,false,false,mangan_ticket,満願符+1,,1.00,true
+de52b5d1-e098-42f2-9255-6b49aed4b3ab,free,7,3,false,false,false,gacha_ticket,祈願符+1,,1.00,true
