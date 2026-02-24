@@ -12,6 +12,7 @@ create table if not exists public.slot_reel_positions (
     position_index integer not null check (position_index between 1 and 10),
     is_bust boolean not null default false,
     is_jackpot boolean not null default false,
+    is_free_spin_stock boolean not null default false,
     reward_type text,
     reward_name text,
     reward_id text,
@@ -38,6 +39,7 @@ create table if not exists public.slot_sessions (
     free_spin_active boolean not null default false,
     free_spins_remaining integer not null default 0,
     free_spin_round integer not null default 0,
+    free_spin_stocks integer not null default 0,
     -- 精算
     payout_summary jsonb not null default '{}'::jsonb,
     -- 時刻
@@ -103,6 +105,7 @@ begin
             'free_spin_active', v_session.free_spin_active,
             'free_spins_remaining', v_session.free_spins_remaining,
             'free_spin_round', v_session.free_spin_round,
+            'free_spin_stocks', v_session.free_spin_stocks,
             'created_at', v_session.created_at
         ),
         'reels', v_reels
@@ -170,6 +173,7 @@ begin
             'free_spin_active', v_session.free_spin_active,
             'free_spins_remaining', v_session.free_spins_remaining,
             'free_spin_round', v_session.free_spin_round,
+            'free_spin_stocks', v_session.free_spin_stocks,
             'created_at', v_session.created_at
         ),
         'reels', v_reels,
@@ -223,6 +227,7 @@ begin
             'free_spin_active', v_session.free_spin_active,
             'free_spins_remaining', v_session.free_spins_remaining,
             'free_spin_round', v_session.free_spin_round,
+            'free_spin_stocks', v_session.free_spin_stocks,
             'created_at', v_session.created_at
         ),
         'reels', v_reels,
@@ -337,6 +342,7 @@ begin
         'position_id', v_position.id,
         'is_bust', v_position.is_bust,
         'is_jackpot', coalesce(v_position.is_jackpot, false),
+        'is_free_spin_stock', coalesce(v_position.is_free_spin_stock, false),
         'is_free_spin', v_session.free_spin_active,
         'free_spin_round', v_session.free_spin_round,
         'reward_type', v_position.reward_type,
@@ -357,28 +363,45 @@ begin
 
     -- ===== フリースピン中 =====
     if v_session.free_spin_active then
-        if v_reel_index >= 7 then
-            v_remaining := greatest(v_session.free_spins_remaining - 1, 0);
-            v_round := v_session.free_spin_round + 1;
-
-            update public.slot_sessions
-            set reels_state = v_reels,
-                free_spins_remaining = v_remaining,
-                free_spin_round = v_round,
-                current_reel = case when v_remaining > 0 then 1 else v_session.current_reel end,
-                free_spin_active = case when v_remaining > 0 then true else false end
-            where id = v_session.id;
-
-            if v_remaining <= 0 then
-                v_auto_cashout := true;
-                v_payout := public.slot_cashout(p_user_id, v_session.id)->'payout';
+        -- FreeSpin ストック蓄積
+        declare
+            v_stocks integer := v_session.free_spin_stocks;
+            v_extra_spins integer := 0;
+        begin
+            if coalesce(v_position.is_free_spin_stock, false) then
+                v_stocks := v_stocks + 1;
+                if v_stocks >= 3 then
+                    v_extra_spins := v_stocks / 3;
+                    v_stocks := v_stocks % 3;
+                end if;
             end if;
-        else
-            update public.slot_sessions
-            set current_reel = v_reel_index + 1,
-                reels_state = v_reels
-            where id = v_session.id;
-        end if;
+
+            if v_reel_index >= 7 then
+                v_remaining := greatest(v_session.free_spins_remaining - 1 + v_extra_spins, 0);
+                v_round := v_session.free_spin_round + 1;
+
+                update public.slot_sessions
+                set reels_state = v_reels,
+                    free_spins_remaining = v_remaining,
+                    free_spin_round = v_round,
+                    free_spin_stocks = v_stocks,
+                    current_reel = case when v_remaining > 0 then 1 else v_session.current_reel end,
+                    free_spin_active = case when v_remaining > 0 then true else false end
+                where id = v_session.id;
+
+                if v_remaining <= 0 then
+                    v_auto_cashout := true;
+                    v_payout := public.slot_cashout(p_user_id, v_session.id)->'payout';
+                end if;
+            else
+                update public.slot_sessions
+                set current_reel = v_reel_index + 1,
+                    reels_state = v_reels,
+                    free_spin_stocks = v_stocks,
+                    free_spins_remaining = v_session.free_spins_remaining + v_extra_spins
+                where id = v_session.id;
+            end if;
+        end;
 
     -- ===== 通常スピン中 =====
     else
@@ -454,6 +477,7 @@ begin
             'free_spin_active', v_session.free_spin_active,
             'free_spins_remaining', v_session.free_spins_remaining,
             'free_spin_round', v_session.free_spin_round,
+            'free_spin_stocks', v_session.free_spin_stocks,
             'created_at', v_session.created_at
         ),
         'result', v_result_json,
@@ -499,6 +523,7 @@ begin
             'free_spin_active', v_session.free_spin_active,
             'free_spins_remaining', v_session.free_spins_remaining,
             'free_spin_round', v_session.free_spin_round,
+            'free_spin_stocks', v_session.free_spin_stocks,
             'created_at', v_session.created_at
         ), 'payout', '[]'::jsonb, 'outcome', 'bust');
     end if;
@@ -512,6 +537,7 @@ begin
             'free_spin_active', v_session.free_spin_active,
             'free_spins_remaining', v_session.free_spins_remaining,
             'free_spin_round', v_session.free_spin_round,
+            'free_spin_stocks', v_session.free_spin_stocks,
             'created_at', v_session.created_at
         ), 'payout', v_session.payout_summary, 'outcome', 'cashed_out');
     end if;
@@ -637,6 +663,7 @@ begin
             'free_spin_active', v_session.free_spin_active,
             'free_spins_remaining', v_session.free_spins_remaining,
             'free_spin_round', v_session.free_spin_round,
+            'free_spin_stocks', v_session.free_spin_stocks,
             'created_at', v_session.created_at
         ),
         'payout', v_summary,
@@ -733,87 +760,88 @@ values
 ('normal', 7, 10, true,  false, null,            null,           null, 0);
 
 -- フリースピンリール (mode = 'free', 7 reels x 10 positions, バーストなし)
+-- is_free_spin_stock = true のポジションはストック蓄積 + 通常報酬の二重効果
 delete from public.slot_reel_positions where mode = 'free';
 insert into public.slot_reel_positions
-(mode, reel_index, position_index, is_bust, is_jackpot, reward_type, reward_name, reward_id, amount)
+(mode, reel_index, position_index, is_bust, is_jackpot, is_free_spin_stock, reward_type, reward_name, reward_id, amount)
 values
--- Reel 1
-('free', 1,  1, false, false, 'coin',          'コイン +50',   null,  50),
-('free', 1,  2, false, false, 'coin',          'コイン +30',   null,  30),
-('free', 1,  3, false, false, 'coin',          'コイン +20',   null,  20),
-('free', 1,  4, false, false, 'coin',          'コイン +20',   null,  20),
-('free', 1,  5, false, false, 'coin',          'コイン +10',   null,  10),
-('free', 1,  6, false, false, 'coin',          'コイン +10',   null,  10),
-('free', 1,  7, false, false, 'gacha_ticket',  '祈願符 +1',   null,   1),
-('free', 1,  8, false, false, 'gacha_ticket',  '祈願符 +1',   null,   1),
-('free', 1,  9, false, false, 'coin',          'コイン +5',    null,   5),
-('free', 1, 10, false, false, 'coin',          'コイン +5',    null,   5),
--- Reel 2
-('free', 2,  1, false, false, 'coin',          'コイン +120',  null, 120),
-('free', 2,  2, false, false, 'coin',          'コイン +80',   null,  80),
-('free', 2,  3, false, false, 'coin',          'コイン +50',   null,  50),
-('free', 2,  4, false, false, 'coin',          'コイン +30',   null,  30),
-('free', 2,  5, false, false, 'coin',          'コイン +20',   null,  20),
-('free', 2,  6, false, false, 'coin',          'コイン +20',   null,  20),
-('free', 2,  7, false, false, 'gacha_ticket',  '祈願符 +1',   null,   1),
-('free', 2,  8, false, false, 'gacha_ticket',  '祈願符 +1',   null,   1),
-('free', 2,  9, false, false, 'coin',          'コイン +10',   null,  10),
-('free', 2, 10, false, false, 'coin',          'コイン +10',   null,  10),
--- Reel 3
-('free', 3,  1, false, false, 'gacha_ticket',  '祈願符 +2',   null,   2),
-('free', 3,  2, false, false, 'coin',          'コイン +150',  null, 150),
-('free', 3,  3, false, false, 'coin',          'コイン +100',  null, 100),
-('free', 3,  4, false, false, 'coin',          'コイン +60',   null,  60),
-('free', 3,  5, false, false, 'coin',          'コイン +40',   null,  40),
-('free', 3,  6, false, false, 'coin',          'コイン +30',   null,  30),
-('free', 3,  7, false, false, 'gacha_ticket',  '祈願符 +1',   null,   1),
-('free', 3,  8, false, false, 'gacha_ticket',  '祈願符 +1',   null,   1),
-('free', 3,  9, false, false, 'coin',          'コイン +20',   null,  20),
-('free', 3, 10, false, false, 'coin',          'コイン +10',   null,  10),
--- Reel 4
-('free', 4,  1, false, false, 'gacha_ticket',  '祈願符 +3',   null,   3),
-('free', 4,  2, false, false, 'coin',          'コイン +200',  null, 200),
-('free', 4,  3, false, false, 'coin',          'コイン +120',  null, 120),
-('free', 4,  4, false, false, 'coin',          'コイン +80',   null,  80),
-('free', 4,  5, false, false, 'coin',          'コイン +50',   null,  50),
-('free', 4,  6, false, false, 'coin',          'コイン +40',   null,  40),
-('free', 4,  7, false, false, 'gacha_ticket',  '祈願符 +2',   null,   2),
-('free', 4,  8, false, false, 'gacha_ticket',  '祈願符 +2',   null,   2),
-('free', 4,  9, false, false, 'coin',          'コイン +30',   null,  30),
-('free', 4, 10, false, false, 'coin',          'コイン +20',   null,  20),
--- Reel 5
-('free', 5,  1, false, false, 'gacha_ticket',  '祈願符 +4',   null,   4),
-('free', 5,  2, false, false, 'coin',          'コイン +250',  null, 250),
-('free', 5,  3, false, false, 'coin',          'コイン +150',  null, 150),
-('free', 5,  4, false, false, 'coin',          'コイン +100',  null, 100),
-('free', 5,  5, false, false, 'coin',          'コイン +60',   null,  60),
-('free', 5,  6, false, false, 'coin',          'コイン +50',   null,  50),
-('free', 5,  7, false, false, 'gacha_ticket',  '祈願符 +2',   null,   2),
-('free', 5,  8, false, false, 'gacha_ticket',  '祈願符 +2',   null,   2),
-('free', 5,  9, false, false, 'coin',          'コイン +40',   null,  40),
-('free', 5, 10, false, false, 'coin',          'コイン +30',   null,  30),
--- Reel 6
-('free', 6,  1, false, false, 'mangan_ticket', '満願符 +1',   null,   1),
-('free', 6,  2, false, false, 'gacha_ticket',  '祈願符 +4',   null,   4),
-('free', 6,  3, false, false, 'gacha_ticket',  '祈願符 +3',   null,   3),
-('free', 6,  4, false, false, 'gacha_ticket',  '祈願符 +2',   null,   2),
-('free', 6,  5, false, false, 'coin',          'コイン +120',  null, 120),
-('free', 6,  6, false, false, 'coin',          'コイン +80',   null,  80),
-('free', 6,  7, false, false, 'coin',          'コイン +60',   null,  60),
-('free', 6,  8, false, false, 'coin',          'コイン +50',   null,  50),
-('free', 6,  9, false, false, 'coin',          'コイン +40',   null,  40),
-('free', 6, 10, false, false, 'coin',          'コイン +30',   null,  30),
--- Reel 7
-('free', 7,  1, false, false, 'multiplier',    '2倍',         null,   2),
-('free', 7,  2, false, false, 'mangan_ticket', '満願符 +2',   null,   2),
-('free', 7,  3, false, false, 'gacha_ticket',  '祈願符 +8',   null,   8),
-('free', 7,  4, false, false, 'coin',          'コイン +300',  null, 300),
-('free', 7,  5, false, false, 'coin',          'コイン +200',  null, 200),
-('free', 7,  6, false, false, 'coin',          'コイン +150',  null, 150),
-('free', 7,  7, false, false, 'coin',          'コイン +100',  null, 100),
-('free', 7,  8, false, false, 'coin',          'コイン +80',   null,  80),
-('free', 7,  9, false, false, 'coin',          'コイン +60',   null,  60),
-('free', 7, 10, false, false, 'coin',          'コイン +40',   null,  40);
+-- Reel 1: FreeSpin at pos 1
+('free', 1,  1, false, false, true,  'multiplier',    '倍率+0.1',     null, 0.10),
+('free', 1,  2, false, false, false, 'multiplier',    '倍率+0.2',     null, 0.20),
+('free', 1,  3, false, false, false, 'multiplier',    '倍率+0.3',     null, 0.30),
+('free', 1,  4, false, false, false, 'multiplier',    '倍率+0.4',     null, 0.40),
+('free', 1,  5, false, false, false, 'multiplier',    '倍率+0.5',     null, 0.50),
+('free', 1,  6, false, false, false, 'coin',          'コイン+5',     null,  5),
+('free', 1,  7, false, false, false, 'coin',          'コイン+10',    null, 10),
+('free', 1,  8, false, false, false, 'coin',          'コイン+15',    null, 15),
+('free', 1,  9, false, false, false, 'coin',          'コイン+20',    null, 20),
+('free', 1, 10, false, false, false, 'coin',          'コイン+25',    null, 25),
+-- Reel 2: FreeSpin at pos 2
+('free', 2,  1, false, false, false, 'multiplier',    '倍率+0.1',     null, 0.10),
+('free', 2,  2, false, false, true,  'multiplier',    '倍率+0.2',     null, 0.20),
+('free', 2,  3, false, false, false, 'multiplier',    '倍率+0.3',     null, 0.30),
+('free', 2,  4, false, false, false, 'multiplier',    '倍率+0.4',     null, 0.40),
+('free', 2,  5, false, false, false, 'multiplier',    '倍率+0.5',     null, 0.50),
+('free', 2,  6, false, false, false, 'coin',          'コイン+5',     null,  5),
+('free', 2,  7, false, false, false, 'coin',          'コイン+10',    null, 10),
+('free', 2,  8, false, false, false, 'coin',          'コイン+15',    null, 15),
+('free', 2,  9, false, false, false, 'coin',          'コイン+20',    null, 20),
+('free', 2, 10, false, false, false, 'coin',          'コイン+25',    null, 25),
+-- Reel 3: FreeSpin at pos 3
+('free', 3,  1, false, false, false, 'multiplier',    '倍率+0.1',     null, 0.10),
+('free', 3,  2, false, false, false, 'multiplier',    '倍率+0.2',     null, 0.20),
+('free', 3,  3, false, false, true,  'multiplier',    '倍率+0.3',     null, 0.30),
+('free', 3,  4, false, false, false, 'multiplier',    '倍率+0.4',     null, 0.40),
+('free', 3,  5, false, false, false, 'multiplier',    '倍率+0.5',     null, 0.50),
+('free', 3,  6, false, false, false, 'coin',          'コイン+5',     null,  5),
+('free', 3,  7, false, false, false, 'coin',          'コイン+10',    null, 10),
+('free', 3,  8, false, false, false, 'coin',          'コイン+15',    null, 15),
+('free', 3,  9, false, false, false, 'coin',          'コイン+20',    null, 20),
+('free', 3, 10, false, false, false, 'coin',          'コイン+25',    null, 25),
+-- Reel 4: FreeSpin at pos 4
+('free', 4,  1, false, false, false, 'multiplier',    '倍率+0.1',     null, 0.10),
+('free', 4,  2, false, false, false, 'multiplier',    '倍率+0.2',     null, 0.20),
+('free', 4,  3, false, false, false, 'multiplier',    '倍率+0.3',     null, 0.30),
+('free', 4,  4, false, false, true,  'multiplier',    '倍率+0.4',     null, 0.40),
+('free', 4,  5, false, false, false, 'multiplier',    '倍率+0.5',     null, 0.50),
+('free', 4,  6, false, false, false, 'coin',          'コイン+5',     null,  5),
+('free', 4,  7, false, false, false, 'coin',          'コイン+10',    null, 10),
+('free', 4,  8, false, false, false, 'coin',          'コイン+15',    null, 15),
+('free', 4,  9, false, false, false, 'coin',          'コイン+20',    null, 20),
+('free', 4, 10, false, false, false, 'coin',          'コイン+25',    null, 25),
+-- Reel 5: FreeSpin at pos 5
+('free', 5,  1, false, false, false, 'multiplier',    '倍率+0.1',     null, 0.10),
+('free', 5,  2, false, false, false, 'multiplier',    '倍率+0.2',     null, 0.20),
+('free', 5,  3, false, false, false, 'multiplier',    '倍率+0.3',     null, 0.30),
+('free', 5,  4, false, false, false, 'multiplier',    '倍率+0.4',     null, 0.40),
+('free', 5,  5, false, false, true,  'multiplier',    '倍率+0.5',     null, 0.50),
+('free', 5,  6, false, false, false, 'coin',          'コイン+5',     null,  5),
+('free', 5,  7, false, false, false, 'coin',          'コイン+10',    null, 10),
+('free', 5,  8, false, false, false, 'coin',          'コイン+15',    null, 15),
+('free', 5,  9, false, false, false, 'coin',          'コイン+20',    null, 20),
+('free', 5, 10, false, false, false, 'coin',          'コイン+25',    null, 25),
+-- Reel 6: FreeSpin at pos 1
+('free', 6,  1, false, false, true,  'multiplier',    '倍率+0.1',     null, 0.10),
+('free', 6,  2, false, false, false, 'multiplier',    '倍率+0.2',     null, 0.20),
+('free', 6,  3, false, false, false, 'multiplier',    '倍率+0.3',     null, 0.30),
+('free', 6,  4, false, false, false, 'multiplier',    '倍率+0.4',     null, 0.40),
+('free', 6,  5, false, false, false, 'multiplier',    '倍率+0.5',     null, 0.50),
+('free', 6,  6, false, false, false, 'multiplier',    '倍率+0.6',     null, 0.60),
+('free', 6,  7, false, false, false, 'multiplier',    '倍率+0.7',     null, 0.70),
+('free', 6,  8, false, false, false, 'multiplier',    '倍率+0.8',     null, 0.80),
+('free', 6,  9, false, false, false, 'multiplier',    '倍率+0.9',     null, 0.90),
+('free', 6, 10, false, false, false, 'multiplier',    '倍率+1',       null, 1.00),
+-- Reel 7: FreeSpin at pos 1
+('free', 7,  1, false, false, true,  'gacha_ticket',  '祈願符+1',     null,  1),
+('free', 7,  2, false, false, false, 'mangan_ticket', '満願符+1',     null,  1),
+('free', 7,  3, false, false, false, 'gacha_ticket',  '祈願符+1',     null,  1),
+('free', 7,  4, false, false, false, 'gacha_ticket',  '祈願符+1',     null,  1),
+('free', 7,  5, false, false, false, 'gacha_ticket',  '祈願符+1',     null,  1),
+('free', 7,  6, false, false, false, 'multiplier',    '倍率+1',       null, 1.00),
+('free', 7,  7, false, false, false, 'multiplier',    '倍率+0.5',     null, 0.50),
+('free', 7,  8, false, false, false, 'coin',          'コイン+25',    null, 25),
+('free', 7,  9, false, false, false, 'coin',          'コイン+50',    null, 50),
+('free', 7, 10, false, false, false, 'coin',          'コイン+100',   null, 100);
 
 -- page settings entry (コスト設定を config に格納)
 insert into public.page_settings (path, name, is_active, config)

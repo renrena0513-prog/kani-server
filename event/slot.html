@@ -65,6 +65,69 @@
             font-weight: 600;
         }
 
+        .reel-stop img {
+            width: 80%;
+            height: 80%;
+            object-fit: contain;
+            filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5));
+        }
+
+        .free-spin-stock-bar {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 10px 16px;
+            margin-bottom: 12px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(120, 80, 220, 0.25), rgba(80, 140, 255, 0.2));
+            border: 1px solid rgba(120, 80, 220, 0.4);
+        }
+
+        .free-spin-stock-bar.active {
+            display: flex;
+        }
+
+        .free-spin-stock-bar .stock-label {
+            font-weight: 700;
+            color: #c4a1ff;
+            font-size: 0.9rem;
+        }
+
+        .free-spin-stock-bar .stock-icons {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .free-spin-stock-bar .stock-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            border: 2px solid rgba(120, 80, 220, 0.5);
+            padding: 3px;
+            background: rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .free-spin-stock-bar .stock-icon.filled {
+            border-color: #c4a1ff;
+            background: rgba(120, 80, 220, 0.4);
+            box-shadow: 0 0 10px rgba(120, 80, 220, 0.5);
+        }
+
+        .free-spin-stock-bar .stock-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .free-spin-stock-bar .stock-bonus {
+            color: #f6c453;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+
         .free-spin-cutin {
             position: fixed;
             inset: 0;
@@ -404,6 +467,11 @@
                 <h5 class="mb-0">停止結果</h5>
                 <span class="slot-muted" id="session-status">待機中</span>
             </div>
+            <div class="free-spin-stock-bar" id="free-spin-stock-bar">
+                <span class="stock-label">FREE SPIN ストック</span>
+                <div class="stock-icons" id="free-spin-stock-icons"></div>
+                <span class="stock-bonus" id="free-spin-stock-bonus"></span>
+            </div>
             <div class="reel-stage" id="reel-stage">
                 <div class="slot-mobile-summary" id="mobile-summary">
                     <div class="slot-muted">合計倍率</div>
@@ -450,6 +518,7 @@
                             <th style="width: 80px;">有効</th>
                             <th style="width: 90px;" data-admin-col="bust">バースト</th>
                             <th style="width: 110px;" data-admin-col="jackpot">ジャックポット</th>
+                            <th style="width: 90px;" data-admin-col="fsstock">FS Stock</th>
                             <th style="width: 160px;">報酬タイプ</th>
                             <th>報酬名</th>
                             <th style="width: 110px;">数量</th>
@@ -485,8 +554,10 @@
         let lastFreeSpinSummary = null;
         let lastFreeSpinSessionId = null;
         const CUTIN_DURATION_MS = 1600;
-        const JACKPOT_SYMBOL = '🎰';
-        const reelSymbols = ['🪙', '🎫', '🧧', '🪙', '🎫', '🧧', '🪙', JACKPOT_SYMBOL, '☠', '🪙'];
+        const JACKPOT_SYMBOL = '<img src="../images/slot/JACKPOT.png" alt="JACKPOT">';
+        const BURST_SYMBOL = '<img src="../images/slot/Burst.png" alt="Burst">';
+        const FREESPIN_SYMBOL = '<img src="../images/slot/FreeSpin.png" alt="FreeSpin">';
+        const reelSymbols = ['🪙', '🎫', '🧧', '🪙', '🎫', '🧧', '🪙', '🎰', '☠', '🪙'];
 
         async function initSlotPage() {
             const { data: { user } } = await supabaseClient.auth.getUser();
@@ -788,6 +859,30 @@
             if (currentSession.free_spin_active) {
                 messageEl.textContent = `🎰 フリースピン残り ${currentSession.free_spins_remaining} 回`;
             }
+            updateFreeSpinStockBar();
+        }
+
+        function updateFreeSpinStockBar() {
+            const bar = document.getElementById('free-spin-stock-bar');
+            const icons = document.getElementById('free-spin-stock-icons');
+            const bonus = document.getElementById('free-spin-stock-bonus');
+            if (!bar || !icons) return;
+
+            const isFree = currentSession?.free_spin_active;
+            if (!isFree) {
+                bar.classList.remove('active');
+                return;
+            }
+            bar.classList.add('active');
+
+            const stocks = currentSession?.free_spin_stocks ?? 0;
+            let html = '';
+            for (let i = 0; i < 3; i++) {
+                const filled = i < stocks ? 'filled' : '';
+                html += `<div class="stock-icon ${filled}"><img src="../images/slot/FreeSpin.png" alt="FS"></div>`;
+            }
+            icons.innerHTML = html;
+            if (bonus) bonus.textContent = stocks >= 3 ? '→ +1 スピン！' : `${stocks} / 3`;
         }
 
         async function startSession() {
@@ -983,21 +1078,29 @@
                 }
 
                 resultEl.textContent = reel.is_bust
-                    ? '☠ バースト'
-                    : (reel.is_jackpot ? `${JACKPOT_SYMBOL} ${reel.reward_name || 'ジャックポット'}` : (reel.reward_name || '報酬なし'));
+                    ? 'バースト'
+                    : reel.is_free_spin_stock
+                        ? `FS + ${reel.reward_name || '報酬'}`
+                        : reel.is_jackpot
+                            ? `JP + ${reel.reward_name || 'ジャックポット'}`
+                            : (reel.reward_name || '報酬なし');
                 col.classList.add('done');
                 if (reel.is_bust) col.classList.add('bust');
                 if (stopEl) {
                     if (reel.is_bust) {
-                        stopEl.textContent = '☠';
+                        stopEl.innerHTML = BURST_SYMBOL;
+                    } else if (reel.is_free_spin_stock) {
+                        stopEl.innerHTML = FREESPIN_SYMBOL;
                     } else if (reel.is_jackpot) {
-                        stopEl.textContent = JACKPOT_SYMBOL;
+                        stopEl.innerHTML = JACKPOT_SYMBOL;
                     } else if (reel.reward_type === 'coin') {
                         stopEl.textContent = '🪙';
                     } else if (reel.reward_type === 'gacha_ticket') {
                         stopEl.textContent = '🎫';
                     } else if (reel.reward_type === 'mangan_ticket') {
                         stopEl.textContent = '🧧';
+                    } else if (reel.reward_type === 'multiplier') {
+                        stopEl.textContent = '✨';
                     } else {
                         stopEl.textContent = '🎁';
                     }
@@ -1079,9 +1182,12 @@
         }
 
         function updateAdminColumnVisibility(mode) {
-            const showSpecial = mode === 'normal';
+            const showNormal = mode === 'normal';
             document.querySelectorAll('[data-admin-col="bust"], [data-admin-col="jackpot"]').forEach(el => {
-                el.style.display = showSpecial ? '' : 'none';
+                el.style.display = showNormal ? '' : 'none';
+            });
+            document.querySelectorAll('[data-admin-col="fsstock"]').forEach(el => {
+                el.style.display = mode === 'free' ? '' : 'none';
             });
         }
 
@@ -1121,13 +1227,16 @@
                 const amount = row.amount ?? '';
                 const isBust = row.is_bust || false;
                 const isJackpot = row.is_jackpot || false;
-                const hideSpecial = mode === 'free' ? 'style="display:none;"' : '';
+                const isFsStock = row.is_free_spin_stock || false;
+                const hideNormal = mode === 'free' ? 'style="display:none;"' : '';
+                const hideFree = mode !== 'free' ? 'style="display:none;"' : '';
                 return `
                     <tr data-position="${row.position_index}">
                         <td class="text-muted">#${row.position_index}</td>
                         <td><input type="checkbox" class="form-check-input admin-active" ${row.is_active ? 'checked' : ''}></td>
-                        <td data-admin-col="bust" ${hideSpecial}><input type="checkbox" class="form-check-input admin-bust" ${isBust ? 'checked' : ''}></td>
-                        <td data-admin-col="jackpot" ${hideSpecial}><input type="checkbox" class="form-check-input admin-jackpot" ${isJackpot ? 'checked' : ''}></td>
+                        <td data-admin-col="bust" ${hideNormal}><input type="checkbox" class="form-check-input admin-bust" ${isBust ? 'checked' : ''}></td>
+                        <td data-admin-col="jackpot" ${hideNormal}><input type="checkbox" class="form-check-input admin-jackpot" ${isJackpot ? 'checked' : ''}></td>
+                        <td data-admin-col="fsstock" ${hideFree}><input type="checkbox" class="form-check-input admin-fsstock" ${isFsStock ? 'checked' : ''}></td>
                         <td>
                             <select class="form-select form-select-sm admin-reward-type">
                                 <option value="">なし</option>
@@ -1188,6 +1297,7 @@
                 const isActive = row.querySelector('.admin-active')?.checked ?? false;
                 const isBust = mode === 'free' ? false : (row.querySelector('.admin-bust')?.checked ?? false);
                 const isJackpot = mode === 'free' ? false : (!isBust && (row.querySelector('.admin-jackpot')?.checked ?? false));
+                const isFsStock = mode === 'free' ? (row.querySelector('.admin-fsstock')?.checked ?? false) : false;
                 const rewardTypeRaw = row.querySelector('.admin-reward-type')?.value || '';
                 const rewardType = isBust ? null : (rewardTypeRaw || null);
                 const rewardNameRaw = row.querySelector('.admin-reward-name')?.value?.trim() || '';
@@ -1204,6 +1314,7 @@
                     is_active: isActive,
                     is_bust: mode === 'free' ? false : isBust,
                     is_jackpot: mode === 'free' ? false : isJackpot,
+                    is_free_spin_stock: isFsStock,
                     reward_type: rewardType,
                     reward_name: rewardName,
                     reward_id: rewardId,
