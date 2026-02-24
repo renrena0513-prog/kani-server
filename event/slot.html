@@ -181,6 +181,84 @@
             }
         }
 
+        .win-popup-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .win-popup-overlay.show {
+            display: flex;
+            opacity: 1;
+        }
+
+        .win-popup-content {
+            background: linear-gradient(145deg, #1f2937, #111827);
+            border: 2px solid #f6c453;
+            border-radius: 24px;
+            padding: 40px;
+            text-align: center;
+            max-width: 90%;
+            width: 400px;
+            box-shadow: 0 0 40px rgba(246, 196, 83, 0.3), inset 0 0 20px rgba(246, 196, 83, 0.1);
+            transform: scale(0.8) translateY(20px);
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .win-popup-overlay.show .win-popup-content {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+        }
+
+        .win-popup-title {
+            font-family: var(--slot-font-title);
+            font-size: 4rem;
+            font-weight: 900;
+            background: linear-gradient(to bottom, #fff6d9, #f6c453, #d98c0d);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 20px;
+            filter: drop-shadow(0 4px 12px rgba(246, 196, 83, 0.5));
+            letter-spacing: 0.05em;
+        }
+
+        .win-popup-rewards {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .win-popup-close {
+            background: linear-gradient(135deg, #f6c453 0%, #d99a29 100%);
+            color: #1a1306;
+            border: none;
+            padding: 12px 40px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 15px rgba(246, 196, 83, 0.4);
+        }
+
+        .win-popup-close:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(246, 196, 83, 0.6);
+        }
+
         .reel-stage {
             display: grid;
             grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -499,6 +577,14 @@
                 <div class="slot-panel p-3" id="payout-list"></div>
             </div>
             <div class="mt-4 slot-burst" id="burst-banner" style="display:none;">バースト！報酬はすべて没収されました。</div>
+        </div>
+
+        <div class="win-popup-overlay" id="win-popup">
+            <div class="win-popup-content">
+                <div class="win-popup-title">WIN!</div>
+                <div class="win-popup-rewards" id="win-popup-rewards"></div>
+                <button class="win-popup-close" onclick="closeWinPopup()">閉じる</button>
+            </div>
         </div>
 
         <div class="slot-panel p-4 mt-4 admin-only" id="slot-admin-panel" style="display:none;">
@@ -826,6 +912,13 @@
                 if (totals.mangan_ticket) parts.push(`🧧 +${totals.mangan_ticket}`);
                 if (totals.exchange_ticket) parts.push(`🎫 +${totals.exchange_ticket}`);
                 payoutList.innerHTML = parts.length ? parts.join(' / ') : '報酬なし';
+
+                if (!sessionCashedOutDisplayed) {
+                    showWinPopup(parts);
+                    sessionCashedOutDisplayed = true;
+                }
+            } else {
+                sessionCashedOutDisplayed = false;
             }
 
             messageEl.textContent = '';
@@ -909,6 +1002,8 @@
             updateFreeSpinStockBar();
         }
 
+        let previousStocks = 0;
+
         function updateFreeSpinStockBar() {
             const bar = document.getElementById('free-spin-stock-bar');
             const icons = document.getElementById('free-spin-stock-icons');
@@ -918,18 +1013,43 @@
             const isFree = currentSession?.free_spin_active;
             if (!isFree) {
                 bar.classList.remove('active');
+                previousStocks = 0;
                 return;
             }
             bar.classList.add('active');
 
-            const stocks = currentSession?.free_spin_stocks ?? 0;
+            const spinLocked = isSpinLocked();
+            const targetStocks = currentSession?.free_spin_stocks ?? 0;
+            const displayStocks = spinLocked ? previousStocks : targetStocks;
+            if (!spinLocked) previousStocks = targetStocks;
+
             let html = '';
             for (let i = 0; i < 3; i++) {
-                const filled = i < stocks ? 'filled' : '';
+                const filled = i < displayStocks ? 'filled' : '';
                 html += `<div class="stock-icon ${filled}"><img src="../images/slot/FreeSpin.png" alt="FS"></div>`;
             }
             icons.innerHTML = html;
-            if (bonus) bonus.textContent = stocks >= 3 ? '→ +1 スピン！' : `${stocks} / 3`;
+            if (bonus) bonus.textContent = displayStocks >= 3 ? '→ +1 スピン！' : `${displayStocks} / 3`;
+        }
+
+        let sessionCashedOutDisplayed = false;
+
+        function showWinPopup(parts) {
+            const popup = document.getElementById('win-popup');
+            const rewardsContainer = document.getElementById('win-popup-rewards');
+            if (!popup || !rewardsContainer) return;
+
+            if (parts.length === 0) {
+                rewardsContainer.innerHTML = '<div>報酬なし</div>';
+            } else {
+                rewardsContainer.innerHTML = parts.map(p => `<div>${p}</div>`).join('');
+            }
+            popup.classList.add('show');
+        }
+
+        function closeWinPopup() {
+            const popup = document.getElementById('win-popup');
+            if (popup) popup.classList.remove('show');
         }
 
         async function startSession() {
