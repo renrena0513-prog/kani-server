@@ -904,11 +904,17 @@
                 payoutSummary.style.display = 'block';
                 const payoutItems = currentSession.payout || [];
                 const totals = { coin: 0, gacha_ticket: 0, mangan_ticket: 0, exchange_ticket: 0 };
+                let multiplierLabel = '';
                 payoutItems.forEach(item => {
                     if (!item?.type) return;
+                    if (item.type === 'multiplier') {
+                        multiplierLabel = item.reward_name || `${item.amount || ''}倍`;
+                        return;
+                    }
                     totals[item.type] = (totals[item.type] || 0) + Number(item.amount || 0);
                 });
                 const parts = [];
+                if (multiplierLabel) parts.push(`✨ ${multiplierLabel}`);
                 if (totals.coin) parts.push(`🪙 +${totals.coin}`);
                 if (totals.gacha_ticket) parts.push(`🎫 +${totals.gacha_ticket}`);
                 if (totals.mangan_ticket) parts.push(`🧧 +${totals.mangan_ticket}`);
@@ -1018,9 +1024,9 @@
             if (!bar || !icons) return;
 
             const isFree = currentSession?.free_spin_active;
-            if (!isFree) {
+            if (!isFree || !freeSpinDisplayActive) {
                 bar.classList.remove('active');
-                previousStocks = 0;
+                if (!isFree) previousStocks = 0;
                 return;
             }
             bar.classList.add('active');

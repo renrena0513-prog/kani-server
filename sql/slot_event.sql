@@ -573,13 +573,18 @@ begin
         );
     end if;
 
-    if v_session.free_spin_confirmed = true then
+    select exists(
+        select 1
+        from jsonb_array_elements(coalesce(v_session.reels_state, '[]'::jsonb)) elem
+        where (elem->>'is_free_spin')::boolean = true
+           or coalesce((elem->>'free_spin_round')::int, 0) > 0
+    ) into v_source_has_rewards;
+
+    if v_source_has_rewards then
         select coalesce(jsonb_agg(elem), '[]'::jsonb) into v_source
         from jsonb_array_elements(coalesce(v_session.reels_state, '[]'::jsonb)) elem
-        where (elem->>'is_free_spin')::boolean = true;
-        if v_source = '[]'::jsonb then
-            v_source := coalesce(v_session.reels_state, '[]'::jsonb);
-        end if;
+        where (elem->>'is_free_spin')::boolean = true
+           or coalesce((elem->>'free_spin_round')::int, 0) > 0;
     else
         v_source := coalesce(v_session.reels_state, '[]'::jsonb);
     end if;
