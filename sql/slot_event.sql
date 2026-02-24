@@ -68,20 +68,8 @@ alter table public.slot_sessions add column if not exists free_spin_round intege
 alter table public.slot_sessions drop constraint if exists slot_sessions_current_reel_check;
 alter table public.slot_sessions add constraint slot_sessions_current_reel_check check (current_reel between 1 and 7);
 
--- 旧フリースピンデータを移行 (mode = 'free' として)
-insert into public.slot_reel_positions (mode, reel_index, position_index, is_bust, is_jackpot, reward_type, reward_name, reward_id, amount, is_active)
-select 'free', reel_index, position_index, false, false, reward_type, reward_name, reward_id, amount, is_active
-from public.slot_free_reel_positions
-where not exists (
-    select 1 from public.slot_reel_positions r
-    where r.mode = 'free' and r.reel_index = slot_free_reel_positions.reel_index
-      and r.position_index = slot_free_reel_positions.position_index
-);
-
--- 旧 unique 制約を mode 付きに変更
+-- 旧 unique 制約を mode 付きに変更 (データ移行前に実施)
 alter table public.slot_reel_positions drop constraint if exists slot_reel_positions_reel_index_position_index_key;
--- 新しい unique 制約 (mode, reel_index, position_index) は CREATE TABLE で定義済み。
--- 既存テーブルの場合は手動で追加:
 do $$
 begin
     if not exists (
@@ -96,6 +84,16 @@ begin
         end;
     end if;
 end $$;
+
+-- 旧フリースピンデータを移行 (mode = 'free' として)
+insert into public.slot_reel_positions (mode, reel_index, position_index, is_bust, is_jackpot, reward_type, reward_name, reward_id, amount, is_active)
+select 'free', reel_index, position_index, false, false, reward_type, reward_name, reward_id, amount, is_active
+from public.slot_free_reel_positions
+where not exists (
+    select 1 from public.slot_reel_positions r
+    where r.mode = 'free' and r.reel_index = slot_free_reel_positions.reel_index
+      and r.position_index = slot_free_reel_positions.position_index
+);
 
 -- 不要テーブルの削除
 drop table if exists public.slot_jackpot_positions cascade;
