@@ -925,11 +925,38 @@
                 if (totals.gacha_ticket) parts.push(`🎫 +${totals.gacha_ticket}`);
                 if (totals.mangan_ticket) parts.push(`🧧 +${totals.mangan_ticket}`);
                 if (totals.exchange_ticket) parts.push(`🎫 +${totals.exchange_ticket}`);
-                if (!parts.length && lastFreeSpinSummary && lastFreeSpinSessionId === currentSession.id) {
-                    const fallbackParts = [];
-                    if (lastFreeSpinSummary.multiplierText) fallbackParts.push(`✨ ${lastFreeSpinSummary.multiplierText}`);
-                    if (lastFreeSpinSummary.totalsText) fallbackParts.push(lastFreeSpinSummary.totalsText);
-                    payoutList.innerHTML = fallbackParts.length ? fallbackParts.join(' / ') : '報酬なし';
+                if (!parts.length) {
+                    const freeReels = (currentSession.reels || []).filter(reel => reel.is_free_spin || Number(reel.free_spin_round || 0) > 0);
+                    if (freeReels.length) {
+                        let multiplierSum = 0;
+                        const fallTotals = { coin: 0, gacha_ticket: 0, mangan_ticket: 0 };
+                        freeReels.forEach(reel => {
+                            if (reel.reward_type === 'multiplier') {
+                                multiplierSum += Number.parseFloat(reel.amount || 0) || 0;
+                            } else if (!reel.is_bust) {
+                                if (reel.reward_type === 'coin') fallTotals.coin += Number(reel.amount || 0);
+                                if (reel.reward_type === 'gacha_ticket') fallTotals.gacha_ticket += Number(reel.amount || 0);
+                                if (reel.reward_type === 'mangan_ticket') fallTotals.mangan_ticket += Number(reel.amount || 0);
+                            }
+                        });
+                        const fallParts = [];
+                        if (multiplierSum > 0) {
+                            const mult = 1 + multiplierSum;
+                            const formatted = mult.toFixed(2).replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
+                            fallParts.push(`✨ ×${formatted}`);
+                        }
+                        if (fallTotals.coin) fallParts.push(`🪙 +${fallTotals.coin}`);
+                        if (fallTotals.gacha_ticket) fallParts.push(`🎫 +${fallTotals.gacha_ticket}`);
+                        if (fallTotals.mangan_ticket) fallParts.push(`🧧 +${fallTotals.mangan_ticket}`);
+                        payoutList.innerHTML = fallParts.length ? fallParts.join(' / ') : '報酬なし';
+                    } else if (lastFreeSpinSummary && lastFreeSpinSessionId === currentSession.id) {
+                        const fallbackParts = [];
+                        if (lastFreeSpinSummary.multiplierText) fallbackParts.push(`✨ ${lastFreeSpinSummary.multiplierText}`);
+                        if (lastFreeSpinSummary.totalsText) fallbackParts.push(lastFreeSpinSummary.totalsText);
+                        payoutList.innerHTML = fallbackParts.length ? fallbackParts.join(' / ') : '報酬なし';
+                    } else {
+                        payoutList.innerHTML = '報酬なし';
+                    }
                 } else {
                     payoutList.innerHTML = parts.length ? parts.join(' / ') : '報酬なし';
                 }
