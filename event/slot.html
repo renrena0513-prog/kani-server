@@ -759,13 +759,13 @@
         function setProcessing(state) {
             isProcessing = state;
             document.getElementById('btn-start').disabled = state;
-            document.getElementById('btn-stop').disabled = state || !currentSession || currentSession.status !== 'active' || (currentSession.reels || []).length === 0;
+            document.getElementById('btn-stop').disabled = state || !currentSession || currentSession.status !== 'active' || currentSession.free_spin_active || (currentSession.reels || []).length === 0;
             const jackpotBtn = document.getElementById('btn-jackpot-confirm');
             if (jackpotBtn) jackpotBtn.disabled = state || !currentSession || !currentSession.jackpot_unlocked || currentSession.free_spin_confirmed;
             const mobileStart = document.getElementById('mobile-btn-start');
             const mobileStop = document.getElementById('mobile-btn-stop');
             if (mobileStart) mobileStart.disabled = state || !isEventActiveNow() || (currentSession && currentSession.status === 'active');
-            if (mobileStop) mobileStop.disabled = state || !currentSession || currentSession.status !== 'active' || (currentSession.reels || []).length === 0;
+            if (mobileStop) mobileStop.disabled = state || !currentSession || currentSession.status !== 'active' || currentSession.free_spin_active || (currentSession.reels || []).length === 0;
             updateReelButtons();
         }
 
@@ -974,6 +974,11 @@
             if (!currentSession.free_spin_active && !spinLocked) {
                 messageEl.textContent = '';
             }
+            const stopBtn = document.getElementById('btn-stop');
+            const mobileStopBtn = document.getElementById('mobile-btn-stop');
+            const hideStop = !!currentSession.free_spin_active;
+            if (stopBtn) stopBtn.style.display = hideStop ? 'none' : '';
+            if (mobileStopBtn) mobileStopBtn.style.display = hideStop ? 'none' : '';
             if (spinLocked) {
                 setProcessing(true);
                 document.getElementById('btn-start').disabled = true;
@@ -992,7 +997,7 @@
                 const mobileStart = document.getElementById('mobile-btn-start');
                 const mobileStop = document.getElementById('mobile-btn-stop');
                 if (mobileStart) mobileStart.disabled = currentSession.status === 'active' || !isEventActiveNow();
-                if (mobileStop) mobileStop.disabled = currentSession.status !== 'active' || (currentSession.reels || []).length === 0;
+                if (mobileStop) mobileStop.disabled = currentSession.status !== 'active' || currentSession.free_spin_active || (currentSession.reels || []).length === 0;
                 updateReelButtons();
             }
 

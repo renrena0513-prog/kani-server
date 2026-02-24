@@ -546,7 +546,14 @@ begin
         ), 'payout', v_session.payout_summary, 'outcome', 'cashed_out');
     end if;
 
-    if v_session.jackpot_hits >= 3 and v_session.free_spin_active = false and v_session.jackpot_unlocked then
+    select exists(
+        select 1
+        from jsonb_array_elements(coalesce(v_session.reels_state, '[]'::jsonb)) elem
+        where (elem->>'is_free_spin')::boolean = true
+           or coalesce((elem->>'free_spin_round')::int, 0) > 0
+    ) into v_source_has_rewards;
+
+    if v_session.jackpot_hits >= 3 and v_session.free_spin_active = false and v_source_has_rewards = false then
         update public.slot_sessions
         set free_spin_active = true,
             free_spins_remaining = v_session.jackpot_hits,
