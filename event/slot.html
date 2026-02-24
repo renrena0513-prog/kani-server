@@ -104,12 +104,15 @@
             0% {
                 opacity: 0;
             }
+
             15% {
                 opacity: 1;
             }
+
             85% {
                 opacity: 1;
             }
+
             100% {
                 opacity: 0;
             }
@@ -210,10 +213,12 @@
         }
 
         @keyframes free-glow {
+
             0%,
             100% {
                 filter: drop-shadow(0 0 0 rgba(246, 196, 83, 0.2));
             }
+
             50% {
                 filter: drop-shadow(0 0 8px rgba(246, 196, 83, 0.6));
             }
@@ -406,8 +411,10 @@
                     <div class="slot-muted">獲得合計</div>
                     <div class="slot-mobile-total" id="mobile-reward-total">🪙 0 / 🎫 0 / 🧧 0</div>
                     <div class="slot-mobile-actions">
-                        <button class="btn btn-slot" id="mobile-btn-start" type="button" onclick="startSession()">開始</button>
-                        <button class="btn btn-slot-secondary" id="mobile-btn-stop" type="button" onclick="cashout()" disabled>ストップ</button>
+                        <button class="btn btn-slot" id="mobile-btn-start" type="button"
+                            onclick="startSession()">開始</button>
+                        <button class="btn btn-slot-secondary" id="mobile-btn-stop" type="button" onclick="cashout()"
+                            disabled>ストップ</button>
                     </div>
                 </div>
             </div>
@@ -504,43 +511,21 @@
             const statusEl = document.getElementById('event-status');
             try {
                 const { data, error } = await supabaseClient
-                    .from('slot_event_settings')
-                    .select('*')
-                    .order('created_at', { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
-
-                if (error) throw error;
-                const { data: pageData, error: pageError } = await supabaseClient
                     .from('page_settings')
-                    .select('is_active')
+                    .select('is_active, config')
                     .eq('path', '/event/slot.html')
                     .maybeSingle();
-                if (pageError) throw pageError;
+                if (error) throw error;
 
+                const config = data?.config || {};
                 eventSettings = {
-                    ...(data || {}),
-                    page_active: pageData?.is_active ?? false
+                    page_active: data?.is_active ?? false,
+                    cost: config.slot_cost ?? 100
                 };
 
-                const now = new Date();
-                const startAt = data?.start_at ? new Date(data.start_at) : null;
-                const endAt = data?.end_at ? new Date(data.end_at) : null;
-
-                let label = 'イベント準備中';
-                if (eventSettings.page_active) {
-                    label = 'イベント開催中';
-                } else if (!data || !data.is_active) {
-                    label = 'イベント停止中';
-                } else if (startAt && now < startAt) {
-                    label = `開始待ち: ${startAt.toLocaleString('ja-JP')}`;
-                } else if (endAt && now > endAt) {
-                    label = `終了: ${endAt.toLocaleString('ja-JP')}`;
-                } else {
-                    label = 'イベント開催中';
-                }
+                const label = eventSettings.page_active ? 'イベント開催中' : 'イベント停止中';
                 statusEl.textContent = label;
-                document.getElementById('slot-cost').textContent = data?.cost ?? 100;
+                document.getElementById('slot-cost').textContent = eventSettings.cost;
             } catch (err) {
                 statusEl.textContent = '設定取得に失敗';
                 console.error(err);
@@ -1111,10 +1096,10 @@
             const mode = getAdminMode();
             setAdminStatus('読み込み中...');
             try {
-                const tableName = mode === 'free' ? 'slot_free_reel_positions' : 'slot_reel_positions';
                 const { data, error } = await supabaseClient
-                    .from(tableName)
+                    .from('slot_reel_positions')
                     .select('*')
+                    .eq('mode', mode)
                     .eq('reel_index', reelIndex)
                     .order('position_index', { ascending: true });
                 if (error) throw error;
@@ -1213,27 +1198,25 @@
                 const amountVal = isBust ? 0 : Number.parseFloat(amountRaw || 0);
 
                 const rowData = {
+                    mode: mode,
                     reel_index: reelIndex,
                     position_index: positionIndex,
                     is_active: isActive,
+                    is_bust: mode === 'free' ? false : isBust,
+                    is_jackpot: mode === 'free' ? false : isJackpot,
                     reward_type: rewardType,
                     reward_name: rewardName,
                     reward_id: rewardId,
                     amount: amountVal
                 };
-                if (mode !== 'free') {
-                    rowData.is_bust = isBust;
-                    rowData.is_jackpot = isJackpot;
-                }
                 payload.push(rowData);
             });
 
             setAdminStatus('保存中...');
             try {
-                const tableName = mode === 'free' ? 'slot_free_reel_positions' : 'slot_reel_positions';
                 const { error } = await supabaseClient
-                    .from(tableName)
-                    .upsert(payload, { onConflict: 'reel_index,position_index' });
+                    .from('slot_reel_positions')
+                    .upsert(payload, { onConflict: 'mode,reel_index,position_index' });
                 if (error) throw error;
                 setAdminStatus('保存完了');
             } catch (err) {
