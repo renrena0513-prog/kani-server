@@ -502,6 +502,7 @@ declare
     v_session record;
     v_rewards record;
     v_summary jsonb := '[]'::jsonb;
+    v_source jsonb := '[]'::jsonb;
 begin
     perform pg_advisory_xact_lock(hashtext('slot:' || p_user_id));
 
@@ -569,6 +570,17 @@ begin
         );
     end if;
 
+    if v_session.free_spin_confirmed = true then
+        select coalesce(jsonb_agg(elem), '[]'::jsonb) into v_source
+        from jsonb_array_elements(coalesce(v_session.reels_state, '[]'::jsonb)) elem
+        where (elem->>'is_free_spin')::boolean = true;
+        if v_source = '[]'::jsonb then
+            v_source := coalesce(v_session.reels_state, '[]'::jsonb);
+        end if;
+    else
+        v_source := coalesce(v_session.reels_state, '[]'::jsonb);
+    end if;
+
     -- マルチプライヤー判定：multiplier報酬がある場合、倍率を取得
     declare
         v_multiplier numeric := 1;
@@ -576,7 +588,7 @@ begin
         v_mult_label text;
     begin
         for v_elem in
-            select elem from jsonb_array_elements(coalesce(v_session.reels_state, '[]'::jsonb)) elem
+            select elem from jsonb_array_elements(v_source) elem
             where elem->>'reward_type' = 'multiplier'
         loop
             v_multiplier := v_multiplier + coalesce((v_elem->>'amount')::numeric, 0);
@@ -588,7 +600,7 @@ begin
                 elem->>'reward_id' as reward_id,
                 elem->>'reward_name' as reward_name,
                 sum((elem->>'amount')::numeric) as amount
-            from jsonb_array_elements(coalesce(v_session.reels_state, '[]'::jsonb)) elem
+            from jsonb_array_elements(v_source) elem
             where (elem->>'is_bust')::boolean = false
               and elem->>'reward_type' is not null
               and elem->>'reward_type' <> 'multiplier'

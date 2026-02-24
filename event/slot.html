@@ -561,6 +561,8 @@
         let freeSpinDisplayActive = false;
         let lastFreeSpinSummary = null;
         let lastFreeSpinSessionId = null;
+        let lastFreeSpinsRemaining = null;
+        let pendingFreeSpinPlusCutin = false;
         const CUTIN_DURATION_MS = 1600;
         const JACKPOT_SYMBOL = '<img src="../images/slot/JACKPOT.png" alt="JACKPOT">';
         const BURST_SYMBOL = '<img src="../images/slot/Burst.png" alt="Burst">';
@@ -718,6 +720,8 @@
                 freeSpinDisplayActive = false;
                 lastFreeSpinSummary = null;
                 lastFreeSpinSessionId = null;
+                lastFreeSpinsRemaining = null;
+                pendingFreeSpinPlusCutin = false;
                 // no jackpot stage
                 setProcessing(false);
                 document.getElementById('btn-start').disabled = !isEventActiveNow();
@@ -764,6 +768,14 @@
                 }
             }
 
+            if (lastFreeSpinsRemaining !== null && currentSession.free_spins_remaining > lastFreeSpinsRemaining) {
+                if (spinLocked) {
+                    pendingFreeSpinPlusCutin = true;
+                } else if (!pendingFreeSpinPlusCutin) {
+                    showFreeSpinPlusCutin();
+                }
+            }
+
             if (!spinLocked && pendingFreeSpinCutin && currentSession.free_spin_active && !freeSpinDisplayActive) {
                 showFreeSpinCutin();
                 pendingFreeSpinCutin = false;
@@ -772,6 +784,11 @@
                     const stage = document.getElementById('reel-stage');
                     if (stage) stage.classList.add('free-spin');
                 }, CUTIN_DURATION_MS);
+            }
+
+            if (!spinLocked && pendingFreeSpinPlusCutin) {
+                showFreeSpinPlusCutin();
+                pendingFreeSpinPlusCutin = false;
             }
 
             if (!currentSession.free_spin_active) {
@@ -784,9 +801,11 @@
             if (lastFreeSpinSessionId && currentSession.id !== lastFreeSpinSessionId) {
                 lastFreeSpinSummary = null;
                 lastFreeSpinSessionId = null;
+                lastFreeSpinsRemaining = null;
             }
 
             wasFreeSpinActive = !!currentSession.free_spin_active;
+            lastFreeSpinsRemaining = currentSession.free_spins_remaining ?? lastFreeSpinsRemaining;
 
             if (spinLocked) {
                 sessionStatusEl.textContent = '回転中';
@@ -884,7 +903,7 @@
                 }
             }
 
-            if (currentSession.free_spin_active) {
+            if (currentSession.free_spin_active && freeSpinDisplayActive && !spinLocked) {
                 messageEl.textContent = `🎰 フリースピン残り ${currentSession.free_spins_remaining} 回`;
             }
             updateFreeSpinStockBar();
@@ -1171,12 +1190,27 @@
         function showFreeSpinCutin() {
             const cutin = document.getElementById('free-spin-cutin');
             if (!cutin) return;
+            const card = cutin.querySelector('.cutin-card');
+            if (card) card.textContent = 'FREE SPIN!!';
             cutin.classList.remove('show');
             void cutin.offsetWidth;
             cutin.classList.add('show');
             setTimeout(() => {
                 cutin.classList.remove('show');
             }, 1600);
+        }
+
+        function showFreeSpinPlusCutin() {
+            const cutin = document.getElementById('free-spin-cutin');
+            if (!cutin) return;
+            const card = cutin.querySelector('.cutin-card');
+            if (card) card.textContent = 'FREE SPIN +1';
+            cutin.classList.remove('show');
+            void cutin.offsetWidth;
+            cutin.classList.add('show');
+            setTimeout(() => {
+                cutin.classList.remove('show');
+            }, 1200);
         }
 
         function setupAdminReelEditor() {
