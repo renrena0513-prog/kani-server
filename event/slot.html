@@ -66,8 +66,8 @@
         }
 
         .reel-stop img {
-            width: 80%;
-            height: 80%;
+            width: 90%;
+            height: 90%;
             object-fit: contain;
             filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5));
         }
@@ -209,7 +209,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: clamp(1.4rem, 3.5vw, 2.6rem);
+            font-size: clamp(2.6rem, 6vw, 5rem);
             font-weight: 700;
             position: relative;
             overflow: hidden;
@@ -229,6 +229,14 @@
             line-height: var(--reel-size);
             color: #cbd5e1;
             font-weight: 700;
+        }
+
+        .reel-symbols span img {
+            width: 70%;
+            height: 70%;
+            object-fit: contain;
+            vertical-align: middle;
+            filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.4));
         }
 
         .reel-window.spinning .reel-symbols {
@@ -316,11 +324,11 @@
 
         @keyframes reel-spin {
             0% {
-                transform: translateY(0);
+                transform: translateY(calc(var(--reel-size) * -10));
             }
 
             100% {
-                transform: translateY(calc(var(--reel-size) * -10));
+                transform: translateY(0);
             }
         }
 
@@ -557,7 +565,27 @@
         const JACKPOT_SYMBOL = '<img src="../images/slot/JACKPOT.png" alt="JACKPOT">';
         const BURST_SYMBOL = '<img src="../images/slot/Burst.png" alt="Burst">';
         const FREESPIN_SYMBOL = '<img src="../images/slot/FreeSpin.png" alt="FreeSpin">';
-        const reelSymbols = ['🪙', '🎫', '🧧', '🪙', '🎫', '🧧', '🪙', '🎰', '☠', '🪙'];
+
+        function getMultiplierEmoji(amount) {
+            const val = Number(amount) || 0;
+            if (val >= 1.0) return '🌈';
+            if (val >= 0.7) return '🍒';
+            if (val >= 0.4) return '🍉';
+            return '🍇';
+        }
+
+        const reelSymbols = [
+            '🪙',
+            JACKPOT_SYMBOL,
+            '�',
+            BURST_SYMBOL,
+            '🍉',
+            FREESPIN_SYMBOL,
+            '🍒',
+            '🌈',
+            '🎫',
+            JACKPOT_SYMBOL
+        ];
 
         async function initSlotPage() {
             const { data: { user } } = await supabaseClient.auth.getUser();
@@ -1100,7 +1128,7 @@
                     } else if (reel.reward_type === 'mangan_ticket') {
                         stopEl.textContent = '🧧';
                     } else if (reel.reward_type === 'multiplier') {
-                        stopEl.textContent = '✨';
+                        stopEl.textContent = getMultiplierEmoji(reel.amount);
                     } else {
                         stopEl.textContent = '🎁';
                     }
