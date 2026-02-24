@@ -85,15 +85,19 @@ begin
     end if;
 end $$;
 
--- 旧フリースピンデータを移行 (mode = 'free' として)
-insert into public.slot_reel_positions (mode, reel_index, position_index, is_bust, is_jackpot, reward_type, reward_name, reward_id, amount, is_active)
-select 'free', reel_index, position_index, false, false, reward_type, reward_name, reward_id, amount, is_active
-from public.slot_free_reel_positions
-where not exists (
-    select 1 from public.slot_reel_positions r
-    where r.mode = 'free' and r.reel_index = slot_free_reel_positions.reel_index
-      and r.position_index = slot_free_reel_positions.position_index
-);
+-- 旧フリースピンデータを移行 (mode = 'free' として) ※テーブルが存在する場合のみ
+do $$
+begin
+    if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'slot_free_reel_positions') then
+        insert into public.slot_reel_positions (mode, reel_index, position_index, is_bust, is_jackpot, reward_type, reward_name, reward_id, amount, is_active)
+        select 'free', reel_index, position_index, false, false, reward_type, reward_name, reward_id, amount, is_active
+        from public.slot_free_reel_positions f
+        where not exists (
+            select 1 from public.slot_reel_positions r
+            where r.mode = 'free' and r.reel_index = f.reel_index and r.position_index = f.position_index
+        );
+    end if;
+end $$;
 
 -- 不要テーブルの削除
 drop table if exists public.slot_jackpot_positions cascade;
