@@ -962,8 +962,10 @@
                 }
 
                 if (!sessionCashedOutDisplayed) {
-                    showWinPopup(parts);
-                    sessionCashedOutDisplayed = true;
+                    if (parts.length) {
+                        showWinPopup(parts);
+                        sessionCashedOutDisplayed = true;
+                    }
                 }
             } else {
                 sessionCashedOutDisplayed = false;
