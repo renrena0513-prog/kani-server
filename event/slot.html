@@ -1242,13 +1242,20 @@
                 pendingFreeSpinPlusAmount = 0;
             }
 
-            if (!currentSession.free_spin_active) {
+            if (currentSession.status !== 'active') {
                 if (fsLoopActive) stopFullReelLoop();
+            }
+
+            if (!currentSession.free_spin_active) {
                 freeSpinDisplayActive = false;
                 awaitingFreeSpinStart = false;
                 if (stageEl) stageEl.classList.remove('free-spin');
             } else if (freeSpinDisplayActive && stageEl) {
                 stageEl.classList.add('free-spin');
+            }
+
+            if (awaitingFreeSpinStart && fsLoopActive) {
+                stopFullReelLoop();
             }
 
             updateStartButtonLabel();
@@ -1391,12 +1398,12 @@
                     }
                 }
                 setProcessing(false);
-                document.getElementById('btn-start').disabled = ((currentSession.status === 'active' && !isFreeSpinStartReady()) || !isEventActiveNow());
+                document.getElementById('btn-start').disabled = (fsLoopActive || (currentSession.status === 'active' && !isFreeSpinStartReady()) || !isEventActiveNow());
                 const jackpotBtn = document.getElementById('btn-jackpot-confirm');
                 if (jackpotBtn) jackpotBtn.disabled = !currentSession.jackpot_unlocked || currentSession.free_spin_confirmed;
                 const mobileStart = document.getElementById('mobile-btn-start');
                 const mobileStop = document.getElementById('mobile-btn-stop');
-                if (mobileStart) mobileStart.disabled = ((currentSession.status === 'active' && !isFreeSpinStartReady()) || !isEventActiveNow());
+                if (mobileStart) mobileStart.disabled = (fsLoopActive || (currentSession.status === 'active' && !isFreeSpinStartReady()) || !isEventActiveNow());
                 if (mobileStop) mobileStop.disabled = currentSession.status !== 'active' || currentSession.free_spin_active || (currentSession.reels || []).length === 0;
                 if (pendingFreeSpinAfterPopup) {
                     document.getElementById('btn-start').disabled = true;
