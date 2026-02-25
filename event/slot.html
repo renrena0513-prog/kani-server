@@ -1024,7 +1024,7 @@
         function isFreeSpinStartReady() {
             if (awaitingFreeSpinStart) return true;
             // ジャックポット確定後で、かつリールが止まり切ってから表示を切り替える（先ばれ防止）
-            if (!isSpinLocked() && !!currentSession && !!currentSession.jackpot_unlocked && !currentSession.free_spin_confirmed) return true;
+            if (!isSpinLocked() && !!currentSession && !currentSession.free_spin_active && !!currentSession.jackpot_unlocked && !currentSession.free_spin_confirmed) return true;
             return false;
         }
 
@@ -1090,14 +1090,23 @@
             // 全リールをループアニメーション開始
             updateLoopSymbols();
             fsLoopActive = true;
+            const currentRound = Number(currentSession?.free_spin_round || 0);
+            const stopped = new Set(
+                (currentSession?.reels || [])
+                    .filter(r => Number(r.reel_index) && (!currentSession?.free_spin_active || Number(r.free_spin_round || 0) === currentRound))
+                    .map(r => Number(r.reel_index))
+            );
             document.querySelectorAll('.reel-col').forEach(col => {
                 const windowEl = col.querySelector('.reel-window');
                 const symbolsEl = col.querySelector('.reel-symbols');
                 col.classList.remove('done', 'bust');
                 if (windowEl) {
                     windowEl.classList.remove('spinning', 'stopped');
-                    // ウィンドウ自体にクラスを付けて内側の.reel-symbolsにアニメを適用
-                    windowEl.classList.add('fs-loop');
+                    // 確定済みリールはループさせない
+                    if (!stopped.has(Number(col.getAttribute('data-reel-index')))) {
+                        // ウィンドウ自体にクラスを付けて内側の.reel-symbolsにアニメを適用
+                        windowEl.classList.add('fs-loop');
+                    }
                 }
                 const stopEl = col.querySelector('.reel-stop');
                 if (stopEl) stopEl.innerHTML = '';
@@ -1210,6 +1219,11 @@
                 return;
             }
             if (!currentSession || !currentSession.free_spin_active) {
+                if (currentSession && currentSession.status === 'active') {
+                    startFullReelLoop();
+                    updateUI();
+                    return;
+                }
                 loopStartRequested = true;
                 startFullReelLoop();
                 await startSession();
