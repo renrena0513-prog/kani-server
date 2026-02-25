@@ -435,6 +435,21 @@
             }
         }
 
+        @keyframes reel-loop {
+            0% {
+                transform: translateY(0);
+            }
+
+            100% {
+                transform: translateY(calc(var(--reel-size) * 10));
+            }
+        }
+
+        .reel-window.fs-loop {
+            animation: reel-loop 0.8s linear infinite;
+            overflow: hidden;
+        }
+
         .btn-slot {
             background: linear-gradient(135deg, #f6c453 0%, #d99a29 100%);
             color: #1a1306;
@@ -593,6 +608,8 @@
                     <div class="slot-mobile-actions">
                         <button class="btn btn-slot" id="mobile-btn-start" type="button"
                             onclick="handleStartAction()">開始</button>
+                        <button class="btn btn-slot" id="mobile-btn-fs-stop" type="button" onclick="stopCurrentReel()"
+                            style="display:none;">STOP</button>
                         <button class="btn btn-slot-secondary" id="mobile-btn-stop" type="button" onclick="cashout()"
                             disabled>ストップ</button>
                     </div>
@@ -603,6 +620,8 @@
                 <button class="btn btn-slot d-none" id="btn-jackpot-confirm" onclick="confirmJackpot()"
                     disabled>フリースピンへ確定</button>
                 <button class="btn btn-slot-secondary" id="btn-stop" onclick="cashout()" disabled>ストップ（精算）</button>
+                <button class="btn btn-slot" id="btn-fs-stop" onclick="stopCurrentReel()"
+                    style="display:none;">STOP</button>
             </div>
             <div class="mt-4 slot-burst" id="burst-banner" style="display:none;">バースト！報酬はすべて没収されました。</div>
         </div>
@@ -750,6 +769,7 @@
         let displayedFreeSpinsRemaining = null;
         let awaitingFreeSpinStart = false;
         let pendingFreeSpinAfterPopup = false;
+        let fsLoopActive = false;
         const CUTIN_DURATION_MS = 1600;
         const JACKPOT_SYMBOL = '<img src="../images/slot/JACKPOT.png" alt="JACKPOT">';
         const BURST_SYMBOL = '<img src="../images/slot/Burst.png" alt="Burst">';
@@ -939,7 +959,8 @@
             } else if (currentSession?.free_spin_active) {
                 if (startBtn) startBtn.textContent = 'フリースピン中';
                 if (mobileStart) mobileStart.textContent = 'フリースピン中';
-            } else if (isFreeSpinStartReady()) {
+            } else if (!isSpinLocked() && isFreeSpinStartReady()) {
+                // リールが止まり切ってから表示切替（先ばれ防止）
                 if (startBtn) startBtn.textContent = 'フリースピン開始';
                 if (mobileStart) mobileStart.textContent = 'フリースピン開始';
             } else {
@@ -983,15 +1004,66 @@
             }, CUTIN_DURATION_MS);
         }
 
+        function startFullReelLoop() {
+            // 全リールをループアニメーション開始
+            fsLoopActive = true;
+            document.querySelectorAll('.reel-col').forEach(col => {
+                const windowEl = col.querySelector('.reel-window');
+                col.classList.remove('done', 'bust');
+                if (windowEl) {
+                    windowEl.classList.remove('spinning', 'stopped');
+                    windowEl.classList.add('fs-loop');
+                }
+                const resultEl = col.querySelector('.reel-result');
+                if (resultEl) resultEl.textContent = '回転中...';
+                const stopEl = col.querySelector('.reel-stop');
+                if (stopEl) stopEl.textContent = '';
+            });
+            // STOPボタンを表示、起動ボタンを非表示に
+            const fsStopBtn = document.getElementById('btn-fs-stop');
+            const mFsStopBtn = document.getElementById('mobile-btn-fs-stop');
+            const startBtn = document.getElementById('btn-start');
+            const mStartBtn = document.getElementById('mobile-btn-start');
+            if (fsStopBtn) fsStopBtn.style.display = '';
+            if (mFsStopBtn) mFsStopBtn.style.display = '';
+            if (startBtn) startBtn.style.display = 'none';
+            if (mStartBtn) mStartBtn.style.display = 'none';
+        }
+
+        function stopFullReelLoop() {
+            fsLoopActive = false;
+            document.querySelectorAll('.reel-col').forEach(col => {
+                const windowEl = col.querySelector('.reel-window');
+                if (windowEl) windowEl.classList.remove('fs-loop');
+            });
+            const fsStopBtn = document.getElementById('btn-fs-stop');
+            const mFsStopBtn = document.getElementById('mobile-btn-fs-stop');
+            const startBtn = document.getElementById('btn-start');
+            const mStartBtn = document.getElementById('mobile-btn-start');
+            if (fsStopBtn) fsStopBtn.style.display = 'none';
+            if (mFsStopBtn) mFsStopBtn.style.display = 'none';
+            if (startBtn) startBtn.style.display = '';
+            if (mStartBtn) mStartBtn.style.display = '';
+        }
+
+        async function stopCurrentReel() {
+            if (isProcessing || !currentSession || !fsLoopActive) return;
+            stopFullReelLoop();
+            // 現在の「current_reel」をスピンして止める
+            const reelIndex = currentSession.current_reel;
+            await spinReel(reelIndex);
+        }
+
         async function handleStartAction() {
             if (isProcessing) return;
             if (awaitingFreeSpinStart) {
-                // ユーザーがボタンを押したのでフリースピン開始
+                // ユーザーがボタンを押したのでフリースピン開始：全リールループアニメーション
                 awaitingFreeSpinStart = false;
                 resetReelDisplay();
                 freeSpinDisplayActive = true;
                 const stage = document.getElementById('reel-stage');
                 if (stage) stage.classList.add('free-spin');
+                startFullReelLoop();
                 updateUI();
                 return;
             }
@@ -1031,6 +1103,7 @@
                 pendingFreeSpinCutin = false;
                 freeSpinDisplayActive = false;
                 awaitingFreeSpinStart = false;
+                fsLoopActive = false;
                 lastFreeSpinSummary = null;
                 lastFreeSpinSessionId = null;
                 lastFreeSpinsRemaining = null;
@@ -1112,6 +1185,7 @@
             }
 
             if (!currentSession.free_spin_active) {
+                if (fsLoopActive) stopFullReelLoop();
                 freeSpinDisplayActive = false;
                 awaitingFreeSpinStart = false;
                 if (stageEl) stageEl.classList.remove('free-spin');
@@ -1568,6 +1642,8 @@
                 };
                 resetReelDisplay();
                 await refreshCoinBalance();
+                // セッション開始後、全リールをループアニメーション開始
+                startFullReelLoop();
                 updateUI();
             } catch (err) {
                 console.error(err);
@@ -1585,6 +1661,7 @@
             if (currentSession.status !== 'active') return;
             if (typeof reelIndex === 'number' && reelIndex !== currentSession.current_reel) return;
             setProcessing(true);
+            if (fsLoopActive) stopFullReelLoop();
             animateSpinSequence(currentSession.current_reel);
             try {
                 const { data, error } = await supabaseClient.rpc('slot_spin_reel', {
