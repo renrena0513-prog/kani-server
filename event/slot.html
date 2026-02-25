@@ -697,11 +697,7 @@
                 <div class="slot-muted">JPで獲得した報酬合計（コイン換算なし）</div>
             </div>
             <div class="row g-4">
-                <div class="col-12 col-lg-6">
-                    <h6 class="mb-2">合計獲得トップ3</h6>
-                    <ol class="mb-0 slot-ranking-list" id="slot-jp-ranking"></ol>
-                </div>
-                <div class="col-12 col-lg-6">
+                <div class="col-12">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <h6 class="mb-0">一撃獲得トップ3</h6>
                         <div class="btn-group btn-group-sm" role="group" id="slot-jp-top-toggle">
@@ -728,6 +724,8 @@
     <script src="../js/navigation.js"></script>
     <script>
         let currentUserId = null;
+        let currentAuthUserId = null;
+        let currentAccountName = null;
         let isAdmin = false;
         let currentSession = null;
         let eventSettings = null;
@@ -774,17 +772,45 @@
                 return;
             }
 
-            currentUserId = user.user_metadata.provider_id;
+            currentAuthUserId = user.id;
+            currentUserId = user.user_metadata?.provider_id || user.id;
             isAdmin = typeof ADMIN_DISCORD_IDS !== 'undefined' && ADMIN_DISCORD_IDS.includes(currentUserId);
             initAccordionNav('../');
             buildReelStage();
             setupAdminReelEditor();
 
+            await loadCurrentProfile();
             await loadEventSettings();
             await refreshCoinBalance();
             await loadActiveSession();
             updateUI();
             await loadSlotGlobalStats();
+        }
+
+        async function loadCurrentProfile() {
+            try {
+                let profile = null;
+                if (currentUserId) {
+                    const { data } = await supabaseClient
+                        .from('profiles')
+                        .select('discord_user_id, account_name')
+                        .eq('discord_user_id', currentUserId)
+                        .maybeSingle();
+                    profile = data || null;
+                }
+                if (!profile && currentAuthUserId) {
+                    const { data } = await supabaseClient
+                        .from('profiles')
+                        .select('discord_user_id, account_name')
+                        .eq('id', currentAuthUserId)
+                        .maybeSingle();
+                    profile = data || null;
+                }
+                if (profile?.discord_user_id) currentUserId = profile.discord_user_id;
+                if (profile?.account_name) currentAccountName = profile.account_name;
+            } catch (err) {
+                console.error('profile load failed', err);
+            }
         }
 
         async function loadEventSettings() {
@@ -817,10 +843,12 @@
             try {
                 const { data, error } = await supabaseClient
                     .from('profiles')
-                    .select('coins')
+                    .select('coins, account_name, discord_user_id')
                     .eq('discord_user_id', currentUserId)
                     .maybeSingle();
                 if (error) throw error;
+                if (data?.discord_user_id) currentUserId = data.discord_user_id;
+                if (data?.account_name) currentAccountName = data.account_name;
                 coinEl.textContent = `${(data?.coins ?? 0).toLocaleString()} C`;
             } catch (err) {
                 coinEl.textContent = '取得失敗';
@@ -1236,10 +1264,23 @@
 
             try {
                 if (updatedEl) updatedEl.textContent = '集計中...';
-                const { data, error } = await supabaseClient
-                    .from('slot_sessions')
-                    .select('user_id, account_name, reels_state, payout_summary, jackpot_hits, status, cost');
-                if (error) throw error;
+                const fetchAll = async () => {
+                    const rows = [];
+                    const pageSize = 1000;
+                    for (let from = 0; ; from += pageSize) {
+                        const to = from + pageSize - 1;
+                        const { data, error } = await supabaseClient
+                            .from('slot_sessions')
+                            .select('user_id, account_name, reels_state, payout_summary, jackpot_hits, status, cost')
+                            .range(from, to);
+                        if (error) throw error;
+                        if (!data || data.length === 0) break;
+                        rows.push(...data);
+                        if (data.length < pageSize) break;
+                    }
+                    return rows;
+                };
+                const data = await fetchAll();
 
                 let totalSpins = 0;
                 let fsSpins = 0;
@@ -1256,7 +1297,8 @@
                 const jpUserTotals = new Map();
                 const jpTopByType = { coin: [], gacha_ticket: [], mangan_ticket: [] };
 
-                const myIds = new Set([currentUserId, (window.AUTH_USER && (AUTH_USER.id || AUTH_USER.user_metadata?.provider_id))].filter(Boolean));
+                const myIds = new Set([currentUserId, currentAuthUserId, (window.AUTH_USER && (AUTH_USER.id || AUTH_USER.user_metadata?.provider_id))].filter(Boolean).map(id => String(id)));
+                const myNames = new Set([currentAccountName, (window.AUTH_USER && (AUTH_USER.user_metadata?.full_name || AUTH_USER.user_metadata?.name))].filter(Boolean));
                 (data || []).forEach(row => {
                     const reels = Array.isArray(row.reels_state) ? row.reels_state : [];
                     if (Number(row.cost || 0) === 100) totalSpins += 1;
@@ -1278,7 +1320,9 @@
                     totalGacha += rowGacha;
                     totalMangan += rowMangan;
 
-                    if (myIds.has(row.user_id)) {
+                    const rowUserId = row.user_id != null ? String(row.user_id) : null;
+                    const isMe = (rowUserId && myIds.has(rowUserId)) || (row.account_name && myNames.has(row.account_name));
+                    if (isMe) {
                         if (Number(row.cost || 0) === 100) userSpins += 1;
                         userFs += fsEntered ? 1 : 0;
                         userCoin += rowCoin;
