@@ -845,7 +845,8 @@
 
                 const label = eventSettings.page_active ? 'イベント開催中' : 'イベント停止中';
                 statusEl.textContent = label;
-                document.getElementById('slot-cost').textContent = eventSettings.cost;
+                const costEl = document.getElementById('slot-cost');
+                if (costEl) costEl.textContent = eventSettings.cost;
             } catch (err) {
                 statusEl.textContent = '設定取得に失敗';
                 console.error(err);
