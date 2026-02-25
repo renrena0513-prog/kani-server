@@ -448,6 +448,7 @@
         /* ループ中は内側のシンボルリストをスクロールする */
         .reel-window.fs-loop .reel-symbols {
             animation: reel-loop 0.8s linear infinite;
+            opacity: 1;
         }
 
         .reel-btn-stop {
@@ -788,6 +789,7 @@
         let awaitingFreeSpinStart = false;
         let pendingFreeSpinAfterPopup = false;
         let fsLoopActive = false;
+        let loopStartRequested = false;
         const CUTIN_DURATION_MS = 1600;
         const JACKPOT_SYMBOL = '<img src="../images/slot/JACKPOT.png" alt="JACKPOT">';
         const BURST_SYMBOL = '<img src="../images/slot/Burst.png" alt="Burst">';
@@ -1130,6 +1132,7 @@
                 return;
             }
             if (!currentSession || !currentSession.free_spin_active) {
+                loopStartRequested = true;
                 startFullReelLoop();
                 await startSession();
             }
@@ -1162,7 +1165,7 @@
                 pendingFreeSpinCutin = false;
                 freeSpinDisplayActive = false;
                 awaitingFreeSpinStart = false;
-                fsLoopActive = false;
+                if (!loopStartRequested) fsLoopActive = false;
                 lastFreeSpinSummary = null;
                 lastFreeSpinSessionId = null;
                 lastFreeSpinsRemaining = null;
@@ -1706,12 +1709,14 @@
                     ...data.session,
                     reels: data.reels || []
                 };
+                loopStartRequested = false;
                 resetReelDisplay();
                 await refreshCoinBalance();
                 updateUI();
             } catch (err) {
                 console.error(err);
                 document.getElementById('session-message').textContent = '開始に失敗しました。';
+                loopStartRequested = false;
                 if (fsLoopActive) stopFullReelLoop();
                 setProcessing(false);
             }
