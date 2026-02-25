@@ -450,6 +450,28 @@
             overflow: hidden;
         }
 
+        .reel-btn-stop {
+            width: 100%;
+            padding: 6px 8px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            border: 2px solid #f6c453;
+            background: linear-gradient(135deg, #f6c453 0%, #d99a29 100%);
+            color: #1a1306;
+            cursor: pointer;
+            display: none;
+        }
+
+        .reel-btn-stop.active {
+            display: block;
+        }
+
+        .reel-btn-stop:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .btn-slot {
             background: linear-gradient(135deg, #f6c453 0%, #d99a29 100%);
             color: #1a1306;
@@ -608,8 +630,6 @@
                     <div class="slot-mobile-actions">
                         <button class="btn btn-slot" id="mobile-btn-start" type="button"
                             onclick="handleStartAction()">開始</button>
-                        <button class="btn btn-slot" id="mobile-btn-fs-stop" type="button" onclick="stopCurrentReel()"
-                            style="display:none;">STOP</button>
                         <button class="btn btn-slot-secondary" id="mobile-btn-stop" type="button" onclick="cashout()"
                             disabled>ストップ</button>
                     </div>
@@ -620,8 +640,6 @@
                 <button class="btn btn-slot d-none" id="btn-jackpot-confirm" onclick="confirmJackpot()"
                     disabled>フリースピンへ確定</button>
                 <button class="btn btn-slot-secondary" id="btn-stop" onclick="cashout()" disabled>ストップ（精算）</button>
-                <button class="btn btn-slot" id="btn-fs-stop" onclick="stopCurrentReel()"
-                    style="display:none;">STOP</button>
             </div>
             <div class="mt-4 slot-burst" id="burst-banner" style="display:none;">バースト！報酬はすべて没収されました。</div>
         </div>
@@ -1015,19 +1033,23 @@
                     windowEl.classList.add('fs-loop');
                 }
                 const resultEl = col.querySelector('.reel-result');
-                if (resultEl) resultEl.textContent = '回転中...';
+                if (resultEl) resultEl.textContent = '';
                 const stopEl = col.querySelector('.reel-stop');
                 if (stopEl) stopEl.textContent = '';
+                // 各リールのSTOPボタンを表示
+                const stopBtn = col.querySelector('.reel-btn-stop');
+                if (stopBtn) {
+                    stopBtn.classList.add('active');
+                    stopBtn.disabled = true; // 最初は全部無効
+                }
             });
-            // STOPボタンを表示、起動ボタンを非表示に
-            const fsStopBtn = document.getElementById('btn-fs-stop');
-            const mFsStopBtn = document.getElementById('mobile-btn-fs-stop');
+            // 最初のリールのSTOPボタンだけ有効化
+            updateReelButtons();
+            // 起動ボタンを無効化
             const startBtn = document.getElementById('btn-start');
             const mStartBtn = document.getElementById('mobile-btn-start');
-            if (fsStopBtn) fsStopBtn.style.display = '';
-            if (mFsStopBtn) mFsStopBtn.style.display = '';
-            if (startBtn) startBtn.style.display = 'none';
-            if (mStartBtn) mStartBtn.style.display = 'none';
+            if (startBtn) startBtn.disabled = true;
+            if (mStartBtn) mStartBtn.disabled = true;
         }
 
         function stopFullReelLoop() {
@@ -1035,23 +1057,57 @@
             document.querySelectorAll('.reel-col').forEach(col => {
                 const windowEl = col.querySelector('.reel-window');
                 if (windowEl) windowEl.classList.remove('fs-loop');
+                const stopBtn = col.querySelector('.reel-btn-stop');
+                if (stopBtn) stopBtn.classList.remove('active');
             });
-            const fsStopBtn = document.getElementById('btn-fs-stop');
-            const mFsStopBtn = document.getElementById('mobile-btn-fs-stop');
             const startBtn = document.getElementById('btn-start');
             const mStartBtn = document.getElementById('mobile-btn-start');
-            if (fsStopBtn) fsStopBtn.style.display = 'none';
-            if (mFsStopBtn) mFsStopBtn.style.display = 'none';
-            if (startBtn) startBtn.style.display = '';
-            if (mStartBtn) mStartBtn.style.display = '';
+            if (startBtn) startBtn.disabled = false;
+            if (mStartBtn) mStartBtn.disabled = false;
+        }
+
+        async function stopSpecificReel(reelIndex) {
+            // まずぜそのリールのループを止める
+            if (isProcessing || !currentSession || !fsLoopActive) return;
+            if (currentSession.current_reel !== reelIndex) return;
+            // 指定リールのSTOPボタンを無効化
+            const col = document.querySelector(`.reel-col[data-reel-index="${reelIndex}"]`);
+            if (col) {
+                const windowEl = col.querySelector('.reel-window');
+                const stopBtn = col.querySelector('.reel-btn-stop');
+                if (windowEl) windowEl.classList.remove('fs-loop');
+                if (stopBtn) { stopBtn.disabled = true; stopBtn.classList.remove('active'); }
+            }
+            // バックエンドでリールを確定
+            await spinReel(reelIndex);
         }
 
         async function stopCurrentReel() {
             if (isProcessing || !currentSession || !fsLoopActive) return;
-            stopFullReelLoop();
-            // 現在の「current_reel」をスピンして止める
-            const reelIndex = currentSession.current_reel;
-            await spinReel(reelIndex);
+            await stopSpecificReel(currentSession.current_reel);
+        }
+
+        async function autoBustRemainingReels() {
+            // バースト後、残りの全ループリールをバースト図柄で自動停止
+            document.querySelectorAll('.reel-col').forEach(col => {
+                const windowEl = col.querySelector('.reel-window');
+                const stopBtn = col.querySelector('.reel-btn-stop');
+                const resultEl = col.querySelector('.reel-result');
+                const stopEl = col.querySelector('.reel-stop');
+                if (windowEl && windowEl.classList.contains('fs-loop')) {
+                    windowEl.classList.remove('fs-loop');
+                    windowEl.classList.add('stopped');
+                    col.classList.add('done', 'bust');
+                    if (resultEl) resultEl.textContent = 'バースト';
+                    if (stopEl) stopEl.innerHTML = BURST_SYMBOL;
+                }
+                if (stopBtn) { stopBtn.disabled = true; stopBtn.classList.remove('active'); }
+            });
+            fsLoopActive = false;
+            const startBtn = document.getElementById('btn-start');
+            const mStartBtn = document.getElementById('mobile-btn-start');
+            if (startBtn) startBtn.disabled = false;
+            if (mStartBtn) mStartBtn.disabled = false;
         }
 
         async function handleStartAction() {
@@ -1689,6 +1745,15 @@
                     await refreshCoinBalance();
                 }
 
+                // バースト判定：直前のリールでバーストが出た場合、残りループリールを自動停止
+                const justStoppedReel = (data.reels || []).find(r => r.reel_index === reelIndex);
+                if (justStoppedReel?.is_bust && fsLoopActive) {
+                    await autoBustRemainingReels();
+                } else {
+                    // 次のリールのSTOPボタンを有効化
+                    updateReelButtons();
+                }
+
                 updateUI();
             } catch (err) {
                 console.error(err);
@@ -1799,7 +1864,7 @@
                             <div class="reel-stop"></div>
                         </div>
                         <div class="reel-result">未停止</div>
-                        <button class="reel-btn" data-reel-btn="${reelIndex}" onclick="spinReel(${reelIndex})" disabled>回す</button>
+                        <button class="reel-btn-stop" data-reel-btn="${reelIndex}" onclick="stopSpecificReel(${reelIndex})" disabled>STOP</button>
                     </div>
                 `;
             }).join('') + summaryHtml;
@@ -1905,9 +1970,10 @@
 
         function updateReelButtons() {
             const current = currentSession?.current_reel;
+            // 各リールのSTOPボタン：ループ中かつカレントリールのみ有効
             document.querySelectorAll('[data-reel-btn]').forEach(btn => {
                 const reelIndex = Number(btn.getAttribute('data-reel-btn'));
-                btn.disabled = isProcessing || awaitingFreeSpinStart || !currentSession || currentSession.status !== 'active' || reelIndex !== current;
+                btn.disabled = !fsLoopActive || isProcessing || awaitingFreeSpinStart || !currentSession || currentSession.status !== 'active' || reelIndex !== current;
             });
         }
 
