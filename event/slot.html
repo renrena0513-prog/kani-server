@@ -1230,6 +1230,13 @@
             const spinLocked = isSpinLocked();
             const prevFreeSpinsRemaining = lastFreeSpinsRemaining;
 
+            if (currentSession?.free_spin_active && currentSession.current_reel === 1 && !awaitingFreeSpinStart) {
+                const roundCount = getCurrentFreeSpinRoundCount(reels);
+                if (roundCount === 0) {
+                    awaitingFreeSpinStart = true;
+                }
+            }
+
             if (!currentSession) {
                 if (currentReelEl) currentReelEl.textContent = '-';
                 if (sessionStatusEl) sessionStatusEl.textContent = '待機中';
