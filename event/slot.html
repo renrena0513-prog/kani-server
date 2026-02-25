@@ -757,6 +757,10 @@
             return '🍇';
         }
 
+        function roundTo1(value) {
+            return Math.round((Number(value) || 0) * 10) / 10;
+        }
+
         const reelSymbols = [
             '🪙',
             JACKPOT_SYMBOL,
@@ -1039,6 +1043,8 @@
                             if (reel.reward_type === 'mangan_ticket') totals.mangan_ticket += Number(reel.amount || 0);
                         }
                     });
+                    totals.gacha_ticket = roundTo1(totals.gacha_ticket);
+                    totals.mangan_ticket = roundTo1(totals.mangan_ticket);
                     const mult = 1 + multiplierSum;
                     const formatted = mult.toFixed(2).replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
                     lastFreeSpinSummary = {
@@ -1066,6 +1072,8 @@
                     }
                     totals[item.type] = (totals[item.type] || 0) + Number(item.amount || 0);
                 });
+                totals.gacha_ticket = roundTo1(totals.gacha_ticket || 0);
+                totals.mangan_ticket = roundTo1(totals.mangan_ticket || 0);
                 const parts = [];
                 if (multiplierLabel) parts.push(`✨ ${multiplierLabel}`);
                 if (totals.coin) parts.push(`🪙 +${totals.coin}`);
@@ -1086,6 +1094,8 @@
                                 if (reel.reward_type === 'mangan_ticket') fallTotals.mangan_ticket += Number(reel.amount || 0);
                             }
                         });
+                        fallTotals.gacha_ticket = roundTo1(fallTotals.gacha_ticket);
+                        fallTotals.mangan_ticket = roundTo1(fallTotals.mangan_ticket);
                         const fallParts = [];
                         if (multiplierSum > 0) {
                             const mult = 1 + multiplierSum;
@@ -1181,6 +1191,8 @@
                         if (reel.reward_type === 'gacha_ticket') totals.gacha_ticket += Number(reel.amount || 0);
                         if (reel.reward_type === 'mangan_ticket') totals.mangan_ticket += Number(reel.amount || 0);
                     });
+                    totals.gacha_ticket = roundTo1(totals.gacha_ticket);
+                    totals.mangan_ticket = roundTo1(totals.mangan_ticket);
                     const totalText = `🪙 ${totals.coin} / 🎫 ${totals.gacha_ticket} / 🧧 ${totals.mangan_ticket}`;
                     if (displayFreeSpin) {
                         if (lastFreeSpinSummary) lastFreeSpinSummary.totalsText = totalText;
@@ -1354,10 +1366,14 @@
                 if (totalSpinsEl) totalSpinsEl.textContent = totalSpins.toLocaleString();
                 if (fsSpinsEl) fsSpinsEl.textContent = fsSpins.toLocaleString();
                 if (totalCoinEl) totalCoinEl.textContent = `🪙 ${totalCoin.toLocaleString()}`;
-                if (totalTicketsEl) totalTicketsEl.textContent = `🎫 ${totalGacha.toLocaleString()} / 🧧 ${totalMangan.toLocaleString()}`;
+                totalGacha = roundTo1(totalGacha);
+                totalMangan = roundTo1(totalMangan);
+                if (totalTicketsEl) totalTicketsEl.textContent = `🎫 ${totalGacha} / 🧧 ${totalMangan}`;
                 if (userSpinsEl) userSpinsEl.textContent = userSpins.toLocaleString();
                 if (userCoinEl) userCoinEl.textContent = `🪙 ${userCoin.toLocaleString()}`;
-                if (userTicketsEl) userTicketsEl.textContent = `🎫 ${userGacha.toLocaleString()} / 🧧 ${userMangan.toLocaleString()}`;
+                userGacha = roundTo1(userGacha);
+                userMangan = roundTo1(userMangan);
+                if (userTicketsEl) userTicketsEl.textContent = `🎫 ${userGacha} / 🧧 ${userMangan}`;
                 if (userFsEl) userFsEl.textContent = userFs.toLocaleString();
 
                 const jpSorted = Array.from(jpUserTotals.values())
@@ -1365,7 +1381,11 @@
                     .slice(0, 3);
                 if (jpRankingEl) {
                     jpRankingEl.innerHTML = jpSorted.length
-                        ? jpSorted.map((user, idx) => `<li><span class="rank-emoji">${['🥇','🥈','🥉'][idx] || '🏅'}</span>${user.name}：🪙 ${user.coin} / 🎫 ${user.gacha} / 🧧 ${user.mangan}</li>`).join('')
+                        ? jpSorted.map((user, idx) => {
+                            const gacha = roundTo1(user.gacha);
+                            const mangan = roundTo1(user.mangan);
+                            return `<li><span class="rank-emoji">${['🥇','🥈','🥉'][idx] || '🏅'}</span>${user.name}：🪙 ${user.coin} / 🎫 ${gacha} / 🧧 ${mangan}</li>`;
+                        }).join('')
                         : '<li>データなし</li>';
                 }
 
@@ -1375,7 +1395,11 @@
                         .slice(0, 3);
                     if (jpTopEl) {
                         jpTopEl.innerHTML = list.length
-                            ? list.map((item, idx) => `<li><span class="rank-emoji">${['🥇','🥈','🥉'][idx] || '🏅'}</span>${item.name}：🪙 ${item.coin} / 🎫 ${item.gacha} / 🧧 ${item.mangan}</li>`).join('')
+                            ? list.map((item, idx) => {
+                                const gacha = roundTo1(item.gacha);
+                                const mangan = roundTo1(item.mangan);
+                                return `<li><span class="rank-emoji">${['🥇','🥈','🥉'][idx] || '🏅'}</span>${item.name}：🪙 ${item.coin} / 🎫 ${gacha} / 🧧 ${mangan}</li>`;
+                            }).join('')
                             : '<li>データなし</li>';
                     }
                 };
