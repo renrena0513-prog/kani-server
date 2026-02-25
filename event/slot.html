@@ -994,7 +994,7 @@
             updateStartButtonLabel();
 
             if (!currentSession) {
-                currentReelEl.textContent = '-';
+                if (currentReelEl) currentReelEl.textContent = '-';
                 sessionStatusEl.textContent = '待機中';
                 messageEl.textContent = '';
                 if (payoutSummary) payoutSummary.style.display = 'none';
@@ -1031,13 +1031,15 @@
 
             if (!spinLocked) {
                 if (currentSession.status === 'active') {
-                    if (currentSession.free_spin_active && freeSpinDisplayActive) {
-                        currentReelEl.textContent = `フリースピン ${currentSession.free_spin_round} / 残り ${currentSession.free_spins_remaining} 回`;
-                    } else {
-                        currentReelEl.textContent = `第 ${currentSession.current_reel} リール`;
+                    if (currentReelEl) {
+                        if (currentSession.free_spin_active && freeSpinDisplayActive) {
+                            currentReelEl.textContent = `フリースピン ${currentSession.free_spin_round} / 残り ${currentSession.free_spins_remaining} 回`;
+                        } else {
+                            currentReelEl.textContent = `第 ${currentSession.current_reel} リール`;
+                        }
                     }
                 } else {
-                    currentReelEl.textContent = '終了';
+                    if (currentReelEl) currentReelEl.textContent = '終了';
                 }
                 sessionStatusEl.textContent = currentSession.status === 'active' ? '進行中' : (currentSession.status === 'bust' ? 'バースト' : '精算済み');
             }
