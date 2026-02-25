@@ -711,7 +711,8 @@
                         <div class="btn-group btn-group-sm" role="group" id="slot-jp-top-toggle">
                             <button type="button" class="btn btn-outline-light active" data-jp-type="coin">コイン</button>
                             <button type="button" class="btn btn-outline-light" data-jp-type="gacha_ticket">祈願符</button>
-                            <button type="button" class="btn btn-outline-light" data-jp-type="mangan_ticket">満願符</button>
+                            <button type="button" class="btn btn-outline-light"
+                                data-jp-type="mangan_ticket">満願符</button>
                         </div>
                     </div>
                     <ol class="mb-0 slot-ranking-list" id="slot-jp-top3"></ol>
@@ -965,7 +966,7 @@
             return (reels || []).filter(reel => reel.is_free_spin && Number(reel.free_spin_round || 0) === round).length;
         }
 
-        function beginFreeSpinDisplay() {
+        function beginFreeSpinDisplay(thenAwait = false) {
             resetReelDisplay();
             pendingFreeSpinCutin = false;
             awaitingFreeSpinStart = false;
@@ -974,20 +975,22 @@
                 freeSpinDisplayActive = true;
                 const stage = document.getElementById('reel-stage');
                 if (stage) stage.classList.add('free-spin');
+                if (thenAwait) {
+                    awaitingFreeSpinStart = true;
+                    updateUI();
+                }
             }, CUTIN_DURATION_MS);
         }
 
         async function handleStartAction() {
             if (isProcessing) return;
             if (awaitingFreeSpinStart) {
+                // ユーザーがボタンを押したのでフリースピン開始
                 awaitingFreeSpinStart = false;
-                if (pendingFreeSpinCutin) {
-                    pendingFreeSpinCutin = false;
-                    beginFreeSpinDisplay();
-                } else {
-                    freeSpinDisplayActive = true;
-                    updateUI();
-                }
+                freeSpinDisplayActive = true;
+                const stage = document.getElementById('reel-stage');
+                if (stage) stage.classList.add('free-spin');
+                updateUI();
                 return;
             }
             if (isFreeSpinStartReady()) {
@@ -1075,8 +1078,12 @@
             if (payoutList) payoutList.innerHTML = '';
 
             if (!wasFreeSpinActive && currentSession.free_spin_active) {
-                awaitingFreeSpinStart = true;
-                pendingFreeSpinCutin = true;
+                // 初回FSへ移行：WINポップアップが出ている場合はそっちで処理するため何もしない
+                // closeWinPopup で pendingFreeSpinAfterPopup をチェックして beginFreeSpinDisplay を呼ぶ
+                if (!pendingFreeSpinAfterPopup) {
+                    // WINポップアップなし（まれなケース）→ 直接カットイン後にボタン待ちへ
+                    pendingFreeSpinCutin = true;
+                }
             }
 
             if (prevFreeSpinsRemaining !== null && currentSession.free_spins_remaining > prevFreeSpinsRemaining) {
@@ -1089,8 +1096,9 @@
                 }
             }
 
-            if (!spinLocked && pendingFreeSpinCutin && currentSession.free_spin_active && !freeSpinDisplayActive && !awaitingFreeSpinStart) {
-                beginFreeSpinDisplay();
+            if (!spinLocked && pendingFreeSpinCutin && currentSession.free_spin_active && !freeSpinDisplayActive && !pendingFreeSpinAfterPopup) {
+                // カットイン再生後にボタン待機状態へ移行
+                beginFreeSpinDisplay(true);
                 pendingFreeSpinCutin = false;
             }
 
@@ -1239,12 +1247,13 @@
                 updateReelButtons();
             } else {
                 if (currentSession.free_spin_active && freeSpinDisplayActive && currentSession.current_reel === 1) {
-                    const roundCount = getCurrentFreeSpinRoundCount(reels);
                     const justAdvancedRound = prevFreeSpinsRemaining !== null && currentSession.free_spins_remaining < prevFreeSpinsRemaining;
-                    const isLaterRound = Number(currentSession.free_spin_round || 0) > 1;
-                    if ((justAdvancedRound || (isLaterRound && roundCount === 0)) && !awaitingFreeSpinStart) {
-                        awaitingFreeSpinStart = true;
-                        resetReelDisplay();
+                    if (justAdvancedRound && !awaitingFreeSpinStart) {
+                        // 次のラウンドへ進んだ：リセットしてカットイン後にボタン待機
+                        freeSpinDisplayActive = false;
+                        const stage = document.getElementById('reel-stage');
+                        if (stage) stage.classList.remove('free-spin');
+                        pendingFreeSpinCutin = true;
                     }
                 }
                 setProcessing(false);
@@ -1488,7 +1497,7 @@
                         ? jpSorted.map((user, idx) => {
                             const gacha = roundTo1(user.gacha);
                             const mangan = roundTo1(user.mangan);
-                            return `<li><span class="rank-emoji">${['🥇','🥈','🥉'][idx] || '🏅'}</span>${user.name}：🪙 ${user.coin} / 🎫 ${gacha} / 🧧 ${mangan}</li>`;
+                            return `<li><span class="rank-emoji">${['🥇', '🥈', '🥉'][idx] || '🏅'}</span>${user.name}：🪙 ${user.coin} / 🎫 ${gacha} / 🧧 ${mangan}</li>`;
                         }).join('')
                         : '<li>データなし</li>';
                 }
@@ -1502,7 +1511,7 @@
                             ? list.map((item, idx) => {
                                 const gacha = roundTo1(item.gacha);
                                 const mangan = roundTo1(item.mangan);
-                                return `<li><span class="rank-emoji">${['🥇','🥈','🥉'][idx] || '🏅'}</span>${item.name}：🪙 ${item.coin} / 🎫 ${gacha} / 🧧 ${mangan}</li>`;
+                                return `<li><span class="rank-emoji">${['🥇', '🥈', '🥉'][idx] || '🏅'}</span>${item.name}：🪙 ${item.coin} / 🎫 ${gacha} / 🧧 ${mangan}</li>`;
                             }).join('')
                             : '<li>データなし</li>';
                     }
@@ -1532,8 +1541,8 @@
             if (popup) popup.classList.remove('show');
             if (pendingFreeSpinAfterPopup && currentSession?.free_spin_active) {
                 pendingFreeSpinAfterPopup = false;
-                awaitingFreeSpinStart = false;
-                beginFreeSpinDisplay();
+                // カットインを再生し、終了後にボタン待機状態へ移行
+                beginFreeSpinDisplay(true);
                 updateUI();
             }
         }
