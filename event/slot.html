@@ -43,6 +43,26 @@
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
         }
 
+        .slot-ranking-card {
+            background: linear-gradient(135deg, rgba(246, 196, 83, 0.08), rgba(26, 34, 48, 0.95));
+            border: 1px solid rgba(246, 196, 83, 0.35);
+        }
+
+        .slot-ranking-card h5 {
+            letter-spacing: 0.06em;
+            font-weight: 700;
+        }
+
+        .slot-ranking-list li {
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 1.05rem;
+        }
+
+        .slot-ranking-list li:last-child {
+            border-bottom: none;
+        }
+
         .slot-status {
             background: rgba(246, 196, 83, 0.12);
             border: 1px solid rgba(246, 196, 83, 0.35);
@@ -635,7 +655,7 @@
                     <h6 class="mb-2">あなたの成績</h6>
                 </div>
                 <div class="col-6 col-lg-3">
-                    <div class="slot-muted">回転数</div>
+                    <div class="slot-muted">投入回数</div>
                     <div class="fs-5 fw-semibold" id="slot-user-spins">-</div>
                 </div>
                 <div class="col-6 col-lg-3">
@@ -653,11 +673,11 @@
             </div>
             <div class="row g-3 mb-3">
                 <div class="col-6 col-lg-3">
-                    <div class="slot-muted">累計回転数</div>
+                    <div class="slot-muted">累計投入回数</div>
                     <div class="fs-5 fw-semibold" id="slot-total-spins">-</div>
                 </div>
                 <div class="col-6 col-lg-3">
-                    <div class="slot-muted">FS回転数</div>
+                    <div class="slot-muted">FS突入回数</div>
                     <div class="fs-5 fw-semibold" id="slot-fs-spins">-</div>
                 </div>
                 <div class="col-6 col-lg-3">
@@ -669,23 +689,28 @@
                     <div class="fs-5 fw-semibold" id="slot-total-tickets">-</div>
                 </div>
             </div>
+        </div>
 
-            <div class="row g-3">
+        <div class="slot-panel slot-ranking-card p-4 mt-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                <h5 class="mb-0">JPランキング</h5>
+                <div class="slot-muted">JPで獲得した報酬合計（コイン換算なし）</div>
+            </div>
+            <div class="row g-4">
                 <div class="col-12 col-lg-6">
-                    <h6 class="mb-2">JP報酬ランキング</h6>
-                    <div class="slot-muted mb-2">JPで獲得した報酬合計（コイン換算は行いません）</div>
-                    <ol class="mb-0" id="slot-jp-ranking"></ol>
+                    <h6 class="mb-2">合計獲得トップ3</h6>
+                    <ol class="mb-0 slot-ranking-list" id="slot-jp-ranking"></ol>
                 </div>
                 <div class="col-12 col-lg-6">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="mb-0">JP一撃獲得TOP3</h6>
+                        <h6 class="mb-0">一撃獲得トップ3</h6>
                         <div class="btn-group btn-group-sm" role="group" id="slot-jp-top-toggle">
                             <button type="button" class="btn btn-outline-light active" data-jp-type="coin">コイン</button>
                             <button type="button" class="btn btn-outline-light" data-jp-type="gacha_ticket">祈願符</button>
                             <button type="button" class="btn btn-outline-light" data-jp-type="mangan_ticket">満願符</button>
                         </div>
                     </div>
-                    <ol class="mb-0" id="slot-jp-top3"></ol>
+                    <ol class="mb-0 slot-ranking-list" id="slot-jp-top3"></ol>
                 </div>
             </div>
         </div>
@@ -1213,7 +1238,7 @@
                 if (updatedEl) updatedEl.textContent = '集計中...';
                 const { data, error } = await supabaseClient
                     .from('slot_sessions')
-                    .select('user_id, account_name, reels_state, payout_summary, jackpot_hits, status');
+                    .select('user_id, account_name, reels_state, payout_summary, jackpot_hits, status, cost');
                 if (error) throw error;
 
                 let totalSpins = 0;
@@ -1231,10 +1256,12 @@
                 const jpUserTotals = new Map();
                 const jpTopByType = { coin: [], gacha_ticket: [], mangan_ticket: [] };
 
+                const myIds = new Set([currentUserId, (window.AUTH_USER && (AUTH_USER.id || AUTH_USER.user_metadata?.provider_id))].filter(Boolean));
                 (data || []).forEach(row => {
                     const reels = Array.isArray(row.reels_state) ? row.reels_state : [];
-                    totalSpins += reels.length;
-                    fsSpins += reels.filter(r => r.is_free_spin || Number(r.free_spin_round || 0) > 0).length;
+                    if (Number(row.cost || 0) === 100) totalSpins += 1;
+                    const fsEntered = reels.some(r => r.is_free_spin || Number(r.free_spin_round || 0) > 0);
+                    if (fsEntered) fsSpins += 1;
 
                     const payout = Array.isArray(row.payout_summary) ? row.payout_summary : [];
                     let rowCoin = 0;
@@ -1251,9 +1278,9 @@
                     totalGacha += rowGacha;
                     totalMangan += rowMangan;
 
-                    if (row.user_id === currentUserId) {
-                        userSpins += reels.length;
-                        userFs += reels.some(r => r.is_free_spin || Number(r.free_spin_round || 0) > 0) ? 1 : 0;
+                    if (myIds.has(row.user_id)) {
+                        if (Number(row.cost || 0) === 100) userSpins += 1;
+                        userFs += fsEntered ? 1 : 0;
                         userCoin += rowCoin;
                         userGacha += rowGacha;
                         userMangan += rowMangan;
@@ -1282,7 +1309,9 @@
                 if (userTicketsEl) userTicketsEl.textContent = `🎫 ${userGacha.toLocaleString()} / 🧧 ${userMangan.toLocaleString()}`;
                 if (userFsEl) userFsEl.textContent = userFs.toLocaleString();
 
-                const jpSorted = Array.from(jpUserTotals.values()).sort((a, b) => (b.coin + b.gacha + b.mangan) - (a.coin + a.gacha + a.mangan)).slice(0, 5);
+                const jpSorted = Array.from(jpUserTotals.values())
+                    .sort((a, b) => (b.coin + b.gacha + b.mangan) - (a.coin + a.gacha + a.mangan))
+                    .slice(0, 3);
                 if (jpRankingEl) {
                     jpRankingEl.innerHTML = jpSorted.length
                         ? jpSorted.map(user => `<li>${user.name}：🪙 ${user.coin} / 🎫 ${user.gacha} / 🧧 ${user.mangan}</li>`).join('')
