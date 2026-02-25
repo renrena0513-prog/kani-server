@@ -1099,9 +1099,16 @@
             updateLoopSymbols();
             fsLoopActive = true;
             const currentRound = Number(currentSession?.free_spin_round || 0);
+            const isFree = !!currentSession?.free_spin_active;
             const stopped = new Set(
                 (currentSession?.reels || [])
-                    .filter(r => Number(r.reel_index) && (!currentSession?.free_spin_active || Number(r.free_spin_round || 0) === currentRound))
+                    .filter(r => {
+                        if (!Number(r.reel_index)) return false;
+                        if (isFree) {
+                            return r.is_free_spin && Number(r.free_spin_round || 0) === currentRound;
+                        }
+                        return !r.is_free_spin;
+                    })
                     .map(r => Number(r.reel_index))
             );
             document.querySelectorAll('.reel-col').forEach(col => {
