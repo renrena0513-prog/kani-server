@@ -506,6 +506,8 @@ declare
     v_summary jsonb := '[]'::jsonb;
     v_source jsonb := '[]'::jsonb;
     v_source_has_rewards boolean := false;
+    v_transition_free_spin boolean := false;
+    v_existing_summary jsonb := '[]'::jsonb;
 begin
     perform pg_advisory_xact_lock(hashtext('slot:' || p_user_id));
 
@@ -517,6 +519,8 @@ begin
     if not found then
         return jsonb_build_object('ok', false, 'error', 'SESSION_NOT_FOUND');
     end if;
+
+    v_existing_summary := coalesce(v_session.payout_summary, '[]'::jsonb);
 
     if v_session.status = 'bust' then
         return jsonb_build_object('ok', true, 'session', jsonb_build_object(
@@ -554,30 +558,7 @@ begin
     ) into v_source_has_rewards;
 
     if v_session.jackpot_hits >= 3 and v_session.free_spin_active = false and v_source_has_rewards = false then
-        update public.slot_sessions
-        set free_spin_active = true,
-            free_spins_remaining = v_session.jackpot_hits,
-            free_spin_round = 1,
-            current_reel = 1
-        where id = v_session.id;
-
-        select * into v_session from public.slot_sessions where id = v_session.id;
-
-        return jsonb_build_object(
-            'ok', true,
-            'session', jsonb_build_object(
-                'id', v_session.id, 'status', v_session.status, 'cost', v_session.cost,
-                'current_reel', v_session.current_reel,
-                'jackpot_hits', v_session.jackpot_hits,
-                'jackpot_unlocked', v_session.jackpot_unlocked,
-                'free_spin_active', v_session.free_spin_active,
-                'free_spins_remaining', v_session.free_spins_remaining,
-                'free_spin_round', v_session.free_spin_round,
-                'created_at', v_session.created_at
-            ),
-            'payout', '[]'::jsonb,
-            'outcome', 'free_spin'
-        );
+        v_transition_free_spin := true;
     end if;
 
     select exists(
@@ -688,9 +669,40 @@ begin
         end if;
     end;
 
+    if v_transition_free_spin then
+        update public.slot_sessions
+        set payout_summary = v_existing_summary || v_summary,
+            free_spin_active = true,
+            free_spins_remaining = v_session.jackpot_hits,
+            free_spin_round = 1,
+            current_reel = 1
+        where id = v_session.id;
+
+        select * into v_session from public.slot_sessions where id = v_session.id;
+
+        return jsonb_build_object(
+            'ok', true,
+            'session', jsonb_build_object(
+                'id', v_session.id,
+                'status', v_session.status,
+                'cost', v_session.cost,
+                'current_reel', v_session.current_reel,
+                'jackpot_hits', v_session.jackpot_hits,
+                'jackpot_unlocked', v_session.jackpot_unlocked,
+                'free_spin_active', v_session.free_spin_active,
+                'free_spins_remaining', v_session.free_spins_remaining,
+                'free_spin_round', v_session.free_spin_round,
+                'free_spin_stocks', v_session.free_spin_stocks,
+                'created_at', v_session.created_at
+            ),
+            'payout', v_summary,
+            'outcome', 'free_spin'
+        );
+    end if;
+
     update public.slot_sessions
     set status = 'cashed_out',
-        payout_summary = v_summary,
+        payout_summary = v_existing_summary || v_summary,
         ended_at = now()
     where id = v_session.id;
 

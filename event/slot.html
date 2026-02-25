@@ -556,12 +556,12 @@
                         <div class="fs-3 fw-bold" id="coin-balance">-</div>
                     </div>
                     <div>
-                        <div class="slot-muted">現在リール</div>
-                        <div class="fs-4 fw-bold" id="current-reel">-</div>
+                        <div class="slot-muted">所持祈願符</div>
+                        <div class="fs-4 fw-bold" id="gacha-balance">-</div>
                     </div>
-                    <div class="slot-muted">
-                        <div>コスト: <span id="slot-cost">100</span>コイン / 回</div>
-                        <div>リール: 7本 / 停止位置 10</div>
+                    <div>
+                        <div class="slot-muted">所持満願符</div>
+                        <div class="fs-4 fw-bold" id="mangan-balance">-</div>
                     </div>
                 </div>
                 <div class="text-center flex-grow-1" style="min-width: 220px;">
@@ -603,10 +603,6 @@
                 <button class="btn btn-slot d-none" id="btn-jackpot-confirm" onclick="confirmJackpot()"
                     disabled>フリースピンへ確定</button>
                 <button class="btn btn-slot-secondary" id="btn-stop" onclick="cashout()" disabled>ストップ（精算）</button>
-            </div>
-            <div class="mt-4" id="payout-summary" style="display:none;">
-                <h6 class="mb-2">精算結果</h6>
-                <div class="slot-panel p-3" id="payout-list"></div>
             </div>
             <div class="mt-4 slot-burst" id="burst-banner" style="display:none;">バースト！報酬はすべて没収されました。</div>
         </div>
@@ -751,6 +747,8 @@
         let pendingFreeSpinPlusCutin = false;
         let pendingFreeSpinPlusAmount = 0;
         let displayedFreeSpinsRemaining = null;
+        let awaitingFreeSpinStart = false;
+        let pendingFreeSpinAfterPopup = false;
         const CUTIN_DURATION_MS = 1600;
         const JACKPOT_SYMBOL = '<img src="../images/slot/JACKPOT.png" alt="JACKPOT">';
         const BURST_SYMBOL = '<img src="../images/slot/Burst.png" alt="Burst">';
@@ -856,18 +854,24 @@
 
         async function refreshCoinBalance() {
             const coinEl = document.getElementById('coin-balance');
+            const gachaEl = document.getElementById('gacha-balance');
+            const manganEl = document.getElementById('mangan-balance');
             try {
                 const { data, error } = await supabaseClient
                     .from('profiles')
-                    .select('coins, account_name, discord_user_id')
+                    .select('coins, gacha_tickets, mangan_tickets, account_name, discord_user_id')
                     .eq('discord_user_id', currentUserId)
                     .maybeSingle();
                 if (error) throw error;
                 if (data?.discord_user_id) currentUserId = data.discord_user_id;
                 if (data?.account_name) currentAccountName = data.account_name;
                 coinEl.textContent = `${(data?.coins ?? 0).toLocaleString()} C`;
+                if (gachaEl) gachaEl.textContent = `${roundTo1(data?.gacha_tickets ?? 0)}`;
+                if (manganEl) manganEl.textContent = `${roundTo1(data?.mangan_tickets ?? 0)}`;
             } catch (err) {
                 coinEl.textContent = '取得失敗';
+                if (gachaEl) gachaEl.textContent = '取得失敗';
+                if (manganEl) manganEl.textContent = '取得失敗';
                 console.error(err);
             }
         }
@@ -899,7 +903,7 @@
             if (jackpotBtn) jackpotBtn.disabled = state || !currentSession || !currentSession.jackpot_unlocked || currentSession.free_spin_confirmed;
             const mobileStart = document.getElementById('mobile-btn-start');
             const mobileStop = document.getElementById('mobile-btn-stop');
-            if (mobileStart) mobileStart.disabled = state || !isEventActiveNow() || (currentSession && currentSession.status === 'active');
+            if (mobileStart) mobileStart.disabled = state || !isEventActiveNow() || (currentSession && currentSession.status === 'active' && !isFreeSpinStartReady());
             if (mobileStop) mobileStop.disabled = state || !currentSession || currentSession.status !== 'active' || currentSession.free_spin_active || (currentSession.reels || []).length === 0;
             updateReelButtons();
         }
@@ -916,15 +920,15 @@
             return lastSpinReel !== null && Date.now() < spinLockUntil;
         }
 
-        function isJackpotStartReady() {
-            return !!currentSession && !!currentSession.jackpot_unlocked && !currentSession.free_spin_confirmed;
+        function isFreeSpinStartReady() {
+            return awaitingFreeSpinStart || (!!currentSession && !!currentSession.jackpot_unlocked && !currentSession.free_spin_confirmed);
         }
 
         function updateStartButtonLabel() {
             const startBtn = document.getElementById('btn-start');
             const mobileStart = document.getElementById('mobile-btn-start');
             if (!startBtn && !mobileStart) return;
-            if (isJackpotStartReady()) {
+            if (isFreeSpinStartReady()) {
                 if (startBtn) startBtn.textContent = 'フリースピン開始';
                 if (mobileStart) mobileStart.textContent = 'フリースピン開始';
             } else {
@@ -946,9 +950,26 @@
             });
         }
 
+        function beginFreeSpinDisplay() {
+            resetReelDisplay();
+            pendingFreeSpinCutin = false;
+            showFreeSpinCutin();
+            setTimeout(() => {
+                freeSpinDisplayActive = true;
+                const stage = document.getElementById('reel-stage');
+                if (stage) stage.classList.add('free-spin');
+            }, CUTIN_DURATION_MS);
+        }
+
         async function handleStartAction() {
             if (isProcessing) return;
-            if (isJackpotStartReady()) {
+            if (awaitingFreeSpinStart) {
+                awaitingFreeSpinStart = false;
+                beginFreeSpinDisplay();
+                updateUI();
+                return;
+            }
+            if (isFreeSpinStartReady()) {
                 await confirmJackpot(true);
                 return;
             }
@@ -976,12 +997,13 @@
                 currentReelEl.textContent = '-';
                 sessionStatusEl.textContent = '待機中';
                 messageEl.textContent = '';
-                payoutSummary.style.display = 'none';
+                if (payoutSummary) payoutSummary.style.display = 'none';
                 burstBanner.style.display = 'none';
                 if (stageEl) stageEl.classList.remove('free-spin');
                 wasFreeSpinActive = false;
                 pendingFreeSpinCutin = false;
                 freeSpinDisplayActive = false;
+                awaitingFreeSpinStart = false;
                 lastFreeSpinSummary = null;
                 lastFreeSpinSessionId = null;
                 lastFreeSpinsRemaining = null;
@@ -1023,10 +1045,11 @@
             renderReelState(reels);
 
             burstBanner.style.display = currentSession.status === 'bust' ? 'block' : 'none';
-            payoutSummary.style.display = 'none';
-            payoutList.innerHTML = '';
+            if (payoutSummary) payoutSummary.style.display = 'none';
+            if (payoutList) payoutList.innerHTML = '';
 
             if (!wasFreeSpinActive && currentSession.free_spin_active) {
+                awaitingFreeSpinStart = true;
                 if (spinLocked) {
                     pendingFreeSpinCutin = true;
                 } else {
@@ -1044,14 +1067,9 @@
                 }
             }
 
-            if (!spinLocked && pendingFreeSpinCutin && currentSession.free_spin_active && !freeSpinDisplayActive) {
-                showFreeSpinCutin();
+            if (!spinLocked && pendingFreeSpinCutin && currentSession.free_spin_active && !freeSpinDisplayActive && !awaitingFreeSpinStart) {
+                beginFreeSpinDisplay();
                 pendingFreeSpinCutin = false;
-                setTimeout(() => {
-                    freeSpinDisplayActive = true;
-                    const stage = document.getElementById('reel-stage');
-                    if (stage) stage.classList.add('free-spin');
-                }, CUTIN_DURATION_MS);
             }
 
             if (!spinLocked && pendingFreeSpinPlusCutin) {
@@ -1063,6 +1081,7 @@
 
             if (!currentSession.free_spin_active) {
                 freeSpinDisplayActive = false;
+                awaitingFreeSpinStart = false;
                 if (stageEl) stageEl.classList.remove('free-spin');
             } else if (freeSpinDisplayActive && stageEl) {
                 stageEl.classList.add('free-spin');
@@ -1108,7 +1127,7 @@
             }
 
             if (currentSession.status === 'cashed_out' && !spinLocked) {
-                payoutSummary.style.display = 'block';
+                if (payoutSummary) payoutSummary.style.display = 'block';
                 const payoutItems = currentSession.payout || [];
                 const totals = { coin: 0, gacha_ticket: 0, mangan_ticket: 0, exchange_ticket: 0 };
                 let multiplierLabel = '';
@@ -1153,17 +1172,17 @@
                         if (fallTotals.coin) fallParts.push(`🪙 +${fallTotals.coin}`);
                         if (fallTotals.gacha_ticket) fallParts.push(`🎫 +${fallTotals.gacha_ticket}`);
                         if (fallTotals.mangan_ticket) fallParts.push(`🧧 +${fallTotals.mangan_ticket}`);
-                        payoutList.innerHTML = fallParts.length ? fallParts.join(' / ') : '報酬なし';
+                        if (payoutList) payoutList.innerHTML = fallParts.length ? fallParts.join(' / ') : '報酬なし';
                     } else if (lastFreeSpinSummary && lastFreeSpinSessionId === currentSession.id) {
                         const fallbackParts = [];
                         if (lastFreeSpinSummary.multiplierText) fallbackParts.push(`✨ ${lastFreeSpinSummary.multiplierText}`);
                         if (lastFreeSpinSummary.totalsText) fallbackParts.push(lastFreeSpinSummary.totalsText);
-                        payoutList.innerHTML = fallbackParts.length ? fallbackParts.join(' / ') : '報酬なし';
+                        if (payoutList) payoutList.innerHTML = fallbackParts.length ? fallbackParts.join(' / ') : '報酬なし';
                     } else {
-                        payoutList.innerHTML = '報酬なし';
+                        if (payoutList) payoutList.innerHTML = '報酬なし';
                     }
                 } else {
-                    payoutList.innerHTML = parts.length ? parts.join(' / ') : '報酬なし';
+                    if (payoutList) payoutList.innerHTML = parts.length ? parts.join(' / ') : '報酬なし';
                 }
 
                 if (!sessionCashedOutDisplayed) {
@@ -1195,14 +1214,25 @@
                 if (mobileStop) mobileStop.disabled = true;
                 updateReelButtons();
             } else {
+                if (currentSession.free_spin_active && freeSpinDisplayActive && currentSession.current_reel === 1 && lastFreeSpinsRemaining !== null) {
+                    const justAdvancedRound = currentSession.free_spins_remaining < lastFreeSpinsRemaining;
+                    if (justAdvancedRound && !awaitingFreeSpinStart) {
+                        awaitingFreeSpinStart = true;
+                        resetReelDisplay();
+                    }
+                }
                 setProcessing(false);
-                document.getElementById('btn-start').disabled = ((currentSession.status === 'active' && !isJackpotStartReady()) || !isEventActiveNow());
+                document.getElementById('btn-start').disabled = ((currentSession.status === 'active' && !isFreeSpinStartReady()) || !isEventActiveNow());
                 const jackpotBtn = document.getElementById('btn-jackpot-confirm');
                 if (jackpotBtn) jackpotBtn.disabled = !currentSession.jackpot_unlocked || currentSession.free_spin_confirmed;
                 const mobileStart = document.getElementById('mobile-btn-start');
                 const mobileStop = document.getElementById('mobile-btn-stop');
-                if (mobileStart) mobileStart.disabled = ((currentSession.status === 'active' && !isJackpotStartReady()) || !isEventActiveNow());
+                if (mobileStart) mobileStart.disabled = ((currentSession.status === 'active' && !isFreeSpinStartReady()) || !isEventActiveNow());
                 if (mobileStop) mobileStop.disabled = currentSession.status !== 'active' || currentSession.free_spin_active || (currentSession.reels || []).length === 0;
+                if (pendingFreeSpinAfterPopup) {
+                    document.getElementById('btn-start').disabled = true;
+                    if (mobileStart) mobileStart.disabled = true;
+                }
                 updateReelButtons();
             }
 
@@ -1474,6 +1504,12 @@
         function closeWinPopup() {
             const popup = document.getElementById('win-popup');
             if (popup) popup.classList.remove('show');
+            if (pendingFreeSpinAfterPopup && currentSession?.free_spin_active) {
+                pendingFreeSpinAfterPopup = false;
+                awaitingFreeSpinStart = false;
+                beginFreeSpinDisplay();
+                updateUI();
+            }
         }
 
         async function startSession() {
@@ -1567,6 +1603,31 @@
                     reels: currentSession.reels || [],
                     payout: data.payout || []
                 };
+                if (data.outcome === 'free_spin') {
+                    const payoutItems = Array.isArray(data.payout) ? data.payout : [];
+                    const parts = [];
+                    let multiplierLabel = '';
+                    const totals = { coin: 0, gacha_ticket: 0, mangan_ticket: 0, exchange_ticket: 0 };
+                    payoutItems.forEach(item => {
+                        if (!item?.type) return;
+                        if (item.type === 'multiplier') {
+                            multiplierLabel = item.reward_name || `${item.amount || ''}倍`;
+                            return;
+                        }
+                        totals[item.type] = (totals[item.type] || 0) + Number(item.amount || 0);
+                    });
+                    totals.gacha_ticket = roundTo1(totals.gacha_ticket || 0);
+                    totals.mangan_ticket = roundTo1(totals.mangan_ticket || 0);
+                    if (multiplierLabel) parts.push(`✨ ${multiplierLabel}`);
+                    if (totals.coin) parts.push(`🪙 +${totals.coin}`);
+                    if (totals.gacha_ticket) parts.push(`🎫 +${totals.gacha_ticket}`);
+                    if (totals.mangan_ticket) parts.push(`🧧 +${totals.mangan_ticket}`);
+                    if (totals.exchange_ticket) parts.push(`🎫 +${totals.exchange_ticket}`);
+                    if (parts.length) {
+                        pendingFreeSpinAfterPopup = true;
+                        showWinPopup(parts);
+                    }
+                }
                 await refreshCoinBalance();
                 updateUI();
             } catch (err) {
@@ -1732,7 +1793,7 @@
             const current = currentSession?.current_reel;
             document.querySelectorAll('[data-reel-btn]').forEach(btn => {
                 const reelIndex = Number(btn.getAttribute('data-reel-btn'));
-                btn.disabled = isProcessing || !currentSession || currentSession.status !== 'active' || reelIndex !== current;
+                btn.disabled = isProcessing || awaitingFreeSpinStart || !currentSession || currentSession.status !== 'active' || reelIndex !== current;
             });
         }
 
