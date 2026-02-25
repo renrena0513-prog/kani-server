@@ -951,6 +951,12 @@
             });
         }
 
+        function getCurrentFreeSpinRoundCount(reels) {
+            if (!currentSession?.free_spin_active) return 0;
+            const round = Number(currentSession.free_spin_round || 0);
+            return (reels || []).filter(reel => reel.is_free_spin && Number(reel.free_spin_round || 0) === round).length;
+        }
+
         function beginFreeSpinDisplay() {
             resetReelDisplay();
             pendingFreeSpinCutin = false;
@@ -991,6 +997,7 @@
             const mobileMultiplierEl = document.getElementById('mobile-total-multiplier');
             const mobileTotalEl = document.getElementById('mobile-reward-total');
             const spinLocked = isSpinLocked();
+            const prevFreeSpinsRemaining = lastFreeSpinsRemaining;
 
             updateStartButtonLabel();
 
@@ -1060,8 +1067,8 @@
                 }
             }
 
-            if (lastFreeSpinsRemaining !== null && currentSession.free_spins_remaining > lastFreeSpinsRemaining) {
-                const delta = currentSession.free_spins_remaining - lastFreeSpinsRemaining;
+            if (prevFreeSpinsRemaining !== null && currentSession.free_spins_remaining > prevFreeSpinsRemaining) {
+                const delta = currentSession.free_spins_remaining - prevFreeSpinsRemaining;
                 if (spinLocked) {
                     pendingFreeSpinPlusCutin = true;
                     pendingFreeSpinPlusAmount = delta;
@@ -1217,9 +1224,10 @@
                 if (mobileStop) mobileStop.disabled = true;
                 updateReelButtons();
             } else {
-                if (currentSession.free_spin_active && freeSpinDisplayActive && currentSession.current_reel === 1 && lastFreeSpinsRemaining !== null) {
-                    const justAdvancedRound = currentSession.free_spins_remaining < lastFreeSpinsRemaining;
-                    if (justAdvancedRound && !awaitingFreeSpinStart) {
+                if (currentSession.free_spin_active && freeSpinDisplayActive && currentSession.current_reel === 1) {
+                    const roundCount = getCurrentFreeSpinRoundCount(reels);
+                    const justAdvancedRound = prevFreeSpinsRemaining !== null && currentSession.free_spins_remaining < prevFreeSpinsRemaining;
+                    if ((justAdvancedRound || roundCount === 0) && !awaitingFreeSpinStart) {
                         awaitingFreeSpinStart = true;
                         resetReelDisplay();
                     }
