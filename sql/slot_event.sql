@@ -267,6 +267,7 @@ declare
     v_round integer := 0;
     v_result_json jsonb := '{}'::jsonb;
     v_mode text;
+    v_is_bust boolean := false;
 begin
     perform pg_advisory_xact_lock(hashtext('slot:' || p_user_id));
 
@@ -341,11 +342,16 @@ begin
         return jsonb_build_object('ok', false, 'error', 'SPIN_FAILED');
     end if;
 
+    v_is_bust := coalesce(v_position.is_bust, false);
+    if v_session.free_spin_active then
+        v_is_bust := false;
+    end if;
+
     -- 結果を reels_state に追加
     v_reels := v_reels || jsonb_build_array(jsonb_build_object(
         'reel_index', v_reel_index,
         'position_id', v_position.id,
-        'is_bust', v_position.is_bust,
+        'is_bust', v_is_bust,
         'is_jackpot', coalesce(v_position.is_jackpot, false),
         'is_free_spin_stock', coalesce(v_position.is_free_spin_stock, false),
         'is_free_spin', v_session.free_spin_active,
@@ -359,7 +365,7 @@ begin
     v_result_json := jsonb_build_object(
         'reel_index', v_reel_index,
         'position_id', v_position.id,
-        'is_bust', v_position.is_bust,
+        'is_bust', v_is_bust,
         'reward_type', v_position.reward_type,
         'reward_name', v_position.reward_name,
         'reward_id', v_position.reward_id,
@@ -412,7 +418,7 @@ begin
     else
         v_new_hits := v_session.jackpot_hits + case when v_position.is_jackpot then 1 else 0 end;
 
-        if v_position.is_bust then
+        if v_is_bust then
             if v_new_hits >= 3 then
                 -- バーストでもジャックポット3個以上ならフリースピンへ
                 update public.slot_sessions

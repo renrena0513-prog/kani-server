@@ -1814,6 +1814,8 @@
             if (isProcessing || !currentSession) return;
             if (currentSession.status !== 'active') return;
             if (typeof reelIndex === 'number' && reelIndex !== currentSession.current_reel) return;
+            const prevRemaining = currentSession.free_spins_remaining ?? null;
+            const prevFreeSpinActive = !!currentSession.free_spin_active;
             setProcessing(true);
             animateSpinSequence(currentSession.current_reel);
             try {
@@ -1840,6 +1842,14 @@
                     currentSession.status = 'cashed_out';
                     currentSession.payout = data.payout || [];
                     await refreshCoinBalance();
+                }
+
+                if (prevFreeSpinActive && currentSession.free_spin_active && currentSession.current_reel === 1 && prevRemaining !== null) {
+                    if (currentSession.free_spins_remaining < prevRemaining) {
+                        awaitingFreeSpinStart = true;
+                        resetReelDisplay();
+                        currentSession.reels = [];
+                    }
                 }
 
                 // バースト判定：直前のリールでバーストが出た場合、残りループリールを自動停止
