@@ -1185,6 +1185,14 @@
 
         async function handleStartAction() {
             if (isProcessing) return;
+            // フリースピン中でラウンド待機中のリカバリ
+            if (!awaitingFreeSpinStart && currentSession?.free_spin_active && !fsLoopActive) {
+                const reels = currentSession.reels || [];
+                const roundCount = getCurrentFreeSpinRoundCount(reels);
+                if (roundCount === 0 || currentSession.current_reel === 1) {
+                    awaitingFreeSpinStart = true;
+                }
+            }
             if (awaitingFreeSpinStart) {
                 // ユーザーがボタンを押したのでフリースピン開始：全リールループアニメーション
                 awaitingFreeSpinStart = false;
