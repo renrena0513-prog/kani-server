@@ -998,14 +998,15 @@
         function setProcessing(state) {
             isProcessing = state;
             // ループ中は開始ボタンを無効に保つ
-            document.getElementById('btn-start').disabled = state || fsLoopActive;
+            const canResume = currentSession?.free_spin_active && !fsLoopActive && !awaitingFreeSpinStart;
+            document.getElementById('btn-start').disabled = state || fsLoopActive ? true : !canResume && (currentSession && currentSession.status === 'active' && !isFreeSpinStartReady());
             document.getElementById('btn-stop').disabled = state || !currentSession || currentSession.status !== 'active' || currentSession.free_spin_active || (currentSession.reels || []).length === 0;
             const jackpotBtn = document.getElementById('btn-jackpot-confirm');
             if (jackpotBtn) jackpotBtn.disabled = state || !currentSession || !currentSession.jackpot_unlocked || currentSession.free_spin_confirmed;
             const mobileStart = document.getElementById('mobile-btn-start');
             const mobileStop = document.getElementById('mobile-btn-stop');
             const allowDuringFs = currentSession?.free_spin_active;
-            if (mobileStart) mobileStart.disabled = state || fsLoopActive || (!allowDuringFs && !isEventActiveNow()) || (currentSession && currentSession.status === 'active' && !isFreeSpinStartReady());
+            if (mobileStart) mobileStart.disabled = state || fsLoopActive ? true : ((!allowDuringFs && !isEventActiveNow()) || (!canResume && currentSession && currentSession.status === 'active' && !isFreeSpinStartReady()));
             if (mobileStop) mobileStop.disabled = state || !currentSession || currentSession.status !== 'active' || currentSession.free_spin_active || (currentSession.reels || []).length === 0;
             updateReelButtons();
         }
@@ -1039,6 +1040,9 @@
             } else if (currentSession?.free_spin_active && currentSession.current_reel === 1 && getCurrentFreeSpinRoundCount(currentSession.reels || []) === 0) {
                 if (startBtn) startBtn.textContent = 'フリースピン開始';
                 if (mobileStart) mobileStart.textContent = 'フリースピン開始';
+            } else if (currentSession?.free_spin_active && !fsLoopActive && getCurrentFreeSpinRoundCount(currentSession.reels || []) > 0) {
+                if (startBtn) startBtn.textContent = '再開';
+                if (mobileStart) mobileStart.textContent = '再開';
             } else if (currentSession?.free_spin_active) {
                 if (startBtn) startBtn.textContent = 'フリースピン中';
                 if (mobileStart) mobileStart.textContent = 'フリースピン中';
@@ -1221,6 +1225,11 @@
                 freeSpinDisplayActive = true;
                 const stage = document.getElementById('reel-stage');
                 if (stage) stage.classList.add('free-spin');
+                startFullReelLoop();
+                updateUI();
+                return;
+            }
+            if (currentSession?.free_spin_active && !fsLoopActive && !awaitingFreeSpinStart) {
                 startFullReelLoop();
                 updateUI();
                 return;
@@ -1532,12 +1541,13 @@
                 }
                 setProcessing(false);
                 const allowDuringFs = currentSession.free_spin_active;
-                document.getElementById('btn-start').disabled = (fsLoopActive || (currentSession.status === 'active' && !isFreeSpinStartReady()) || (!allowDuringFs && !isEventActiveNow()));
+                const canResume = currentSession.free_spin_active && !fsLoopActive && !awaitingFreeSpinStart;
+                document.getElementById('btn-start').disabled = (fsLoopActive || (!canResume && currentSession.status === 'active' && !isFreeSpinStartReady()) || (!allowDuringFs && !isEventActiveNow()));
                 const jackpotBtn = document.getElementById('btn-jackpot-confirm');
                 if (jackpotBtn) jackpotBtn.disabled = !currentSession.jackpot_unlocked || currentSession.free_spin_confirmed;
                 const mobileStart = document.getElementById('mobile-btn-start');
                 const mobileStop = document.getElementById('mobile-btn-stop');
-                if (mobileStart) mobileStart.disabled = (fsLoopActive || (currentSession.status === 'active' && !isFreeSpinStartReady()) || (!allowDuringFs && !isEventActiveNow()));
+                if (mobileStart) mobileStart.disabled = (fsLoopActive || (!canResume && currentSession.status === 'active' && !isFreeSpinStartReady()) || (!allowDuringFs && !isEventActiveNow()));
                 if (mobileStop) mobileStop.disabled = currentSession.status !== 'active' || currentSession.free_spin_active || (currentSession.reels || []).length === 0;
                 if (pendingFreeSpinAfterPopup) {
                     document.getElementById('btn-start').disabled = true;

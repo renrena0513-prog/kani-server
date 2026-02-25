@@ -751,6 +751,86 @@ $$;
 -- 7) Seed data
 -- =============================
 
+-- =============================
+-- 8) RPC: Confirm jackpot -> enter free spin (safe)
+-- =============================
+
+create or replace function public.slot_confirm_jackpot(p_user_id text, p_session_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = 'public'
+as $$
+declare
+    v_session record;
+    v_reels jsonb := '[]'::jsonb;
+begin
+    perform pg_advisory_xact_lock(hashtext('slot:' || p_user_id));
+
+    select * into v_session
+    from public.slot_sessions
+    where id = p_session_id and user_id = p_user_id
+    for update;
+
+    if not found then
+        return jsonb_build_object('ok', false, 'error', 'SESSION_NOT_FOUND');
+    end if;
+
+    if v_session.status <> 'active' then
+        return jsonb_build_object('ok', false, 'error', 'SESSION_NOT_ACTIVE');
+    end if;
+
+    if v_session.jackpot_unlocked = false then
+        return jsonb_build_object('ok', false, 'error', 'JACKPOT_NOT_UNLOCKED');
+    end if;
+
+    if v_session.free_spin_confirmed = true then
+        return jsonb_build_object('ok', false, 'error', 'FREE_SPIN_ALREADY_CONFIRMED');
+    end if;
+
+    -- 既にFS中ならリセットしない
+    if v_session.free_spin_active = true then
+        update public.slot_sessions
+        set free_spin_confirmed = true,
+            updated_at = now()
+        where id = v_session.id;
+    else
+        update public.slot_sessions
+        set free_spin_confirmed = true,
+            free_spin_active = true,
+            free_spins_remaining = greatest(v_session.jackpot_hits, 1),
+            free_spin_round = 1,
+            current_reel = 1,
+            updated_at = now()
+        where id = v_session.id;
+    end if;
+
+    v_reels := coalesce(v_session.reels_state, '[]'::jsonb);
+
+    select * into v_session
+    from public.slot_sessions
+    where id = v_session.id;
+
+    return jsonb_build_object(
+        'ok', true,
+        'session', jsonb_build_object(
+            'id', v_session.id,
+            'status', v_session.status,
+            'cost', v_session.cost,
+            'current_reel', v_session.current_reel,
+            'jackpot_hits', v_session.jackpot_hits,
+            'jackpot_unlocked', v_session.jackpot_unlocked,
+            'free_spin_confirmed', v_session.free_spin_confirmed,
+            'free_spin_active', v_session.free_spin_active,
+            'free_spins_remaining', v_session.free_spins_remaining,
+            'free_spin_round', v_session.free_spin_round,
+            'created_at', v_session.created_at
+        ),
+        'reels', v_reels
+    );
+end;
+$$;
+
 -- slot_reel_positions from CSV
 delete from public.slot_reel_positions;
 insert into public.slot_reel_positions

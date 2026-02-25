@@ -1,0 +1,1 @@
+Error: Failed to run sql query: ERROR: 42601: syntax error at or near "-" LINE 1: - 1) free_spin_confirmed が更新されているか ^
