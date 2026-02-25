@@ -2169,7 +2169,11 @@
             // 各リールのSTOPボタン：ループ中かつカレントリールのみ有効
             document.querySelectorAll('[data-reel-btn]').forEach(btn => {
                 const reelIndex = Number(btn.getAttribute('data-reel-btn'));
-                btn.disabled = !fsLoopActive || isProcessing || awaitingFreeSpinStart || !currentSession || currentSession.status !== 'active' || reelIndex !== current;
+                const inFree = currentSession?.free_spin_active;
+                const roundCount = inFree ? getCurrentFreeSpinRoundCount(currentSession.reels || []) : (currentSession?.reels || []).filter(r => !r.is_free_spin).length;
+                const expected = Math.min(7, (roundCount || 0) + 1);
+                const canStop = reelIndex === current || reelIndex === expected;
+                btn.disabled = !fsLoopActive || isProcessing || awaitingFreeSpinStart || !currentSession || currentSession.status !== 'active' || !canStop;
             });
         }
 
