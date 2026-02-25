@@ -924,7 +924,8 @@
 
         function isFreeSpinStartReady() {
             if (awaitingFreeSpinStart) return true;
-            if (!!currentSession && !!currentSession.jackpot_unlocked && !currentSession.free_spin_confirmed) return true;
+            // ジャックポット確定後で、かつリールが止まり切ってから表示を切り替える（先ばれ防止）
+            if (!isSpinLocked() && !!currentSession && !!currentSession.jackpot_unlocked && !currentSession.free_spin_confirmed) return true;
             return false;
         }
 
@@ -987,6 +988,7 @@
             if (awaitingFreeSpinStart) {
                 // ユーザーがボタンを押したのでフリースピン開始
                 awaitingFreeSpinStart = false;
+                resetReelDisplay();
                 freeSpinDisplayActive = true;
                 const stage = document.getElementById('reel-stage');
                 if (stage) stage.classList.add('free-spin');
