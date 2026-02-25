@@ -790,6 +790,7 @@
         let pendingFreeSpinAfterPopup = false;
         let fsLoopActive = false;
         let loopStartRequested = false;
+        let bustAutoStoppingUntil = 0;
         let reelLoopConfig = { normal: new Map(), free: new Map() };
         let lastLoopMode = 'normal';
         const CUTIN_DURATION_MS = 1600;
@@ -1171,7 +1172,7 @@
                     if (resultEl) resultEl.textContent = 'バースト';
                     if (stopEl) stopEl.innerHTML = BURST_SYMBOL;
                 }
-                if (stopBtn) { stopBtn.disabled = true; stopBtn.classList.remove('active'); }
+                if (stopBtn) { stopBtn.disabled = true; stopBtn.classList.add('active'); }
             });
             fsLoopActive = false;
             const startBtn = document.getElementById('btn-start');
@@ -1318,7 +1319,9 @@
             }
 
             if (currentSession.status !== 'active') {
-                if (fsLoopActive) stopFullReelLoop();
+                if (fsLoopActive) {
+                    stopFullReelLoop();
+                }
             }
 
             if (!currentSession.free_spin_active) {
