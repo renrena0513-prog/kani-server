@@ -1844,7 +1844,11 @@
                 // バースト判定：直前のリールでバーストが出た場合、残りループリールを自動停止
                 const justStoppedReel = (data.reels || []).find(r => r.reel_index === reelIndex);
                 if (justStoppedReel?.is_bust && fsLoopActive) {
-                    await autoBustRemainingReels();
+                    // 先ばれ防止：他リールは少し回転を維持してからバースト停止
+                    setTimeout(() => {
+                        autoBustRemainingReels();
+                        updateUI();
+                    }, SPIN_DURATION_MS);
                 } else {
                     // 次のリールのSTOPボタンを有効化
                     updateReelButtons();
