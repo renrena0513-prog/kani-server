@@ -1230,7 +1230,7 @@
             const spinLocked = isSpinLocked();
             const prevFreeSpinsRemaining = lastFreeSpinsRemaining;
 
-            if (currentSession?.free_spin_active && currentSession.current_reel === 1 && !awaitingFreeSpinStart) {
+            if (currentSession?.free_spin_active && currentSession.current_reel === 1 && !awaitingFreeSpinStart && !fsLoopActive) {
                 const roundCount = getCurrentFreeSpinRoundCount(reels);
                 if (roundCount === 0) {
                     awaitingFreeSpinStart = true;
@@ -1483,16 +1483,16 @@
                 if (mobileStop) mobileStop.disabled = true;
                 updateReelButtons();
             } else {
-            if (currentSession.free_spin_active && currentSession.current_reel === 1 && !awaitingFreeSpinStart) {
-                const roundCount = getCurrentFreeSpinRoundCount(reels);
-                const justAdvancedRound = prevFreeSpinsRemaining !== null && currentSession.free_spins_remaining < prevFreeSpinsRemaining;
-                if (justAdvancedRound || roundCount === 0) {
-                    // 次のラウンドへ進んだ：カットイン無しでボタン待機
-                    awaitingFreeSpinStart = true;
-                    resetReelDisplay();
-                    if (currentSession) currentSession.reels = [];
+                if (currentSession.free_spin_active && currentSession.current_reel === 1 && !awaitingFreeSpinStart) {
+                    const roundCount = getCurrentFreeSpinRoundCount(reels);
+                    const justAdvancedRound = prevFreeSpinsRemaining !== null && currentSession.free_spins_remaining < prevFreeSpinsRemaining;
+                    if (justAdvancedRound || roundCount === 0) {
+                        // 次のラウンドへ進んだ：カットイン無しでボタン待機
+                        awaitingFreeSpinStart = true;
+                        resetReelDisplay();
+                        if (currentSession) currentSession.reels = [];
+                    }
                 }
-            }
                 setProcessing(false);
                 document.getElementById('btn-start').disabled = (fsLoopActive || (currentSession.status === 'active' && !isFreeSpinStartReady()) || !isEventActiveNow());
                 const jackpotBtn = document.getElementById('btn-jackpot-confirm');
