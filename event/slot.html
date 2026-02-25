@@ -441,13 +441,13 @@
             }
 
             100% {
-                transform: translateY(calc(var(--reel-size) * 10));
+                transform: translateY(-50%);
             }
         }
 
-        .reel-window.fs-loop {
+        /* ループ中は内側のシンボルリストをスクロールする */
+        .reel-window.fs-loop .reel-symbols {
             animation: reel-loop 0.8s linear infinite;
-            overflow: hidden;
         }
 
         .reel-btn-stop {
@@ -1028,15 +1028,15 @@
             fsLoopActive = true;
             document.querySelectorAll('.reel-col').forEach(col => {
                 const windowEl = col.querySelector('.reel-window');
+                const symbolsEl = col.querySelector('.reel-symbols');
                 col.classList.remove('done', 'bust');
                 if (windowEl) {
                     windowEl.classList.remove('spinning', 'stopped');
+                    // ウィンドウ自体にクラスを付けて内側の.reel-symbolsにアニメを適用
                     windowEl.classList.add('fs-loop');
                 }
-                const resultEl = col.querySelector('.reel-result');
-                if (resultEl) resultEl.textContent = '';
                 const stopEl = col.querySelector('.reel-stop');
-                if (stopEl) stopEl.textContent = '';
+                if (stopEl) stopEl.innerHTML = '';
                 // 各リールのSTOPボタンを表示
                 const stopBtn = col.querySelector('.reel-btn-stop');
                 if (stopBtn) {
@@ -1068,14 +1068,15 @@
         }
 
         async function stopSpecificReel(reelIndex) {
-            // まずぜそのリールのループを止める
+            // まずそのリールのループを止める
             if (isProcessing || !currentSession || !fsLoopActive) return;
             if (currentSession.current_reel !== reelIndex) return;
-            // 指定リールのSTOPボタンを無効化
+            // 指定リールのSTOPボタンを無効化つループ停止
             const col = document.querySelector(`.reel-col[data-reel-index="${reelIndex}"]`);
             if (col) {
                 const windowEl = col.querySelector('.reel-window');
                 const stopBtn = col.querySelector('.reel-btn-stop');
+                // fs-loopクラスを外してアニメを停止
                 if (windowEl) windowEl.classList.remove('fs-loop');
                 if (stopBtn) { stopBtn.disabled = true; stopBtn.classList.remove('active'); }
             }
