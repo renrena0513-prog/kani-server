@@ -437,17 +437,17 @@
 
         @keyframes reel-loop {
             0% {
-                transform: translateY(0);
+                transform: translateY(-50%);
             }
 
             100% {
-                transform: translateY(-50%);
+                transform: translateY(0);
             }
         }
 
         /* ループ中は内側のシンボルリストをスクロールする */
         .reel-window.fs-loop .reel-symbols {
-            animation: reel-loop 0.8s linear infinite;
+            animation: reel-loop 1.6s linear infinite;
             opacity: 1;
         }
 
