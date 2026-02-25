@@ -924,10 +924,6 @@
         function isFreeSpinStartReady() {
             if (awaitingFreeSpinStart) return true;
             if (!!currentSession && !!currentSession.jackpot_unlocked && !currentSession.free_spin_confirmed) return true;
-            if (currentSession?.free_spin_active && currentSession.current_reel === 1) {
-                const count = getCurrentFreeSpinRoundCount(currentSession.reels || []);
-                return count === 0;
-            }
             return false;
         }
 
@@ -935,7 +931,13 @@
             const startBtn = document.getElementById('btn-start');
             const mobileStart = document.getElementById('mobile-btn-start');
             if (!startBtn && !mobileStart) return;
-            if (isFreeSpinStartReady()) {
+            if (awaitingFreeSpinStart) {
+                if (startBtn) startBtn.textContent = 'フリースピン開始';
+                if (mobileStart) mobileStart.textContent = 'フリースピン開始';
+            } else if (currentSession?.free_spin_active) {
+                if (startBtn) startBtn.textContent = 'フリースピン中';
+                if (mobileStart) mobileStart.textContent = 'フリースピン中';
+            } else if (isFreeSpinStartReady()) {
                 if (startBtn) startBtn.textContent = 'フリースピン開始';
                 if (mobileStart) mobileStart.textContent = 'フリースピン開始';
             } else {
@@ -966,6 +968,7 @@
         function beginFreeSpinDisplay() {
             resetReelDisplay();
             pendingFreeSpinCutin = false;
+            awaitingFreeSpinStart = false;
             showFreeSpinCutin();
             setTimeout(() => {
                 freeSpinDisplayActive = true;
@@ -978,8 +981,13 @@
             if (isProcessing) return;
             if (awaitingFreeSpinStart) {
                 awaitingFreeSpinStart = false;
-                freeSpinDisplayActive = true;
-                updateUI();
+                if (pendingFreeSpinCutin) {
+                    pendingFreeSpinCutin = false;
+                    beginFreeSpinDisplay();
+                } else {
+                    freeSpinDisplayActive = true;
+                    updateUI();
+                }
                 return;
             }
             if (isFreeSpinStartReady()) {
@@ -1068,11 +1076,7 @@
 
             if (!wasFreeSpinActive && currentSession.free_spin_active) {
                 awaitingFreeSpinStart = true;
-                if (spinLocked) {
-                    pendingFreeSpinCutin = true;
-                } else {
-                    pendingFreeSpinCutin = true;
-                }
+                pendingFreeSpinCutin = true;
             }
 
             if (prevFreeSpinsRemaining !== null && currentSession.free_spins_remaining > prevFreeSpinsRemaining) {
@@ -1237,7 +1241,8 @@
                 if (currentSession.free_spin_active && freeSpinDisplayActive && currentSession.current_reel === 1) {
                     const roundCount = getCurrentFreeSpinRoundCount(reels);
                     const justAdvancedRound = prevFreeSpinsRemaining !== null && currentSession.free_spins_remaining < prevFreeSpinsRemaining;
-                    if ((justAdvancedRound || roundCount === 0) && !awaitingFreeSpinStart) {
+                    const isLaterRound = Number(currentSession.free_spin_round || 0) > 1;
+                    if ((justAdvancedRound || (isLaterRound && roundCount === 0)) && !awaitingFreeSpinStart) {
                         awaitingFreeSpinStart = true;
                         resetReelDisplay();
                     }
