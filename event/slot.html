@@ -1035,6 +1035,9 @@
             if (awaitingFreeSpinStart) {
                 if (startBtn) startBtn.textContent = 'フリースピン開始';
                 if (mobileStart) mobileStart.textContent = 'フリースピン開始';
+            } else if (currentSession?.free_spin_active && currentSession.current_reel === 1 && getCurrentFreeSpinRoundCount(currentSession.reels || []) === 0) {
+                if (startBtn) startBtn.textContent = 'フリースピン開始';
+                if (mobileStart) mobileStart.textContent = 'フリースピン開始';
             } else if (currentSession?.free_spin_active) {
                 if (startBtn) startBtn.textContent = 'フリースピン中';
                 if (mobileStart) mobileStart.textContent = 'フリースピン中';
@@ -1188,6 +1191,18 @@
 
         async function handleStartAction() {
             if (isProcessing) return;
+            if (currentSession?.free_spin_active && currentSession.current_reel === 1 && getCurrentFreeSpinRoundCount(currentSession.reels || []) === 0) {
+                awaitingFreeSpinStart = false;
+                pendingFreeSpinCutin = false;
+                resetReelDisplay();
+                if (currentSession) currentSession.reels = [];
+                freeSpinDisplayActive = true;
+                const stage = document.getElementById('reel-stage');
+                if (stage) stage.classList.add('free-spin');
+                startFullReelLoop();
+                updateUI();
+                return;
+            }
             // フリースピン中でラウンド待機中のリカバリ
             if (!awaitingFreeSpinStart && currentSession?.free_spin_active && !fsLoopActive) {
                 const reels = currentSession.reels || [];
@@ -2029,6 +2044,9 @@
                     return;
                 }
                 if (displayFreeSpin) {
+                    if (!reel.is_free_spin) {
+                        return;
+                    }
                     const round = Number(reel.free_spin_round || 0);
                     if (round !== displayRound) {
                         return;
