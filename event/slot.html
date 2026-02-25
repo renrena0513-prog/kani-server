@@ -1308,6 +1308,11 @@
                 }
             }
 
+            if (currentSession.free_spin_active && !freeSpinDisplayActive) {
+                // FS開始前は通常スピンの結果を完全にクリア（先ばれ/残像防止）
+                resetReelDisplay();
+            }
+
             if (prevFreeSpinsRemaining !== null && currentSession.free_spins_remaining > prevFreeSpinsRemaining) {
                 const delta = currentSession.free_spins_remaining - prevFreeSpinsRemaining;
                 if (spinLocked) {
@@ -1995,7 +2000,8 @@
 
         function renderReelState(reels) {
             const reelMap = new Map();
-            const displayFreeSpin = !!currentSession?.free_spin_active && freeSpinDisplayActive;
+            const isFree = !!currentSession?.free_spin_active;
+            const displayFreeSpin = isFree && freeSpinDisplayActive;
             let displayRound = null;
             if (displayFreeSpin) {
                 displayRound = (reels || []).reduce((maxRound, reel) => {
@@ -2005,6 +2011,9 @@
                 }, 0);
             }
             (reels || []).forEach(reel => {
+                if (isFree && !displayFreeSpin) {
+                    return;
+                }
                 if (displayFreeSpin) {
                     const round = Number(reel.free_spin_round || 0);
                     if (round !== displayRound) {

@@ -111,6 +111,7 @@ begin
             'free_spins_remaining', v_session.free_spins_remaining,
             'free_spin_round', v_session.free_spin_round,
             'free_spin_stocks', v_session.free_spin_stocks,
+            'free_spin_confirmed', coalesce(v_session.free_spin_confirmed, false),
             'created_at', v_session.created_at
         ),
         'reels', v_reels
@@ -179,6 +180,7 @@ begin
             'free_spins_remaining', v_session.free_spins_remaining,
             'free_spin_round', v_session.free_spin_round,
             'free_spin_stocks', v_session.free_spin_stocks,
+            'free_spin_confirmed', coalesce(v_session.free_spin_confirmed, false),
             'created_at', v_session.created_at
         ),
         'reels', v_reels,
@@ -233,6 +235,7 @@ begin
             'free_spins_remaining', v_session.free_spins_remaining,
             'free_spin_round', v_session.free_spin_round,
             'free_spin_stocks', v_session.free_spin_stocks,
+            'free_spin_confirmed', coalesce(v_session.free_spin_confirmed, false),
             'created_at', v_session.created_at
         ),
         'reels', v_reels,
@@ -307,6 +310,7 @@ begin
                 'free_spin_active', v_session.free_spin_active,
                 'free_spins_remaining', v_session.free_spins_remaining,
                 'free_spin_round', v_session.free_spin_round,
+                'free_spin_confirmed', coalesce(v_session.free_spin_confirmed, false),
                 'created_at', v_session.created_at
             ),
             'result', v_existing,
@@ -489,6 +493,7 @@ begin
             'free_spins_remaining', v_session.free_spins_remaining,
             'free_spin_round', v_session.free_spin_round,
             'free_spin_stocks', v_session.free_spin_stocks,
+            'free_spin_confirmed', coalesce(v_session.free_spin_confirmed, false),
             'created_at', v_session.created_at
         ),
         'result', v_result_json,
@@ -541,6 +546,7 @@ begin
             'free_spins_remaining', v_session.free_spins_remaining,
             'free_spin_round', v_session.free_spin_round,
             'free_spin_stocks', v_session.free_spin_stocks,
+            'free_spin_confirmed', coalesce(v_session.free_spin_confirmed, false),
             'created_at', v_session.created_at
         ), 'payout', '[]'::jsonb, 'outcome', 'bust');
     end if;
@@ -555,6 +561,7 @@ begin
             'free_spins_remaining', v_session.free_spins_remaining,
             'free_spin_round', v_session.free_spin_round,
             'free_spin_stocks', v_session.free_spin_stocks,
+            'free_spin_confirmed', coalesce(v_session.free_spin_confirmed, false),
             'created_at', v_session.created_at
         ), 'payout', v_session.payout_summary, 'outcome', 'cashed_out');
     end if;
@@ -702,6 +709,7 @@ begin
                 'free_spins_remaining', v_session.free_spins_remaining,
                 'free_spin_round', v_session.free_spin_round,
                 'free_spin_stocks', v_session.free_spin_stocks,
+                'free_spin_confirmed', coalesce(v_session.free_spin_confirmed, false),
                 'created_at', v_session.created_at
             ),
             'payout', v_summary,
@@ -730,6 +738,7 @@ begin
             'free_spins_remaining', v_session.free_spins_remaining,
             'free_spin_round', v_session.free_spin_round,
             'free_spin_stocks', v_session.free_spin_stocks,
+            'free_spin_confirmed', coalesce(v_session.free_spin_confirmed, false),
             'created_at', v_session.created_at
         ),
         'payout', v_summary,
@@ -747,145 +756,284 @@ delete from public.slot_reel_positions;
 insert into public.slot_reel_positions
 (mode, reel_index, position_index, is_bust, is_jackpot, is_free_spin_stock, reward_type, reward_name, reward_id, amount, is_active)
 values
-('normal', 1, 1, false, true, false, 'multiplier', '倍率+1', null, 1.00, true),
-('normal', 1, 2, false, false, false, 'multiplier', '倍率+0.5', null, 0.50, true),
-('normal', 1, 3, false, false, false, 'coin', 'コイン +20', null, 20.00, true),
-('normal', 1, 4, false, false, false, 'coin', 'コイン +20', null, 20.00, true),
-('normal', 1, 5, false, false, false, 'coin', 'コイン +20', null, 20.00, true),
-('normal', 1, 6, false, false, false, 'coin', 'コイン +10', null, 10.00, true),
-('normal', 1, 7, false, false, false, 'coin', 'コイン +10', null, 10.00, true),
-('normal', 1, 8, false, false, false, 'coin', 'コイン +10', null, 10.00, true),
-('normal', 1, 9, false, false, false, 'coin', 'コイン +10', null, 10.00, true),
-('normal', 1, 10, true, false, false, null, null, null, 0.00, true),
-('normal', 2, 1, false, true, false, 'multiplier', '倍率+0.5', null, 0.50, true),
-('normal', 2, 2, false, false, false, 'multiplier', '倍率+0,5', null, 0.50, true),
-('normal', 2, 3, false, false, false, 'coin', 'コイン +50', null, 50.00, true),
-('normal', 2, 4, false, false, false, 'coin', 'コイン +30', null, 30.00, true),
-('normal', 2, 5, false, false, false, 'coin', 'コイン +20', null, 20.00, true),
-('normal', 2, 6, false, false, false, 'coin', 'コイン +10', null, 10.00, true),
-('normal', 2, 7, false, false, false, 'coin', 'コイン +10', null, 10.00, true),
-('normal', 2, 8, false, false, false, 'coin', 'コイン +10', null, 10.00, true),
-('normal', 2, 9, true, false, false, null, null, null, 0.00, true),
-('normal', 2, 10, true, false, false, null, null, null, 0.00, true),
-('normal', 3, 1, false, true, false, 'coin', 'コイン +100', null, 100.00, true),
-('normal', 3, 2, false, false, false, 'multiplier', '倍率+0.5', null, 0.50, true),
-('normal', 3, 3, false, false, false, 'coin', 'コイン +80', null, 80.00, true),
-('normal', 3, 4, false, false, false, 'coin', 'コイン +50', null, 50.00, true),
-('normal', 3, 5, false, false, false, 'coin', 'コイン +30', null, 30.00, true),
-('normal', 3, 6, false, false, false, 'coin', 'コイン +20', null, 20.00, true),
-('normal', 3, 7, false, false, false, 'coin', 'コイン +20', null, 20.00, true),
-('normal', 3, 8, true, false, false, null, null, null, 0.00, true),
-('normal', 3, 9, true, false, false, null, null, null, 0.00, true),
-('normal', 3, 10, true, false, false, null, null, null, 0.00, true),
-('normal', 4, 1, false, true, false, 'gacha_ticket', '祈願符+1', null, 1.00, true),
-('normal', 4, 2, false, false, false, 'coin', 'コイン +100', null, 100.00, true),
-('normal', 4, 3, false, false, false, 'coin', 'コイン +80', null, 80.00, true),
-('normal', 4, 4, false, false, false, 'coin', 'コイン +50', null, 50.00, true),
-('normal', 4, 5, false, false, false, 'coin', 'コイン +30', null, 30.00, true),
-('normal', 4, 6, false, false, false, 'coin', 'コイン +20', null, 20.00, true),
-('normal', 4, 7, true, false, false, null, null, null, 0.00, true),
-('normal', 4, 8, true, false, false, null, null, null, 0.00, true),
-('normal', 4, 9, true, false, false, null, null, null, 0.00, true),
-('normal', 4, 10, true, false, false, null, null, null, 0.00, true),
-('normal', 5, 1, false, true, false, 'gacha_ticket', '祈願符+2', null, 2.00, true),
-('normal', 5, 2, false, false, false, 'gacha_ticket', '祈願符+1', null, 1.00, true),
-('normal', 5, 3, false, false, false, 'coin', 'コイン +300', null, 300.00, true),
-('normal', 5, 4, false, false, false, 'coin', 'コイン +200', null, 200.00, true),
-('normal', 5, 5, false, false, false, 'coin', 'コイン +100', null, 100.00, true),
-('normal', 5, 6, true, false, false, null, null, null, 0.00, true),
-('normal', 5, 7, true, false, false, null, null, null, 0.00, true),
-('normal', 5, 8, true, false, false, null, null, null, 0.00, true),
-('normal', 5, 9, true, false, false, null, null, null, 0.00, true),
-('normal', 5, 10, true, false, false, null, null, null, 0.00, true),
-('normal', 6, 1, false, true, false, 'mangan_ticket', '満願符 +1', null, 1.00, true),
-('normal', 6, 2, false, true, false, 'gacha_ticket', '祈願符 +2', null, 2.00, true),
-('normal', 6, 3, false, true, false, 'gacha_ticket', '祈願符 +1', null, 1.00, true),
-('normal', 6, 4, false, true, false, 'coin', 'コイン+100', null, 100.00, true),
-('normal', 6, 5, true, false, false, null, null, null, 0.00, true),
-('normal', 6, 6, true, false, false, null, null, null, 0.00, true),
-('normal', 6, 7, true, false, false, null, null, null, 0.00, true),
-('normal', 6, 8, true, false, false, null, null, null, 0.00, true),
-('normal', 6, 9, true, false, false, null, null, null, 0.00, true),
-('normal', 6, 10, true, false, false, null, null, null, 0.00, true),
-('normal', 7, 1, false, true, false, 'mangan_ticket', '満願符 +3', null, 3.00, true),
-('normal', 7, 2, false, true, false, 'mangan_ticket', '満願符 +2', null, 2.00, true),
-('normal', 7, 3, false, true, false, 'gacha_ticket', '祈願符 +5', null, 5.00, true),
-('normal', 7, 4, true, false, false, null, null, null, 0.00, true),
-('normal', 7, 5, true, false, false, null, null, null, 0.00, true),
-('normal', 7, 6, true, false, false, null, null, null, 0.00, true),
-('normal', 7, 7, true, false, false, null, null, null, 0.00, true),
-('normal', 7, 8, true, false, false, null, null, null, 0.00, true),
-('normal', 7, 9, true, false, false, null, null, null, 0.00, true),
-('normal', 7, 10, true, false, false, null, null, null, 0.00, true),
-('free', 1, 1, false, false, true, 'multiplier', '倍率+0.1', null, 0.10, true),
-('free', 1, 2, false, false, false, 'multiplier', '倍率+0.2', null, 0.20, true),
-('free', 1, 3, false, false, false, 'multiplier', '倍率+0.3', null, 0.30, true),
-('free', 1, 4, false, false, false, 'multiplier', '倍率+0.4', null, 0.40, true),
-('free', 1, 5, false, false, false, 'multiplier', '倍率+0.5', null, 0.50, true),
-('free', 1, 6, false, false, false, 'mangan_ticket', '満願符+0.1', null, 0.10, true),
-('free', 1, 7, false, false, false, 'gacha_ticket', '祈願符+0.2', null, 0.20, true),
-('free', 1, 8, false, false, false, 'coin', 'コイン+50', null, 50.00, true),
-('free', 1, 9, false, false, false, 'coin', 'コイン+30', null, 30.00, true),
-('free', 1, 10, false, false, false, 'coin', 'コイン+10', null, 10.00, true),
-('free', 2, 1, false, false, false, 'multiplier', '倍率+0.1', null, 0.10, true),
-('free', 2, 2, false, false, true, 'multiplier', '倍率+0.2', null, 0.20, true),
-('free', 2, 3, false, false, false, 'multiplier', '倍率+0.3', null, 0.30, true),
-('free', 2, 4, false, false, false, 'multiplier', '倍率+0.4', null, 0.40, true),
-('free', 2, 5, false, false, false, 'multiplier', '倍率+0.5', null, 0.50, true),
-('free', 2, 6, false, false, false, 'mangan_ticket', '満願符+0.1', null, 0.10, true),
-('free', 2, 7, false, false, false, 'gacha_ticket', '祈願符+0.2', null, 0.20, true),
-('free', 2, 8, false, false, false, 'coin', 'コイン+50', null, 50.00, true),
-('free', 2, 9, false, false, false, 'coin', 'コイン+30', null, 30.00, true),
-('free', 2, 10, false, false, false, 'coin', 'コイン+10', null, 10.00, true),
-('free', 3, 1, false, false, false, 'multiplier', '倍率+0.1', null, 0.10, true),
-('free', 3, 2, false, false, false, 'multiplier', '倍率+0.2', null, 0.20, true),
-('free', 3, 3, false, false, true, 'multiplier', '倍率+0.3', null, 0.30, true),
-('free', 3, 4, false, false, false, 'multiplier', '倍率+0.4', null, 0.40, true),
-('free', 3, 5, false, false, false, 'multiplier', '倍率+0.5', null, 0.50, true),
-('free', 3, 6, false, false, false, 'mangan_ticket', '満願符+0.1', null, 0.10, true),
-('free', 3, 7, false, false, false, 'gacha_ticket', '祈願符+0.2', null, 0.20, true),
-('free', 3, 8, false, false, false, 'coin', 'コイン+50', null, 50.00, true),
-('free', 3, 9, false, false, false, 'coin', 'コイン+30', null, 30.00, true),
-('free', 3, 10, false, false, false, 'coin', 'コイン+10', null, 10.00, true),
-('free', 4, 1, false, false, false, 'multiplier', '倍率+0.1', null, 0.10, true),
-('free', 4, 2, false, false, false, 'multiplier', '倍率+0.2', null, 0.20, true),
-('free', 4, 3, false, false, false, 'multiplier', '倍率+0.3', null, 0.30, true),
-('free', 4, 4, false, false, true, 'multiplier', '倍率+0.4', null, 0.40, true),
-('free', 4, 5, false, false, false, 'multiplier', '倍率+0.5', null, 0.50, true),
-('free', 4, 6, false, false, false, 'mangan_ticket', '満願符+0.1', null, 0.10, true),
-('free', 4, 7, false, false, false, 'gacha_ticket', '祈願符+0.2', null, 0.20, true),
-('free', 4, 8, false, false, false, 'coin', 'コイン+50', null, 50.00, true),
-('free', 4, 9, false, false, false, 'coin', 'コイン+30', null, 30.00, true),
-('free', 4, 10, false, false, false, 'coin', 'コイン+10', null, 10.00, true),
-('free', 5, 1, false, false, false, 'multiplier', '倍率+0.1', null, 0.10, true),
-('free', 5, 2, false, false, false, 'multiplier', '倍率+0.2', null, 0.20, true),
-('free', 5, 3, false, false, false, 'multiplier', '倍率+0.3', null, 0.30, true),
-('free', 5, 4, false, false, false, 'multiplier', '倍率+0.4', null, 0.40, true),
-('free', 5, 5, false, false, true, 'multiplier', '倍率+0.5', null, 0.50, true),
-('free', 5, 6, false, false, false, 'mangan_ticket', '満願符+0.1', null, 0.10, true),
-('free', 5, 7, false, false, false, 'gacha_ticket', '祈願符+0.2', null, 0.20, true),
-('free', 5, 8, false, false, false, 'coin', 'コイン+50', null, 50.00, true),
-('free', 5, 9, false, false, false, 'coin', 'コイン+30', null, 30.00, true),
-('free', 5, 10, false, false, false, 'coin', 'コイン+10', null, 10.00, true),
-('free', 6, 1, false, false, true, 'multiplier', '倍率+0.1', null, 0.10, true),
-('free', 6, 2, false, false, false, 'multiplier', '倍率+0.2', null, 0.20, true),
-('free', 6, 3, false, false, false, 'multiplier', '倍率+0.3', null, 0.30, true),
-('free', 6, 4, false, false, false, 'multiplier', '倍率+0.4', null, 0.40, true),
-('free', 6, 5, false, false, false, 'multiplier', '倍率+0.5', null, 0.50, true),
-('free', 6, 6, false, false, false, 'multiplier', '倍率+0.6', null, 0.60, true),
-('free', 6, 7, false, false, false, 'multiplier', '倍率+0.7', null, 0.70, true),
-('free', 6, 8, false, false, false, 'multiplier', '倍率+0.8', null, 0.80, true),
-('free', 6, 9, false, false, false, 'multiplier', '倍率+0.9', null, 0.90, true),
-('free', 6, 10, false, false, false, 'multiplier', '倍率+1', null, 1.00, true),
-('free', 7, 1, false, false, false, 'mangan_ticket', '満願符+0.3', null, 0.30, true),
-('free', 7, 2, false, false, false, 'mangan_ticket', '満願符+0.1', null, 0.10, true),
-('free', 7, 3, false, false, true, 'gacha_ticket', '祈願符+1', null, 1.00, true),
-('free', 7, 4, false, false, false, 'gacha_ticket', '祈願符+0.7', null, 0.70, true),
-('free', 7, 5, false, false, false, 'gacha_ticket', '祈願符+0.5', null, 0.50, true),
-('free', 7, 6, false, false, false, 'gacha_ticket', '祈願符+0.2', null, 0.20, true),
-('free', 7, 7, false, false, false, 'coin', 'コイン+100', null, 100.00, true),
-('free', 7, 8, false, false, false, 'coin', 'コイン+50', null, 50.00, true),
-('free', 7, 9, false, false, false, 'coin', 'コイン+30', null, 30.00, true),
+('normal', 1, 1, false, true, false, 'multiplier', '倍率+1', null, 1.00, true
+),
+('normal', 1, 2, false, false, false, 'multiplier', '倍率+0.5', null, 0.50, true
+),
+('normal', 1, 3, false, false, false, 'coin', 'コイン +20', null, 20.00, true
+),
+('normal', 1, 4, false, false, false, 'coin', 'コイン +20', null, 20.00, true
+),
+('normal', 1, 5, false, false, false, 'coin', 'コイン +20', null, 20.00, true
+),
+('normal', 1, 6, false, false, false, 'coin', 'コイン +10', null, 10.00, true
+),
+('normal', 1, 7, false, false, false, 'coin', 'コイン +10', null, 10.00, true
+),
+('normal', 1, 8, false, false, false, 'coin', 'コイン +10', null, 10.00, true
+),
+('normal', 1, 9, false, false, false, 'coin', 'コイン +10', null, 10.00, true
+),
+('normal', 1, 10, true, false, false, null, null, null, 0.00, true
+),
+('normal', 2, 1, false, true, false, 'multiplier', '倍率+0.5', null, 0.50, true
+),
+('normal', 2, 2, false, false, false, 'multiplier', '倍率+0,5', null, 0.50, true
+),
+('normal', 2, 3, false, false, false, 'coin', 'コイン +50', null, 50.00, true
+),
+('normal', 2, 4, false, false, false, 'coin', 'コイン +30', null, 30.00, true
+),
+('normal', 2, 5, false, false, false, 'coin', 'コイン +20', null, 20.00, true
+),
+('normal', 2, 6, false, false, false, 'coin', 'コイン +10', null, 10.00, true
+),
+('normal', 2, 7, false, false, false, 'coin', 'コイン +10', null, 10.00, true
+),
+('normal', 2, 8, false, false, false, 'coin', 'コイン +10', null, 10.00, true
+),
+('normal', 2, 9, true, false, false, null, null, null, 0.00, true
+),
+('normal', 2, 10, true, false, false, null, null, null, 0.00, true
+),
+('normal', 3, 1, false, true, false, 'coin', 'コイン +100', null, 100.00, true
+),
+('normal', 3, 2, false, false, false, 'multiplier', '倍率+0.5', null, 0.50, true
+),
+('normal', 3, 3, false, false, false, 'coin', 'コイン +80', null, 80.00, true
+),
+('normal', 3, 4, false, false, false, 'coin', 'コイン +50', null, 50.00, true
+),
+('normal', 3, 5, false, false, false, 'coin', 'コイン +30', null, 30.00, true
+),
+('normal', 3, 6, false, false, false, 'coin', 'コイン +20', null, 20.00, true
+),
+('normal', 3, 7, false, false, false, 'coin', 'コイン +20', null, 20.00, true
+),
+('normal', 3, 8, true, false, false, null, null, null, 0.00, true
+),
+('normal', 3, 9, true, false, false, null, null, null, 0.00, true
+),
+('normal', 3, 10, true, false, false, null, null, null, 0.00, true
+),
+('normal', 4, 1, false, true, false, 'gacha_ticket', '祈願符+1', null, 1.00, true
+),
+('normal', 4, 2, false, false, false, 'coin', 'コイン +100', null, 100.00, true
+),
+('normal', 4, 3, false, false, false, 'coin', 'コイン +80', null, 80.00, true
+),
+('normal', 4, 4, false, false, false, 'coin', 'コイン +50', null, 50.00, true
+),
+('normal', 4, 5, false, false, false, 'coin', 'コイン +30', null, 30.00, true
+),
+('normal', 4, 6, false, false, false, 'coin', 'コイン +20', null, 20.00, true
+),
+('normal', 4, 7, true, false, false, null, null, null, 0.00, true
+),
+('normal', 4, 8, true, false, false, null, null, null, 0.00, true
+),
+('normal', 4, 9, true, false, false, null, null, null, 0.00, true
+),
+('normal', 4, 10, true, false, false, null, null, null, 0.00, true
+),
+('normal', 5, 1, false, true, false, 'gacha_ticket', '祈願符+2', null, 2.00, true
+),
+('normal', 5, 2, false, false, false, 'gacha_ticket', '祈願符+1', null, 1.00, true
+),
+('normal', 5, 3, false, false, false, 'coin', 'コイン +300', null, 300.00, true
+),
+('normal', 5, 4, false, false, false, 'coin', 'コイン +200', null, 200.00, true
+),
+('normal', 5, 5, false, false, false, 'coin', 'コイン +100', null, 100.00, true
+),
+('normal', 5, 6, true, false, false, null, null, null, 0.00, true
+),
+('normal', 5, 7, true, false, false, null, null, null, 0.00, true
+),
+('normal', 5, 8, true, false, false, null, null, null, 0.00, true
+),
+('normal', 5, 9, true, false, false, null, null, null, 0.00, true
+),
+('normal', 5, 10, true, false, false, null, null, null, 0.00, true
+),
+('normal', 6, 1, false, true, false, 'mangan_ticket', '満願符 +1', null, 1.00, true
+),
+('normal', 6, 2, false, true, false, 'gacha_ticket', '祈願符 +2', null, 2.00, true
+),
+('normal', 6, 3, false, true, false, 'gacha_ticket', '祈願符 +1', null, 1.00, true
+),
+('normal', 6, 4, false, true, false, 'coin', 'コイン+100', null, 100.00, true
+),
+('normal', 6, 5, true, false, false, null, null, null, 0.00, true
+),
+('normal', 6, 6, true, false, false, null, null, null, 0.00, true
+),
+('normal', 6, 7, true, false, false, null, null, null, 0.00, true
+),
+('normal', 6, 8, true, false, false, null, null, null, 0.00, true
+),
+('normal', 6, 9, true, false, false, null, null, null, 0.00, true
+),
+('normal', 6, 10, true, false, false, null, null, null, 0.00, true
+),
+('normal', 7, 1, false, true, false, 'mangan_ticket', '満願符 +3', null, 3.00, true
+),
+('normal', 7, 2, false, true, false, 'mangan_ticket', '満願符 +2', null, 2.00, true
+),
+('normal', 7, 3, false, true, false, 'gacha_ticket', '祈願符 +5', null, 5.00, true
+),
+('normal', 7, 4, true, false, false, null, null, null, 0.00, true
+),
+('normal', 7, 5, true, false, false, null, null, null, 0.00, true
+),
+('normal', 7, 6, true, false, false, null, null, null, 0.00, true
+),
+('normal', 7, 7, true, false, false, null, null, null, 0.00, true
+),
+('normal', 7, 8, true, false, false, null, null, null, 0.00, true
+),
+('normal', 7, 9, true, false, false, null, null, null, 0.00, true
+),
+('normal', 7, 10, true, false, false, null, null, null, 0.00, true
+),
+('free', 1, 1, false, false, true, 'multiplier', '倍率+0.1', null, 0.10, true
+),
+('free', 1, 2, false, false, false, 'multiplier', '倍率+0.2', null, 0.20, true
+),
+('free', 1, 3, false, false, false, 'multiplier', '倍率+0.3', null, 0.30, true
+),
+('free', 1, 4, false, false, false, 'multiplier', '倍率+0.4', null, 0.40, true
+),
+('free', 1, 5, false, false, false, 'multiplier', '倍率+0.5', null, 0.50, true
+),
+('free', 1, 6, false, false, false, 'mangan_ticket', '満願符+0.1', null, 0.10, true
+),
+('free', 1, 7, false, false, false, 'gacha_ticket', '祈願符+0.2', null, 0.20, true
+),
+('free', 1, 8, false, false, false, 'coin', 'コイン+50', null, 50.00, true
+),
+('free', 1, 9, false, false, false, 'coin', 'コイン+30', null, 30.00, true
+),
+('free', 1, 10, false, false, false, 'coin', 'コイン+10', null, 10.00, true
+),
+('free', 2, 1, false, false, false, 'multiplier', '倍率+0.1', null, 0.10, true
+),
+('free', 2, 2, false, false, true, 'multiplier', '倍率+0.2', null, 0.20, true
+),
+('free', 2, 3, false, false, false, 'multiplier', '倍率+0.3', null, 0.30, true
+),
+('free', 2, 4, false, false, false, 'multiplier', '倍率+0.4', null, 0.40, true
+),
+('free', 2, 5, false, false, false, 'multiplier', '倍率+0.5', null, 0.50, true
+),
+('free', 2, 6, false, false, false, 'mangan_ticket', '満願符+0.1', null, 0.10, true
+),
+('free', 2, 7, false, false, false, 'gacha_ticket', '祈願符+0.2', null, 0.20, true
+),
+('free', 2, 8, false, false, false, 'coin', 'コイン+50', null, 50.00, true
+),
+('free', 2, 9, false, false, false, 'coin', 'コイン+30', null, 30.00, true
+),
+('free', 2, 10, false, false, false, 'coin', 'コイン+10', null, 10.00, true
+),
+('free', 3, 1, false, false, false, 'multiplier', '倍率+0.1', null, 0.10, true
+),
+('free', 3, 2, false, false, false, 'multiplier', '倍率+0.2', null, 0.20, true
+),
+('free', 3, 3, false, false, true, 'multiplier', '倍率+0.3', null, 0.30, true
+),
+('free', 3, 4, false, false, false, 'multiplier', '倍率+0.4', null, 0.40, true
+),
+('free', 3, 5, false, false, false, 'multiplier', '倍率+0.5', null, 0.50, true
+),
+('free', 3, 6, false, false, false, 'mangan_ticket', '満願符+0.1', null, 0.10, true
+),
+('free', 3, 7, false, false, false, 'gacha_ticket', '祈願符+0.2', null, 0.20, true
+),
+('free', 3, 8, false, false, false, 'coin', 'コイン+50', null, 50.00, true
+),
+('free', 3, 9, false, false, false, 'coin', 'コイン+30', null, 30.00, true
+),
+('free', 3, 10, false, false, false, 'coin', 'コイン+10', null, 10.00, true
+),
+('free', 4, 1, false, false, false, 'multiplier', '倍率+0.1', null, 0.10, true
+),
+('free', 4, 2, false, false, false, 'multiplier', '倍率+0.2', null, 0.20, true
+),
+('free', 4, 3, false, false, false, 'multiplier', '倍率+0.3', null, 0.30, true
+),
+('free', 4, 4, false, false, true, 'multiplier', '倍率+0.4', null, 0.40, true
+),
+('free', 4, 5, false, false, false, 'multiplier', '倍率+0.5', null, 0.50, true
+),
+('free', 4, 6, false, false, false, 'mangan_ticket', '満願符+0.1', null, 0.10, true
+),
+('free', 4, 7, false, false, false, 'gacha_ticket', '祈願符+0.2', null, 0.20, true
+),
+('free', 4, 8, false, false, false, 'coin', 'コイン+50', null, 50.00, true
+),
+('free', 4, 9, false, false, false, 'coin', 'コイン+30', null, 30.00, true
+),
+('free', 4, 10, false, false, false, 'coin', 'コイン+10', null, 10.00, true
+),
+('free', 5, 1, false, false, false, 'multiplier', '倍率+0.1', null, 0.10, true
+),
+('free', 5, 2, false, false, false, 'multiplier', '倍率+0.2', null, 0.20, true
+),
+('free', 5, 3, false, false, false, 'multiplier', '倍率+0.3', null, 0.30, true
+),
+('free', 5, 4, false, false, false, 'multiplier', '倍率+0.4', null, 0.40, true
+),
+('free', 5, 5, false, false, true, 'multiplier', '倍率+0.5', null, 0.50, true
+),
+('free', 5, 6, false, false, false, 'mangan_ticket', '満願符+0.1', null, 0.10, true
+),
+('free', 5, 7, false, false, false, 'gacha_ticket', '祈願符+0.2', null, 0.20, true
+),
+('free', 5, 8, false, false, false, 'coin', 'コイン+50', null, 50.00, true
+),
+('free', 5, 9, false, false, false, 'coin', 'コイン+30', null, 30.00, true
+),
+('free', 5, 10, false, false, false, 'coin', 'コイン+10', null, 10.00, true
+),
+('free', 6, 1, false, false, true, 'multiplier', '倍率+0.1', null, 0.10, true
+),
+('free', 6, 2, false, false, false, 'multiplier', '倍率+0.2', null, 0.20, true
+),
+('free', 6, 3, false, false, false, 'multiplier', '倍率+0.3', null, 0.30, true
+),
+('free', 6, 4, false, false, false, 'multiplier', '倍率+0.4', null, 0.40, true
+),
+('free', 6, 5, false, false, false, 'multiplier', '倍率+0.5', null, 0.50, true
+),
+('free', 6, 6, false, false, false, 'multiplier', '倍率+0.6', null, 0.60, true
+),
+('free', 6, 7, false, false, false, 'multiplier', '倍率+0.7', null, 0.70, true
+),
+('free', 6, 8, false, false, false, 'multiplier', '倍率+0.8', null, 0.80, true
+),
+('free', 6, 9, false, false, false, 'multiplier', '倍率+0.9', null, 0.90, true
+),
+('free', 6, 10, false, false, false, 'multiplier', '倍率+1', null, 1.00, true
+),
+('free', 7, 1, false, false, false, 'mangan_ticket', '満願符+0.3', null, 0.30, true
+),
+('free', 7, 2, false, false, false, 'mangan_ticket', '満願符+0.1', null, 0.10, true
+),
+('free', 7, 3, false, false, true, 'gacha_ticket', '祈願符+1', null, 1.00, true
+),
+('free', 7, 4, false, false, false, 'gacha_ticket', '祈願符+0.7', null, 0.70, true
+),
+('free', 7, 5, false, false, false, 'gacha_ticket', '祈願符+0.5', null, 0.50, true
+),
+('free', 7, 6, false, false, false, 'gacha_ticket', '祈願符+0.2', null, 0.20, true
+),
+('free', 7, 7, false, false, false, 'coin', 'コイン+100', null, 100.00, true
+),
+('free', 7, 8, false, false, false, 'coin', 'コイン+50', null, 50.00, true
+),
+('free', 7, 9, false, false, false, 'coin', 'コイン+30', null, 30.00, true
+),
 ('free', 7, 10, false, false, false, 'coin', 'コイン+10', null, 10.00, true);
 
 -- page settings entry (コスト設定を config に格納)
