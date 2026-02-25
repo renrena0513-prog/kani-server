@@ -937,13 +937,14 @@
 
         function setProcessing(state) {
             isProcessing = state;
-            document.getElementById('btn-start').disabled = state;
+            // ループ中は開始ボタンを無効に保つ
+            document.getElementById('btn-start').disabled = state || fsLoopActive;
             document.getElementById('btn-stop').disabled = state || !currentSession || currentSession.status !== 'active' || currentSession.free_spin_active || (currentSession.reels || []).length === 0;
             const jackpotBtn = document.getElementById('btn-jackpot-confirm');
             if (jackpotBtn) jackpotBtn.disabled = state || !currentSession || !currentSession.jackpot_unlocked || currentSession.free_spin_confirmed;
             const mobileStart = document.getElementById('mobile-btn-start');
             const mobileStop = document.getElementById('mobile-btn-stop');
-            if (mobileStart) mobileStart.disabled = state || !isEventActiveNow() || (currentSession && currentSession.status === 'active' && !isFreeSpinStartReady());
+            if (mobileStart) mobileStart.disabled = state || fsLoopActive || !isEventActiveNow() || (currentSession && currentSession.status === 'active' && !isFreeSpinStartReady());
             if (mobileStop) mobileStop.disabled = state || !currentSession || currentSession.status !== 'active' || currentSession.free_spin_active || (currentSession.reels || []).length === 0;
             updateReelButtons();
         }
@@ -1717,7 +1718,6 @@
             if (currentSession.status !== 'active') return;
             if (typeof reelIndex === 'number' && reelIndex !== currentSession.current_reel) return;
             setProcessing(true);
-            if (fsLoopActive) stopFullReelLoop();
             animateSpinSequence(currentSession.current_reel);
             try {
                 const { data, error } = await supabaseClient.rpc('slot_spin_reel', {
