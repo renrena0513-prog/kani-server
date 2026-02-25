@@ -1188,7 +1188,9 @@
             if (awaitingFreeSpinStart) {
                 // ユーザーがボタンを押したのでフリースピン開始：全リールループアニメーション
                 awaitingFreeSpinStart = false;
+                pendingFreeSpinCutin = false;
                 resetReelDisplay();
+                if (currentSession) currentSession.reels = [];
                 freeSpinDisplayActive = true;
                 const stage = document.getElementById('reel-stage');
                 if (stage) stage.classList.add('free-spin');
@@ -1477,11 +1479,10 @@
                 if (currentSession.free_spin_active && freeSpinDisplayActive && currentSession.current_reel === 1) {
                     const justAdvancedRound = prevFreeSpinsRemaining !== null && currentSession.free_spins_remaining < prevFreeSpinsRemaining;
                     if (justAdvancedRound && !awaitingFreeSpinStart) {
-                        // 次のラウンドへ進んだ：リセットしてカットイン後にボタン待機
-                        freeSpinDisplayActive = false;
-                        const stage = document.getElementById('reel-stage');
-                        if (stage) stage.classList.remove('free-spin');
-                        pendingFreeSpinCutin = true;
+                        // 次のラウンドへ進んだ：カットイン無しでボタン待機
+                        awaitingFreeSpinStart = true;
+                        resetReelDisplay();
+                        if (currentSession) currentSession.reels = [];
                     }
                 }
                 setProcessing(false);
