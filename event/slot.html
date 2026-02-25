@@ -790,6 +790,8 @@
         let pendingFreeSpinAfterPopup = false;
         let fsLoopActive = false;
         let loopStartRequested = false;
+        let reelLoopConfig = { normal: new Map(), free: new Map() };
+        let lastLoopMode = 'normal';
         const CUTIN_DURATION_MS = 1600;
         const JACKPOT_SYMBOL = '<img src="../images/slot/JACKPOT.png" alt="JACKPOT">';
         const BURST_SYMBOL = '<img src="../images/slot/Burst.png" alt="Burst">';
@@ -807,10 +809,46 @@
             return Math.round((Number(value) || 0) * 10) / 10;
         }
 
+        function getSymbolForRow(row) {
+            if (row.is_bust) return BURST_SYMBOL;
+            if (row.is_free_spin_stock) return FREESPIN_SYMBOL;
+            if (row.is_jackpot) return JACKPOT_SYMBOL;
+            if (row.reward_type === 'coin') return '🪙';
+            if (row.reward_type === 'gacha_ticket') return '🎫';
+            if (row.reward_type === 'mangan_ticket') return '🧧';
+            if (row.reward_type === 'multiplier') return getMultiplierEmoji(row.amount);
+            return '🎁';
+        }
+
+        function buildLoopSymbolsHtml(mode, reelIndex) {
+            const map = reelLoopConfig?.[mode];
+            let list = map && map.get(reelIndex);
+            if ((!list || list.length === 0) && mode === 'free') {
+                const fallback = reelLoopConfig?.normal;
+                list = fallback && fallback.get(reelIndex);
+            }
+            if (!list || list.length === 0) {
+                list = reelSymbols;
+            }
+            const symbols = list.concat(list).map(symbol => `<span>${symbol}</span>`).join('');
+            return symbols;
+        }
+
+        function updateLoopSymbols() {
+            const mode = currentSession?.free_spin_active ? 'free' : 'normal';
+            lastLoopMode = mode;
+            document.querySelectorAll('.reel-col').forEach(col => {
+                const reelIndex = Number(col.getAttribute('data-reel-index'));
+                const symbolsEl = col.querySelector('.reel-symbols');
+                if (!symbolsEl) return;
+                symbolsEl.innerHTML = buildLoopSymbolsHtml(mode, reelIndex);
+            });
+        }
+
         const reelSymbols = [
             '🪙',
             JACKPOT_SYMBOL,
-            '�',
+            '❓',
             BURST_SYMBOL,
             '🍉',
             FREESPIN_SYMBOL,
@@ -836,6 +874,8 @@
 
             await loadCurrentProfile();
             await loadEventSettings();
+            await loadReelLoopConfig();
+            updateLoopSymbols();
             await refreshCoinBalance();
             await loadActiveSession();
             updateUI();
@@ -865,6 +905,28 @@
                 if (profile?.account_name) currentAccountName = profile.account_name;
             } catch (err) {
                 console.error('profile load failed', err);
+            }
+        }
+
+        async function loadReelLoopConfig() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('slot_reel_positions')
+                    .select('mode, reel_index, position_index, is_bust, is_jackpot, is_free_spin_stock, reward_type, amount, is_active')
+                    .order('reel_index', { ascending: true })
+                    .order('position_index', { ascending: true });
+                if (error) throw error;
+
+                const next = { normal: new Map(), free: new Map() };
+                (data || []).forEach(row => {
+                    if (!row?.is_active) return;
+                    const mode = row.mode === 'free' ? 'free' : 'normal';
+                    if (!next[mode].has(row.reel_index)) next[mode].set(row.reel_index, []);
+                    next[mode].get(row.reel_index).push(getSymbolForRow(row));
+                });
+                reelLoopConfig = next;
+            } catch (err) {
+                console.error('loop config load failed', err);
             }
         }
 
@@ -980,6 +1042,9 @@
             } else if (currentSession?.free_spin_active) {
                 if (startBtn) startBtn.textContent = 'フリースピン中';
                 if (mobileStart) mobileStart.textContent = 'フリースピン中';
+            } else if (currentSession?.status === 'active' && !fsLoopActive) {
+                if (startBtn) startBtn.textContent = '再開';
+                if (mobileStart) mobileStart.textContent = '再開';
             } else if (!isSpinLocked() && isFreeSpinStartReady()) {
                 // リールが止まり切ってから表示切替（先ばれ防止）
                 if (startBtn) startBtn.textContent = 'フリースピン開始';
@@ -1027,6 +1092,7 @@
 
         function startFullReelLoop() {
             // 全リールをループアニメーション開始
+            updateLoopSymbols();
             fsLoopActive = true;
             document.querySelectorAll('.reel-col').forEach(col => {
                 const windowEl = col.querySelector('.reel-window');
@@ -1129,6 +1195,11 @@
             }
             if (isFreeSpinStartReady()) {
                 await confirmJackpot(true);
+                return;
+            }
+            if (currentSession && currentSession.status === 'active' && !fsLoopActive && !currentSession.free_spin_active) {
+                startFullReelLoop();
+                updateUI();
                 return;
             }
             if (!currentSession || !currentSession.free_spin_active) {
@@ -1260,6 +1331,13 @@
 
             if (awaitingFreeSpinStart && fsLoopActive) {
                 stopFullReelLoop();
+            }
+
+            if (currentSession) {
+                const desiredMode = currentSession.free_spin_active ? 'free' : 'normal';
+                if (desiredMode !== lastLoopMode) {
+                    updateLoopSymbols();
+                }
             }
 
             updateStartButtonLabel();
