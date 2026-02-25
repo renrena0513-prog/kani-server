@@ -790,7 +790,7 @@
         let pendingFreeSpinAfterPopup = false;
         let fsLoopActive = false;
         let loopStartRequested = false;
-        let bustAutoStoppingUntil = 0;
+        let bustAutoStopping = false;
         let reelLoopConfig = { normal: new Map(), free: new Map() };
         let lastLoopMode = 'normal';
         const CUTIN_DURATION_MS = 1600;
@@ -1160,6 +1160,7 @@
 
         async function autoBustRemainingReels() {
             // バースト後、残りの全ループリールをバースト図柄で自動停止
+            bustAutoStopping = true;
             document.querySelectorAll('.reel-col').forEach(col => {
                 const windowEl = col.querySelector('.reel-window');
                 const stopBtn = col.querySelector('.reel-btn-stop');
@@ -1179,6 +1180,7 @@
             const mStartBtn = document.getElementById('mobile-btn-start');
             if (startBtn) startBtn.disabled = false;
             if (mStartBtn) mStartBtn.disabled = false;
+            bustAutoStopping = false;
         }
 
         async function handleStartAction() {
@@ -1319,7 +1321,7 @@
             }
 
             if (currentSession.status !== 'active') {
-                if (fsLoopActive) {
+                if (fsLoopActive && !(currentSession.status === 'bust' && bustAutoStopping)) {
                     stopFullReelLoop();
                 }
             }
