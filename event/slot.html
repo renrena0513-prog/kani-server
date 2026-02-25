@@ -1483,7 +1483,7 @@
                 if (mobileStop) mobileStop.disabled = true;
                 updateReelButtons();
             } else {
-                if (currentSession.free_spin_active && currentSession.current_reel === 1 && !awaitingFreeSpinStart) {
+                if (currentSession.free_spin_active && currentSession.current_reel === 1 && !awaitingFreeSpinStart && !fsLoopActive) {
                     const roundCount = getCurrentFreeSpinRoundCount(reels);
                     const justAdvancedRound = prevFreeSpinsRemaining !== null && currentSession.free_spins_remaining < prevFreeSpinsRemaining;
                     if (justAdvancedRound || roundCount === 0) {
@@ -1854,6 +1854,7 @@
 
                 if (prevFreeSpinActive && currentSession.free_spin_active && currentSession.current_reel === 1 && prevRemaining !== null) {
                     if (currentSession.free_spins_remaining < prevRemaining) {
+                        if (fsLoopActive) stopFullReelLoop();
                         awaitingFreeSpinStart = true;
                         resetReelDisplay();
                         currentSession.reels = [];
