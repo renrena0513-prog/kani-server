@@ -461,11 +461,6 @@
             background: linear-gradient(135deg, #f6c453 0%, #d99a29 100%);
             color: #1a1306;
             cursor: pointer;
-            display: none;
-        }
-
-        .reel-btn-stop.active {
-            display: block;
         }
 
         .reel-btn-stop:disabled {
@@ -1109,7 +1104,6 @@
                 // 各リールのSTOPボタンを表示
                 const stopBtn = col.querySelector('.reel-btn-stop');
                 if (stopBtn) {
-                    stopBtn.classList.add('active');
                     stopBtn.disabled = true; // 最初は全部無効
                 }
             });
@@ -1147,7 +1141,7 @@
                 const stopBtn = col.querySelector('.reel-btn-stop');
                 // fs-loopクラスを外してアニメを停止
                 if (windowEl) windowEl.classList.remove('fs-loop');
-                if (stopBtn) { stopBtn.disabled = true; stopBtn.classList.remove('active'); }
+                if (stopBtn) { stopBtn.disabled = true; }
             }
             // バックエンドでリールを確定
             await spinReel(reelIndex);
@@ -1173,7 +1167,7 @@
                     if (resultEl) resultEl.textContent = 'バースト';
                     if (stopEl) stopEl.innerHTML = BURST_SYMBOL;
                 }
-                if (stopBtn) { stopBtn.disabled = true; stopBtn.classList.add('active'); }
+                if (stopBtn) { stopBtn.disabled = true; }
             });
             fsLoopActive = false;
             const startBtn = document.getElementById('btn-start');
