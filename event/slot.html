@@ -1004,7 +1004,8 @@
             if (jackpotBtn) jackpotBtn.disabled = state || !currentSession || !currentSession.jackpot_unlocked || currentSession.free_spin_confirmed;
             const mobileStart = document.getElementById('mobile-btn-start');
             const mobileStop = document.getElementById('mobile-btn-stop');
-            if (mobileStart) mobileStart.disabled = state || fsLoopActive || !isEventActiveNow() || (currentSession && currentSession.status === 'active' && !isFreeSpinStartReady());
+            const allowDuringFs = currentSession?.free_spin_active;
+            if (mobileStart) mobileStart.disabled = state || fsLoopActive || (!allowDuringFs && !isEventActiveNow()) || (currentSession && currentSession.status === 'active' && !isFreeSpinStartReady());
             if (mobileStop) mobileStop.disabled = state || !currentSession || currentSession.status !== 'active' || currentSession.free_spin_active || (currentSession.reels || []).length === 0;
             updateReelButtons();
         }
@@ -1530,12 +1531,13 @@
                     }
                 }
                 setProcessing(false);
-                document.getElementById('btn-start').disabled = (fsLoopActive || (currentSession.status === 'active' && !isFreeSpinStartReady()) || !isEventActiveNow());
+                const allowDuringFs = currentSession.free_spin_active;
+                document.getElementById('btn-start').disabled = (fsLoopActive || (currentSession.status === 'active' && !isFreeSpinStartReady()) || (!allowDuringFs && !isEventActiveNow()));
                 const jackpotBtn = document.getElementById('btn-jackpot-confirm');
                 if (jackpotBtn) jackpotBtn.disabled = !currentSession.jackpot_unlocked || currentSession.free_spin_confirmed;
                 const mobileStart = document.getElementById('mobile-btn-start');
                 const mobileStop = document.getElementById('mobile-btn-stop');
-                if (mobileStart) mobileStart.disabled = (fsLoopActive || (currentSession.status === 'active' && !isFreeSpinStartReady()) || !isEventActiveNow());
+                if (mobileStart) mobileStart.disabled = (fsLoopActive || (currentSession.status === 'active' && !isFreeSpinStartReady()) || (!allowDuringFs && !isEventActiveNow()));
                 if (mobileStop) mobileStop.disabled = currentSession.status !== 'active' || currentSession.free_spin_active || (currentSession.reels || []).length === 0;
                 if (pendingFreeSpinAfterPopup) {
                     document.getElementById('btn-start').disabled = true;
@@ -2032,6 +2034,12 @@
             const isFree = !!currentSession?.free_spin_active;
             const displayFreeSpin = isFree && freeSpinDisplayActive;
             let displayRound = null;
+            if (isFree) {
+                // FS中は強制バースト表示をリセット
+                document.querySelectorAll('.reel-col').forEach(col => {
+                    col.classList.remove('forced-bust');
+                });
+            }
             if (displayFreeSpin) {
                 displayRound = (reels || []).reduce((maxRound, reel) => {
                     if (!reel.is_free_spin) return maxRound;
