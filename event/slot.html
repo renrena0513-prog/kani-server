@@ -457,6 +457,10 @@
             display: none;
         }
 
+        .reel-label {
+            display: none;
+        }
+
         .slot-desktop-actions {
             display: flex;
             justify-content: center;
@@ -575,9 +579,6 @@
         </div>
 
         <div class="slot-panel p-4">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">リール</h5>
-            </div>
             <div class="free-spin-stock-bar" id="free-spin-stock-bar">
                 <span class="stock-label">FREE SPIN ストック</span>
                 <div class="stock-icons" id="free-spin-stock-icons"></div>
@@ -921,7 +922,13 @@
         }
 
         function isFreeSpinStartReady() {
-            return awaitingFreeSpinStart || (!!currentSession && !!currentSession.jackpot_unlocked && !currentSession.free_spin_confirmed);
+            if (awaitingFreeSpinStart) return true;
+            if (!!currentSession && !!currentSession.jackpot_unlocked && !currentSession.free_spin_confirmed) return true;
+            if (currentSession?.free_spin_active && currentSession.current_reel === 1) {
+                const count = getCurrentFreeSpinRoundCount(currentSession.reels || []);
+                return count === 0;
+            }
+            return false;
         }
 
         function updateStartButtonLabel() {
