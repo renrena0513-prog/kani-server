@@ -1447,7 +1447,7 @@
                     if (payoutList) payoutList.innerHTML = parts.length ? parts.join(' / ') : '報酬なし';
                 }
 
-                if (!sessionCashedOutDisplayed) {
+                if (!sessionCashedOutDisplayed && !spinLocked) {
                     if (parts.length) {
                         showWinPopup(parts);
                         sessionCashedOutDisplayed = true;

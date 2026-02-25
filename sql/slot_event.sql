@@ -45,12 +45,15 @@ create table if not exists public.slot_sessions (
     payout_summary jsonb not null default '{}'::jsonb,
     -- 時刻
     created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
     ended_at timestamptz
 );
 
 create unique index if not exists slot_sessions_active_user_uq
     on public.slot_sessions(user_id)
     where status = 'active';
+
+alter table public.slot_sessions add column if not exists updated_at timestamptz default now();
 
 -- page_settings に config カラム追加 (スロットコスト等の設定用)
 alter table public.page_settings add column if not exists config jsonb default '{}'::jsonb;
