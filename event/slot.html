@@ -457,6 +457,13 @@
             display: none;
         }
 
+        .slot-desktop-actions {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
         @media (max-width: 768px) {
             .slot-desktop-actions {
                 display: none !important;
@@ -563,12 +570,6 @@
                     <div class="slot-muted mt-1">獲得合計</div>
                     <div class="fs-2 fw-bold" id="reward-total">🪙 0 / 🎫 0 / 🧧 0</div>
                 </div>
-                <div class="d-flex flex-wrap gap-2 slot-desktop-actions">
-                    <button class="btn btn-slot" id="btn-start" onclick="startSession()">開始（100コイン消費）</button>
-                    <button class="btn btn-slot d-none" id="btn-jackpot-confirm" onclick="confirmJackpot()"
-                        disabled>フリースピンへ確定</button>
-                    <button class="btn btn-slot-secondary" id="btn-stop" onclick="cashout()" disabled>ストップ（精算）</button>
-                </div>
             </div>
             <div class="mt-3 slot-muted" id="session-message"></div>
         </div>
@@ -591,11 +592,17 @@
                     <div class="slot-mobile-total" id="mobile-reward-total">🪙 0 / 🎫 0 / 🧧 0</div>
                     <div class="slot-mobile-actions">
                         <button class="btn btn-slot" id="mobile-btn-start" type="button"
-                            onclick="startSession()">開始</button>
+                            onclick="handleStartAction()">開始</button>
                         <button class="btn btn-slot-secondary" id="mobile-btn-stop" type="button" onclick="cashout()"
                             disabled>ストップ</button>
                     </div>
                 </div>
+            </div>
+            <div class="slot-desktop-actions">
+                <button class="btn btn-slot" id="btn-start" onclick="handleStartAction()">開始（100コイン消費）</button>
+                <button class="btn btn-slot d-none" id="btn-jackpot-confirm" onclick="confirmJackpot()"
+                    disabled>フリースピンへ確定</button>
+                <button class="btn btn-slot-secondary" id="btn-stop" onclick="cashout()" disabled>ストップ（精算）</button>
             </div>
             <div class="mt-4" id="payout-summary" style="display:none;">
                 <h6 class="mb-2">精算結果</h6>
@@ -909,6 +916,45 @@
             return lastSpinReel !== null && Date.now() < spinLockUntil;
         }
 
+        function isJackpotStartReady() {
+            return !!currentSession && !!currentSession.jackpot_unlocked && !currentSession.free_spin_confirmed;
+        }
+
+        function updateStartButtonLabel() {
+            const startBtn = document.getElementById('btn-start');
+            const mobileStart = document.getElementById('mobile-btn-start');
+            if (!startBtn && !mobileStart) return;
+            if (isJackpotStartReady()) {
+                if (startBtn) startBtn.textContent = 'フリースピン開始';
+                if (mobileStart) mobileStart.textContent = 'フリースピン開始';
+            } else {
+                const cost = eventSettings?.cost ?? 100;
+                if (startBtn) startBtn.textContent = `開始（${cost}コイン消費）`;
+                if (mobileStart) mobileStart.textContent = '開始';
+            }
+        }
+
+        function resetReelDisplay() {
+            document.querySelectorAll('.reel-col').forEach(col => {
+                const windowEl = col.querySelector('.reel-window');
+                const resultEl = col.querySelector('.reel-result');
+                const stopEl = col.querySelector('.reel-stop');
+                col.classList.remove('done', 'bust');
+                if (windowEl) windowEl.classList.remove('spinning', 'stopped');
+                if (resultEl) resultEl.textContent = '未停止';
+                if (stopEl) stopEl.textContent = '';
+            });
+        }
+
+        async function handleStartAction() {
+            if (isProcessing) return;
+            if (isJackpotStartReady()) {
+                await confirmJackpot(true);
+                return;
+            }
+            await startSession();
+        }
+
         function updateUI() {
             const reels = currentSession?.reels || [];
             const currentReelEl = document.getElementById('current-reel');
@@ -923,6 +969,8 @@
             const mobileMultiplierEl = document.getElementById('mobile-total-multiplier');
             const mobileTotalEl = document.getElementById('mobile-reward-total');
             const spinLocked = isSpinLocked();
+
+            updateStartButtonLabel();
 
             if (!currentSession) {
                 currentReelEl.textContent = '-';
@@ -1148,12 +1196,12 @@
                 updateReelButtons();
             } else {
                 setProcessing(false);
-                document.getElementById('btn-start').disabled = currentSession.status === 'active' || !isEventActiveNow();
+                document.getElementById('btn-start').disabled = ((currentSession.status === 'active' && !isJackpotStartReady()) || !isEventActiveNow());
                 const jackpotBtn = document.getElementById('btn-jackpot-confirm');
                 if (jackpotBtn) jackpotBtn.disabled = !currentSession.jackpot_unlocked || currentSession.free_spin_confirmed;
                 const mobileStart = document.getElementById('mobile-btn-start');
                 const mobileStop = document.getElementById('mobile-btn-stop');
-                if (mobileStart) mobileStart.disabled = currentSession.status === 'active' || !isEventActiveNow();
+                if (mobileStart) mobileStart.disabled = ((currentSession.status === 'active' && !isJackpotStartReady()) || !isEventActiveNow());
                 if (mobileStop) mobileStop.disabled = currentSession.status !== 'active' || currentSession.free_spin_active || (currentSession.reels || []).length === 0;
                 updateReelButtons();
             }
@@ -1445,6 +1493,7 @@
                     ...data.session,
                     reels: data.reels || []
                 };
+                resetReelDisplay();
                 await refreshCoinBalance();
                 updateUI();
             } catch (err) {
@@ -1527,7 +1576,7 @@
             }
         }
 
-        async function confirmJackpot() {
+        async function confirmJackpot(resetReels = false) {
             if (isProcessing || !currentSession) return;
             if (!currentSession.jackpot_unlocked || currentSession.free_spin_confirmed) return;
             setProcessing(true);
@@ -1546,6 +1595,10 @@
                     ...data.session,
                     reels: data.reels || currentSession.reels || []
                 };
+                if (resetReels) {
+                    currentSession.reels = [];
+                    resetReelDisplay();
+                }
                 updateUI();
             } catch (err) {
                 console.error(err);
