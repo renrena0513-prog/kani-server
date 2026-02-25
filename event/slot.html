@@ -1130,6 +1130,7 @@
                 return;
             }
             if (!currentSession || !currentSession.free_spin_active) {
+                startFullReelLoop();
                 await startSession();
             }
         }
@@ -1707,12 +1708,11 @@
                 };
                 resetReelDisplay();
                 await refreshCoinBalance();
-                // セッション開始後、全リールをループアニメーション開始
-                startFullReelLoop();
                 updateUI();
             } catch (err) {
                 console.error(err);
                 document.getElementById('session-message').textContent = '開始に失敗しました。';
+                if (fsLoopActive) stopFullReelLoop();
                 setProcessing(false);
             }
         }
