@@ -624,6 +624,71 @@
             </div>
             <div class="slot-muted mt-2">※ バーストONの行は報酬が無視されます。</div>
         </div>
+
+        <div class="slot-panel p-4 mt-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                <h5 class="mb-0">全体統計</h5>
+                <span class="slot-muted" id="slot-stats-updated">集計中...</span>
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-12">
+                    <h6 class="mb-2">あなたの成績</h6>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="slot-muted">回転数</div>
+                    <div class="fs-5 fw-semibold" id="slot-user-spins">-</div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="slot-muted">累計コイン</div>
+                    <div class="fs-5 fw-semibold" id="slot-user-coin">-</div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="slot-muted">累計チケット</div>
+                    <div class="fs-5 fw-semibold" id="slot-user-tickets">-</div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="slot-muted">FS突入回数</div>
+                    <div class="fs-5 fw-semibold" id="slot-user-fs">-</div>
+                </div>
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-6 col-lg-3">
+                    <div class="slot-muted">累計回転数</div>
+                    <div class="fs-5 fw-semibold" id="slot-total-spins">-</div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="slot-muted">FS回転数</div>
+                    <div class="fs-5 fw-semibold" id="slot-fs-spins">-</div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="slot-muted">累計コイン</div>
+                    <div class="fs-5 fw-semibold" id="slot-total-coin">-</div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="slot-muted">累計チケット</div>
+                    <div class="fs-5 fw-semibold" id="slot-total-tickets">-</div>
+                </div>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-12 col-lg-6">
+                    <h6 class="mb-2">JP報酬ランキング</h6>
+                    <div class="slot-muted mb-2">JPで獲得した報酬合計（コイン換算は行いません）</div>
+                    <ol class="mb-0" id="slot-jp-ranking"></ol>
+                </div>
+                <div class="col-12 col-lg-6">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0">JP一撃獲得TOP3</h6>
+                        <div class="btn-group btn-group-sm" role="group" id="slot-jp-top-toggle">
+                            <button type="button" class="btn btn-outline-light active" data-jp-type="coin">コイン</button>
+                            <button type="button" class="btn btn-outline-light" data-jp-type="gacha_ticket">祈願符</button>
+                            <button type="button" class="btn btn-outline-light" data-jp-type="mangan_ticket">満願符</button>
+                        </div>
+                    </div>
+                    <ol class="mb-0" id="slot-jp-top3"></ol>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="free-spin-cutin" id="free-spin-cutin">
@@ -694,6 +759,7 @@
             await refreshCoinBalance();
             await loadActiveSession();
             updateUI();
+            await loadSlotGlobalStats();
         }
 
         async function loadEventSettings() {
@@ -901,6 +967,29 @@
             wasFreeSpinActive = !!currentSession.free_spin_active;
             lastFreeSpinsRemaining = currentSession.free_spins_remaining ?? lastFreeSpinsRemaining;
 
+            if (!currentSession.free_spin_active && lastFreeSpinSessionId === currentSession.id) {
+                const freeReels = (currentSession.reels || []).filter(reel => reel.is_free_spin || Number(reel.free_spin_round || 0) > 0);
+                if (freeReels.length) {
+                    let multiplierSum = 0;
+                    const totals = { coin: 0, gacha_ticket: 0, mangan_ticket: 0 };
+                    freeReels.forEach(reel => {
+                        if (reel.reward_type === 'multiplier') {
+                            multiplierSum += Number.parseFloat(reel.amount || 0) || 0;
+                        } else if (!reel.is_bust) {
+                            if (reel.reward_type === 'coin') totals.coin += Number(reel.amount || 0);
+                            if (reel.reward_type === 'gacha_ticket') totals.gacha_ticket += Number(reel.amount || 0);
+                            if (reel.reward_type === 'mangan_ticket') totals.mangan_ticket += Number(reel.amount || 0);
+                        }
+                    });
+                    const mult = 1 + multiplierSum;
+                    const formatted = mult.toFixed(2).replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
+                    lastFreeSpinSummary = {
+                        multiplierText: `×${formatted}`,
+                        totalsText: `🪙 ${totals.coin} / 🎫 ${totals.gacha_ticket} / 🧧 ${totals.mangan_ticket}`
+                    };
+                }
+            }
+
             if (spinLocked) {
                 sessionStatusEl.textContent = '回転中';
                 burstBanner.style.display = 'none';
@@ -1105,6 +1194,127 @@
                 rewardsContainer.innerHTML = parts.map(p => `<div>${p}</div>`).join('');
             }
             popup.classList.add('show');
+        }
+
+        async function loadSlotGlobalStats() {
+            const updatedEl = document.getElementById('slot-stats-updated');
+            const totalSpinsEl = document.getElementById('slot-total-spins');
+            const fsSpinsEl = document.getElementById('slot-fs-spins');
+            const totalCoinEl = document.getElementById('slot-total-coin');
+            const totalTicketsEl = document.getElementById('slot-total-tickets');
+            const jpRankingEl = document.getElementById('slot-jp-ranking');
+            const jpTopEl = document.getElementById('slot-jp-top3');
+            const userSpinsEl = document.getElementById('slot-user-spins');
+            const userCoinEl = document.getElementById('slot-user-coin');
+            const userTicketsEl = document.getElementById('slot-user-tickets');
+            const userFsEl = document.getElementById('slot-user-fs');
+
+            try {
+                if (updatedEl) updatedEl.textContent = '集計中...';
+                const { data, error } = await supabaseClient
+                    .from('slot_sessions')
+                    .select('user_id, account_name, reels_state, payout_summary, jackpot_hits, status');
+                if (error) throw error;
+
+                let totalSpins = 0;
+                let fsSpins = 0;
+                let totalCoin = 0;
+                let totalGacha = 0;
+                let totalMangan = 0;
+
+                let userSpins = 0;
+                let userFs = 0;
+                let userCoin = 0;
+                let userGacha = 0;
+                let userMangan = 0;
+
+                const jpUserTotals = new Map();
+                const jpTopByType = { coin: [], gacha_ticket: [], mangan_ticket: [] };
+
+                (data || []).forEach(row => {
+                    const reels = Array.isArray(row.reels_state) ? row.reels_state : [];
+                    totalSpins += reels.length;
+                    fsSpins += reels.filter(r => r.is_free_spin || Number(r.free_spin_round || 0) > 0).length;
+
+                    const payout = Array.isArray(row.payout_summary) ? row.payout_summary : [];
+                    let rowCoin = 0;
+                    let rowGacha = 0;
+                    let rowMangan = 0;
+                    payout.forEach(item => {
+                        if (!item?.type) return;
+                        const amount = Number(item.amount || 0);
+                        if (item.type === 'coin') rowCoin += amount;
+                        if (item.type === 'gacha_ticket') rowGacha += amount;
+                        if (item.type === 'mangan_ticket') rowMangan += amount;
+                    });
+                    totalCoin += rowCoin;
+                    totalGacha += rowGacha;
+                    totalMangan += rowMangan;
+
+                    if (row.user_id === currentUserId) {
+                        userSpins += reels.length;
+                        userFs += reels.some(r => r.is_free_spin || Number(r.free_spin_round || 0) > 0) ? 1 : 0;
+                        userCoin += rowCoin;
+                        userGacha += rowGacha;
+                        userMangan += rowMangan;
+                    }
+
+                    if ((row.jackpot_hits || 0) >= 3 && row.status === 'cashed_out') {
+                        const key = row.user_id || 'unknown';
+                        const prev = jpUserTotals.get(key) || { name: row.account_name || row.user_id || 'unknown', coin: 0, gacha: 0, mangan: 0 };
+                        prev.coin += rowCoin;
+                        prev.gacha += rowGacha;
+                        prev.mangan += rowMangan;
+                        jpUserTotals.set(key, prev);
+
+                        if (rowCoin > 0) jpTopByType.coin.push({ name: prev.name, amount: rowCoin });
+                        if (rowGacha > 0) jpTopByType.gacha_ticket.push({ name: prev.name, amount: rowGacha });
+                        if (rowMangan > 0) jpTopByType.mangan_ticket.push({ name: prev.name, amount: rowMangan });
+                    }
+                });
+
+                if (totalSpinsEl) totalSpinsEl.textContent = totalSpins.toLocaleString();
+                if (fsSpinsEl) fsSpinsEl.textContent = fsSpins.toLocaleString();
+                if (totalCoinEl) totalCoinEl.textContent = `🪙 ${totalCoin.toLocaleString()}`;
+                if (totalTicketsEl) totalTicketsEl.textContent = `🎫 ${totalGacha.toLocaleString()} / 🧧 ${totalMangan.toLocaleString()}`;
+                if (userSpinsEl) userSpinsEl.textContent = userSpins.toLocaleString();
+                if (userCoinEl) userCoinEl.textContent = `🪙 ${userCoin.toLocaleString()}`;
+                if (userTicketsEl) userTicketsEl.textContent = `🎫 ${userGacha.toLocaleString()} / 🧧 ${userMangan.toLocaleString()}`;
+                if (userFsEl) userFsEl.textContent = userFs.toLocaleString();
+
+                const jpSorted = Array.from(jpUserTotals.values()).sort((a, b) => (b.coin + b.gacha + b.mangan) - (a.coin + a.gacha + a.mangan)).slice(0, 5);
+                if (jpRankingEl) {
+                    jpRankingEl.innerHTML = jpSorted.length
+                        ? jpSorted.map(user => `<li>${user.name}：🪙 ${user.coin} / 🎫 ${user.gacha} / 🧧 ${user.mangan}</li>`).join('')
+                        : '<li>データなし</li>';
+                }
+
+                const renderTop3 = (type) => {
+                    const list = (jpTopByType[type] || []).sort((a, b) => b.amount - a.amount).slice(0, 3);
+                    if (jpTopEl) {
+                        jpTopEl.innerHTML = list.length
+                            ? list.map(item => `<li>${item.name}：${item.amount}</li>`).join('')
+                            : '<li>データなし</li>';
+                    }
+                };
+
+                renderTop3('coin');
+                const toggle = document.getElementById('slot-jp-top-toggle');
+                if (toggle) {
+                    toggle.querySelectorAll('button[data-jp-type]').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            toggle.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+                            btn.classList.add('active');
+                            renderTop3(btn.getAttribute('data-jp-type'));
+                        });
+                    });
+                }
+
+                if (updatedEl) updatedEl.textContent = `更新: ${new Date().toLocaleString('ja-JP')}`;
+            } catch (err) {
+                console.error(err);
+                if (updatedEl) updatedEl.textContent = '集計に失敗';
+            }
         }
 
         function closeWinPopup() {
