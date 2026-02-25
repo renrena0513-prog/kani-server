@@ -576,8 +576,7 @@
 
         <div class="slot-panel p-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">停止結果</h5>
-                <span class="slot-muted" id="session-status">待機中</span>
+                <h5 class="mb-0">リール</h5>
             </div>
             <div class="free-spin-stock-bar" id="free-spin-stock-bar">
                 <span class="stock-label">FREE SPIN ストック</span>
@@ -972,7 +971,7 @@
             if (isProcessing) return;
             if (awaitingFreeSpinStart) {
                 awaitingFreeSpinStart = false;
-                beginFreeSpinDisplay();
+                freeSpinDisplayActive = true;
                 updateUI();
                 return;
             }
@@ -980,7 +979,9 @@
                 await confirmJackpot(true);
                 return;
             }
-            await startSession();
+            if (!currentSession || !currentSession.free_spin_active) {
+                await startSession();
+            }
         }
 
         function updateUI() {
@@ -999,11 +1000,9 @@
             const spinLocked = isSpinLocked();
             const prevFreeSpinsRemaining = lastFreeSpinsRemaining;
 
-            updateStartButtonLabel();
-
             if (!currentSession) {
                 if (currentReelEl) currentReelEl.textContent = '-';
-                sessionStatusEl.textContent = '待機中';
+                if (sessionStatusEl) sessionStatusEl.textContent = '待機中';
                 messageEl.textContent = '';
                 if (payoutSummary) payoutSummary.style.display = 'none';
                 burstBanner.style.display = 'none';
@@ -1049,7 +1048,9 @@
                 } else {
                     if (currentReelEl) currentReelEl.textContent = '終了';
                 }
-                sessionStatusEl.textContent = currentSession.status === 'active' ? '進行中' : (currentSession.status === 'bust' ? 'バースト' : '精算済み');
+                if (sessionStatusEl) {
+                    sessionStatusEl.textContent = currentSession.status === 'active' ? '進行中' : (currentSession.status === 'bust' ? 'バースト' : '精算済み');
+                }
             }
 
             renderReelState(reels);
@@ -1097,6 +1098,8 @@
                 stageEl.classList.add('free-spin');
             }
 
+            updateStartButtonLabel();
+
             if (lastFreeSpinSessionId && currentSession.id !== lastFreeSpinSessionId) {
                 lastFreeSpinSummary = null;
                 lastFreeSpinSessionId = null;
@@ -1132,7 +1135,7 @@
             }
 
             if (spinLocked) {
-                sessionStatusEl.textContent = '回転中';
+                if (sessionStatusEl) sessionStatusEl.textContent = '回転中';
                 burstBanner.style.display = 'none';
             }
 
