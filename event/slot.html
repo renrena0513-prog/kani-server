@@ -1062,7 +1062,7 @@
                 const windowEl = col.querySelector('.reel-window');
                 const resultEl = col.querySelector('.reel-result');
                 const stopEl = col.querySelector('.reel-stop');
-                col.classList.remove('done', 'bust');
+                col.classList.remove('done', 'bust', 'forced-bust');
                 if (windowEl) windowEl.classList.remove('spinning', 'stopped');
                 if (resultEl) resultEl.textContent = '未停止';
                 if (stopEl) stopEl.textContent = '';
@@ -1169,7 +1169,7 @@
                 if (windowEl && windowEl.classList.contains('fs-loop')) {
                     windowEl.classList.remove('fs-loop');
                     windowEl.classList.add('stopped');
-                    col.classList.add('done', 'bust');
+                    col.classList.add('done', 'bust', 'forced-bust');
                     if (resultEl) resultEl.textContent = 'バースト';
                     if (stopEl) stopEl.innerHTML = BURST_SYMBOL;
                 }
@@ -2009,6 +2009,13 @@
                     return;
                 }
                 if (!reel) {
+                    if (col.classList.contains('forced-bust')) {
+                        resultEl.textContent = 'バースト';
+                        if (stopEl) stopEl.innerHTML = BURST_SYMBOL;
+                        windowEl.classList.add('stopped');
+                        col.classList.add('done', 'bust');
+                        return;
+                    }
                     resultEl.textContent = '未停止';
                     if (stopEl) stopEl.textContent = '';
                     return;
