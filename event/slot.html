@@ -56,11 +56,16 @@
         .slot-ranking-list li {
             padding: 10px 0;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            font-size: 1.05rem;
+            font-size: 1.15rem;
+            font-weight: 600;
         }
 
         .slot-ranking-list li:last-child {
             border-bottom: none;
+        }
+
+        .slot-ranking-list .rank-emoji {
+            margin-right: 6px;
         }
 
         .slot-status {
@@ -1338,9 +1343,11 @@
                         prev.mangan += rowMangan;
                         jpUserTotals.set(key, prev);
 
-                        if (rowCoin > 0) jpTopByType.coin.push({ name: prev.name, amount: rowCoin });
-                        if (rowGacha > 0) jpTopByType.gacha_ticket.push({ name: prev.name, amount: rowGacha });
-                        if (rowMangan > 0) jpTopByType.mangan_ticket.push({ name: prev.name, amount: rowMangan });
+                        if (rowCoin > 0 || rowGacha > 0 || rowMangan > 0) {
+                            jpTopByType.coin.push({ name: prev.name, coin: rowCoin, gacha: rowGacha, mangan: rowMangan });
+                            jpTopByType.gacha_ticket.push({ name: prev.name, coin: rowCoin, gacha: rowGacha, mangan: rowMangan });
+                            jpTopByType.mangan_ticket.push({ name: prev.name, coin: rowCoin, gacha: rowGacha, mangan: rowMangan });
+                        }
                     }
                 });
 
@@ -1358,15 +1365,17 @@
                     .slice(0, 3);
                 if (jpRankingEl) {
                     jpRankingEl.innerHTML = jpSorted.length
-                        ? jpSorted.map(user => `<li>${user.name}：🪙 ${user.coin} / 🎫 ${user.gacha} / 🧧 ${user.mangan}</li>`).join('')
+                        ? jpSorted.map((user, idx) => `<li><span class="rank-emoji">${['🥇','🥈','🥉'][idx] || '🏅'}</span>${user.name}：🪙 ${user.coin} / 🎫 ${user.gacha} / 🧧 ${user.mangan}</li>`).join('')
                         : '<li>データなし</li>';
                 }
 
                 const renderTop3 = (type) => {
-                    const list = (jpTopByType[type] || []).sort((a, b) => b.amount - a.amount).slice(0, 3);
+                    const list = (jpTopByType[type] || [])
+                        .sort((a, b) => (b[type === 'coin' ? 'coin' : type === 'gacha_ticket' ? 'gacha' : 'mangan'] || 0) - (a[type === 'coin' ? 'coin' : type === 'gacha_ticket' ? 'gacha' : 'mangan'] || 0))
+                        .slice(0, 3);
                     if (jpTopEl) {
                         jpTopEl.innerHTML = list.length
-                            ? list.map(item => `<li>${item.name}：${item.amount}</li>`).join('')
+                            ? list.map((item, idx) => `<li><span class="rank-emoji">${['🥇','🥈','🥉'][idx] || '🏅'}</span>${item.name}：🪙 ${item.coin} / 🎫 ${item.gacha} / 🧧 ${item.mangan}</li>`).join('')
                             : '<li>データなし</li>';
                     }
                 };
