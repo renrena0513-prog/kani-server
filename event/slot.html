@@ -1154,7 +1154,7 @@
             if (mStartBtn) mStartBtn.disabled = false;
         }
 
-        async function stopSpecificReel(reelIndex) {
+        async function stopSpecificReel(reelIndex, instantStop = false) {
             // まずそのリールのループを止める
             if (isProcessing || !currentSession || !fsLoopActive) return;
             if (currentSession.current_reel !== reelIndex) return;
@@ -1168,7 +1168,7 @@
                 if (stopBtn) { stopBtn.disabled = true; }
             }
             // バックエンドでリールを確定
-            await spinReel(reelIndex);
+            await spinReel(reelIndex, { instantStop });
         }
 
         async function stopCurrentReel() {
@@ -1873,14 +1873,20 @@
         let spinLockUntil = 0;
         let lastSpinReel = null;
 
-        async function spinReel(reelIndex) {
+        async function spinReel(reelIndex, options = {}) {
             if (isProcessing || !currentSession) return;
             if (currentSession.status !== 'active') return;
             if (typeof reelIndex === 'number' && reelIndex !== currentSession.current_reel) return;
+            const instantStop = !!options.instantStop;
             const prevRemaining = currentSession.free_spins_remaining ?? null;
             const prevFreeSpinActive = !!currentSession.free_spin_active;
             setProcessing(true);
-            animateSpinSequence(currentSession.current_reel);
+            if (instantStop) {
+                spinLockUntil = 0;
+                lastSpinReel = null;
+            } else {
+                animateSpinSequence(currentSession.current_reel);
+            }
             try {
                 const { data, error } = await supabaseClient.rpc('slot_spin_reel', {
                     p_user_id: currentUserId,
@@ -2040,7 +2046,7 @@
                             <div class="reel-stop"></div>
                         </div>
                         <div class="reel-result">未停止</div>
-                        <button class="reel-btn-stop" data-reel-btn="${reelIndex}" onclick="stopSpecificReel(${reelIndex})" disabled>STOP</button>
+                        <button class="reel-btn-stop" data-reel-btn="${reelIndex}" onclick="stopSpecificReel(${reelIndex}, true)" disabled>STOP</button>
                     </div>
                 `;
             }).join('') + summaryHtml;
