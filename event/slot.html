@@ -1485,7 +1485,7 @@
                 }
             }
 
-            if (!currentSession.free_spin_active) {
+            if (!currentSession.free_spin_active && !pendingFsResultPopup) {
                 if (wasFreeSpinActive) {
                     currentSession.jackpot_unlocked = false;
                     currentSession.free_spin_confirmed = false;
@@ -1494,7 +1494,7 @@
                 awaitingFreeSpinStart = false;
                 if (stageEl) stageEl.classList.remove('free-spin');
             } else if (stageEl) {
-                if (freeSpinDisplayActive || awaitingFreeSpinStart || fsLoopActive) {
+                if (freeSpinDisplayActive || awaitingFreeSpinStart || fsLoopActive || pendingFsResultPopup) {
                     stageEl.classList.add('free-spin');
                 } else {
                     stageEl.classList.remove('free-spin');
@@ -1631,12 +1631,12 @@
                 sessionCashedOutDisplayed = false;
             }
 
-            if (!currentSession.free_spin_active && !spinLocked) {
+            if (!currentSession.free_spin_active && !spinLocked && !pendingFsResultPopup) {
                 messageEl.textContent = '';
             }
             const stopBtn = document.getElementById('btn-stop');
             const mobileStopBtn = document.getElementById('mobile-btn-stop');
-            const hideStop = !!currentSession.free_spin_active;
+            const hideStop = !!currentSession.free_spin_active || pendingFsResultPopup;
             if (stopBtn) stopBtn.style.display = hideStop ? 'none' : '';
             if (mobileStopBtn) mobileStopBtn.style.display = hideStop ? 'none' : '';
             if (stopBtn) stopBtn.disabled = isProcessing || currentSession.status !== 'active' || currentSession.free_spin_active || (currentSession.reels || []).length === 0;
@@ -2286,7 +2286,7 @@
 
         function getDisplayReels(reels) {
             const isFree = !!currentSession?.free_spin_active;
-            const displayFreeSpin = isFree && (freeSpinDisplayActive || awaitingFreeSpinStart || fsLoopActive);
+            const displayFreeSpin = (isFree && (freeSpinDisplayActive || awaitingFreeSpinStart || fsLoopActive)) || pendingFsResultPopup;
             if (!displayFreeSpin) {
                 return (reels || []).filter(reel => !reel.is_free_spin);
             }
