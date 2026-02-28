@@ -1141,7 +1141,7 @@
         function startFreeSpinRoundFromButton() {
             if (isProcessing || !currentSession) return;
             awaitingFreeSpinStart = false;
-            setProcessing(true);
+            setProcessing(true, { skipUpdate: true });
             showCutIn('free', Number(currentSession.free_spins_remaining || 0));
             setTimeout(() => {
                 freeSpinDisplayActive = true;
@@ -1153,7 +1153,7 @@
                     if (currentSession) currentSession.reels = [];
                 }
                 startFullReelLoop();
-                setProcessing(false);
+                setProcessing(false, { skipUpdate: true });
                 updateUI();
             }, CUTIN_DURATION_MS);
         }
@@ -1190,10 +1190,12 @@
                     windowEl.classList.remove('fs-loop');
                     if (isStopped) {
                         windowEl.classList.add('stopped');
+                        reelState.set(reelIndex, 'stopped');
                     } else {
                         windowEl.classList.remove('stopped');
                         // ウィンドウ自体にクラスを付けて内側の.reel-symbolsにアニメを適用
                         windowEl.classList.add('fs-loop');
+                        reelState.set(reelIndex, 'spinning');
                     }
                 }
                 const stopEl = col.querySelector('.reel-stop');
@@ -1212,6 +1214,7 @@
             if (startBtn) startBtn.disabled = true;
             if (mStartBtn) mStartBtn.disabled = true;
             pendingStopReels = new Set();
+            updateReelButtons();
         }
 
         function stopFullReelLoop() {
@@ -2181,6 +2184,10 @@
             const isFree = !!currentSession?.free_spin_active;
             const displayFreeSpin = isFree && (freeSpinDisplayActive || awaitingFreeSpinStart || fsLoopActive);
             if (!displayFreeSpin) {
+                return (reels || []).filter(reel => !reel.is_free_spin);
+            }
+            const hasFreeReels = (reels || []).some(reel => reel.is_free_spin);
+            if (!hasFreeReels) {
                 return (reels || []).filter(reel => !reel.is_free_spin);
             }
             const displayRound = (reels || []).reduce((maxRound, reel) => {

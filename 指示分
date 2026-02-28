@@ -1,16 +1,64 @@
-event/slot.html の最終リファクタをして、重複ロジックを減らして保守性と可読性を上げてください。ただし挙動変更は最小にしてください。
+# 重大バグ修正依頼（event/slot.html）
 
-やりたいこと：
-- 開始ボタンの disabled/label 決定ロジックが setProcessing() と updateUI() に二重実装されているので、単一の計算関数（例: computeStartButtonState）に集約し、DOM反映は updateUI 側に寄せる（setProcessing はフラグ更新＋updateUI呼び出し中心に）。
-- FS待機判定が updateUI / normalizeFreeSpinState / handleStartAction に重複しているので、isFsReadyState() を作って共通化する（既存の条件をそのまま移植して挙動を変えない）。
-- STOPボタンは常時表示のまま、disabled と active(強調) の決定を updateReelButtons で一元化し、renderReelState 側は reelState と表示（図柄/回転クラス）に集中させる。
+対象: event/slot.html
 
-制約：
+## 重大バグ1：FS開始ボタンを押してもFSが開始されず進行不可
+### 現象
+- 「フリースピン開始」ボタンを押してもFSが開始されない（完全に進行不可）。
+- 期待：ボタン押下 → カットイン → 全リール回転開始 → STOPで進行可能。
+
+### 原因候補（例）
+- startFreeSpinRoundFromButton() → startFullReelLoop() の流れで、DOMは fs-loop になるが reelState が更新されず、
+  updateReelButtons() が `reelState.get(reelIndex)==='spinning'` 前提のため STOPが有効化されない / 進行できない。
+- setProcessing() を refactor して updateUI() を呼ぶ構造になったことで、
+  FS開始の途中で updateUI() が状態を上書きし、fsLoopActive / awaitingFreeSpinStart / currentPhase が矛盾している可能性。
+- isFsReadyState() / computeStartButtonState() 集約後の条件漏れで、
+  「押下はできるが startFreeSpinRoundFromButton が呼ばれていない」or「呼ばれても開始状態が維持できない」経路が残っている可能性。
+
+### 修正方針（求める結果）
+- FS開始ボタン押下で必ずFSが開始されること（カットイン後に回転開始まで到達）。
+- STOPボタンは常時表示のまま、回転中のリールのみ押下可能＋強調になること。
+- startFullReelLoop() 実行直後の状態で、最低でも「1リール目のSTOPが押せる」状態になること。
+
+### 修正すべき箇所のヒント
+- startFreeSpinRoundFromButton()
+- startFullReelLoop()
+- renderReelState()
+- updateReelButtons()
+- setProcessing() / updateUI() の呼び出し順（skipUpdate漏れ含む）
+
+---
+
+## 重大バグ2：通常モードでFS確定後にバーストを引くと「バースト以外の図柄」が消える
+### 現象
+- 通常モードでFS確定（ジャックポット確定）した状態でバーストを引くと、
+  バースト図柄は表示されるが、それ以外の停止図柄が消える（空になる）。
+
+### 原因候補（例）
+- FS確定/遷移のどこかで currentSession.reels をクリアしてしまい（または resetReelDisplay を実行してしまい）、
+  既存の停止図柄データがUI描画に残らない。
+  その結果、applyBurstToRemainingReels() による forced-bust だけは表示され、他は「reelなし扱い」で空になる。
+- reel_index の型不一致（string/number）で Map参照が失敗し、停止済みリールが「reelなし扱い」になっている可能性（burstはforced表示で見える）。
+- getDisplayReels() が FS確定状態の reels を想定しておらず、表示対象フィルタのせいで止まっているはずの通常リールが落ちている可能性。
+
+### 修正方針（求める結果）
+- FS確定後にバーストを引いても、停止済みリールの図柄表示が消えない（以前の挙動に戻す）。
+- バースト時の残りリール強制表示（BURST埋め）をしても、すでに停止している図柄は保持されること。
+
+### 修正すべき箇所のヒント
+- confirmJackpot() / handleStartAction() 周り（FS確定時に reels を消していないか）
+- resetReelDisplay() / currentSession.reels = [] を実行している経路が「FS開始押下時だけ」になっているか
+- renderReelState() の表示対象（getDisplayReels / forced-bust / map key型）
+
+---
+
+## 要求する成果物
+1) それぞれのバグの再現手順（短く）
+2) 原因箇所（関数名＋どの状態変数の矛盾か）
+3) 最小差分パッチ（diff）
+4) 手動テスト（5項目程度）
+
+制約
 - UI見た目・API/RPC I/Fは変更しない
-- 大規模な設計変更はしない（関数抽出と呼び出し先の整理まで）
-- 差分は最小限に
-
-成果物：
-1) 重複していた箇所の一覧（何をどこに集約したか）
-2) パッチ（diff）
-3) 手動テスト5〜8項目
+- 仕様変更はしない（バグ修正のみ）
+- 差分は最小限
