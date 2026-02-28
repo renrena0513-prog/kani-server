@@ -1652,22 +1652,25 @@
                     if (totalEl) totalEl.textContent = '🪙 0 / 🎫 0 / 🧧 0';
                     if (mobileTotalEl) mobileTotalEl.textContent = '🪙 0 / 🎫 0 / 🧧 0';
                 } else if (!enteringFreeSpin) {
-                    const displayFreeSpin = !!currentSession.free_spin_active && freeSpinDisplayActive;
                     const displayReels = getDisplayReels(reels);
+                    const isFree = !!currentSession.free_spin_active;
+                    const sourceReels = isFree
+                        ? (currentSession.reels || []).filter(reel => reel.is_free_spin || Number(reel.free_spin_round || 0) > 0)
+                        : displayReels;
 
-                    if (currentSession.free_spin_active && displayReels.length === 0) {
+                    if (isFree && sourceReels.length === 0) {
                         if (multiplierEl) multiplierEl.textContent = '×1.0';
                         if (mobileMultiplierEl) mobileMultiplierEl.textContent = '×1.0';
                         if (totalEl) totalEl.textContent = '🪙 0 / 🎫 0 / 🧧 0';
                         if (mobileTotalEl) mobileTotalEl.textContent = '🪙 0 / 🎫 0 / 🧧 0';
                     } else {
-                        let multiplierSum = displayReels.reduce((sum, reel) => {
+                        let multiplierSum = sourceReels.reduce((sum, reel) => {
                             if (reel.reward_type !== 'multiplier') return sum;
                             return sum + (Number.parseFloat(reel.amount || 0) || 0);
                         }, 0);
                         const totalMultiplier = 1 + multiplierSum;
                         const formatted = totalMultiplier.toFixed(2).replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
-                        if (displayFreeSpin) {
+                        if (isFree && freeSpinDisplayActive) {
                             lastFreeSpinSummary = {
                                 multiplierText: `×${formatted}`,
                                 totalsText: null
@@ -1676,7 +1679,7 @@
                         }
 
                         const totals = { coin: 0, gacha_ticket: 0, mangan_ticket: 0 };
-                        displayReels.forEach(reel => {
+                        sourceReels.forEach(reel => {
                             if (reel.is_bust) return;
                             if (reel.reward_type === 'coin') totals.coin += Number(reel.amount || 0);
                             if (reel.reward_type === 'gacha_ticket') totals.gacha_ticket += Number(reel.amount || 0);
@@ -1685,11 +1688,11 @@
                         totals.gacha_ticket = roundTo1(totals.gacha_ticket);
                         totals.mangan_ticket = roundTo1(totals.mangan_ticket);
                         const totalText = `🪙 ${totals.coin} / 🎫 ${totals.gacha_ticket} / 🧧 ${totals.mangan_ticket}`;
-                        if (displayFreeSpin) {
+                        if (isFree && freeSpinDisplayActive) {
                             if (lastFreeSpinSummary) lastFreeSpinSummary.totalsText = totalText;
                         }
 
-                        if (!currentSession.free_spin_active && lastFreeSpinSummary && lastFreeSpinSessionId === currentSession.id) {
+                        if (!isFree && lastFreeSpinSummary && lastFreeSpinSessionId === currentSession.id) {
                             if (multiplierEl) multiplierEl.textContent = lastFreeSpinSummary.multiplierText || '×1.0';
                             if (mobileMultiplierEl) mobileMultiplierEl.textContent = lastFreeSpinSummary.multiplierText || '×1.0';
                             if (totalEl) totalEl.textContent = lastFreeSpinSummary.totalsText || '🪙 0 / 🎫 0 / 🧧 0';
