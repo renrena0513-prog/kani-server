@@ -777,6 +777,7 @@
         let lastFreeSpinSummary = null;
         let lastFreeSpinSessionId = null;
         let lastFreeSpinsRemaining = null;
+        let lastCarrySummary = null;
         let displayedFreeSpinsRemaining = null;
         let awaitingFreeSpinStart = false;
         let pendingFreeSpinAfterPopup = false;
@@ -1407,6 +1408,7 @@
                 lastFreeSpinSummary = null;
                 lastFreeSpinSessionId = null;
                 lastFreeSpinsRemaining = null;
+                lastCarrySummary = null;
                 displayedFreeSpinsRemaining = null;
                 pendingFreeSpinAfterPopup = false;
                 pendingStopReels = new Set();
@@ -1648,14 +1650,21 @@
 
             if (!spinLocked) {
                 const enteringFreeSpin = !!currentSession.free_spin_active && !hasAnyFreeReels;
-                if (enteringFreeSpin && lastFreeSpinSummary && lastFreeSpinSessionId === currentSession.id) {
-                    if (multiplierEl) multiplierEl.textContent = lastFreeSpinSummary.multiplierText || '×1.0';
-                    if (mobileMultiplierEl) mobileMultiplierEl.textContent = lastFreeSpinSummary.multiplierText || '×1.0';
-                    if (totalEl) totalEl.textContent = lastFreeSpinSummary.totalsText || '🪙 0 / 🎫 0 / 🧧 0';
-                    if (mobileTotalEl) mobileTotalEl.textContent = lastFreeSpinSummary.totalsText || '🪙 0 / 🎫 0 / 🧧 0';
+                if (enteringFreeSpin && lastCarrySummary) {
+                    if (multiplierEl) multiplierEl.textContent = lastCarrySummary.multiplierText || '×1.0';
+                    if (mobileMultiplierEl) mobileMultiplierEl.textContent = lastCarrySummary.multiplierText || '×1.0';
+                    if (totalEl) totalEl.textContent = lastCarrySummary.totalsText || '🪙 0 / 🎫 0 / 🧧 0';
+                    if (mobileTotalEl) mobileTotalEl.textContent = lastCarrySummary.totalsText || '🪙 0 / 🎫 0 / 🧧 0';
                 } else if (!enteringFreeSpin) {
                     const displayFreeSpin = !!currentSession.free_spin_active && freeSpinDisplayActive;
                     const displayReels = getDisplayReels(reels);
+
+                    if (currentSession.free_spin_active && displayReels.length === 0 && lastCarrySummary) {
+                        if (multiplierEl) multiplierEl.textContent = lastCarrySummary.multiplierText || '×1.0';
+                        if (mobileMultiplierEl) mobileMultiplierEl.textContent = lastCarrySummary.multiplierText || '×1.0';
+                        if (totalEl) totalEl.textContent = lastCarrySummary.totalsText || '🪙 0 / 🎫 0 / 🧧 0';
+                        if (mobileTotalEl) mobileTotalEl.textContent = lastCarrySummary.totalsText || '🪙 0 / 🎫 0 / 🧧 0';
+                    } else {
 
                     const multiplierSum = displayReels.reduce((sum, reel) => {
                         if (reel.reward_type !== 'multiplier') return sum;
@@ -1695,6 +1704,11 @@
                         if (mobileMultiplierEl) mobileMultiplierEl.textContent = `×${formatted}`;
                         if (totalEl) totalEl.textContent = totalText;
                         if (mobileTotalEl) mobileTotalEl.textContent = totalText;
+                    }
+                        lastCarrySummary = {
+                            multiplierText: `×${formatted}`,
+                            totalsText: totalText
+                        };
                     }
                 }
             }
