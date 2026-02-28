@@ -1335,8 +1335,11 @@
                     return;
                 }
                 loopStartRequested = true;
-                startFullReelLoop();
                 await startSession();
+                if (currentSession && currentSession.status === 'active') {
+                    startFullReelLoop();
+                    updateUI();
+                }
             }
         }
 
@@ -1997,6 +2000,7 @@
                     updateReelButtons();
                 }
 
+                setProcessing(false, { skipUpdate: true });
                 updateUI();
             } catch (err) {
                 console.error(err);
