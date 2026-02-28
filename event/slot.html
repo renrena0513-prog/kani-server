@@ -2004,7 +2004,11 @@
                     showFreeSpinBonusCutin(Number(data.bonus_added || 0));
                 }
 
-                const enteredFs = (data.outcome === 'free_spin' || data.entered_free_spin === true || data.session?.free_spin_active === true);
+                const enteredFs = (
+                    data.outcome === 'free_spin'
+                    || data.entered_free_spin === true
+                    || (!prevFreeSpinActive && data.session?.free_spin_active === true)
+                );
                 console.log('[spinReel resp]', {
                     auto_cashout: data.auto_cashout,
                     outcome: data.outcome,
