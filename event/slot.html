@@ -1645,10 +1645,17 @@
             if (!spinLocked) {
                 const enteringFreeSpin = !!currentSession.free_spin_active && !hasAnyFreeReels;
                 if (enteringFreeSpin) {
-                    if (multiplierEl) multiplierEl.textContent = '×1.0';
-                    if (mobileMultiplierEl) mobileMultiplierEl.textContent = '×1.0';
-                    if (totalEl) totalEl.textContent = '🪙 0 / 🎫 0 / 🧧 0';
-                    if (mobileTotalEl) mobileTotalEl.textContent = '🪙 0 / 🎫 0 / 🧧 0';
+                    if (lastFreeSpinSummary && lastFreeSpinSessionId === currentSession.id) {
+                        if (multiplierEl) multiplierEl.textContent = lastFreeSpinSummary.multiplierText || '×1.0';
+                        if (mobileMultiplierEl) mobileMultiplierEl.textContent = lastFreeSpinSummary.multiplierText || '×1.0';
+                        if (totalEl) totalEl.textContent = lastFreeSpinSummary.totalsText || '🪙 0 / 🎫 0 / 🧧 0';
+                        if (mobileTotalEl) mobileTotalEl.textContent = lastFreeSpinSummary.totalsText || '🪙 0 / 🎫 0 / 🧧 0';
+                    } else {
+                        if (multiplierEl) multiplierEl.textContent = '×1.0';
+                        if (mobileMultiplierEl) mobileMultiplierEl.textContent = '×1.0';
+                        if (totalEl) totalEl.textContent = '🪙 0 / 🎫 0 / 🧧 0';
+                        if (mobileTotalEl) mobileTotalEl.textContent = '🪙 0 / 🎫 0 / 🧧 0';
+                    }
                 } else if (!enteringFreeSpin) {
                     const displayReels = getDisplayReels(reels);
                     const isFree = !!currentSession.free_spin_active;
