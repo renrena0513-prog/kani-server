@@ -1114,8 +1114,11 @@
                 freeSpinDisplayActive = true;
                 const stage = document.getElementById('reel-stage');
                 if (stage) stage.classList.add('free-spin');
-                resetReelDisplay();
-                if (currentSession) currentSession.reels = [];
+                const hasCurrentRoundFreeReels = (currentSession.reels || []).some(reel => reel.is_free_spin && Number(reel.free_spin_round || 0) === Number(currentSession.free_spin_round || 0));
+                if (!hasCurrentRoundFreeReels) {
+                    resetReelDisplay();
+                    if (currentSession) currentSession.reels = [];
+                }
                 startFullReelLoop();
                 setProcessing(false);
                 updateUI();
@@ -1248,7 +1251,7 @@
                 const resultEl = col.querySelector('.reel-result');
                 const stopEl = col.querySelector('.reel-stop');
                 const reelIndex = Number(col.getAttribute('data-reel-index'));
-                const alreadyStopped = (currentSession?.reels || []).some(r => Number(r.reel_index) === reelIndex);
+                const alreadyStopped = (currentSession?.reels || []).some(r => toReelIndex(r.reel_index) === reelIndex);
                 if (alreadyStopped) return;
                 if (windowEl) {
                     windowEl.classList.remove('spinning', 'fs-loop');
@@ -1968,7 +1971,7 @@
                 }
 
                 // バースト判定：直前のリールでバーストが出た場合、残りリールを即時バースト表示
-                const justStoppedReel = (data.reels || []).find(r => r.reel_index === reelIndex);
+                const justStoppedReel = (data.reels || []).find(r => toReelIndex(r.reel_index) === Number(reelIndex));
                 if (justStoppedReel?.is_bust) {
                     applyBurstToRemainingReels();
                 } else {
@@ -2095,6 +2098,11 @@
             }).join('') + summaryHtml;
         }
 
+        function toReelIndex(value) {
+            const num = Number(value);
+            return Number.isFinite(num) ? num : null;
+        }
+
         function applyInitialReelStateFromDB() {
             if (!currentSession) return;
             fsLoopActive = false;
@@ -2104,7 +2112,8 @@
             const displayReels = getDisplayReels(currentSession.reels || []);
             const stopped = new Map();
             (displayReels || []).forEach(reel => {
-                stopped.set(Number(reel.reel_index), reel);
+                const idx = toReelIndex(reel.reel_index);
+                if (idx !== null) stopped.set(idx, reel);
             });
             if (currentSession.free_spin_active && stopped.size > 0) {
                 freeSpinDisplayActive = true;
@@ -2179,7 +2188,8 @@
             }
             const displayReels = getDisplayReels(reels);
             (displayReels || []).forEach(reel => {
-                reelMap.set(reel.reel_index, reel);
+                const idx = toReelIndex(reel.reel_index);
+                if (idx !== null) reelMap.set(idx, reel);
             });
             document.querySelectorAll('.reel-col').forEach(col => {
                 const reelIndex = Number(col.getAttribute('data-reel-index'));
