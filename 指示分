@@ -1,21 +1,28 @@
-# 根本解決：リロードしてないのに「再開」が出る原因を特定して潰す（FS途中でfsLoopActiveが落ちる）
+# Codex依頼：bust判定の根本修正（通常でbustした時は埋める / FS中は絶対誤爆しない）
 
-要件：
-- リロードや離脱復帰では再開が必要なのはOK
-- しかし通常プレイ中（リロード無し）にFS途中で「再開」を要求するのはNG
-- 原因を追究して根本解決する
+対象：event/slot.html（spinReel周り）
 
-前提：
-- 再開が出るのは fsLoopActive が false に落ちているのが原因
-- 特に free_spins_remaining の増加（stock 3→+1）を契機に awaitingFreeSpinStart が立ち、stopFullReelLoop が発火している疑いが強い
+背景：
+- いまの修正は `!currentSession.free_spin_active && resultReel.is_bust` で bust 埋めを判断しているが、
+  RPC成功後は `currentSession` が server返却で更新されるため、
+  「通常でbust→そのスピンでFSに突入」ケースでは free_spin_active=true になり、bust埋めが発火しない可能性がある。
+- bust埋めの実行可否は「このスピン要求が通常だったか（RPC前の状態）」で判定すべき。
 
 やること：
-1) awaitingFreeSpinStart / fsLoopActive を変更している箇所を洗い出し、FS途中（停止数1〜6）で変化していないか確認
-2) 「FS回数増加」はラウンド境界ではないので、増加時に awaitingFreeSpinStart を true にしない（必要なら演出だけ）
-3) stopFullReelLoop の発火条件を FS途中で絶対に発火しないようにガード（例：current_reel===1 のときだけ許可）
-4) 最小ログ（console.log + trace）を1〜2箇所入れて原因を確定 → 修正後は消す
+1) spinReel() の RPC呼び出し前に取得している（または追加する）フラグを使用：
+   - `const prevFreeSpinActive = !!currentSession.free_spin_active;`
+2) bust埋めの条件を次に差し替える（最小差分）：
+   - `resultReel = data.result || ...`
+   - **if (!prevFreeSpinActive && resultReel?.is_bust) { applyBurstToRemainingReels(); }**
+   - else { updateReelButtons(); }
+   ※ FS中（prevFreeSpinActive=true）では絶対に applyBurstToRemainingReels を呼ばない
+   ※ 通常でbustした場合は、そのスピンでFSに入ったとしても埋めを実行する（6,7をBURST表示にするため）
 
-成果物：
-- “なぜ再開が出ていたか” の原因説明（どの条件が誤っていたか）
-- 最小diff
-- 手動テスト（FS途中で再開が出ない / リロード時は再開が出る / stock+1で再開が出ない）
+3) 可能なら追加で（バグ潰しのため推奨、差分小さめで）：
+   applyBurstToRemainingReels() 内の alreadyStopped 判定が mode/round無視で誤判定しうるので、
+   「通常モードのbust埋め」では `is_free_spin=false` のデータだけを stopped 判定に使うように絞る。
+
+受け入れ条件：
+- FS中に bust判定が誤爆して fsLoopActive が落ちない（＝途中で勝手に再開にならない）
+- 通常でbustが出たら残りリール（例：6,7）も必ずBURST表示で埋まる（＝未停止/空が残らない）
+- 通常でbust→そのままFS突入するケースでも、bust埋めが発火する（旧条件だと潰れていたはず）

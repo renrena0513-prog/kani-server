@@ -1302,7 +1302,7 @@
                 const resultEl = col.querySelector('.reel-result');
                 const stopEl = col.querySelector('.reel-stop');
                 const reelIndex = Number(col.getAttribute('data-reel-index'));
-                const alreadyStopped = (currentSession?.reels || []).some(r => toReelIndex(r.reel_index) === reelIndex);
+                const alreadyStopped = (currentSession?.reels || []).some(r => !r.is_free_spin && toReelIndex(r.reel_index) === reelIndex);
                 if (alreadyStopped) return;
                 if (windowEl) {
                     windowEl.classList.remove('spinning', 'fs-loop');
@@ -1967,6 +1967,7 @@
             }
             const instantStop = !!options.instantStop;
             const prevRemaining = currentSession.free_spins_remaining ?? null;
+            const prevRound = currentSession.free_spin_round ?? null;
             const prevFreeSpinActive = !!currentSession.free_spin_active;
             setProcessing(true);
             if (instantStop) {
@@ -2018,16 +2019,17 @@
                     await refreshCoinBalance();
                 }
 
-                if (prevFreeSpinActive && currentSession.free_spin_active && currentSession.current_reel === 1 && prevRemaining !== null) {
-                    if (currentSession.free_spins_remaining < prevRemaining) {
+                if (prevFreeSpinActive && currentSession.free_spin_active && currentSession.current_reel === 1) {
+                    const roundAdvanced = prevRound !== null && currentSession.free_spin_round > prevRound;
+                    if (roundAdvanced) {
                         if (fsLoopActive) stopFullReelLoop();
                         awaitingFreeSpinStart = true;
                     }
                 }
 
                 // バースト判定：直前のリールでバーストが出た場合、残りリールを即時バースト表示
-                const justStoppedReel = (data.reels || []).find(r => toReelIndex(r.reel_index) === Number(reelIndex));
-                if (justStoppedReel?.is_bust) {
+                const resultReel = data.result || (data.reels || []).find(r => toReelIndex(r.reel_index) === Number(reelIndex));
+                if (!prevFreeSpinActive && resultReel?.is_bust) {
                     applyBurstToRemainingReels();
                 } else {
                     // 次のリールのSTOPボタンを有効化
