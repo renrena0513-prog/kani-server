@@ -687,11 +687,9 @@ begin
             group by elem->>'reward_type', elem->>'reward_id', elem->>'reward_name'
             order by elem->>'reward_type', elem->>'reward_id'
         loop
-            v_rewards.amount := v_rewards.amount * v_multiplier;
-            if v_rewards.reward_type in ('gacha_ticket', 'mangan_ticket') then
-                v_rewards.amount := round(v_rewards.amount, 1);
-            else
-                v_rewards.amount := floor(v_rewards.amount);
+            v_rewards.amount := floor(v_rewards.amount * v_multiplier);
+            if v_rewards.amount <= 0 then
+                continue;
             end if;
 
             v_summary := v_summary || jsonb_build_array(jsonb_build_object(
@@ -708,11 +706,11 @@ begin
                 where discord_user_id = p_user_id;
             elsif v_rewards.reward_type = 'gacha_ticket' then
                 update public.profiles
-                set gacha_tickets = coalesce(gacha_tickets, 0) + v_rewards.amount
+                set gacha_tickets = coalesce(gacha_tickets, 0) + v_rewards.amount::int
                 where discord_user_id = p_user_id;
             elsif v_rewards.reward_type = 'mangan_ticket' then
                 update public.profiles
-                set mangan_tickets = coalesce(mangan_tickets, 0) + v_rewards.amount
+                set mangan_tickets = coalesce(mangan_tickets, 0) + v_rewards.amount::int
                 where discord_user_id = p_user_id;
             elsif v_rewards.reward_type = 'exchange_ticket' then
                 update public.profiles
@@ -892,39 +890,39 @@ insert into public.slot_reel_positions
 values
 ('normal', 1, 1, false, true, false, 'multiplier', '倍率+1', null, 1.00, true
 ),
-('normal', 1, 2, false, false, false, 'multiplier', '倍率+0.5', null, 0.50, true
+('normal', 1, 2, false, true, false, 'multiplier', '倍率+0.5', null, 0.50, true
 ),
-('normal', 1, 3, false, false, false, 'coin', 'コイン +20', null, 20.00, true
+('normal', 1, 3, false, true, false, 'coin', 'コイン +20', null, 20.00, true
 ),
-('normal', 1, 4, false, false, false, 'coin', 'コイン +20', null, 20.00, true
+('normal', 1, 4, false, true, false, 'coin', 'コイン +20', null, 20.00, true
 ),
-('normal', 1, 5, false, false, false, 'coin', 'コイン +20', null, 20.00, true
+('normal', 1, 5, false, true, false, 'coin', 'コイン +20', null, 20.00, true
 ),
-('normal', 1, 6, false, false, false, 'coin', 'コイン +10', null, 10.00, true
+('normal', 1, 6, false, true, false, 'coin', 'コイン +10', null, 10.00, true
 ),
-('normal', 1, 7, false, false, false, 'coin', 'コイン +10', null, 10.00, true
+('normal', 1, 7, false, true, false, 'coin', 'コイン +10', null, 10.00, true
 ),
-('normal', 1, 8, false, false, false, 'coin', 'コイン +10', null, 10.00, true
+('normal', 1, 8, false, true, false, 'coin', 'コイン +10', null, 10.00, true
 ),
-('normal', 1, 9, false, false, false, 'coin', 'コイン +10', null, 10.00, true
+('normal', 1, 9, false, true, false, 'coin', 'コイン +10', null, 10.00, true
 ),
 ('normal', 1, 10, true, false, false, null, null, null, 0.00, true
 ),
 ('normal', 2, 1, false, true, false, 'multiplier', '倍率+0.5', null, 0.50, true
 ),
-('normal', 2, 2, false, false, false, 'multiplier', '倍率+0,5', null, 0.50, true
+('normal', 2, 2, false, true, false, 'multiplier', '倍率+0,5', null, 0.50, true
 ),
-('normal', 2, 3, false, false, false, 'coin', 'コイン +50', null, 50.00, true
+('normal', 2, 3, false, true, false, 'coin', 'コイン +50', null, 50.00, true
 ),
-('normal', 2, 4, false, false, false, 'coin', 'コイン +30', null, 30.00, true
+('normal', 2, 4, false, true, false, 'coin', 'コイン +30', null, 30.00, true
 ),
-('normal', 2, 5, false, false, false, 'coin', 'コイン +20', null, 20.00, true
+('normal', 2, 5, false, true, false, 'coin', 'コイン +20', null, 20.00, true
 ),
-('normal', 2, 6, false, false, false, 'coin', 'コイン +10', null, 10.00, true
+('normal', 2, 6, false, true, false, 'coin', 'コイン +10', null, 10.00, true
 ),
-('normal', 2, 7, false, false, false, 'coin', 'コイン +10', null, 10.00, true
+('normal', 2, 7, false, true, false, 'coin', 'コイン +10', null, 10.00, true
 ),
-('normal', 2, 8, false, false, false, 'coin', 'コイン +10', null, 10.00, true
+('normal', 2, 8, false, true, false, 'coin', 'コイン +10', null, 10.00, true
 ),
 ('normal', 2, 9, true, false, false, null, null, null, 0.00, true
 ),
@@ -932,17 +930,17 @@ values
 ),
 ('normal', 3, 1, false, true, false, 'coin', 'コイン +100', null, 100.00, true
 ),
-('normal', 3, 2, false, false, false, 'multiplier', '倍率+0.5', null, 0.50, true
+('normal', 3, 2, false, true, false, 'multiplier', '倍率+0.5', null, 0.50, true
 ),
-('normal', 3, 3, false, false, false, 'coin', 'コイン +80', null, 80.00, true
+('normal', 3, 3, false, true, false, 'coin', 'コイン +80', null, 80.00, true
 ),
-('normal', 3, 4, false, false, false, 'coin', 'コイン +50', null, 50.00, true
+('normal', 3, 4, false, true, false, 'coin', 'コイン +50', null, 50.00, true
 ),
-('normal', 3, 5, false, false, false, 'coin', 'コイン +30', null, 30.00, true
+('normal', 3, 5, false, true, false, 'coin', 'コイン +30', null, 30.00, true
 ),
-('normal', 3, 6, false, false, false, 'coin', 'コイン +20', null, 20.00, true
+('normal', 3, 6, false, true, false, 'coin', 'コイン +20', null, 20.00, true
 ),
-('normal', 3, 7, false, false, false, 'coin', 'コイン +20', null, 20.00, true
+('normal', 3, 7, false, true, false, 'coin', 'コイン +20', null, 20.00, true
 ),
 ('normal', 3, 8, true, false, false, null, null, null, 0.00, true
 ),
