@@ -777,6 +777,7 @@
         let lastFreeSpinSummary = null;
         let lastFreeSpinSessionId = null;
         let lastFreeSpinsRemaining = null;
+        let winPopupDelayUntil = 0;
         let displayedFreeSpinsRemaining = null;
         let awaitingFreeSpinStart = false;
         let pendingFreeSpinAfterPopup = false;
@@ -1596,7 +1597,8 @@
                     if (payoutList) payoutList.innerHTML = parts.length ? parts.join(' / ') : '報酬なし';
                 }
 
-                if (!sessionCashedOutDisplayed && !spinLocked) {
+                const popupDelayActive = winPopupDelayUntil && Date.now() < winPopupDelayUntil;
+                if (!sessionCashedOutDisplayed && !spinLocked && !popupDelayActive) {
                     if (parts.length) {
                         showWinPopup(parts);
                         sessionCashedOutDisplayed = true;
@@ -2052,6 +2054,11 @@
                     currentSession.status = 'cashed_out';
                     currentSession.payout = data.payout || [];
                     await refreshCoinBalance();
+                    if (prevFreeSpinActive) {
+                        winPopupDelayUntil = Date.now() + SPIN_DURATION_MS;
+                    } else {
+                        winPopupDelayUntil = 0;
+                    }
                 }
 
                 if (prevFreeSpinActive && currentSession.free_spin_active && currentSession.current_reel === 1) {
