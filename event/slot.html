@@ -1164,6 +1164,10 @@
                 if (stage) stage.classList.add('free-spin');
                 const hasCurrentRoundFreeReels = (currentSession.reels || []).some(reel => reel.is_free_spin && Number(reel.free_spin_round || 0) === Number(currentSession.free_spin_round || 0));
                 if (!hasCurrentRoundFreeReels) {
+                    // 合計表示を引き継ぐため、直前の集計を保持
+                    if (lastFreeSpinSummary) {
+                        lastFreeSpinSessionId = currentSession.id;
+                    }
                     resetReelDisplay();
                     if (currentSession) currentSession.reels = [];
                 }
@@ -1644,13 +1648,12 @@
 
             if (!spinLocked) {
                 const enteringFreeSpin = !!currentSession.free_spin_active && !hasAnyFreeReels;
-                if (enteringFreeSpin) {
-                    if (multiplierEl) multiplierEl.textContent = '×1.0';
-                    if (mobileMultiplierEl) mobileMultiplierEl.textContent = '×1.0';
-                    const resetText = '🪙 0 / 🎫 0 / 🧧 0';
-                    if (totalEl) totalEl.textContent = resetText;
-                    if (mobileTotalEl) mobileTotalEl.textContent = resetText;
-                } else {
+                if (enteringFreeSpin && lastFreeSpinSummary && lastFreeSpinSessionId === currentSession.id) {
+                    if (multiplierEl) multiplierEl.textContent = lastFreeSpinSummary.multiplierText || '×1.0';
+                    if (mobileMultiplierEl) mobileMultiplierEl.textContent = lastFreeSpinSummary.multiplierText || '×1.0';
+                    if (totalEl) totalEl.textContent = lastFreeSpinSummary.totalsText || '🪙 0 / 🎫 0 / 🧧 0';
+                    if (mobileTotalEl) mobileTotalEl.textContent = lastFreeSpinSummary.totalsText || '🪙 0 / 🎫 0 / 🧧 0';
+                } else if (!enteringFreeSpin) {
                     const displayFreeSpin = !!currentSession.free_spin_active && freeSpinDisplayActive;
                     const displayReels = getDisplayReels(reels);
 
