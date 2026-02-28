@@ -53,33 +53,16 @@ create unique index if not exists slot_sessions_active_user_uq
     on public.slot_sessions(user_id)
     where status = 'active';
 
--- リール結果テーブル（通常/フリースピン分離）
-create table if not exists public.slot_reel_results (
-    id uuid primary key default gen_random_uuid(),
-    session_id uuid not null references public.slot_sessions(id) on delete cascade,
-    user_id text not null,
-    mode text not null check (mode in ('normal', 'free')),
-    free_spin_round integer not null default 0,
-    reel_index integer not null check (reel_index between 1 and 7),
-    position_id uuid,
-    is_bust boolean not null default false,
-    is_jackpot boolean not null default false,
-    is_free_spin_stock boolean not null default false,
-    reward_type text,
-    reward_name text,
-    reward_id text,
-    amount numeric(10,2) default 0,
-    created_at timestamptz not null default now()
-);
-
-create index if not exists slot_reel_results_session_idx
-    on public.slot_reel_results(session_id, mode, free_spin_round, reel_index);
 
 alter table public.slot_sessions add column if not exists updated_at timestamptz default now();
 
 -- page_settings に config カラム追加 (スロットコスト等の設定用)
 alter table public.page_settings add column if not exists config jsonb default '{}'::jsonb;
 alter table public.slot_sessions add column if not exists free_spin_confirmed boolean default false;
+
+-- slot_reel_results は reels_state 運用に統一したため撤去
+drop table if exists public.slot_reel_results cascade;
+drop index if exists public.slot_reel_results_session_idx;
 
 
 -- =============================
