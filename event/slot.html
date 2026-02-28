@@ -777,7 +777,8 @@
         let lastFreeSpinSummary = null;
         let lastFreeSpinSessionId = null;
         let lastFreeSpinsRemaining = null;
-        let winPopupDelayUntil = 0;
+        let pendingFsResultPopup = false;
+        let lastWinPopupParts = null;
         let displayedFreeSpinsRemaining = null;
         let awaitingFreeSpinStart = false;
         let pendingFreeSpinAfterPopup = false;
@@ -1039,11 +1040,18 @@
 
         function computeStartButtonState() {
             const cost = eventSettings?.cost ?? 100;
-            if (!currentSession) {
+                if (!currentSession) {
                 return {
                     disabled: !isEventActiveNow(),
                     labelDesktop: `開始（${cost}コイン消費）`,
                     labelMobile: '開始'
+                };
+            }
+            if (pendingFsResultPopup) {
+                return {
+                    disabled: isProcessing,
+                    labelDesktop: '結果を確認する',
+                    labelMobile: '結果確認'
                 };
             }
             const reels = currentSession.reels || [];
@@ -1319,6 +1327,15 @@
 
         async function handleStartAction() {
             if (isProcessing) return;
+            if (pendingFsResultPopup) {
+                if (Array.isArray(lastWinPopupParts) && lastWinPopupParts.length) {
+                    showWinPopup(lastWinPopupParts);
+                }
+                pendingFsResultPopup = false;
+                sessionCashedOutDisplayed = true;
+                updateUI();
+                return;
+            }
             const reels = currentSession?.reels || [];
             const isFree = !!currentSession?.free_spin_active;
             // フリースピン中でラウンド待機中のリカバリ
@@ -1404,6 +1421,8 @@
                 lastFreeSpinSummary = null;
                 lastFreeSpinSessionId = null;
                 lastFreeSpinsRemaining = null;
+                pendingFsResultPopup = false;
+                lastWinPopupParts = null;
                 displayedFreeSpinsRemaining = null;
                 pendingFreeSpinAfterPopup = false;
                 pendingStopReels = new Set();
@@ -1559,6 +1578,7 @@
                 if (totals.gacha_ticket) parts.push(`🎫 +${totals.gacha_ticket}`);
                 if (totals.mangan_ticket) parts.push(`🧧 +${totals.mangan_ticket}`);
                 if (totals.exchange_ticket) parts.push(`🎫 +${totals.exchange_ticket}`);
+                let popupParts = parts.slice();
                 if (!parts.length) {
                     const freeReels = (currentSession.reels || []).filter(reel => reel.is_free_spin || Number(reel.free_spin_round || 0) > 0);
                     if (freeReels.length) {
@@ -1584,23 +1604,26 @@
                         if (fallTotals.coin) fallParts.push(`🪙 +${fallTotals.coin}`);
                         if (fallTotals.gacha_ticket) fallParts.push(`🎫 +${fallTotals.gacha_ticket}`);
                         if (fallTotals.mangan_ticket) fallParts.push(`🧧 +${fallTotals.mangan_ticket}`);
+                        popupParts = fallParts.slice();
                         if (payoutList) payoutList.innerHTML = fallParts.length ? fallParts.join(' / ') : '報酬なし';
                     } else if (lastFreeSpinSummary && lastFreeSpinSessionId === currentSession.id) {
                         const fallbackParts = [];
                         if (lastFreeSpinSummary.multiplierText) fallbackParts.push(`✨ ${lastFreeSpinSummary.multiplierText}`);
                         if (lastFreeSpinSummary.totalsText) fallbackParts.push(lastFreeSpinSummary.totalsText);
+                        popupParts = fallbackParts.slice();
                         if (payoutList) payoutList.innerHTML = fallbackParts.length ? fallbackParts.join(' / ') : '報酬なし';
                     } else {
+                        popupParts = [];
                         if (payoutList) payoutList.innerHTML = '報酬なし';
                     }
                 } else {
                     if (payoutList) payoutList.innerHTML = parts.length ? parts.join(' / ') : '報酬なし';
                 }
 
-                const popupDelayActive = winPopupDelayUntil && Date.now() < winPopupDelayUntil;
-                if (!sessionCashedOutDisplayed && !spinLocked && !popupDelayActive) {
-                    if (parts.length) {
-                        showWinPopup(parts);
+                lastWinPopupParts = popupParts.length ? popupParts.slice() : null;
+                if (!sessionCashedOutDisplayed && !spinLocked && !pendingFsResultPopup) {
+                    if (popupParts.length) {
+                        showWinPopup(popupParts);
                         sessionCashedOutDisplayed = true;
                     }
                 }
@@ -2055,9 +2078,8 @@
                     currentSession.payout = data.payout || [];
                     await refreshCoinBalance();
                     if (prevFreeSpinActive) {
-                        winPopupDelayUntil = Date.now() + SPIN_DURATION_MS;
-                    } else {
-                        winPopupDelayUntil = 0;
+                        pendingFsResultPopup = true;
+                        sessionCashedOutDisplayed = false;
                     }
                 }
 
