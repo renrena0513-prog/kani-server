@@ -989,6 +989,11 @@
                 } else {
                     currentSession = null;
                 }
+                spinLockUntil = 0;
+                lastSpinReel = null;
+                fsLoopActive = false;
+                pendingStopReels = new Set();
+                reelState = new Map();
             } catch (err) {
                 console.error(err);
             }
@@ -997,15 +1002,17 @@
         function setProcessing(state) {
             isProcessing = state;
             // ループ中は開始ボタンを無効に保つ
-            const canResume = currentSession?.free_spin_active && !fsLoopActive && !awaitingFreeSpinStart;
-            document.getElementById('btn-start').disabled = state || fsLoopActive ? true : !canResume && (currentSession && currentSession.status === 'active' && !isFreeSpinStartReady());
+            const canResumeFree = currentSession?.free_spin_active && !fsLoopActive && !awaitingFreeSpinStart;
+            const canResumeNormal = currentSession && currentSession.status === 'active' && !currentSession.free_spin_active;
+            const allowEventGate = !(currentSession && currentSession.status === 'active');
+            document.getElementById('btn-start').disabled = state || fsLoopActive ? true : (!canResumeFree && !canResumeNormal && currentSession && currentSession.status === 'active' && !isFreeSpinStartReady()) || ((!currentSession?.free_spin_active && !isEventActiveNow()) && allowEventGate);
             document.getElementById('btn-stop').disabled = state || !currentSession || currentSession.status !== 'active' || currentSession.free_spin_active || (currentSession.reels || []).length === 0;
             const jackpotBtn = document.getElementById('btn-jackpot-confirm');
             if (jackpotBtn) jackpotBtn.disabled = state || !currentSession || !currentSession.jackpot_unlocked || currentSession.free_spin_confirmed;
             const mobileStart = document.getElementById('mobile-btn-start');
             const mobileStop = document.getElementById('mobile-btn-stop');
             const allowDuringFs = currentSession?.free_spin_active;
-            if (mobileStart) mobileStart.disabled = state || fsLoopActive ? true : ((!allowDuringFs && !isEventActiveNow()) || (!canResume && currentSession && currentSession.status === 'active' && !isFreeSpinStartReady()));
+            if (mobileStart) mobileStart.disabled = state || fsLoopActive ? true : (((!allowDuringFs && !isEventActiveNow()) && allowEventGate) || (!canResumeFree && !canResumeNormal && currentSession && currentSession.status === 'active' && !isFreeSpinStartReady()));
             if (mobileStop) mobileStop.disabled = state || !currentSession || currentSession.status !== 'active' || currentSession.free_spin_active || (currentSession.reels || []).length === 0;
             updateReelButtons();
         }
@@ -1084,12 +1091,9 @@
             if (!cutin) return;
             const card = cutin.querySelector('.cutin-card');
             if (card) {
-                if (type === 'free') {
-                    card.textContent = 'FREE SPIN!!';
-                } else {
-                    const count = Number.isFinite(remaining) ? remaining : '';
-                    card.textContent = count !== '' ? `FREE SPIN ${count}` : 'FREE SPIN!!';
-                }
+                const count = Number.isFinite(remaining) ? remaining : null;
+                const text = count === null ? 'FreeSpin 残り0' : `FreeSpin 残り${count}`;
+                card.textContent = text;
             }
             cutin.classList.remove('show');
             void cutin.offsetWidth;
@@ -1103,7 +1107,7 @@
             if (isProcessing || !currentSession) return;
             awaitingFreeSpinStart = false;
             setProcessing(true);
-            showCutIn('free', currentSession.free_spins_remaining);
+            showCutIn('free', Number(currentSession.free_spins_remaining || 0));
             setTimeout(() => {
                 freeSpinDisplayActive = true;
                 const stage = document.getElementById('reel-stage');
@@ -1231,6 +1235,26 @@
             if (startBtn) startBtn.disabled = false;
             if (mStartBtn) mStartBtn.disabled = false;
             bustAutoStopping = false;
+        }
+
+        function applyBurstToRemainingReels() {
+            document.querySelectorAll('.reel-col').forEach(col => {
+                const windowEl = col.querySelector('.reel-window');
+                const resultEl = col.querySelector('.reel-result');
+                const stopEl = col.querySelector('.reel-stop');
+                const reelIndex = Number(col.getAttribute('data-reel-index'));
+                const alreadyStopped = (currentSession?.reels || []).some(r => Number(r.reel_index) === reelIndex);
+                if (alreadyStopped) return;
+                if (windowEl) {
+                    windowEl.classList.remove('spinning', 'fs-loop');
+                    windowEl.classList.add('stopped');
+                }
+                col.classList.add('done', 'bust', 'forced-bust');
+                if (resultEl) resultEl.textContent = 'バースト';
+                if (stopEl) stopEl.innerHTML = BURST_SYMBOL;
+            });
+            fsLoopActive = false;
+            pendingStopReels = new Set();
         }
 
         async function handleStartAction() {
@@ -1547,13 +1571,15 @@
                 }
                 setProcessing(false);
                 const allowDuringFs = currentSession.free_spin_active;
-                const canResume = currentSession.free_spin_active && !fsLoopActive && !awaitingFreeSpinStart;
-                document.getElementById('btn-start').disabled = (fsLoopActive || (!canResume && currentSession.status === 'active' && !isFreeSpinStartReady()) || (!allowDuringFs && !isEventActiveNow()));
+                const canResumeFree = currentSession.free_spin_active && !fsLoopActive && !awaitingFreeSpinStart;
+                const canResumeNormal = currentSession.status === 'active' && !currentSession.free_spin_active;
+                const allowEventGate = currentSession.status !== 'active';
+                document.getElementById('btn-start').disabled = (fsLoopActive || (!canResumeFree && !canResumeNormal && currentSession.status === 'active' && !isFreeSpinStartReady()) || ((!allowDuringFs && !isEventActiveNow()) && allowEventGate));
                 const jackpotBtn = document.getElementById('btn-jackpot-confirm');
                 if (jackpotBtn) jackpotBtn.disabled = !currentSession.jackpot_unlocked || currentSession.free_spin_confirmed;
                 const mobileStart = document.getElementById('mobile-btn-start');
                 const mobileStop = document.getElementById('mobile-btn-stop');
-                if (mobileStart) mobileStart.disabled = (fsLoopActive || (!canResume && currentSession.status === 'active' && !isFreeSpinStartReady()) || (!allowDuringFs && !isEventActiveNow()));
+                if (mobileStart) mobileStart.disabled = (fsLoopActive || (!canResumeFree && !canResumeNormal && currentSession.status === 'active' && !isFreeSpinStartReady()) || ((!allowDuringFs && !isEventActiveNow()) && allowEventGate));
                 if (mobileStop) mobileStop.disabled = currentSession.status !== 'active' || currentSession.free_spin_active || (currentSession.reels || []).length === 0;
                 if (pendingFreeSpinAfterPopup) {
                     document.getElementById('btn-start').disabled = true;
@@ -1923,15 +1949,10 @@
                     }
                 }
 
-                // バースト判定：直前のリールでバーストが出た場合、残りループリールを自動停止
+                // バースト判定：直前のリールでバーストが出た場合、残りリールを即時バースト表示
                 const justStoppedReel = (data.reels || []).find(r => r.reel_index === reelIndex);
-                if (justStoppedReel?.is_bust && fsLoopActive) {
-                    // 先ばれ防止：他リールは少し回転を維持してからバースト停止
-                    bustAutoStopping = true;
-                    setTimeout(() => {
-                        autoBustRemainingReels();
-                        updateUI();
-                    }, SPIN_DURATION_MS);
+                if (justStoppedReel?.is_bust) {
+                    applyBurstToRemainingReels();
                 } else {
                     // 次のリールのSTOPボタンを有効化
                     updateReelButtons();

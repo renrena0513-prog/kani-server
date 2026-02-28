@@ -1,1 +1,20 @@
-Error: Failed to run sql query: ERROR: 42601: syntax error at or near "-" LINE 1: - 1) free_spin_confirmed が更新されているか ^
+        function setProcessing(state) {
+            isProcessing = state;
+            // ループ中は開始ボタンを無効に保つ
+            const canResumeFree = currentSession?.free_spin_active && !fsLoopActive && !awaitingFreeSpinStart;
+            const canResumeNormal = currentSession && currentSession.status === 'active' && !currentSession.free_spin_active;
+            const allowEventGate = !(currentSession && currentSession.status === 'active');
+            document.getElementById('btn-start').disabled = state || fsLoopActive ? true : (!canResumeFree && !canResumeNormal && currentSession && currentSession.status === 'active' && !isFreeSpinStartReady()) || ((!currentSession?.free_spin_active && !isEventActiveNow()) && allowEventGate);
+            document.getElementById('btn-stop').disabled = state || !currentSession || currentSession.status !== 'active' || currentSession.free_spin_active || (currentSession.reels || []).length === 0;
+            const jackpotBtn = document.getElementById('btn-jackpot-confirm');
+            if (jackpotBtn) jackpotBtn.disabled = state || !currentSession || !currentSession.jackpot_unlocked || currentSession.free_spin_confirmed;
+            const mobileStart = document.getElementById('mobile-btn-start');
+            const mobileStop = document.getElementById('mobile-btn-stop');
+            const allowDuringFs = currentSession?.free_spin_active;
+            const allowEventGate = !(currentSession && currentSession.status === 'active');
+            if (mobileStart) mobileStart.disabled = state || fsLoopActive ? true : (((!allowDuringFs && !isEventActiveNow()) && allowEventGate) || (!canResumeFree && !canResumeNormal && currentSession && currentSession.status === 'active' && !isFreeSpinStartReady()));
+            if (mobileStop) mobileStop.disabled = state || !currentSession || currentSession.status !== 'active' || currentSession.free_spin_active || (currentSession.reels || []).length === 0;
+            updateReelButtons();
+        }
+
+        ここがエラー
