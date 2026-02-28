@@ -777,7 +777,6 @@
         let lastFreeSpinSummary = null;
         let lastFreeSpinSessionId = null;
         let lastFreeSpinsRemaining = null;
-        let lastCarrySummary = null;
         let displayedFreeSpinsRemaining = null;
         let awaitingFreeSpinStart = false;
         let pendingFreeSpinAfterPopup = false;
@@ -1166,7 +1165,6 @@
                 const hasCurrentRoundFreeReels = (currentSession.reels || []).some(reel => reel.is_free_spin && Number(reel.free_spin_round || 0) === Number(currentSession.free_spin_round || 0));
                 if (!hasCurrentRoundFreeReels) {
                     resetReelDisplay();
-                    if (currentSession) currentSession.reels = [];
                 }
                 startFullReelLoop();
                 setProcessing(false, { skipUpdate: true });
@@ -1404,7 +1402,6 @@
                 lastFreeSpinSummary = null;
                 lastFreeSpinSessionId = null;
                 lastFreeSpinsRemaining = null;
-                lastCarrySummary = null;
                 displayedFreeSpinsRemaining = null;
                 pendingFreeSpinAfterPopup = false;
                 pendingStopReels = new Set();
@@ -1703,10 +1700,6 @@
                             if (totalEl) totalEl.textContent = totalText;
                             if (mobileTotalEl) mobileTotalEl.textContent = totalText;
                         }
-                        lastCarrySummary = {
-                            multiplierText: `×${formatted}`,
-                            totalsText: totalText
-                        };
                     }
                 }
             }
