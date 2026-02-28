@@ -1319,6 +1319,11 @@
             if (isProcessing) return;
             const reels = currentSession?.reels || [];
             const isFree = !!currentSession?.free_spin_active;
+            if (isFree && !fsLoopActive && currentSession?.current_reel === 1) {
+                // FS待機中は常に開始できるようにする
+                startFreeSpinRoundFromButton();
+                return;
+            }
             // フリースピン中でラウンド待機中のリカバリ
             if (!awaitingFreeSpinStart && isFree && !fsLoopActive && isFsReadyState(reels)) {
                 awaitingFreeSpinStart = true;
