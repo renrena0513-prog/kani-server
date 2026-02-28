@@ -337,6 +337,7 @@ declare
     v_result_json jsonb := '{}'::jsonb;
     v_mode text;
     v_is_bust boolean := false;
+    v_bonus_added integer := 0;
 begin
     perform pg_advisory_xact_lock(hashtext('slot:' || p_user_id));
 
@@ -511,12 +512,17 @@ begin
                 v_stocks := v_stocks + 1;
             end if;
 
+            if v_stocks >= 3 then
+                v_extra_spins := v_stocks / 3;
+                v_stocks := v_stocks % 3;
+                v_remaining := v_session.free_spins_remaining + v_extra_spins;
+                v_bonus_added := v_extra_spins;
+            else
+                v_remaining := v_session.free_spins_remaining;
+            end if;
+
             if v_reel_index >= 7 then
-                if v_stocks >= 3 then
-                    v_extra_spins := v_stocks / 3;
-                    v_stocks := v_stocks % 3;
-                end if;
-                v_remaining := greatest(v_session.free_spins_remaining - 1 + v_extra_spins, 0);
+                v_remaining := greatest(v_remaining - 1, 0);
                 v_round := v_session.free_spin_round + 1;
 
                 update public.slot_sessions
@@ -537,7 +543,7 @@ begin
                 set current_reel = v_reel_index + 1,
                     reels_state = v_reels,
                     free_spin_stocks = v_stocks,
-                    free_spins_remaining = v_session.free_spins_remaining
+                    free_spins_remaining = v_remaining
                 where id = v_session.id;
             end if;
         end;
@@ -623,7 +629,8 @@ begin
         'result', v_result_json,
         'reels', v_reels,
         'auto_cashout', v_auto_cashout,
-        'payout', v_payout
+        'payout', v_payout,
+        'bonus_added', v_bonus_added
     );
 end;
 $$;

@@ -1138,6 +1138,20 @@
             }, CUTIN_DURATION_MS);
         }
 
+        function showFreeSpinBonusCutin(amount) {
+            const cutin = document.getElementById('free-spin-cutin');
+            if (!cutin) return;
+            const card = cutin.querySelector('.cutin-card');
+            const value = Number.isFinite(amount) && amount > 0 ? amount : 1;
+            if (card) card.textContent = `FreeSpin +${value}`;
+            cutin.classList.remove('show');
+            void cutin.offsetWidth;
+            cutin.classList.add('show');
+            setTimeout(() => {
+                cutin.classList.remove('show');
+            }, 1200);
+        }
+
         function startFreeSpinRoundFromButton() {
             if (isProcessing || !currentSession) return;
             awaitingFreeSpinStart = false;
@@ -1977,6 +1991,10 @@
                 pendingStopReels.delete(reelIndex);
                 spinLockUntil = 0;
                 lastSpinReel = null;
+
+                if (Number(data.bonus_added || 0) > 0) {
+                    showFreeSpinBonusCutin(Number(data.bonus_added || 0));
+                }
 
                 if (data.auto_cashout) {
                     currentSession.status = 'cashed_out';

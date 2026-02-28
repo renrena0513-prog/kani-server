@@ -1,97 +1,35 @@
-# 重大バグ修正依頼（フロント + DB SQL/RPC確認）: slot開始/FS開始/FS増加/FS遷移で詰む
+# 仕様変更：FSストック3つで即+1（DB更新＆カットイン）
 
-対象
-- event/slot.html
-- DB RPC / SQL（最低限）：slot_start_session / slot_get_state / slot_spin_reel / slot_cashout / slot_confirm_jackpot（定義SQL）
+目的：
+- FreeSpin図柄（is_free_spin_stock）が3つ貯まった時点で、その場で free_spins_remaining を +1 する。
+- 3つ目が出た瞬間に「FreeSpin +1」のカットイン演出を出す。
+- 7リール目でまとめて加算する方式はやめて、増加タイミングをラウンド境界から分離して、フロントの状態不整合（開始ボタン押せない等）を減らす。
 
----
+対象：
+- SQL/RPC: slot_spin_reel（FS中の処理）
+- フロント: event/slot.html（spinReelの成功ハンドリング）
 
-## バグ1（致命的）通常モード：開始ボタン1回押しても開始できず、必ず「再開」になり再開を押さないと始まらない
+要件：
+1) FS中に free_spin_stocks を増やし、>=3 になった時点で
+   - free_spin_stocks を 3 減らし
+   - free_spins_remaining を 1 増やす（必要なら複数回変換もOK）
+   - レスポンスに bonus_added（今回加算した回数）を含める
+2) フロントは slot_spin_reel のレスポンスで bonus_added > 0 のとき
+   - 3つ目が出たタイミングで「FreeSpin +1」カットインを表示する
+3) UIの既存仕様（FS開始ボタン/残り表示/STOP挙動）は変えない
+4) 差分は最小、既存のFS終了時ロジックは破綻しないように調整
 
-### 症状
-- 新規で「開始（100コイン消費）」を押しても、開始せず100%「再開」表示に切り替わる
-- 再開を押して初めて回転が始まる（実質2クリック必要）
-- 以前は開始1回で回転が始まっていた
+成果物：
+- SQL差分（関数更新）
+- フロント差分（カットイン追加）
+- 手動テスト（ストック3つで即+1が起きる、リロード耐性）
+ひとつだけ注意
 
-### 原因候補（例）
-- handleStartAction() が「セッション作成前」に startFullReelLoop() を先に呼んでおり、
-  その後 startSession() で currentSession が入った時点で UI が「既存セッション扱い（再開）」に寄ってしまう
-  （= セッション開始の責務と回転開始の責務が順番逆になっている）
-- setProcessing()/updateUI のリファクタ後、途中状態で updateUI が走り、開始フローを「再開状態」に上書きしている
+この変更を入れるなら、今のSQLにある「7リール目で stock 変換して extra_spins を足す」部分は 二重加算になる可能性があるので、
 
-### 期待挙動（受け入れ条件）
-- 通常モードの新規開始は「開始ボタン1回」で回転状態へ遷移する（再開ボタンを要求しない）
+即時変換に統一（7リール目では変換しない）
+or
 
----
+7リール目側は「念のため残りstockだけ処理」みたいに整理
 
-## バグ2（致命的）FS中：FS回数が増えると必ず「フリースピン開始」ボタンが押せない（リロードすると押せる）
-
-### 症状
-- FS中に free_spins_remaining が増えた（FSストック等）タイミングで、
-  次ラウンド開始の「フリースピン開始」ボタンが必ず disabled になり押せない
-- ただしリロードすると問題なく押せる（= サーバー状態は正しく、クライアント状態の正規化が壊れている可能性が高い）
-
-### 原因候補（例）
-- free_spins_remaining 増加時に、awaitingFreeSpinStart/currentPhase/fsLoopActive/isProcessing の整合が崩れ、
-  computeStartButtonState()/setProcessing()/updateUI のどれかが disabled を上書きしている
-- normalizeFreeSpinState()/isFsReadyState() が「FS開始待ち」を正しく強制できていない（増加ケースのみ）
-- リロードで直るのは applyInitialReelStateFromDB が fs_ready を作れているからで、
-  “増加イベント直後” に同じ正規化が起きていない
-
-### 期待挙動（受け入れ条件）
-- free_spins_remaining が増えた後でも、次ラウンド開始なら必ず「フリースピン開始」が押せる
-- 押下でカットイン→回転開始へ進む
-
----
-
-## バグ3（致命的）通常モード：バースト→FSに入ると必ず同じリールで止まり「再開」に切り替わる
-
-### 症状
-- 通常でバースト経由でFSへ遷移した後、必ず同じリールで処理が止まる（進まない）
-- UIが「再開」になり、押すと進む/また止まる、のような挙動
-
-### 原因候補（例）
-- DB側で free_spin_active へ切り替わる際に current_reel が 1 に戻っていない / reels_state の扱いが不整合
-- フロント側で “FS開始待ち” と “FS回転中” の判定がズレ、
-  startFullReelLoop()/updateReelButtons() が current_reel と reelState の整合を崩している
-- pendingStopReels/reelState の残留で STOP不可→再開に寄っている
-
-### 期待挙動（受け入れ条件）
-- バースト→FS遷移後は、FS開始ボタン押下→回転→STOP進行が正しく動く
-- 同一リールで毎回止まる現象が消える
-
----
-
-## DB（SQL/RPC）も怪しいので確認してほしい（重要）
-以下の「状態不変条件」を満たしているか、RPCのSQLを点検して修正してほしい。
-
-### 不変条件チェック（最低限）
-- slot_start_session：
-  - status='active', current_reel=1, free_spin_active=false, reels_stateは空（新規）で返る
-- slot_confirm_jackpot / FS遷移：
-  - free_spin_active=true になるタイミングで current_reel は必ず 1
-  - free_spin_round 初期化（例: 1）と free_spins_remaining の整合が取れている
-- slot_spin_reel：
-  - 1回の停止で current_reel が確実に進む（同じリールで固定されない）
-  - FSの7リール目停止後に「次ラウンド待機（current_reel=1）」へ正しく戻る
-  - free_spins_remaining が増減（ストック等）してもラウンド遷移判定が破綻しない
-  - 同一セッション/同一ユーザーで並行実行しても破綻しない（行ロック/トランザクション）
-- slot_get_state：
-  - reels_state の整形がフロントの想定と一致（reel_index/free_spin_round の型が混在しない等）
-
-### 調査手順（例）
-- 上記RPCのSQL（関数定義）を読み、特に「FS遷移」「current_reel更新」「remaining増減」「reels_state追記」の分岐を確認
-- “同じリールで止まる” の時は、current_reel が更新されていないか、reels_state の追加が失敗している可能性があるので重点的に確認
-
----
-
-## 求める成果物
-1) 各バグの再現手順（短く）
-2) 原因箇所（関数名/条件/どのstateが矛盾してるか）
-3) 最小差分パッチ（diff） ※フロントとSQLが両方必要なら両方
-4) 手動テスト（5〜10項目）
-
-制約
-- UI見た目・API/RPC I/Fは変更しない
-- 仕様変更はしない（バグ修正のみ）
-- 差分は最小限
+のどっちかに寄せる必要があります。
