@@ -786,6 +786,7 @@
         let pendingStopReels = new Set();
         let reelState = new Map();
         let currentPhase = 'idle';
+        const DEBUG_FS = false;
         let reelLoopConfig = { normal: new Map(), free: new Map() };
         let lastLoopMode = 'normal';
         const CUTIN_DURATION_MS = 1600;
@@ -1322,6 +1323,11 @@
             // フリースピン中でラウンド待機中のリカバリ
             if (!awaitingFreeSpinStart && isFree && !fsLoopActive && isFsReadyState(reels)) {
                 awaitingFreeSpinStart = true;
+                if (DEBUG_FS) console.debug('[fs] awaitingFreeSpinStart=true', {
+                    currentReel: currentSession.current_reel,
+                    round: currentSession.free_spin_round,
+                    remaining: currentSession.free_spins_remaining
+                });
             }
             if (isFree && !fsLoopActive && isFsReadyState(reels)) {
                 // ユーザーがボタンを押したのでフリースピン開始：カットイン後に回転開始
@@ -1446,10 +1452,7 @@
                 awaitingFreeSpinStart = true;
             }
 
-            if (prevFreeSpinsRemaining !== null && currentSession.free_spins_remaining > prevFreeSpinsRemaining) {
-                // FS残り回数が増えたらfs_readyへ正規化
-                awaitingFreeSpinStart = true;
-            }
+            // FS残り回数の増加はラウンド境界ではないため fs_ready へ寄せない
 
             if (currentSession.free_spin_active) {
                 normalizeFreeSpinState('update');
@@ -1478,7 +1481,11 @@
                 }
             }
 
-            if (awaitingFreeSpinStart && fsLoopActive) {
+            if (awaitingFreeSpinStart && fsLoopActive && currentSession.current_reel === 1) {
+                if (DEBUG_FS) console.debug('[fs] stop loop on fs_ready', {
+                    currentReel: currentSession.current_reel,
+                    freeSpinsRemaining: currentSession.free_spins_remaining
+                });
                 stopFullReelLoop();
             }
 
