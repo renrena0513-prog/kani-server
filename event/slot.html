@@ -1319,11 +1319,6 @@
             if (isProcessing) return;
             const reels = currentSession?.reels || [];
             const isFree = !!currentSession?.free_spin_active;
-            if (isFree && !fsLoopActive && currentSession?.current_reel === 1) {
-                // FS待機中は常に開始できるようにする
-                startFreeSpinRoundFromButton();
-                return;
-            }
             // フリースピン中でラウンド待機中のリカバリ
             if (!awaitingFreeSpinStart && isFree && !fsLoopActive && isFsReadyState(reels)) {
                 awaitingFreeSpinStart = true;
@@ -1661,10 +1656,17 @@
                         : displayReels;
 
                     if (isFree && sourceReels.length === 0) {
-                        if (multiplierEl) multiplierEl.textContent = '×1.0';
-                        if (mobileMultiplierEl) mobileMultiplierEl.textContent = '×1.0';
-                        if (totalEl) totalEl.textContent = '🪙 0 / 🎫 0 / 🧧 0';
-                        if (mobileTotalEl) mobileTotalEl.textContent = '🪙 0 / 🎫 0 / 🧧 0';
+                        if (lastFreeSpinSummary && lastFreeSpinSessionId === currentSession.id) {
+                            if (multiplierEl) multiplierEl.textContent = lastFreeSpinSummary.multiplierText || '×1.0';
+                            if (mobileMultiplierEl) mobileMultiplierEl.textContent = lastFreeSpinSummary.multiplierText || '×1.0';
+                            if (totalEl) totalEl.textContent = lastFreeSpinSummary.totalsText || '🪙 0 / 🎫 0 / 🧧 0';
+                            if (mobileTotalEl) mobileTotalEl.textContent = lastFreeSpinSummary.totalsText || '🪙 0 / 🎫 0 / 🧧 0';
+                        } else {
+                            if (multiplierEl) multiplierEl.textContent = '×1.0';
+                            if (mobileMultiplierEl) mobileMultiplierEl.textContent = '×1.0';
+                            if (totalEl) totalEl.textContent = '🪙 0 / 🎫 0 / 🧧 0';
+                            if (mobileTotalEl) mobileTotalEl.textContent = '🪙 0 / 🎫 0 / 🧧 0';
+                        }
                     } else {
                         let multiplierSum = sourceReels.reduce((sum, reel) => {
                             if (reel.reward_type !== 'multiplier') return sum;

@@ -1,0 +1,3132 @@
+< !DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>スロット | かにサーバー</title>< !-- Google Fonts --><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&family=IBM+Plex+Sans+JP:wght@400;600&display=swap"
+
+rel="stylesheet">< !-- Bootswatch Lux --><link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet"><link rel="stylesheet" href="../styles.css"><style> :root {
+    --slot-bg: #0f141a;
+    --slot-panel: #1a2230;
+    --slot-accent: #f6c453;
+    --slot-muted: #9aa4b2;
+    --slot-font-title: 'Zen Maru Gothic', sans-serif;
+    --slot-font-body: 'IBM Plex Sans JP', sans-serif;
+}
+
+body {
+    font-family: var(--slot-font-body);
+    background: radial-gradient(circle at top, #1b2433 0%, #0b0f14 60%, #07090c 100%);
+    color: #e7ecf3;
+    min-height: 100vh;
+}
+
+.slot-header {
+    font-family: var(--slot-font-title);
+    letter-spacing: 0.04em;
+}
+
+.slot-panel {
+    background: var(--slot-panel);
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+}
+
+.slot-ranking-card {
+    background: linear-gradient(135deg, rgba(246, 196, 83, 0.08), rgba(26, 34, 48, 0.95));
+    border: 1px solid rgba(246, 196, 83, 0.35);
+}
+
+.slot-ranking-card h5 {
+    letter-spacing: 0.06em;
+    font-weight: 700;
+}
+
+.slot-ranking-list li {
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 1.15rem;
+    font-weight: 600;
+}
+
+.slot-ranking-list li:last-child {
+    border-bottom: none;
+}
+
+.slot-ranking-list .rank-emoji {
+    margin-right: 6px;
+}
+
+.slot-status {
+    background: rgba(246, 196, 83, 0.12);
+    border: 1px solid rgba(246, 196, 83, 0.35);
+    color: #ffd36b;
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: 0.95rem;
+}
+
+.slot-muted {
+    color: var(--slot-muted);
+}
+
+.slot-burst {
+    background: rgba(220, 53, 69, 0.15);
+    border: 1px solid rgba(220, 53, 69, 0.5);
+    color: #ffb3b3;
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-weight: 600;
+}
+
+.reel-stop img {
+    width: 90%;
+    height: 90%;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5));
+}
+
+.free-spin-stock-bar {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 10px 16px;
+    margin-bottom: 12px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(120, 80, 220, 0.25), rgba(80, 140, 255, 0.2));
+    border: 1px solid rgba(120, 80, 220, 0.4);
+}
+
+.free-spin-stock-bar.active {
+    display: flex;
+}
+
+.free-spin-stock-bar .stock-label {
+    font-weight: 700;
+    color: #c4a1ff;
+    font-size: 0.9rem;
+}
+
+.free-spin-stock-bar .stock-icons {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.free-spin-stock-bar .stock-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 2px solid rgba(120, 80, 220, 0.5);
+    padding: 3px;
+    background: rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+}
+
+.free-spin-stock-bar .stock-icon.filled {
+    border-color: #c4a1ff;
+    background: rgba(120, 80, 220, 0.4);
+    box-shadow: 0 0 10px rgba(120, 80, 220, 0.5);
+}
+
+.free-spin-stock-bar .stock-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.free-spin-stock-bar .stock-bonus {
+    color: #f6c453;
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.free-spin-cutin {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    background: radial-gradient(circle at center, rgba(246, 196, 83, 0.35), rgba(9, 12, 18, 0.85));
+    backdrop-filter: blur(2px);
+}
+
+.free-spin-cutin.show {
+    display: flex;
+    animation: cutin-fade 1.6s ease forwards;
+}
+
+.free-spin-cutin .cutin-card {
+    padding: 22px 32px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #f8d47c 0%, #f0b741 50%, #d98c0d 100%);
+    color: #1a1306;
+    font-family: var(--slot-font-title);
+    font-size: clamp(1.4rem, 4vw, 2.2rem);
+    letter-spacing: 0.12em;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    transform: scale(0.9);
+    animation: cutin-pop 0.6s ease forwards;
+}
+
+@keyframes cutin-pop {
+    to {
+        transform: scale(1);
+    }
+}
+
+@keyframes cutin-fade {
+    0% {
+        opacity: 0;
+    }
+
+    15% {
+        opacity: 1;
+    }
+
+    85% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
+
+.win-popup-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 3000;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
+.win-popup-overlay.show {
+    display: flex;
+    opacity: 1;
+}
+
+.win-popup-content {
+    background: linear-gradient(145deg, #1f2937, #111827);
+    border: 2px solid #f6c453;
+    border-radius: 24px;
+    padding: 40px;
+    text-align: center;
+    max-width: 90%;
+    width: 400px;
+    box-shadow: 0 0 40px rgba(246, 196, 83, 0.3), inset 0 0 20px rgba(246, 196, 83, 0.1);
+    transform: scale(0.8) translateY(20px);
+    opacity: 0;
+    transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.win-popup-overlay.show .win-popup-content {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+}
+
+.win-popup-title {
+    font-family: var(--slot-font-title);
+    font-size: 4rem;
+    font-weight: 900;
+    background: linear-gradient(to bottom, #fff6d9, #f6c453, #d98c0d);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: 20px;
+    filter: drop-shadow(0 4px 12px rgba(246, 196, 83, 0.5));
+    letter-spacing: 0.05em;
+}
+
+.win-popup-rewards {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.win-popup-close {
+    background: linear-gradient(135deg, #f6c453 0%, #d99a29 100%);
+    color: #1a1306;
+    border: none;
+    padding: 12px 40px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 15px rgba(246, 196, 83, 0.4);
+}
+
+.win-popup-close:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(246, 196, 83, 0.6);
+}
+
+.reel-stage {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: clamp(10px, 1.4vw, 20px);
+    width: 100%;
+    --reel-size: clamp(80px, 10vw, 140px);
+    margin-top: 8px;
+}
+
+.reel-col {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: clamp(8px, 1.2vw, 14px) clamp(6px, 1vw, 12px);
+    display: grid;
+    gap: 10px;
+    text-align: center;
+    min-width: 0;
+}
+
+.reel-window {
+    background: #0b0f14;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    height: var(--reel-size);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(2.6rem, 6vw, 5rem);
+    font-weight: 700;
+    position: relative;
+    overflow: hidden;
+}
+
+.reel-symbols {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    opacity: 0;
+}
+
+.reel-symbols span {
+    display: block;
+    height: var(--reel-size);
+    line-height: var(--reel-size);
+    color: #cbd5e1;
+    font-weight: 700;
+}
+
+.reel-symbols span img {
+    width: 70%;
+    height: 70%;
+    object-fit: contain;
+    vertical-align: middle;
+    filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.4));
+}
+
+.reel-window.spinning .reel-symbols {
+    animation: reel-spin 1.6s linear infinite;
+    opacity: 1;
+}
+
+.reel-window.stopped .reel-symbols {
+    opacity: 0;
+    animation: none;
+}
+
+.reel-stop {
+    position: relative;
+    z-index: 2;
+    font-size: inherit;
+    line-height: 1;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.reel-window.stopped .reel-stop {
+    opacity: 1;
+}
+
+.reel-col.done .reel-window {
+    box-shadow: inset 0 0 0 1px rgba(246, 196, 83, 0.5);
+}
+
+.reel-col.bust .reel-window {
+    box-shadow: inset 0 0 0 1px rgba(220, 53, 69, 0.6);
+    color: #ffb3b3;
+}
+
+.reel-stage.free-spin .reel-col {
+    border: 1px solid rgba(246, 196, 83, 0.45);
+    background: linear-gradient(160deg, rgba(246, 196, 83, 0.08), rgba(255, 255, 255, 0.04));
+    box-shadow: 0 12px 26px rgba(246, 196, 83, 0.12);
+}
+
+.reel-stage.free-spin .reel-window {
+    box-shadow: 0 0 18px rgba(246, 196, 83, 0.4), inset 0 0 12px rgba(246, 196, 83, 0.25);
+    border-color: rgba(246, 196, 83, 0.5);
+    animation: free-glow 2.2s ease-in-out infinite;
+}
+
+@keyframes free-glow {
+
+    0%,
+    100% {
+        filter: drop-shadow(0 0 0 rgba(246, 196, 83, 0.2));
+    }
+
+    50% {
+        filter: drop-shadow(0 0 8px rgba(246, 196, 83, 0.6));
+    }
+}
+
+.reel-label {
+    font-size: 0.8rem;
+    color: var(--slot-muted);
+}
+
+.reel-result {
+    font-size: 0.85rem;
+    min-height: 1.1rem;
+    color: var(--slot-muted);
+}
+
+.reel-btn {
+    width: 100%;
+    padding: 6px 8px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: 1px solid rgba(246, 196, 83, 0.6);
+    background: transparent;
+    color: #f6c453;
+}
+
+.reel-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+@keyframes reel-spin {
+    0% {
+        transform: translateY(calc(var(--reel-size) * -10));
+    }
+
+    100% {
+        transform: translateY(0);
+    }
+}
+
+@keyframes reel-loop {
+    0% {
+        transform: translateY(-50%);
+    }
+
+    100% {
+        transform: translateY(0);
+    }
+}
+
+/* ループ中は内側のシンボルリストをスクロールする */
+.reel-window.fs-loop .reel-symbols {
+    animation: reel-loop 1.6s linear infinite;
+    opacity: 1;
+}
+
+.reel-btn-stop {
+    width: 100%;
+    padding: 6px 8px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    border: 2px solid #f6c453;
+    background: linear-gradient(135deg, #f6c453 0%, #d99a29 100%);
+    color: #1a1306;
+    cursor: pointer;
+}
+
+.reel-btn-stop:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-slot {
+    background: linear-gradient(135deg, #f6c453 0%, #d99a29 100%);
+    color: #1a1306;
+    border: none;
+    font-weight: 700;
+}
+
+.btn-slot:disabled {
+    opacity: 0.6;
+}
+
+.btn-slot-secondary {
+    border: 1px solid rgba(246, 196, 83, 0.6);
+    color: #f6c453;
+    background: transparent;
+    font-weight: 600;
+}
+
+.slot-mobile-summary {
+    display: none;
+}
+
+.reel-label {
+    display: none;
+}
+
+.slot-desktop-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+@media (max-width: 768px) {
+    .slot-desktop-actions {
+        display: none !important;
+    }
+
+    .reel-stage {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        padding-bottom: 0;
+        overflow-x: hidden;
+        scroll-snap-type: none;
+    }
+
+    .reel-col {
+        padding: 10px 8px;
+    }
+
+    .reel-window {
+        height: clamp(88px, 24vw, 110px);
+        font-size: clamp(1.9rem, 6.5vw, 2.4rem);
+    }
+
+    .reel-label {
+        font-size: 0.75rem;
+    }
+
+    .reel-result {
+        font-size: 0.8rem;
+    }
+
+    .slot-mobile-summary {
+        display: grid;
+        align-content: center;
+        gap: 6px;
+        padding: 12px;
+        border-radius: 14px;
+        background: rgba(246, 196, 83, 0.12);
+        border: 1px dashed rgba(246, 196, 83, 0.35);
+        color: #f7d07d;
+        min-height: clamp(88px, 24vw, 110px);
+        text-align: center;
+        font-weight: 700;
+        grid-column: 2 / span 2;
+    }
+
+    .slot-mobile-summary .slot-muted {
+        color: rgba(247, 208, 125, 0.8);
+        font-size: 0.75rem;
+    }
+
+    .slot-mobile-summary .slot-mobile-multiplier {
+        font-size: 1.05rem;
+    }
+
+    .slot-mobile-summary .slot-mobile-total {
+        font-size: 0.95rem;
+    }
+
+    .slot-mobile-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 4px;
+    }
+
+    .slot-mobile-actions .btn {
+        padding: 8px 10px;
+        font-size: 0.85rem;
+    }
+}
+
+</style></head><body><div class="nav-dropdown"></div><div class="container-fluid py-4 px-3 px-lg-5"><div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4"><div><h1 class="slot-header mb-2">🎰 期間限定イベント：スロット</h1><div class="slot-muted">1回100コイン。止まった分だけ報酬確定、はずれでバースト。</div></div><div class="slot-status" id="event-status">読み込み中...</div></div><div class="slot-panel p-4 mb-4"><div class="d-flex flex-wrap justify-content-between gap-3 align-items-center"><div class="d-flex flex-wrap gap-4 align-items-center"><div><div class="slot-muted">所持コイン</div><div class="fs-3 fw-bold" id="coin-balance">-</div></div><div><div class="slot-muted">所持祈願符</div><div class="fs-4 fw-bold" id="gacha-balance">-</div></div><div><div class="slot-muted">所持満願符</div><div class="fs-4 fw-bold" id="mangan-balance">-</div></div></div><div class="text-center flex-grow-1" style="min-width: 220px;"><div class="slot-muted">合計倍率</div><div class="fs-5 fw-semibold" id="total-multiplier">×1.0</div><div class="slot-muted mt-1">獲得合計</div><div class="fs-2 fw-bold" id="reward-total">🪙 0 / 🎫 0 / 🧧 0</div></div></div><div class="mt-3 slot-muted" id="session-message"></div></div><div class="slot-panel p-4"><div class="free-spin-stock-bar" id="free-spin-stock-bar"><span class="stock-label">FREE SPIN ストック</span><div class="stock-icons" id="free-spin-stock-icons"></div><span class="stock-bonus" id="free-spin-stock-bonus"></span></div><div class="reel-stage" id="reel-stage"><div class="slot-mobile-summary" id="mobile-summary"><div class="slot-muted">合計倍率</div><div class="slot-mobile-multiplier" id="mobile-total-multiplier">×1.0</div><div class="slot-muted">獲得合計</div><div class="slot-mobile-total" id="mobile-reward-total">🪙 0 / 🎫 0 / 🧧 0</div><div class="slot-mobile-actions"><button class="btn btn-slot" id="mobile-btn-start" type="button"
+onclick="handleStartAction()">開始</button><button class="btn btn-slot-secondary" id="mobile-btn-stop" type="button" onclick="cashout()"
+disabled>ストップ</button></div></div></div><div class="slot-desktop-actions"><button class="btn btn-slot" id="btn-start" onclick="handleStartAction()">開始（100コイン消費）</button><button class="btn btn-slot d-none" id="btn-jackpot-confirm" onclick="confirmJackpot()"
+disabled>フリースピンへ確定</button><button class="btn btn-slot-secondary" id="btn-stop" onclick="cashout()" disabled>ストップ（精算）</button></div><div class="mt-4 slot-burst" id="burst-banner" style="display:none;">バースト！報酬はすべて没収されました。</div></div><div class="win-popup-overlay" id="win-popup"><div class="win-popup-content"><div class="win-popup-title">WIN !</div><div class="win-popup-rewards" id="win-popup-rewards"></div><button class="win-popup-close" onclick="closeWinPopup()">閉じる</button></div></div><div class="slot-panel p-4 mt-4 admin-only" id="slot-admin-panel" style="display:none;"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"><h5 class="mb-0">管理者: リール編集</h5><span class="slot-muted">管理者のみ表示</span></div><div class="d-flex flex-wrap align-items-center gap-2"><label class="slot-muted" for="admin-reel-mode">種別</label><select id="admin-reel-mode" class="form-select form-select-sm" style="width: 150px;"><option value="normal">通常リール</option><option value="free">フリースピン</option></select><label class="slot-muted" for="admin-reel-select">対象リール</label><select id="admin-reel-select" class="form-select form-select-sm" style="width: 120px;"></select><button class="btn btn-sm btn-outline-light" id="admin-reel-load" type="button">読み込み</button><button class="btn btn-sm btn-slot" id="admin-reel-save" type="button">保存</button><span class="slot-muted" id="admin-reel-status"></span></div><div class="table-responsive mt-3"><table class="table table-sm table-dark align-middle mb-0"><thead><tr><th style="width: 70px;">位置</th><th style="width: 80px;">有効</th><th style="width: 90px;" data-admin-col="bust">バースト</th><th style="width: 110px;" data-admin-col="jackpot">ジャックポット</th><th style="width: 90px;" data-admin-col="fsstock">FS Stock</th><th style="width: 160px;">報酬タイプ</th><th>報酬名</th><th style="width: 110px;">数量</th><th style="width: 160px;">報酬ID</th></tr></thead><tbody id="admin-reel-body"></tbody></table></div><div class="slot-muted mt-2">※ バーストONの行は報酬が無視されます。</div></div><div class="slot-panel p-4 mt-4"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"><h5 class="mb-0">全体統計</h5><span class="slot-muted" id="slot-stats-updated">集計中...</span></div><div class="row g-3 mb-3"><div class="col-12"><h6 class="mb-2">あなたの成績</h6></div><div class="col-6 col-lg-3"><div class="slot-muted">投入回数</div><div class="fs-5 fw-semibold" id="slot-user-spins">-</div></div><div class="col-6 col-lg-3"><div class="slot-muted">累計コイン</div><div class="fs-5 fw-semibold" id="slot-user-coin">-</div></div><div class="col-6 col-lg-3"><div class="slot-muted">累計チケット</div><div class="fs-5 fw-semibold" id="slot-user-tickets">-</div></div><div class="col-6 col-lg-3"><div class="slot-muted">FS突入回数</div><div class="fs-5 fw-semibold" id="slot-user-fs">-</div></div></div><div class="row g-3 mb-3"><div class="col-6 col-lg-3"><div class="slot-muted">累計投入回数</div><div class="fs-5 fw-semibold" id="slot-total-spins">-</div></div><div class="col-6 col-lg-3"><div class="slot-muted">FS突入回数</div><div class="fs-5 fw-semibold" id="slot-fs-spins">-</div></div><div class="col-6 col-lg-3"><div class="slot-muted">累計コイン</div><div class="fs-5 fw-semibold" id="slot-total-coin">-</div></div><div class="col-6 col-lg-3"><div class="slot-muted">累計チケット</div><div class="fs-5 fw-semibold" id="slot-total-tickets">-</div></div></div></div><div class="slot-panel slot-ranking-card p-4 mt-4"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"><h5 class="mb-0">JPランキング</h5><div class="slot-muted">JPで獲得した報酬合計（コイン換算なし）</div></div><div class="row g-4"><div class="col-12"><div class="d-flex justify-content-between align-items-center mb-2"><h6 class="mb-0">一撃獲得トップ3</h6><div class="btn-group btn-group-sm" role="group" id="slot-jp-top-toggle"><button type="button" class="btn btn-outline-light active" data-jp-type="coin">コイン</button><button type="button" class="btn btn-outline-light" data-jp-type="gacha_ticket">祈願符</button><button type="button" class="btn btn-outline-light"
+data-jp-type="mangan_ticket">満願符</button></div></div><ol class="mb-0 slot-ranking-list" id="slot-jp-top3"></ol></div></div></div></div><div class="free-spin-cutin" id="free-spin-cutin"><div class="cutin-card">FREE SPIN ! !</div></div>< !-- Scripts --><script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../js/supabase-config.js"></script><script src="../js/auth-guard.js"></script><script src="../js/navigation.js"></script><script>let currentUserId=null;
+let currentAuthUserId=null;
+let currentAccountName=null;
+let isAdmin=false;
+let currentSession=null;
+let eventSettings=null;
+let isProcessing=false;
+let wasFreeSpinActive=false;
+let freeSpinDisplayActive=false;
+let lastFreeSpinSummary=null;
+let lastFreeSpinSessionId=null;
+let lastFreeSpinsRemaining=null;
+let lastCarrySummary=null;
+let displayedFreeSpinsRemaining=null;
+let awaitingFreeSpinStart=false;
+let pendingFreeSpinAfterPopup=false;
+let fsLoopActive=false;
+let loopStartRequested=false;
+let bustAutoStopping=false;
+let pendingStopReels=new Set();
+let reelState=new Map();
+let currentPhase='idle';
+const DEBUG_FS=false;
+
+let reelLoopConfig= {
+    normal: new Map(), free: new Map()
+}
+
+;
+let lastLoopMode='normal';
+const CUTIN_DURATION_MS=1600;
+const JACKPOT_SYMBOL='<img src="../images/slot/JACKPOT.png" alt="JACKPOT">';
+const BURST_SYMBOL='<img src="../images/slot/Burst.png" alt="Burst">';
+const FREESPIN_SYMBOL='<img src="../images/slot/FreeSpin.png" alt="FreeSpin">';
+
+function getMultiplierEmoji(amount) {
+    const val=Number(amount) || 0;
+    if (val >=1.0) return '🌈';
+    if (val >=0.7) return '🍒';
+    if (val >=0.4) return '🍉';
+    return '🍇';
+}
+
+function roundTo1(value) {
+    return Math.round((Number(value) || 0) * 10) / 10;
+}
+
+function getSymbolForRow(row) {
+    if (row.is_bust) return BURST_SYMBOL;
+    if (row.is_free_spin_stock) return FREESPIN_SYMBOL;
+    if (row.is_jackpot) return JACKPOT_SYMBOL;
+    if (row.reward_type==='coin') return '🪙';
+    if (row.reward_type==='gacha_ticket') return '🎫';
+    if (row.reward_type==='mangan_ticket') return '🧧';
+    if (row.reward_type==='multiplier') return getMultiplierEmoji(row.amount);
+    return '🎁';
+}
+
+function buildLoopSymbolsHtml(mode, reelIndex) {
+    const map=reelLoopConfig?.[mode];
+    let list=map && map.get(reelIndex);
+
+    if (( !list || list.length===0) && mode==='free') {
+        const fallback=reelLoopConfig?.normal;
+        list=fallback && fallback.get(reelIndex);
+    }
+
+    if ( !list || list.length===0) {
+        list=reelSymbols;
+    }
+
+    const symbols=list.concat(list).map(symbol=> `<span>$ {
+            symbol
+        }
+
+        </span>`).join('');
+    return symbols;
+}
+
+function updateLoopSymbols() {
+    const mode=currentSession?.free_spin_active ? 'free': 'normal';
+    lastLoopMode=mode;
+
+    document.querySelectorAll('.reel-col').forEach(col=> {
+            const reelIndex=Number(col.getAttribute('data-reel-index'));
+            const symbolsEl=col.querySelector('.reel-symbols');
+            if ( !symbolsEl) return;
+            symbolsEl.innerHTML=buildLoopSymbolsHtml(mode, reelIndex);
+        });
+}
+
+const reelSymbols=[ '🪙',
+JACKPOT_SYMBOL,
+'❓',
+BURST_SYMBOL,
+'🍉',
+FREESPIN_SYMBOL,
+'🍒',
+'🌈',
+'🎫',
+JACKPOT_SYMBOL];
+
+async function initSlotPage() {
+    const {
+        data: {
+            user
+        }
+    }
+
+    =await supabaseClient.auth.getUser();
+
+    if ( !user) {
+        window.location.href='../index.html';
+        return;
+    }
+
+    currentAuthUserId=user.id;
+    currentUserId=user.user_metadata?.provider_id || user.id;
+    isAdmin=typeof ADMIN_DISCORD_IDS !=='undefined' && ADMIN_DISCORD_IDS.includes(currentUserId);
+    initAccordionNav('../');
+    buildReelStage();
+    setupAdminReelEditor();
+
+    await loadCurrentProfile();
+    await loadEventSettings();
+    await loadReelLoopConfig();
+    updateLoopSymbols();
+    await refreshCoinBalance();
+    await loadActiveSession();
+    applyInitialReelStateFromDB();
+    updateUI();
+    await loadSlotGlobalStats();
+}
+
+async function loadCurrentProfile() {
+    try {
+        let profile=null;
+
+        if (currentUserId) {
+            const {
+                data
+            }
+
+            =await supabaseClient .from('profiles') .select('discord_user_id, account_name') .eq('discord_user_id', currentUserId) .maybeSingle();
+            profile=data || null;
+        }
+
+        if ( !profile && currentAuthUserId) {
+            const {
+                data
+            }
+
+            =await supabaseClient .from('profiles') .select('discord_user_id, account_name') .eq('id', currentAuthUserId) .maybeSingle();
+            profile=data || null;
+        }
+
+        if (profile?.discord_user_id) currentUserId=profile.discord_user_id;
+        if (profile?.account_name) currentAccountName=profile.account_name;
+    }
+
+    catch (err) {
+        console.error('profile load failed', err);
+    }
+}
+
+async function loadReelLoopConfig() {
+    try {
+        const {
+            data,
+            error
+        }
+
+        =await supabaseClient .from('slot_reel_positions') .select('mode, reel_index, position_index, is_bust, is_jackpot, is_free_spin_stock, reward_type, amount, is_active') .order('reel_index', {
+            ascending: true
+
+        }) .order('position_index', {
+        ascending: true
+    });
+if (error) throw error;
+
+const next= {
+    normal: new Map(), free: new Map()
+}
+
+;
+
+(data || []).forEach(row=> {
+        if ( !row?.is_active) return;
+        const mode=row.mode==='free' ? 'free' : 'normal';
+        if ( !next[mode].has(row.reel_index)) next[mode].set(row.reel_index, []);
+        next[mode].get(row.reel_index).push(getSymbolForRow(row));
+    });
+reelLoopConfig=next;
+}
+
+catch (err) {
+    console.error('loop config load failed', err);
+}
+}
+
+async function loadEventSettings() {
+    const statusEl=document.getElementById('event-status');
+
+    try {
+        const {
+            data,
+            error
+        }
+
+        =await supabaseClient .from('page_settings') .select('is_active, config') .eq('path', '/event/slot.html') .maybeSingle();
+        if (error) throw error;
+
+        const config=data?.config || {}
+
+        ;
+
+        eventSettings= {
+            page_active: data?.is_active ?? false,
+                cost: config.slot_cost ?? 100
+        }
+
+        ;
+
+        const label=eventSettings.page_active ? 'イベント開催中' : 'イベント停止中';
+        statusEl.textContent=label;
+        const costEl=document.getElementById('slot-cost');
+        if (costEl) costEl.textContent=eventSettings.cost;
+    }
+
+    catch (err) {
+        statusEl.textContent='設定取得に失敗';
+        console.error(err);
+    }
+}
+
+async function refreshCoinBalance() {
+    const coinEl=document.getElementById('coin-balance');
+    const gachaEl=document.getElementById('gacha-balance');
+    const manganEl=document.getElementById('mangan-balance');
+
+    try {
+        const {
+            data,
+            error
+        }
+
+        =await supabaseClient .from('profiles') .select('coins, gacha_tickets, mangan_tickets, account_name, discord_user_id') .eq('discord_user_id', currentUserId) .maybeSingle();
+        if (error) throw error;
+        if (data?.discord_user_id) currentUserId=data.discord_user_id;
+        if (data?.account_name) currentAccountName=data.account_name;
+
+        coinEl.textContent=`$ {
+            (data?.coins ?? 0).toLocaleString()
+        }
+
+        C`;
+
+        if (gachaEl) gachaEl.textContent=`$ {
+            roundTo1(data?.gacha_tickets ?? 0)
+        }
+
+        `;
+
+        if (manganEl) manganEl.textContent=`$ {
+            roundTo1(data?.mangan_tickets ?? 0)
+        }
+
+        `;
+    }
+
+    catch (err) {
+        coinEl.textContent='取得失敗';
+        if (gachaEl) gachaEl.textContent='取得失敗';
+        if (manganEl) manganEl.textContent='取得失敗';
+        console.error(err);
+    }
+}
+
+async function loadActiveSession() {
+    try {
+        const {
+            data,
+            error
+        }
+
+        =await supabaseClient.rpc('slot_get_state', {
+            p_user_id: currentUserId
+        });
+    if (error) throw error;
+
+    if (data?.session) {
+        currentSession= {
+            ...data.session,
+            reels: data.reels || []
+        }
+
+        ;
+    }
+
+    else {
+        currentSession=null;
+    }
+
+    spinLockUntil=0;
+    lastSpinReel=null;
+    fsLoopActive=false;
+    pendingStopReels=new Set();
+    reelState=new Map();
+}
+
+catch (err) {
+    console.error(err);
+}
+}
+
+function setProcessing(state, options= {}) {
+    isProcessing=state;
+    if ( !options.skipUpdate) updateUI();
+}
+
+function isEventActiveNow() {
+    if (isAdmin) return true;
+    if ( !eventSettings) return false;
+    if (eventSettings.page_active) return true;
+    if ( !eventSettings.is_active) return false;
+    return true;
+}
+
+function isSpinLocked() {
+    return lastSpinReel !==null && Date.now() < spinLockUntil;
+}
+
+function isFreeSpinStartReady() {
+    if (awaitingFreeSpinStart) return true;
+    // ジャックポット確定後で、かつリールが止まり切ってから表示を切り替える（先ばれ防止）
+    if ( !isSpinLocked() && ! !currentSession && currentSession.status==='active' && !currentSession.free_spin_active && ! !currentSession.jackpot_unlocked && !currentSession.free_spin_confirmed) return true;
+    return false;
+}
+
+function isFsReadyState(reels) {
+    if ( !currentSession?.free_spin_active) return false;
+    const list=reels || currentSession.reels || [];
+    const roundCount=getCurrentFreeSpinRoundCount(list);
+    const hasCurrentRoundFreeReels=list.some(reel=> reel.is_free_spin && Number(reel.free_spin_round || 0)===Number(currentSession.free_spin_round || 0));
+    if (awaitingFreeSpinStart) return true;
+    if ( !fsLoopActive && currentSession.current_reel===1 && (roundCount===0 || !hasCurrentRoundFreeReels)) return true;
+    return false;
+}
+
+function computeStartButtonState() {
+    const cost=eventSettings?.cost ?? 100;
+
+    if ( !currentSession) {
+        return {
+
+            disabled: !isEventActiveNow(),
+            labelDesktop: `開始（$ {
+                cost
+            }
+
+            コイン消費）`,
+            labelMobile: '開始'
+        }
+
+        ;
+    }
+
+    const reels=currentSession.reels || [];
+    const isFree= ! !currentSession.free_spin_active;
+    const roundCount=getCurrentFreeSpinRoundCount(reels);
+
+    let labelDesktop=`開始（$ {
+        cost
+    }
+
+    コイン消費）`;
+    let labelMobile='開始';
+
+    if (awaitingFreeSpinStart) {
+        labelDesktop='フリースピン開始';
+        labelMobile='フリースピン開始';
+    }
+
+    else if (isFree && currentSession.current_reel===1 && roundCount===0) {
+        labelDesktop='フリースピン開始';
+        labelMobile='フリースピン開始';
+    }
+
+    else if (isFree && !fsLoopActive && roundCount > 0) {
+        labelDesktop='再開';
+        labelMobile='再開';
+    }
+
+    else if (isFree) {
+        labelDesktop='フリースピン中';
+        labelMobile='フリースピン中';
+    }
+
+    else if (currentSession.status==='active' && !fsLoopActive) {
+        labelDesktop='再開';
+        labelMobile='再開';
+    }
+
+    else if ( !isSpinLocked() && isFreeSpinStartReady()) {
+        labelDesktop='フリースピン開始';
+        labelMobile='フリースピン開始';
+    }
+
+    const canResumeFree=isFree && !fsLoopActive && !awaitingFreeSpinStart;
+    const canResumeNormal=currentSession.status==='active' && !isFree;
+    const allowEventGate=currentSession.status !=='active';
+    let disabled=false;
+
+    if (isProcessing || fsLoopActive) {
+        disabled=true;
+    }
+
+    else {
+        disabled=( !canResumeFree && !canResumeNormal && currentSession.status==='active' && !isFreeSpinStartReady()) || (( !isFree && !isEventActiveNow()) && allowEventGate);
+    }
+
+    if (pendingFreeSpinAfterPopup) disabled=true;
+    if (currentPhase==='fs_ready') disabled=false;
+    if (isSpinLocked() && currentPhase !=='fs_ready') disabled=true;
+
+    return {
+        disabled,
+        labelDesktop,
+        labelMobile
+    }
+
+    ;
+}
+
+function applyStartButtonState() {
+    const startBtn=document.getElementById('btn-start');
+    const mobileStart=document.getElementById('mobile-btn-start');
+    const state=computeStartButtonState();
+
+    if (startBtn) {
+        startBtn.textContent=state.labelDesktop;
+        startBtn.disabled=state.disabled;
+    }
+
+    if (mobileStart) {
+        mobileStart.textContent=state.labelMobile;
+        mobileStart.disabled=state.disabled;
+    }
+}
+
+function resetReelDisplay() {
+    document.querySelectorAll('.reel-col').forEach(col=> {
+            const windowEl=col.querySelector('.reel-window');
+            const resultEl=col.querySelector('.reel-result');
+            const stopEl=col.querySelector('.reel-stop');
+            col.classList.remove('done', 'bust', 'forced-bust');
+            if (windowEl) windowEl.classList.remove('spinning', 'stopped', 'fs-loop');
+            if (resultEl) resultEl.textContent='未停止';
+            if (stopEl) stopEl.textContent='';
+        });
+    pendingStopReels=new Set();
+    reelState=new Map();
+}
+
+function getCurrentFreeSpinRoundCount(reels) {
+    if ( !currentSession?.free_spin_active) return 0;
+    const round=Number(currentSession.free_spin_round || 0);
+    return (reels || []).filter(reel=> reel.is_free_spin && Number(reel.free_spin_round || 0)===round).length;
+}
+
+function showCutIn(type, remaining) {
+    const cutin=document.getElementById('free-spin-cutin');
+    if ( !cutin) return;
+    const card=cutin.querySelector('.cutin-card');
+
+    if (card) {
+        const count=Number.isFinite(remaining) ? remaining: null;
+
+        const text=count===null ? 'FreeSpin 残り0' : `FreeSpin 残り$ {
+            count
+        }
+
+        `;
+        card.textContent=text;
+    }
+
+    cutin.classList.remove('show');
+    void cutin.offsetWidth;
+    cutin.classList.add('show');
+
+    setTimeout(()=> {
+            cutin.classList.remove('show');
+        }
+
+        , CUTIN_DURATION_MS);
+}
+
+function showFreeSpinBonusCutin(amount) {
+    const cutin=document.getElementById('free-spin-cutin');
+    if ( !cutin) return;
+    const card=cutin.querySelector('.cutin-card');
+    const value=Number.isFinite(amount) && amount>0 ? amount: 1;
+
+    if (card) card.textContent=`FreeSpin+$ {
+        value
+    }
+
+    `;
+    cutin.classList.remove('show');
+    void cutin.offsetWidth;
+    cutin.classList.add('show');
+
+    setTimeout(()=> {
+            cutin.classList.remove('show');
+        }
+
+        , 1200);
+}
+
+function startFreeSpinRoundFromButton() {
+    if (isProcessing || !currentSession) return;
+    awaitingFreeSpinStart=false;
+
+    setProcessing(true, {
+        skipUpdate: true
+    });
+showCutIn('free', Number(currentSession.free_spins_remaining || 0));
+
+setTimeout(()=> {
+        freeSpinDisplayActive=true;
+        const stage=document.getElementById('reel-stage');
+        if (stage) stage.classList.add('free-spin');
+        const hasCurrentRoundFreeReels=(currentSession.reels || []).some(reel=> reel.is_free_spin && Number(reel.free_spin_round || 0)===Number(currentSession.free_spin_round || 0));
+
+        if ( !hasCurrentRoundFreeReels) {
+            resetReelDisplay();
+        }
+
+        startFullReelLoop();
+
+        setProcessing(false, {
+            skipUpdate: true
+        });
+    updateUI();
+}
+
+, CUTIN_DURATION_MS);
+}
+
+function startFullReelLoop() {
+    // 全リールをループアニメーション開始
+    updateLoopSymbols();
+    fsLoopActive=true;
+
+    if (currentSession?.free_spin_active) {
+        currentPhase='fs_spinning';
+    }
+
+    const currentRound=Number(currentSession?.free_spin_round || 0);
+    const isFree= ! !currentSession?.free_spin_active;
+
+    const stopped=new Set((currentSession?.reels || []) .filter(r=> {
+                if ( !Number(r.reel_index)) return false;
+
+                if (isFree) {
+                    return r.is_free_spin && Number(r.free_spin_round || 0)===currentRound;
+                }
+
+                return !r.is_free_spin;
+            }) .map(r=> Number(r.reel_index)));
+
+    document.querySelectorAll('.reel-col').forEach(col=> {
+            const windowEl=col.querySelector('.reel-window');
+            const reelIndex=Number(col.getAttribute('data-reel-index'));
+            const isStopped=stopped.has(reelIndex);
+
+            if ( !isStopped) {
+                col.classList.remove('done', 'bust', 'forced-bust');
+            }
+
+            if (windowEl) {
+                windowEl.classList.remove('spinning');
+                windowEl.classList.remove('fs-loop');
+
+                if (isStopped) {
+                    windowEl.classList.add('stopped');
+                    reelState.set(reelIndex, 'stopped');
+                }
+
+                else {
+                    windowEl.classList.remove('stopped');
+                    // ウィンドウ自体にクラスを付けて内側の.reel-symbolsにアニメを適用
+                    windowEl.classList.add('fs-loop');
+                    reelState.set(reelIndex, 'spinning');
+                }
+            }
+
+            const stopEl=col.querySelector('.reel-stop');
+            if (stopEl && !isStopped) stopEl.innerHTML='';
+            // 各リールのSTOPボタンを表示
+            const stopBtn=col.querySelector('.reel-btn-stop');
+
+            if (stopBtn) {
+                stopBtn.disabled=true; // 最初は全部無効
+            }
+        });
+    // 最初のリールのSTOPボタンだけ有効化
+    updateReelButtons();
+    // 起動ボタンを無効化
+    const startBtn=document.getElementById('btn-start');
+    const mStartBtn=document.getElementById('mobile-btn-start');
+    if (startBtn) startBtn.disabled=true;
+    if (mStartBtn) mStartBtn.disabled=true;
+    pendingStopReels=new Set();
+    updateReelButtons();
+}
+
+function stopFullReelLoop() {
+    fsLoopActive=false;
+
+    document.querySelectorAll('.reel-col').forEach(col=> {
+            const windowEl=col.querySelector('.reel-window');
+            if (windowEl) windowEl.classList.remove('fs-loop');
+            const stopBtn=col.querySelector('.reel-btn-stop');
+            if (stopBtn) stopBtn.classList.remove('active');
+        });
+    pendingStopReels=new Set();
+    const startBtn=document.getElementById('btn-start');
+    const mStartBtn=document.getElementById('mobile-btn-start');
+    if (startBtn) startBtn.disabled=false;
+    if (mStartBtn) mStartBtn.disabled=false;
+}
+
+async function stopSpecificReel(reelIndex, instantStop=false) {
+    // まずそのリールのループを止める
+    if (isProcessing || !currentSession || !fsLoopActive) return;
+    if (currentSession.current_reel !==reelIndex) return;
+    // 指定リールのSTOPボタンを無効化つループ停止
+    const col=document.querySelector(`.reel-col[data-reel-index="${reelIndex}"]`);
+
+    if (col) {
+        const windowEl=col.querySelector('.reel-window');
+        const stopBtn=col.querySelector('.reel-btn-stop');
+        // STOP要求中でも見た目の回転は維持する
+        if (windowEl) windowEl.classList.add('fs-loop');
+
+        if (stopBtn) {
+            stopBtn.disabled=true;
+        }
+    }
+
+    pendingStopReels.add(reelIndex);
+
+    // バックエンドでリールを確定
+    await spinReel(reelIndex, {
+        instantStop
+    });
+}
+
+async function stopCurrentReel() {
+    if (isProcessing || !currentSession || !fsLoopActive) return;
+    await stopSpecificReel(currentSession.current_reel);
+}
+
+async function autoBustRemainingReels() {
+    // バースト後、残りの全ループリールをバースト図柄で自動停止
+    bustAutoStopping=true;
+
+    document.querySelectorAll('.reel-col').forEach(col=> {
+            const windowEl=col.querySelector('.reel-window');
+            const stopBtn=col.querySelector('.reel-btn-stop');
+            const resultEl=col.querySelector('.reel-result');
+            const stopEl=col.querySelector('.reel-stop');
+
+            if (windowEl && windowEl.classList.contains('fs-loop')) {
+                windowEl.classList.remove('fs-loop');
+                windowEl.classList.add('stopped');
+                col.classList.add('done', 'bust', 'forced-bust');
+                if (resultEl) resultEl.textContent='バースト';
+                if (stopEl) stopEl.innerHTML=BURST_SYMBOL;
+            }
+
+            if (stopBtn) {
+                stopBtn.disabled=true;
+            }
+        });
+    fsLoopActive=false;
+    pendingStopReels=new Set();
+    const startBtn=document.getElementById('btn-start');
+    const mStartBtn=document.getElementById('mobile-btn-start');
+    if (startBtn) startBtn.disabled=false;
+    if (mStartBtn) mStartBtn.disabled=false;
+    bustAutoStopping=false;
+}
+
+function applyBurstToRemainingReels() {
+    document.querySelectorAll('.reel-col').forEach(col=> {
+            const windowEl=col.querySelector('.reel-window');
+            const resultEl=col.querySelector('.reel-result');
+            const stopEl=col.querySelector('.reel-stop');
+            const reelIndex=Number(col.getAttribute('data-reel-index'));
+            const alreadyStopped=(currentSession?.reels || []).some(r=> !r.is_free_spin && toReelIndex(r.reel_index)===reelIndex);
+            if (alreadyStopped) return;
+
+            if (windowEl) {
+                windowEl.classList.remove('spinning', 'fs-loop');
+                windowEl.classList.add('stopped');
+            }
+
+            col.classList.add('done', 'bust', 'forced-bust');
+            if (resultEl) resultEl.textContent='バースト';
+            if (stopEl) stopEl.innerHTML=BURST_SYMBOL;
+        });
+    fsLoopActive=false;
+    pendingStopReels=new Set();
+}
+
+async function handleStartAction() {
+    if (isProcessing) return;
+    const reels=currentSession?.reels || [];
+    const isFree= ! !currentSession?.free_spin_active;
+
+    // フリースピン中でラウンド待機中のリカバリ
+    if ( !awaitingFreeSpinStart && isFree && !fsLoopActive && isFsReadyState(reels)) {
+        awaitingFreeSpinStart=true;
+
+        if (DEBUG_FS) console.debug('[fs] awaitingFreeSpinStart=true', {
+            currentReel: currentSession.current_reel,
+            round: currentSession.free_spin_round,
+            remaining: currentSession.free_spins_remaining
+        });
+}
+
+if (isFree && !fsLoopActive && isFsReadyState(reels)) {
+    // ユーザーがボタンを押したのでフリースピン開始：カットイン後に回転開始
+    startFreeSpinRoundFromButton();
+    return;
+}
+
+if (isFree && !fsLoopActive && !awaitingFreeSpinStart) {
+    startFullReelLoop();
+    updateUI();
+    return;
+}
+
+if (isFreeSpinStartReady()) {
+    await confirmJackpot(true);
+    return;
+}
+
+if (currentSession && currentSession.status==='active' && !fsLoopActive && !currentSession.free_spin_active) {
+    startFullReelLoop();
+    updateUI();
+    return;
+}
+
+if ( !currentSession || !currentSession.free_spin_active) {
+    if (currentSession && currentSession.status==='active') {
+        startFullReelLoop();
+        updateUI();
+        return;
+    }
+
+    loopStartRequested=true;
+    await startSession();
+
+    if (currentSession && currentSession.status==='active') {
+        startFullReelLoop();
+        updateUI();
+    }
+}
+}
+
+function updateUI() {
+    const reels=currentSession?.reels || [];
+    const currentReelEl=document.getElementById('current-reel');
+    const sessionStatusEl=document.getElementById('session-status');
+    const stageEl=document.getElementById('reel-stage');
+    const payoutSummary=document.getElementById('payout-summary');
+    const payoutList=document.getElementById('payout-list');
+    const burstBanner=document.getElementById('burst-banner');
+    const messageEl=document.getElementById('session-message');
+    const totalEl=document.getElementById('reward-total');
+    const multiplierEl=document.getElementById('total-multiplier');
+    const mobileMultiplierEl=document.getElementById('mobile-total-multiplier');
+    const mobileTotalEl=document.getElementById('mobile-reward-total');
+    const spinLocked=isSpinLocked();
+    const prevFreeSpinsRemaining=lastFreeSpinsRemaining;
+    const isFree= ! !currentSession?.free_spin_active;
+    const hasAnyFreeReels=isFree && (reels || []).some(reel=> reel.is_free_spin || Number(reel.free_spin_round || 0) > 0);
+
+    if (isFree && hasAnyFreeReels) {
+        freeSpinDisplayActive=true;
+    }
+
+    if (isFree && !awaitingFreeSpinStart && isFsReadyState(reels)) {
+        awaitingFreeSpinStart=true;
+    }
+
+    if ( !currentSession) {
+        if (currentReelEl) currentReelEl.textContent='-';
+        if (sessionStatusEl) sessionStatusEl.textContent='待機中';
+        messageEl.textContent='';
+        if (payoutSummary) payoutSummary.style.display='none';
+        burstBanner.style.display='none';
+        if (stageEl) stageEl.classList.remove('free-spin');
+        wasFreeSpinActive=false;
+        freeSpinDisplayActive=false;
+        awaitingFreeSpinStart=false;
+        if ( !loopStartRequested) fsLoopActive=false;
+        lastFreeSpinSummary=null;
+        lastFreeSpinSessionId=null;
+        lastFreeSpinsRemaining=null;
+        lastCarrySummary=null;
+        displayedFreeSpinsRemaining=null;
+        pendingFreeSpinAfterPopup=false;
+        pendingStopReels=new Set();
+        reelState=new Map();
+
+        // no jackpot stage
+        setProcessing(false, {
+            skipUpdate: true
+        });
+    const mobileStop=document.getElementById('mobile-btn-stop');
+    if (mobileStop) mobileStop.disabled=true;
+    document.getElementById('btn-stop').disabled=true;
+    const jackpotBtn=document.getElementById('btn-jackpot-confirm');
+    if (jackpotBtn) jackpotBtn.disabled=true;
+    applyStartButtonState();
+    renderReelState(reels);
+    updateReelButtons();
+    if (multiplierEl) multiplierEl.textContent='×1.0';
+    if (mobileMultiplierEl) mobileMultiplierEl.textContent='×1.0';
+    if (totalEl) totalEl.textContent='🪙 0 / 🎫 0 / 🧧 0';
+    if (mobileTotalEl) mobileTotalEl.textContent='🪙 0 / 🎫 0 / 🧧 0';
+    return;
+}
+
+if ( !spinLocked) {
+    if (currentSession.status==='active') {
+        if (currentReelEl) {
+            if (currentSession.free_spin_active && freeSpinDisplayActive) {
+                currentReelEl.textContent=`フリースピン $ {
+                    currentSession.free_spin_round
+                }
+
+                / 残り $ {
+                    currentSession.free_spins_remaining
+                }
+
+                回`;
+            }
+
+            else {
+                currentReelEl.textContent=`第 $ {
+                    currentSession.current_reel
+                }
+
+                リール`;
+            }
+        }
+    }
+
+    else {
+        if (currentReelEl) currentReelEl.textContent='終了';
+    }
+
+    if (sessionStatusEl) {
+        sessionStatusEl.textContent=currentSession.status==='active' ? '進行中': (currentSession.status==='bust' ? 'バースト' : '精算済み');
+    }
+}
+
+renderReelState(reels);
+
+burstBanner.style.display=currentSession.status==='bust' ? 'block' : 'none';
+if (payoutSummary) payoutSummary.style.display='none';
+if (payoutList) payoutList.innerHTML='';
+
+if ( !wasFreeSpinActive && currentSession.free_spin_active) {
+    // 初回FSへ移行：ボタン待機状態へ
+    awaitingFreeSpinStart=true;
+}
+
+// FS残り回数の増加はラウンド境界ではないため fs_ready へ寄せない
+
+if (currentSession.free_spin_active) {
+    normalizeFreeSpinState('update');
+}
+
+const forceFsReady=currentPhase==='fs_ready';
+
+if (currentSession.status !=='active') {
+    if (fsLoopActive && !(currentSession.status==='bust' && bustAutoStopping)) {
+        stopFullReelLoop();
+    }
+}
+
+if ( !currentSession.free_spin_active) {
+    if (wasFreeSpinActive) {
+        currentSession.jackpot_unlocked=false;
+        currentSession.free_spin_confirmed=false;
+    }
+
+    freeSpinDisplayActive=false;
+    awaitingFreeSpinStart=false;
+    if (stageEl) stageEl.classList.remove('free-spin');
+}
+
+else if (stageEl) {
+    if (freeSpinDisplayActive || awaitingFreeSpinStart || fsLoopActive) {
+        stageEl.classList.add('free-spin');
+    }
+
+    else {
+        stageEl.classList.remove('free-spin');
+    }
+}
+
+if (awaitingFreeSpinStart && fsLoopActive && currentSession.current_reel===1) {
+    if (DEBUG_FS) console.debug('[fs] stop loop on fs_ready', {
+        currentReel: currentSession.current_reel,
+        freeSpinsRemaining: currentSession.free_spins_remaining
+    });
+stopFullReelLoop();
+}
+
+if (currentSession) {
+    const desiredMode=currentSession.free_spin_active ? 'free': 'normal';
+
+    if (desiredMode !==lastLoopMode) {
+        updateLoopSymbols();
+    }
+}
+
+applyStartButtonState();
+
+if (lastFreeSpinSessionId && currentSession.id !==lastFreeSpinSessionId) {
+    lastFreeSpinSummary=null;
+    lastFreeSpinSessionId=null;
+    lastFreeSpinsRemaining=null;
+}
+
+wasFreeSpinActive= ! !currentSession.free_spin_active;
+lastFreeSpinsRemaining=currentSession.free_spins_remaining ?? lastFreeSpinsRemaining;
+
+if ( !currentSession.free_spin_active && lastFreeSpinSessionId===currentSession.id) {
+    const freeReels=(currentSession.reels || []).filter(reel=> reel.is_free_spin || Number(reel.free_spin_round || 0) > 0);
+
+    if (freeReels.length) {
+        let multiplierSum=0;
+
+        const totals= {
+            coin: 0, gacha_ticket: 0, mangan_ticket: 0
+        }
+
+        ;
+
+        freeReels.forEach(reel=> {
+                if (reel.reward_type==='multiplier') {
+                    multiplierSum +=Number.parseFloat(reel.amount || 0) || 0;
+                }
+
+                else if ( !reel.is_bust) {
+                    if (reel.reward_type==='coin') totals.coin +=Number(reel.amount || 0);
+                    if (reel.reward_type==='gacha_ticket') totals.gacha_ticket +=Number(reel.amount || 0);
+                    if (reel.reward_type==='mangan_ticket') totals.mangan_ticket +=Number(reel.amount || 0);
+                }
+            });
+        totals.gacha_ticket=roundTo1(totals.gacha_ticket);
+        totals.mangan_ticket=roundTo1(totals.mangan_ticket);
+        const mult=1+multiplierSum;
+        const formatted=mult.toFixed(2).replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
+
+        lastFreeSpinSummary= {
+            multiplierText: `×$ {
+                formatted
+            }
+
+            `,
+            totalsText: `🪙 $ {
+                totals.coin
+            }
+
+            / 🎫 $ {
+                totals.gacha_ticket
+            }
+
+            / 🧧 $ {
+                totals.mangan_ticket
+            }
+
+            `
+        }
+
+        ;
+    }
+}
+
+if (spinLocked) {
+    if (sessionStatusEl) sessionStatusEl.textContent='回転中';
+    burstBanner.style.display='none';
+}
+
+if (currentSession.status==='cashed_out' && !spinLocked) {
+    if (payoutSummary) payoutSummary.style.display='block';
+    const payoutItems=currentSession.payout || [];
+
+    const totals= {
+        coin: 0, gacha_ticket: 0, mangan_ticket: 0, exchange_ticket: 0
+    }
+
+    ;
+    let multiplierLabel='';
+
+    payoutItems.forEach(item=> {
+            if ( !item?.type) return;
+
+            if (item.type==='multiplier') {
+                multiplierLabel=item.reward_name || `$ {
+                    item.amount || ''
+                }
+
+                倍`;
+                return;
+            }
+
+            totals[item.type]=(totals[item.type] || 0) + Number(item.amount || 0);
+        });
+    totals.gacha_ticket=roundTo1(totals.gacha_ticket || 0);
+    totals.mangan_ticket=roundTo1(totals.mangan_ticket || 0);
+    const parts=[];
+
+    if (multiplierLabel) parts.push(`✨ $ {
+            multiplierLabel
+        }
+
+        `);
+
+    if (totals.coin) parts.push(`🪙 +$ {
+            totals.coin
+        }
+
+        `);
+
+    if (totals.gacha_ticket) parts.push(`🎫 +$ {
+            totals.gacha_ticket
+        }
+
+        `);
+
+    if (totals.mangan_ticket) parts.push(`🧧 +$ {
+            totals.mangan_ticket
+        }
+
+        `);
+
+    if (totals.exchange_ticket) parts.push(`🎫 +$ {
+            totals.exchange_ticket
+        }
+
+        `);
+
+    if ( !parts.length) {
+        const freeReels=(currentSession.reels || []).filter(reel=> reel.is_free_spin || Number(reel.free_spin_round || 0) > 0);
+
+        if (freeReels.length) {
+            let multiplierSum=0;
+
+            const fallTotals= {
+                coin: 0, gacha_ticket: 0, mangan_ticket: 0
+            }
+
+            ;
+
+            freeReels.forEach(reel=> {
+                    if (reel.reward_type==='multiplier') {
+                        multiplierSum +=Number.parseFloat(reel.amount || 0) || 0;
+                    }
+
+                    else if ( !reel.is_bust) {
+                        if (reel.reward_type==='coin') fallTotals.coin +=Number(reel.amount || 0);
+                        if (reel.reward_type==='gacha_ticket') fallTotals.gacha_ticket +=Number(reel.amount || 0);
+                        if (reel.reward_type==='mangan_ticket') fallTotals.mangan_ticket +=Number(reel.amount || 0);
+                    }
+                });
+            fallTotals.gacha_ticket=roundTo1(fallTotals.gacha_ticket);
+            fallTotals.mangan_ticket=roundTo1(fallTotals.mangan_ticket);
+            const fallParts=[];
+
+            if (multiplierSum > 0) {
+                const mult=1+multiplierSum;
+                const formatted=mult.toFixed(2).replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
+
+                fallParts.push(`✨ ×$ {
+                        formatted
+                    }
+
+                    `);
+            }
+
+            if (fallTotals.coin) fallParts.push(`🪙 +$ {
+                    fallTotals.coin
+                }
+
+                `);
+
+            if (fallTotals.gacha_ticket) fallParts.push(`🎫 +$ {
+                    fallTotals.gacha_ticket
+                }
+
+                `);
+
+            if (fallTotals.mangan_ticket) fallParts.push(`🧧 +$ {
+                    fallTotals.mangan_ticket
+                }
+
+                `);
+            if (payoutList) payoutList.innerHTML=fallParts.length ? fallParts.join(' / ') : '報酬なし';
+        }
+
+        else if (lastFreeSpinSummary && lastFreeSpinSessionId===currentSession.id) {
+            const fallbackParts=[];
+
+            if (lastFreeSpinSummary.multiplierText) fallbackParts.push(`✨ $ {
+                    lastFreeSpinSummary.multiplierText
+                }
+
+                `);
+            if (lastFreeSpinSummary.totalsText) fallbackParts.push(lastFreeSpinSummary.totalsText);
+            if (payoutList) payoutList.innerHTML=fallbackParts.length ? fallbackParts.join(' / ') : '報酬なし';
+        }
+
+        else {
+            if (payoutList) payoutList.innerHTML='報酬なし';
+        }
+    }
+
+    else {
+        if (payoutList) payoutList.innerHTML=parts.length ? parts.join(' / '): '報酬なし';
+    }
+
+    if ( !sessionCashedOutDisplayed && !spinLocked) {
+        if (parts.length) {
+            showWinPopup(parts);
+            sessionCashedOutDisplayed=true;
+        }
+    }
+}
+
+else {
+    sessionCashedOutDisplayed=false;
+}
+
+if ( !currentSession.free_spin_active && !spinLocked) {
+    messageEl.textContent='';
+}
+
+const stopBtn=document.getElementById('btn-stop');
+const mobileStopBtn=document.getElementById('mobile-btn-stop');
+const hideStop= ! !currentSession.free_spin_active;
+if (stopBtn) stopBtn.style.display=hideStop ? 'none' : '';
+if (mobileStopBtn) mobileStopBtn.style.display=hideStop ? 'none' : '';
+if (stopBtn) stopBtn.disabled=isProcessing || currentSession.status !=='active' || currentSession.free_spin_active || (currentSession.reels || []).length===0;
+
+if (spinLocked && !forceFsReady) {
+    setProcessing(true, {
+        skipUpdate: true
+    });
+const jackpotBtn=document.getElementById('btn-jackpot-confirm');
+if (jackpotBtn) jackpotBtn.disabled=true;
+const mobileStop=document.getElementById('mobile-btn-stop');
+if (mobileStop) mobileStop.disabled=true;
+updateReelButtons();
+}
+
+else {
+    if (forceFsReady) {
+        setProcessing(false, {
+            skipUpdate: true
+        });
+}
+
+if (currentSession.free_spin_active && currentSession.current_reel===1 && !awaitingFreeSpinStart && !fsLoopActive) {
+    const roundCount=getCurrentFreeSpinRoundCount(reels);
+    const justAdvancedRound=prevFreeSpinsRemaining !==null && currentSession.free_spins_remaining < prevFreeSpinsRemaining;
+
+    if (justAdvancedRound || roundCount===0) {
+        // 次のラウンドへ進んだ：図柄を保持したままボタン待機
+        awaitingFreeSpinStart=true;
+    }
+}
+
+setProcessing(false, {
+    skipUpdate: true
+});
+const jackpotBtn=document.getElementById('btn-jackpot-confirm');
+if (jackpotBtn) jackpotBtn.disabled=isProcessing || !currentSession.jackpot_unlocked || currentSession.free_spin_confirmed;
+const mobileStop=document.getElementById('mobile-btn-stop');
+if (mobileStop) mobileStop.disabled=isProcessing || currentSession.status !=='active' || currentSession.free_spin_active || (currentSession.reels || []).length===0;
+updateReelButtons();
+}
+
+if ( !spinLocked) {
+    const enteringFreeSpin= ! !currentSession.free_spin_active && !hasAnyFreeReels;
+
+    if (enteringFreeSpin) {
+        if (multiplierEl) multiplierEl.textContent='×1.0';
+        if (mobileMultiplierEl) mobileMultiplierEl.textContent='×1.0';
+        if (totalEl) totalEl.textContent='🪙 0 / 🎫 0 / 🧧 0';
+        if (mobileTotalEl) mobileTotalEl.textContent='🪙 0 / 🎫 0 / 🧧 0';
+    }
+
+    else if ( !enteringFreeSpin) {
+        const displayReels=getDisplayReels(reels);
+        const isFree= ! !currentSession.free_spin_active;
+        const sourceReels=isFree ? (currentSession.reels || []).filter(reel=> reel.is_free_spin || Number(reel.free_spin_round || 0) > 0): displayReels;
+
+        if (isFree && sourceReels.length===0) {
+            if (multiplierEl) multiplierEl.textContent='×1.0';
+            if (mobileMultiplierEl) mobileMultiplierEl.textContent='×1.0';
+            if (totalEl) totalEl.textContent='🪙 0 / 🎫 0 / 🧧 0';
+            if (mobileTotalEl) mobileTotalEl.textContent='🪙 0 / 🎫 0 / 🧧 0';
+        }
+
+        else {
+            let multiplierSum=sourceReels.reduce((sum, reel)=> {
+                    if (reel.reward_type !=='multiplier') return sum;
+                    return sum + (Number.parseFloat(reel.amount || 0) || 0);
+                }
+
+                , 0);
+            const totalMultiplier=1+multiplierSum;
+            const formatted=totalMultiplier.toFixed(2).replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
+
+            if (isFree && freeSpinDisplayActive) {
+                lastFreeSpinSummary= {
+                    multiplierText: `×$ {
+                        formatted
+                    }
+
+                    `,
+                    totalsText: null
+                }
+
+                ;
+                lastFreeSpinSessionId=currentSession.id;
+            }
+
+            const totals= {
+                coin: 0, gacha_ticket: 0, mangan_ticket: 0
+            }
+
+            ;
+
+            sourceReels.forEach(reel=> {
+                    if (reel.is_bust) return;
+                    if (reel.reward_type==='coin') totals.coin +=Number(reel.amount || 0);
+                    if (reel.reward_type==='gacha_ticket') totals.gacha_ticket +=Number(reel.amount || 0);
+                    if (reel.reward_type==='mangan_ticket') totals.mangan_ticket +=Number(reel.amount || 0);
+                });
+            totals.gacha_ticket=roundTo1(totals.gacha_ticket);
+            totals.mangan_ticket=roundTo1(totals.mangan_ticket);
+
+            const totalText=`🪙 $ {
+                totals.coin
+            }
+
+            / 🎫 $ {
+                totals.gacha_ticket
+            }
+
+            / 🧧 $ {
+                totals.mangan_ticket
+            }
+
+            `;
+
+            if (isFree && freeSpinDisplayActive) {
+                if (lastFreeSpinSummary) lastFreeSpinSummary.totalsText=totalText;
+            }
+
+            if ( !isFree && lastFreeSpinSummary && lastFreeSpinSessionId===currentSession.id) {
+                if (multiplierEl) multiplierEl.textContent=lastFreeSpinSummary.multiplierText || '×1.0';
+                if (mobileMultiplierEl) mobileMultiplierEl.textContent=lastFreeSpinSummary.multiplierText || '×1.0';
+                if (totalEl) totalEl.textContent=lastFreeSpinSummary.totalsText || '🪙 0 / 🎫 0 / 🧧 0';
+                if (mobileTotalEl) mobileTotalEl.textContent=lastFreeSpinSummary.totalsText || '🪙 0 / 🎫 0 / 🧧 0';
+            }
+
+            else {
+                if (multiplierEl) multiplierEl.textContent=`×$ {
+                    formatted
+                }
+
+                `;
+
+                if (mobileMultiplierEl) mobileMultiplierEl.textContent=`×$ {
+                    formatted
+                }
+
+                `;
+                if (totalEl) totalEl.textContent=totalText;
+                if (mobileTotalEl) mobileTotalEl.textContent=totalText;
+            }
+
+            lastCarrySummary= {
+                multiplierText: `×$ {
+                    formatted
+                }
+
+                `,
+                totalsText: totalText
+            }
+
+            ;
+        }
+    }
+}
+
+if (currentSession.free_spin_active && !spinLocked && (freeSpinDisplayActive || awaitingFreeSpinStart || fsLoopActive)) {
+    if (displayedFreeSpinsRemaining===null || displayedFreeSpinsRemaining !==currentSession.free_spins_remaining) {
+        displayedFreeSpinsRemaining=currentSession.free_spins_remaining;
+    }
+
+    messageEl.textContent=`FreeSpin 残り$ {
+        displayedFreeSpinsRemaining
+    }
+
+    `;
+}
+
+updateFreeSpinStockBar();
+}
+
+let previousStocks=0;
+
+function updateFreeSpinStockBar() {
+    const bar=document.getElementById('free-spin-stock-bar');
+    const icons=document.getElementById('free-spin-stock-icons');
+    const bonus=document.getElementById('free-spin-stock-bonus');
+    if ( !bar || !icons) return;
+
+    const isFree=currentSession?.free_spin_active;
+
+    if ( !isFree || !freeSpinDisplayActive) {
+        bar.classList.remove('active');
+        if ( !isFree) previousStocks=0;
+        return;
+    }
+
+    bar.classList.add('active');
+
+    const spinLocked=isSpinLocked();
+    const targetStocks=currentSession?.free_spin_stocks ?? 0;
+    const displayStocks=spinLocked ? previousStocks : targetStocks;
+    if ( !spinLocked) previousStocks=targetStocks;
+
+    let html='';
+
+    for (let i=0; i < 3; i++) {
+        const filled=i < displayStocks ? 'filled': '';
+        html+=`<div class="stock-icon ${filled}"><img src="../images/slot/FreeSpin.png" alt="FS"></div>`;
+    }
+
+    icons.innerHTML=html;
+
+    if (bonus) bonus.textContent=displayStocks>=3 ? '→ +1 スピン！' : `$ {
+        displayStocks
+    }
+
+    / 3`;
+}
+
+let sessionCashedOutDisplayed=false;
+
+function showWinPopup(parts) {
+    const popup=document.getElementById('win-popup');
+    const rewardsContainer=document.getElementById('win-popup-rewards');
+    if ( !popup || !rewardsContainer) return;
+
+    if (parts.length===0) {
+        rewardsContainer.innerHTML='<div>報酬なし</div>';
+    }
+
+    else {
+        rewardsContainer.innerHTML=parts.map(p=> `<div>$ {
+                p
+            }
+
+            </div>`).join('');
+    }
+
+    popup.classList.add('show');
+}
+
+async function loadSlotGlobalStats() {
+    const updatedEl=document.getElementById('slot-stats-updated');
+    const totalSpinsEl=document.getElementById('slot-total-spins');
+    const fsSpinsEl=document.getElementById('slot-fs-spins');
+    const totalCoinEl=document.getElementById('slot-total-coin');
+    const totalTicketsEl=document.getElementById('slot-total-tickets');
+    const jpRankingEl=document.getElementById('slot-jp-ranking');
+    const jpTopEl=document.getElementById('slot-jp-top3');
+    const userSpinsEl=document.getElementById('slot-user-spins');
+    const userCoinEl=document.getElementById('slot-user-coin');
+    const userTicketsEl=document.getElementById('slot-user-tickets');
+    const userFsEl=document.getElementById('slot-user-fs');
+
+    try {
+        if (updatedEl) updatedEl.textContent='集計中...';
+
+        const fetchAll=async ()=> {
+            const rows=[];
+            const pageSize=1000;
+
+            for (let from=0; ; from +=pageSize) {
+                const to=from+pageSize - 1;
+
+                const {
+                    data,
+                    error
+                }
+
+                =await supabaseClient .from('slot_sessions') .select('user_id, account_name, reels_state, payout_summary, jackpot_hits, status, cost') .range(from, to);
+                if (error) throw error;
+                if ( !data || data.length===0) break;
+                rows.push(...data);
+                if (data.length < pageSize) break;
+            }
+
+            return rows;
+        }
+
+        ;
+        const data=await fetchAll();
+
+        let totalSpins=0;
+        let fsSpins=0;
+        let totalCoin=0;
+        let totalGacha=0;
+        let totalMangan=0;
+
+        let userSpins=0;
+        let userFs=0;
+        let userCoin=0;
+        let userGacha=0;
+        let userMangan=0;
+
+        const jpUserTotals=new Map();
+
+        const jpTopByType= {
+            coin: [], gacha_ticket: [], mangan_ticket: []
+        }
+
+        ;
+
+        const myIds=new Set([currentUserId, currentAuthUserId, (window.AUTH_USER && (AUTH_USER.id || AUTH_USER.user_metadata?.provider_id))].filter(Boolean).map(id=> String(id)));
+        const myNames=new Set([currentAccountName, (window.AUTH_USER && (AUTH_USER.user_metadata?.full_name || AUTH_USER.user_metadata?.name))].filter(Boolean));
+
+        (data || []).forEach(row=> {
+                const reels=Array.isArray(row.reels_state) ? row.reels_state : [];
+                if (Number(row.cost || 0)===100) totalSpins +=1;
+                const fsEntered=reels.some(r=> r.is_free_spin || Number(r.free_spin_round || 0) > 0);
+                if (fsEntered) fsSpins +=1;
+
+                const payout=Array.isArray(row.payout_summary) ? row.payout_summary : [];
+                let rowCoin=0;
+                let rowGacha=0;
+                let rowMangan=0;
+
+                payout.forEach(item=> {
+                        if ( !item?.type) return;
+                        const amount=Number(item.amount || 0);
+                        if (item.type==='coin') rowCoin +=amount;
+                        if (item.type==='gacha_ticket') rowGacha +=amount;
+                        if (item.type==='mangan_ticket') rowMangan +=amount;
+                    });
+                totalCoin +=rowCoin;
+                totalGacha +=rowGacha;
+                totalMangan +=rowMangan;
+
+                const rowUserId=row.user_id !=null ? String(row.user_id) : null;
+                const isMe=(rowUserId && myIds.has(rowUserId)) || (row.account_name && myNames.has(row.account_name));
+
+                if (isMe) {
+                    if (Number(row.cost || 0)===100) userSpins +=1;
+                    userFs +=fsEntered ? 1 : 0;
+                    userCoin +=rowCoin;
+                    userGacha +=rowGacha;
+                    userMangan +=rowMangan;
+                }
+
+                if ((row.jackpot_hits || 0) >=3 && row.status==='cashed_out') {
+                    const key=row.user_id || 'unknown';
+
+                    const prev=jpUserTotals.get(key) || {
+                        name: row.account_name || row.user_id || 'unknown', coin: 0, gacha: 0, mangan: 0
+                    }
+
+                    ;
+                    prev.coin +=rowCoin;
+                    prev.gacha +=rowGacha;
+                    prev.mangan +=rowMangan;
+                    jpUserTotals.set(key, prev);
+
+                    if (rowCoin > 0 || rowGacha > 0 || rowMangan > 0) {
+                        jpTopByType.coin.push({
+                            name: prev.name, coin: rowCoin, gacha: rowGacha, mangan: rowMangan
+                        });
+
+                    jpTopByType.gacha_ticket.push({
+                        name: prev.name, coin: rowCoin, gacha: rowGacha, mangan: rowMangan
+                    });
+
+                jpTopByType.mangan_ticket.push({
+                    name: prev.name, coin: rowCoin, gacha: rowGacha, mangan: rowMangan
+                });
+        }
+    }
+});
+
+if (totalSpinsEl) totalSpinsEl.textContent=totalSpins.toLocaleString();
+if (fsSpinsEl) fsSpinsEl.textContent=fsSpins.toLocaleString();
+
+if (totalCoinEl) totalCoinEl.textContent=`🪙 $ {
+    totalCoin.toLocaleString()
+}
+
+`;
+totalGacha=roundTo1(totalGacha);
+totalMangan=roundTo1(totalMangan);
+
+if (totalTicketsEl) totalTicketsEl.textContent=`🎫 $ {
+    totalGacha
+}
+
+/ 🧧 $ {
+    totalMangan
+}
+
+`;
+if (userSpinsEl) userSpinsEl.textContent=userSpins.toLocaleString();
+
+if (userCoinEl) userCoinEl.textContent=`🪙 $ {
+    userCoin.toLocaleString()
+}
+
+`;
+userGacha=roundTo1(userGacha);
+userMangan=roundTo1(userMangan);
+
+if (userTicketsEl) userTicketsEl.textContent=`🎫 $ {
+    userGacha
+}
+
+/ 🧧 $ {
+    userMangan
+}
+
+`;
+if (userFsEl) userFsEl.textContent=userFs.toLocaleString();
+
+const jpSorted=Array.from(jpUserTotals.values()) .sort((a, b)=> (b.coin + b.gacha + b.mangan) - (a.coin + a.gacha + a.mangan)) .slice(0, 3);
+
+if (jpRankingEl) {
+    jpRankingEl.innerHTML=jpSorted.length ? jpSorted.map((user, idx)=> {
+            const gacha=roundTo1(user.gacha);
+            const mangan=roundTo1(user.mangan);
+
+            return `<li><span class="rank-emoji" >$ {
+                ['🥇', '🥈', '🥉'][idx] || '🏅'
+            }
+
+            </span>$ {
+                user.name
+            }
+
+            ：🪙 $ {
+                user.coin
+            }
+
+            / 🎫 $ {
+                gacha
+            }
+
+            / 🧧 $ {
+                mangan
+            }
+
+            </li>`;
+        }).join('') : '<li>データなし</li>';
+}
+
+const renderTop3=(type)=> {
+    const list=(jpTopByType[type] || []) .sort((a, b)=> (b[type==='coin' ? 'coin' : type==='gacha_ticket' ? 'gacha' : 'mangan'] || 0) - (a[type==='coin' ? 'coin' : type==='gacha_ticket' ? 'gacha' : 'mangan'] || 0)) .slice(0, 3);
+
+    if (jpTopEl) {
+        jpTopEl.innerHTML=list.length ? list.map((item, idx)=> {
+                const gacha=roundTo1(item.gacha);
+                const mangan=roundTo1(item.mangan);
+
+                return `<li><span class="rank-emoji" >$ {
+                    ['🥇', '🥈', '🥉'][idx] || '🏅'
+                }
+
+                </span>$ {
+                    item.name
+                }
+
+                ：🪙 $ {
+                    item.coin
+                }
+
+                / 🎫 $ {
+                    gacha
+                }
+
+                / 🧧 $ {
+                    mangan
+                }
+
+                </li>`;
+            }).join('') : '<li>データなし</li>';
+    }
+}
+
+;
+
+renderTop3('coin');
+const toggle=document.getElementById('slot-jp-top-toggle');
+
+if (toggle) {
+    toggle.querySelectorAll('button[data-jp-type]').forEach(btn=> {
+            btn.addEventListener('click', ()=> {
+                    toggle.querySelectorAll('button').forEach(b=> b.classList.remove('active'));
+                    btn.classList.add('active');
+                    renderTop3(btn.getAttribute('data-jp-type'));
+                });
+        });
+}
+
+if (updatedEl) updatedEl.textContent=`更新: $ {
+    new Date().toLocaleString('ja-JP')
+}
+
+`;
+}
+
+catch (err) {
+    console.error(err);
+    if (updatedEl) updatedEl.textContent='集計に失敗';
+}
+}
+
+function closeWinPopup() {
+    const popup=document.getElementById('win-popup');
+    if (popup) popup.classList.remove('show');
+
+    if (pendingFreeSpinAfterPopup && currentSession?.free_spin_active) {
+        pendingFreeSpinAfterPopup=false;
+        // ボタン待機状態へ移行（カットインはボタン押下時のみ）
+        awaitingFreeSpinStart=true;
+        updateUI();
+    }
+}
+
+async function startSession() {
+    if (isProcessing) return;
+    setProcessing(true);
+
+    try {
+        const {
+            data,
+            error
+        }
+
+        =await supabaseClient.rpc('slot_start_session', {
+            p_user_id: currentUserId
+        });
+    if (error) throw error;
+
+    if ( !data.ok) {
+        document.getElementById('session-message').textContent=`開始できません: $ {
+            data.error
+        }
+
+        `;
+        setProcessing(false);
+        return;
+    }
+
+    currentSession= {
+        ...data.session,
+        reels: data.reels || []
+    }
+
+    ;
+    loopStartRequested=false;
+    resetReelDisplay();
+    await refreshCoinBalance();
+    updateUI();
+}
+
+catch (err) {
+    console.error(err);
+    document.getElementById('session-message').textContent='開始に失敗しました。';
+    loopStartRequested=false;
+    if (fsLoopActive) stopFullReelLoop();
+    setProcessing(false);
+}
+}
+
+const SPIN_DURATION_MS=1600;
+let spinLockUntil=0;
+let lastSpinReel=null;
+
+async function spinReel(reelIndex, options= {}) {
+    if (isProcessing || !currentSession) {
+        if (pendingStopReels.has(reelIndex)) pendingStopReels.delete(reelIndex);
+        return;
+    }
+
+    if (currentSession.status !=='active') {
+        if (pendingStopReels.has(reelIndex)) pendingStopReels.delete(reelIndex);
+        return;
+    }
+
+    if (typeof reelIndex==='number' && reelIndex !==currentSession.current_reel) {
+        if (pendingStopReels.has(reelIndex)) pendingStopReels.delete(reelIndex);
+        return;
+    }
+
+    const instantStop= ! !options.instantStop;
+    const prevRemaining=currentSession.free_spins_remaining ?? null;
+    const prevRound=currentSession.free_spin_round ?? null;
+    const prevFreeSpinActive= ! !currentSession.free_spin_active;
+    setProcessing(true);
+
+    if (instantStop) {
+        spinLockUntil=0;
+        lastSpinReel=null;
+    }
+
+    else {
+        animateSpinSequence(currentSession.current_reel);
+    }
+
+    try {
+        const {
+            data,
+            error
+        }
+
+        =await supabaseClient.rpc('slot_spin_reel', {
+            p_user_id: currentUserId,
+            p_session_id: currentSession.id
+        });
+    if (error) throw error;
+
+    if ( !data.ok) {
+        if (data.error==='JACKPOT_CONFIRM_REQUIRED') {
+            document.getElementById('session-message').textContent='⚠️ フリースピン確定が必要です。';
+        }
+
+        else {
+            document.getElementById('session-message').textContent=`回せません: $ {
+                data.error
+            }
+
+            `;
+        }
+
+        pendingStopReels.delete(reelIndex);
+        setProcessing(false);
+        return;
+    }
+
+    currentSession= {
+        ...data.session,
+        reels: data.reels || []
+    }
+
+    ;
+    pendingStopReels.delete(reelIndex);
+    spinLockUntil=0;
+    lastSpinReel=null;
+
+    if (Number(data.bonus_added || 0) > 0) {
+        showFreeSpinBonusCutin(Number(data.bonus_added || 0));
+    }
+
+    const enteredFs=(data.outcome==='free_spin'
+        || data.entered_free_spin===true || ( !prevFreeSpinActive && data.session?.free_spin_active===true));
+
+    console.log('[spinReel resp]', {
+        auto_cashout: data.auto_cashout,
+        outcome: data.outcome,
+        entered_free_spin: data.entered_free_spin,
+        session_status: data.session?.status,
+        free_spin_active: data.session?.free_spin_active
+    });
+
+if (enteredFs) {
+    if (fsLoopActive) stopFullReelLoop();
+    pendingStopReels=new Set();
+    reelState=new Map();
+    awaitingFreeSpinStart=true;
+    freeSpinDisplayActive=false;
+
+    setProcessing(false, {
+        skipUpdate: true
+    });
+}
+
+if (data.auto_cashout && !enteredFs) {
+    currentSession.status='cashed_out';
+    currentSession.payout=data.payout || [];
+    await refreshCoinBalance();
+}
+
+if (prevFreeSpinActive && currentSession.free_spin_active && currentSession.current_reel===1) {
+    const roundAdvanced=prevRound !==null && currentSession.free_spin_round>prevRound;
+
+    if (roundAdvanced) {
+        if (fsLoopActive) stopFullReelLoop();
+        awaitingFreeSpinStart=true;
+    }
+}
+
+// バースト判定：直前のリールでバーストが出た場合、残りリールを即時バースト表示
+const resultReel=data.result || (data.reels || []).find(r=> toReelIndex(r.reel_index)===Number(reelIndex));
+
+if ( !prevFreeSpinActive && resultReel?.is_bust) {
+    applyBurstToRemainingReels();
+}
+
+else {
+    // 次のリールのSTOPボタンを有効化
+    updateReelButtons();
+}
+
+setProcessing(false, {
+    skipUpdate: true
+});
+updateUI();
+}
+
+catch (err) {
+    console.error(err);
+    document.getElementById('session-message').textContent='リール停止に失敗しました。';
+    pendingStopReels.delete(reelIndex);
+    spinLockUntil=0;
+    lastSpinReel=null;
+    setProcessing(false);
+    updateUI();
+}
+}
+
+async function cashout() {
+    if (isProcessing || !currentSession) return;
+    setProcessing(true);
+
+    try {
+        const {
+            data,
+            error
+        }
+
+        =await supabaseClient.rpc('slot_cashout', {
+            p_user_id: currentUserId,
+            p_session_id: currentSession.id
+        });
+    if (error) throw error;
+
+    if ( !data.ok) {
+        document.getElementById('session-message').textContent=`精算に失敗: $ {
+            data.error
+        }
+
+        `;
+        setProcessing(false);
+        return;
+    }
+
+    currentSession= {
+        ...data.session,
+        reels: currentSession.reels || [],
+            payout: data.payout || []
+    }
+
+    ;
+
+    if (data.outcome==='free_spin') {
+        const payoutItems=Array.isArray(data.payout) ? data.payout: [];
+        const parts=[];
+        let multiplierLabel='';
+
+        const totals= {
+            coin: 0, gacha_ticket: 0, mangan_ticket: 0, exchange_ticket: 0
+        }
+
+        ;
+
+        payoutItems.forEach(item=> {
+                if ( !item?.type) return;
+
+                if (item.type==='multiplier') {
+                    multiplierLabel=item.reward_name || `$ {
+                        item.amount || ''
+                    }
+
+                    倍`;
+                    return;
+                }
+
+                totals[item.type]=(totals[item.type] || 0) + Number(item.amount || 0);
+            });
+        totals.gacha_ticket=roundTo1(totals.gacha_ticket || 0);
+        totals.mangan_ticket=roundTo1(totals.mangan_ticket || 0);
+
+        if (multiplierLabel) parts.push(`✨ $ {
+                multiplierLabel
+            }
+
+            `);
+
+        if (totals.coin) parts.push(`🪙 +$ {
+                totals.coin
+            }
+
+            `);
+
+        if (totals.gacha_ticket) parts.push(`🎫 +$ {
+                totals.gacha_ticket
+            }
+
+            `);
+
+        if (totals.mangan_ticket) parts.push(`🧧 +$ {
+                totals.mangan_ticket
+            }
+
+            `);
+
+        if (totals.exchange_ticket) parts.push(`🎫 +$ {
+                totals.exchange_ticket
+            }
+
+            `);
+
+        if (parts.length) {
+            pendingFreeSpinAfterPopup=true;
+            showWinPopup(parts);
+        }
+    }
+
+    await refreshCoinBalance();
+    updateUI();
+}
+
+catch (err) {
+    console.error(err);
+    document.getElementById('session-message').textContent='精算に失敗しました。';
+    setProcessing(false);
+}
+}
+
+async function confirmJackpot(resetReels=false) {
+    if (isProcessing || !currentSession) return;
+    if ( !currentSession.jackpot_unlocked || currentSession.free_spin_confirmed) return;
+    setProcessing(true);
+
+    try {
+        const {
+            data,
+            error
+        }
+
+        =await supabaseClient.rpc('slot_confirm_jackpot', {
+            p_user_id: currentUserId,
+            p_session_id: currentSession.id
+        });
+    if (error) throw error;
+
+    if ( !data.ok) {
+        document.getElementById('session-message').textContent=`確定に失敗: $ {
+            data.error
+        }
+
+        `;
+        setProcessing(false);
+        return;
+    }
+
+    currentSession= {
+        ...data.session,
+        reels: data.reels || currentSession.reels || []
+    }
+
+    ;
+
+    if (resetReels) {
+        currentSession.reels=[];
+        resetReelDisplay();
+    }
+
+    updateUI();
+}
+
+catch (err) {
+    console.error(err);
+    document.getElementById('session-message').textContent='確定に失敗しました。';
+    setProcessing(false);
+}
+}
+
+window.addEventListener('DOMContentLoaded', initSlotPage);
+
+function buildReelStage() {
+    const stageEl=document.getElementById('reel-stage');
+    const mobileSummary=stageEl.querySelector('#mobile-summary');
+    const summaryHtml=mobileSummary ? mobileSummary.outerHTML: '';
+
+    stageEl.innerHTML=Array.from({
+        length: 7
+
+    }).map((_, idx)=> {
+        const reelIndex=idx + 1;
+
+        const symbols=reelSymbols.concat(reelSymbols).map(symbol=> `<span>$ {
+                symbol
+            }
+
+            </span>`).join('');
+
+        return ` <div class="reel-col" data-reel-index="${reelIndex}" > <div class="reel-label" >REEL $ {
+            reelIndex
+        }
+
+        </div> <div class="reel-window" > <div class="reel-symbols" >$ {
+            symbols
+        }
+
+        </div> <div class="reel-stop" ></div> </div> <div class="reel-result" >未停止</div> <button class="reel-btn-stop" data-reel-btn="${reelIndex}" onclick="stopSpecificReel(${reelIndex}, true)" disabled>STOP</button> </div> `;
+    }).join('')+summaryHtml;
+}
+
+function toReelIndex(value) {
+    const num=Number(value);
+    return Number.isFinite(num) ? num: null;
+}
+
+function applyInitialReelStateFromDB() {
+    if ( !currentSession) return;
+    fsLoopActive=false;
+    pendingStopReels=new Set();
+    reelState=new Map();
+    currentPhase=currentSession.free_spin_active ? 'fs_ready': 'idle';
+    const displayReels=getDisplayReels(currentSession.reels || []);
+    const stopped=new Map();
+
+    (displayReels || []).forEach(reel=> {
+            const idx=toReelIndex(reel.reel_index);
+            if (idx !==null) stopped.set(idx, reel);
+        });
+
+    if (currentSession.free_spin_active && stopped.size > 0) {
+        freeSpinDisplayActive=true;
+    }
+
+    document.querySelectorAll('.reel-col').forEach(col=> {
+            const reelIndex=Number(col.getAttribute('data-reel-index'));
+            const windowEl=col.querySelector('.reel-window');
+
+            if (windowEl) {
+                windowEl.classList.remove('spinning', 'fs-loop');
+
+                if (stopped.has(reelIndex)) {
+                    windowEl.classList.add('stopped');
+                    reelState.set(reelIndex, 'stopped');
+                }
+
+                else {
+                    windowEl.classList.remove('stopped');
+                    reelState.set(reelIndex, 'idle');
+                }
+            }
+        });
+}
+
+function normalizeFreeSpinState(reason='') {
+    if ( !currentSession || !currentSession.free_spin_active) {
+        currentPhase='idle';
+        return;
+    }
+
+    const reels=currentSession.reels || [];
+    const isReady=isFsReadyState(reels);
+
+    if (isReady) {
+        currentPhase='fs_ready';
+        fsLoopActive=false;
+        pendingStopReels=new Set();
+        reelState=new Map();
+
+        document.querySelectorAll('.reel-col').forEach(col=> {
+                const windowEl=col.querySelector('.reel-window');
+                const reelIndex=Number(col.getAttribute('data-reel-index'));
+
+                if (windowEl) {
+                    windowEl.classList.remove('spinning', 'fs-loop');
+                    windowEl.classList.add('stopped');
+                }
+
+                reelState.set(reelIndex, 'stopped');
+            });
+    }
+
+    else if (fsLoopActive) {
+        currentPhase='fs_spinning';
+    }
+
+    else {
+        currentPhase='fs_idle';
+    }
+}
+
+function getDisplayReels(reels) {
+    const isFree= ! !currentSession?.free_spin_active;
+    const displayFreeSpin=isFree && (freeSpinDisplayActive || awaitingFreeSpinStart || fsLoopActive);
+
+    if ( !displayFreeSpin) {
+        return (reels || []).filter(reel=> !reel.is_free_spin);
+    }
+
+    const hasFreeReels=(reels || []).some(reel=> reel.is_free_spin);
+
+    if ( !hasFreeReels) {
+        return (reels || []).filter(reel=> !reel.is_free_spin);
+    }
+
+    const displayRound=(reels || []).reduce((maxRound, reel)=> {
+            if ( !reel.is_free_spin) return maxRound;
+            const round=Number(reel.free_spin_round || 0);
+            return round > maxRound ? round : maxRound;
+        }
+
+        , 0);
+    return (reels || []).filter(reel=> reel.is_free_spin && Number(reel.free_spin_round || 0)===displayRound);
+}
+
+function renderReelState(reels) {
+    const reelMap=new Map();
+    const isFree= ! !currentSession?.free_spin_active;
+    // 強制バースト表示は resetReelDisplay でのみ解除する
+    const displayReels=getDisplayReels(reels);
+
+    (displayReels || []).forEach(reel=> {
+            const idx=toReelIndex(reel.reel_index);
+            if (idx !==null) reelMap.set(idx, reel);
+        });
+
+    document.querySelectorAll('.reel-col').forEach(col=> {
+            const reelIndex=Number(col.getAttribute('data-reel-index'));
+            const reel=reelMap.get(reelIndex);
+            const windowEl=col.querySelector('.reel-window');
+            const resultEl=col.querySelector('.reel-result');
+            const stopEl=col.querySelector('.reel-stop');
+            const spinLockActive=lastSpinReel===reelIndex && Date.now() < spinLockUntil;
+            const forcedBust=col.classList.contains('forced-bust');
+            const isStopped= ! !reel || forcedBust;
+            const isPendingStop=pendingStopReels.has(reelIndex);
+            const shouldLoopSpin=fsLoopActive && currentSession?.status==='active' && !isStopped;
+            const useSpinLock=spinLockActive && !fsLoopActive && !isStopped;
+
+            col.classList.remove('done', 'bust');
+
+            if (windowEl) {
+                windowEl.classList.remove('spinning', 'stopped', 'fs-loop');
+            }
+
+            if (useSpinLock) {
+                reelState.set(reelIndex, 'spinning');
+                if (windowEl) windowEl.classList.add('spinning');
+                resultEl.textContent='回転中';
+                if (stopEl) stopEl.textContent='';
+                return;
+            }
+
+            if ( !reel) {
+                if (forcedBust) {
+                    reelState.set(reelIndex, 'stopped');
+                    resultEl.textContent='バースト';
+                    if (stopEl) stopEl.innerHTML=BURST_SYMBOL;
+                    if (windowEl) windowEl.classList.add('stopped');
+                    col.classList.add('done', 'bust');
+                    return;
+                }
+
+                if (currentPhase==='fs_ready') {
+                    reelState.set(reelIndex, 'stopped');
+                    resultEl.textContent='未停止';
+                    if (stopEl) stopEl.textContent='';
+                    if (windowEl) windowEl.classList.add('stopped');
+                    return;
+                }
+
+                if (shouldLoopSpin) {
+                    reelState.set(reelIndex, isPendingStop ? 'stopping' : 'spinning');
+                    if (windowEl) windowEl.classList.add('fs-loop');
+                    resultEl.textContent='回転中';
+                    if (stopEl) stopEl.textContent='';
+                    return;
+                }
+
+                reelState.set(reelIndex, 'idle');
+                resultEl.textContent='未停止';
+                if (stopEl) stopEl.textContent='';
+                return;
+            }
+
+            resultEl.textContent=reel.is_bust ? 'バースト'
+
+            : reel.is_free_spin_stock ? `FS + $ {
+                reel.reward_name || '報酬'
+            }
+
+            ` : reel.is_jackpot ? `JP + $ {
+                reel.reward_name || 'ジャックポット'
+            }
+
+            ` : (reel.reward_name || '報酬なし');
+            col.classList.add('done');
+            if (reel.is_bust) col.classList.add('bust');
+
+            if (stopEl) {
+                if (reel.is_bust) {
+                    stopEl.innerHTML=BURST_SYMBOL;
+                }
+
+                else if (reel.is_free_spin_stock) {
+                    stopEl.innerHTML=FREESPIN_SYMBOL;
+                }
+
+                else if (reel.is_jackpot) {
+                    stopEl.innerHTML=JACKPOT_SYMBOL;
+                }
+
+                else if (reel.reward_type==='coin') {
+                    stopEl.textContent='🪙';
+                }
+
+                else if (reel.reward_type==='gacha_ticket') {
+                    stopEl.textContent='🎫';
+                }
+
+                else if (reel.reward_type==='mangan_ticket') {
+                    stopEl.textContent='🧧';
+                }
+
+                else if (reel.reward_type==='multiplier') {
+                    stopEl.textContent=getMultiplierEmoji(reel.amount);
+                }
+
+                else {
+                    stopEl.textContent='🎁';
+                }
+            }
+
+            reelState.set(reelIndex, 'stopped');
+            if (windowEl) windowEl.classList.add('stopped');
+        });
+}
+
+function animateSpinSequence(targetReel) {
+    const index=Math.max(1, Math.min(7, targetReel));
+    spinLockUntil=Date.now()+SPIN_DURATION_MS;
+    lastSpinReel=index;
+
+    for (let i=1; i <=7; i++) {
+        const col=document.querySelector(`.reel-col[data-reel-index="${i}"]`);
+        if ( !col) continue;
+        const windowEl=col.querySelector('.reel-window');
+        const stopEl=col.querySelector('.reel-stop');
+        windowEl.classList.remove('spinning');
+
+        if (i===index) {
+            if (stopEl) stopEl.textContent='';
+            windowEl.classList.add('spinning');
+
+            setTimeout(()=> {
+                    windowEl.classList.remove('spinning');
+                    updateUI();
+                }
+
+                , SPIN_DURATION_MS);
+        }
+    }
+}
+
+function updateReelButtons() {
+    const current=currentSession?.current_reel;
+
+    // 各リールのSTOPボタン：ループ中かつカレントリールのみ有効
+    document.querySelectorAll('[data-reel-btn]').forEach(btn=> {
+            const reelIndex=Number(btn.getAttribute('data-reel-btn'));
+            const inFree=currentSession?.free_spin_active;
+            const roundCount=inFree ? getCurrentFreeSpinRoundCount(currentSession.reels || []) : (currentSession?.reels || []).filter(r=> !r.is_free_spin).length;
+            const expected=Math.min(7, (roundCount || 0) + 1);
+            const canStop=reelIndex===current || reelIndex===expected;
+            const spinning=reelState.get(reelIndex)==='spinning';
+            btn.disabled=isProcessing || awaitingFreeSpinStart || !currentSession || currentSession.status !=='active' || !spinning || !canStop || pendingStopReels.has(reelIndex);
+            btn.classList.toggle('active', spinning);
+        });
+}
+
+function setupAdminReelEditor() {
+    const panel=document.getElementById('slot-admin-panel');
+    if ( !panel) return;
+    panel.style.display=isAdmin ? 'block': 'none';
+    if ( !isAdmin) return;
+
+    const selectEl=document.getElementById('admin-reel-select');
+
+    selectEl.innerHTML=Array.from({
+        length: 7
+
+    }).map((_, i)=> {
+        const idx=i + 1;
+
+        return `<option value="${idx}" >REEL $ {
+            idx
+        }
+
+        </option>`;
+    }).join('');
+
+document.getElementById('admin-reel-load').addEventListener('click', ()=> loadAdminReel());
+document.getElementById('admin-reel-save').addEventListener('click', ()=> saveAdminReel());
+selectEl.addEventListener('change', ()=> loadAdminReel());
+const modeEl=document.getElementById('admin-reel-mode');
+
+if (modeEl) {
+    modeEl.addEventListener('change', ()=> {
+            updateAdminColumnVisibility(getAdminMode());
+            loadAdminReel();
+        });
+}
+
+updateAdminColumnVisibility(getAdminMode());
+loadAdminReel();
+}
+
+function getAdminMode() {
+    return document.getElementById('admin-reel-mode')?.value || 'normal';
+}
+
+function updateAdminColumnVisibility(mode) {
+    const showNormal=mode==='normal';
+
+    document.querySelectorAll('[data-admin-col="bust"], [data-admin-col="jackpot"]').forEach(el=> {
+            el.style.display=showNormal ? '' : 'none';
+        });
+
+    document.querySelectorAll('[data-admin-col="fsstock"]').forEach(el=> {
+            el.style.display=mode==='free' ? '' : 'none';
+        });
+}
+
+function setAdminStatus(message) {
+    const statusEl=document.getElementById('admin-reel-status');
+    if (statusEl) statusEl.textContent=message || '';
+}
+
+async function loadAdminReel() {
+    const selectEl=document.getElementById('admin-reel-select');
+    const reelIndex=Number(selectEl?.value || 1);
+    const mode=getAdminMode();
+    setAdminStatus('読み込み中...');
+
+    try {
+        const {
+            data,
+            error
+        }
+
+        =await supabaseClient .from('slot_reel_positions') .select('*') .eq('mode', mode) .eq('reel_index', reelIndex) .order('position_index', {
+            ascending: true
+        });
+    if (error) throw error;
+    renderAdminReelRows(data || [], mode);
+    setAdminStatus('読み込み完了');
+}
+
+catch (err) {
+    console.error(err);
+    setAdminStatus('読み込み失敗');
+}
+}
+
+function renderAdminReelRows(rows, mode) {
+    const body=document.getElementById('admin-reel-body');
+    if ( !body) return;
+
+    body.innerHTML=(rows || []).map(row=> {
+            const rewardType=row.reward_type || '';
+            const rewardName=row.reward_name || '';
+            const rewardId=row.reward_id || '';
+            const amount=row.amount ?? '';
+            const isBust=row.is_bust || false;
+            const isJackpot=row.is_jackpot || false;
+            const isFsStock=row.is_free_spin_stock || false;
+            const hideNormal=mode==='free' ? 'style="display:none;"' : '';
+            const hideFree=mode !=='free' ? 'style="display:none;"' : '';
+
+            return ` <tr data-position="${row.position_index}" > <td class="text-muted" >#$ {
+                row.position_index
+            }
+
+            </td> <td><input type="checkbox" class="form-check-input admin-active"$ {
+                row.is_active ? 'checked' : ''
+            }
+
+            ></td> <td data-admin-col="bust"$ {
+                hideNormal
+            }
+
+            ><input type="checkbox" class="form-check-input admin-bust"$ {
+                isBust ? 'checked' : ''
+            }
+
+            ></td> <td data-admin-col="jackpot"$ {
+                hideNormal
+            }
+
+            ><input type="checkbox" class="form-check-input admin-jackpot"$ {
+                isJackpot ? 'checked' : ''
+            }
+
+            ></td> <td data-admin-col="fsstock"$ {
+                hideFree
+            }
+
+            ><input type="checkbox" class="form-check-input admin-fsstock"$ {
+                isFsStock ? 'checked' : ''
+            }
+
+            ></td> <td> <select class="form-select form-select-sm admin-reward-type" > <option value="" >なし</option> <option value="coin"$ {
+                rewardType==='coin' ? 'selected' : ''
+            }
+
+            >coin</option> <option value="gacha_ticket"$ {
+                rewardType==='gacha_ticket' ? 'selected' : ''
+            }
+
+            >gacha_ticket</option> <option value="mangan_ticket"$ {
+                rewardType==='mangan_ticket' ? 'selected' : ''
+            }
+
+            >mangan_ticket</option> <option value="exchange_ticket"$ {
+                rewardType==='exchange_ticket' ? 'selected' : ''
+            }
+
+            >exchange_ticket</option> <option value="badge"$ {
+                rewardType==='badge' ? 'selected' : ''
+            }
+
+            >badge</option> <option value="multiplier"$ {
+                rewardType==='multiplier' ? 'selected' : ''
+            }
+
+            >multiplier</option> </select> </td> <td><input type="text" class="form-control form-control-sm admin-reward-name" value="${rewardName}" ></td> <td><input type="number" min="0" step="0.1" class="form-control form-control-sm admin-amount" value="${amount}" ></td> <td><input type="text" class="form-control form-control-sm admin-reward-id" value="${rewardId}" ></td> </tr> `;
+        }).join('');
+
+    body.querySelectorAll('tr').forEach(row=> {
+            const bustEl=row.querySelector('.admin-bust');
+            const jackpotEl=row.querySelector('.admin-jackpot');
+            const rewardTypeEl=row.querySelector('.admin-reward-type');
+            const rewardNameEl=row.querySelector('.admin-reward-name');
+            const amountEl=row.querySelector('.admin-amount');
+            const rewardIdEl=row.querySelector('.admin-reward-id');
+
+            const applyRowState=()=> {
+                const isBustChecked=bustEl?.checked;
+                if (isBustChecked && jackpotEl) jackpotEl.checked=false;
+                const disableRewards=mode==='free' ? false : ! !isBustChecked;
+                if (rewardTypeEl) rewardTypeEl.disabled=disableRewards;
+                if (rewardNameEl) rewardNameEl.disabled=disableRewards;
+                if (amountEl) amountEl.disabled=disableRewards;
+                if (rewardIdEl) rewardIdEl.disabled=disableRewards;
+            }
+
+            ;
+
+            const clearBust=()=> {
+                if (bustEl?.checked) bustEl.checked=false;
+                applyRowState();
+            }
+
+            ;
+
+            if (bustEl) bustEl.addEventListener('change', applyRowState);
+            if (jackpotEl) jackpotEl.addEventListener('change', clearBust);
+            applyRowState();
+        });
+}
+
+async function saveAdminReel() {
+    const selectEl=document.getElementById('admin-reel-select');
+    const reelIndex=Number(selectEl?.value || 1);
+    const mode=getAdminMode();
+    const body=document.getElementById('admin-reel-body');
+    if ( !body) return;
+
+    const payload=[];
+
+    body.querySelectorAll('tr').forEach(row=> {
+            const positionIndex=Number(row.getAttribute('data-position'));
+            const isActive=row.querySelector('.admin-active')?.checked ?? false;
+            const isBust=mode==='free' ? false : (row.querySelector('.admin-bust')?.checked ?? false);
+            const isJackpot=mode==='free' ? false : ( !isBust && (row.querySelector('.admin-jackpot')?.checked ?? false));
+            const isFsStock=mode==='free' ? (row.querySelector('.admin-fsstock')?.checked ?? false) : false;
+            const rewardTypeRaw=row.querySelector('.admin-reward-type')?.value || '';
+            const rewardType=isBust ? null : (rewardTypeRaw || null);
+            const rewardNameRaw=row.querySelector('.admin-reward-name')?.value?.trim() || '';
+            const rewardName=isBust ? null : (rewardNameRaw || null);
+            const rewardIdRaw=row.querySelector('.admin-reward-id')?.value?.trim() || '';
+            const rewardId=isBust ? null : (rewardIdRaw || null);
+            const amountRaw=row.querySelector('.admin-amount')?.value;
+            const amountVal=isBust ? 0 : Number.parseFloat(amountRaw || 0);
+
+            const rowData= {
+                mode: mode,
+                reel_index: reelIndex,
+                position_index: positionIndex,
+                is_active: isActive,
+                is_bust: mode==='free' ? false : isBust,
+                is_jackpot: mode==='free' ? false : isJackpot,
+                is_free_spin_stock: isFsStock,
+                reward_type: rewardType,
+                reward_name: rewardName,
+                reward_id: rewardId,
+                amount: amountVal
+            }
+
+            ;
+            payload.push(rowData);
+        });
+
+    setAdminStatus('保存中...');
+
+    try {
+        const {
+            error
+        }
+
+        =await supabaseClient .from('slot_reel_positions') .upsert(payload, {
+            onConflict: 'mode,reel_index,position_index'
+        });
+    if (error) throw error;
+    setAdminStatus('保存完了');
+}
+
+catch (err) {
+    console.error(err);
+    setAdminStatus('保存失敗');
+}
+}
+
+</script></body></html>
