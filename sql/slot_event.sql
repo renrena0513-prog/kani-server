@@ -118,29 +118,7 @@ begin
         return jsonb_build_object('ok', true, 'session', null, 'reels', v_reels);
     end if;
 
-    select coalesce(jsonb_agg(
-        jsonb_build_object(
-            'reel_index', r.reel_index,
-            'position_id', r.position_id,
-            'is_bust', r.is_bust,
-            'is_jackpot', r.is_jackpot,
-            'is_free_spin_stock', r.is_free_spin_stock,
-            'is_free_spin', (r.mode = 'free'),
-            'free_spin_round', r.free_spin_round,
-            'reward_type', r.reward_type,
-            'reward_name', r.reward_name,
-            'reward_id', r.reward_id,
-            'amount', r.amount
-        )
-        order by r.created_at
-    ), '[]'::jsonb)
-    into v_reels
-    from public.slot_reel_results r
-    where r.session_id = v_session.id;
-
-    if jsonb_array_length(v_reels) = 0 then
-        v_reels := coalesce(v_session.reels_state, '[]'::jsonb);
-    end if;
+    v_reels := coalesce(v_session.reels_state, '[]'::jsonb);
 
     return jsonb_build_object(
         'ok', true,
@@ -209,33 +187,11 @@ begin
     for update;
 
     if found then
-        select coalesce(jsonb_agg(
-            jsonb_build_object(
-                'reel_index', r.reel_index,
-                'position_id', r.position_id,
-                'is_bust', r.is_bust,
-                'is_jackpot', r.is_jackpot,
-                'is_free_spin_stock', r.is_free_spin_stock,
-                'is_free_spin', (r.mode = 'free'),
-                'free_spin_round', r.free_spin_round,
-                'reward_type', r.reward_type,
-                'reward_name', r.reward_name,
-                'reward_id', r.reward_id,
-                'amount', r.amount
-            )
-            order by r.created_at
-        ), '[]'::jsonb)
-        into v_reels
-        from public.slot_reel_results r
-        where r.session_id = v_session.id;
+        v_reels := coalesce(v_session.reels_state, '[]'::jsonb);
 
-        if jsonb_array_length(v_reels) = 0 then
-            v_reels := coalesce(v_session.reels_state, '[]'::jsonb);
-        end if;
-
-    return jsonb_build_object(
-        'ok', true,
-        'session', jsonb_build_object(
+        return jsonb_build_object(
+            'ok', true,
+            'session', jsonb_build_object(
             'id', v_session.id,
             'status', v_session.status,
             'cost', v_session.cost,
@@ -338,6 +294,7 @@ declare
     v_mode text;
     v_is_bust boolean := false;
     v_bonus_added integer := 0;
+    v_bust_reel_index integer := null;
 begin
     perform pg_advisory_xact_lock(hashtext('slot:' || p_user_id));
 
@@ -357,55 +314,14 @@ begin
     v_reel_index := v_session.current_reel;
     v_mode := case when v_session.free_spin_active then 'free' else 'normal' end;
 
-    select coalesce(jsonb_agg(
-        jsonb_build_object(
-            'reel_index', r.reel_index,
-            'position_id', r.position_id,
-            'is_bust', r.is_bust,
-            'is_jackpot', r.is_jackpot,
-            'is_free_spin_stock', r.is_free_spin_stock,
-            'is_free_spin', (r.mode = 'free'),
-            'free_spin_round', r.free_spin_round,
-            'reward_type', r.reward_type,
-            'reward_name', r.reward_name,
-            'reward_id', r.reward_id,
-            'amount', r.amount
-        )
-        order by r.created_at
-    ), '[]'::jsonb)
-    into v_reels
-    from public.slot_reel_results r
-    where r.session_id = v_session.id;
+    v_reels := coalesce(v_session.reels_state, '[]'::jsonb);
 
-    select jsonb_build_object(
-            'reel_index', r.reel_index,
-            'position_id', r.position_id,
-            'is_bust', r.is_bust,
-            'is_jackpot', r.is_jackpot,
-            'is_free_spin_stock', r.is_free_spin_stock,
-            'is_free_spin', (r.mode = 'free'),
-            'free_spin_round', r.free_spin_round,
-            'reward_type', r.reward_type,
-            'reward_name', r.reward_name,
-            'reward_id', r.reward_id,
-            'amount', r.amount
-        )
-    into v_existing
-    from public.slot_reel_results r
-    where r.session_id = v_session.id
-      and r.reel_index = v_reel_index
-      and r.free_spin_round = v_session.free_spin_round
-      and r.mode = v_mode
+    select elem into v_existing
+    from jsonb_array_elements(v_reels) elem
+    where (elem->>'reel_index')::int = v_reel_index
+      and coalesce((elem->>'free_spin_round')::int, 0) = v_session.free_spin_round
+      and (elem->>'is_free_spin')::boolean = (v_mode = 'free')
     limit 1;
-
-    if v_existing is null and jsonb_array_length(v_reels) = 0 then
-        v_reels := coalesce(v_session.reels_state, '[]'::jsonb);
-        select elem into v_existing
-        from jsonb_array_elements(v_reels) elem
-        where (elem->>'reel_index')::int = v_reel_index
-          and coalesce((elem->>'free_spin_round')::int, 0) = v_session.free_spin_round
-        limit 1;
-    end if;
 
     if v_existing is not null then
         return jsonb_build_object(
@@ -461,35 +377,44 @@ begin
         v_is_bust := false;
     end if;
 
-    -- 結果を slot_reel_results に追加
-    insert into public.slot_reel_results (
-        session_id, user_id, mode, free_spin_round, reel_index, position_id,
-        is_bust, is_jackpot, is_free_spin_stock, reward_type, reward_name, reward_id, amount
-    ) values (
-        v_session.id, p_user_id, v_mode, v_session.free_spin_round, v_reel_index, v_position.id,
-        v_is_bust, coalesce(v_position.is_jackpot, false), coalesce(v_position.is_free_spin_stock, false),
-        v_position.reward_type, v_position.reward_name, v_position.reward_id, v_position.amount
-    );
+    -- 結果を reels_state に追加
+    v_reels := v_reels || jsonb_build_array(jsonb_build_object(
+        'reel_index', v_reel_index,
+        'position_id', v_position.id,
+        'is_bust', v_is_bust,
+        'is_jackpot', coalesce(v_position.is_jackpot, false),
+        'is_free_spin_stock', coalesce(v_position.is_free_spin_stock, false),
+        'is_free_spin', (v_mode = 'free'),
+        'free_spin_round', v_session.free_spin_round,
+        'reward_type', v_position.reward_type,
+        'reward_name', v_position.reward_name,
+        'reward_id', v_position.reward_id,
+        'amount', v_position.amount
+    ));
 
-    select coalesce(jsonb_agg(
-        jsonb_build_object(
-            'reel_index', r.reel_index,
-            'position_id', r.position_id,
-            'is_bust', r.is_bust,
-            'is_jackpot', r.is_jackpot,
-            'is_free_spin_stock', r.is_free_spin_stock,
-            'is_free_spin', (r.mode = 'free'),
-            'free_spin_round', r.free_spin_round,
-            'reward_type', r.reward_type,
-            'reward_name', r.reward_name,
-            'reward_id', r.reward_id,
-            'amount', r.amount
-        )
-        order by r.created_at
-    ), '[]'::jsonb)
-    into v_reels
-    from public.slot_reel_results r
-    where r.session_id = v_session.id;
+    v_bust_reel_index := case when v_mode = 'normal' and v_is_bust then v_reel_index else null end;
+
+    if v_bust_reel_index is not null then
+        v_reels := v_reels || coalesce((
+            select jsonb_agg(
+                jsonb_build_object(
+                    'reel_index', r_idx,
+                    'position_id', null,
+                    'is_bust', true,
+                    'is_jackpot', false,
+                    'is_free_spin_stock', false,
+                    'is_free_spin', false,
+                    'free_spin_round', v_session.free_spin_round,
+                    'reward_type', null,
+                    'reward_name', null,
+                    'reward_id', null,
+                    'amount', 0
+                )
+                order by r_idx
+            )
+            from generate_series(v_bust_reel_index + 1, 7) as r_idx
+        ), '[]'::jsonb);
+    end if;
 
     v_result_json := jsonb_build_object(
         'reel_index', v_reel_index,
@@ -564,6 +489,7 @@ begin
                     free_spin_round = 1,
                     current_reel = 1
                 where id = v_session.id;
+                v_auto_cashout := true;
             else
                 update public.slot_sessions
                 set status = 'bust',
@@ -630,7 +556,9 @@ begin
         'reels', v_reels,
         'auto_cashout', v_auto_cashout,
         'payout', v_payout,
-        'bonus_added', v_bonus_added
+        'bonus_added', v_bonus_added,
+        'outcome', case when v_auto_cashout and v_session.free_spin_active then 'free_spin' else null end,
+        'entered_free_spin', (v_auto_cashout and v_session.free_spin_active)
     );
 end;
 $$;
@@ -697,65 +625,22 @@ begin
         ), 'payout', v_session.payout_summary, 'outcome', 'cashed_out');
     end if;
 
+    v_source := coalesce(v_session.reels_state, '[]'::jsonb);
     select exists(
         select 1
-        from public.slot_reel_results r
-        where r.session_id = v_session.id
-          and r.mode = 'free'
+        from jsonb_array_elements(v_source) elem
+        where (elem->>'is_free_spin')::boolean = true
     ) into v_source_has_rewards;
 
     if v_session.jackpot_hits >= 3 and v_session.free_spin_active = false and v_source_has_rewards = false then
         v_transition_free_spin := true;
     end if;
 
-    select exists(
-        select 1
-        from public.slot_reel_results r
-        where r.session_id = v_session.id
-          and r.mode = 'free'
-    ) into v_source_has_rewards;
-
     if v_source_has_rewards then
-        select coalesce(jsonb_agg(
-            jsonb_build_object(
-                'reel_index', r.reel_index,
-                'position_id', r.position_id,
-                'is_bust', r.is_bust,
-                'is_jackpot', r.is_jackpot,
-                'is_free_spin_stock', r.is_free_spin_stock,
-                'is_free_spin', true,
-                'free_spin_round', r.free_spin_round,
-                'reward_type', r.reward_type,
-                'reward_name', r.reward_name,
-                'reward_id', r.reward_id,
-                'amount', r.amount
-            )
-            order by r.created_at
-        ), '[]'::jsonb)
+        select coalesce(jsonb_agg(elem order by (elem->>'reel_index')::int), '[]'::jsonb)
         into v_source
-        from public.slot_reel_results r
-        where r.session_id = v_session.id
-          and r.mode = 'free';
-    else
-        select coalesce(jsonb_agg(
-            jsonb_build_object(
-                'reel_index', r.reel_index,
-                'position_id', r.position_id,
-                'is_bust', r.is_bust,
-                'is_jackpot', r.is_jackpot,
-                'is_free_spin_stock', r.is_free_spin_stock,
-                'is_free_spin', (r.mode = 'free'),
-                'free_spin_round', r.free_spin_round,
-                'reward_type', r.reward_type,
-                'reward_name', r.reward_name,
-                'reward_id', r.reward_id,
-                'amount', r.amount
-            )
-            order by r.created_at
-        ), '[]'::jsonb)
-        into v_source
-        from public.slot_reel_results r
-        where r.session_id = v_session.id;
+        from jsonb_array_elements(v_source) elem
+        where (elem->>'is_free_spin')::boolean = true;
     end if;
 
     select exists(
@@ -768,25 +653,7 @@ begin
     ) into v_source_has_rewards;
 
     if v_source_has_rewards = false then
-        select coalesce(jsonb_agg(
-            jsonb_build_object(
-                'reel_index', r.reel_index,
-                'position_id', r.position_id,
-                'is_bust', r.is_bust,
-                'is_jackpot', r.is_jackpot,
-                'is_free_spin_stock', r.is_free_spin_stock,
-                'is_free_spin', (r.mode = 'free'),
-                'free_spin_round', r.free_spin_round,
-                'reward_type', r.reward_type,
-                'reward_name', r.reward_name,
-                'reward_id', r.reward_id,
-                'amount', r.amount
-            )
-            order by r.created_at
-        ), '[]'::jsonb)
-        into v_source
-        from public.slot_reel_results r
-        where r.session_id = v_session.id;
+        v_source := coalesce(v_session.reels_state, '[]'::jsonb);
     end if;
 
     if jsonb_array_length(v_source) = 0 then

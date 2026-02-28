@@ -1996,6 +1996,15 @@
                     showFreeSpinBonusCutin(Number(data.bonus_added || 0));
                 }
 
+                if (data.outcome === 'free_spin' || data.entered_free_spin === true) {
+                    if (fsLoopActive) stopFullReelLoop();
+                    pendingStopReels = new Set();
+                    reelState = new Map();
+                    awaitingFreeSpinStart = true;
+                    freeSpinDisplayActive = false;
+                    setProcessing(false, { skipUpdate: true });
+                }
+
                 if (data.auto_cashout) {
                     currentSession.status = 'cashed_out';
                     currentSession.payout = data.payout || [];

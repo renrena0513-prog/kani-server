@@ -1,35 +1,46 @@
-# 仕様変更：FSストック3つで即+1（DB更新＆カットイン）
+# 仕様調整：バースト→FS遷移を「報酬0で確定（cashout相当）」と同じ扱いにして固着を防ぐ
 
-目的：
-- FreeSpin図柄（is_free_spin_stock）が3つ貯まった時点で、その場で free_spins_remaining を +1 する。
-- 3つ目が出た瞬間に「FreeSpin +1」のカットイン演出を出す。
-- 7リール目でまとめて加算する方式はやめて、増加タイミングをラウンド境界から分離して、フロントの状態不整合（開始ボタン押せない等）を減らす。
+背景：
+- “報酬確定(cashout)” を押してFSへ入る場合は正常に動く。
+- しかし “バーストからFSへ入る” 場合、FS中に特定リールで固着して再開になることがある。
+- つまり、バースト→FS遷移時にフロントが「まだ通常モード」と誤解している/状態がねじれている可能性が高い。
 
-対象：
-- SQL/RPC: slot_spin_reel（FS中の処理）
-- フロント: event/slot.html（spinReelの成功ハンドリング）
+狙い：
+- バースト→FS遷移を、内部的に「報酬0で確定したのと同じ遷移（cashout相当）」として統一し、
+  フロントが確実に“FS遷移”として扱えるようにする。
 
-要件：
-1) FS中に free_spin_stocks を増やし、>=3 になった時点で
-   - free_spin_stocks を 3 減らし
-   - free_spins_remaining を 1 増やす（必要なら複数回変換もOK）
-   - レスポンスに bonus_added（今回加算した回数）を含める
-2) フロントは slot_spin_reel のレスポンスで bonus_added > 0 のとき
-   - 3つ目が出たタイミングで「FreeSpin +1」カットインを表示する
-3) UIの既存仕様（FS開始ボタン/残り表示/STOP挙動）は変えない
-4) 差分は最小、既存のFS終了時ロジックは破綻しないように調整
+やってほしいこと（SQL + フロント）：
 
-成果物：
-- SQL差分（関数更新）
-- フロント差分（カットイン追加）
-- 手動テスト（ストック3つで即+1が起きる、リロード耐性）
-ひとつだけ注意
+## 1) SQL（slot_spin_reel）
+通常モード中にバーストが発生し、かつ「JP条件によりFSへ遷移する」ケースで、
+単に free_spin_active=true を立てるだけでなく、cashout相当の“遷移結果”をレスポンスで明示してほしい。
 
-この変更を入れるなら、今のSQLにある「7リール目で stock 変換して extra_spins を足す」部分は 二重加算になる可能性があるので、
+- バースト→FS遷移した場合、slot_spin_reel の返却JSONに
+  - outcome: "free_spin"（slot_cashout の free_spin outcome と同様の意味）
+  - payout: []（報酬0確定）
+  - entered_free_spin: true（任意：フロント用の明示フラグ）
+  を追加する（フィールド名は多少変更可、ただし意図は同じ）。
+- セッション側は必ず
+  - free_spin_active=true
+  - free_spin_round=1
+  - current_reel=1
+  - free_spins_remaining>=1（JPヒット数など）
+  になっていることを保証する。
+- reels_state は7リール固定のままでOK（不足分をBURST埋めする方針は維持）。
+- DB書き込み回数は増やさない（今と同程度の UPDATE 回数に留める）。
 
-即時変換に統一（7リール目では変換しない）
-or
+## 2) フロント（event/slot.html）
+spinReel() の成功ハンドリングで、
+- data.outcome==="free_spin" または data.entered_free_spin===true のときは
+  “cashoutでFSへ入った時と同じ状態遷移” を必ず実行する。
 
-7リール目側は「念のため残りstockだけ処理」みたいに整理
+具体的には（実装は任せるが意図はこれ）：
+- fsLoopActive を止める/STOP系の残留（pendingStopReels, reelState, isProcessing）を正規化
+- awaitingFreeSpinStart=true にして「フリースピン開始」ボタンを押せる状態へ
+- updateUI() を呼んで UI をFS開始待機へ確実に寄せる
+（※ cashout経由で動くのと同じ結果になることが目的）
 
-のどっちかに寄せる必要があります。
+受け入れ条件：
+- バースト→FS遷移後も、FSが同じリールで固着せず正常に進行する
+- “報酬確定(cashout)” を押した時と同じようにFS開始ができる
+- DB負荷（書き込み回数）が増えない
