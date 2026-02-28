@@ -2004,7 +2004,15 @@
                     showFreeSpinBonusCutin(Number(data.bonus_added || 0));
                 }
 
-                if (data.outcome === 'free_spin' || data.entered_free_spin === true) {
+                const enteredFs = (data.outcome === 'free_spin' || data.entered_free_spin === true || data.session?.free_spin_active === true);
+                console.log('[spinReel resp]', {
+                    auto_cashout: data.auto_cashout,
+                    outcome: data.outcome,
+                    entered_free_spin: data.entered_free_spin,
+                    session_status: data.session?.status,
+                    free_spin_active: data.session?.free_spin_active
+                });
+                if (enteredFs) {
                     if (fsLoopActive) stopFullReelLoop();
                     pendingStopReels = new Set();
                     reelState = new Map();
@@ -2013,7 +2021,7 @@
                     setProcessing(false, { skipUpdate: true });
                 }
 
-                if (data.auto_cashout) {
+                if (data.auto_cashout && !enteredFs) {
                     currentSession.status = 'cashed_out';
                     currentSession.payout = data.payout || [];
                     await refreshCoinBalance();
