@@ -1929,16 +1929,21 @@
                     const fsEntered = reels.some(r => r.is_free_spin || Number(r.free_spin_round || 0) > 0);
                     if (fsEntered) fsSpins += 1;
 
-                    let { coin: rowCoin, gacha: rowGacha, mangan: rowMangan } = calcRewardsFromReels(reels);
-                    if (rowCoin === 0 && rowGacha === 0 && rowMangan === 0) {
-                        const payout = Array.isArray(row.payout_summary) ? row.payout_summary : [];
-                        payout.forEach(item => {
-                            if (!item?.type) return;
-                            const amount = Number(item.amount || 0);
-                            if (item.type === 'coin') rowCoin += amount;
-                            if (item.type === 'gacha_ticket') rowGacha += amount;
-                            if (item.type === 'mangan_ticket') rowMangan += amount;
-                        });
+                    let rowCoin = 0;
+                    let rowGacha = 0;
+                    let rowMangan = 0;
+                    if (row.status === 'cashed_out') {
+                        ({ coin: rowCoin, gacha: rowGacha, mangan: rowMangan } = calcRewardsFromReels(reels));
+                        if (rowCoin === 0 && rowGacha === 0 && rowMangan === 0) {
+                            const payout = Array.isArray(row.payout_summary) ? row.payout_summary : [];
+                            payout.forEach(item => {
+                                if (!item?.type) return;
+                                const amount = Number(item.amount || 0);
+                                if (item.type === 'coin') rowCoin += amount;
+                                if (item.type === 'gacha_ticket') rowGacha += amount;
+                                if (item.type === 'mangan_ticket') rowMangan += amount;
+                            });
+                        }
                     }
                     totalCoin += rowCoin;
                     totalGacha += rowGacha;
