@@ -494,12 +494,107 @@ begin
                     v_payout := public.slot_cashout(p_user_id, v_session.id)->'payout';
                 else
                     -- 7リール完走 & ジャックポット3個以上 → フリースピンへ
-                    update public.slot_sessions
-                    set free_spin_active = true,
-                        free_spins_remaining = v_new_hits,
-                        free_spin_round = 1,
-                        current_reel = 1
-                    where id = v_session.id;
+                    declare
+                        v_normal_reels jsonb := '[]'::jsonb;
+                        v_multiplier_normal numeric := 1;
+                        v_elem jsonb;
+                        v_mult_label text;
+                        v_rewards record;
+                        v_summary_normal jsonb := '[]'::jsonb;
+                        v_normal_has_bust boolean := false;
+                    begin
+                        v_normal_reels := coalesce((
+                            select jsonb_agg(elem order by (elem->>'reel_index')::int)
+                            from jsonb_array_elements(v_reels) elem
+                            where coalesce((elem->>'is_free_spin')::boolean, false) = false
+                        ), '[]'::jsonb);
+
+                        select exists(
+                            select 1
+                            from jsonb_array_elements(v_normal_reels) elem
+                            where coalesce((elem->>'is_bust')::boolean, false) = true
+                        ) into v_normal_has_bust;
+
+                        if not v_normal_has_bust then
+                            for v_elem in
+                                select elem from jsonb_array_elements(v_normal_reels) elem
+                                where elem->>'reward_type' = 'multiplier'
+                            loop
+                                v_multiplier_normal := v_multiplier_normal + coalesce((v_elem->>'amount')::numeric, 0);
+                            end loop;
+
+                            for v_rewards in
+                                select
+                                    elem->>'reward_type' as reward_type,
+                                    elem->>'reward_id' as reward_id,
+                                    max(elem->>'reward_name') as reward_name,
+                                    sum((elem->>'amount')::numeric) as amount
+                                from jsonb_array_elements(v_normal_reels) elem
+                                where (elem->>'is_bust')::boolean = false
+                                  and elem->>'reward_type' is not null
+                                  and elem->>'reward_type' <> 'multiplier'
+                                  and (elem->>'amount')::numeric > 0
+                                group by elem->>'reward_type', elem->>'reward_id'
+                                order by elem->>'reward_type', elem->>'reward_id'
+                            loop
+                                v_rewards.amount := floor(v_rewards.amount * v_multiplier_normal);
+                                if v_rewards.amount <= 0 then
+                                    continue;
+                                end if;
+
+                                v_summary_normal := v_summary_normal || jsonb_build_array(jsonb_build_object(
+                                    'type', v_rewards.reward_type,
+                                    'reward_id', v_rewards.reward_id,
+                                    'reward_name', v_rewards.reward_name,
+                                    'amount', v_rewards.amount
+                                ));
+
+                                if v_rewards.reward_type = 'coin' then
+                                    update public.profiles
+                                    set coins = coins + v_rewards.amount::int,
+                                        total_assets = total_assets + v_rewards.amount::int
+                                    where discord_user_id = p_user_id;
+                                elsif v_rewards.reward_type = 'gacha_ticket' then
+                                    update public.profiles
+                                    set gacha_tickets = coalesce(gacha_tickets, 0) + v_rewards.amount::int
+                                    where discord_user_id = p_user_id;
+                                elsif v_rewards.reward_type = 'mangan_ticket' then
+                                    update public.profiles
+                                    set mangan_tickets = coalesce(mangan_tickets, 0) + v_rewards.amount::int
+                                    where discord_user_id = p_user_id;
+                                elsif v_rewards.reward_type = 'exchange_ticket' then
+                                    update public.profiles
+                                    set exchange_tickets = jsonb_set(
+                                        coalesce(exchange_tickets, '{}'::jsonb),
+                                        array[v_rewards.reward_id],
+                                        (coalesce((exchange_tickets->>v_rewards.reward_id)::int, 0) + v_rewards.amount::int)::text::jsonb
+                                    )
+                                    where discord_user_id = p_user_id;
+                                elsif v_rewards.reward_type = 'badge' then
+                                    insert into public.user_badges_new (user_id, badge_id, purchased_price)
+                                    select p_user_id, v_rewards.reward_id::uuid, 0
+                                    from generate_series(1, v_rewards.amount::int);
+                                end if;
+                            end loop;
+
+                            if v_multiplier_normal > 1 then
+                                v_mult_label := trim(trailing '.' from trim(trailing '0' from to_char(v_multiplier_normal, 'FM999999990.99')));
+                                v_summary_normal := jsonb_build_array(jsonb_build_object(
+                                    'type', 'multiplier',
+                                    'reward_name', '通常' || v_mult_label || '倍',
+                                    'amount', v_multiplier_normal
+                                )) || v_summary_normal;
+                            end if;
+                        end if;
+
+                        update public.slot_sessions
+                        set payout_summary = coalesce(payout_summary, '[]'::jsonb) || v_summary_normal,
+                            free_spin_active = true,
+                            free_spins_remaining = v_new_hits,
+                            free_spin_round = 1,
+                            current_reel = 1
+                        where id = v_session.id;
+                    end;
                 end if;
             else
                 update public.slot_sessions
@@ -636,6 +731,11 @@ begin
         where coalesce((elem->>'is_free_spin')::boolean, false) = true
     ), '[]'::jsonb);
 
+    if jsonb_array_length(coalesce(v_session.payout_summary, '[]'::jsonb)) > 0
+       and jsonb_array_length(v_source_free) > 0 then
+        v_source_normal := '[]'::jsonb;
+    end if;
+
     select exists(
         select 1
         from jsonb_array_elements(v_source_normal) elem
@@ -668,14 +768,14 @@ begin
                 select
                     elem->>'reward_type' as reward_type,
                     elem->>'reward_id' as reward_id,
-                    elem->>'reward_name' as reward_name,
+                    max(elem->>'reward_name') as reward_name,
                     sum((elem->>'amount')::numeric) as amount
                 from jsonb_array_elements(v_source_normal) elem
                 where (elem->>'is_bust')::boolean = false
                   and elem->>'reward_type' is not null
                   and elem->>'reward_type' <> 'multiplier'
                   and (elem->>'amount')::numeric > 0
-                group by elem->>'reward_type', elem->>'reward_id', elem->>'reward_name'
+                group by elem->>'reward_type', elem->>'reward_id'
                 order by elem->>'reward_type', elem->>'reward_id'
             loop
                 v_rewards.amount := floor(v_rewards.amount * v_multiplier_normal);
@@ -698,14 +798,14 @@ begin
             select
                 elem->>'reward_type' as reward_type,
                 elem->>'reward_id' as reward_id,
-                elem->>'reward_name' as reward_name,
+                max(elem->>'reward_name') as reward_name,
                 sum((elem->>'amount')::numeric) as amount
             from jsonb_array_elements(v_source_free) elem
             where (elem->>'is_bust')::boolean = false
               and elem->>'reward_type' is not null
               and elem->>'reward_type' <> 'multiplier'
               and (elem->>'amount')::numeric > 0
-            group by elem->>'reward_type', elem->>'reward_id', elem->>'reward_name'
+            group by elem->>'reward_type', elem->>'reward_id'
             order by elem->>'reward_type', elem->>'reward_id'
         loop
             v_rewards.amount := floor(v_rewards.amount * v_multiplier_free);
