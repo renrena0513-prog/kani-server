@@ -565,6 +565,7 @@ declare
     v_source jsonb := '[]'::jsonb;
     v_source_normal jsonb := '[]'::jsonb;
     v_source_free jsonb := '[]'::jsonb;
+    v_normal_has_bust boolean := false;
     v_source_has_rewards boolean := false;
     v_transition_free_spin boolean := false;
     v_existing_summary jsonb := '[]'::jsonb;
@@ -635,6 +636,12 @@ begin
         where coalesce((elem->>'is_free_spin')::boolean, false) = true
     ), '[]'::jsonb);
 
+    select exists(
+        select 1
+        from jsonb_array_elements(v_source_normal) elem
+        where coalesce((elem->>'is_bust')::boolean, false) = true
+    ) into v_normal_has_bust;
+
     -- 通常とFSを別倍率で計算
     declare
         v_multiplier_normal numeric := 1;
@@ -656,32 +663,36 @@ begin
             v_multiplier_free := v_multiplier_free + coalesce((v_elem->>'amount')::numeric, 0);
         end loop;
 
-        for v_rewards in
-            select
-                elem->>'reward_type' as reward_type,
-                elem->>'reward_id' as reward_id,
-                elem->>'reward_name' as reward_name,
-                sum((elem->>'amount')::numeric) as amount
-            from jsonb_array_elements(v_source_normal) elem
-            where (elem->>'is_bust')::boolean = false
-              and elem->>'reward_type' is not null
-              and elem->>'reward_type' <> 'multiplier'
-              and (elem->>'amount')::numeric > 0
-            group by elem->>'reward_type', elem->>'reward_id', elem->>'reward_name'
-            order by elem->>'reward_type', elem->>'reward_id'
-        loop
-            v_rewards.amount := floor(v_rewards.amount * v_multiplier_normal);
-            if v_rewards.amount <= 0 then
-                continue;
-            end if;
+        if not v_normal_has_bust then
+            for v_rewards in
+                select
+                    elem->>'reward_type' as reward_type,
+                    elem->>'reward_id' as reward_id,
+                    elem->>'reward_name' as reward_name,
+                    sum((elem->>'amount')::numeric) as amount
+                from jsonb_array_elements(v_source_normal) elem
+                where (elem->>'is_bust')::boolean = false
+                  and elem->>'reward_type' is not null
+                  and elem->>'reward_type' <> 'multiplier'
+                  and (elem->>'amount')::numeric > 0
+                group by elem->>'reward_type', elem->>'reward_id', elem->>'reward_name'
+                order by elem->>'reward_type', elem->>'reward_id'
+            loop
+                v_rewards.amount := floor(v_rewards.amount * v_multiplier_normal);
+                if v_rewards.amount <= 0 then
+                    continue;
+                end if;
 
-            v_summary_normal := v_summary_normal || jsonb_build_array(jsonb_build_object(
-                'type', v_rewards.reward_type,
-                'reward_id', v_rewards.reward_id,
-                'reward_name', v_rewards.reward_name,
-                'amount', v_rewards.amount
-            ));
-        end loop;
+                v_summary_normal := v_summary_normal || jsonb_build_array(jsonb_build_object(
+                    'type', v_rewards.reward_type,
+                    'reward_id', v_rewards.reward_id,
+                    'reward_name', v_rewards.reward_name,
+                    'amount', v_rewards.amount
+                ));
+            end loop;
+        end if;
+
+        -- normal rewards are handled above with bust guard
 
         for v_rewards in
             select

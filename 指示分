@@ -1,8 +1,1 @@
-累計投入回数
-416
-FS突入回数
-3
-累計コイン
-🪙 27,104
-累計チケット
-🎫 37 / 🧧 37
+Error: Failed to run sql query: ERROR: 42601: syntax error at or near "select" LINE 26: select sum((elem->>'amount')::numeric) ^
