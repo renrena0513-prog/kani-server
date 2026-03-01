@@ -2091,6 +2091,34 @@
                     reelState = new Map();
                     awaitingFreeSpinStart = true;
                     freeSpinDisplayActive = false;
+
+                    // FS突入時の通常報酬ポップアップ
+                    const payoutItems = Array.isArray(data.payout) ? data.payout : [];
+                    if (payoutItems.length) {
+                        const parts = [];
+                        let multiplierLabel = '';
+                        const totals = { coin: 0, gacha_ticket: 0, mangan_ticket: 0, exchange_ticket: 0 };
+                        payoutItems.forEach(item => {
+                            if (!item?.type) return;
+                            if (item.type === 'multiplier') {
+                                multiplierLabel = item.reward_name || `${item.amount || ''}倍`;
+                                return;
+                            }
+                            totals[item.type] = (totals[item.type] || 0) + Number(item.amount || 0);
+                        });
+                        totals.gacha_ticket = roundTo1(totals.gacha_ticket || 0);
+                        totals.mangan_ticket = roundTo1(totals.mangan_ticket || 0);
+                        if (multiplierLabel) parts.push(`✨ ${multiplierLabel}`);
+                        if (totals.coin) parts.push(`🪙 +${totals.coin}`);
+                        if (totals.gacha_ticket) parts.push(`🎫 +${totals.gacha_ticket}`);
+                        if (totals.mangan_ticket) parts.push(`🧧 +${totals.mangan_ticket}`);
+                        if (totals.exchange_ticket) parts.push(`🎫 +${totals.exchange_ticket}`);
+                        if (parts.length) {
+                            pendingFreeSpinAfterPopup = true;
+                            showWinPopup(parts);
+                        }
+                    }
+
                     setProcessing(false, { skipUpdate: true });
                 }
 

@@ -587,6 +587,9 @@ begin
                             end if;
                         end if;
 
+                        v_payout := v_summary_normal;
+                        v_auto_cashout := true;
+
                         update public.slot_sessions
                         set payout_summary = coalesce(payout_summary, '[]'::jsonb) || v_summary_normal,
                             free_spin_active = true,
