@@ -82,20 +82,26 @@
         }
 
         .slot-rule-btn {
-            border: 1px solid rgba(246, 196, 83, 0.55);
-            color: #f6c453;
-            background: transparent;
+            border: none;
+            color: #1a1306;
+            background: linear-gradient(135deg, #ffe29a 0%, #f6c453 45%, #d99a29 100%);
             border-radius: 999px;
-            padding: 2px 10px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            letter-spacing: 0.05em;
+            padding: 6px 16px;
+            font-size: 0.9rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            box-shadow: 0 6px 16px rgba(246, 196, 83, 0.35);
+            text-transform: uppercase;
         }
 
         .slot-rule-btn:hover {
-            color: #1a1306;
-            background: linear-gradient(135deg, #f6c453 0%, #d99a29 100%);
-            border-color: transparent;
+            transform: translateY(-1px);
+            box-shadow: 0 10px 20px rgba(246, 196, 83, 0.45);
+        }
+
+        .slot-rule-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 4px 12px rgba(246, 196, 83, 0.35);
         }
 
         .slot-rule-image {
@@ -604,6 +610,8 @@
             <div>
                 <h1 class="slot-header mb-2">🎰 期間限定イベント：スロット</h1>
                 <div class="slot-muted">1回100コイン。止まった分だけ報酬確定、はずれでバースト。</div>
+                <button class="slot-rule-btn mt-3" type="button" data-bs-toggle="modal"
+                    data-bs-target="#slot-rule-modal">ルールを確認する</button>
             </div>
             <div class="slot-status" id="event-status">読み込み中...</div>
         </div>
@@ -625,11 +633,7 @@
                     </div>
                 </div>
                 <div class="text-center flex-grow-1" style="min-width: 220px;">
-                    <div class="slot-muted d-flex align-items-center justify-content-center gap-2">
-                        合計倍率
-                        <button class="slot-rule-btn" type="button" data-bs-toggle="modal"
-                            data-bs-target="#slot-rule-modal">ルール</button>
-                    </div>
+                    <div class="slot-muted">合計倍率</div>
                     <div class="fs-5 fw-semibold" id="total-multiplier">×1.0</div>
                     <div class="slot-muted mt-1">獲得合計</div>
                     <div class="fs-2 fw-bold" id="reward-total">🪙 0 / 🎫 0 / 🧧 0</div>
@@ -646,11 +650,7 @@
             </div>
             <div class="reel-stage" id="reel-stage">
                 <div class="slot-mobile-summary" id="mobile-summary">
-                    <div class="slot-muted d-flex align-items-center justify-content-between">
-                        <span>合計倍率</span>
-                        <button class="slot-rule-btn" type="button" data-bs-toggle="modal"
-                            data-bs-target="#slot-rule-modal">ルール</button>
-                    </div>
+                    <div class="slot-muted">合計倍率</div>
                     <div class="slot-mobile-multiplier" id="mobile-total-multiplier">×1.0</div>
                     <div class="slot-muted">獲得合計</div>
                     <div class="slot-mobile-total" id="mobile-reward-total">🪙 0 / 🎫 0 / 🧧 0</div>
