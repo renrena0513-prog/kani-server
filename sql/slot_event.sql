@@ -560,7 +560,11 @@ declare
     v_session record;
     v_rewards record;
     v_summary jsonb := '[]'::jsonb;
+    v_summary_normal jsonb := '[]'::jsonb;
+    v_summary_free jsonb := '[]'::jsonb;
     v_source jsonb := '[]'::jsonb;
+    v_source_normal jsonb := '[]'::jsonb;
+    v_source_free jsonb := '[]'::jsonb;
     v_source_has_rewards boolean := false;
     v_transition_free_spin boolean := false;
     v_existing_summary jsonb := '[]'::jsonb;
@@ -619,17 +623,37 @@ begin
         v_transition_free_spin := true;
     end if;
 
-    -- マルチプライヤー判定：multiplier報酬がある場合、倍率を取得
+    v_source_normal := coalesce((
+        select jsonb_agg(elem order by (elem->>'reel_index')::int)
+        from jsonb_array_elements(v_source) elem
+        where coalesce((elem->>'is_free_spin')::boolean, false) = false
+    ), '[]'::jsonb);
+
+    v_source_free := coalesce((
+        select jsonb_agg(elem order by (elem->>'reel_index')::int)
+        from jsonb_array_elements(v_source) elem
+        where coalesce((elem->>'is_free_spin')::boolean, false) = true
+    ), '[]'::jsonb);
+
+    -- 通常とFSを別倍率で計算
     declare
-        v_multiplier numeric := 1;
+        v_multiplier_normal numeric := 1;
+        v_multiplier_free numeric := 1;
         v_elem jsonb;
         v_mult_label text;
     begin
         for v_elem in
-            select elem from jsonb_array_elements(v_source) elem
+            select elem from jsonb_array_elements(v_source_normal) elem
             where elem->>'reward_type' = 'multiplier'
         loop
-            v_multiplier := v_multiplier + coalesce((v_elem->>'amount')::numeric, 0);
+            v_multiplier_normal := v_multiplier_normal + coalesce((v_elem->>'amount')::numeric, 0);
+        end loop;
+
+        for v_elem in
+            select elem from jsonb_array_elements(v_source_free) elem
+            where elem->>'reward_type' = 'multiplier'
+        loop
+            v_multiplier_free := v_multiplier_free + coalesce((v_elem->>'amount')::numeric, 0);
         end loop;
 
         for v_rewards in
@@ -638,7 +662,7 @@ begin
                 elem->>'reward_id' as reward_id,
                 elem->>'reward_name' as reward_name,
                 sum((elem->>'amount')::numeric) as amount
-            from jsonb_array_elements(v_source) elem
+            from jsonb_array_elements(v_source_normal) elem
             where (elem->>'is_bust')::boolean = false
               and elem->>'reward_type' is not null
               and elem->>'reward_type' <> 'multiplier'
@@ -646,55 +670,107 @@ begin
             group by elem->>'reward_type', elem->>'reward_id', elem->>'reward_name'
             order by elem->>'reward_type', elem->>'reward_id'
         loop
-            v_rewards.amount := floor(v_rewards.amount * v_multiplier);
+            v_rewards.amount := floor(v_rewards.amount * v_multiplier_normal);
             if v_rewards.amount <= 0 then
                 continue;
             end if;
 
-            v_summary := v_summary || jsonb_build_array(jsonb_build_object(
+            v_summary_normal := v_summary_normal || jsonb_build_array(jsonb_build_object(
                 'type', v_rewards.reward_type,
                 'reward_id', v_rewards.reward_id,
                 'reward_name', v_rewards.reward_name,
                 'amount', v_rewards.amount
             ));
-
-            if v_rewards.reward_type = 'coin' then
-                update public.profiles
-                set coins = coins + v_rewards.amount::int,
-                    total_assets = total_assets + v_rewards.amount::int
-                where discord_user_id = p_user_id;
-            elsif v_rewards.reward_type = 'gacha_ticket' then
-                update public.profiles
-                set gacha_tickets = coalesce(gacha_tickets, 0) + v_rewards.amount::int
-                where discord_user_id = p_user_id;
-            elsif v_rewards.reward_type = 'mangan_ticket' then
-                update public.profiles
-                set mangan_tickets = coalesce(mangan_tickets, 0) + v_rewards.amount::int
-                where discord_user_id = p_user_id;
-            elsif v_rewards.reward_type = 'exchange_ticket' then
-                update public.profiles
-                set exchange_tickets = jsonb_set(
-                    coalesce(exchange_tickets, '{}'::jsonb),
-                    array[v_rewards.reward_id],
-                    (coalesce((exchange_tickets->>v_rewards.reward_id)::int, 0) + v_rewards.amount::int)::text::jsonb
-                )
-                where discord_user_id = p_user_id;
-            elsif v_rewards.reward_type = 'badge' then
-                insert into public.user_badges_new (user_id, badge_id, purchased_price)
-                select p_user_id, v_rewards.reward_id::uuid, 0
-                from generate_series(1, v_rewards.amount::int);
-            end if;
         end loop;
 
-        if v_multiplier > 1 then
-            v_mult_label := trim(trailing '.' from trim(trailing '0' from to_char(v_multiplier, 'FM999999990.99')));
-            v_summary := jsonb_build_array(jsonb_build_object(
+        for v_rewards in
+            select
+                elem->>'reward_type' as reward_type,
+                elem->>'reward_id' as reward_id,
+                elem->>'reward_name' as reward_name,
+                sum((elem->>'amount')::numeric) as amount
+            from jsonb_array_elements(v_source_free) elem
+            where (elem->>'is_bust')::boolean = false
+              and elem->>'reward_type' is not null
+              and elem->>'reward_type' <> 'multiplier'
+              and (elem->>'amount')::numeric > 0
+            group by elem->>'reward_type', elem->>'reward_id', elem->>'reward_name'
+            order by elem->>'reward_type', elem->>'reward_id'
+        loop
+            v_rewards.amount := floor(v_rewards.amount * v_multiplier_free);
+            if v_rewards.amount <= 0 then
+                continue;
+            end if;
+
+            v_summary_free := v_summary_free || jsonb_build_array(jsonb_build_object(
+                'type', v_rewards.reward_type,
+                'reward_id', v_rewards.reward_id,
+                'reward_name', v_rewards.reward_name,
+                'amount', v_rewards.amount
+            ));
+        end loop;
+
+        if v_multiplier_normal > 1 then
+            v_mult_label := trim(trailing '.' from trim(trailing '0' from to_char(v_multiplier_normal, 'FM999999990.99')));
+            v_summary_normal := jsonb_build_array(jsonb_build_object(
                 'type', 'multiplier',
-                'reward_name', v_mult_label || '倍',
-                'amount', v_multiplier
-            )) || v_summary;
+                'reward_name', '通常' || v_mult_label || '倍',
+                'amount', v_multiplier_normal
+            )) || v_summary_normal;
+        end if;
+
+        if v_multiplier_free > 1 then
+            v_mult_label := trim(trailing '.' from trim(trailing '0' from to_char(v_multiplier_free, 'FM999999990.99')));
+            v_summary_free := jsonb_build_array(jsonb_build_object(
+                'type', 'multiplier',
+                'reward_name', 'FS' || v_mult_label || '倍',
+                'amount', v_multiplier_free
+            )) || v_summary_free;
         end if;
     end;
+
+    v_summary := v_summary_normal || v_summary_free;
+
+    for v_rewards in
+        select
+            elem->>'type' as reward_type,
+            elem->>'reward_id' as reward_id,
+            elem->>'reward_name' as reward_name,
+            (elem->>'amount')::numeric as amount
+        from jsonb_array_elements(v_summary) elem
+        where elem->>'type' <> 'multiplier'
+    loop
+        if v_rewards.amount <= 0 then
+            continue;
+        end if;
+
+        if v_rewards.reward_type = 'coin' then
+            update public.profiles
+            set coins = coins + v_rewards.amount::int,
+                total_assets = total_assets + v_rewards.amount::int
+            where discord_user_id = p_user_id;
+        elsif v_rewards.reward_type = 'gacha_ticket' then
+            update public.profiles
+            set gacha_tickets = coalesce(gacha_tickets, 0) + v_rewards.amount::int
+            where discord_user_id = p_user_id;
+        elsif v_rewards.reward_type = 'mangan_ticket' then
+            update public.profiles
+            set mangan_tickets = coalesce(mangan_tickets, 0) + v_rewards.amount::int
+            where discord_user_id = p_user_id;
+        elsif v_rewards.reward_type = 'exchange_ticket' then
+            update public.profiles
+            set exchange_tickets = jsonb_set(
+                coalesce(exchange_tickets, '{}'::jsonb),
+                array[v_rewards.reward_id],
+                (coalesce((exchange_tickets->>v_rewards.reward_id)::int, 0) + v_rewards.amount::int)::text::jsonb
+            )
+            where discord_user_id = p_user_id;
+        elsif v_rewards.reward_type = 'badge' then
+            insert into public.user_badges_new (user_id, badge_id, purchased_price)
+            select p_user_id, v_rewards.reward_id::uuid, 0
+            from generate_series(1, v_rewards.amount::int);
+        end if;
+    end loop;
 
     if v_transition_free_spin then
         update public.slot_sessions

@@ -1728,10 +1728,9 @@
                 } else if (!enteringFreeSpin) {
                     const displayReels = getDisplayReels(reels);
                     const isFree = !!currentSession.free_spin_active;
-                    const allReels = currentSession.reels || [];
                     const sourceReels = isFree
-                        ? allReels.filter(reel => reel.is_free_spin || Number(reel.free_spin_round || 0) > 0)
-                        : allReels;
+                        ? (currentSession.reels || []).filter(reel => reel.is_free_spin || Number(reel.free_spin_round || 0) > 0)
+                        : displayReels;
 
                     if (isFree && sourceReels.length === 0) {
                         if (lastFreeSpinSummary && lastFreeSpinSessionId === currentSession.id) {
