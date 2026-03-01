@@ -619,30 +619,6 @@ begin
         v_transition_free_spin := true;
     end if;
 
-    if v_source_has_rewards then
-        select coalesce(jsonb_agg(elem order by (elem->>'reel_index')::int), '[]'::jsonb)
-        into v_source
-        from jsonb_array_elements(v_source) elem
-        where (elem->>'is_free_spin')::boolean = true;
-    end if;
-
-    select exists(
-        select 1
-        from jsonb_array_elements(v_source) elem
-        where (elem->>'is_bust')::boolean = false
-          and elem->>'reward_type' is not null
-          and elem->>'reward_type' <> 'multiplier'
-          and (elem->>'amount')::numeric > 0
-    ) into v_source_has_rewards;
-
-    if v_source_has_rewards = false then
-        v_source := coalesce(v_session.reels_state, '[]'::jsonb);
-    end if;
-
-    if jsonb_array_length(v_source) = 0 then
-        v_source := coalesce(v_session.reels_state, '[]'::jsonb);
-    end if;
-
     -- マルチプライヤー判定：multiplier報酬がある場合、倍率を取得
     declare
         v_multiplier numeric := 1;
@@ -1150,10 +1126,3 @@ values
 ('free', 7, 9, false, false, false, 'coin', 'コイン+30', null, 30.00, true
 ),
 ('free', 7, 10, false, false, false, 'coin', 'コイン+10', null, 10.00, true);
-
--- page settings entry (コスト設定を config に格納)
-insert into public.page_settings (path, name, is_active, config)
-values ('/event/slot.html', '期間限定イベント：スロット', false, '{"slot_cost": 100}'::jsonb)
-on conflict (path) do update
-set name = excluded.name,
-    config = coalesce(excluded.config, '{}'::jsonb);
