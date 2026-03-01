@@ -42,7 +42,7 @@ create table if not exists public.slot_sessions (
     free_spin_round integer not null default 0,
     free_spin_stocks integer not null default 0,
     -- 精算
-    payout_summary jsonb not null default '{}'::jsonb,
+    payout_summary jsonb not null default '[]'::jsonb,
     -- 時刻
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
@@ -591,7 +591,7 @@ begin
                         v_auto_cashout := true;
 
                         update public.slot_sessions
-                        set payout_summary = coalesce(payout_summary, '[]'::jsonb) || v_summary_normal,
+                        set payout_summary = case when jsonb_typeof(coalesce(payout_summary, '[]'::jsonb)) = 'array' then coalesce(payout_summary, '[]'::jsonb) else '[]'::jsonb end || v_summary_normal,
                             free_spin_active = true,
                             free_spins_remaining = v_new_hits,
                             free_spin_round = 1,
@@ -679,7 +679,11 @@ begin
         return jsonb_build_object('ok', false, 'error', 'SESSION_NOT_FOUND');
     end if;
 
-    v_existing_summary := coalesce(v_session.payout_summary, '[]'::jsonb);
+    v_existing_summary := case
+        when jsonb_typeof(coalesce(v_session.payout_summary, '[]'::jsonb)) = 'array'
+        then v_session.payout_summary
+        else '[]'::jsonb
+    end;
 
     if v_session.status = 'bust' then
         return jsonb_build_object('ok', true, 'session', jsonb_build_object(
@@ -734,7 +738,8 @@ begin
         where coalesce((elem->>'is_free_spin')::boolean, false) = true
     ), '[]'::jsonb);
 
-    if jsonb_array_length(coalesce(v_session.payout_summary, '[]'::jsonb)) > 0
+    if jsonb_typeof(coalesce(v_session.payout_summary, '[]'::jsonb)) = 'array'
+       and jsonb_array_length(coalesce(v_session.payout_summary, '[]'::jsonb)) > 0
        and jsonb_array_length(v_source_free) > 0 then
         v_source_normal := '[]'::jsonb;
     end if;
