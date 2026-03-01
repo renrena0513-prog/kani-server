@@ -1876,36 +1876,6 @@
                 };
                 const data = await fetchAll();
 
-                const calcRewardsFromReels = (reels) => {
-                    if (!Array.isArray(reels) || reels.length === 0) {
-                        return { coin: 0, gacha: 0, mangan: 0 };
-                    }
-                    let multiplier = 1;
-                    reels.forEach(reel => {
-                        if (reel.is_bust) return;
-                        if (reel.reward_type !== 'multiplier') return;
-                        const amt = Number(reel.amount || 0);
-                        if (!Number.isFinite(amt)) return;
-                        multiplier += amt;
-                    });
-                    let coin = 0;
-                    let gacha = 0;
-                    let mangan = 0;
-                    reels.forEach(reel => {
-                        if (reel.is_bust) return;
-                        const amt = Number(reel.amount || 0);
-                        if (!Number.isFinite(amt) || amt <= 0) return;
-                        if (reel.reward_type === 'coin') coin += amt;
-                        if (reel.reward_type === 'gacha_ticket') gacha += amt;
-                        if (reel.reward_type === 'mangan_ticket') mangan += amt;
-                    });
-                    return {
-                        coin: Math.floor(coin * multiplier),
-                        gacha: Math.floor(gacha * multiplier),
-                        mangan: Math.floor(mangan * multiplier)
-                    };
-                };
-
                 let totalSpins = 0;
                 let fsSpins = 0;
                 let totalCoin = 0;
@@ -1933,17 +1903,14 @@
                     let rowGacha = 0;
                     let rowMangan = 0;
                     if (row.status === 'cashed_out') {
-                        ({ coin: rowCoin, gacha: rowGacha, mangan: rowMangan } = calcRewardsFromReels(reels));
-                        if (rowCoin === 0 && rowGacha === 0 && rowMangan === 0) {
-                            const payout = Array.isArray(row.payout_summary) ? row.payout_summary : [];
-                            payout.forEach(item => {
-                                if (!item?.type) return;
-                                const amount = Number(item.amount || 0);
-                                if (item.type === 'coin') rowCoin += amount;
-                                if (item.type === 'gacha_ticket') rowGacha += amount;
-                                if (item.type === 'mangan_ticket') rowMangan += amount;
-                            });
-                        }
+                        const payout = Array.isArray(row.payout_summary) ? row.payout_summary : [];
+                        payout.forEach(item => {
+                            if (!item?.type) return;
+                            const amount = Number(item.amount || 0);
+                            if (item.type === 'coin') rowCoin += amount;
+                            if (item.type === 'gacha_ticket') rowGacha += amount;
+                            if (item.type === 'mangan_ticket') rowMangan += amount;
+                        });
                     }
                     totalCoin += rowCoin;
                     totalGacha += rowGacha;
