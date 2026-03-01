@@ -81,6 +81,29 @@
             color: var(--slot-muted);
         }
 
+        .slot-rule-btn {
+            border: 1px solid rgba(246, 196, 83, 0.55);
+            color: #f6c453;
+            background: transparent;
+            border-radius: 999px;
+            padding: 2px 10px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
+
+        .slot-rule-btn:hover {
+            color: #1a1306;
+            background: linear-gradient(135deg, #f6c453 0%, #d99a29 100%);
+            border-color: transparent;
+        }
+
+        .slot-rule-image {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
         .slot-burst {
             background: rgba(220, 53, 69, 0.15);
             border: 1px solid rgba(220, 53, 69, 0.5);
@@ -602,7 +625,11 @@
                     </div>
                 </div>
                 <div class="text-center flex-grow-1" style="min-width: 220px;">
-                    <div class="slot-muted">合計倍率</div>
+                    <div class="slot-muted d-flex align-items-center justify-content-center gap-2">
+                        合計倍率
+                        <button class="slot-rule-btn" type="button" data-bs-toggle="modal"
+                            data-bs-target="#slot-rule-modal">ルール</button>
+                    </div>
                     <div class="fs-5 fw-semibold" id="total-multiplier">×1.0</div>
                     <div class="slot-muted mt-1">獲得合計</div>
                     <div class="fs-2 fw-bold" id="reward-total">🪙 0 / 🎫 0 / 🧧 0</div>
@@ -619,7 +646,11 @@
             </div>
             <div class="reel-stage" id="reel-stage">
                 <div class="slot-mobile-summary" id="mobile-summary">
-                    <div class="slot-muted">合計倍率</div>
+                    <div class="slot-muted d-flex align-items-center justify-content-between">
+                        <span>合計倍率</span>
+                        <button class="slot-rule-btn" type="button" data-bs-toggle="modal"
+                            data-bs-target="#slot-rule-modal">ルール</button>
+                    </div>
                     <div class="slot-mobile-multiplier" id="mobile-total-multiplier">×1.0</div>
                     <div class="slot-muted">獲得合計</div>
                     <div class="slot-mobile-total" id="mobile-reward-total">🪙 0 / 🎫 0 / 🧧 0</div>
@@ -645,6 +676,19 @@
                 <div class="win-popup-title">WIN!</div>
                 <div class="win-popup-rewards" id="win-popup-rewards"></div>
                 <button class="win-popup-close" onclick="closeWinPopup()">閉じる</button>
+            </div>
+        </div>
+        <div class="modal fade" id="slot-rule-modal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">スロット ルール</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <img class="slot-rule-image" src="../images/slot/ルール説明.png" alt="スロット ルール">
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1040,7 +1084,7 @@
 
         function computeStartButtonState() {
             const cost = eventSettings?.cost ?? 100;
-                if (!currentSession) {
+            if (!currentSession) {
                 return {
                     disabled: !isEventActiveNow(),
                     labelDesktop: `開始（${cost}コイン消費）`,
