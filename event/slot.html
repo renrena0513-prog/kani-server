@@ -1831,6 +1831,26 @@
                 };
                 const data = await fetchAll();
 
+                const calcFsRewards = (reels) => {
+                    const fsReels = (reels || []).filter(r => r.is_free_spin || Number(r.free_spin_round || 0) > 0);
+                    if (!fsReels.length) return { coin: 0, gacha: 0, mangan: 0 };
+                    let mult = 1;
+                    fsReels.forEach(r => {
+                        if (r.is_bust || r.reward_type !== 'multiplier') return;
+                        mult += Number(r.amount || 0) || 0;
+                    });
+                    let coin = 0, gacha = 0, mangan = 0;
+                    fsReels.forEach(r => {
+                        if (r.is_bust) return;
+                        const amt = Number(r.amount || 0);
+                        if (amt <= 0) return;
+                        if (r.reward_type === 'coin') coin += amt;
+                        if (r.reward_type === 'gacha_ticket') gacha += amt;
+                        if (r.reward_type === 'mangan_ticket') mangan += amt;
+                    });
+                    return { coin: Math.floor(coin * mult), gacha: Math.floor(gacha * mult), mangan: Math.floor(mangan * mult) };
+                };
+
                 let totalSpins = 0;
                 let fsSpins = 0;
                 let totalCoin = 0;
@@ -1880,17 +1900,18 @@
                     }
 
                     if ((row.jackpot_hits || 0) >= 3 && row.status === 'cashed_out') {
+                        const fsR = calcFsRewards(reels);
                         const key = row.user_id || 'unknown';
                         const prev = jpUserTotals.get(key) || { name: row.account_name || row.user_id || 'unknown', coin: 0, gacha: 0, mangan: 0 };
-                        prev.coin += rowCoin;
-                        prev.gacha += rowGacha;
-                        prev.mangan += rowMangan;
+                        prev.coin += fsR.coin;
+                        prev.gacha += fsR.gacha;
+                        prev.mangan += fsR.mangan;
                         jpUserTotals.set(key, prev);
 
-                        if (rowCoin > 0 || rowGacha > 0 || rowMangan > 0) {
-                            jpTopByType.coin.push({ name: prev.name, coin: rowCoin, gacha: rowGacha, mangan: rowMangan });
-                            jpTopByType.gacha_ticket.push({ name: prev.name, coin: rowCoin, gacha: rowGacha, mangan: rowMangan });
-                            jpTopByType.mangan_ticket.push({ name: prev.name, coin: rowCoin, gacha: rowGacha, mangan: rowMangan });
+                        if (fsR.coin > 0 || fsR.gacha > 0 || fsR.mangan > 0) {
+                            jpTopByType.coin.push({ name: prev.name, coin: fsR.coin, gacha: fsR.gacha, mangan: fsR.mangan });
+                            jpTopByType.gacha_ticket.push({ name: prev.name, coin: fsR.coin, gacha: fsR.gacha, mangan: fsR.mangan });
+                            jpTopByType.mangan_ticket.push({ name: prev.name, coin: fsR.coin, gacha: fsR.gacha, mangan: fsR.mangan });
                         }
                     }
                 });
