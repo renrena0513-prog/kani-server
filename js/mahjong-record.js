@@ -1300,9 +1300,11 @@ async function submitScores() {
             if (Math.random() < ticketChance) {
                 ticketDrop += 1;
             }
-            // 1位ボーナス祈願符
+            // 順位ボーナス祈願符
             if (mode === '四麻' && player.rank === 1) {
                 ticketRank += 1; // 四麻1位: 祈願符1枚確定
+            } else if (mode === '四麻' && player.rank === 2) {
+                if (Math.random() < 0.50) ticketRank += 1; // 四麻2位: 50%で祈願符1枚
             } else if (mode === '三麻' && player.rank === 1) {
                 if (Math.random() < 0.80) ticketRank += 1; // 三麻1位: 80%で祈願符1枚
             }
