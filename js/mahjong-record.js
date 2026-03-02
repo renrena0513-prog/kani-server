@@ -1278,7 +1278,8 @@ async function submitScores() {
         }
 
         // 報酬付与（コイン・チケット）とログ記録
-        const ticketRewardsMap = {}; // Discord通知用: { discord_user_id: count }
+        const ticketDropMap = {}; // 確率付与の祈願符 { discord_user_id: count }
+        const ticketRankMap = {}; // 順位ボーナスの祈願符 { discord_user_id: count }
         const manganRewardsMap = {}; // Discord通知用: { discord_user_id: count }
 
         for (const player of dataToInsert) {
@@ -1287,7 +1288,8 @@ async function submitScores() {
             // 1. チケット報酬計算
             // 四麻: 参加者40%, 記録者60%
             // 三麻: 参加者30%, 記録者50%
-            let ticketReward = 0;
+            let ticketDrop = 0;
+            let ticketRank = 0;
             const isRecorder = player.discord_user_id === submittedBy;
             let ticketChance;
             if (mode === '四麻') {
@@ -1296,17 +1298,17 @@ async function submitScores() {
                 ticketChance = isRecorder ? 0.50 : 0.30;
             }
             if (Math.random() < ticketChance) {
-                ticketReward += 1;
+                ticketDrop += 1;
             }
             // 1位ボーナス祈願符
             if (mode === '四麻' && player.rank === 1) {
-                ticketReward += 1; // 四麻1位: 祈願符1枚確定
+                ticketRank += 1; // 四麻1位: 祈願符1枚確定
             } else if (mode === '三麻' && player.rank === 1) {
-                if (Math.random() < 0.80) ticketReward += 1; // 三麻1位: 80%で祈願符1枚
+                if (Math.random() < 0.80) ticketRank += 1; // 三麻1位: 80%で祈願符1枚
             }
-            if (ticketReward > 0) {
-                ticketRewardsMap[player.discord_user_id] = ticketReward;
-            }
+            const ticketReward = ticketDrop + ticketRank;
+            if (ticketDrop > 0) ticketDropMap[player.discord_user_id] = ticketDrop;
+            if (ticketRank > 0) ticketRankMap[player.discord_user_id] = ticketRank;
 
             // 1.5 満願符報酬（5%）＋役満確定
             let manganReward = 0;
@@ -1416,7 +1418,7 @@ async function submitScores() {
 
         // Discord通知を送信
         if (typeof DISCORD_WEBHOOK_URL !== 'undefined' && DISCORD_WEBHOOK_URL) {
-            await sendDiscordNotification(dataToInsert, isTobiOn, isYakitoriOn, ticketRewardsMap, manganRewardsMap, yakumanMap);
+            await sendDiscordNotification(dataToInsert, isTobiOn, isYakitoriOn, ticketDropMap, ticketRankMap, manganRewardsMap, yakumanMap);
         }
 
         // ⑨送信後、チーム名とアカウント名以外をクリア（効率的な連続送信のため）
@@ -1457,10 +1459,11 @@ function clearFormExceptTeamAndAccount() {
  * @param {Array} matchData 挿入された試合結果データ
  * @param {boolean} isTobiOn 飛び賞設定
  * @param {boolean} isYakitoriOn やきとり設定
- * @param {Object} ticketRewardsMap チケット獲得情報のマップ { discordUserId: count }
+ * @param {Object} ticketDropMap 確率付与の祈願符 { discordUserId: count }
+ * @param {Object} ticketRankMap 順位ボーナスの祈願符 { discordUserId: count }
  * @param {Object} manganRewardsMap 満願符獲得情報のマップ { discordUserId: count }
  */
-async function sendDiscordNotification(matchData, isTobiOn, isYakitoriOn, ticketRewardsMap = {}, manganRewardsMap = {}, yakumanMap = {}) {
+async function sendDiscordNotification(matchData, isTobiOn, isYakitoriOn, ticketDropMap = {}, ticketRankMap = {}, manganRewardsMap = {}, yakumanMap = {}) {
     if (!matchData || matchData.length === 0) return;
 
     const first = matchData[0];
@@ -1492,9 +1495,13 @@ async function sendDiscordNotification(matchData, isTobiOn, isYakitoriOn, ticket
             rankBonus = sanmaRankBonus[p.rank] || 0;
         }
         const reward = baseReward + scoreBonus + rankBonus;
-        const tickets = ticketRewardsMap[p.discord_user_id] || 0;
+        const ticketsDrop = ticketDropMap[p.discord_user_id] || 0;
+        const ticketsRank = ticketRankMap[p.discord_user_id] || 0;
         const mangans = manganRewardsMap[p.discord_user_id] || 0;
-        const rewardText = `💰+${reward}${tickets > 0 ? ` 🎫+${tickets}` : ''}${mangans > 0 ? ` 🧧+${mangans}` : ''}`;
+        let ticketParts = [];
+        if (ticketsDrop > 0) ticketParts.push(`🎫+${ticketsDrop}`);
+        if (ticketsRank > 0) ticketParts.push(`🏆🎫+${ticketsRank}`);
+        const rewardText = `💰+${reward}${ticketParts.length ? ' ' + ticketParts.join(' ') : ''}${mangans > 0 ? ` 🧧+${mangans}` : ''}`;
         const yakumanList = yakumanMap[p.discord_user_id] || [];
         const yakumanText = yakumanList.length > 0
             ? `　　 💮🎍✨役満: ${yakumanList.join(' / ')}（🧧+${mode === '四麻' ? 2 : 1} 確定）\n`
