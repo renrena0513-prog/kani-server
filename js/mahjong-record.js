@@ -1334,7 +1334,7 @@ async function submitScores() {
                 const yonmaRankBonus = { 1: 50, 2: 30, 3: 10, 4: 0 };
                 rankBonus = yonmaRankBonus[player.rank] || 0;
             } else {
-                const sanmaRankBonus = { 1: 20, 2: 10, 3: 0 };
+                const sanmaRankBonus = { 1: 30, 2: 10, 3: 0 };
                 rankBonus = sanmaRankBonus[player.rank] || 0;
             }
             const coinReward = baseReward + scoreBonus + rankBonus;
@@ -1493,7 +1493,7 @@ async function sendDiscordNotification(matchData, isTobiOn, isYakitoriOn, ticket
             const yonmaRankBonus = { 1: 50, 2: 30, 3: 10, 4: 0 };
             rankBonus = yonmaRankBonus[p.rank] || 0;
         } else {
-            const sanmaRankBonus = { 1: 20, 2: 10, 3: 0 };
+            const sanmaRankBonus = { 1: 30, 2: 10, 3: 0 };
             rankBonus = sanmaRankBonus[p.rank] || 0;
         }
         const reward = baseReward + scoreBonus + rankBonus;
