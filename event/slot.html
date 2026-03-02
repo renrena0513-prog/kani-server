@@ -572,7 +572,7 @@
             }
         }
 
-        /* ルール説明モーダル */
+        /* ルール説明 */
         .slot-rule-btn {
             background: linear-gradient(135deg, #1abc9c, #16a085);
             color: #fff;
@@ -594,34 +594,18 @@
             transform: translateY(0);
         }
 
-        .slot-rule-overlay {
+        .slot-rule-panel {
             display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, .75);
-            z-index: 9999;
-            justify-content: center;
-            align-items: center;
-            padding: 16px;
+            margin-bottom: 16px;
         }
 
-        .slot-rule-overlay.show {
-            display: flex;
+        .slot-rule-panel.show {
+            display: block;
         }
 
-        .slot-rule-overlay img {
-            max-width: 720px;
+        .slot-rule-panel img {
             width: 100%;
-            max-height: 90vh;
-            object-fit: contain;
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, .5);
-        }
-
-        @media (max-width: 768px) {
-            .slot-rule-overlay img {
-                max-width: 100%;
-            }
+            border-radius: 8px;
         }
     </style>
 </head>
@@ -637,11 +621,11 @@
             <div class="d-flex flex-column align-items-end gap-2">
                 <div class="slot-status" id="event-status">読み込み中...</div>
                 <button class="slot-rule-btn"
-                    onclick="document.getElementById('slot-rule-overlay').classList.add('show')">📖 ルール説明はこちら</button>
+                    onclick="document.getElementById('slot-rule-panel').classList.toggle('show')">📖 ルール説明はこちら</button>
             </div>
         </div>
 
-        <div class="slot-rule-overlay" id="slot-rule-overlay" onclick="this.classList.remove('show')">
+        <div class="slot-rule-panel" id="slot-rule-panel">
             <img src="../images/slot/ルール説明.png" alt="ルール説明">
         </div>
 
