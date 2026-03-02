@@ -1316,27 +1316,17 @@ async function submitScores() {
                 manganRewardsMap[player.discord_user_id] = manganReward;
             }
 
-            // 2. コイン報酬計算 (Discord通知ロジック準拠)
+            // 2. コイン報酬計算（チーム戦・個人戦共通）
             let scoreBonus = 0;
             let rankBonus = 0;
-            let baseReward = 0;
-            if (match === 'チーム戦') {
-                baseReward = (mode === '三麻') ? 20 : 30;
-                scoreBonus = player.final_score > 0 ? Math.floor(player.final_score / 5) : 0;
-                if (mode === '四麻') {
-                    const yonmaRankBonus = { 1: 15, 2: 9, 3: 5, 4: 0 };
-                    rankBonus = yonmaRankBonus[player.rank] || 0;
-                } else {
-                    const sanmaRankBonus = { 1: 8, 2: 4, 3: 0 };
-                    rankBonus = sanmaRankBonus[player.rank] || 0;
-                }
+            const baseReward = (mode === '三麻') ? 20 : 30;
+            scoreBonus = player.final_score > 0 ? Math.floor(player.final_score / 5) : 0;
+            if (mode === '四麻') {
+                const yonmaRankBonus = { 1: 15, 2: 9, 3: 5, 4: 0 };
+                rankBonus = yonmaRankBonus[player.rank] || 0;
             } else {
-                scoreBonus = player.final_score > 0 ? Math.ceil(player.final_score / 10) : 0;
-                if (mode === '四麻') {
-                    const yonmaRankBonus = { 1: 5, 2: 3, 3: 1, 4: 0 };
-                    rankBonus = yonmaRankBonus[player.rank] || 0;
-                }
-                baseReward = (mode === '三麻') ? 3 : 5;
+                const sanmaRankBonus = { 1: 8, 2: 4, 3: 0 };
+                rankBonus = sanmaRankBonus[player.rank] || 0;
             }
             const coinReward = baseReward + scoreBonus + rankBonus;
 
@@ -1484,27 +1474,17 @@ async function sendDiscordNotification(matchData, isTobiOn, isYakitoriOn, ticket
         // ユーザーIDがある場合はメンション形式にする
         const nameDisplay = p.discord_user_id ? `<@${p.discord_user_id}>` : p.account_name;
 
-        // 報酬コインの計算（実際の付与ロジックと一致させる）
+        // 報酬コインの計算（チーム戦・個人戦共通）
         let scoreBonus = 0;
         let rankBonus = 0;
-        let baseReward = 0;
-        if (matchType === 'チーム戦') {
-            baseReward = (mode === '三麻') ? 20 : 30;
-            scoreBonus = p.final_score > 0 ? Math.floor(p.final_score / 5) : 0;
-            if (mode === '四麻') {
-                const yonmaRankBonus = { 1: 15, 2: 9, 3: 5, 4: 0 };
-                rankBonus = yonmaRankBonus[p.rank] || 0;
-            } else {
-                const sanmaRankBonus = { 1: 8, 2: 4, 3: 0 };
-                rankBonus = sanmaRankBonus[p.rank] || 0;
-            }
+        const baseReward = (mode === '三麻') ? 20 : 30;
+        scoreBonus = p.final_score > 0 ? Math.floor(p.final_score / 5) : 0;
+        if (mode === '四麻') {
+            const yonmaRankBonus = { 1: 15, 2: 9, 3: 5, 4: 0 };
+            rankBonus = yonmaRankBonus[p.rank] || 0;
         } else {
-            scoreBonus = p.final_score > 0 ? Math.ceil(p.final_score / 10) : 0;
-            if (mode === '四麻') {
-                const yonmaRankBonus = { 1: 5, 2: 3, 3: 1, 4: 0 };
-                rankBonus = yonmaRankBonus[p.rank] || 0;
-            }
-            baseReward = (mode === '三麻') ? 3 : 5;
+            const sanmaRankBonus = { 1: 8, 2: 4, 3: 0 };
+            rankBonus = sanmaRankBonus[p.rank] || 0;
         }
         const reward = baseReward + scoreBonus + rankBonus;
         const tickets = ticketRewardsMap[p.discord_user_id] || 0;
