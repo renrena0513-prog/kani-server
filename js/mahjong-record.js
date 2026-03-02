@@ -1285,27 +1285,32 @@ async function submitScores() {
             if (!player.discord_user_id) continue;
 
             // 1. チケット報酬計算
-            // 三麻: 参加者15%, 記録者20%
-            // 四麻: 参加者20%, 記録者30%
-            // 各ユーザーで個別に判定するため、複数人に同時付与されることがある
+            // 四麻: 参加者40%, 記録者60%
+            // 三麻: 参加者30%, 記録者50%
             let ticketReward = 0;
             const isRecorder = player.discord_user_id === submittedBy;
             let ticketChance;
             if (mode === '四麻') {
-                ticketChance = isRecorder ? 0.30 : 0.20;
+                ticketChance = isRecorder ? 0.60 : 0.40;
             } else {
-                ticketChance = isRecorder ? 0.20 : 0.15;
+                ticketChance = isRecorder ? 0.50 : 0.30;
             }
             if (Math.random() < ticketChance) {
                 ticketReward += 1;
+            }
+            // 1位ボーナス祈願符
+            if (mode === '四麻' && player.rank === 1) {
+                ticketReward += 1; // 四麻1位: 祈願符1枚確定
+            } else if (mode === '三麻' && player.rank === 1) {
+                if (Math.random() < 0.80) ticketReward += 1; // 三麻1位: 80%で祈願符1枚
             }
             if (ticketReward > 0) {
                 ticketRewardsMap[player.discord_user_id] = ticketReward;
             }
 
-            // 1.5 満願符報酬（3%）＋役満確定
+            // 1.5 満願符報酬（5%）＋役満確定
             let manganReward = 0;
-            if (Math.random() < 0.03) {
+            if (Math.random() < 0.05) {
                 manganReward += 1;
             }
             const yakumanList = yakumanMap[player.discord_user_id] || [];
@@ -1319,13 +1324,13 @@ async function submitScores() {
             // 2. コイン報酬計算（チーム戦・個人戦共通）
             let scoreBonus = 0;
             let rankBonus = 0;
-            const baseReward = (mode === '三麻') ? 20 : 30;
-            scoreBonus = player.final_score > 0 ? Math.floor(player.final_score / 5) : 0;
+            const baseReward = (mode === '三麻') ? 20 : 50;
+            scoreBonus = player.final_score > 0 ? Math.floor(player.final_score) : 0;
             if (mode === '四麻') {
-                const yonmaRankBonus = { 1: 15, 2: 9, 3: 5, 4: 0 };
+                const yonmaRankBonus = { 1: 50, 2: 30, 3: 10, 4: 0 };
                 rankBonus = yonmaRankBonus[player.rank] || 0;
             } else {
-                const sanmaRankBonus = { 1: 8, 2: 4, 3: 0 };
+                const sanmaRankBonus = { 1: 20, 2: 10, 3: 0 };
                 rankBonus = sanmaRankBonus[player.rank] || 0;
             }
             const coinReward = baseReward + scoreBonus + rankBonus;
@@ -1477,13 +1482,13 @@ async function sendDiscordNotification(matchData, isTobiOn, isYakitoriOn, ticket
         // 報酬コインの計算（チーム戦・個人戦共通）
         let scoreBonus = 0;
         let rankBonus = 0;
-        const baseReward = (mode === '三麻') ? 20 : 30;
-        scoreBonus = p.final_score > 0 ? Math.floor(p.final_score / 5) : 0;
+        const baseReward = (mode === '三麻') ? 20 : 50;
+        scoreBonus = p.final_score > 0 ? Math.floor(p.final_score) : 0;
         if (mode === '四麻') {
-            const yonmaRankBonus = { 1: 15, 2: 9, 3: 5, 4: 0 };
+            const yonmaRankBonus = { 1: 50, 2: 30, 3: 10, 4: 0 };
             rankBonus = yonmaRankBonus[p.rank] || 0;
         } else {
-            const sanmaRankBonus = { 1: 8, 2: 4, 3: 0 };
+            const sanmaRankBonus = { 1: 20, 2: 10, 3: 0 };
             rankBonus = sanmaRankBonus[p.rank] || 0;
         }
         const reward = baseReward + scoreBonus + rankBonus;
