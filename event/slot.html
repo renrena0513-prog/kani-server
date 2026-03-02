@@ -571,6 +571,58 @@
                 font-size: 0.85rem;
             }
         }
+
+        /* ルール説明モーダル */
+        .slot-rule-btn {
+            background: linear-gradient(135deg, #1abc9c, #16a085);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 20px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform .15s, box-shadow .15s;
+        }
+
+        .slot-rule-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(26, 188, 156, .4);
+        }
+
+        .slot-rule-btn:active {
+            transform: translateY(0);
+        }
+
+        .slot-rule-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .75);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+        }
+
+        .slot-rule-overlay.show {
+            display: flex;
+        }
+
+        .slot-rule-overlay img {
+            max-width: 720px;
+            width: 100%;
+            max-height: 90vh;
+            object-fit: contain;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, .5);
+        }
+
+        @media (max-width: 768px) {
+            .slot-rule-overlay img {
+                max-width: 100%;
+            }
+        }
     </style>
 </head>
 
@@ -582,7 +634,15 @@
                 <h1 class="slot-header mb-2">🎰 期間限定イベント：スロット</h1>
                 <div class="slot-muted">1回100コイン。止まった分だけ報酬確定、はずれでバースト。</div>
             </div>
-            <div class="slot-status" id="event-status">読み込み中...</div>
+            <div class="d-flex flex-column align-items-end gap-2">
+                <div class="slot-status" id="event-status">読み込み中...</div>
+                <button class="slot-rule-btn"
+                    onclick="document.getElementById('slot-rule-overlay').classList.add('show')">📖 ルール説明はこちら</button>
+            </div>
+        </div>
+
+        <div class="slot-rule-overlay" id="slot-rule-overlay" onclick="this.classList.remove('show')">
+            <img src="../images/slot/ルール説明.png" alt="ルール説明">
         </div>
 
         <div class="slot-panel p-4 mb-4">
