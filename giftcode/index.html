@@ -103,6 +103,44 @@
             vertical-align: middle;
         }
 
+        .user-select-area {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 8px;
+            background: #f8f9fa;
+        }
+
+        .user-select-area .form-check {
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: background 0.15s;
+        }
+
+        .user-select-area .form-check:hover {
+            background: #e9ecef;
+        }
+
+        .user-select-area .form-check-label {
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .user-search-input {
+            border-radius: 999px;
+            font-size: 0.85rem;
+            padding: 6px 14px;
+        }
+
+        .allowed-users-badge {
+            font-size: 0.75rem;
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
         @media (max-width: 768px) {
             .gift-card {
                 padding: 24px;
@@ -215,6 +253,17 @@
                             <label class="form-label">回数 <span class="text-muted small">(空欄=無制限)</span></label>
                             <input type="number" id="gift-add-remaining" class="form-control" min="1" placeholder="∞">
                         </div>
+                        <div class="form-check form-switch mt-3">
+                            <input class="form-check-input" type="checkbox" id="gift-add-public" checked>
+                            <label class="form-check-label" for="gift-add-public">全員に公開</label>
+                        </div>
+                        <div id="gift-user-select-wrapper" class="mt-2" style="display: none;">
+                            <label class="form-label small text-muted">受け取れるユーザーを選択</label>
+                            <input type="text" id="gift-user-search" class="form-control form-control-sm user-search-input mb-2" placeholder="ユーザー検索...">
+                            <div id="gift-user-select" class="user-select-area">
+                                <div class="text-muted small text-center">読み込み中...</div>
+                            </div>
+                        </div>
                         <div class="text-end mt-4">
                             <button type="submit" class="btn btn-primary">追加する</button>
                         </div>
@@ -244,6 +293,7 @@
                                     <th>祈願符</th>
                                     <th>満願符</th>
                                     <th>残回数</th>
+                                    <th>対象者</th>
                                     <th>有効</th>
                                     <th>作成日</th>
                                     <th></th>
@@ -251,7 +301,7 @@
                             </thead>
                             <tbody id="gift-admin-table-body">
                                 <tr>
-                                    <td colspan="9" class="text-center text-muted">読み込み中...</td>
+                                    <td colspan="10" class="text-center text-muted">読み込み中...</td>
                                 </tr>
                             </tbody>
                         </table>

@@ -13,6 +13,13 @@ create table if not exists public.gift_codes (
     created_at timestamptz not null default now()
 );
 
+create table if not exists public.gift_code_allowed_users (
+    id uuid primary key default gen_random_uuid(),
+    gift_code_id uuid not null references public.gift_codes(id) on delete cascade,
+    discord_user_id text not null,
+    unique (gift_code_id, discord_user_id)
+);
+
 create table if not exists public.gift_code_redemptions (
     id uuid primary key default gen_random_uuid(),
     gift_code_id uuid not null references public.gift_codes(id) on delete cascade,
@@ -89,6 +96,16 @@ BEGIN
         return jsonb_build_object('ok', false, 'error', 'not_found');
     end if;
 
+    -- ユーザー制限チェック
+    if exists (select 1 from public.gift_code_allowed_users where gift_code_id = v_code.id) then
+        if not exists (
+            select 1 from public.gift_code_allowed_users
+            where gift_code_id = v_code.id and discord_user_id = v_user_id
+        ) then
+            return jsonb_build_object('ok', false, 'error', 'not_eligible');
+        end if;
+    end if;
+
     -- 残回数チェック（NULLなら無制限、0なら使用不可）
     if v_code.remaining_uses is not null and v_code.remaining_uses <= 0 then
         return jsonb_build_object('ok', false, 'error', 'exhausted');
@@ -133,7 +150,8 @@ create or replace function public.admin_create_gift_code(
     p_kiganfu integer,
     p_manganfu integer,
     p_is_active boolean,
-    p_remaining_uses integer default null
+    p_remaining_uses integer default null,
+    p_allowed_user_ids text[] default null
 )
 returns jsonb
 language plpgsql
@@ -143,6 +161,7 @@ as $$
 DECLARE
     v_norm text;
     v_id uuid;
+    v_uid text;
 BEGIN
     if not public.is_admin() then
         return jsonb_build_object('ok', false, 'error', 'not_admin');
@@ -160,6 +179,14 @@ BEGIN
         return jsonb_build_object('ok', false, 'error', 'duplicate');
     end;
 
+    -- 許可ユーザーの登録
+    if p_allowed_user_ids is not null and array_length(p_allowed_user_ids, 1) > 0 then
+        foreach v_uid in array p_allowed_user_ids loop
+            insert into public.gift_code_allowed_users (gift_code_id, discord_user_id)
+            values (v_id, v_uid);
+        end loop;
+    end if;
+
     return jsonb_build_object('ok', true, 'id', v_id, 'code_norm', v_norm);
 END;
 $$;
@@ -170,7 +197,8 @@ create or replace function public.admin_update_gift_code(
     p_kiganfu integer,
     p_manganfu integer,
     p_is_active boolean,
-    p_remaining_uses integer default null
+    p_remaining_uses integer default null,
+    p_allowed_user_ids text[] default null
 )
 returns jsonb
 language plpgsql
@@ -179,6 +207,7 @@ set search_path = public
 as $$
 DECLARE
     v_updated integer;
+    v_uid text;
 BEGIN
     if not public.is_admin() then
         return jsonb_build_object('ok', false, 'error', 'not_admin');
@@ -198,12 +227,22 @@ BEGIN
         return jsonb_build_object('ok', false, 'error', 'not_found');
     end if;
 
+    -- 許可ユーザーの更新（全削除→再登録）
+    delete from public.gift_code_allowed_users where gift_code_id = p_id;
+    if p_allowed_user_ids is not null and array_length(p_allowed_user_ids, 1) > 0 then
+        foreach v_uid in array p_allowed_user_ids loop
+            insert into public.gift_code_allowed_users (gift_code_id, discord_user_id)
+            values (p_id, v_uid);
+        end loop;
+    end if;
+
     return jsonb_build_object('ok', true);
 END;
 $$;
 
 alter table public.gift_codes enable row level security;
 alter table public.gift_code_redemptions enable row level security;
+alter table public.gift_code_allowed_users enable row level security;
 
 create policy "gift_codes_select_all"
     on public.gift_codes for select
@@ -226,10 +265,23 @@ create policy "gift_code_redemptions_insert_own"
     on public.gift_code_redemptions for insert
     with check (discord_user_id = (auth.jwt() -> 'user_metadata' ->> 'provider_id'));
 
+create policy "gift_code_allowed_users_select"
+    on public.gift_code_allowed_users for select
+    using (true);
+
+create policy "gift_code_allowed_users_admin_insert"
+    on public.gift_code_allowed_users for insert
+    with check (public.is_admin());
+
+create policy "gift_code_allowed_users_admin_delete"
+    on public.gift_code_allowed_users for delete
+    using (public.is_admin());
+
 grant select on public.gift_codes to anon, authenticated;
 grant select on public.gift_code_redemptions to authenticated;
+grant select on public.gift_code_allowed_users to authenticated;
 
 grant execute on function public.normalize_gift_code(text) to authenticated;
 grant execute on function public.redeem_gift_code(text) to authenticated;
-grant execute on function public.admin_create_gift_code(text, integer, integer, integer, boolean) to authenticated;
-grant execute on function public.admin_update_gift_code(uuid, integer, integer, integer, boolean) to authenticated;
+grant execute on function public.admin_create_gift_code(text, integer, integer, integer, boolean, integer, text[]) to authenticated;
+grant execute on function public.admin_update_gift_code(uuid, integer, integer, integer, boolean, integer, text[]) to authenticated;

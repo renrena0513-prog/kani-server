@@ -73,6 +73,7 @@
         if (code === 'already_redeemed') return 'この報酬は既に受け取り済みです';
         if (code === 'exhausted') return 'このコードは使用回数の上限に達しました';
         if (code === 'not_authenticated') return 'ログインしてください';
+        if (code === 'not_eligible') return 'あなたはこのコードの対象ではありません';
         return 'エラーが発生しました。';
     }
 
@@ -130,10 +131,80 @@
         const addForm = document.getElementById('gift-add-form');
         const addMessage = document.getElementById('gift-add-message');
         const listBody = document.getElementById('gift-admin-table-body');
+        const publicToggle = document.getElementById('gift-add-public');
+        const userSelectWrapper = document.getElementById('gift-user-select-wrapper');
+        const userSelectArea = document.getElementById('gift-user-select');
+        const userSearchInput = document.getElementById('gift-user-search');
+
+        let allProfiles = [];
+
+        // 全員に公開トグルの連動
+        if (publicToggle && userSelectWrapper) {
+            publicToggle.addEventListener('change', () => {
+                userSelectWrapper.style.display = publicToggle.checked ? 'none' : 'block';
+                if (!publicToggle.checked && allProfiles.length === 0) {
+                    loadProfiles();
+                }
+            });
+        }
+
+        // ユーザー検索フィルター
+        if (userSearchInput) {
+            userSearchInput.addEventListener('input', () => {
+                const query = userSearchInput.value.toLowerCase();
+                const checks = userSelectArea.querySelectorAll('.form-check');
+                checks.forEach(chk => {
+                    const label = chk.querySelector('.form-check-label');
+                    if (label) {
+                        chk.style.display = label.textContent.toLowerCase().includes(query) ? 'block' : 'none';
+                    }
+                });
+            });
+        }
+
+        async function loadProfiles() {
+            if (!userSelectArea) return;
+            userSelectArea.innerHTML = '<div class="text-muted small text-center">読み込み中...</div>';
+            const { data, error } = await supabaseClient
+                .from('profiles')
+                .select('discord_user_id, account_name')
+                .order('account_name');
+
+            if (error || !data) {
+                userSelectArea.innerHTML = '<div class="text-danger small text-center">取得失敗</div>';
+                return;
+            }
+
+            allProfiles = data.filter(p => p.account_name);
+            renderUserCheckboxes();
+        }
+
+        function renderUserCheckboxes(selectedIds = []) {
+            if (!userSelectArea) return;
+            userSelectArea.innerHTML = allProfiles.map(p => {
+                const checked = selectedIds.includes(p.discord_user_id) ? 'checked' : '';
+                return `
+                    <div class="form-check">
+                        <input class="form-check-input gift-user-check" type="checkbox" value="${escapeHtml(p.discord_user_id)}" id="gu-${escapeHtml(p.discord_user_id)}" ${checked}>
+                        <label class="form-check-label" for="gu-${escapeHtml(p.discord_user_id)}">${escapeHtml(p.account_name)}</label>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getSelectedUserIds() {
+            const checks = userSelectArea?.querySelectorAll('.gift-user-check:checked') || [];
+            return Array.from(checks).map(c => c.value);
+        }
 
         if (addBtn) {
             addBtn.addEventListener('click', () => {
                 if (!isAdmin) return;
+                // フォームリセット
+                publicToggle.checked = true;
+                userSelectWrapper.style.display = 'none';
+                if (userSearchInput) userSearchInput.value = '';
+                allProfiles = [];
                 const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('giftAddModal'));
                 modal.show();
             });
@@ -160,6 +231,8 @@
                 const isActive = document.getElementById('gift-add-active').checked;
                 const remainingRaw = document.getElementById('gift-add-remaining').value.trim();
                 const remainingUses = remainingRaw === '' ? null : Number(remainingRaw);
+                const isPublic = publicToggle.checked;
+                const allowedUserIds = isPublic ? null : getSelectedUserIds();
 
                 addMessage.textContent = '';
                 addMessage.className = 'small mt-3';
@@ -170,13 +243,20 @@
                     return;
                 }
 
+                if (!isPublic && (!allowedUserIds || allowedUserIds.length === 0)) {
+                    addMessage.textContent = '対象ユーザーを少なくとも1人選択してください';
+                    addMessage.classList.add('text-danger');
+                    return;
+                }
+
                 const { data, error } = await supabaseClient.rpc('admin_create_gift_code', {
                     p_code_raw: codeRaw,
                     p_coin: coin,
                     p_kiganfu: kiganfu,
                     p_manganfu: manganfu,
                     p_is_active: isActive,
-                    p_remaining_uses: remainingUses
+                    p_remaining_uses: remainingUses,
+                    p_allowed_user_ids: allowedUserIds
                 });
 
                 if (error) {
@@ -197,6 +277,8 @@
                 addMessage.classList.add('text-success');
                 addForm.reset();
                 document.getElementById('gift-add-active').checked = true;
+                publicToggle.checked = true;
+                userSelectWrapper.style.display = 'none';
             });
         }
 
@@ -215,6 +297,10 @@
                 const remainingRaw = row.querySelector('.gift-admin-remaining')?.value?.trim();
                 const remainingUses = (remainingRaw === '' || remainingRaw === undefined) ? null : Number(remainingRaw);
 
+                // 許可ユーザーの取得（現在の状態をそのまま保持）
+                const allowedUserIdsRaw = row.dataset.allowedUserIds;
+                const allowedUserIds = allowedUserIdsRaw ? JSON.parse(allowedUserIdsRaw) : null;
+
                 button.disabled = true;
                 button.textContent = '保存中...';
 
@@ -225,7 +311,8 @@
                         p_kiganfu: kiganfu,
                         p_manganfu: manganfu,
                         p_is_active: isActive,
-                        p_remaining_uses: remainingUses
+                        p_remaining_uses: remainingUses,
+                        p_allowed_user_ids: allowedUserIds
                     });
 
                     if (error || !data?.ok) {
@@ -246,35 +333,60 @@
 
         async function loadGiftCodes() {
             if (!listBody) return;
-            listBody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">読み込み中...</td></tr>';
+            listBody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">読み込み中...</td></tr>';
 
-            const { data, error } = await supabaseClient
-                .from('gift_codes')
-                .select('*')
-                .order('created_at', { ascending: false });
+            const [codesRes, allowedRes, profilesRes] = await Promise.all([
+                supabaseClient.from('gift_codes').select('*').order('created_at', { ascending: false }),
+                supabaseClient.from('gift_code_allowed_users').select('gift_code_id, discord_user_id'),
+                supabaseClient.from('profiles').select('discord_user_id, account_name')
+            ]);
 
-            if (error) {
-                console.error(error);
-                listBody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">取得に失敗しました</td></tr>';
+            if (codesRes.error) {
+                console.error(codesRes.error);
+                listBody.innerHTML = '<tr><td colspan="10" class="text-center text-danger">取得に失敗しました</td></tr>';
                 return;
             }
 
+            const data = codesRes.data;
             if (!data || data.length === 0) {
-                listBody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">データがありません</td></tr>';
+                listBody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">データがありません</td></tr>';
                 return;
             }
+
+            // 許可ユーザーをコードごとにグループ化
+            const allowedMap = {};
+            (allowedRes.data || []).forEach(a => {
+                if (!allowedMap[a.gift_code_id]) allowedMap[a.gift_code_id] = [];
+                allowedMap[a.gift_code_id].push(a.discord_user_id);
+            });
+
+            // discord_user_id -> account_name マップ
+            const nameMap = {};
+            (profilesRes.data || []).forEach(p => {
+                nameMap[p.discord_user_id] = p.account_name;
+            });
 
             listBody.innerHTML = data.map((row) => {
                 const createdAt = row.created_at ? new Date(row.created_at).toLocaleDateString('ja-JP') : '-';
                 const remainingVal = row.remaining_uses !== null && row.remaining_uses !== undefined ? row.remaining_uses : '';
+                const allowedIds = allowedMap[row.id] || [];
+                const allowedIdsJson = escapeHtml(JSON.stringify(allowedIds));
+
+                let allowedHtml = '<span class="badge bg-success">全員</span>';
+                if (allowedIds.length > 0) {
+                    const names = allowedIds.map(id => nameMap[id] || id);
+                    allowedHtml = names.map(n => `<span class="badge bg-info text-dark allowed-users-badge" title="${escapeHtml(n)}">${escapeHtml(n)}</span>`).join(' ');
+                }
+
                 return `
-                    <tr data-id="${row.id}">
+                    <tr data-id="${row.id}" data-allowed-user-ids='${allowedIdsJson}'>
                         <td class="small">${escapeHtml(row.code_raw || '')}</td>
                         <td class="small text-muted">${escapeHtml(row.code_norm || '')}</td>
                         <td><input type="number" class="form-control form-control-sm gift-admin-coin" value="${row.coin ?? 0}" min="0"></td>
                         <td><input type="number" class="form-control form-control-sm gift-admin-kiganfu" value="${row.kiganfu ?? 0}" min="0"></td>
                         <td><input type="number" class="form-control form-control-sm gift-admin-manganfu" value="${row.manganfu ?? 0}" min="0"></td>
                         <td><input type="number" class="form-control form-control-sm gift-admin-remaining" value="${remainingVal}" min="0" placeholder="∞"></td>
+                        <td class="small">${allowedHtml}</td>
                         <td>
                             <div class="form-check form-switch">
                                 <input class="form-check-input gift-admin-active" type="checkbox" ${row.is_active ? 'checked' : ''}>
