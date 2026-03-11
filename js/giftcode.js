@@ -167,7 +167,7 @@
             userSelectArea.innerHTML = '<div class="text-muted small text-center">読み込み中...</div>';
             const { data, error } = await supabaseClient
                 .from('profiles')
-                .select('discord_user_id, account_name')
+                .select('discord_user_id, account_name, avatar_url')
                 .order('account_name');
 
             if (error || !data) {
@@ -183,10 +183,12 @@
             if (!userSelectArea) return;
             userSelectArea.innerHTML = allProfiles.map(p => {
                 const checked = selectedIds.includes(p.discord_user_id) ? 'checked' : '';
+                const avatarSrc = p.avatar_url || '';
+                const avatarImg = avatarSrc ? `<img src="${escapeHtml(avatarSrc)}" class="user-avatar" onerror="this.style.display='none'">` : '';
                 return `
                     <div class="form-check">
                         <input class="form-check-input gift-user-check" type="checkbox" value="${escapeHtml(p.discord_user_id)}" id="gu-${escapeHtml(p.discord_user_id)}" ${checked}>
-                        <label class="form-check-label" for="gu-${escapeHtml(p.discord_user_id)}">${escapeHtml(p.account_name)}</label>
+                        <label class="form-check-label" for="gu-${escapeHtml(p.discord_user_id)}">${avatarImg}${escapeHtml(p.account_name)}</label>
                     </div>
                 `;
             }).join('');
