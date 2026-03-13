@@ -1,7 +1,7 @@
 let allRecords = [];
 let allProfiles = []; // プロフィール情報（アイコン付き）
-let currentTournament = '第二回麻雀大会'; // 初期表示は第二回
-let currentMainFilter = 'team'; // チーム戦, 個人戦(四麻), 個人戦(三麻)
+let currentTournament = 'all'; // 初期表示は全シーズン
+let currentMainFilter = 'individual_yonma'; // 個人戦（四麻）をデフォルト
 let currentSubFilter = 'all';  // 合計スコア, 平均スコア, 最大スコア, etc.
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -263,7 +263,7 @@ function showRanking() {
         title.textContent = 'チーム戦ランキング';
         filtered = seasonFiltered.filter(r => {
             if (r.tournament_type === '第一回麻雀大会') return !!r.team_name;
-            return r.match_mode !== '個人戦' && r.team_name;
+            return r.match_mode === 'チーム戦' && r.team_name;
         });
         groupKey = 'team_name';
         nameHeader.textContent = 'チーム名';

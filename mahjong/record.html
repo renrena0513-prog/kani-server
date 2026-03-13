@@ -468,7 +468,8 @@
             <div class="row g-3">
                 <div class="col-md-3">
                     <label class="form-label">大会名</label>
-                    <div class="fw-bold fs-5 text-dark py-2">第二回麻雀大会</div>
+                    <div class="fw-bold fs-5 text-dark py-2">期間外</div>
+                    <input type="hidden" id="form-tournament" value="期間外">
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">試合種別</label>
@@ -479,10 +480,8 @@
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">試合形式</label>
-                    <select id="form-match" class="form-select" onchange="changeMatchMode()">
-                        <option value="個人戦">個人戦</option>
-                        <option value="チーム戦" selected>チーム戦</option>
-                    </select>
+                    <div class="fw-bold fs-5 text-dark py-2">個人戦（期間外）</div>
+                    <input type="hidden" id="form-match" value="個人戦（期間外）">
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">対局数</label>

@@ -136,6 +136,26 @@ function changePlayerCount() {
     updateRuleDisplay();
 }
 
+function changeTournament() {
+    const tournament = document.getElementById('form-tournament').value;
+    const matchSelect = document.getElementById('form-match');
+
+    if (tournament === '期間外') {
+        // 期間外選択時は試合形式を「個人戦（期間外）」に固定
+        matchSelect.value = '個人戦（期間外）';
+        matchSelect.disabled = true;
+        changeMatchMode();
+    } else {
+        // 通常の大会選択時は試合形式を選択可能に戻す
+        matchSelect.disabled = false;
+        // 期間外から戻った場合、「個人戦（期間外）」が選ばれていたら個人戦にリセット
+        if (matchSelect.value === '個人戦（期間外）') {
+            matchSelect.value = '個人戦';
+        }
+        changeMatchMode();
+    }
+}
+
 function changeMatchMode() {
     const mode = document.getElementById('form-mode').value;
     const match = document.getElementById('form-match').value;
@@ -976,6 +996,7 @@ async function submitScores() {
 
     const mode = document.getElementById('form-mode').value;
     const match = document.getElementById('form-match').value;
+    const tournament = document.getElementById('form-tournament').value;
     const hands = Number(document.getElementById('form-hands').value);
 
     const targetCount = mode === '三麻' ? 3 : 4;
@@ -1096,6 +1117,13 @@ async function submitScores() {
                 }
             }
         }
+    }
+
+    // 3.5 期間外のバリデーション（チーム戦は不可）
+    if (tournament === '期間外' && match !== '個人戦（期間外）') {
+        showNotice('期間外の場合は「個人戦（期間外）」を選択してください。', 'warning');
+        resetSubmitBtn();
+        return;
     }
 
     function resetSubmitBtn() {
@@ -1249,7 +1277,7 @@ async function submitScores() {
         event_datetime: now,
         discord_user_id: player.discord_user_id,
         account_name: player.account_name,
-        tournament_type: '第二回麻雀大会',
+        tournament_type: tournament,
         mahjong_mode: mode,
         match_mode: match,
         team_name: player.team_name,

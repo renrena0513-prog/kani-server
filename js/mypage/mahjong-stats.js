@@ -1,7 +1,7 @@
         // ============ 麻雀統計機能 ============
         let allMahjongRecords = [];
         let myAccountName = '';
-        let currentMyTournament = '第二回麻雀大会';
+        let currentMyTournament = 'all';
 
         async function loadMahjongStats() {
             try {
@@ -69,7 +69,7 @@
         function renderTournamentDropdown() {
             const select = document.getElementById('tournament-select');
             if (!select) return;
-            const tournaments = ['第二回麻雀大会', '第一回麻雀大会'];
+            const tournaments = ['第二回麻雀大会', '第一回麻雀大会', '期間外'];
             let html = tournaments.map(t => `<option value="${t}" ${currentMyTournament === t ? 'selected' : ''}>${t}</option>`).join('');
             html += `<option value="all" ${currentMyTournament === 'all' ? 'selected' : ''}>全シーズン</option>`;
             select.innerHTML = html;
