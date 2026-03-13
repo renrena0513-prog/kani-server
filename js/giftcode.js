@@ -295,7 +295,7 @@
                     return;
                 }
 
-                const { data, error } = await supabaseClient.rpc('admin_create_gift_code', {
+                const createPayload = {
                     p_code_raw: codeRaw,
                     p_coin: coin,
                     p_kiganfu: kiganfu,
@@ -304,7 +304,15 @@
                     p_remaining_uses: remainingUses,
                     p_allowed_user_ids: allowedUserIds,
                     p_badge_id: badgeId || null
-                });
+                };
+
+                let { data, error } = await supabaseClient.rpc('admin_create_gift_code', createPayload);
+                // Backend function may not yet support p_badge_id; retry without it.
+                if (error?.code === 'PGRST202' || (error?.message || '').includes('p_badge_id')) {
+                    const fallbackPayload = { ...createPayload };
+                    delete fallbackPayload.p_badge_id;
+                    ({ data, error } = await supabaseClient.rpc('admin_create_gift_code', fallbackPayload));
+                }
 
                 if (error) {
                     console.error(error);
@@ -354,7 +362,7 @@
                 button.textContent = '保存中...';
 
                 try {
-                    const { data, error } = await supabaseClient.rpc('admin_update_gift_code', {
+                    const updatePayload = {
                         p_id: codeId,
                         p_coin: coin,
                         p_kiganfu: kiganfu,
@@ -363,7 +371,15 @@
                         p_remaining_uses: remainingUses,
                         p_allowed_user_ids: allowedUserIds,
                         p_badge_id: badgeIdVal || null
-                    });
+                    };
+
+                    let { data, error } = await supabaseClient.rpc('admin_update_gift_code', updatePayload);
+                    // Backend function may not yet support p_badge_id; retry without it.
+                    if (error?.code === 'PGRST202' || (error?.message || '').includes('p_badge_id')) {
+                        const fallbackPayload = { ...updatePayload };
+                        delete fallbackPayload.p_badge_id;
+                        ({ data, error } = await supabaseClient.rpc('admin_update_gift_code', fallbackPayload));
+                    }
 
                     if (error || !data?.ok) {
                         console.error(error || data);

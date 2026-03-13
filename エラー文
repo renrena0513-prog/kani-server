@@ -1,20 +1,17 @@
-        function setProcessing(state) {
-            isProcessing = state;
-            // ループ中は開始ボタンを無効に保つ
-            const canResumeFree = currentSession?.free_spin_active && !fsLoopActive && !awaitingFreeSpinStart;
-            const canResumeNormal = currentSession && currentSession.status === 'active' && !currentSession.free_spin_active;
-            const allowEventGate = !(currentSession && currentSession.status === 'active');
-            document.getElementById('btn-start').disabled = state || fsLoopActive ? true : (!canResumeFree && !canResumeNormal && currentSession && currentSession.status === 'active' && !isFreeSpinStartReady()) || ((!currentSession?.free_spin_active && !isEventActiveNow()) && allowEventGate);
-            document.getElementById('btn-stop').disabled = state || !currentSession || currentSession.status !== 'active' || currentSession.free_spin_active || (currentSession.reels || []).length === 0;
-            const jackpotBtn = document.getElementById('btn-jackpot-confirm');
-            if (jackpotBtn) jackpotBtn.disabled = state || !currentSession || !currentSession.jackpot_unlocked || currentSession.free_spin_confirmed;
-            const mobileStart = document.getElementById('mobile-btn-start');
-            const mobileStop = document.getElementById('mobile-btn-stop');
-            const allowDuringFs = currentSession?.free_spin_active;
-            const allowEventGate = !(currentSession && currentSession.status === 'active');
-            if (mobileStart) mobileStart.disabled = state || fsLoopActive ? true : (((!allowDuringFs && !isEventActiveNow()) && allowEventGate) || (!canResumeFree && !canResumeNormal && currentSession && currentSession.status === 'active' && !isFreeSpinStartReady()));
-            if (mobileStop) mobileStop.disabled = state || !currentSession || currentSession.status !== 'active' || currentSession.free_spin_active || (currentSession.reels || []).length === 0;
-            updateReelButtons();
-        }
-
-        ここがエラー
+Object
+code
+: 
+"PGRST202"
+details
+: 
+"Searched for the function public.admin_create_gift_code with parameters p_allowed_user_ids, p_badge_id, p_code_raw, p_coin, p_is_active, p_kiganfu, p_manganfu, p_remaining_uses or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache."
+hint
+: 
+"Perhaps you meant to call the function public.admin_create_gift_code(p_allowed_user_ids, p_code_raw, p_coin, p_is_active, p_kiganfu, p_manganfu, p_remaining_uses)"
+message
+: 
+"Could not find the function public.admin_create_gift_code(p_allowed_user_ids, p_badge_id, p_code_raw, p_coin, p_is_active, p_kiganfu, p_manganfu, p_remaining_uses) in the schema cache"
+[[Prototype]]
+: 
+Object
+(anonymous)	@	giftcode.js:310
