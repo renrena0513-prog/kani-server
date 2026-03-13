@@ -1,17 +1,1 @@
-Object
-code
-: 
-"PGRST202"
-details
-: 
-"Searched for the function public.admin_create_gift_code with parameters p_allowed_user_ids, p_badge_id, p_code_raw, p_coin, p_is_active, p_kiganfu, p_manganfu, p_remaining_uses or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache."
-hint
-: 
-"Perhaps you meant to call the function public.admin_create_gift_code(p_allowed_user_ids, p_code_raw, p_coin, p_is_active, p_kiganfu, p_manganfu, p_remaining_uses)"
-message
-: 
-"Could not find the function public.admin_create_gift_code(p_allowed_user_ids, p_badge_id, p_code_raw, p_coin, p_is_active, p_kiganfu, p_manganfu, p_remaining_uses) in the schema cache"
-[[Prototype]]
-: 
-Object
-(anonymous)	@	giftcode.js:310
+Error: Failed to run sql query: ERROR: 42601: "v_id" is not a known variable LINE 28: returning id into v_id; ^

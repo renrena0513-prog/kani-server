@@ -154,6 +154,7 @@
         const userSelectArea = document.getElementById('gift-user-select');
         const userSearchInput = document.getElementById('gift-user-search');
         const badgeSelect = document.getElementById('gift-add-badge');
+        const badgeSearchInput = document.getElementById('gift-add-badge-search');
 
         let allProfiles = [];
         let allBadges = [];
@@ -212,9 +213,13 @@
             renderBadgeOptions();
         }
 
-        function renderBadgeOptions(selectedId = '') {
+        function renderBadgeOptions(selectedId = '', query = '') {
             if (!badgeSelect) return;
-            badgeSelect.innerHTML = '<option value="">なし</option>' + allBadges.map(b => {
+            const q = (query || '').trim().toLowerCase();
+            const filtered = q
+                ? allBadges.filter(b => (b.name || '').toLowerCase().includes(q))
+                : allBadges;
+            badgeSelect.innerHTML = '<option value="">なし</option>' + filtered.map(b => {
                 const selected = b.id === selectedId ? 'selected' : '';
                 return `<option value="${escapeHtml(b.id)}" ${selected}>${escapeHtml(b.name)}</option>`;
             }).join('');
@@ -249,7 +254,8 @@
                 if (userSearchInput) userSearchInput.value = '';
                 allProfiles = [];
                 await loadBadges();
-                renderBadgeOptions('');
+                if (badgeSearchInput) badgeSearchInput.value = '';
+                renderBadgeOptions('', '');
                 const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('giftAddModal'));
                 modal.show();
             });
@@ -334,7 +340,15 @@
                 document.getElementById('gift-add-active').checked = true;
                 publicToggle.checked = true;
                 userSelectWrapper.style.display = 'none';
-                renderBadgeOptions('');
+                if (badgeSearchInput) badgeSearchInput.value = '';
+                renderBadgeOptions('', '');
+            });
+        }
+
+        if (badgeSearchInput) {
+            badgeSearchInput.addEventListener('input', () => {
+                const selectedId = badgeSelect?.value || '';
+                renderBadgeOptions(selectedId, badgeSearchInput.value);
             });
         }
 
