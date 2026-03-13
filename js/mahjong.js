@@ -514,8 +514,15 @@ function renderRanking(records, groupKey, type = 'all') {
     let rankOutPlayers = [];
 
     if (isTargetType) {
-        rankedPlayers = fullSortedList.filter(s => s.count >= 10);
-        rankOutPlayers = fullSortedList.filter(s => s.count < 10);
+        const minGames = currentTournament === 'all' ? 100 : 10;
+        rankedPlayers = fullSortedList.filter(s => s.count >= minGames);
+        rankOutPlayers = fullSortedList.filter(s => s.count < minGames);
+
+        // ランク外セクションのラベルを更新
+        const rankOutLabel = document.querySelector('#rank-out-section .ms-2');
+        if (rankOutLabel) rankOutLabel.textContent = `記録対象外 (${minGames}試合未満)`;
+        const rankOutNote = document.querySelector('#rank-out-section .text-muted.small');
+        if (rankOutNote) rankOutNote.textContent = `※規定試合数（${minGames}試合）に満たないため、ランキング集計から除外されています。`;
     } else {
         rankedPlayers = fullSortedList;
     }

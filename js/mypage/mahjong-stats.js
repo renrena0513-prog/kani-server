@@ -311,8 +311,9 @@
             const el = document.getElementById('stat-' + id);
             if (el) el.textContent = value;
 
-            // 10試合以上のプレイヤーのみをランキング対象にする
-            const qualified = [...allStats].filter(p => p.games >= 10);
+            // ランキング対象の最低試合数（全シーズン: 100, それ以外: 10）
+            const minGames = currentMyTournament === 'all' ? 100 : 10;
+            const qualified = [...allStats].filter(p => p.games >= minGames);
             const sorted = qualified.sort((a, b) => higherIsBetter ? b[key] - a[key] : a[key] - b[key]);
             const myRank = sorted.findIndex(p => p.name === myAccountName) + 1;
             const total = sorted.length;
@@ -330,8 +331,8 @@
             }
 
             if (rankEl) {
-                // 自分が10試合未満の場合はランク外
-                if (myGames < 10) {
+                // 自分が規定試合数未満の場合はランク外
+                if (myGames < minGames) {
                     rankEl.textContent = 'ランク外';
                     rankEl.classList.add('no-data');
                 } else if (myRank > 0) {
