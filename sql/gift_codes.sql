@@ -8,6 +8,7 @@ create table if not exists public.gift_codes (
     coin integer not null default 0,
     kiganfu integer not null default 0,
     manganfu integer not null default 0,
+    badge_id uuid references public.badges(id) on delete set null,
     remaining_uses integer,          -- NULL=無制限, 0=使用不可
     is_active boolean not null default true,
     created_at timestamptz not null default now()
@@ -29,6 +30,7 @@ create table if not exists public.gift_code_redemptions (
     coin integer not null default 0,
     kiganfu integer not null default 0,
     manganfu integer not null default 0,
+    badge_id uuid,
     unique (gift_code_id, discord_user_id)
 );
 
@@ -72,6 +74,8 @@ DECLARE
     v_norm text;
     v_code public.gift_codes%rowtype;
     v_account_name text;
+    v_badge_name text;
+    v_badge_image text;
 BEGIN
     v_user_id := auth.jwt() -> 'user_metadata' ->> 'provider_id';
     if v_user_id is null or v_user_id = '' then
@@ -113,9 +117,9 @@ BEGIN
 
     begin
         insert into public.gift_code_redemptions
-            (gift_code_id, discord_user_id, account_name, coin, kiganfu, manganfu)
+            (gift_code_id, discord_user_id, account_name, coin, kiganfu, manganfu, badge_id)
         values
-            (v_code.id, v_user_id, v_account_name, v_code.coin, v_code.kiganfu, v_code.manganfu);
+            (v_code.id, v_user_id, v_account_name, v_code.coin, v_code.kiganfu, v_code.manganfu, v_code.badge_id);
     exception when unique_violation then
         return jsonb_build_object('ok', false, 'error', 'already_redeemed');
     end;
@@ -135,11 +139,24 @@ BEGIN
         mangan_tickets = coalesce(mangan_tickets, 0) + v_code.manganfu
     where discord_user_id = v_user_id;
 
+    -- バッジ付与
+    if v_code.badge_id is not null then
+        insert into public.user_badges_new (user_id, badge_id, purchased_price)
+        values (v_user_id, v_code.badge_id, 0);
+
+        select name, image_url into v_badge_name, v_badge_image
+        from public.badges
+        where id = v_code.badge_id;
+    end if;
+
     return jsonb_build_object(
         'ok', true,
         'coin', v_code.coin,
         'kiganfu', v_code.kiganfu,
-        'manganfu', v_code.manganfu
+        'manganfu', v_code.manganfu,
+        'badge_id', v_code.badge_id,
+        'badge_name', v_badge_name,
+        'badge_image', v_badge_image
     );
 END;
 $$;
@@ -151,7 +168,8 @@ create or replace function public.admin_create_gift_code(
     p_manganfu integer,
     p_is_active boolean,
     p_remaining_uses integer default null,
-    p_allowed_user_ids text[] default null
+    p_allowed_user_ids text[] default null,
+    p_badge_id uuid default null
 )
 returns jsonb
 language plpgsql
@@ -171,9 +189,9 @@ BEGIN
 
     begin
         insert into public.gift_codes
-            (code_raw, code_norm, coin, kiganfu, manganfu, is_active, remaining_uses)
+            (code_raw, code_norm, coin, kiganfu, manganfu, badge_id, is_active, remaining_uses)
         values
-            (p_code_raw, v_norm, coalesce(p_coin, 0), coalesce(p_kiganfu, 0), coalesce(p_manganfu, 0), coalesce(p_is_active, true), p_remaining_uses)
+            (p_code_raw, v_norm, coalesce(p_coin, 0), coalesce(p_kiganfu, 0), coalesce(p_manganfu, 0), p_badge_id, coalesce(p_is_active, true), p_remaining_uses)
         returning id into v_id;
     exception when unique_violation then
         return jsonb_build_object('ok', false, 'error', 'duplicate');
@@ -198,7 +216,8 @@ create or replace function public.admin_update_gift_code(
     p_manganfu integer,
     p_is_active boolean,
     p_remaining_uses integer default null,
-    p_allowed_user_ids text[] default null
+    p_allowed_user_ids text[] default null,
+    p_badge_id uuid default null
 )
 returns jsonb
 language plpgsql
@@ -218,6 +237,7 @@ BEGIN
         coin = coalesce(p_coin, 0),
         kiganfu = coalesce(p_kiganfu, 0),
         manganfu = coalesce(p_manganfu, 0),
+        badge_id = p_badge_id,
         is_active = coalesce(p_is_active, true),
         remaining_uses = p_remaining_uses
     where id = p_id;
@@ -283,5 +303,5 @@ grant select on public.gift_code_allowed_users to authenticated;
 
 grant execute on function public.normalize_gift_code(text) to authenticated;
 grant execute on function public.redeem_gift_code(text) to authenticated;
-grant execute on function public.admin_create_gift_code(text, integer, integer, integer, boolean, integer, text[]) to authenticated;
-grant execute on function public.admin_update_gift_code(uuid, integer, integer, integer, boolean, integer, text[]) to authenticated;
+grant execute on function public.admin_create_gift_code(text, integer, integer, integer, boolean, integer, text[], uuid) to authenticated;
+grant execute on function public.admin_update_gift_code(uuid, integer, integer, integer, boolean, integer, text[], uuid) to authenticated;

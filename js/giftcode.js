@@ -59,7 +59,10 @@
                 return;
             }
 
-            const rewardText = formatGiftRewards(data.coin || 0, data.kiganfu || 0, data.manganfu || 0) || '報酬';
+            const rewardText = formatGiftRewards(
+                data.coin || 0, data.kiganfu || 0, data.manganfu || 0,
+                data.badge_name || null, data.badge_image || null
+            ) || '報酬';
             showResultModal(`${rewardText}を受け取りました`, 'text-success');
             inputEl.value = '';
             await loadHistory(discordId);
@@ -80,7 +83,7 @@
     function showResultModal(message, className) {
         const messageEl = document.getElementById('giftResultMessage');
         if (messageEl) {
-            messageEl.textContent = message;
+            messageEl.innerHTML = message;
             messageEl.className = `fw-bold ${className || ''}`;
         }
         const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('giftResultModal'));
@@ -96,7 +99,7 @@
 
         const { data, error } = await supabaseClient
             .from('gift_code_redemptions')
-            .select('redeemed_at, coin, kiganfu, manganfu, gift_codes(code_raw)')
+            .select('redeemed_at, coin, kiganfu, manganfu, badge_id, gift_codes(code_raw)')
             .eq('discord_user_id', currentDiscordId)
             .order('redeemed_at', { ascending: false });
 
@@ -111,8 +114,23 @@
             return;
         }
 
+        // バッジ情報を取得
+        const badgeIds = [...new Set(data.filter(r => r.badge_id).map(r => r.badge_id))];
+        let badgeMap = {};
+        if (badgeIds.length > 0) {
+            const { data: badges } = await supabaseClient
+                .from('badges')
+                .select('id, name, image_url')
+                .in('id', badgeIds);
+            (badges || []).forEach(b => { badgeMap[b.id] = b; });
+        }
+
         historyBody.innerHTML = data.map((row) => {
-            const rewardText = formatGiftRewards(row.coin || 0, row.kiganfu || 0, row.manganfu || 0) || '-';
+            const badge = row.badge_id ? badgeMap[row.badge_id] : null;
+            const rewardText = formatGiftRewards(
+                row.coin || 0, row.kiganfu || 0, row.manganfu || 0,
+                badge?.name || null, badge?.image_url || null
+            ) || '-';
             const redeemedAt = row.redeemed_at ? new Date(row.redeemed_at).toLocaleString('ja-JP') : '-';
             const codeRaw = row.gift_codes?.code_raw || '-';
             return `
@@ -135,8 +153,10 @@
         const userSelectWrapper = document.getElementById('gift-user-select-wrapper');
         const userSelectArea = document.getElementById('gift-user-select');
         const userSearchInput = document.getElementById('gift-user-search');
+        const badgeSelect = document.getElementById('gift-add-badge');
 
         let allProfiles = [];
+        let allBadges = [];
 
         // 全員に公開トグルの連動
         if (publicToggle && userSelectWrapper) {
@@ -179,6 +199,27 @@
             renderUserCheckboxes();
         }
 
+        async function loadBadges() {
+            if (!badgeSelect) return;
+            if (allBadges.length > 0) return; // 既に読み込み済み
+            const { data, error } = await supabaseClient
+                .from('badges')
+                .select('id, name, image_url')
+                .order('name');
+
+            if (error || !data) return;
+            allBadges = data;
+            renderBadgeOptions();
+        }
+
+        function renderBadgeOptions(selectedId = '') {
+            if (!badgeSelect) return;
+            badgeSelect.innerHTML = '<option value="">なし</option>' + allBadges.map(b => {
+                const selected = b.id === selectedId ? 'selected' : '';
+                return `<option value="${escapeHtml(b.id)}" ${selected}>${escapeHtml(b.name)}</option>`;
+            }).join('');
+        }
+
         function renderUserCheckboxes(selectedIds = []) {
             if (!userSelectArea) return;
             userSelectArea.innerHTML = allProfiles.map(p => {
@@ -200,13 +241,15 @@
         }
 
         if (addBtn) {
-            addBtn.addEventListener('click', () => {
+            addBtn.addEventListener('click', async () => {
                 if (!isAdmin) return;
                 // フォームリセット
                 publicToggle.checked = true;
                 userSelectWrapper.style.display = 'none';
                 if (userSearchInput) userSearchInput.value = '';
                 allProfiles = [];
+                await loadBadges();
+                renderBadgeOptions('');
                 const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('giftAddModal'));
                 modal.show();
             });
@@ -230,6 +273,7 @@
                 const coin = Number(document.getElementById('gift-add-coin').value || 0);
                 const kiganfu = Number(document.getElementById('gift-add-kiganfu').value || 0);
                 const manganfu = Number(document.getElementById('gift-add-manganfu').value || 0);
+                const badgeId = badgeSelect?.value || null;
                 const isActive = document.getElementById('gift-add-active').checked;
                 const remainingRaw = document.getElementById('gift-add-remaining').value.trim();
                 const remainingUses = remainingRaw === '' ? null : Number(remainingRaw);
@@ -258,7 +302,8 @@
                     p_manganfu: manganfu,
                     p_is_active: isActive,
                     p_remaining_uses: remainingUses,
-                    p_allowed_user_ids: allowedUserIds
+                    p_allowed_user_ids: allowedUserIds,
+                    p_badge_id: badgeId || null
                 });
 
                 if (error) {
@@ -281,6 +326,7 @@
                 document.getElementById('gift-add-active').checked = true;
                 publicToggle.checked = true;
                 userSelectWrapper.style.display = 'none';
+                renderBadgeOptions('');
             });
         }
 
@@ -295,6 +341,7 @@
                 const coin = Number(row.querySelector('.gift-admin-coin')?.value || 0);
                 const kiganfu = Number(row.querySelector('.gift-admin-kiganfu')?.value || 0);
                 const manganfu = Number(row.querySelector('.gift-admin-manganfu')?.value || 0);
+                const badgeIdVal = row.querySelector('.gift-admin-badge')?.value || null;
                 const isActive = row.querySelector('.gift-admin-active')?.checked ?? false;
                 const remainingRaw = row.querySelector('.gift-admin-remaining')?.value?.trim();
                 const remainingUses = (remainingRaw === '' || remainingRaw === undefined) ? null : Number(remainingRaw);
@@ -314,7 +361,8 @@
                         p_manganfu: manganfu,
                         p_is_active: isActive,
                         p_remaining_uses: remainingUses,
-                        p_allowed_user_ids: allowedUserIds
+                        p_allowed_user_ids: allowedUserIds,
+                        p_badge_id: badgeIdVal || null
                     });
 
                     if (error || !data?.ok) {
@@ -335,25 +383,31 @@
 
         async function loadGiftCodes() {
             if (!listBody) return;
-            listBody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">読み込み中...</td></tr>';
+            listBody.innerHTML = '<tr><td colspan="11" class="text-center text-muted">読み込み中...</td></tr>';
 
-            const [codesRes, allowedRes, profilesRes] = await Promise.all([
+            const [codesRes, allowedRes, profilesRes, badgesRes] = await Promise.all([
                 supabaseClient.from('gift_codes').select('*').order('created_at', { ascending: false }),
                 supabaseClient.from('gift_code_allowed_users').select('gift_code_id, discord_user_id'),
-                supabaseClient.from('profiles').select('discord_user_id, account_name')
+                supabaseClient.from('profiles').select('discord_user_id, account_name'),
+                supabaseClient.from('badges').select('id, name, image_url').order('name')
             ]);
 
             if (codesRes.error) {
                 console.error(codesRes.error);
-                listBody.innerHTML = '<tr><td colspan="10" class="text-center text-danger">取得に失敗しました</td></tr>';
+                listBody.innerHTML = '<tr><td colspan="11" class="text-center text-danger">取得に失敗しました</td></tr>';
                 return;
             }
 
             const data = codesRes.data;
             if (!data || data.length === 0) {
-                listBody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">データがありません</td></tr>';
+                listBody.innerHTML = '<tr><td colspan="11" class="text-center text-muted">データがありません</td></tr>';
                 return;
             }
+
+            // バッジマップ
+            const badgeMapLocal = {};
+            (badgesRes.data || []).forEach(b => { badgeMapLocal[b.id] = b; });
+            allBadges = badgesRes.data || [];
 
             // 許可ユーザーをコードごとにグループ化
             const allowedMap = {};
@@ -367,6 +421,14 @@
             (profilesRes.data || []).forEach(p => {
                 nameMap[p.discord_user_id] = p.account_name;
             });
+
+            // バッジ選択肢HTML
+            const badgeOptionsHtml = (selectedId) => {
+                return '<option value="">なし</option>' + allBadges.map(b => {
+                    const selected = b.id === selectedId ? 'selected' : '';
+                    return `<option value="${escapeHtml(b.id)}" ${selected}>${escapeHtml(b.name)}</option>`;
+                }).join('');
+            };
 
             listBody.innerHTML = data.map((row) => {
                 const createdAt = row.created_at ? new Date(row.created_at).toLocaleDateString('ja-JP') : '-';
@@ -387,6 +449,7 @@
                         <td><input type="number" class="form-control form-control-sm gift-admin-coin" value="${row.coin ?? 0}" min="0"></td>
                         <td><input type="number" class="form-control form-control-sm gift-admin-kiganfu" value="${row.kiganfu ?? 0}" min="0"></td>
                         <td><input type="number" class="form-control form-control-sm gift-admin-manganfu" value="${row.manganfu ?? 0}" min="0"></td>
+                        <td><select class="form-select form-select-sm gift-admin-badge">${badgeOptionsHtml(row.badge_id)}</select></td>
                         <td><input type="number" class="form-control form-control-sm gift-admin-remaining" value="${remainingVal}" min="0" placeholder="∞"></td>
                         <td class="small">${allowedHtml}</td>
                         <td>

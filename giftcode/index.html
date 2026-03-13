@@ -269,6 +269,12 @@
                                     required>
                             </div>
                         </div>
+                        <div class="mt-3">
+                            <label class="form-label">バッジ <span class="text-muted small">(任意)</span></label>
+                            <select id="gift-add-badge" class="form-select">
+                                <option value="">なし</option>
+                            </select>
+                        </div>
                         <div class="form-check form-switch mt-3">
                             <input class="form-check-input" type="checkbox" id="gift-add-active" checked>
                             <label class="form-check-label" for="gift-add-active">有効</label>
@@ -316,6 +322,7 @@
                                     <th>コイン</th>
                                     <th>祈願符</th>
                                     <th>満願符</th>
+                                    <th>バッジ</th>
                                     <th>残回数</th>
                                     <th>対象者</th>
                                     <th>有効</th>
@@ -325,7 +332,7 @@
                             </thead>
                             <tbody id="gift-admin-table-body">
                                 <tr>
-                                    <td colspan="10" class="text-center text-muted">読み込み中...</td>
+                                    <td colspan="11" class="text-center text-muted">読み込み中...</td>
                                 </tr>
                             </tbody>
                         </table>

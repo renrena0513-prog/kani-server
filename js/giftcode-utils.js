@@ -10,10 +10,14 @@ function normalizeGiftCode(input) {
     return value;
 }
 
-function formatGiftRewards(coin, kiganfu, manganfu) {
+function formatGiftRewards(coin, kiganfu, manganfu, badgeName, badgeImage) {
     const parts = [];
     if (coin > 0) parts.push(`🪙${Number(coin).toLocaleString()}`);
     if (kiganfu > 0) parts.push(`🎟️祈願符${Number(kiganfu).toLocaleString()}枚`);
     if (manganfu > 0) parts.push(`🧧満願符${Number(manganfu).toLocaleString()}枚`);
+    if (badgeName) {
+        const imgHtml = badgeImage ? `<img src="${badgeImage}" style="width:20px;height:20px;border-radius:4px;vertical-align:middle;margin-right:2px;">` : '';
+        parts.push(`🏅${imgHtml}${badgeName}`);
+    }
     return parts.join('、');
 }
