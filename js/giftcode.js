@@ -149,6 +149,7 @@
         const addForm = document.getElementById('gift-add-form');
         const addMessage = document.getElementById('gift-add-message');
         const listBody = document.getElementById('gift-admin-table-body');
+        const listBadgeSearchInput = document.getElementById('gift-list-badge-search');
         const publicToggle = document.getElementById('gift-add-public');
         const userSelectWrapper = document.getElementById('gift-user-select-wrapper');
         const userSelectArea = document.getElementById('gift-user-select');
@@ -158,6 +159,7 @@
 
         let allProfiles = [];
         let allBadges = [];
+        let badgeOptionsHtml = null;
 
         // 全員に公開トグルの連動
         if (publicToggle && userSelectWrapper) {
@@ -264,6 +266,7 @@
         if (listBtn) {
             listBtn.addEventListener('click', async () => {
                 if (!isAdmin) return;
+                if (listBadgeSearchInput) listBadgeSearchInput.value = '';
                 await loadGiftCodes();
                 const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('giftListModal'));
                 modal.show();
@@ -453,8 +456,12 @@
             });
 
             // バッジ選択肢HTML
-            const badgeOptionsHtml = (selectedId) => {
-                return '<option value="">なし</option>' + allBadges.map(b => {
+            badgeOptionsHtml = (selectedId, query = '') => {
+                const q = (query || '').trim().toLowerCase();
+                const filtered = q
+                    ? allBadges.filter(b => (b.name || '').toLowerCase().includes(q))
+                    : allBadges;
+                return '<option value="">なし</option>' + filtered.map(b => {
                     const selected = b.id === selectedId ? 'selected' : '';
                     return `<option value="${escapeHtml(b.id)}" ${selected}>${escapeHtml(b.name)}</option>`;
                 }).join('');
@@ -479,7 +486,7 @@
                         <td><input type="number" class="form-control form-control-sm gift-admin-coin" value="${row.coin ?? 0}" min="0"></td>
                         <td><input type="number" class="form-control form-control-sm gift-admin-kiganfu" value="${row.kiganfu ?? 0}" min="0"></td>
                         <td><input type="number" class="form-control form-control-sm gift-admin-manganfu" value="${row.manganfu ?? 0}" min="0"></td>
-                        <td><select class="form-select form-select-sm gift-admin-badge">${badgeOptionsHtml(row.badge_id)}</select></td>
+                        <td><select class="form-select form-select-sm gift-admin-badge">${badgeOptionsHtml(row.badge_id, listBadgeSearchInput?.value || '')}</select></td>
                         <td><input type="number" class="form-control form-control-sm gift-admin-remaining" value="${remainingVal}" min="0" placeholder="∞"></td>
                         <td class="small">${allowedHtml}</td>
                         <td>
@@ -492,6 +499,17 @@
                     </tr>
                 `;
             }).join('');
+        }
+
+        if (listBadgeSearchInput) {
+            listBadgeSearchInput.addEventListener('input', () => {
+                if (!listBody || !badgeOptionsHtml) return;
+                const selects = listBody.querySelectorAll('.gift-admin-badge');
+                selects.forEach((selectEl) => {
+                    const selectedId = selectEl.value || '';
+                    selectEl.innerHTML = badgeOptionsHtml(selectedId, listBadgeSearchInput.value);
+                });
+            });
         }
     }
 
