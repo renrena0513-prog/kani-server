@@ -110,6 +110,18 @@
             min-width: 120px;
         }
 
+        #giftListModal .modal-body {
+            position: relative;
+        }
+
+        #giftListModal .gift-list-toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 3;
+            background: #fff;
+            padding: 6px 0 8px;
+        }
+
         #giftListModal .modal-dialog {
             max-width: min(1400px, 95vw);
         }
@@ -330,7 +342,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body pt-2">
-                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <div class="gift-list-toolbar d-flex flex-wrap align-items-center gap-2 mb-2">
                         <label class="small text-muted mb-0">バッジ検索</label>
                         <input type="text" id="gift-list-badge-search" class="form-control form-control-sm"
                             placeholder="バッジ名で検索" style="max-width: 240px;">
