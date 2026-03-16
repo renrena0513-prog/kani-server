@@ -1,5 +1,25 @@
 (function () {
     const { TILE_LABELS, MANUAL_ITEM_CODES } = window.DUNGEON_CONSTANTS;
+    const TILE_POPUP_META = {
+        '空白': { icon: '🪨', title: '空白マス' },
+        '小銭': { icon: '🪙', title: '小銭' },
+        '宝箱': { icon: '📦', title: '宝箱' },
+        '財宝箱': { icon: '💰', title: '財宝箱' },
+        '秘宝箱': { icon: '📛', title: '秘宝箱' },
+        '宝石箱': { icon: '💎', title: '宝石箱' },
+        '祝福': { icon: '✨', title: '祝福' },
+        '泉': { icon: '⛲', title: '泉' },
+        '爆弾': { icon: '💣', title: '爆弾' },
+        '大爆発': { icon: '☄️', title: '大爆発' },
+        '罠': { icon: '🕳️', title: '罠' },
+        '呪い': { icon: '🕸️', title: '呪い' },
+        '盗賊': { icon: '🦹', title: '盗賊' },
+        '落とし穴': { icon: '🌀', title: '落とし穴' },
+        '転送罠': { icon: '🧭', title: '転送罠' },
+        'ショップ': { icon: '🛒', title: 'ショップ' },
+        '限定ショップ': { icon: '🏪', title: '限定ショップ' },
+        '下り階段': { icon: '🪜', title: '下り階段' }
+    };
 
     function formatNumber(value) {
         return new Intl.NumberFormat('ja-JP').format(Number(value || 0));
@@ -44,6 +64,34 @@
                     <div class="carry-item-desc">${item.description || ''}</div>
                     <div class="carry-item-meta">在庫 ${formatNumber(stock.quantity)} / ${item.item_kind || '手動'}</div>
                 </button>
+            `;
+        }).join('');
+    }
+
+    function renderPrepShop(catalog, stocks, walletCoins) {
+        const wrap = el('prep-shop-list');
+        if (!wrap) return;
+
+        const stockMap = Object.fromEntries((stocks || []).map((stock) => [stock.item_code, stock.quantity]));
+        const buyable = (catalog || []).filter((item) => item.shop_pool !== 'なし');
+
+        if (!buyable.length) {
+            wrap.innerHTML = '<div class="dungeon-empty">購入できるアイテムがありません。</div>';
+            return;
+        }
+
+        wrap.innerHTML = buyable.map((item) => {
+            const disabled = Number(walletCoins || 0) < Number(item.base_price || 0);
+            const stock = stockMap[item.code] || 0;
+            return `
+                <div class="prep-shop-card">
+                    <div>
+                        <div class="shop-offer-name">${item.name}</div>
+                        <div class="shop-offer-desc">${item.description || ''}</div>
+                        <div class="carry-item-meta">価格 ${formatNumber(item.base_price)} / 所持 ${formatNumber(stock)} / ${item.shop_pool}</div>
+                    </div>
+                    <button class="btn btn-sm dungeon-btn-primary" data-buy-stock="${item.code}" ${disabled ? 'disabled' : ''}>購入</button>
+                </div>
             `;
         }).join('');
     }
@@ -213,6 +261,20 @@
         node.dataset.tone = tone;
     }
 
+    function showTilePopup(tileType, message) {
+        const overlay = el('tile-popup');
+        if (!overlay) return;
+        const meta = TILE_POPUP_META[tileType] || { icon: '❔', title: tileType || 'イベント' };
+        setText('tile-popup-icon', meta.icon);
+        setText('tile-popup-title', meta.title);
+        setText('tile-popup-message', message || '');
+        overlay.classList.add('show');
+    }
+
+    function hideTilePopup() {
+        el('tile-popup')?.classList.remove('show');
+    }
+
     function bindCarrySelection(onSelect) {
         const wrap = el('carry-items');
         if (!wrap) return;
@@ -240,6 +302,9 @@
 
             const buyItem = event.target.closest('[data-buy-item]');
             if (buyItem) handlers.onBuyItem(buyItem.dataset.buyItem);
+
+            const buyStock = event.target.closest('[data-buy-stock]');
+            if (buyStock) handlers.onBuyStock(buyStock.dataset.buyStock);
         });
 
         el('start-run-btn')?.addEventListener('click', handlers.onStartRun);
@@ -248,11 +313,16 @@
         el('stairs-return-btn')?.addEventListener('click', () => handlers.onResolveStairs('return'));
         el('shop-skip-btn')?.addEventListener('click', handlers.onSkipShop);
         el('retry-run-btn')?.addEventListener('click', handlers.onRetry);
+        el('tile-popup-close')?.addEventListener('click', handlers.onClosePopup);
+        el('tile-popup')?.addEventListener('click', (event) => {
+            if (event.target.id === 'tile-popup') handlers.onClosePopup();
+        });
     }
 
     window.DUNGEON_UI = {
         showScreen,
         renderCarryList,
+        renderPrepShop,
         renderHud,
         renderInventory,
         renderBoard,
@@ -261,6 +331,8 @@
         renderResult,
         setBusy,
         setStatus,
+        showTilePopup,
+        hideTilePopup,
         bindCarrySelection,
         bindBoard,
         bindActions

@@ -58,7 +58,7 @@
     async function getLogs(runId) {
         return supabaseClient
             .from('evd_run_events')
-            .select('event_type, message, created_at')
+            .select('event_type, message, created_at, step_no, payload')
             .eq('run_id', runId)
             .order('step_no', { ascending: false })
             .limit(LOG_LIMIT);

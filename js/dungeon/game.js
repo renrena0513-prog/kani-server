@@ -12,7 +12,8 @@
         run: null,
         floor: null,
         logs: [],
-        selectedCarryItems: []
+        selectedCarryItems: [],
+        lastPopupStep: null
     };
 
     function hydratePayload(payload) {
@@ -26,6 +27,7 @@
     function renderStart() {
         ui.showScreen('start');
         ui.renderCarryList(state.stocks, state.selectedCarryItems);
+        ui.renderPrepShop(state.catalog, state.stocks, state.profile?.coins || 0);
         ui.setStatus('1000コインを支払い、持ち込み 2 個までで探索開始。');
         document.getElementById('entry-fee-label').textContent = '1000 コイン';
         document.getElementById('wallet-coins-label').textContent = new Intl.NumberFormat('ja-JP').format(state.profile?.coins || 0);
@@ -81,6 +83,14 @@
         }
     }
 
+    function showLatestTilePopup() {
+        const latest = [...state.logs].reverse().find((log) => log.payload?.tile_type && log.step_no !== state.lastPopupStep);
+        if (!latest) return;
+
+        state.lastPopupStep = latest.step_no;
+        ui.showTilePopup(latest.payload.tile_type, latest.message);
+    }
+
     function toggleCarry(itemCode) {
         const index = state.selectedCarryItems.indexOf(itemCode);
         if (index >= 0) {
@@ -133,8 +143,10 @@
 
             if (state.run.status === '進行中') {
                 renderGame();
+                showLatestTilePopup();
             } else {
                 renderResult();
+                showLatestTilePopup();
             }
         } catch (error) {
             console.error(error);
@@ -207,6 +219,25 @@
         }
     }
 
+    async function buyStock(itemCode) {
+        ui.setBusy(true);
+        try {
+            const payload = await api.rpc('evd_buy_stock_item', {
+                p_item_code: itemCode
+            });
+
+            state.profile = payload.profile || state.profile;
+            state.stocks = payload.stocks || state.stocks;
+            ui.setStatus(payload.message || '在庫を購入しました。');
+            renderStart();
+        } catch (error) {
+            console.error(error);
+            ui.setStatus(error.message || '入場前ショップでの購入に失敗しました。', 'danger');
+        } finally {
+            ui.setBusy(false);
+        }
+    }
+
     async function skipShop() {
         ui.setBusy(true);
         try {
@@ -250,12 +281,15 @@
         onResolveStairs: resolveStairs,
         onUseItem: useItem,
         onBuyItem: buyItem,
+        onBuyStock: buyStock,
         onSkipShop: skipShop,
+        onClosePopup: () => ui.hideTilePopup(),
         onRetry: () => {
             state.run = null;
             state.floor = null;
             state.logs = [];
             state.selectedCarryItems = [];
+            state.lastPopupStep = null;
             bootstrap();
         }
     });
