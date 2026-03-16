@@ -1,6 +1,0 @@
-ALTER TABLE badges
-ADD COLUMN IF NOT EXISTS label TEXT DEFAULT '';
-
-UPDATE badges
-SET label = ''
-WHERE label IS NULL;
