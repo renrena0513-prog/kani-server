@@ -839,6 +839,7 @@ declare
     v_multiplier numeric := 1;
     v_ransom integer := 0;
     v_item_to_lose text;
+    v_item_to_lose_name text;
     v_offers jsonb;
 begin
     if v_user_id = '' then
@@ -854,10 +855,6 @@ begin
 
     if coalesce(v_run.inventory_state -> 'pending_shop', 'null'::jsonb) <> 'null'::jsonb then
         raise exception 'ショップの処理を先に完了してください';
-    end if;
-
-    if coalesce(v_run.inventory_state -> 'pending_resolution', 'null'::jsonb) <> 'null'::jsonb then
-        raise exception '現在の選択を先に解決してください';
     end if;
 
     select * into v_floor from public.evd_run_floors where run_id = p_run_id and floor_no = v_run.current_floor for update;
@@ -958,10 +955,13 @@ begin
                       from jsonb_each(v_run.inventory_state -> 'items')
                      where coalesce((value ->> 'quantity')::integer, 0) > 0
                      limit 1;
+                    select name into v_item_to_lose_name
+                      from public.evd_item_catalog
+                     where code = v_item_to_lose;
                     update public.evd_game_runs
                        set inventory_state = public.evd_remove_bucket_item(public.evd_remove_item(inventory_state, v_item_to_lose, 1), 'carried_items', v_item_to_lose, 1)
                      where id = p_run_id;
-                    v_message := format('盗賊に襲われ、%s を 1 個奪われた。', v_item_to_lose);
+                    v_message := format('盗賊に襲われ、%s を 1 個奪われた。', coalesce(v_item_to_lose_name, v_item_to_lose));
                 end if;
             else
                 v_coin_delta := -1 * least(v_run.run_coins, v_ransom);
@@ -985,9 +985,6 @@ begin
              where id = p_run_id;
             v_message := '珍しい商人が隠し市を開いた。';
         when '下り階段' then
-            update public.evd_game_runs
-               set inventory_state = jsonb_set(inventory_state, array['pending_resolution'], '{"type":"stairs"}'::jsonb, true)
-             where id = p_run_id;
             v_message := '下り階段を見つけた。';
         else
             v_message := '何も起こらなかった。';
@@ -1124,6 +1121,8 @@ as $$
 declare
     v_user_id text := public.evd_current_user_id();
     v_run public.evd_game_runs%rowtype;
+    v_floor public.evd_run_floors%rowtype;
+    v_current_cell jsonb;
     v_bonus integer := 0;
     v_target_floor integer;
 begin
@@ -1134,8 +1133,14 @@ begin
         raise exception '進行中のランが見つかりません';
     end if;
 
-    if coalesce(v_run.inventory_state -> 'pending_resolution' ->> 'type', '') <> 'stairs' then
-        raise exception '解決待ちの階段がありません';
+    select * into v_floor
+      from public.evd_run_floors
+     where run_id = p_run_id
+       and floor_no = v_run.current_floor;
+
+    v_current_cell := public.evd_get_cell(v_floor.grid, v_run.current_x, v_run.current_y);
+    if coalesce(v_current_cell ->> 'type', '') <> '下り階段' then
+        raise exception '階段の上にいないため選択できません';
     end if;
 
     if p_action = 'return' or v_run.current_floor >= v_run.max_floors then

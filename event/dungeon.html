@@ -516,8 +516,9 @@
                         <div id="dungeon-board" class="dungeon-board"></div>
                         <div id="stairs-panel" class="choice-panel d-none mt-4">
                             <div class="fw-bold mb-2">下り階段を見つけた</div>
-                            <p class="small text-secondary mb-3">ここで帰還するか、さらに深く潜るかを選べます。</p>
+                            <p class="small text-secondary mb-3">ここで探索続行、帰還、次の階への降下を選べます。続行後も階段を踏めば再度選択できます。</p>
                             <div class="d-flex gap-2 flex-wrap">
+                                <button id="stairs-continue-btn" class="dungeon-btn-secondary" data-busy-disable>この階を探索続行</button>
                                 <button id="stairs-return-btn" class="dungeon-btn-secondary" data-busy-disable>戦利品を持って帰還</button>
                                 <button id="stairs-descend-btn" class="dungeon-btn-primary" data-busy-disable>次の階へ進む</button>
                             </div>

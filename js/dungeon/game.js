@@ -13,7 +13,8 @@
         floor: null,
         logs: [],
         selectedCarryItems: [],
-        lastPopupStep: null
+        lastPopupStep: null,
+        stairsPromptDismissed: false
     };
 
     function hydratePayload(payload) {
@@ -43,8 +44,12 @@
         ui.renderShop(state);
         ui.renderLogs(state.logs);
 
-        const pending = state.run.inventory_state?.pending_resolution;
-        document.getElementById('stairs-panel').classList.toggle('d-none', pending?.type !== 'stairs');
+        const currentCell = state.floor?.grid?.[state.run.current_y]?.[state.run.current_x];
+        const onStairs = currentCell?.type === '下り階段';
+        if (!onStairs) {
+            state.stairsPromptDismissed = false;
+        }
+        document.getElementById('stairs-panel').classList.toggle('d-none', !onStairs || state.stairsPromptDismissed);
     }
 
     function renderResult() {
@@ -140,6 +145,7 @@
             });
             hydratePayload(payload);
             await reloadRunSnapshot();
+            state.stairsPromptDismissed = false;
 
             if (state.run.status === '進行中') {
                 renderGame();
@@ -188,6 +194,7 @@
             hydratePayload(payload);
             if (state.run.status === '進行中') {
                 await reloadRunSnapshot();
+                state.stairsPromptDismissed = false;
                 renderGame();
             } else {
                 await reloadRunSnapshot().catch(() => { });
@@ -278,6 +285,10 @@
     ui.bindActions({
         onStartRun: startRun,
         onResumeRun: renderGame,
+        onContinueExplore: () => {
+            state.stairsPromptDismissed = true;
+            document.getElementById('stairs-panel').classList.add('d-none');
+        },
         onResolveStairs: resolveStairs,
         onUseItem: useItem,
         onBuyItem: buyItem,
@@ -290,6 +301,7 @@
             state.logs = [];
             state.selectedCarryItems = [];
             state.lastPopupStep = null;
+            state.stairsPromptDismissed = false;
             bootstrap();
         }
     });

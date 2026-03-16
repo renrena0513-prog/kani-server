@@ -309,6 +309,7 @@
 
         el('start-run-btn')?.addEventListener('click', handlers.onStartRun);
         el('resume-run-btn')?.addEventListener('click', handlers.onResumeRun);
+        el('stairs-continue-btn')?.addEventListener('click', handlers.onContinueExplore);
         el('stairs-descend-btn')?.addEventListener('click', () => handlers.onResolveStairs('descend'));
         el('stairs-return-btn')?.addEventListener('click', () => handlers.onResolveStairs('return'));
         el('shop-skip-btn')?.addEventListener('click', handlers.onSkipShop);
