@@ -285,25 +285,13 @@ async function applyPageSettingsToNav() {
         }
 
         const CACHE_KEY = 'page_settings_cache';
-        const CACHE_TTL = 60 * 1000;
-
         let settings = null;
-        const cache = sessionStorage.getItem(CACHE_KEY);
-        if (cache) {
-            try {
-                const parsed = JSON.parse(cache);
-                if (Date.now() - parsed.timestamp < CACHE_TTL) {
-                    settings = parsed.data;
-                }
-            } catch (e) {
-                settings = null;
-            }
-        }
 
-        if (!settings) {
-            const { data } = await supabaseClient
+        try {
+            const { data, error } = await supabaseClient
                 .from('page_settings')
                 .select('path, is_active');
+            if (error) throw error;
             if (data) {
                 settings = {};
                 data.forEach(item => {
@@ -313,6 +301,15 @@ async function applyPageSettingsToNav() {
                     timestamp: Date.now(),
                     data: settings
                 }));
+            }
+        } catch (e) {
+            const cache = sessionStorage.getItem(CACHE_KEY);
+            if (cache) {
+                try {
+                    settings = JSON.parse(cache).data;
+                } catch (parseError) {
+                    settings = null;
+                }
             }
         }
 

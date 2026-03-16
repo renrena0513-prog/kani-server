@@ -1,7 +1,6 @@
 // 認証ガード & ページアクセス制御
 (async function () {
     const CACHE_KEY = 'page_settings_cache';
-    const CACHE_TTL = 60 * 1000; // 60秒
 
     // 認証不要のページ設定（既存ロジック維持）
     const publicPages = ['/login']; // mahjong/index.htmlなども本来はpublicだが、アクセス制限の対象になりうるため一旦ここで判定しない
@@ -67,25 +66,26 @@
 
     async function checkPageAccess() {
         const currentPath = window.location.pathname;
-        let settings = getCachedSettings();
+        let settings = null;
 
-        // キャッシュがない、または期限切れなら取得
-        if (!settings) {
-            try {
-                const { data, error } = await supabaseClient
-                    .from('page_settings')
-                    .select('path, is_active');
+        try {
+            const { data, error } = await supabaseClient
+                .from('page_settings')
+                .select('path, is_active');
 
-                if (data) {
-                    settings = {};
-                    data.forEach(item => {
-                        settings[item.path] = item.is_active;
-                    });
-                    saveSettingsCache(settings);
-                }
-            } catch (e) {
-                console.error('Page settings fetch error:', e);
-                // エラー時は安全側に倒す（ブロックしない、あるいはキャッシュがあればそれを使う）
+            if (error) throw error;
+
+            if (data) {
+                settings = {};
+                data.forEach(item => {
+                    settings[item.path] = item.is_active;
+                });
+                saveSettingsCache(settings);
+            }
+        } catch (e) {
+            console.error('Page settings fetch error:', e);
+            settings = getCachedSettings();
+            if (!settings) {
                 return;
             }
         }
@@ -108,13 +108,10 @@
 
         try {
             const parsed = JSON.parse(cache);
-            if (Date.now() - parsed.timestamp < CACHE_TTL) {
-                return parsed.data;
-            }
+            return parsed.data;
         } catch (e) {
             return null;
         }
-        return null;
     }
 
     function saveSettingsCache(data) {

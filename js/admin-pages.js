@@ -92,6 +92,8 @@ async function togglePageStatus(id, currentStatus, pageName) {
 
         if (error) throw error;
 
+        sessionStorage.removeItem('page_settings_cache');
+
         // ログ記録
         await logActivity(user.user_metadata.provider_id, 'admin_edit', {
             details: {
