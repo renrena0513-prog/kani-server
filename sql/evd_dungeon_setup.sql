@@ -558,7 +558,11 @@ begin
 
     v_flags := coalesce(v_run.inventory_state -> 'flags', '{}'::jsonb);
     if p_status = '帰還' then
-        v_payout := floor((v_run.run_coins + v_run.secured_coins) * case when coalesce((v_flags ->> 'golden_contract_active')::boolean, false) then 2 else v_run.final_return_multiplier end)::integer;
+        v_payout := floor(
+            (v_run.run_coins + v_run.secured_coins)
+            * v_run.final_return_multiplier
+            * case when coalesce((v_flags ->> 'golden_contract_active')::boolean, false) then 2 else 1 end
+        )::integer;
     elsif coalesce((v_flags ->> 'insurance_active')::boolean, false) then
         v_payout := v_run.secured_coins + floor(v_run.run_coins / 2.0)::integer;
         v_flags := jsonb_set(v_flags, array['insurance_active'], 'false'::jsonb, true);
@@ -917,9 +921,9 @@ begin
         when '祝福' then
             v_multiplier := public.evd_get_range_value(v_config, v_run.current_floor, '祝福', true);
             update public.evd_game_runs
-               set run_coins = floor(run_coins * v_multiplier)::integer
+               set final_return_multiplier = round((final_return_multiplier * v_multiplier)::numeric, 2)
              where id = p_run_id;
-            v_message := format('祝福が宿り、所持コイン倍率が x%s になった。', v_multiplier);
+            v_message := format('祝福が宿り、最終持ち帰り倍率が x%s になった。', (select final_return_multiplier from public.evd_game_runs where id = p_run_id));
         when '泉' then
             update public.evd_game_runs
                set life = least(max_life, life + 1)
@@ -937,9 +941,9 @@ begin
         when '呪い' then
             v_multiplier := public.evd_get_range_value(v_config, v_run.current_floor, '呪い', true);
             update public.evd_game_runs
-               set run_coins = floor(run_coins * v_multiplier)::integer
+               set final_return_multiplier = round((final_return_multiplier * v_multiplier)::numeric, 2)
              where id = p_run_id;
-            v_message := format('呪いにより所持コインが x%s になった。', v_multiplier);
+            v_message := format('呪いにより最終持ち帰り倍率が x%s になった。', (select final_return_multiplier from public.evd_game_runs where id = p_run_id));
         when '盗賊' then
             v_ransom := coalesce((v_config -> 'thief_ransom' ->> v_run.current_floor::text)::integer, 150);
             if exists (

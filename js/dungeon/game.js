@@ -137,6 +137,7 @@
     async function moveTo(x, y) {
         const direction = findDirectionByTarget(x, y);
         if (!direction) return;
+        ui.hideTilePopup();
         ui.setBusy(true);
         try {
             const payload = await api.rpc('evd_move', {
@@ -163,6 +164,7 @@
     }
 
     async function useItem(itemCode) {
+        ui.hideTilePopup();
         ui.setBusy(true);
         try {
             const payload = await api.rpc('evd_use_item', {
@@ -185,6 +187,7 @@
     }
 
     async function resolveStairs(action) {
+        ui.hideTilePopup();
         ui.setBusy(true);
         try {
             const payload = await api.rpc('evd_resolve_stairs', {
@@ -287,6 +290,7 @@
         onResumeRun: renderGame,
         onContinueExplore: () => {
             state.stairsPromptDismissed = true;
+            ui.hideTilePopup();
             document.getElementById('stairs-panel').classList.add('d-none');
         },
         onResolveStairs: resolveStairs,
