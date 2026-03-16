@@ -84,8 +84,8 @@
     }
 
     function showLatestTilePopup() {
-        const latest = [...state.logs].reverse().find((log) => log.payload?.tile_type && log.step_no !== state.lastPopupStep);
-        if (!latest) return;
+        const latest = state.logs[state.logs.length - 1];
+        if (!latest || !latest.payload?.tile_type || latest.step_no === state.lastPopupStep) return;
 
         state.lastPopupStep = latest.step_no;
         ui.showTilePopup(latest.payload.tile_type, latest.message);

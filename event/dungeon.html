@@ -323,12 +323,11 @@
 
         .tile-popup {
             position: fixed;
-            inset: 0;
+            left: 50%;
+            bottom: 20px;
+            transform: translateX(-50%);
             display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.5);
+            width: min(92vw, 560px);
             z-index: 1100;
         }
 
@@ -337,7 +336,7 @@
         }
 
         .tile-popup-card {
-            width: min(92vw, 520px);
+            width: 100%;
             position: relative;
             padding: 26px 24px 22px;
             border-radius: 24px;
@@ -350,12 +349,12 @@
             content: '';
             position: absolute;
             left: 44px;
-            bottom: -14px;
+            top: -14px;
             width: 28px;
             height: 28px;
             background: rgba(17, 19, 20, 0.98);
-            border-right: 1px solid rgba(241, 213, 141, 0.35);
-            border-bottom: 1px solid rgba(241, 213, 141, 0.35);
+            border-left: 1px solid rgba(241, 213, 141, 0.35);
+            border-top: 1px solid rgba(241, 213, 141, 0.35);
             transform: rotate(45deg);
         }
 
@@ -387,6 +386,13 @@
             line-height: 1.9;
             margin: 0;
             padding-right: 16px;
+        }
+
+        @media (max-width: 767px) {
+            .tile-popup {
+                width: calc(100vw - 20px);
+                bottom: 10px;
+            }
         }
 
         @media (max-width: 991px) {

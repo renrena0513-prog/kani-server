@@ -328,6 +328,23 @@ begin
 end;
 $$;
 
+create or replace function public.evd_add_bucket_item(p_inventory jsonb, p_bucket text, p_item_code text, p_amount integer default 1)
+returns jsonb
+language plpgsql
+as $$
+declare
+    v_qty integer;
+begin
+    v_qty := coalesce((p_inventory -> p_bucket -> p_item_code ->> 'quantity')::integer, 0) + p_amount;
+    return jsonb_set(
+        p_inventory,
+        array[p_bucket, p_item_code],
+        jsonb_build_object('quantity', v_qty),
+        true
+    );
+end;
+$$;
+
 create or replace function public.evd_remove_item(p_inventory jsonb, p_item_code text, p_amount integer default 1)
 returns jsonb
 language plpgsql
@@ -343,6 +360,23 @@ begin
     return jsonb_set(
         p_inventory,
         array['items', p_item_code],
+        jsonb_build_object('quantity', v_qty),
+        true
+    );
+end;
+$$;
+
+create or replace function public.evd_remove_bucket_item(p_inventory jsonb, p_bucket text, p_item_code text, p_amount integer default 1)
+returns jsonb
+language plpgsql
+as $$
+declare
+    v_qty integer;
+begin
+    v_qty := greatest(coalesce((p_inventory -> p_bucket -> p_item_code ->> 'quantity')::integer, 0) - p_amount, 0);
+    return jsonb_set(
+        p_inventory,
+        array[p_bucket, p_item_code],
         jsonb_build_object('quantity', v_qty),
         true
     );
@@ -514,6 +548,8 @@ declare
     v_run public.evd_game_runs%rowtype;
     v_payout integer;
     v_flags jsonb;
+    v_carried_items jsonb;
+    v_return_item record;
 begin
     select * into v_run from public.evd_game_runs where id = p_run_id and user_id = p_user_id for update;
     if not found then
@@ -529,6 +565,34 @@ begin
         v_run.inventory_state := jsonb_set(v_run.inventory_state, array['flags'], v_flags, true);
     else
         v_payout := v_run.secured_coins;
+    end if;
+
+    if p_status = '死亡' then
+        v_carried_items := coalesce(v_run.inventory_state -> 'carried_items', '{}'::jsonb);
+
+        if coalesce((v_run.inventory_state -> 'carried_items' -> 'substitute_doll' ->> 'quantity')::integer, 0) > 0
+           and v_run.substitute_negates_remaining < 3 then
+            v_carried_items := public.evd_remove_bucket_item(jsonb_build_object('carried_items', v_carried_items), 'carried_items', 'substitute_doll', 1) -> 'carried_items';
+        end if;
+
+        if coalesce((v_run.inventory_state -> 'carried_items' -> 'insurance_token' ->> 'quantity')::integer, 0) > 0
+           and not coalesce((v_flags ->> 'insurance_active')::boolean, false) then
+            v_carried_items := public.evd_remove_bucket_item(jsonb_build_object('carried_items', v_carried_items), 'carried_items', 'insurance_token', 1) -> 'carried_items';
+        end if;
+
+        for v_return_item in
+            select key as item_code, coalesce((value ->> 'quantity')::integer, 0) as quantity
+              from jsonb_each(v_carried_items)
+             where coalesce((value ->> 'quantity')::integer, 0) > 0
+        loop
+            insert into public.evd_player_item_stocks (user_id, item_code, quantity, updated_at)
+            values (p_user_id, v_return_item.item_code, v_return_item.quantity, now())
+            on conflict (user_id, item_code) do update
+            set quantity = public.evd_player_item_stocks.quantity + excluded.quantity,
+                updated_at = now();
+        end loop;
+
+        v_run.inventory_state := jsonb_set(v_run.inventory_state, array['carried_items'], v_carried_items, true);
     end if;
 
     update public.evd_game_runs
@@ -586,6 +650,7 @@ declare
             'hazards_known', false,
             'bombs_known', false
         ),
+        'carried_items', '{}'::jsonb,
         'floor_bonus_preview', (select config -> 'floor_bonuses' from public.evd_game_balance_profiles where is_active = true order by updated_at desc limit 1),
         'pending_resolution', null,
         'pending_shop', null
@@ -642,6 +707,8 @@ begin
         if not found then
             raise exception '持ち込み在庫が不足しています: %', v_item;
         end if;
+
+        v_inventory := public.evd_add_bucket_item(v_inventory, 'carried_items', v_item, 1);
 
         select effect_data ->> 'effect' into v_effect from public.evd_item_catalog where code = v_item;
         if v_effect = 'substitute' then
@@ -892,7 +959,7 @@ begin
                      where coalesce((value ->> 'quantity')::integer, 0) > 0
                      limit 1;
                     update public.evd_game_runs
-                       set inventory_state = public.evd_remove_item(inventory_state, v_item_to_lose, 1)
+                       set inventory_state = public.evd_remove_bucket_item(public.evd_remove_item(inventory_state, v_item_to_lose, 1), 'carried_items', v_item_to_lose, 1)
                      where id = p_run_id;
                     v_message := format('盗賊に襲われ、%s を 1 個奪われた。', v_item_to_lose);
                 end if;
@@ -998,7 +1065,7 @@ begin
     end if;
 
     update public.evd_game_runs
-       set inventory_state = public.evd_remove_item(inventory_state, p_item_code, 1),
+       set inventory_state = public.evd_remove_bucket_item(public.evd_remove_item(inventory_state, p_item_code, 1), 'carried_items', p_item_code, 1),
            updated_at = now(),
            last_active_at = now(),
            version = version + 1

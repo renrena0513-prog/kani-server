@@ -177,7 +177,7 @@
             if (isPlayer) classes.push('player');
             if (cell.type === '下り階段' && (cell.revealed || flags.stairs_known)) classes.push('stairs');
             if ((cell.hint === 'bomb' && flags.bombs_known) || (cell.hint === 'hazard' && flags.hazards_known)) classes.push('hinted');
-            if (cell.type === 'ショップ' || cell.type === '限定ショップ') classes.push('shop');
+            if ((cell.type === 'ショップ' || cell.type === '限定ショップ') && cell.revealed) classes.push('shop');
 
             let label = '？';
             if (isPlayer) {
@@ -314,9 +314,6 @@
         el('shop-skip-btn')?.addEventListener('click', handlers.onSkipShop);
         el('retry-run-btn')?.addEventListener('click', handlers.onRetry);
         el('tile-popup-close')?.addEventListener('click', handlers.onClosePopup);
-        el('tile-popup')?.addEventListener('click', (event) => {
-            if (event.target.id === 'tile-popup') handlers.onClosePopup();
-        });
     }
 
     window.DUNGEON_UI = {
