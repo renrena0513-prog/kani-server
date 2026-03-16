@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="欲望ダンジョン - RPG風探索イベント">
+    <title>欲望ダンジョン | かにサーバー</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@500;700&family=M+PLUS+1p:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../styles.css">
+    <style>
+        /* TODO: 正式アセット確定後に、盤面アイコンとヒーロー装飾を画像素材へ差し替える */
+        :root {
+            --dungeon-bg: #0f1212;
+            --dungeon-bg2: #1a1916;
+            --dungeon-panel: rgba(26, 30, 31, 0.92);
+            --dungeon-panel-strong: rgba(17, 20, 21, 0.96);
+            --dungeon-border: rgba(212, 184, 113, 0.32);
+            --dungeon-gold: #d4b871;
+            --dungeon-gold-strong: #f1d58d;
+            --dungeon-emerald: #68c7a6;
+            --dungeon-danger: #db7f68;
+            --dungeon-muted: #b6beb9;
+            --dungeon-font-title: 'Zen Old Mincho', serif;
+            --dungeon-font-body: 'M PLUS 1p', sans-serif;
+        }
+
+        body {
+            font-family: var(--dungeon-font-body);
+            min-height: 100vh;
+            color: #f7f3e8;
+            background:
+                radial-gradient(circle at top, rgba(241, 213, 141, 0.14), transparent 28%),
+                radial-gradient(circle at 20% 20%, rgba(104, 199, 166, 0.1), transparent 20%),
+                linear-gradient(180deg, var(--dungeon-bg) 0%, var(--dungeon-bg2) 100%);
+            background-attachment: fixed;
+        }
+
+        .dungeon-shell {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 96px 16px 48px;
+        }
+
+        .dungeon-hero,
+        .dungeon-panel {
+            background: var(--dungeon-panel);
+            border: 1px solid var(--dungeon-border);
+            border-radius: 24px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+            backdrop-filter: blur(10px);
+        }
+
+        .dungeon-hero {
+            padding: 24px;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dungeon-hero::after {
+            content: '';
+            position: absolute;
+            inset: auto -10% -35% auto;
+            width: 320px;
+            height: 320px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(241, 213, 141, 0.2), transparent 65%);
+            pointer-events: none;
+        }
+
+        .dungeon-title {
+            font-family: var(--dungeon-font-title);
+            font-size: clamp(2rem, 4vw, 3.3rem);
+            margin: 0;
+            letter-spacing: 0.04em;
+        }
+
+        .dungeon-lead {
+            color: var(--dungeon-muted);
+            max-width: 760px;
+            margin-top: 12px;
+            line-height: 1.8;
+        }
+
+        .dungeon-panel {
+            padding: 18px;
+            height: 100%;
+        }
+
+        .panel-title {
+            font-family: var(--dungeon-font-title);
+            font-size: 1.05rem;
+            margin-bottom: 14px;
+            color: var(--dungeon-gold-strong);
+        }
+
+        .status-banner {
+            margin-top: 14px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #f7f3e8;
+        }
+
+        .status-banner[data-tone="danger"] {
+            background: rgba(219, 127, 104, 0.14);
+            color: #ffd3ca;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .stat-card {
+            padding: 14px;
+            border-radius: 18px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            min-height: 90px;
+        }
+
+        .stat-label {
+            color: var(--dungeon-muted);
+            font-size: 0.75rem;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .dungeon-board {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+        }
+
+        .tile {
+            aspect-ratio: 1;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            background:
+                linear-gradient(180deg, rgba(65, 67, 66, 0.78), rgba(23, 26, 27, 0.96)),
+                repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.015) 0 8px, transparent 8px 16px);
+            color: #e6ddc4;
+            font-size: 1.3rem;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+
+        .tile:disabled {
+            opacity: 1;
+            cursor: default;
+        }
+
+        .tile:not(:disabled):hover {
+            transform: translateY(-2px);
+            border-color: rgba(241, 213, 141, 0.42);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .tile.revealed {
+            background: linear-gradient(180deg, rgba(117, 108, 82, 0.2), rgba(36, 33, 27, 0.9));
+        }
+
+        .tile.visited {
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+        }
+
+        .tile.player {
+            border-color: rgba(104, 199, 166, 0.6);
+            box-shadow: 0 0 0 2px rgba(104, 199, 166, 0.2);
+        }
+
+        .tile.stairs,
+        .tile.shop,
+        .tile.hinted {
+            border-color: rgba(241, 213, 141, 0.45);
+        }
+
+        .dungeon-btn-primary,
+        .dungeon-btn-secondary {
+            border: none;
+            border-radius: 14px;
+            padding: 12px 16px;
+            font-weight: 700;
+        }
+
+        .dungeon-btn-primary {
+            background: linear-gradient(135deg, var(--dungeon-gold), #9d7a2e);
+            color: #20180a;
+        }
+
+        .dungeon-btn-secondary {
+            background: rgba(255, 255, 255, 0.08);
+            color: #f4efe3;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .carry-items,
+        .shop-offers,
+        .inventory-list,
+        .adventure-log {
+            display: grid;
+            gap: 12px;
+        }
+
+        .carry-item,
+        .shop-offer,
+        .inventory-item {
+            width: 100%;
+            text-align: left;
+            padding: 14px;
+            border-radius: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.04);
+            color: inherit;
+        }
+
+        .carry-item.selected {
+            border-color: rgba(241, 213, 141, 0.5);
+            background: rgba(241, 213, 141, 0.12);
+        }
+
+        .carry-item.disabled {
+            opacity: 0.45;
+        }
+
+        .carry-item-name,
+        .shop-offer-name,
+        .inventory-item-name {
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .carry-item-desc,
+        .shop-offer-desc,
+        .inventory-item-desc {
+            font-size: 0.8rem;
+            color: var(--dungeon-muted);
+            line-height: 1.7;
+        }
+
+        .carry-item-meta,
+        .shop-offer-price,
+        .inventory-qty {
+            font-size: 0.75rem;
+            margin-top: 8px;
+            color: var(--dungeon-gold-strong);
+        }
+
+        .inventory-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .inventory-item-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .adventure-log {
+            max-height: 360px;
+            overflow: auto;
+        }
+
+        .log-line {
+            display: flex;
+            gap: 10px;
+            line-height: 1.8;
+            font-size: 0.84rem;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .log-time {
+            color: var(--dungeon-gold-strong);
+            flex-shrink: 0;
+            min-width: 48px;
+        }
+
+        .choice-panel {
+            padding: 16px;
+            border-radius: 18px;
+            background: rgba(104, 199, 166, 0.08);
+            border: 1px solid rgba(104, 199, 166, 0.2);
+        }
+
+        .dungeon-empty {
+            padding: 18px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--dungeon-muted);
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+        }
+
+        @media (max-width: 991px) {
+            .dungeon-shell {
+                padding-top: 88px;
+            }
+        }
+
+        @media (max-width: 767px) {
+            .dungeon-board {
+                gap: 6px;
+            }
+
+            .tile {
+                border-radius: 12px;
+                font-size: 1.1rem;
+            }
+
+            .stat-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dungeon-shell">
+        <div id="nav-placeholder"></div>
+
+        <section class="dungeon-hero">
+            <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-end">
+                <div>
+                    <p class="mb-2 text-uppercase small text-warning">RPG Event</p>
+                    <h1 class="dungeon-title">欲望ダンジョン</h1>
+                    <p class="dungeon-lead">
+                        石造りの迷宮を踏破し、宝を抱えて帰還する探索イベントです。深く潜るほど報酬も危険も増します。
+                    </p>
+                </div>
+                <div class="text-lg-end">
+                    <div class="small text-secondary-emphasis">ステータス</div>
+                    <div id="run-status" class="fs-5 fw-bold">待機中</div>
+                    <div id="run-flags" class="small text-secondary mt-2">特記事項なし</div>
+                </div>
+            </div>
+            <div id="status-banner" class="status-banner">読み込み中...</div>
+        </section>
+
+        <section data-screen="start" class="row g-4">
+            <div class="col-lg-5">
+                <div class="dungeon-panel">
+                    <div class="panel-title">出発準備</div>
+                    <div class="stat-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">参加費</div>
+                            <div id="entry-fee-label" class="stat-value">1000 コイン</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">所持コイン</div>
+                            <div id="wallet-coins-label" class="stat-value">0</div>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="panel-title">持ち込みアイテム</div>
+                        <p class="small text-secondary">在庫から 2 個まで選択できます。TODO: 将来的に管理画面から配布導線を追加。</p>
+                        <div id="carry-items" class="carry-items"></div>
+                    </div>
+                    <div class="d-grid gap-2 mt-4">
+                        <button id="start-run-btn" class="dungeon-btn-primary" data-busy-disable>1000コインで入場する</button>
+                        <button id="resume-run-btn" class="dungeon-btn-secondary" data-busy-disable>進行中のランを再開</button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-7">
+                <div class="dungeon-panel h-100">
+                    <div class="panel-title">冒険の掟</div>
+                    <div class="adventure-log">
+                        <div class="dungeon-empty">7 x 7 の迷宮を移動して下り階段を探します。</div>
+                        <div class="dungeon-empty">初期ライフは 3。0 になると死亡です。</div>
+                        <div class="dungeon-empty">深い階ほど到達ボーナスが増えますが、転送罠や落とし穴も牙を剥きます。</div>
+                        <div class="dungeon-empty">帰還時のみ報酬確定。保険札があれば死亡時も半分持ち帰れます。</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section data-screen="game" class="d-none">
+            <div class="row g-4">
+                <div class="col-xl-4">
+                    <div class="dungeon-panel mb-4">
+                        <div class="panel-title">冒険者 HUD</div>
+                        <div class="stat-grid">
+                            <div class="stat-card"><div class="stat-label">階層</div><div id="hud-floor" class="stat-value">-</div></div>
+                            <div class="stat-card"><div class="stat-label">ライフ</div><div id="hud-life" class="stat-value">-</div></div>
+                            <div class="stat-card"><div class="stat-label">現在コイン</div><div id="hud-run-coins" class="stat-value">-</div></div>
+                            <div class="stat-card"><div class="stat-label">確保済み</div><div id="hud-secured-coins" class="stat-value">-</div></div>
+                            <div class="stat-card"><div class="stat-label">秘宝</div><div id="hud-badges" class="stat-value">-</div></div>
+                            <div class="stat-card"><div class="stat-label">祈願符</div><div id="hud-gacha" class="stat-value">-</div></div>
+                            <div class="stat-card"><div class="stat-label">満願符</div><div id="hud-mangan" class="stat-value">-</div></div>
+                            <div class="stat-card"><div class="stat-label">身代わり残数</div><div id="hud-negates" class="stat-value">-</div></div>
+                            <div class="stat-card"><div class="stat-label">次階ボーナス</div><div id="hud-next-bonus" class="stat-value">-</div></div>
+                            <div class="stat-card"><div class="stat-label">帰還倍率</div><div id="hud-final-multiplier" class="stat-value">-</div></div>
+                            <div class="stat-card"><div class="stat-label">所持金</div><div id="hud-wallet" class="stat-value">-</div></div>
+                            <div class="stat-card"><div class="stat-label">累計資産</div><div id="hud-assets" class="stat-value">-</div></div>
+                        </div>
+                    </div>
+                    <div class="dungeon-panel">
+                        <div class="panel-title">所持品</div>
+                        <div id="inventory-list" class="inventory-list"></div>
+                    </div>
+                </div>
+
+                <div class="col-xl-5">
+                    <div class="dungeon-panel">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="panel-title mb-0">迷宮盤面</div>
+                            <div class="small text-secondary">矢印キー対応</div>
+                        </div>
+                        <div id="dungeon-board" class="dungeon-board"></div>
+                        <div id="stairs-panel" class="choice-panel d-none mt-4">
+                            <div class="fw-bold mb-2">下り階段を見つけた</div>
+                            <p class="small text-secondary mb-3">ここで帰還するか、さらに深く潜るかを選べます。</p>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <button id="stairs-return-btn" class="dungeon-btn-secondary" data-busy-disable>戦利品を持って帰還</button>
+                                <button id="stairs-descend-btn" class="dungeon-btn-primary" data-busy-disable>次の階へ進む</button>
+                            </div>
+                        </div>
+                        <div id="shop-panel" class="choice-panel d-none mt-4">
+                            <div id="shop-title" class="fw-bold mb-2">ショップ</div>
+                            <div id="shop-offers" class="shop-offers"></div>
+                            <button id="shop-skip-btn" class="dungeon-btn-secondary mt-3" data-busy-disable>何も買わず立ち去る</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-3">
+                    <div class="dungeon-panel h-100">
+                        <div class="panel-title">冒険ログ</div>
+                        <div id="adventure-log" class="adventure-log"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section data-screen="result" class="d-none">
+            <div class="dungeon-panel">
+                <div class="panel-title">探索結果</div>
+                <div class="result-grid">
+                    <div class="stat-card"><div class="stat-label">結果</div><div id="result-status" class="stat-value">-</div></div>
+                    <div class="stat-card"><div class="stat-label">払い戻し</div><div id="result-payout" class="stat-value">-</div></div>
+                    <div class="stat-card"><div class="stat-label">確保済み</div><div id="result-secured" class="stat-value">-</div></div>
+                    <div class="stat-card"><div class="stat-label">秘宝</div><div id="result-badges" class="stat-value">-</div></div>
+                    <div class="stat-card"><div class="stat-label">祈願符</div><div id="result-gacha" class="stat-value">-</div></div>
+                    <div class="stat-card"><div class="stat-label">満願符</div><div id="result-mangan" class="stat-value">-</div></div>
+                </div>
+                <div class="dungeon-empty mt-3">最終記録: <span id="result-death-reason">-</span></div>
+                <div class="d-flex gap-2 flex-wrap mt-4">
+                    <button id="retry-run-btn" class="dungeon-btn-primary" data-busy-disable>もう一度潜る</button>
+                    <a class="dungeon-btn-secondary text-decoration-none d-inline-flex align-items-center" href="../index.html">ホームへ戻る</a>
+                </div>
+                <div class="mt-4">
+                    <div class="panel-title">冒険ログ</div>
+                    <div id="result-log" class="adventure-log"></div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabase-config.js"></script>
+    <script src="../js/auth-guard.js"></script>
+    <script src="../js/navigation.js"></script>
+    <script>
+        document.getElementById('nav-placeholder').innerHTML = generateAccordionNav('../');
+        const navStyle = document.createElement('style');
+        navStyle.textContent = getAccordionNavStyles();
+        document.head.appendChild(navStyle);
+    </script>
+    <script src="../js/dungeon/constants.js"></script>
+    <script src="../js/dungeon/api.js"></script>
+    <script src="../js/dungeon/ui.js"></script>
+    <script src="../js/dungeon/game.js"></script>
+</body>
+
+</html>

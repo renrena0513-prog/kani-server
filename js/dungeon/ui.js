@@ -1,0 +1,268 @@
+(function () {
+    const { TILE_LABELS, MANUAL_ITEM_CODES } = window.DUNGEON_CONSTANTS;
+
+    function formatNumber(value) {
+        return new Intl.NumberFormat('ja-JP').format(Number(value || 0));
+    }
+
+    function el(id) {
+        return document.getElementById(id);
+    }
+
+    function setText(id, value) {
+        const node = el(id);
+        if (node) node.textContent = value;
+    }
+
+    function setHtml(id, value) {
+        const node = el(id);
+        if (node) node.innerHTML = value;
+    }
+
+    function showScreen(screenName) {
+        document.querySelectorAll('[data-screen]').forEach((node) => {
+            node.classList.toggle('d-none', node.dataset.screen !== screenName);
+        });
+    }
+
+    function renderCarryList(stocks, selectedItems) {
+        const wrap = el('carry-items');
+        if (!wrap) return;
+
+        if (!stocks.length) {
+            wrap.innerHTML = '<div class="dungeon-empty">持ち込み可能な在庫がありません。</div>';
+            return;
+        }
+
+        wrap.innerHTML = stocks.map((stock) => {
+            const item = stock.evd_item_catalog || {};
+            const selected = selectedItems.includes(stock.item_code);
+            const disabled = !item.carry_in_allowed;
+            return `
+                <button class="carry-item ${selected ? 'selected' : ''} ${disabled ? 'disabled' : ''}" data-item-code="${stock.item_code}" ${disabled ? 'disabled' : ''}>
+                    <div class="carry-item-name">${item.name}</div>
+                    <div class="carry-item-desc">${item.description || ''}</div>
+                    <div class="carry-item-meta">在庫 ${formatNumber(stock.quantity)} / ${item.item_kind || '手動'}</div>
+                </button>
+            `;
+        }).join('');
+    }
+
+    function renderHud(state) {
+        const run = state.run;
+        const profile = state.profile || {};
+        if (!run) return;
+
+        setText('hud-floor', `${run.current_floor} / ${run.max_floors}`);
+        setText('hud-life', `${run.life} / ${run.max_life}`);
+        setText('hud-run-coins', formatNumber(run.run_coins));
+        setText('hud-secured-coins', formatNumber(run.secured_coins));
+        setText('hud-badges', formatNumber(run.badges_gained));
+        setText('hud-gacha', formatNumber(run.gacha_tickets_gained));
+        setText('hud-mangan', formatNumber(run.mangan_tickets_gained));
+        setText('hud-negates', formatNumber(run.substitute_negates_remaining));
+        setText('hud-wallet', formatNumber(profile.coins));
+        setText('hud-assets', formatNumber(profile.total_assets));
+
+        const flags = run.inventory_state?.flags || {};
+        const bonusMap = run.inventory_state?.floor_bonus_preview || {};
+        const nextBonus = bonusMap[String(Math.min(run.current_floor + 1, run.max_floors))] || 0;
+        setText('hud-next-bonus', `${formatNumber(nextBonus)} コイン`);
+        setText('hud-final-multiplier', `x${Number(run.final_return_multiplier || 1).toFixed(1)}`);
+        setText('run-status', run.status);
+        setText('run-flags', [
+            flags.insurance_active ? '保険札' : null,
+            flags.golden_contract_active ? '黄金契約書' : null,
+            flags.stairs_known ? '階段補足中' : null,
+            flags.hazards_known ? '厄災可視化中' : null,
+            flags.bombs_known ? '爆弾可視化中' : null
+        ].filter(Boolean).join(' / ') || '特記事項なし');
+    }
+
+    function renderInventory(run, catalog) {
+        const wrap = el('inventory-list');
+        if (!wrap || !run) return;
+        const items = run.inventory_state?.items || {};
+        const catalogMap = Object.fromEntries((catalog || []).map((item) => [item.code, item]));
+        const itemCodes = Object.keys(items).filter((code) => items[code]?.quantity > 0);
+
+        if (!itemCodes.length) {
+            wrap.innerHTML = '<div class="dungeon-empty">所持アイテムはありません。</div>';
+            return;
+        }
+
+        wrap.innerHTML = itemCodes.map((code) => {
+            const itemState = items[code];
+            const item = catalogMap[code] || {};
+            const usable = MANUAL_ITEM_CODES.includes(code);
+            return `
+                <div class="inventory-item">
+                    <div>
+                        <div class="inventory-item-name">${item.name || code}</div>
+                        <div class="inventory-item-desc">${item.description || ''}</div>
+                    </div>
+                    <div class="inventory-item-actions">
+                        <span class="inventory-qty">x${formatNumber(itemState.quantity)}</span>
+                        ${usable ? `<button class="btn btn-sm dungeon-btn-secondary" data-use-item="${code}">使う</button>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function renderBoard(state) {
+        const board = el('dungeon-board');
+        if (!board || !state.floor || !state.run) return;
+
+        const grid = state.floor.grid || [];
+        const flags = state.run.inventory_state?.flags || {};
+        const currentX = state.run.current_x;
+        const currentY = state.run.current_y;
+
+        board.innerHTML = grid.map((row, y) => row.map((cell, x) => {
+            const isPlayer = x === currentX && y === currentY;
+            const isAdjacent = Math.abs(currentX - x) + Math.abs(currentY - y) === 1;
+            const isMove = isAdjacent && state.run.status === '進行中';
+            const classes = ['tile'];
+            if (cell.revealed) classes.push('revealed');
+            if (cell.visited) classes.push('visited');
+            if (isPlayer) classes.push('player');
+            if (cell.type === '下り階段' && (cell.revealed || flags.stairs_known)) classes.push('stairs');
+            if ((cell.hint === 'bomb' && flags.bombs_known) || (cell.hint === 'hazard' && flags.hazards_known)) classes.push('hinted');
+            if (cell.type === 'ショップ' || cell.type === '限定ショップ') classes.push('shop');
+
+            let label = '？';
+            if (isPlayer) {
+                label = '🧙';
+            } else if (cell.revealed) {
+                label = TILE_LABELS[cell.type] || '・';
+            } else if (flags.stairs_known && cell.type === '下り階段') {
+                label = TILE_LABELS[cell.type];
+            } else if (flags.bombs_known && cell.hint === 'bomb') {
+                label = '⚠️';
+            } else if (flags.hazards_known && cell.hint === 'hazard') {
+                label = '☠️';
+            }
+
+            return `
+                <button class="${classes.join(' ')}" data-x="${x}" data-y="${y}" ${isMove ? '' : 'disabled'}>
+                    <span>${label}</span>
+                </button>
+            `;
+        }).join('')).join('');
+    }
+
+    function renderShop(state) {
+        const panel = el('shop-panel');
+        if (!panel) return;
+        const offers = state.run?.inventory_state?.pending_shop?.offers || [];
+        const type = state.run?.inventory_state?.pending_shop?.shop_type;
+
+        if (!offers.length) {
+            panel.classList.add('d-none');
+            return;
+        }
+
+        panel.classList.remove('d-none');
+        setText('shop-title', type === '限定ショップ' ? '限定商人が現れた' : '行商人に出会った');
+        setHtml('shop-offers', offers.map((offer) => `
+            <button class="shop-offer" data-buy-item="${offer.code}">
+                <div class="shop-offer-name">${offer.name}</div>
+                <div class="shop-offer-desc">${offer.description}</div>
+                <div class="shop-offer-price">${formatNumber(offer.price)} コイン</div>
+            </button>
+        `).join(''));
+    }
+
+    function renderLogs(logs, targetId = 'adventure-log') {
+        const wrap = el(targetId);
+        if (!wrap) return;
+        if (!logs.length) {
+            wrap.innerHTML = '<div class="dungeon-empty">冒険ログはまだありません。</div>';
+            return;
+        }
+        wrap.innerHTML = logs.slice().reverse().map((log) => `
+            <div class="log-line">
+                <span class="log-time">${new Date(log.created_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}</span>
+                <span>${log.message}</span>
+            </div>
+        `).join('');
+    }
+
+    function renderResult(run) {
+        if (!run) return;
+        setText('result-status', run.status);
+        setText('result-payout', `${formatNumber(run.result_payout)} コイン`);
+        setText('result-secured', `${formatNumber(run.secured_coins)} コイン`);
+        setText('result-badges', `${formatNumber(run.badges_gained)} 個`);
+        setText('result-gacha', `${formatNumber(run.gacha_tickets_gained)} 枚`);
+        setText('result-mangan', `${formatNumber(run.mangan_tickets_gained)} 枚`);
+        setText('result-death-reason', run.death_reason || '生還');
+    }
+
+    function setBusy(isBusy) {
+        document.querySelectorAll('[data-busy-disable]').forEach((node) => {
+            node.disabled = !!isBusy;
+        });
+    }
+
+    function setStatus(message, tone = 'normal') {
+        const node = el('status-banner');
+        if (!node) return;
+        node.textContent = message;
+        node.dataset.tone = tone;
+    }
+
+    function bindCarrySelection(onSelect) {
+        const wrap = el('carry-items');
+        if (!wrap) return;
+        wrap.onclick = (event) => {
+            const button = event.target.closest('[data-item-code]');
+            if (!button || button.disabled) return;
+            onSelect(button.dataset.itemCode);
+        };
+    }
+
+    function bindBoard(onMove) {
+        const board = el('dungeon-board');
+        if (!board) return;
+        board.onclick = (event) => {
+            const tile = event.target.closest('[data-x][data-y]');
+            if (!tile || tile.disabled) return;
+            onMove(Number(tile.dataset.x), Number(tile.dataset.y));
+        };
+    }
+
+    function bindActions(handlers) {
+        document.body.addEventListener('click', (event) => {
+            const useItem = event.target.closest('[data-use-item]');
+            if (useItem) handlers.onUseItem(useItem.dataset.useItem);
+
+            const buyItem = event.target.closest('[data-buy-item]');
+            if (buyItem) handlers.onBuyItem(buyItem.dataset.buyItem);
+        });
+
+        el('start-run-btn')?.addEventListener('click', handlers.onStartRun);
+        el('resume-run-btn')?.addEventListener('click', handlers.onResumeRun);
+        el('stairs-descend-btn')?.addEventListener('click', () => handlers.onResolveStairs('descend'));
+        el('stairs-return-btn')?.addEventListener('click', () => handlers.onResolveStairs('return'));
+        el('shop-skip-btn')?.addEventListener('click', handlers.onSkipShop);
+        el('retry-run-btn')?.addEventListener('click', handlers.onRetry);
+    }
+
+    window.DUNGEON_UI = {
+        showScreen,
+        renderCarryList,
+        renderHud,
+        renderInventory,
+        renderBoard,
+        renderShop,
+        renderLogs,
+        renderResult,
+        setBusy,
+        setStatus,
+        bindCarrySelection,
+        bindBoard,
+        bindActions
+    };
+})();

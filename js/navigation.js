@@ -51,6 +51,16 @@ function generateAccordionNav(basePath = '../') {
                         <li><a class="dropdown-item sub-item" href="${basePath}exchange/index.html">🔄 交換所</a></li>
                     </ul>
                 </li>
+
+                <li class="nav-group">
+                    <div class="nav-group-header" onclick="toggleNavGroup(this, event)" data-group="event">
+                        <span>⌛ 期間限定イベント</span>
+                        <span class="nav-chevron">▼</span>
+                    </div>
+                    <ul class="nav-group-items" id="nav-group-event">
+                        <li><a class="dropdown-item sub-item" href="${basePath}event/dungeon.html" data-page-path="/event/dungeon.html">🏰 欲望ダンジョン</a></li>
+                    </ul>
+                </li>
                 
                 <li class="admin-only" style="display:none;"><hr class="dropdown-divider"></li>
                 <li class="admin-only" style="display:none;">
