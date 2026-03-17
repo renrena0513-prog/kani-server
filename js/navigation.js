@@ -58,7 +58,7 @@ function generateAccordionNav(basePath = '../') {
                         <span class="nav-chevron">▼</span>
                     </div>
                     <ul class="nav-group-items" id="nav-group-event">
-                        <li><a class="dropdown-item sub-item" href="${basePath}event/dungeon.html" data-page-path="/event/dungeon.html">🏰 欲望ダンジョン</a></li>
+                        <li><a class="dropdown-item sub-item" href="${basePath}event/dungeon/index.html" data-page-path="/event/dungeon/index.html">🏰 欲望ダンジョン</a></li>
                     </ul>
                 </li>
                 

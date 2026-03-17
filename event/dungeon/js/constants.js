@@ -1,5 +1,5 @@
 window.DUNGEON_CONSTANTS = {
-    PAGE_PATH: '/event/dungeon.html',
+    PAGE_PATH: '/event/dungeon/index.html',
     ENTRY_FEE: 1000,
     BOARD_SIZE: 7,
     MAX_FLOORS: 10,

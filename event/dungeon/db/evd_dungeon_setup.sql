@@ -45,6 +45,51 @@ create table if not exists public.evd_game_balance_profiles (
     updated_at timestamptz not null default now()
 );
 
+create table if not exists public.evd_floor_bonus_profiles (
+    profile_id uuid not null references public.evd_game_balance_profiles(id) on delete cascade,
+    floor_no integer not null check (floor_no >= 1),
+    bonus_coins integer not null default 0 check (bonus_coins >= 0),
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    primary key (profile_id, floor_no)
+);
+
+create table if not exists public.evd_floor_value_profiles (
+    profile_id uuid not null references public.evd_game_balance_profiles(id) on delete cascade,
+    floor_no integer not null check (floor_no >= 1),
+    coin_small_min integer not null default 0,
+    coin_small_max integer not null default 0,
+    chest_min integer not null default 0,
+    chest_max integer not null default 0,
+    treasure_chest_min integer not null default 0,
+    treasure_chest_max integer not null default 0,
+    blessing_min numeric(8, 2) not null default 1.0,
+    blessing_max numeric(8, 2) not null default 1.0,
+    curse_min numeric(8, 2) not null default 1.0,
+    curse_max numeric(8, 2) not null default 1.0,
+    trap_min integer not null default 0,
+    trap_max integer not null default 0,
+    thief_coin_loss_min integer not null default 0,
+    thief_coin_loss_max integer not null default 0,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    primary key (profile_id, floor_no)
+);
+
+create table if not exists public.evd_floor_tile_weight_profiles (
+    profile_id uuid not null references public.evd_game_balance_profiles(id) on delete cascade,
+    floor_no integer not null check (floor_no >= 1),
+    tile_type text not null,
+    is_enabled boolean not null default true,
+    weight integer not null default 0 check (weight >= 0),
+    min_count integer not null default 0 check (min_count >= 0),
+    max_count integer check (max_count is null or max_count >= 0),
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    check (max_count is null or max_count >= min_count),
+    primary key (profile_id, floor_no, tile_type)
+);
+
 create table if not exists public.evd_game_runs (
     id uuid primary key default gen_random_uuid(),
     user_id text not null,
@@ -113,6 +158,13 @@ create unique index if not exists evd_game_runs_active_user_uq
     on public.evd_game_runs(user_id)
     where status = '進行中';
 
+create index if not exists evd_floor_bonus_profiles_profile_floor_idx
+    on public.evd_floor_bonus_profiles(profile_id, floor_no);
+create index if not exists evd_floor_value_profiles_profile_floor_idx
+    on public.evd_floor_value_profiles(profile_id, floor_no);
+create index if not exists evd_floor_tile_weight_profiles_profile_floor_idx
+    on public.evd_floor_tile_weight_profiles(profile_id, floor_no);
+
 create index if not exists evd_run_floors_run_floor_idx on public.evd_run_floors(run_id, floor_no);
 create index if not exists evd_run_events_run_step_idx on public.evd_run_events(run_id, step_no desc);
 create index if not exists evd_run_events_user_idx on public.evd_run_events(user_id, created_at desc);
@@ -121,6 +173,59 @@ alter table public.evd_player_item_stocks add column if not exists account_name 
 alter table public.evd_game_runs add column if not exists account_name text;
 alter table public.evd_run_floors add column if not exists account_name text;
 alter table public.evd_run_events add column if not exists account_name text;
+alter table public.evd_floor_tile_weight_profiles add column if not exists is_enabled boolean not null default true;
+alter table public.evd_floor_tile_weight_profiles add column if not exists min_count integer not null default 0;
+alter table public.evd_floor_tile_weight_profiles add column if not exists max_count integer;
+
+update public.evd_floor_tile_weight_profiles
+   set min_count = greatest(min_count, 0),
+       max_count = case
+           when max_count is null then null
+           when max_count < greatest(min_count, 0) then greatest(min_count, 0)
+           else max_count
+       end;
+
+do $$
+begin
+    if not exists (
+        select 1
+          from pg_constraint
+         where conname = 'evd_floor_tile_weight_profiles_min_count_chk'
+           and conrelid = 'public.evd_floor_tile_weight_profiles'::regclass
+    ) then
+        alter table public.evd_floor_tile_weight_profiles
+            add constraint evd_floor_tile_weight_profiles_min_count_chk
+            check (min_count >= 0);
+    end if;
+end $$;
+
+do $$
+begin
+    if not exists (
+        select 1
+          from pg_constraint
+         where conname = 'evd_floor_tile_weight_profiles_max_count_chk'
+           and conrelid = 'public.evd_floor_tile_weight_profiles'::regclass
+    ) then
+        alter table public.evd_floor_tile_weight_profiles
+            add constraint evd_floor_tile_weight_profiles_max_count_chk
+            check (max_count is null or max_count >= 0);
+    end if;
+end $$;
+
+do $$
+begin
+    if not exists (
+        select 1
+          from pg_constraint
+         where conname = 'evd_floor_tile_weight_profiles_max_ge_min_chk'
+           and conrelid = 'public.evd_floor_tile_weight_profiles'::regclass
+    ) then
+        alter table public.evd_floor_tile_weight_profiles
+            add constraint evd_floor_tile_weight_profiles_max_ge_min_chk
+            check (max_count is null or max_count >= min_count);
+    end if;
+end $$;
 
 update public.evd_player_item_stocks s
    set account_name = p.account_name
@@ -149,6 +254,9 @@ update public.evd_run_events e
 alter table public.evd_item_catalog enable row level security;
 alter table public.evd_player_item_stocks enable row level security;
 alter table public.evd_game_balance_profiles enable row level security;
+alter table public.evd_floor_bonus_profiles enable row level security;
+alter table public.evd_floor_value_profiles enable row level security;
+alter table public.evd_floor_tile_weight_profiles enable row level security;
 alter table public.evd_game_runs enable row level security;
 alter table public.evd_run_floors enable row level security;
 alter table public.evd_run_events enable row level security;
@@ -159,6 +267,18 @@ for select using (true);
 
 drop policy if exists evd_balance_profiles_read on public.evd_game_balance_profiles;
 create policy evd_balance_profiles_read on public.evd_game_balance_profiles
+for select using (true);
+
+drop policy if exists evd_floor_bonus_profiles_read on public.evd_floor_bonus_profiles;
+create policy evd_floor_bonus_profiles_read on public.evd_floor_bonus_profiles
+for select using (true);
+
+drop policy if exists evd_floor_value_profiles_read on public.evd_floor_value_profiles;
+create policy evd_floor_value_profiles_read on public.evd_floor_value_profiles
+for select using (true);
+
+drop policy if exists evd_floor_tile_weight_profiles_read on public.evd_floor_tile_weight_profiles;
+create policy evd_floor_tile_weight_profiles_read on public.evd_floor_tile_weight_profiles
 for select using (true);
 
 drop policy if exists evd_player_item_stocks_rw on public.evd_player_item_stocks;
@@ -245,8 +365,113 @@ where not exists (
     select 1 from public.evd_game_balance_profiles where name = 'default'
 );
 
+insert into public.evd_floor_bonus_profiles (profile_id, floor_no, bonus_coins)
+select p.id, b.floor_no, b.bonus_coins
+from public.evd_game_balance_profiles p
+join (
+    values
+        (2, 80),
+        (3, 120),
+        (4, 180),
+        (5, 280),
+        (6, 420),
+        (7, 650),
+        (8, 1000),
+        (9, 1500),
+        (10, 2200)
+) as b(floor_no, bonus_coins) on true
+where p.name = 'default'
+on conflict (profile_id, floor_no) do update
+set bonus_coins = excluded.bonus_coins,
+    updated_at = now();
+
+insert into public.evd_floor_value_profiles (
+    profile_id, floor_no,
+    coin_small_min, coin_small_max,
+    chest_min, chest_max,
+    treasure_chest_min, treasure_chest_max,
+    blessing_min, blessing_max,
+    curse_min, curse_max,
+    trap_min, trap_max,
+    thief_coin_loss_min, thief_coin_loss_max
+)
+select
+    p.id, v.floor_no,
+    v.coin_small_min, v.coin_small_max,
+    v.chest_min, v.chest_max,
+    v.treasure_chest_min, v.treasure_chest_max,
+    v.blessing_min, v.blessing_max,
+    v.curse_min, v.curse_max,
+    v.trap_min, v.trap_max,
+    v.thief_coin_loss_min, v.thief_coin_loss_max
+from public.evd_game_balance_profiles p
+join (
+    values
+        (1, 40,120, 120,240, 280,420, 1.10,1.25, 0.75,0.92, 60,140, 150,150),
+        (2, 60,140, 160,300, 340,520, 1.12,1.28, 0.74,0.90, 80,170, 150,150),
+        (3, 80,180, 220,360, 420,650, 1.15,1.30, 0.72,0.89, 100,220, 300,300),
+        (4, 100,220, 260,420, 520,760, 1.18,1.34, 0.70,0.88, 130,260, 300,300),
+        (5, 120,260, 320,480, 650,900, 1.20,1.38, 0.68,0.86, 160,320, 500,500),
+        (6, 150,300, 360,540, 760,1050, 1.22,1.42, 0.66,0.84, 190,380, 500,500),
+        (7, 180,340, 420,620, 900,1220, 1.25,1.48, 0.64,0.82, 220,430, 800,800),
+        (8, 210,380, 480,700, 1050,1380, 1.28,1.52, 0.62,0.80, 260,500, 800,800),
+        (9, 250,420, 560,780, 1220,1560, 1.30,1.56, 0.60,0.78, 300,560, 1200,1200),
+        (10, 300,480, 650,880, 1400,1760, 1.34,1.62, 0.58,0.76, 340,620, 1200,1200)
+) as v(
+    floor_no,
+    coin_small_min, coin_small_max,
+    chest_min, chest_max,
+    treasure_chest_min, treasure_chest_max,
+    blessing_min, blessing_max,
+    curse_min, curse_max,
+    trap_min, trap_max,
+    thief_coin_loss_min, thief_coin_loss_max
+) on true
+where p.name = 'default'
+on conflict (profile_id, floor_no) do update
+set
+    coin_small_min = excluded.coin_small_min,
+    coin_small_max = excluded.coin_small_max,
+    chest_min = excluded.chest_min,
+    chest_max = excluded.chest_max,
+    treasure_chest_min = excluded.treasure_chest_min,
+    treasure_chest_max = excluded.treasure_chest_max,
+    blessing_min = excluded.blessing_min,
+    blessing_max = excluded.blessing_max,
+    curse_min = excluded.curse_min,
+    curse_max = excluded.curse_max,
+    trap_min = excluded.trap_min,
+    trap_max = excluded.trap_max,
+    thief_coin_loss_min = excluded.thief_coin_loss_min,
+    thief_coin_loss_max = excluded.thief_coin_loss_max,
+    updated_at = now();
+
+insert into public.evd_floor_tile_weight_profiles (profile_id, floor_no, tile_type, is_enabled, weight, min_count, max_count)
+select p.id, w.floor_no, w.tile_type, true, w.weight, 0, null
+from public.evd_game_balance_profiles p
+join (
+    values
+      (1,'空白',24),(1,'小銭',14),(1,'宝箱',10),(1,'財宝箱',4),(1,'秘宝箱',1),(1,'宝石箱',2),(1,'祝福',2),(1,'泉',2),(1,'爆弾',8),(1,'大爆発',2),(1,'罠',6),(1,'呪い',3),(1,'盗賊',2),(1,'落とし穴',1),(1,'転送罠',0),(1,'ショップ',2),(1,'限定ショップ',0),
+      (2,'空白',22),(2,'小銭',14),(2,'宝箱',10),(2,'財宝箱',4),(2,'秘宝箱',1),(2,'宝石箱',2),(2,'祝福',2),(2,'泉',2),(2,'爆弾',9),(2,'大爆発',2),(2,'罠',6),(2,'呪い',3),(2,'盗賊',2),(2,'落とし穴',1),(2,'転送罠',0),(2,'ショップ',2),(2,'限定ショップ',0),
+      (3,'空白',20),(3,'小銭',12),(3,'宝箱',11),(3,'財宝箱',5),(3,'秘宝箱',1),(3,'宝石箱',2),(3,'祝福',2),(3,'泉',2),(3,'爆弾',9),(3,'大爆発',3),(3,'罠',7),(3,'呪い',4),(3,'盗賊',3),(3,'落とし穴',2),(3,'転送罠',0),(3,'ショップ',2),(3,'限定ショップ',1),
+      (4,'空白',18),(4,'小銭',12),(4,'宝箱',10),(4,'財宝箱',6),(4,'秘宝箱',1),(4,'宝石箱',2),(4,'祝福',2),(4,'泉',2),(4,'爆弾',10),(4,'大爆発',3),(4,'罠',7),(4,'呪い',4),(4,'盗賊',3),(4,'落とし穴',2),(4,'転送罠',0),(4,'ショップ',2),(4,'限定ショップ',1),
+      (5,'空白',16),(5,'小銭',11),(5,'宝箱',10),(5,'財宝箱',6),(5,'秘宝箱',2),(5,'宝石箱',3),(5,'祝福',2),(5,'泉',2),(5,'爆弾',10),(5,'大爆発',4),(5,'罠',7),(5,'呪い',5),(5,'盗賊',3),(5,'落とし穴',2),(5,'転送罠',2),(5,'ショップ',2),(5,'限定ショップ',1),
+      (6,'空白',15),(6,'小銭',10),(6,'宝箱',10),(6,'財宝箱',7),(6,'秘宝箱',2),(6,'宝石箱',3),(6,'祝福',2),(6,'泉',2),(6,'爆弾',10),(6,'大爆発',4),(6,'罠',8),(6,'呪い',5),(6,'盗賊',3),(6,'落とし穴',2),(6,'転送罠',2),(6,'ショップ',2),(6,'限定ショップ',1),
+      (7,'空白',14),(7,'小銭',10),(7,'宝箱',9),(7,'財宝箱',7),(7,'秘宝箱',2),(7,'宝石箱',3),(7,'祝福',2),(7,'泉',2),(7,'爆弾',10),(7,'大爆発',5),(7,'罠',8),(7,'呪い',5),(7,'盗賊',4),(7,'落とし穴',2),(7,'転送罠',2),(7,'ショップ',2),(7,'限定ショップ',1),
+      (8,'空白',12),(8,'小銭',9),(8,'宝箱',9),(8,'財宝箱',8),(8,'秘宝箱',2),(8,'宝石箱',3),(8,'祝福',2),(8,'泉',2),(8,'爆弾',11),(8,'大爆発',5),(8,'罠',8),(8,'呪い',5),(8,'盗賊',4),(8,'落とし穴',2),(8,'転送罠',3),(8,'ショップ',2),(8,'限定ショップ',1),
+      (9,'空白',10),(9,'小銭',8),(9,'宝箱',8),(9,'財宝箱',9),(9,'秘宝箱',2),(9,'宝石箱',4),(9,'祝福',2),(9,'泉',2),(9,'爆弾',11),(9,'大爆発',6),(9,'罠',9),(9,'呪い',5),(9,'盗賊',4),(9,'落とし穴',2),(9,'転送罠',3),(9,'ショップ',2),(9,'限定ショップ',1),
+      (10,'空白',8),(10,'小銭',8),(10,'宝箱',8),(10,'財宝箱',10),(10,'秘宝箱',3),(10,'宝石箱',4),(10,'祝福',2),(10,'泉',2),(10,'爆弾',11),(10,'大爆発',6),(10,'罠',9),(10,'呪い',6),(10,'盗賊',4),(10,'落とし穴',3),(10,'転送罠',3),(10,'ショップ',2),(10,'限定ショップ',1)
+) as w(floor_no, tile_type, weight) on true
+where p.name = 'default'
+on conflict (profile_id, floor_no, tile_type) do update
+set is_enabled = excluded.is_enabled,
+    weight = excluded.weight,
+    min_count = excluded.min_count,
+    max_count = excluded.max_count,
+    updated_at = now();
+
 insert into public.page_settings (path, name, is_active)
-values ('/event/dungeon.html', '期間限定イベント：欲望ダンジョン', true)
+values ('/event/dungeon/index.html', '期間限定イベント：欲望ダンジョン', true)
 on conflict (path) do update
 set name = excluded.name,
     is_active = excluded.is_active;
@@ -325,6 +550,55 @@ begin
     end if;
 
     return public.evd_random_int((v_range ->> 0)::integer, (v_range ->> 1)::integer);
+end;
+$$;
+
+create or replace function public.evd_get_floor_value(
+    p_profile_id uuid,
+    p_floor integer,
+    p_key text,
+    p_numeric boolean default false
+)
+returns numeric
+language plpgsql
+as $$
+declare
+    v_row public.evd_floor_value_profiles%rowtype;
+begin
+    select *
+      into v_row
+      from public.evd_floor_value_profiles
+     where profile_id = p_profile_id
+       and floor_no = p_floor;
+
+    if not found then
+        return 0;
+    end if;
+
+    case p_key
+        when '小銭' then
+            return public.evd_random_int(v_row.coin_small_min, v_row.coin_small_max);
+        when '宝箱' then
+            return public.evd_random_int(v_row.chest_min, v_row.chest_max);
+        when '財宝箱' then
+            return public.evd_random_int(v_row.treasure_chest_min, v_row.treasure_chest_max);
+        when '祝福' then
+            if p_numeric then
+                return public.evd_random_numeric(v_row.blessing_min, v_row.blessing_max);
+            end if;
+            return public.evd_random_int(v_row.blessing_min::integer, v_row.blessing_max::integer);
+        when '呪い' then
+            if p_numeric then
+                return public.evd_random_numeric(v_row.curse_min, v_row.curse_max);
+            end if;
+            return public.evd_random_int(v_row.curse_min::integer, v_row.curse_max::integer);
+        when '罠' then
+            return public.evd_random_int(v_row.trap_min, v_row.trap_max);
+        when '盗賊' then
+            return public.evd_random_int(v_row.thief_coin_loss_min, v_row.thief_coin_loss_max);
+        else
+            return 0;
+    end case;
 end;
 $$;
 
@@ -507,8 +781,8 @@ returns jsonb
 language plpgsql
 as $$
 declare
-    v_config jsonb;
     v_weights jsonb;
+    v_counts jsonb := '{}'::jsonb;
     v_grid jsonb := '[]'::jsonb;
     v_row jsonb;
     v_x integer;
@@ -517,9 +791,15 @@ declare
     v_stairs_y integer;
     v_cell_type text;
     v_cell jsonb;
+    v_rule record;
+    v_current_count integer;
+    v_min_count integer;
+    v_max_count integer;
+    v_remaining_min integer := 0;
+    v_force_min boolean := false;
+    v_available_cells integer;
 begin
-    select config into v_config from public.evd_game_balance_profiles where id = p_profile_id;
-    v_weights := v_config -> 'tile_weights' -> p_floor_no::text;
+    v_available_cells := (p_board_size * p_board_size) - 2;
 
     v_stairs_x := floor(random() * p_board_size)::integer;
     v_stairs_y := floor(random() * p_board_size)::integer;
@@ -536,7 +816,87 @@ begin
             elsif v_x = v_stairs_x and v_y = v_stairs_y then
                 v_cell_type := '下り階段';
             else
+                v_remaining_min := 0;
+                for v_rule in
+                    select tile_type, min_count
+                      from public.evd_floor_tile_weight_profiles
+                     where profile_id = p_profile_id
+                       and floor_no = p_floor_no
+                       and is_enabled = true
+                       and tile_type <> '下り階段'
+                loop
+                    v_current_count := coalesce((v_counts ->> v_rule.tile_type)::integer, 0);
+                    v_min_count := greatest(coalesce(v_rule.min_count, 0), 0);
+                    if v_current_count < v_min_count then
+                        v_remaining_min := v_remaining_min + (v_min_count - v_current_count);
+                    end if;
+                end loop;
+
+                v_force_min := v_remaining_min > 0;
+                v_weights := '{}'::jsonb;
+
+                for v_rule in
+                    select tile_type, weight, min_count, max_count
+                      from public.evd_floor_tile_weight_profiles
+                     where profile_id = p_profile_id
+                       and floor_no = p_floor_no
+                       and is_enabled = true
+                       and tile_type <> '下り階段'
+                loop
+                    v_current_count := coalesce((v_counts ->> v_rule.tile_type)::integer, 0);
+                    v_min_count := greatest(coalesce(v_rule.min_count, 0), 0);
+                    v_max_count := coalesce(v_rule.max_count, v_available_cells);
+                    if v_max_count < v_min_count then
+                        v_max_count := v_min_count;
+                    end if;
+
+                    if v_current_count >= v_max_count then
+                        continue;
+                    end if;
+                    if v_force_min and v_current_count >= v_min_count then
+                        continue;
+                    end if;
+                    if coalesce(v_rule.weight, 0) <= 0 then
+                        continue;
+                    end if;
+
+                    v_weights := jsonb_set(
+                        v_weights,
+                        array[v_rule.tile_type],
+                        to_jsonb(v_rule.weight),
+                        true
+                    );
+                end loop;
+
+                if v_weights = '{}'::jsonb then
+                    if v_force_min then
+                        for v_rule in
+                            select tile_type, min_count
+                              from public.evd_floor_tile_weight_profiles
+                             where profile_id = p_profile_id
+                               and floor_no = p_floor_no
+                               and is_enabled = true
+                               and tile_type <> '下り階段'
+                        loop
+                            v_current_count := coalesce((v_counts ->> v_rule.tile_type)::integer, 0);
+                            v_min_count := greatest(coalesce(v_rule.min_count, 0), 0);
+                            if v_current_count < v_min_count then
+                                v_weights := jsonb_set(v_weights, array[v_rule.tile_type], to_jsonb(1), true);
+                            end if;
+                        end loop;
+                    end if;
+                    if v_weights = '{}'::jsonb then
+                        v_weights := jsonb_build_object('空白', 1);
+                    end if;
+                end if;
+
                 v_cell_type := public.evd_pick_weighted(v_weights);
+                v_counts := jsonb_set(
+                    v_counts,
+                    array[v_cell_type],
+                    to_jsonb(coalesce((v_counts ->> v_cell_type)::integer, 0) + 1),
+                    true
+                );
             end if;
 
             v_cell := jsonb_build_object(
@@ -689,11 +1049,10 @@ declare
             'insurance_active', false,
             'golden_contract_active', false,
             'stairs_known', false,
-            'hazards_known', false,
-            'bombs_known', false
+        'hazards_known', false,
+        'bombs_known', false
         ),
         'carried_items', '{}'::jsonb,
-        'floor_bonus_preview', (select config -> 'floor_bonuses' from public.evd_game_balance_profiles where is_active = true order by updated_at desc limit 1),
         'pending_resolution', null,
         'pending_shop', null
     );
@@ -876,7 +1235,6 @@ declare
     v_grid jsonb;
     v_cell jsonb;
     v_flags jsonb;
-    v_config jsonb;
     v_next_x integer;
     v_next_y integer;
     v_damage integer := 0;
@@ -904,7 +1262,6 @@ begin
     end if;
 
     select * into v_floor from public.evd_run_floors where run_id = p_run_id and floor_no = v_run.current_floor for update;
-    select config into v_config from public.evd_game_balance_profiles where id = v_run.generation_profile_id;
 
     v_next_x := v_run.current_x + case p_direction when 'left' then -1 when 'right' then 1 else 0 end;
     v_next_y := v_run.current_y + case p_direction when 'up' then -1 when 'down' then 1 else 0 end;
@@ -935,21 +1292,19 @@ begin
            updated_at = now()
      where id = v_floor.id;
 
-    perform public.evd_add_log(p_run_id, v_user_id, v_run.account_name, v_run.current_floor, '移動', format('%sに移動した。', case p_direction when 'left' then '左' when 'right' then '右' when 'up' then '上' else '下' end));
-
     if coalesce((v_cell ->> 'resolved')::boolean, false) then
         return public.evd_build_snapshot(p_run_id, v_user_id);
     end if;
 
     case v_cell ->> 'type'
         when '小銭' then
-            v_coin_delta := public.evd_get_range_value(v_config, v_run.current_floor, '小銭')::integer;
+            v_coin_delta := public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '小銭')::integer;
             v_message := format('小銭を拾い、%s コイン獲得した。', v_coin_delta);
         when '宝箱' then
-            v_coin_delta := public.evd_get_range_value(v_config, v_run.current_floor, '宝箱')::integer;
+            v_coin_delta := public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '宝箱')::integer;
             v_message := format('宝箱を開け、%s コイン獲得した。', v_coin_delta);
         when '財宝箱' then
-            v_coin_delta := public.evd_get_range_value(v_config, v_run.current_floor, '財宝箱')::integer;
+            v_coin_delta := public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '財宝箱')::integer;
             v_message := format('財宝箱から %s コイン獲得した。', v_coin_delta);
         when '秘宝箱' then
             update public.evd_game_runs set badges_gained = badges_gained + 1 where id = p_run_id;
@@ -961,7 +1316,7 @@ begin
              where id = p_run_id;
             v_message := '宝石箱から祈願符と満願符を得た。';
         when '祝福' then
-            v_multiplier := public.evd_get_range_value(v_config, v_run.current_floor, '祝福', true);
+            v_multiplier := public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '祝福', true);
             update public.evd_game_runs
                set final_return_multiplier = round((final_return_multiplier * v_multiplier)::numeric, 2)
              where id = p_run_id;
@@ -978,16 +1333,16 @@ begin
             v_damage := 2;
             v_message := '大爆発に巻き込まれ、ライフを 2 失った。';
         when '罠' then
-            v_coin_delta := -1 * public.evd_get_range_value(v_config, v_run.current_floor, '罠')::integer;
+            v_coin_delta := -1 * public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '罠')::integer;
             v_message := format('罠にかかり、%s コイン失った。', abs(v_coin_delta));
         when '呪い' then
-            v_multiplier := public.evd_get_range_value(v_config, v_run.current_floor, '呪い', true);
+            v_multiplier := public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '呪い', true);
             update public.evd_game_runs
                set final_return_multiplier = round((final_return_multiplier * v_multiplier)::numeric, 2)
              where id = p_run_id;
             v_message := format('呪いにより最終持ち帰り倍率が x%s になった。', (select final_return_multiplier from public.evd_game_runs where id = p_run_id));
         when '盗賊' then
-            v_ransom := coalesce((v_config -> 'thief_ransom' ->> v_run.current_floor::text)::integer, 150);
+            v_ransom := coalesce(public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '盗賊')::integer, 150);
             if exists (
                 select 1
                   from jsonb_each(coalesce(v_run.inventory_state -> 'items', '{}'::jsonb)) e
@@ -1137,11 +1492,12 @@ begin
             update public.evd_game_runs set max_life = max_life + 1, life = max_life + 1 where id = p_run_id;
             perform public.evd_add_log(p_run_id, v_user_id, v_run.account_name, v_run.current_floor, 'アイテム使用', '女神の聖杯で完全回復し、最大ライフが 1 増えた。');
         when 'abyss_ticket' then
-            select coalesce(sum((value)::integer), 0)
+            select coalesce(sum(fbp.bonus_coins), 0)
               into v_bonus_sum
-              from jsonb_each_text((v_run.inventory_state -> 'floor_bonus_preview'))
-             where (key)::integer > v_run.current_floor
-               and (key)::integer <= least(v_run.current_floor + 3, v_run.max_floors);
+              from public.evd_floor_bonus_profiles fbp
+             where fbp.profile_id = v_run.generation_profile_id
+               and fbp.floor_no > v_run.current_floor
+               and fbp.floor_no <= least(v_run.current_floor + 3, v_run.max_floors);
 
             update public.evd_game_runs
                set run_coins = run_coins + v_bonus_sum,
@@ -1195,7 +1551,13 @@ begin
     end if;
 
     v_target_floor := v_run.current_floor + 1;
-    v_bonus := coalesce((v_run.inventory_state -> 'floor_bonus_preview' ->> v_target_floor::text)::integer, 0);
+    select coalesce(fbp.bonus_coins, 0)
+      into v_bonus
+      from public.evd_floor_bonus_profiles fbp
+     where fbp.profile_id = v_run.generation_profile_id
+       and fbp.floor_no = v_target_floor;
+
+    v_bonus := coalesce(v_bonus, 0);
 
     update public.evd_game_runs
        set run_coins = run_coins + v_bonus,
