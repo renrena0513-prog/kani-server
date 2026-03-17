@@ -92,6 +92,7 @@
     }
 
     function showScreen(screenName) {
+        document.body.dataset.dungeonScreen = screenName;
         document.querySelectorAll('[data-screen]').forEach((node) => {
             node.classList.toggle('d-none', node.dataset.screen !== screenName);
         });
@@ -192,13 +193,11 @@
         setTexts(['hud-life', 'mobile-hud-life'], lifeText);
         setText('mobile-life-fixed', `LIFE ${lifeText}`);
         setTexts(['hud-run-coins', 'mobile-hud-run-coins'], formatNumber(run.run_coins));
-        setTexts(['hud-secured-coins', 'mobile-hud-secured-coins'], formatNumber(run.secured_coins));
         setTexts(['hud-badges', 'mobile-hud-badges'], formatNumber(run.badges_gained));
         setTexts(['hud-gacha', 'mobile-hud-gacha'], formatNumber(run.gacha_tickets_gained));
         setTexts(['hud-mangan', 'mobile-hud-mangan'], formatNumber(run.mangan_tickets_gained));
         setTexts(['hud-negates', 'mobile-hud-negates'], formatNumber(run.substitute_negates_remaining));
         setTexts(['hud-wallet', 'mobile-hud-wallet'], formatNumber(profile.coins));
-        setTexts(['hud-assets', 'mobile-hud-assets'], formatNumber(profile.total_assets));
 
         const flags = run.inventory_state?.flags || {};
         const bonusMap = run.inventory_state?.floor_bonus_preview || {};
@@ -251,6 +250,48 @@
     function renderInventory(run, catalog) {
         renderInventoryInto(el('inventory-list'), run, catalog);
         renderInventoryInto(el('mobile-inventory-list'), run, catalog);
+    }
+
+    function renderResultInventory(run, catalog) {
+        const wrap = el('result-inventory-list');
+        if (!wrap || !run) return;
+
+        const items = run.inventory_state?.items || {};
+        const carriedItems = run.inventory_state?.carried_items || {};
+        const catalogMap = Object.fromEntries((catalog || []).map((item) => [item.code, item]));
+        const itemCodes = [...new Set([...Object.keys(items), ...Object.keys(carriedItems)])]
+            .filter((code) => Math.max(
+                Number(items[code]?.quantity || 0),
+                Number(carriedItems[code]?.quantity || 0)
+            ) > 0);
+
+        if (!itemCodes.length) {
+            wrap.innerHTML = '<div class="dungeon-empty">持ち帰ったアイテムはありません。</div>';
+            return;
+        }
+
+        wrap.innerHTML = itemCodes.map((code) => {
+            const item = catalogMap[code] || {};
+            const quantity = Math.max(
+                Number(items[code]?.quantity || 0),
+                Number(carriedItems[code]?.quantity || 0)
+            );
+
+            return `
+                <div class="inventory-item">
+                    <div class="item-entry-head">
+                        ${renderItemVisual(code, item.name || code)}
+                        <div>
+                            <div class="inventory-item-name">${item.name || code}</div>
+                            <div class="inventory-item-desc">${item.description || ''}</div>
+                        </div>
+                    </div>
+                    <div class="inventory-item-actions">
+                        <span class="inventory-qty">x${formatNumber(quantity)}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
 
     function renderBoard(state) {
@@ -370,15 +411,15 @@
         `).join('');
     }
 
-    function renderResult(run) {
+    function renderResult(run, catalog) {
         if (!run) return;
         setText('result-status', run.status);
         setText('result-payout', `${formatNumber(run.result_payout)} コイン`);
-        setText('result-secured', `${formatNumber(run.secured_coins)} コイン`);
         setText('result-badges', `${formatNumber(run.badges_gained)} 個`);
         setText('result-gacha', `${formatNumber(run.gacha_tickets_gained)} 枚`);
         setText('result-mangan', `${formatNumber(run.mangan_tickets_gained)} 枚`);
         setText('result-death-reason', run.death_reason || '生還');
+        renderResultInventory(run, catalog);
     }
 
     function setBusy(isBusy) {

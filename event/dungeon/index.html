@@ -18,7 +18,7 @@
 
 </head>
 
-<body>
+<body data-dungeon-screen="start">
     <div class="dungeon-shell">
         <div id="nav-placeholder"></div>
         <div id="mobile-life-fixed" class="mobile-life-fixed d-none">LIFE ❤❤❤</div>
@@ -26,8 +26,11 @@
         <section class="dungeon-hero">
             <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-end">
                 <div>
-                    <p class="mb-2 text-uppercase small text-warning hero-outline-text">RPG Event</p>
                     <h1 class="dungeon-title hero-outline-text">欲望渦巻くダンジョン</h1>
+                    <div class="hero-action-grid">
+                        <button id="start-run-btn" class="hero-image-button hero-image-button-start" type="button" data-busy-disable aria-label="冒険に行く"></button>
+                        <button id="prep-shop-open-btn" class="hero-image-button hero-image-button-shop" type="button" data-busy-disable data-bs-toggle="modal" data-bs-target="#prep-shop-modal" aria-label="準備を整える"></button>
+                    </div>
                     <p class="dungeon-lead">
                         石造りの迷宮を踏破し、宝を抱えて帰還する探索イベントです。深く潜るほど報酬も危険も増します。
                     </p>
@@ -55,7 +58,6 @@
                         <div id="carry-items" class="carry-items"></div>
                     </div>
                     <div class="d-grid gap-2 mt-4">
-                        <button id="start-run-btn" class="dungeon-btn-primary" data-busy-disable>1000コインで入場する</button>
                         <button id="resume-run-btn" class="dungeon-btn-secondary" data-busy-disable>進行中のランを再開</button>
                     </div>
                 </div>
@@ -64,14 +66,16 @@
                 <div class="dungeon-panel h-100">
                     <div class="panel-title">冒険の掟</div>
                     <div class="adventure-log adventure-rules-scroll">
-                        <div class="dungeon-empty">7 x 7 の迷宮を移動して下り階段を探します。</div>
-                        <div class="dungeon-empty">初期ライフは ❤❤❤。❤がなくなると死亡です。</div>
-                        <div class="dungeon-empty">深い階ほど到達ボーナスが増えますが、転送罠や落とし穴も牙を剥きます。</div>
-                        <div class="dungeon-empty">帰還時のみ報酬確定。保険札があれば死亡時も半分持ち帰れます。</div>
+                        <div class="dungeon-empty">7×7の迷宮を進み、階段を見つけてさらに深層を目指すべし。</div>
+                        <div class="dungeon-empty">ライフは ❤❤❤ からスタート。すべて失うと、その挑戦は終了だ。</div>
+                        <div class="dungeon-empty">深く潜るほど到達ボーナスは大きくなるぞ。</div>
+                        <div class="dungeon-empty">ただし、深層では危険もさらに増えていく。油断は禁物じゃ。</div>
+                        <div class="dungeon-empty">手に入れた報酬は、無事に帰還しないと手に入らない。</div>
+                        <div class="dungeon-empty">階段を見つけたら、さらに奥へ進むか、ここで帰還するかを見極めるべし。</div>
+                        <div class="dungeon-empty">アイテムをうまく活用し、覚悟を決めて挑むのじゃ。</div>
+                        <div class="dungeon-empty">日によってダンジョンの難易度が変わるらしい……。</div>
+                        <div class="dungeon-empty">ほかにも隠された要素があるようじゃ。プレイヤー同士で攻略を目指すのじゃ。</div>
                     </div>
-                    <div class="panel-title mt-4">入場前ショップ</div>
-                    <p class="small text-secondary">準備商人から在庫を補充して、そのまま持ち込み選択に使えます。</p>
-                    <button class="dungeon-btn-secondary w-100" type="button" data-bs-toggle="modal" data-bs-target="#prep-shop-modal">入場前ショップを開く</button>
                 </div>
             </div>
         </section>
@@ -85,7 +89,6 @@
                             <div class="stat-card"><div class="stat-label">階層</div><div id="hud-floor" class="stat-value">-</div></div>
                             <div class="stat-card"><div class="stat-label">ライフ</div><div id="hud-life" class="stat-value">-</div></div>
                             <div class="stat-card"><div class="stat-label">現在コイン</div><div id="hud-run-coins" class="stat-value">-</div></div>
-                            <div class="stat-card"><div class="stat-label">確保済み</div><div id="hud-secured-coins" class="stat-value">-</div></div>
                             <div class="stat-card"><div class="stat-label">秘宝</div><div id="hud-badges" class="stat-value">-</div></div>
                             <div class="stat-card"><div class="stat-label">祈願符</div><div id="hud-gacha" class="stat-value">-</div></div>
                             <div class="stat-card"><div class="stat-label">満願符</div><div id="hud-mangan" class="stat-value">-</div></div>
@@ -93,7 +96,6 @@
                             <div class="stat-card"><div class="stat-label">次階ボーナス</div><div id="hud-next-bonus" class="stat-value">-</div></div>
                             <div class="stat-card"><div class="stat-label">帰還倍率</div><div id="hud-final-multiplier" class="stat-value">-</div></div>
                             <div class="stat-card"><div class="stat-label">所持金</div><div id="hud-wallet" class="stat-value">-</div></div>
-                            <div class="stat-card"><div class="stat-label">累計資産</div><div id="hud-assets" class="stat-value">-</div></div>
                         </div>
                     </div>
                     <div class="dungeon-panel">
@@ -132,15 +134,17 @@
                 <div class="result-grid">
                     <div class="stat-card"><div class="stat-label">結果</div><div id="result-status" class="stat-value">-</div></div>
                     <div class="stat-card"><div class="stat-label">払い戻し</div><div id="result-payout" class="stat-value">-</div></div>
-                    <div class="stat-card"><div class="stat-label">確保済み</div><div id="result-secured" class="stat-value">-</div></div>
                     <div class="stat-card"><div class="stat-label">秘宝</div><div id="result-badges" class="stat-value">-</div></div>
                     <div class="stat-card"><div class="stat-label">祈願符</div><div id="result-gacha" class="stat-value">-</div></div>
                     <div class="stat-card"><div class="stat-label">満願符</div><div id="result-mangan" class="stat-value">-</div></div>
                 </div>
                 <div class="dungeon-empty mt-3">最終記録: <span id="result-death-reason">-</span></div>
                 <div class="d-flex gap-2 flex-wrap mt-4">
-                    <button id="retry-run-btn" class="dungeon-btn-primary" data-busy-disable>もう一度潜る</button>
-                    <a class="dungeon-btn-secondary text-decoration-none d-inline-flex align-items-center" href="../../index.html">ホームへ戻る</a>
+                    <button id="retry-run-btn" class="dungeon-btn-primary" data-busy-disable>拠点に戻る</button>
+                </div>
+                <div class="mt-4">
+                    <div class="panel-title">持ち帰りアイテム</div>
+                    <div id="result-inventory-list" class="inventory-list"></div>
                 </div>
                 <div class="mt-4">
                     <div class="panel-title">冒険ログ</div>
@@ -176,7 +180,6 @@
                         <div class="stat-card"><div class="stat-label">階層</div><div id="mobile-hud-floor" class="stat-value">-</div></div>
                         <div class="stat-card"><div class="stat-label">ライフ</div><div id="mobile-hud-life" class="stat-value">-</div></div>
                         <div class="stat-card"><div class="stat-label">現在コイン</div><div id="mobile-hud-run-coins" class="stat-value">-</div></div>
-                        <div class="stat-card"><div class="stat-label">確保済み</div><div id="mobile-hud-secured-coins" class="stat-value">-</div></div>
                         <div class="stat-card"><div class="stat-label">秘宝</div><div id="mobile-hud-badges" class="stat-value">-</div></div>
                         <div class="stat-card"><div class="stat-label">祈願符</div><div id="mobile-hud-gacha" class="stat-value">-</div></div>
                         <div class="stat-card"><div class="stat-label">満願符</div><div id="mobile-hud-mangan" class="stat-value">-</div></div>
@@ -184,7 +187,6 @@
                         <div class="stat-card"><div class="stat-label">次階ボーナス</div><div id="mobile-hud-next-bonus" class="stat-value">-</div></div>
                         <div class="stat-card"><div class="stat-label">帰還倍率</div><div id="mobile-hud-final-multiplier" class="stat-value">-</div></div>
                         <div class="stat-card"><div class="stat-label">所持金</div><div id="mobile-hud-wallet" class="stat-value">-</div></div>
-                        <div class="stat-card"><div class="stat-label">累計資産</div><div id="mobile-hud-assets" class="stat-value">-</div></div>
                     </div>
                 </div>
             </div>

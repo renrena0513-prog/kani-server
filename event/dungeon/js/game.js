@@ -56,7 +56,7 @@
 
     function renderResult() {
         ui.showScreen('result');
-        ui.renderResult(state.run);
+        ui.renderResult(state.run, state.catalog);
         ui.renderLogs(state.logs, 'result-log');
     }
 
