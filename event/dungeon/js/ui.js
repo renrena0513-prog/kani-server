@@ -126,6 +126,11 @@
         const profile = state.profile || {};
         if (!run) return;
 
+        const mobileLife = el('mobile-life-fixed');
+        if (mobileLife) {
+            mobileLife.classList.toggle('d-none', run.status !== '進行中');
+        }
+
         const lifeText = formatLifeHearts(run.life, run.max_life);
         setTexts(['hud-floor', 'mobile-hud-floor'], `${run.current_floor} / ${run.max_floors}`);
         setTexts(['hud-life', 'mobile-hud-life'], lifeText);
