@@ -34,7 +34,6 @@ window.DUNGEON_CONSTANTS = {
     },
     MANUAL_ITEM_CODES: [
         'escape_rope',
-        'bomb_radar',
         'healing_potion',
         'stairs_search',
         'calamity_map',

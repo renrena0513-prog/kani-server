@@ -52,6 +52,17 @@
             .replace(/ライフを\s*(\d+)\s*回復した/g, '❤を$1回復した');
     }
 
+    function countBombTiles(floor) {
+        const grid = floor?.grid || [];
+        let count = 0;
+        for (const row of grid) {
+            for (const cell of row || []) {
+                if (cell?.type === '爆弾' || cell?.type === '大爆発') count += 1;
+            }
+        }
+        return count;
+    }
+
     function playerAvatarUrl(user) {
         return user?.user_metadata?.avatar_url
             || user?.user_metadata?.picture
@@ -102,6 +113,10 @@
             const shopModalEl = el('shop-modal');
             if (shopModalEl && window.bootstrap?.Modal) {
                 window.bootstrap.Modal.getOrCreateInstance(shopModalEl).hide();
+            }
+            const stairsModalEl = el('stairs-modal');
+            if (stairsModalEl && window.bootstrap?.Modal) {
+                window.bootstrap.Modal.getOrCreateInstance(stairsModalEl).hide();
             }
         }
         if (screenName !== 'start') {
@@ -197,7 +212,10 @@
         const flags = run.inventory_state?.flags || {};
         const bonusMap = run.inventory_state?.floor_bonus_preview || {};
         const nextBonus = bonusMap[String(Math.min(run.current_floor + 1, run.max_floors))] || 0;
+        const hasBombRadar = coalesceHasItem(run, 'bomb_radar');
+        const bombCountText = hasBombRadar ? `${countBombTiles(state.floor)} 個` : '-';
         setTexts(['hud-next-bonus', 'mobile-hud-next-bonus'], `${formatNumber(nextBonus)} コイン`);
+        setTexts(['hud-bomb-count', 'mobile-hud-bomb-count'], bombCountText);
         setTexts(['hud-final-multiplier', 'mobile-hud-final-multiplier'], `x${Number(run.final_return_multiplier || 1).toFixed(1)}`);
         setText('run-status', run.status);
         setText('run-flags', [
@@ -207,6 +225,11 @@
             flags.hazards_known ? '厄災可視化中' : null,
             flags.bombs_known ? '爆弾可視化中' : null
         ].filter(Boolean).join(' / ') || '特記事項なし');
+    }
+
+    function coalesceHasItem(run, code) {
+        const qty = Number(run?.inventory_state?.items?.[code]?.quantity || 0);
+        return qty > 0;
     }
 
     function renderInventoryInto(wrap, run, catalog) {
@@ -311,6 +334,7 @@
         }
 
         setText('shop-title', type === '限定ショップ' ? '限定商人が現れた' : '行商人に出会った');
+        setText('shop-run-coins', formatNumber(state.run?.run_coins || 0));
         if (banner) {
             if (latest?.payload?.tile_type && ['ショップ', '限定ショップ'].includes(latest.payload.tile_type) && latest?.message) {
                 banner.textContent = latest.message;
@@ -334,6 +358,17 @@
         `).join(''));
         if (!modalEl.classList.contains('show')) {
             modal.show();
+        }
+    }
+
+    function renderStairsPrompt(visible) {
+        const modalEl = el('stairs-modal');
+        if (!modalEl || !window.bootstrap?.Modal) return;
+        const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+        if (visible) {
+            if (!modalEl.classList.contains('show')) modal.show();
+        } else {
+            modal.hide();
         }
     }
 
@@ -456,6 +491,7 @@
         renderInventory,
         renderBoard,
         renderShop,
+        renderStairsPrompt,
         renderLogs,
         renderResult,
         setBusy,

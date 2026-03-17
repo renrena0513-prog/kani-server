@@ -314,7 +314,7 @@ with check (user_id = public.evd_current_user_id());
 insert into public.evd_item_catalog (code, name, description, item_kind, shop_pool, carry_in_allowed, base_price, max_stack, effect_data, sort_order)
 values
     ('escape_rope', '脱出のひも', 'その場で即帰還して精算する。', '手動', '通常', true, 180, 3, '{"effect":"return"}', 10),
-    ('bomb_radar', '爆弾レーダー', 'その階の爆弾系マス数を感知する。', '手動', '通常', true, 160, 3, '{"effect":"bomb_radar"}', 20),
+    ('bomb_radar', '爆弾レーダー', '所持している間、各階層の爆弾系マス数を常時感知する。', '自動', '通常', true, 160, 3, '{"effect":"bomb_radar"}', 20),
     ('healing_potion', '回復ポーション', 'ライフを 1 回復する。', '手動', '通常', true, 220, 3, '{"effect":"heal","amount":1}', 30),
     ('insurance_token', '保険札', '死亡時にそのランの所持コイン半分を持ち帰る。', '自動', '通常', true, 260, 1, '{"effect":"insurance"}', 40),
     ('stairs_search', '階段サーチ', 'その階の下り階段を可視化する。', '手動', '通常', true, 240, 3, '{"effect":"stairs_search"}', 50),
@@ -771,6 +771,9 @@ declare
     v_weights jsonb;
     v_counts jsonb := '{}'::jsonb;
     v_grid jsonb := '[]'::jsonb;
+    v_cells text[];
+    v_coord text;
+    v_parts text[];
     v_row jsonb;
     v_x integer;
     v_y integer;
@@ -795,6 +798,7 @@ begin
         v_stairs_y := floor(random() * p_board_size)::integer;
     end loop;
 
+    -- Base grid first; actual random tiles are assigned in randomized coordinate order.
     for v_y in 0..(p_board_size - 1) loop
         v_row := '[]'::jsonb;
         for v_x in 0..(p_board_size - 1) loop
@@ -803,87 +807,7 @@ begin
             elsif v_x = v_stairs_x and v_y = v_stairs_y then
                 v_cell_type := '下り階段';
             else
-                v_remaining_min := 0;
-                for v_rule in
-                    select tile_type, min_count
-                      from public.evd_floor_tile_weight_profiles
-                     where profile_id = p_profile_id
-                       and floor_no = p_floor_no
-                       and is_enabled = true
-                       and tile_type <> '下り階段'
-                loop
-                    v_current_count := coalesce((v_counts ->> v_rule.tile_type)::integer, 0);
-                    v_min_count := greatest(coalesce(v_rule.min_count, 0), 0);
-                    if v_current_count < v_min_count then
-                        v_remaining_min := v_remaining_min + (v_min_count - v_current_count);
-                    end if;
-                end loop;
-
-                v_force_min := v_remaining_min > 0;
-                v_weights := '{}'::jsonb;
-
-                for v_rule in
-                    select tile_type, weight, min_count, max_count
-                      from public.evd_floor_tile_weight_profiles
-                     where profile_id = p_profile_id
-                       and floor_no = p_floor_no
-                       and is_enabled = true
-                       and tile_type <> '下り階段'
-                loop
-                    v_current_count := coalesce((v_counts ->> v_rule.tile_type)::integer, 0);
-                    v_min_count := greatest(coalesce(v_rule.min_count, 0), 0);
-                    v_max_count := coalesce(v_rule.max_count, v_available_cells);
-                    if v_max_count < v_min_count then
-                        v_max_count := v_min_count;
-                    end if;
-
-                    if v_current_count >= v_max_count then
-                        continue;
-                    end if;
-                    if v_force_min and v_current_count >= v_min_count then
-                        continue;
-                    end if;
-                    if coalesce(v_rule.weight, 0) <= 0 then
-                        continue;
-                    end if;
-
-                    v_weights := jsonb_set(
-                        v_weights,
-                        array[v_rule.tile_type],
-                        to_jsonb(v_rule.weight),
-                        true
-                    );
-                end loop;
-
-                if v_weights = '{}'::jsonb then
-                    if v_force_min then
-                        for v_rule in
-                            select tile_type, min_count
-                              from public.evd_floor_tile_weight_profiles
-                             where profile_id = p_profile_id
-                               and floor_no = p_floor_no
-                               and is_enabled = true
-                               and tile_type <> '下り階段'
-                        loop
-                            v_current_count := coalesce((v_counts ->> v_rule.tile_type)::integer, 0);
-                            v_min_count := greatest(coalesce(v_rule.min_count, 0), 0);
-                            if v_current_count < v_min_count then
-                                v_weights := jsonb_set(v_weights, array[v_rule.tile_type], to_jsonb(1), true);
-                            end if;
-                        end loop;
-                    end if;
-                    if v_weights = '{}'::jsonb then
-                        v_weights := jsonb_build_object('空白', 1);
-                    end if;
-                end if;
-
-                v_cell_type := public.evd_pick_weighted(v_weights);
-                v_counts := jsonb_set(
-                    v_counts,
-                    array[v_cell_type],
-                    to_jsonb(coalesce((v_counts ->> v_cell_type)::integer, 0) + 1),
-                    true
-                );
+                v_cell_type := '空白';
             end if;
 
             v_cell := jsonb_build_object(
@@ -903,6 +827,120 @@ begin
             v_row := v_row || jsonb_build_array(v_cell);
         end loop;
         v_grid := v_grid || jsonb_build_array(v_row);
+    end loop;
+
+    select array_agg(format('%s,%s', c.x, c.y) order by random())
+      into v_cells
+      from (
+        select xg as x, yg as y
+          from generate_series(0, p_board_size - 1) as xg
+          cross join generate_series(0, p_board_size - 1) as yg
+         where not (xg = 3 and yg = 3)
+           and not (xg = v_stairs_x and yg = v_stairs_y)
+      ) c;
+
+    foreach v_coord in array coalesce(v_cells, array[]::text[]) loop
+        v_parts := string_to_array(v_coord, ',');
+        v_x := coalesce(v_parts[1], '0')::integer;
+        v_y := coalesce(v_parts[2], '0')::integer;
+
+        v_remaining_min := 0;
+        for v_rule in
+            select tile_type, min_count
+              from public.evd_floor_tile_weight_profiles
+             where profile_id = p_profile_id
+               and floor_no = p_floor_no
+               and is_enabled = true
+               and tile_type <> '下り階段'
+        loop
+            v_current_count := coalesce((v_counts ->> v_rule.tile_type)::integer, 0);
+            v_min_count := greatest(coalesce(v_rule.min_count, 0), 0);
+            if v_current_count < v_min_count then
+                v_remaining_min := v_remaining_min + (v_min_count - v_current_count);
+            end if;
+        end loop;
+
+        v_force_min := v_remaining_min > 0;
+        v_weights := '{}'::jsonb;
+
+        for v_rule in
+            select tile_type, weight, min_count, max_count
+              from public.evd_floor_tile_weight_profiles
+             where profile_id = p_profile_id
+               and floor_no = p_floor_no
+               and is_enabled = true
+               and tile_type <> '下り階段'
+        loop
+            v_current_count := coalesce((v_counts ->> v_rule.tile_type)::integer, 0);
+            v_min_count := greatest(coalesce(v_rule.min_count, 0), 0);
+            v_max_count := coalesce(v_rule.max_count, v_available_cells);
+            if v_max_count < v_min_count then
+                v_max_count := v_min_count;
+            end if;
+
+            if v_current_count >= v_max_count then
+                continue;
+            end if;
+            if v_force_min and v_current_count >= v_min_count then
+                continue;
+            end if;
+            if coalesce(v_rule.weight, 0) <= 0 then
+                continue;
+            end if;
+
+            v_weights := jsonb_set(
+                v_weights,
+                array[v_rule.tile_type],
+                to_jsonb(v_rule.weight),
+                true
+            );
+        end loop;
+
+        if v_weights = '{}'::jsonb then
+            if v_force_min then
+                for v_rule in
+                    select tile_type, min_count
+                      from public.evd_floor_tile_weight_profiles
+                     where profile_id = p_profile_id
+                       and floor_no = p_floor_no
+                       and is_enabled = true
+                       and tile_type <> '下り階段'
+                loop
+                    v_current_count := coalesce((v_counts ->> v_rule.tile_type)::integer, 0);
+                    v_min_count := greatest(coalesce(v_rule.min_count, 0), 0);
+                    if v_current_count < v_min_count then
+                        v_weights := jsonb_set(v_weights, array[v_rule.tile_type], to_jsonb(1), true);
+                    end if;
+                end loop;
+            end if;
+            if v_weights = '{}'::jsonb then
+                v_weights := jsonb_build_object('空白', 1);
+            end if;
+        end if;
+
+        v_cell_type := public.evd_pick_weighted(v_weights);
+        v_counts := jsonb_set(
+            v_counts,
+            array[v_cell_type],
+            to_jsonb(coalesce((v_counts ->> v_cell_type)::integer, 0) + 1),
+            true
+        );
+
+        v_cell := jsonb_build_object(
+            'x', v_x,
+            'y', v_y,
+            'type', v_cell_type,
+            'revealed', false,
+            'visited', false,
+            'resolved', false,
+            'hint',
+                case
+                    when v_cell_type in ('爆弾', '大爆発') then 'bomb'
+                    when v_cell_type in ('罠', '呪い', '盗賊', '落とし穴', '転送罠') then 'hazard'
+                    else null
+                end
+        );
+        v_grid := public.evd_set_cell(v_grid, v_x, v_y, v_cell);
     end loop;
 
     return jsonb_build_object(
@@ -1440,6 +1478,7 @@ declare
     v_user_id text := public.evd_current_user_id();
     v_run public.evd_game_runs%rowtype;
     v_bonus_sum integer := 0;
+    v_should_consume boolean := true;
 begin
     perform pg_advisory_xact_lock(hashtext('evd:' || v_user_id));
 
@@ -1452,36 +1491,35 @@ begin
         raise exception 'そのアイテムは所持していません';
     end if;
 
-    update public.evd_game_runs
-       set inventory_state = public.evd_remove_bucket_item(public.evd_remove_item(inventory_state, p_item_code, 1), 'carried_items', p_item_code, 1),
-           updated_at = now(),
-           last_active_at = now(),
-           version = version + 1
-     where id = p_run_id;
-
     case p_item_code
         when 'escape_rope' then
+            v_should_consume := true;
             perform public.evd_add_log(p_run_id, v_user_id, v_run.account_name, v_run.current_floor, 'アイテム使用', '脱出のひもで帰還した。');
-            return public.evd_finish_run(p_run_id, v_user_id, '帰還', '脱出のひも');
         when 'bomb_radar' then
-            update public.evd_game_runs set inventory_state = jsonb_set(inventory_state, array['flags', 'bombs_known'], 'true'::jsonb, true) where id = p_run_id;
-            perform public.evd_add_log(p_run_id, v_user_id, v_run.account_name, v_run.current_floor, 'アイテム使用', '爆弾レーダーで爆弾の気配を探った。');
+            v_should_consume := false;
+            raise exception '爆弾レーダーは所持しているだけで常時有効です';
         when 'healing_potion' then
+            v_should_consume := true;
             update public.evd_game_runs set life = least(max_life, life + 1) where id = p_run_id;
             perform public.evd_add_log(p_run_id, v_user_id, v_run.account_name, v_run.current_floor, 'アイテム使用', '回復ポーションでライフを 1 回復した。');
         when 'stairs_search' then
+            v_should_consume := true;
             update public.evd_game_runs set inventory_state = jsonb_set(inventory_state, array['flags', 'stairs_known'], 'true'::jsonb, true) where id = p_run_id;
             perform public.evd_add_log(p_run_id, v_user_id, v_run.account_name, v_run.current_floor, 'アイテム使用', '階段サーチで下り階段の位置が見えた。');
         when 'calamity_map' then
+            v_should_consume := true;
             update public.evd_game_runs set inventory_state = jsonb_set(inventory_state, array['flags', 'hazards_known'], 'true'::jsonb, true) where id = p_run_id;
             perform public.evd_add_log(p_run_id, v_user_id, v_run.account_name, v_run.current_floor, 'アイテム使用', '厄災の地図で危険マスを可視化した。');
         when 'full_scan_map' then
+            v_should_consume := true;
             update public.evd_game_runs set inventory_state = jsonb_set(inventory_state, array['flags', 'bombs_known'], 'true'::jsonb, true) where id = p_run_id;
             perform public.evd_add_log(p_run_id, v_user_id, v_run.account_name, v_run.current_floor, 'アイテム使用', '完全探査図で爆弾マスを可視化した。');
         when 'holy_grail' then
+            v_should_consume := true;
             update public.evd_game_runs set max_life = max_life + 1, life = max_life + 1 where id = p_run_id;
             perform public.evd_add_log(p_run_id, v_user_id, v_run.account_name, v_run.current_floor, 'アイテム使用', '女神の聖杯で完全回復し、最大ライフが 1 増えた。');
         when 'abyss_ticket' then
+            v_should_consume := true;
             select coalesce(sum(fbp.bonus_coins), 0)
               into v_bonus_sum
               from public.evd_floor_bonus_profiles fbp
@@ -1499,6 +1537,19 @@ begin
         else
             raise exception 'このアイテムは使用できません';
     end case;
+
+    if v_should_consume then
+        update public.evd_game_runs
+           set inventory_state = public.evd_remove_bucket_item(public.evd_remove_item(inventory_state, p_item_code, 1), 'carried_items', p_item_code, 1),
+               updated_at = now(),
+               last_active_at = now(),
+               version = version + 1
+         where id = p_run_id;
+    end if;
+
+    if p_item_code = 'escape_rope' then
+        return public.evd_finish_run(p_run_id, v_user_id, '帰還', '脱出のひも');
+    end if;
 
     return public.evd_build_snapshot(p_run_id, v_user_id);
 end;

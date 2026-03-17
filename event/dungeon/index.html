@@ -91,6 +91,7 @@
                             <div class="stat-card"><div class="stat-label">満願符</div><div id="hud-mangan" class="stat-value">-</div></div>
                             <div class="stat-card"><div class="stat-label">身代わり残数</div><div id="hud-negates" class="stat-value">-</div></div>
                             <div class="stat-card"><div class="stat-label">次階ボーナス</div><div id="hud-next-bonus" class="stat-value">-</div></div>
+                            <div class="stat-card"><div class="stat-label">爆弾数</div><div id="hud-bomb-count" class="stat-value">-</div></div>
                             <div class="stat-card"><div class="stat-label">帰還倍率</div><div id="hud-final-multiplier" class="stat-value">-</div></div>
                             <div class="stat-card"><div class="stat-label">所持金</div><div id="hud-wallet" class="stat-value">-</div></div>
                             <div class="stat-card"><div class="stat-label">累計資産</div><div id="hud-assets" class="stat-value">-</div></div>
@@ -114,15 +115,6 @@
                             <button class="dungeon-btn-secondary" type="button" data-bs-toggle="modal" data-bs-target="#mobileItemsModal">所持アイテム</button>
                         </div>
                         <div id="dungeon-board" class="dungeon-board"></div>
-                        <div id="stairs-panel" class="choice-panel d-none mt-4">
-                            <div class="fw-bold mb-2">下り階段を見つけた</div>
-                            <p class="small text-secondary mb-3">ここで探索続行、帰還、次の階への降下を選べます。続行後も階段を踏めば再度選択できます。</p>
-                            <div class="d-flex gap-2 flex-wrap">
-                                <button id="stairs-continue-btn" class="dungeon-btn-secondary" data-busy-disable>この階を探索続行</button>
-                                <button id="stairs-return-btn" class="dungeon-btn-secondary" data-busy-disable>戦利品を持って帰還</button>
-                                <button id="stairs-descend-btn" class="dungeon-btn-primary" data-busy-disable>次の階へ進む</button>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
@@ -191,6 +183,7 @@
                         <div class="stat-card"><div class="stat-label">満願符</div><div id="mobile-hud-mangan" class="stat-value">-</div></div>
                         <div class="stat-card"><div class="stat-label">身代わり残数</div><div id="mobile-hud-negates" class="stat-value">-</div></div>
                         <div class="stat-card"><div class="stat-label">次階ボーナス</div><div id="mobile-hud-next-bonus" class="stat-value">-</div></div>
+                        <div class="stat-card"><div class="stat-label">爆弾数</div><div id="mobile-hud-bomb-count" class="stat-value">-</div></div>
                         <div class="stat-card"><div class="stat-label">帰還倍率</div><div id="mobile-hud-final-multiplier" class="stat-value">-</div></div>
                         <div class="stat-card"><div class="stat-label">所持金</div><div id="mobile-hud-wallet" class="stat-value">-</div></div>
                         <div class="stat-card"><div class="stat-label">累計資産</div><div id="mobile-hud-assets" class="stat-value">-</div></div>
@@ -222,8 +215,27 @@
                 </div>
                 <div class="modal-body">
                     <div id="shop-event-banner" class="shop-event-banner d-none"></div>
+                    <div class="shop-wallet-line">現在の所持金: <span id="shop-run-coins">0</span> コイン</div>
                     <div id="shop-offers" class="shop-offers"></div>
                     <button id="shop-skip-btn" class="dungeon-btn-secondary mt-3 w-100" data-busy-disable>何も買わず立ち去る</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="stairs-modal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+            <div class="modal-content dungeon-mobile-modal">
+                <div class="modal-header">
+                    <h5 class="modal-title">下り階段を見つけた</h5>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-secondary mb-3">ここで探索続行、帰還、次の階への降下を選べます。続行後も階段を踏めば再度選択できます。</p>
+                    <div class="d-grid gap-2">
+                        <button id="stairs-continue-btn" class="dungeon-btn-secondary" data-busy-disable>この階を探索続行</button>
+                        <button id="stairs-return-btn" class="dungeon-btn-secondary" data-busy-disable>戦利品を持って帰還</button>
+                        <button id="stairs-descend-btn" class="dungeon-btn-primary" data-busy-disable>次の階へ進む</button>
+                    </div>
                 </div>
             </div>
         </div>

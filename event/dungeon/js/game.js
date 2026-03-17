@@ -50,7 +50,7 @@
         if (!onStairs) {
             state.stairsPromptDismissed = false;
         }
-        document.getElementById('stairs-panel').classList.toggle('d-none', !onStairs || state.stairsPromptDismissed);
+        ui.renderStairsPrompt(onStairs && !state.stairsPromptDismissed);
         ui.setMobileDirectionPadVisible(state.mobilePadVisible);
     }
 
@@ -304,7 +304,7 @@
         onContinueExplore: () => {
             state.stairsPromptDismissed = true;
             ui.hideTilePopup();
-            document.getElementById('stairs-panel').classList.add('d-none');
+            ui.renderStairsPrompt(false);
         },
         onResolveStairs: resolveStairs,
         onUseItem: useItem,
