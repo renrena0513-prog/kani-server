@@ -26,13 +26,23 @@
         if (payload.profile) state.profile = payload.profile;
     }
 
+    function getCarryLimit() {
+        const hasGreedyBag = (state.stocks || []).some((stock) => stock.item_code === 'greedy_bag' && Number(stock.quantity || 0) > 0);
+        return hasGreedyBag ? CARRY_LIMIT + 1 : CARRY_LIMIT;
+    }
+
     function renderStart() {
+        const carryLimit = getCarryLimit();
         ui.showScreen('start');
         ui.renderCarryList(state.stocks, state.selectedCarryItems);
         ui.renderPrepShop(state.catalog, state.stocks, state.profile?.coins || 0);
-        ui.setStatus('1000コインを支払い、持ち込み 2 個までで探索開始。');
+        ui.setStatus(`1000コインを支払い、持ち込み ${carryLimit} 個までで探索開始。`);
         document.getElementById('entry-fee-label').textContent = '1000 コイン';
         document.getElementById('wallet-coins-label').textContent = new Intl.NumberFormat('ja-JP').format(state.profile?.coins || 0);
+        const carryLimitNote = document.getElementById('carry-limit-note');
+        if (carryLimitNote) {
+            carryLimitNote.textContent = `在庫から ${carryLimit} 個まで選択できます。`;
+        }
         document.getElementById('resume-run-btn').classList.add('d-none');
     }
 
@@ -93,6 +103,12 @@
     function showLatestTilePopup() {
         const latest = state.logs[state.logs.length - 1];
         if (!latest || !latest.payload?.tile_type || latest.step_no === state.lastPopupStep) return;
+        if (latest.payload.tile_type === 'アイテム') {
+            state.lastPopupStep = latest.step_no;
+            const matchedItem = (state.catalog || []).find((item) => latest.message?.includes(item.name));
+            ui.showItemAcquiredModal(matchedItem?.code || null, matchedItem?.name || null, latest.message);
+            return;
+        }
         if (['ショップ', '限定ショップ', '下り階段'].includes(latest.payload.tile_type)) {
             state.lastPopupStep = latest.step_no;
             return;
@@ -103,12 +119,13 @@
     }
 
     function toggleCarry(itemCode) {
+        const carryLimit = getCarryLimit();
         const index = state.selectedCarryItems.indexOf(itemCode);
         if (index >= 0) {
             state.selectedCarryItems.splice(index, 1);
         } else {
-            if (state.selectedCarryItems.length >= CARRY_LIMIT) {
-                ui.setStatus('持ち込みは 2 個までです。', 'danger');
+            if (state.selectedCarryItems.length >= carryLimit) {
+                ui.setStatus(`持ち込みは ${carryLimit} 個までです。`, 'danger');
                 return;
             }
             state.selectedCarryItems.push(itemCode);
@@ -144,6 +161,7 @@
         const direction = findDirectionByTarget(x, y);
         if (!direction) return;
         ui.hideTilePopup();
+        ui.hideItemAcquiredModal();
         ui.setBusy(true);
         try {
             const payload = await api.rpc('evd_move', {
@@ -178,6 +196,7 @@
 
     async function useItem(itemCode) {
         ui.hideTilePopup();
+        ui.hideItemAcquiredModal();
         ui.setBusy(true);
         try {
             const payload = await api.rpc('evd_use_item', {
@@ -201,6 +220,7 @@
 
     async function resolveStairs(action) {
         ui.hideTilePopup();
+        ui.hideItemAcquiredModal();
         ui.setBusy(true);
         try {
             const payload = await api.rpc('evd_resolve_stairs', {
@@ -330,6 +350,7 @@
         },
         onMobileMoveDir: moveByDirection,
         onClosePopup: () => ui.hideTilePopup(),
+        onCloseItemModal: () => ui.hideItemAcquiredModal(),
         onRetry: () => {
             state.run = null;
             state.floor = null;
@@ -338,6 +359,7 @@
             state.lastPopupStep = null;
             state.stairsPromptDismissed = false;
             state.mobilePadVisible = false;
+            ui.hideItemAcquiredModal();
             bootstrap();
         }
     });

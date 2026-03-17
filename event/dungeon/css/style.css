@@ -637,6 +637,86 @@
             line-height: 1;
         }
 
+        .item-acquired-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 1200;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: rgba(4, 7, 10, 0.62);
+            backdrop-filter: blur(6px);
+        }
+
+        .item-acquired-modal.show {
+            display: flex;
+        }
+
+        .item-acquired-card {
+            width: min(92vw, 520px);
+            position: relative;
+            padding: 26px 22px 22px;
+            border-radius: 28px;
+            border: 1px solid rgba(241, 213, 141, 0.38);
+            background: linear-gradient(180deg, rgba(23, 28, 31, 0.98), rgba(12, 15, 17, 0.98));
+            box-shadow: 0 30px 90px rgba(0, 0, 0, 0.52);
+        }
+
+        .item-acquired-head {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+
+        .item-acquired-visual {
+            width: 82px;
+            height: 82px;
+            display: grid;
+            place-items: center;
+            border-radius: 22px;
+            background: rgba(241, 213, 141, 0.12);
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .item-acquired-visual .item-visual {
+            width: 100%;
+            height: 100%;
+            display: grid;
+            place-items: center;
+        }
+
+        .item-acquired-visual .item-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 8px;
+        }
+
+        .item-acquired-fallback,
+        .item-acquired-visual .item-emoji-fallback {
+            display: grid;
+            place-items: center;
+            width: 100%;
+            height: 100%;
+            font-size: 2rem;
+        }
+
+        .item-acquired-message {
+            margin: 0;
+            color: #f7f3e8;
+            line-height: 1.9;
+            font-size: 1.02rem;
+            padding-right: 18px;
+        }
+
+        .item-acquired-close-btn {
+            top: 10px;
+            right: 10px;
+        }
+
         .mobile-life-fixed {
             position: fixed;
             left: 12px;

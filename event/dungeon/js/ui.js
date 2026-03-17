@@ -102,6 +102,7 @@
         }
         if (screenName !== 'game') {
             setMobileDirectionPadVisible(false);
+            hideItemAcquiredModal();
             const shopModalEl = el('shop-modal');
             if (shopModalEl && window.bootstrap?.Modal) {
                 window.bootstrap.Modal.getOrCreateInstance(shopModalEl).hide();
@@ -471,6 +472,27 @@
         el('tile-popup')?.classList.remove('show');
     }
 
+    function showItemAcquiredModal(itemCode, itemName, message) {
+        const overlay = el('item-acquired-modal');
+        const visual = el('item-acquired-visual');
+        if (!overlay || !visual) return;
+
+        setText('item-acquired-title', itemName ? `${itemName} を獲得` : 'アイテムを獲得');
+        setText('item-acquired-message', normalizeLifeMessage(message || ''));
+        visual.innerHTML = itemCode
+            ? renderItemVisual(itemCode, itemName || itemCode)
+            : '<span class="item-acquired-fallback">🎁</span>';
+        overlay.classList.add('show');
+        overlay.setAttribute('aria-hidden', 'false');
+    }
+
+    function hideItemAcquiredModal() {
+        const overlay = el('item-acquired-modal');
+        if (!overlay) return;
+        overlay.classList.remove('show');
+        overlay.setAttribute('aria-hidden', 'true');
+    }
+
     function setMobileDirectionPadVisible(visible) {
         const pad = el('mobile-direction-pad');
         const toggle = el('mobile-arrow-toggle-btn');
@@ -520,6 +542,7 @@
         el('shop-skip-btn')?.addEventListener('click', handlers.onSkipShop);
         el('retry-run-btn')?.addEventListener('click', handlers.onRetry);
         el('tile-popup-close')?.addEventListener('click', handlers.onClosePopup);
+        el('item-acquired-close')?.addEventListener('click', handlers.onCloseItemModal);
         el('mobile-arrow-toggle-btn')?.addEventListener('click', handlers.onToggleMobilePad);
 
         document.body.addEventListener('click', (event) => {
@@ -545,6 +568,8 @@
         showTilePopup,
         showNoticePopup,
         hideTilePopup,
+        showItemAcquiredModal,
+        hideItemAcquiredModal,
         setMobileDirectionPadVisible,
         bindCarrySelection,
         bindBoard,

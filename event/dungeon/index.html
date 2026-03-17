@@ -55,7 +55,7 @@
                     </div>
                     <div class="mt-4">
                         <div class="panel-title">持ち込みアイテム</div>
-                        <p class="small carry-section-note">在庫から 2 個まで選択できます。</p>
+                        <p id="carry-limit-note" class="small carry-section-note">在庫から 2 個まで選択できます。</p>
                         <div id="carry-items" class="carry-items"></div>
                     </div>
                     <div class="mt-4">
@@ -170,6 +170,20 @@
                 </div>
             </div>
             <p id="tile-popup-message" class="tile-popup-message">何も起きなかった。</p>
+        </div>
+    </div>
+
+    <div id="item-acquired-modal" class="item-acquired-modal" aria-hidden="true">
+        <div class="item-acquired-card">
+            <button id="item-acquired-close" class="tile-popup-close-btn item-acquired-close-btn" type="button" aria-label="閉じる">×</button>
+            <div class="item-acquired-head">
+                <div id="item-acquired-visual" class="item-acquired-visual">🎁</div>
+                <div>
+                    <div class="small text-secondary">アイテム獲得</div>
+                    <h2 id="item-acquired-title" class="tile-popup-title">アイテムを手に入れた</h2>
+                </div>
+            </div>
+            <p id="item-acquired-message" class="item-acquired-message">不思議な力を感じる。</p>
         </div>
     </div>
 

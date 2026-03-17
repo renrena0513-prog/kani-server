@@ -525,6 +525,7 @@ declare
     v_payout integer;
     v_flags jsonb;
     v_carried_items jsonb;
+    v_items jsonb;
     v_return_item record;
 begin
     select * into v_run from public.evd_game_runs where id = p_run_id and user_id = p_user_id for update;
@@ -539,6 +540,8 @@ begin
             * v_run.final_return_multiplier
             * case when coalesce((v_flags ->> 'golden_contract_active')::boolean, false) then 2 else 1 end
         )::integer;
+    elsif coalesce((v_run.inventory_state -> 'carried_items' -> 'vault_box' ->> 'quantity')::integer, 0) > 0 then
+        v_payout := v_run.secured_coins + floor(v_run.run_coins * 0.8)::integer;
     elsif coalesce((v_flags ->> 'insurance_active')::boolean, false) then
         v_payout := v_run.secured_coins + floor(v_run.run_coins / 2.0)::integer;
         v_flags := jsonb_set(v_flags, array['insurance_active'], 'false'::jsonb, true);
@@ -547,9 +550,10 @@ begin
         v_payout := v_run.secured_coins;
     end if;
 
-    if p_status = '死亡' then
-        v_carried_items := coalesce(v_run.inventory_state -> 'carried_items', '{}'::jsonb);
+    v_carried_items := coalesce(v_run.inventory_state -> 'carried_items', '{}'::jsonb);
+    v_items := coalesce(v_run.inventory_state -> 'items', '{}'::jsonb);
 
+    if p_status = '死亡' then
         if coalesce((v_run.inventory_state -> 'carried_items' -> 'substitute_doll' ->> 'quantity')::integer, 0) > 0
            and v_run.substitute_negates_remaining < 3 then
             v_carried_items := public.evd_remove_bucket_item(jsonb_build_object('carried_items', v_carried_items), 'carried_items', 'substitute_doll', 1) -> 'carried_items';
@@ -560,10 +564,18 @@ begin
             v_carried_items := public.evd_remove_bucket_item(jsonb_build_object('carried_items', v_carried_items), 'carried_items', 'insurance_token', 1) -> 'carried_items';
         end if;
 
+        v_run.inventory_state := jsonb_set(v_run.inventory_state, array['carried_items'], v_carried_items, true);
+    end if;
+
+    if p_status = '帰還' then
         for v_return_item in
-            select key as item_code, coalesce((value ->> 'quantity')::integer, 0) as quantity
-              from jsonb_each(v_carried_items)
-             where coalesce((value ->> 'quantity')::integer, 0) > 0
+            select
+                e.key as item_code,
+                coalesce((e.value ->> 'quantity')::integer, 0) as quantity
+              from jsonb_each(v_items) e
+              join public.evd_item_catalog c on c.code = e.key
+             where coalesce((e.value ->> 'quantity')::integer, 0) > 0
+               and c.item_kind in ('手動', '死亡時', '永続')
         loop
             insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, updated_at)
             values (
@@ -581,7 +593,80 @@ begin
                 updated_at = now();
         end loop;
 
-        v_run.inventory_state := jsonb_set(v_run.inventory_state, array['carried_items'], v_carried_items, true);
+        for v_return_item in
+            select
+                e.key as item_code,
+                coalesce((e.value ->> 'quantity')::integer, 0) as quantity
+              from jsonb_each(v_carried_items) e
+              join public.evd_item_catalog c on c.code = e.key
+             where coalesce((e.value ->> 'quantity')::integer, 0) > 0
+               and c.item_kind in ('死亡時', '永続')
+        loop
+            insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, updated_at)
+            values (
+                p_user_id,
+                v_run.account_name,
+                (select c.name from public.evd_item_catalog c where c.code = v_return_item.item_code),
+                v_return_item.item_code,
+                v_return_item.quantity,
+                now()
+            )
+            on conflict (user_id, item_code) do update
+            set quantity = public.evd_player_item_stocks.quantity + excluded.quantity,
+                account_name = excluded.account_name,
+                name = excluded.name,
+                updated_at = now();
+        end loop;
+    else
+        for v_return_item in
+            select
+                e.key as item_code,
+                coalesce((e.value ->> 'quantity')::integer, 0) as quantity
+              from jsonb_each(v_items) e
+              join public.evd_item_catalog c on c.code = e.key
+             where coalesce((e.value ->> 'quantity')::integer, 0) > 0
+               and c.item_kind = '永続'
+        loop
+            insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, updated_at)
+            values (
+                p_user_id,
+                v_run.account_name,
+                (select c.name from public.evd_item_catalog c where c.code = v_return_item.item_code),
+                v_return_item.item_code,
+                v_return_item.quantity,
+                now()
+            )
+            on conflict (user_id, item_code) do update
+            set quantity = public.evd_player_item_stocks.quantity + excluded.quantity,
+                account_name = excluded.account_name,
+                name = excluded.name,
+                updated_at = now();
+        end loop;
+
+        for v_return_item in
+            select
+                e.key as item_code,
+                coalesce((e.value ->> 'quantity')::integer, 0) as quantity
+              from jsonb_each(v_carried_items) e
+              join public.evd_item_catalog c on c.code = e.key
+             where coalesce((e.value ->> 'quantity')::integer, 0) > 0
+               and c.item_kind = '永続'
+        loop
+            insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, updated_at)
+            values (
+                p_user_id,
+                v_run.account_name,
+                (select c.name from public.evd_item_catalog c where c.code = v_return_item.item_code),
+                v_return_item.item_code,
+                v_return_item.quantity,
+                now()
+            )
+            on conflict (user_id, item_code) do update
+            set quantity = public.evd_player_item_stocks.quantity + excluded.quantity,
+                account_name = excluded.account_name,
+                name = excluded.name,
+                updated_at = now();
+        end loop;
     end if;
 
     update public.evd_game_runs
@@ -648,16 +733,13 @@ declare
     );
     v_item text;
     v_effect text;
+    v_carry_limit integer := 2;
 begin
     if v_user_id = '' then
         raise exception 'ログインが必要です';
     end if;
 
     perform pg_advisory_xact_lock(hashtext('evd:' || v_user_id));
-
-    if array_length(p_carry_items, 1) > 2 then
-        raise exception '持ち込みは 2 個までです';
-    end if;
 
     if exists (select 1 from public.evd_game_runs where user_id = v_user_id and status = '進行中') then
         raise exception '進行中のランがあります';
@@ -686,6 +768,22 @@ begin
      where is_active = true
      order by updated_at desc
      limit 1;
+
+    if exists (
+        select 1
+          from public.evd_player_item_stocks st
+          join public.evd_item_catalog c on c.code = st.item_code
+         where st.user_id = v_user_id
+           and st.quantity > 0
+           and c.is_active = true
+           and c.effect_data ->> 'effect' = 'relic_carry_limit_plus_1'
+    ) then
+        v_carry_limit := 3;
+    end if;
+
+    if array_length(p_carry_items, 1) > v_carry_limit then
+        raise exception '持ち込みは % 個までです', v_carry_limit;
+    end if;
 
     foreach v_item in array p_carry_items loop
         update public.evd_player_item_stocks
@@ -992,7 +1090,6 @@ begin
                     sum(weight) over (order by sort_order, code) as cumulative_weight
                   from public.evd_item_catalog
                  where is_active = true
-                   and shop_pool <> 'レリック'
                    and weight > 0
             ),
             draw as (
@@ -1026,9 +1123,9 @@ begin
                 v_message := format('%s を引き当てた。帰還時の倍率効果が有効化された。', v_pick_item_name);
             elsif v_pick_item_effect = 'vault_box' then
                 update public.evd_game_runs
-                   set secured_coins = secured_coins + floor(run_coins * 0.7)::integer
+                   set inventory_state = public.evd_add_bucket_item(inventory_state, 'carried_items', v_pick_item_code, 1)
                  where id = p_run_id;
-                v_message := format('%s を引き当てた。所持コインの 70%% を確保した。', v_pick_item_name);
+                v_message := format('%s を引き当てた。死亡時に所持コインの 80%% を持ち帰れる。', v_pick_item_name);
             else
                 update public.evd_game_runs
                    set inventory_state = public.evd_add_item(inventory_state, v_pick_item_code, 1)
