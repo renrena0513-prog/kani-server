@@ -128,7 +128,8 @@
 
         const lifeText = formatLifeHearts(run.life, run.max_life);
         setTexts(['hud-floor', 'mobile-hud-floor'], `${run.current_floor} / ${run.max_floors}`);
-        setTexts(['hud-life', 'mobile-hud-life', 'mobile-life-fixed'], lifeText);
+        setTexts(['hud-life', 'mobile-hud-life'], lifeText);
+        setText('mobile-life-fixed', `LIFE ${lifeText}`);
         setTexts(['hud-run-coins', 'mobile-hud-run-coins'], formatNumber(run.run_coins));
         setTexts(['hud-secured-coins', 'mobile-hud-secured-coins'], formatNumber(run.secured_coins));
         setTexts(['hud-badges', 'mobile-hud-badges'], formatNumber(run.badges_gained));

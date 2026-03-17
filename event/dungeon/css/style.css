@@ -334,7 +334,7 @@
         .tile-popup-card {
             width: 100%;
             position: relative;
-            padding: 26px 24px 22px;
+            padding: 18px 16px 16px;
             border-radius: 24px;
             border: 1px solid rgba(241, 213, 141, 0.35);
             background: linear-gradient(180deg, rgba(29, 33, 34, 0.98), rgba(17, 19, 20, 0.98));
@@ -384,19 +384,33 @@
             padding-right: 16px;
         }
 
+        .tile-popup-close-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            background: rgba(0, 0, 0, 0.26);
+            color: #f7f3e8;
+            font-size: 1.1rem;
+            line-height: 1;
+        }
+
         .mobile-life-fixed {
             position: fixed;
             left: 12px;
-            top: 74px;
+            top: max(12px, env(safe-area-inset-top));
             z-index: 1200;
-            padding: 6px 10px;
+            padding: 8px 12px;
             border-radius: 10px;
             background: rgba(10, 10, 10, 0.58);
             border: 1px solid rgba(255, 255, 255, 0.16);
             color: #ff8aa3;
-            font-size: 1.05rem;
+            font-size: 1.25rem;
             font-weight: 700;
-            letter-spacing: 0.08em;
+            letter-spacing: 0.04em;
             backdrop-filter: blur(4px);
         }
 
@@ -422,16 +436,13 @@
             bottom: 12px;
             transform: translateX(-50%);
             z-index: 1080;
-            width: min(260px, 92vw);
+            width: min(320px, 94vw);
             padding: 10px;
             border-radius: 14px;
             background: rgba(8, 10, 11, 0.85);
             border: 1px solid rgba(255, 255, 255, 0.16);
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            grid-template-areas:
-                ". up ."
-                "left down right";
+            grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 8px;
             backdrop-filter: blur(6px);
         }
@@ -444,11 +455,6 @@
             font-weight: 700;
             min-height: 40px;
         }
-
-        .mobile-direction-pad .dir-up { grid-area: up; }
-        .mobile-direction-pad .dir-left { grid-area: left; }
-        .mobile-direction-pad .dir-down { grid-area: down; }
-        .mobile-direction-pad .dir-right { grid-area: right; }
 
         .dungeon-mobile-modal {
             background: #151818;
