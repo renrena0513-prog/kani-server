@@ -238,8 +238,7 @@
         const bombCount = (floor?.grid || []).reduce((total, row) => total + (row || []).filter((cell) => (
             cell?.type === '爆弾' || cell?.type === '大爆発'
         )).length, 0);
-        const hasSubstituteDoll = Number(run.substitute_negates_remaining || 0) > 0
-            && Number(carriedItems.substitute_doll?.quantity || 0) > 0;
+        const hasSubstituteDoll = Number(run.substitute_negates_remaining || 0) > 0;
         if (hasSubstituteDoll && !itemCodes.includes('substitute_doll')) {
             itemCodes.push('substitute_doll');
         }

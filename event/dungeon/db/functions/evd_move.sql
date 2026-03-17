@@ -130,7 +130,8 @@ begin
                 v_message := '不思議なマスだったが、何も手に入らなかった。';
             elsif v_pick_item_effect = 'substitute' then
                 update public.evd_game_runs
-                   set substitute_negates_remaining = substitute_negates_remaining + 3
+                   set substitute_negates_remaining = substitute_negates_remaining + 3,
+                       inventory_state = public.evd_add_bucket_item(inventory_state, 'carried_items', v_pick_item_code, 1)
                  where id = p_run_id;
                 v_message := format('%s を引き当てた。身代わり効果が付与された。', v_pick_item_name);
             elsif v_pick_item_effect = 'insurance' then
