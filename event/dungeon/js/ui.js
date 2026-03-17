@@ -12,7 +12,9 @@
         insurance_token: '🛡️',
         golden_contract: '📜',
         substitute_doll: '🪆',
-        giant_cup: '🏆'
+        giant_cup: '🏆',
+        greedy_bag: '🎒',
+        vault_box: '📜'
     };
     const TILE_POPUP_META = {
         '空白': { icon: '🪨', title: '空白マス' },

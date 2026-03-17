@@ -16,7 +16,7 @@
     async function getStocks(userId) {
         const { data, error } = await supabaseClient
             .from('evd_player_item_stocks')
-            .select('item_code, name, quantity, updated_at, evd_item_catalog(name, description, item_kind, base_price, carry_in_allowed, shop_pool, sort_order)')
+            .select('item_code, name, quantity, updated_at, evd_item_catalog(name, description, item_kind, base_price, shop_pool, sort_order)')
             .eq('user_id', userId)
             .gt('quantity', 0)
             .order('updated_at', { ascending: false });
@@ -96,6 +96,18 @@
         if (runRes.error) throw runRes.error;
         if (catalogRes.error) throw catalogRes.error;
 
+        const catalogMap = Object.fromEntries((catalogRes.data || []).map((item) => [item.code, item]));
+        const mergedStocks = (stocksRes.data || []).map((stock) => {
+            const catalogItem = catalogMap[stock.item_code] || {};
+            return {
+                ...stock,
+                evd_item_catalog: {
+                    ...catalogItem,
+                    ...(stock.evd_item_catalog || {})
+                }
+            };
+        });
+
         let floor = null;
         let logs = [];
         if (runRes.data) {
@@ -113,7 +125,7 @@
             user,
             userId,
             profile: profileRes.data,
-            stocks: stocksRes.data || [],
+            stocks: mergedStocks,
             catalog: catalogRes.data || [],
             run: runRes.data,
             floor,

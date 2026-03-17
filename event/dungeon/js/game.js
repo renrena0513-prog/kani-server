@@ -105,7 +105,9 @@
         if (!latest || !latest.payload?.tile_type || latest.step_no === state.lastPopupStep) return;
         if (latest.payload.tile_type === 'アイテム') {
             state.lastPopupStep = latest.step_no;
-            const matchedItem = (state.catalog || []).find((item) => latest.message?.includes(item.name));
+            const matchedItem = latest.payload.item_code
+                ? (state.catalog || []).find((item) => item.code === latest.payload.item_code)
+                : (state.catalog || []).find((item) => latest.message?.includes(item.name));
             ui.showItemAcquiredModal(matchedItem?.code || null, matchedItem?.name || null, latest.message);
             return;
         }

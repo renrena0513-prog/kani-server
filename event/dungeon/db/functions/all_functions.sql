@@ -1241,7 +1241,20 @@ begin
     v_grid := public.evd_set_cell(v_grid, v_next_x, v_next_y, v_cell);
     update public.evd_run_floors set grid = v_grid where id = v_floor.id;
 
-    perform public.evd_add_log(p_run_id, v_user_id, v_run.account_name, v_run.current_floor, 'マス公開', v_message, jsonb_build_object('tile_type', v_cell ->> 'type'));
+    perform public.evd_add_log(
+        p_run_id,
+        v_user_id,
+        v_run.account_name,
+        v_run.current_floor,
+        'マス公開',
+        v_message,
+        jsonb_build_object('tile_type', v_cell ->> 'type')
+            || case
+                when (v_cell ->> 'type') = 'アイテム' and v_pick_item_code is not null then
+                    jsonb_build_object('item_code', v_pick_item_code, 'item_name', v_pick_item_name)
+                else '{}'::jsonb
+            end
+    );
 
     select * into v_run from public.evd_game_runs where id = p_run_id;
 
