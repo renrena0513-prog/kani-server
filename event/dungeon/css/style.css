@@ -363,6 +363,17 @@
             border: 1px solid rgba(104, 199, 166, 0.2);
         }
 
+        .shop-event-banner {
+            margin-bottom: 12px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: rgba(241, 213, 141, 0.12);
+            border: 1px solid rgba(241, 213, 141, 0.35);
+            color: #f7f3e8;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
         .dungeon-empty {
             padding: 18px;
             border-radius: 16px;

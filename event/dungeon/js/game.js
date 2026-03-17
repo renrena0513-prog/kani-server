@@ -93,6 +93,10 @@
     function showLatestTilePopup() {
         const latest = state.logs[state.logs.length - 1];
         if (!latest || !latest.payload?.tile_type || latest.step_no === state.lastPopupStep) return;
+        if (latest.payload.tile_type === 'ショップ' || latest.payload.tile_type === '限定ショップ') {
+            state.lastPopupStep = latest.step_no;
+            return;
+        }
 
         state.lastPopupStep = latest.step_no;
         ui.showTilePopup(latest.payload.tile_type, latest.message);

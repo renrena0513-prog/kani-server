@@ -298,13 +298,28 @@
         const offers = state.run?.inventory_state?.pending_shop?.offers || [];
         const type = state.run?.inventory_state?.pending_shop?.shop_type;
         const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+        const banner = el('shop-event-banner');
+        const latest = (state.logs || [])[state.logs.length - 1];
 
         if (!offers.length) {
             modal.hide();
+            if (banner) {
+                banner.classList.add('d-none');
+                banner.textContent = '';
+            }
             return;
         }
 
         setText('shop-title', type === '限定ショップ' ? '限定商人が現れた' : '行商人に出会った');
+        if (banner) {
+            if (latest?.payload?.tile_type && ['ショップ', '限定ショップ'].includes(latest.payload.tile_type) && latest?.message) {
+                banner.textContent = latest.message;
+                banner.classList.remove('d-none');
+            } else {
+                banner.classList.add('d-none');
+                banner.textContent = '';
+            }
+        }
         setHtml('shop-offers', offers.map((offer) => `
             <button class="shop-offer" data-buy-item="${offer.code}">
                 <div class="item-entry-head">
