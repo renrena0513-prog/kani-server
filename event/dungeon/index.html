@@ -21,6 +21,7 @@
 <body>
     <div class="dungeon-shell">
         <div id="nav-placeholder"></div>
+        <div id="mobile-life-fixed" class="mobile-life-fixed d-none">❤❤❤</div>
 
         <section class="dungeon-hero">
             <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-end">
@@ -111,7 +112,12 @@
                     <div class="dungeon-panel">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <div class="panel-title mb-0">迷宮盤面</div>
-                            <div class="small text-secondary">矢印キー対応</div>
+                            <div class="small text-secondary desktop-key-hint">矢印キー対応</div>
+                            <button id="mobile-arrow-toggle-btn" class="dungeon-btn-secondary mobile-arrow-toggle-btn d-none" type="button">矢印キー表示</button>
+                        </div>
+                        <div class="mobile-quick-actions d-none mb-3">
+                            <button class="dungeon-btn-secondary" type="button" data-bs-toggle="modal" data-bs-target="#mobileStatusModal">ステータス</button>
+                            <button class="dungeon-btn-secondary" type="button" data-bs-toggle="modal" data-bs-target="#mobileItemsModal">所持アイテム</button>
                         </div>
                         <div id="dungeon-board" class="dungeon-board"></div>
                         <div id="stairs-panel" class="choice-panel d-none mt-4">
@@ -176,6 +182,54 @@
             <p id="tile-popup-message" class="tile-popup-message">何も起きなかった。</p>
             <button id="tile-popup-close" class="dungeon-btn-primary mt-3" type="button">閉じる</button>
         </div>
+    </div>
+
+    <div class="modal fade" id="mobileStatusModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+            <div class="modal-content dungeon-mobile-modal">
+                <div class="modal-header">
+                    <h5 class="modal-title">冒険者ステータス</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="stat-grid">
+                        <div class="stat-card"><div class="stat-label">階層</div><div id="mobile-hud-floor" class="stat-value">-</div></div>
+                        <div class="stat-card"><div class="stat-label">ライフ</div><div id="mobile-hud-life" class="stat-value">-</div></div>
+                        <div class="stat-card"><div class="stat-label">現在コイン</div><div id="mobile-hud-run-coins" class="stat-value">-</div></div>
+                        <div class="stat-card"><div class="stat-label">確保済み</div><div id="mobile-hud-secured-coins" class="stat-value">-</div></div>
+                        <div class="stat-card"><div class="stat-label">秘宝</div><div id="mobile-hud-badges" class="stat-value">-</div></div>
+                        <div class="stat-card"><div class="stat-label">祈願符</div><div id="mobile-hud-gacha" class="stat-value">-</div></div>
+                        <div class="stat-card"><div class="stat-label">満願符</div><div id="mobile-hud-mangan" class="stat-value">-</div></div>
+                        <div class="stat-card"><div class="stat-label">身代わり残数</div><div id="mobile-hud-negates" class="stat-value">-</div></div>
+                        <div class="stat-card"><div class="stat-label">次階ボーナス</div><div id="mobile-hud-next-bonus" class="stat-value">-</div></div>
+                        <div class="stat-card"><div class="stat-label">帰還倍率</div><div id="mobile-hud-final-multiplier" class="stat-value">-</div></div>
+                        <div class="stat-card"><div class="stat-label">所持金</div><div id="mobile-hud-wallet" class="stat-value">-</div></div>
+                        <div class="stat-card"><div class="stat-label">累計資産</div><div id="mobile-hud-assets" class="stat-value">-</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="mobileItemsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+            <div class="modal-content dungeon-mobile-modal">
+                <div class="modal-header">
+                    <h5 class="modal-title">所持アイテム</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="mobile-inventory-list" class="inventory-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="mobile-direction-pad" class="mobile-direction-pad d-none">
+        <button class="dir-btn dir-up" data-mobile-dir="up" type="button">▲</button>
+        <button class="dir-btn dir-left" data-mobile-dir="left" type="button">◀</button>
+        <button class="dir-btn dir-down" data-mobile-dir="down" type="button">▼</button>
+        <button class="dir-btn dir-right" data-mobile-dir="right" type="button">▶</button>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

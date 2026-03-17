@@ -14,7 +14,8 @@
         logs: [],
         selectedCarryItems: [],
         lastPopupStep: null,
-        stairsPromptDismissed: false
+        stairsPromptDismissed: false,
+        mobilePadVisible: false
     };
 
     function hydratePayload(payload) {
@@ -50,6 +51,7 @@
             state.stairsPromptDismissed = false;
         }
         document.getElementById('stairs-panel').classList.toggle('d-none', !onStairs || state.stairsPromptDismissed);
+        ui.setMobileDirectionPadVisible(state.mobilePadVisible);
     }
 
     function renderResult() {
@@ -161,6 +163,13 @@
         } finally {
             ui.setBusy(false);
         }
+    }
+
+    async function moveByDirection(directionKey) {
+        if (!state.run || state.run.status !== '進行中') return;
+        const dir = DIRECTIONS[directionKey];
+        if (!dir) return;
+        await moveTo(state.run.current_x + dir.x, state.run.current_y + dir.y);
     }
 
     async function useItem(itemCode) {
@@ -298,6 +307,11 @@
         onBuyItem: buyItem,
         onBuyStock: buyStock,
         onSkipShop: skipShop,
+        onToggleMobilePad: () => {
+            state.mobilePadVisible = !state.mobilePadVisible;
+            ui.setMobileDirectionPadVisible(state.mobilePadVisible);
+        },
+        onMobileMoveDir: moveByDirection,
         onClosePopup: () => ui.hideTilePopup(),
         onRetry: () => {
             state.run = null;
@@ -306,6 +320,7 @@
             state.selectedCarryItems = [];
             state.lastPopupStep = null;
             state.stairsPromptDismissed = false;
+            state.mobilePadVisible = false;
             bootstrap();
         }
     });

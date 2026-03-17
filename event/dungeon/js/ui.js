@@ -48,6 +48,10 @@
         if (node) node.textContent = value;
     }
 
+    function setTexts(ids, value) {
+        ids.forEach((id) => setText(id, value));
+    }
+
     function setHtml(id, value) {
         const node = el(id);
         if (node) node.innerHTML = value;
@@ -57,6 +61,13 @@
         document.querySelectorAll('[data-screen]').forEach((node) => {
             node.classList.toggle('d-none', node.dataset.screen !== screenName);
         });
+        const mobileLife = el('mobile-life-fixed');
+        if (mobileLife) {
+            mobileLife.classList.toggle('d-none', screenName !== 'game');
+        }
+        if (screenName !== 'game') {
+            setMobileDirectionPadVisible(false);
+        }
     }
 
     function renderCarryList(stocks, selectedItems) {
@@ -115,22 +126,23 @@
         const profile = state.profile || {};
         if (!run) return;
 
-        setText('hud-floor', `${run.current_floor} / ${run.max_floors}`);
-        setText('hud-life', formatLifeHearts(run.life, run.max_life));
-        setText('hud-run-coins', formatNumber(run.run_coins));
-        setText('hud-secured-coins', formatNumber(run.secured_coins));
-        setText('hud-badges', formatNumber(run.badges_gained));
-        setText('hud-gacha', formatNumber(run.gacha_tickets_gained));
-        setText('hud-mangan', formatNumber(run.mangan_tickets_gained));
-        setText('hud-negates', formatNumber(run.substitute_negates_remaining));
-        setText('hud-wallet', formatNumber(profile.coins));
-        setText('hud-assets', formatNumber(profile.total_assets));
+        const lifeText = formatLifeHearts(run.life, run.max_life);
+        setTexts(['hud-floor', 'mobile-hud-floor'], `${run.current_floor} / ${run.max_floors}`);
+        setTexts(['hud-life', 'mobile-hud-life', 'mobile-life-fixed'], lifeText);
+        setTexts(['hud-run-coins', 'mobile-hud-run-coins'], formatNumber(run.run_coins));
+        setTexts(['hud-secured-coins', 'mobile-hud-secured-coins'], formatNumber(run.secured_coins));
+        setTexts(['hud-badges', 'mobile-hud-badges'], formatNumber(run.badges_gained));
+        setTexts(['hud-gacha', 'mobile-hud-gacha'], formatNumber(run.gacha_tickets_gained));
+        setTexts(['hud-mangan', 'mobile-hud-mangan'], formatNumber(run.mangan_tickets_gained));
+        setTexts(['hud-negates', 'mobile-hud-negates'], formatNumber(run.substitute_negates_remaining));
+        setTexts(['hud-wallet', 'mobile-hud-wallet'], formatNumber(profile.coins));
+        setTexts(['hud-assets', 'mobile-hud-assets'], formatNumber(profile.total_assets));
 
         const flags = run.inventory_state?.flags || {};
         const bonusMap = run.inventory_state?.floor_bonus_preview || {};
         const nextBonus = bonusMap[String(Math.min(run.current_floor + 1, run.max_floors))] || 0;
-        setText('hud-next-bonus', `${formatNumber(nextBonus)} コイン`);
-        setText('hud-final-multiplier', `x${Number(run.final_return_multiplier || 1).toFixed(1)}`);
+        setTexts(['hud-next-bonus', 'mobile-hud-next-bonus'], `${formatNumber(nextBonus)} コイン`);
+        setTexts(['hud-final-multiplier', 'mobile-hud-final-multiplier'], `x${Number(run.final_return_multiplier || 1).toFixed(1)}`);
         setText('run-status', run.status);
         setText('run-flags', [
             flags.insurance_active ? '保険札' : null,
@@ -141,8 +153,7 @@
         ].filter(Boolean).join(' / ') || '特記事項なし');
     }
 
-    function renderInventory(run, catalog) {
-        const wrap = el('inventory-list');
+    function renderInventoryInto(wrap, run, catalog) {
         if (!wrap || !run) return;
         const items = run.inventory_state?.items || {};
         const catalogMap = Object.fromEntries((catalog || []).map((item) => [item.code, item]));
@@ -170,6 +181,11 @@
                 </div>
             `;
         }).join('');
+    }
+
+    function renderInventory(run, catalog) {
+        renderInventoryInto(el('inventory-list'), run, catalog);
+        renderInventoryInto(el('mobile-inventory-list'), run, catalog);
     }
 
     function renderBoard(state) {
@@ -289,6 +305,15 @@
         el('tile-popup')?.classList.remove('show');
     }
 
+    function setMobileDirectionPadVisible(visible) {
+        const pad = el('mobile-direction-pad');
+        const toggle = el('mobile-arrow-toggle-btn');
+        const isVisible = !!visible;
+        if (pad) pad.classList.toggle('d-none', !isVisible);
+        if (toggle) toggle.textContent = isVisible ? '矢印キーを非表示' : '矢印キー表示';
+        document.body.classList.toggle('mobile-pad-open', isVisible);
+    }
+
     function bindCarrySelection(onSelect) {
         const wrap = el('carry-items');
         if (!wrap) return;
@@ -329,6 +354,13 @@
         el('shop-skip-btn')?.addEventListener('click', handlers.onSkipShop);
         el('retry-run-btn')?.addEventListener('click', handlers.onRetry);
         el('tile-popup-close')?.addEventListener('click', handlers.onClosePopup);
+        el('mobile-arrow-toggle-btn')?.addEventListener('click', handlers.onToggleMobilePad);
+
+        document.body.addEventListener('click', (event) => {
+            const move = event.target.closest('[data-mobile-dir]');
+            if (!move) return;
+            handlers.onMobileMoveDir(move.dataset.mobileDir);
+        });
     }
 
     window.DUNGEON_UI = {
@@ -345,6 +377,7 @@
         setStatus,
         showTilePopup,
         hideTilePopup,
+        setMobileDirectionPadVisible,
         bindCarrySelection,
         bindBoard,
         bindActions

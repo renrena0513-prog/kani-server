@@ -33,10 +33,10 @@
 
         .dungeon-hero {
             background: var(--dungeon-panel);
-            border: 1px solid var(--dungeon-border);
-            border-radius: 18px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            backdrop-filter: blur(6px);
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            backdrop-filter: none;
         }
 
         .dungeon-hero {
@@ -93,9 +93,10 @@
         .status-banner {
             margin-top: 14px;
             padding: 12px 14px;
-            border-radius: 14px;
-            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.03);
             color: #f7f3e8;
+            border: 1px solid rgba(255, 255, 255, 0.06);
         }
 
         .status-banner[data-tone="danger"] {
@@ -383,16 +384,156 @@
             padding-right: 16px;
         }
 
+        .mobile-life-fixed {
+            position: fixed;
+            left: 12px;
+            top: 74px;
+            z-index: 1200;
+            padding: 6px 10px;
+            border-radius: 10px;
+            background: rgba(10, 10, 10, 0.58);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            color: #ff8aa3;
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            backdrop-filter: blur(4px);
+        }
+
+        .mobile-quick-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .mobile-quick-actions .dungeon-btn-secondary {
+            padding: 8px 12px;
+            font-size: 0.85rem;
+        }
+
+        .mobile-arrow-toggle-btn {
+            padding: 6px 10px;
+            font-size: 0.75rem;
+            line-height: 1.2;
+        }
+
+        .mobile-direction-pad {
+            position: fixed;
+            left: 50%;
+            bottom: 12px;
+            transform: translateX(-50%);
+            z-index: 1080;
+            width: min(260px, 92vw);
+            padding: 10px;
+            border-radius: 14px;
+            background: rgba(8, 10, 11, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-areas:
+                ". up ."
+                "left down right";
+            gap: 8px;
+            backdrop-filter: blur(6px);
+        }
+
+        .mobile-direction-pad .dir-btn {
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.08);
+            color: #f4efe3;
+            font-weight: 700;
+            min-height: 40px;
+        }
+
+        .mobile-direction-pad .dir-up { grid-area: up; }
+        .mobile-direction-pad .dir-left { grid-area: left; }
+        .mobile-direction-pad .dir-down { grid-area: down; }
+        .mobile-direction-pad .dir-right { grid-area: right; }
+
+        .dungeon-mobile-modal {
+            background: #151818;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #f7f3e8;
+        }
+
+        .dungeon-mobile-modal .modal-header {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .dungeon-mobile-modal .modal-body {
+            padding: 14px;
+        }
+
+        @media (min-width: 992px) {
+            .mobile-life-fixed,
+            .mobile-quick-actions,
+            .mobile-arrow-toggle-btn,
+            .mobile-direction-pad {
+                display: none !important;
+            }
+        }
+
         @media (max-width: 767px) {
             .tile-popup {
                 width: calc(100vw - 20px);
                 bottom: 10px;
+            }
+
+            body.mobile-pad-open .tile-popup {
+                bottom: 110px;
             }
         }
 
         @media (max-width: 991px) {
             .dungeon-shell {
                 padding-top: 88px;
+            }
+
+            [data-screen="game"] .row {
+                row-gap: 18px;
+            }
+
+            [data-screen="game"] .col-xl-4,
+            [data-screen="game"] .col-xl-5,
+            [data-screen="game"] .col-xl-3 {
+                flex: 0 0 100%;
+                max-width: 100%;
+            }
+
+            [data-screen="game"] .col-xl-4 {
+                display: none;
+            }
+
+            [data-screen="game"] .dungeon-panel {
+                padding-top: 10px;
+                padding-bottom: 10px;
+            }
+
+            #inventory-list {
+                margin-bottom: 10px;
+            }
+
+            #dungeon-board {
+                margin-top: 8px;
+            }
+
+            .mobile-life-fixed,
+            .mobile-quick-actions {
+                display: block !important;
+            }
+
+            .mobile-quick-actions {
+                display: flex !important;
+            }
+
+            .desktop-key-hint {
+                display: none !important;
+            }
+
+            .mobile-arrow-toggle-btn {
+                display: inline-flex !important;
+                align-items: center;
+                justify-content: center;
             }
         }
 
