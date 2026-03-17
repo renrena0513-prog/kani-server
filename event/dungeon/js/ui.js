@@ -162,8 +162,8 @@
                         <div>
                             <div class="shop-offer-name">${item.name}</div>
                             <div class="shop-offer-desc">${item.description || ''}</div>
+                            <div class="carry-item-meta">価格 ${formatNumber(item.base_price)} / 所持 ${formatNumber(stock)} / ${item.shop_pool}</div>
                         </div>
-                        <div class="carry-item-meta">価格 ${formatNumber(item.base_price)} / 所持 ${formatNumber(stock)} / ${item.shop_pool}</div>
                     </div>
                     <button class="btn btn-sm dungeon-btn-primary" data-buy-stock="${item.code}" ${disabled ? 'disabled' : ''}>購入</button>
                 </div>
