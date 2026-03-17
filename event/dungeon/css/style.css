@@ -570,6 +570,10 @@
             border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
+        #shop-modal .modal-body {
+            min-height: 540px;
+        }
+
         .dungeon-empty {
             padding: 18px;
             border-radius: 16px;
