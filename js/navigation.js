@@ -284,6 +284,40 @@ async function applyPageSettingsToNav() {
             normalized = normalized.replace(/\/+$/, '');
             return normalized || '/';
         };
+        const currentScript = document.currentScript;
+
+        async function loadEventPageAccessConfig() {
+            if (window.EVENT_PAGE_ACCESS_CONFIG) return window.EVENT_PAGE_ACCESS_CONFIG;
+
+            const fallbackSrc = `${window.location.origin || ''}/js/event-page-access/config.js`;
+            const configSrc = currentScript?.src
+                ? new URL('./event-page-access/config.js', currentScript.src).href
+                : fallbackSrc;
+
+            await new Promise((resolve) => {
+                const script = document.createElement('script');
+                script.src = configSrc;
+                script.async = false;
+                script.onload = resolve;
+                script.onerror = resolve;
+                document.head.appendChild(script);
+            });
+
+            return window.EVENT_PAGE_ACCESS_CONFIG || { restrictedEventAccess: [] };
+        }
+
+        function canAccessRestrictedEventPage(path, userId, config) {
+            const currentPath = normalizePagePath(path);
+            const entries = Array.isArray(config?.restrictedEventAccess) ? config.restrictedEventAccess : [];
+            if (!userId) return false;
+
+            return entries.some((entry) => {
+                const normalizedAllowed = normalizePagePath(entry?.path);
+                const allowedUserIds = Array.isArray(entry?.allowedUserIds) ? entry.allowedUserIds.map(String) : [];
+                const isTargetPath = currentPath === normalizedAllowed || currentPath.startsWith(`${normalizedAllowed}/`);
+                return isTargetPath && allowedUserIds.includes(String(userId));
+            });
+        }
 
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) return;
@@ -292,6 +326,8 @@ async function applyPageSettingsToNav() {
         if (typeof ADMIN_DISCORD_IDS !== 'undefined' && ADMIN_DISCORD_IDS.includes(discordId)) {
             return;
         }
+
+        const eventPageAccessConfig = await loadEventPageAccessConfig();
 
         const CACHE_KEY = 'page_settings_cache';
         let settings = null;
@@ -327,7 +363,8 @@ async function applyPageSettingsToNav() {
         const guardedLinks = document.querySelectorAll('[data-page-path]');
         guardedLinks.forEach(link => {
             const pathKey = normalizePagePath(link.getAttribute('data-page-path'));
-            if (pathKey && settings[pathKey] === false) {
+            const allowEventAccess = canAccessRestrictedEventPage(pathKey, discordId, eventPageAccessConfig);
+            if (pathKey && settings[pathKey] === false && !allowEventAccess) {
                 const li = link.closest('li');
                 if (li) li.style.display = 'none';
             }
