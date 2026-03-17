@@ -966,10 +966,8 @@ begin
             update public.evd_game_runs set badges_gained = badges_gained + 1 where id = p_run_id;
             v_message := '秘宝箱を見つけ、秘宝バッジを 1 個確保した。';
         when '宝石箱' then
-            v_gacha_rate := greatest(0, least(1, coalesce(public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '祈願符', true), 1)));
-            v_mangan_rate := greatest(0, least(1, coalesce(public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '満願符', true), 0.35)));
-            v_gacha_gain := case when random() < v_gacha_rate then 1 else 0 end;
-            v_mangan_gain := case when random() < v_mangan_rate then 1 else 0 end;
+            v_gacha_gain := greatest(0, coalesce(public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '祈願符')::integer, 0));
+            v_mangan_gain := greatest(0, coalesce(public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '満願符')::integer, 0));
             update public.evd_game_runs
                set gacha_tickets_gained = gacha_tickets_gained + v_gacha_gain,
                    mangan_tickets_gained = mangan_tickets_gained + v_mangan_gain

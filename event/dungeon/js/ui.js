@@ -204,7 +204,7 @@
         const bonusMap = run.inventory_state?.floor_bonus_preview || {};
         const nextBonus = bonusMap[String(Math.min(run.current_floor + 1, run.max_floors))] || 0;
         setTexts(['hud-next-bonus', 'mobile-hud-next-bonus'], `${formatNumber(nextBonus)} コイン`);
-        setTexts(['hud-final-multiplier', 'mobile-hud-final-multiplier'], `x${Number(run.final_return_multiplier || 1).toFixed(1)}`);
+        setTexts(['hud-final-multiplier', 'mobile-hud-final-multiplier'], `x${Number(run.final_return_multiplier || 1).toFixed(2)}`);
         setText('run-status', run.status);
         setText('run-flags', [
             flags.insurance_active ? '保険札' : null,
