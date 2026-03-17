@@ -63,10 +63,10 @@ create table if not exists public.evd_floor_value_profiles (
     chest_max integer not null default 0,
     treasure_chest_min integer not null default 0,
     treasure_chest_max integer not null default 0,
-    blessing_min numeric(8, 2) not null default 1.0,
-    blessing_max numeric(8, 2) not null default 1.0,
-    curse_min numeric(8, 2) not null default 1.0,
-    curse_max numeric(8, 2) not null default 1.0,
+    blessing_min numeric(8, 2) not null default 0.0,
+    blessing_max numeric(8, 2) not null default 0.0,
+    curse_min numeric(8, 2) not null default 0.0,
+    curse_max numeric(8, 2) not null default 0.0,
     trap_min integer not null default 0,
     trap_max integer not null default 0,
     thief_coin_loss_min integer not null default 0,
@@ -251,6 +251,16 @@ update public.evd_run_events e
  where e.run_id = r.id
    and e.account_name is null;
 
+-- Migrate legacy multiplier-style blessing/curse settings to additive deltas once.
+-- legacy blessing: 1.10..1.25 -> new delta: 0.10..0.25
+-- legacy curse:    0.75..0.92 -> new delta: 0.08..0.25
+update public.evd_floor_value_profiles
+   set blessing_min = round((blessing_min - 1.0)::numeric, 2),
+       blessing_max = round((blessing_max - 1.0)::numeric, 2),
+       curse_min = round((1.0 - curse_max)::numeric, 2),
+       curse_max = round((1.0 - curse_min)::numeric, 2)
+ where blessing_max > 1.0;
+
 alter table public.evd_item_catalog enable row level security;
 alter table public.evd_player_item_stocks enable row level security;
 alter table public.evd_game_balance_profiles enable row level security;
@@ -336,16 +346,16 @@ select
       "floor_bonuses": {"2":80,"3":120,"4":180,"5":280,"6":420,"7":650,"8":1000,"9":1500,"10":2200},
       "thief_ransom": {"1":150,"2":150,"3":300,"4":300,"5":500,"6":500,"7":800,"8":800,"9":1200,"10":1200},
       "value_ranges": {
-        "1":{"小銭":[40,120],"宝箱":[120,240],"財宝箱":[280,420],"祝福":[1.10,1.25],"罠":[60,140],"呪い":[0.75,0.92]},
-        "2":{"小銭":[60,140],"宝箱":[160,300],"財宝箱":[340,520],"祝福":[1.12,1.28],"罠":[80,170],"呪い":[0.74,0.90]},
-        "3":{"小銭":[80,180],"宝箱":[220,360],"財宝箱":[420,650],"祝福":[1.15,1.30],"罠":[100,220],"呪い":[0.72,0.89]},
-        "4":{"小銭":[100,220],"宝箱":[260,420],"財宝箱":[520,760],"祝福":[1.18,1.34],"罠":[130,260],"呪い":[0.70,0.88]},
-        "5":{"小銭":[120,260],"宝箱":[320,480],"財宝箱":[650,900],"祝福":[1.20,1.38],"罠":[160,320],"呪い":[0.68,0.86]},
-        "6":{"小銭":[150,300],"宝箱":[360,540],"財宝箱":[760,1050],"祝福":[1.22,1.42],"罠":[190,380],"呪い":[0.66,0.84]},
-        "7":{"小銭":[180,340],"宝箱":[420,620],"財宝箱":[900,1220],"祝福":[1.25,1.48],"罠":[220,430],"呪い":[0.64,0.82]},
-        "8":{"小銭":[210,380],"宝箱":[480,700],"財宝箱":[1050,1380],"祝福":[1.28,1.52],"罠":[260,500],"呪い":[0.62,0.80]},
-        "9":{"小銭":[250,420],"宝箱":[560,780],"財宝箱":[1220,1560],"祝福":[1.30,1.56],"罠":[300,560],"呪い":[0.60,0.78]},
-        "10":{"小銭":[300,480],"宝箱":[650,880],"財宝箱":[1400,1760],"祝福":[1.34,1.62],"罠":[340,620],"呪い":[0.58,0.76]}
+        "1":{"小銭":[40,120],"宝箱":[120,240],"財宝箱":[280,420],"祝福":[0.10,0.25],"罠":[60,140],"呪い":[0.08,0.25]},
+        "2":{"小銭":[60,140],"宝箱":[160,300],"財宝箱":[340,520],"祝福":[0.12,0.28],"罠":[80,170],"呪い":[0.10,0.26]},
+        "3":{"小銭":[80,180],"宝箱":[220,360],"財宝箱":[420,650],"祝福":[0.15,0.30],"罠":[100,220],"呪い":[0.11,0.28]},
+        "4":{"小銭":[100,220],"宝箱":[260,420],"財宝箱":[520,760],"祝福":[0.18,0.34],"罠":[130,260],"呪い":[0.12,0.30]},
+        "5":{"小銭":[120,260],"宝箱":[320,480],"財宝箱":[650,900],"祝福":[0.20,0.38],"罠":[160,320],"呪い":[0.14,0.32]},
+        "6":{"小銭":[150,300],"宝箱":[360,540],"財宝箱":[760,1050],"祝福":[0.22,0.42],"罠":[190,380],"呪い":[0.16,0.34]},
+        "7":{"小銭":[180,340],"宝箱":[420,620],"財宝箱":[900,1220],"祝福":[0.25,0.48],"罠":[220,430],"呪い":[0.18,0.36]},
+        "8":{"小銭":[210,380],"宝箱":[480,700],"財宝箱":[1050,1380],"祝福":[0.28,0.52],"罠":[260,500],"呪い":[0.20,0.38]},
+        "9":{"小銭":[250,420],"宝箱":[560,780],"財宝箱":[1220,1560],"祝福":[0.30,0.56],"罠":[300,560],"呪い":[0.22,0.40]},
+        "10":{"小銭":[300,480],"宝箱":[650,880],"財宝箱":[1400,1760],"祝福":[0.34,0.62],"罠":[340,620],"呪い":[0.24,0.42]}
       },
       "tile_weights": {
         "1":{"空白":24,"小銭":14,"宝箱":10,"財宝箱":4,"秘宝箱":1,"宝石箱":2,"祝福":2,"泉":2,"爆弾":8,"大爆発":2,"罠":6,"呪い":3,"盗賊":2,"落とし穴":1,"ショップ":2,"限定ショップ":0},
@@ -407,16 +417,16 @@ select
 from public.evd_game_balance_profiles p
 join (
     values
-        (1, 40,120, 120,240, 280,420, 1.10,1.25, 0.75,0.92, 60,140, 150,150),
-        (2, 60,140, 160,300, 340,520, 1.12,1.28, 0.74,0.90, 80,170, 150,150),
-        (3, 80,180, 220,360, 420,650, 1.15,1.30, 0.72,0.89, 100,220, 300,300),
-        (4, 100,220, 260,420, 520,760, 1.18,1.34, 0.70,0.88, 130,260, 300,300),
-        (5, 120,260, 320,480, 650,900, 1.20,1.38, 0.68,0.86, 160,320, 500,500),
-        (6, 150,300, 360,540, 760,1050, 1.22,1.42, 0.66,0.84, 190,380, 500,500),
-        (7, 180,340, 420,620, 900,1220, 1.25,1.48, 0.64,0.82, 220,430, 800,800),
-        (8, 210,380, 480,700, 1050,1380, 1.28,1.52, 0.62,0.80, 260,500, 800,800),
-        (9, 250,420, 560,780, 1220,1560, 1.30,1.56, 0.60,0.78, 300,560, 1200,1200),
-        (10, 300,480, 650,880, 1400,1760, 1.34,1.62, 0.58,0.76, 340,620, 1200,1200)
+        (1, 40,120, 120,240, 280,420, 0.10,0.25, 0.08,0.25, 60,140, 150,150),
+        (2, 60,140, 160,300, 340,520, 0.12,0.28, 0.10,0.26, 80,170, 150,150),
+        (3, 80,180, 220,360, 420,650, 0.15,0.30, 0.11,0.28, 100,220, 300,300),
+        (4, 100,220, 260,420, 520,760, 0.18,0.34, 0.12,0.30, 130,260, 300,300),
+        (5, 120,260, 320,480, 650,900, 0.20,0.38, 0.14,0.32, 160,320, 500,500),
+        (6, 150,300, 360,540, 760,1050, 0.22,0.42, 0.16,0.34, 190,380, 500,500),
+        (7, 180,340, 420,620, 900,1220, 0.25,0.48, 0.18,0.36, 220,430, 800,800),
+        (8, 210,380, 480,700, 1050,1380, 0.28,0.52, 0.20,0.38, 260,500, 800,800),
+        (9, 250,420, 560,780, 1220,1560, 0.30,0.56, 0.22,0.40, 300,560, 1200,1200),
+        (10, 300,480, 650,880, 1400,1760, 0.34,0.62, 0.24,0.42, 340,620, 1200,1200)
 ) as v(
     floor_no,
     coin_small_min, coin_small_max,
@@ -1240,7 +1250,8 @@ declare
     v_damage integer := 0;
     v_coin_delta integer := 0;
     v_message text := '';
-    v_multiplier numeric := 1;
+    v_rate_delta numeric := 0;
+    v_new_multiplier numeric := 1;
     v_ransom integer := 0;
     v_item_to_lose text;
     v_item_to_lose_name text;
@@ -1316,11 +1327,12 @@ begin
              where id = p_run_id;
             v_message := '宝石箱から祈願符と満願符を得た。';
         when '祝福' then
-            v_multiplier := public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '祝福', true);
+            v_rate_delta := public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '祝福', true);
             update public.evd_game_runs
-               set final_return_multiplier = round((final_return_multiplier * v_multiplier)::numeric, 2)
-             where id = p_run_id;
-            v_message := format('祝福が宿り、最終持ち帰り倍率が x%s になった。', (select final_return_multiplier from public.evd_game_runs where id = p_run_id));
+               set final_return_multiplier = round((final_return_multiplier + v_rate_delta)::numeric, 2)
+             where id = p_run_id
+            returning final_return_multiplier into v_new_multiplier;
+            v_message := format('祝福が宿り、最終持ち帰り倍率が +%s され x%s になった。', v_rate_delta, v_new_multiplier);
         when '泉' then
             update public.evd_game_runs
                set life = least(max_life, life + 1)
@@ -1336,11 +1348,12 @@ begin
             v_coin_delta := -1 * public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '罠')::integer;
             v_message := format('罠にかかり、%s コイン失った。', abs(v_coin_delta));
         when '呪い' then
-            v_multiplier := public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '呪い', true);
+            v_rate_delta := public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '呪い', true);
             update public.evd_game_runs
-               set final_return_multiplier = round((final_return_multiplier * v_multiplier)::numeric, 2)
-             where id = p_run_id;
-            v_message := format('呪いにより最終持ち帰り倍率が x%s になった。', (select final_return_multiplier from public.evd_game_runs where id = p_run_id));
+               set final_return_multiplier = round(greatest(0.30, (final_return_multiplier - v_rate_delta))::numeric, 2)
+             where id = p_run_id
+            returning final_return_multiplier into v_new_multiplier;
+            v_message := format('呪いにより最終持ち帰り倍率が -%s され x%s になった。', v_rate_delta, v_new_multiplier);
         when '盗賊' then
             v_ransom := coalesce(public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '盗賊')::integer, 150);
             if exists (

@@ -16,7 +16,8 @@ declare
     v_damage integer := 0;
     v_coin_delta integer := 0;
     v_message text := '';
-    v_multiplier numeric := 1;
+    v_rate_delta numeric := 0;
+    v_new_multiplier numeric := 1;
     v_ransom integer := 0;
     v_item_to_lose text;
     v_item_to_lose_name text;
@@ -92,11 +93,12 @@ begin
              where id = p_run_id;
             v_message := '宝石箱から祈願符と満願符を得た。';
         when '祝福' then
-            v_multiplier := public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '祝福', true);
+            v_rate_delta := public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '祝福', true);
             update public.evd_game_runs
-               set final_return_multiplier = round((final_return_multiplier * v_multiplier)::numeric, 2)
-             where id = p_run_id;
-            v_message := format('祝福が宿り、最終持ち帰り倍率が x%s になった。', (select final_return_multiplier from public.evd_game_runs where id = p_run_id));
+               set final_return_multiplier = round((final_return_multiplier + v_rate_delta)::numeric, 2)
+             where id = p_run_id
+            returning final_return_multiplier into v_new_multiplier;
+            v_message := format('祝福が宿り、最終持ち帰り倍率が +%s され x%s になった。', v_rate_delta, v_new_multiplier);
         when '泉' then
             update public.evd_game_runs
                set life = least(max_life, life + 1)
@@ -112,11 +114,12 @@ begin
             v_coin_delta := -1 * public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '罠')::integer;
             v_message := format('罠にかかり、%s コイン失った。', abs(v_coin_delta));
         when '呪い' then
-            v_multiplier := public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '呪い', true);
+            v_rate_delta := public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '呪い', true);
             update public.evd_game_runs
-               set final_return_multiplier = round((final_return_multiplier * v_multiplier)::numeric, 2)
-             where id = p_run_id;
-            v_message := format('呪いにより最終持ち帰り倍率が x%s になった。', (select final_return_multiplier from public.evd_game_runs where id = p_run_id));
+               set final_return_multiplier = round(greatest(0.30, (final_return_multiplier - v_rate_delta))::numeric, 2)
+             where id = p_run_id
+            returning final_return_multiplier into v_new_multiplier;
+            v_message := format('呪いにより最終持ち帰り倍率が -%s され x%s になった。', v_rate_delta, v_new_multiplier);
         when '盗賊' then
             v_ransom := coalesce(public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '盗賊')::integer, 150);
             if exists (
