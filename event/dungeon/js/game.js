@@ -286,6 +286,10 @@
             renderGame();
         } catch (error) {
             console.error(error);
+            const message = String(error?.message || '');
+            if (message.includes('コインが足りません')) {
+                ui.showNoticePopup('行商人', '所持金が足りません。', '⚠️');
+            }
             ui.setStatus(error.message || '購入に失敗しました。', 'danger');
         } finally {
             ui.setBusy(false);
