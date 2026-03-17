@@ -1,5 +1,18 @@
 (function () {
     const { TILE_LABELS, MANUAL_ITEM_CODES } = window.DUNGEON_CONSTANTS;
+    const ITEM_FALLBACK_EMOJI = {
+        escape_rope: '🪢',
+        bomb_radar: '📡',
+        healing_potion: '🧪',
+        stairs_search: '🧭',
+        calamity_map: '🗺️',
+        full_scan_map: '🛰️',
+        abyss_ticket: '🕳️',
+        holy_grail: '🏆',
+        insurance_token: '🛡️',
+        golden_contract: '📜',
+        substitute_doll: '🪆'
+    };
     const TILE_POPUP_META = {
         '空白': { icon: '🪨', title: '空白マス' },
         '小銭': { icon: '🪙', title: '小銭' },
@@ -39,6 +52,25 @@
             .replace(/ライフを\s*(\d+)\s*回復した/g, '❤を$1回復した');
     }
 
+    function playerAvatarUrl(user) {
+        return user?.user_metadata?.avatar_url
+            || user?.user_metadata?.picture
+            || user?.user_metadata?.avatar
+            || null;
+    }
+
+    function renderItemVisual(itemCode, itemName) {
+        const emoji = ITEM_FALLBACK_EMOJI[itemCode] || '🎒';
+        const src = `/event/dungeon/images/${itemCode}.png`;
+        return `
+            <span class="item-visual" aria-hidden="true">
+                <img class="item-image" src="${src}" alt="${itemName || itemCode}" loading="lazy"
+                     onerror="this.style.display='none'; if(this.nextElementSibling){ this.nextElementSibling.style.display='grid'; }">
+                <span class="item-emoji-fallback">${emoji}</span>
+            </span>
+        `;
+    }
+
     function el(id) {
         return document.getElementById(id);
     }
@@ -72,6 +104,12 @@
                 window.bootstrap.Modal.getOrCreateInstance(shopModalEl).hide();
             }
         }
+        if (screenName !== 'start') {
+            const prepShopModalEl = el('prep-shop-modal');
+            if (prepShopModalEl && window.bootstrap?.Modal) {
+                window.bootstrap.Modal.getOrCreateInstance(prepShopModalEl).hide();
+            }
+        }
     }
 
     function renderCarryList(stocks, selectedItems) {
@@ -89,8 +127,13 @@
             const disabled = !item.carry_in_allowed;
             return `
                 <button class="carry-item ${selected ? 'selected' : ''} ${disabled ? 'disabled' : ''}" data-item-code="${stock.item_code}" ${disabled ? 'disabled' : ''}>
-                    <div class="carry-item-name">${item.name}</div>
-                    <div class="carry-item-desc">${item.description || ''}</div>
+                    <div class="item-entry-head">
+                        ${renderItemVisual(stock.item_code, item.name)}
+                        <div>
+                            <div class="carry-item-name">${item.name}</div>
+                            <div class="carry-item-desc">${item.description || ''}</div>
+                        </div>
+                    </div>
                     <div class="carry-item-meta">在庫 ${formatNumber(stock.quantity)} / ${item.item_kind || '手動'}</div>
                 </button>
             `;
@@ -114,9 +157,12 @@
             const stock = stockMap[item.code] || 0;
             return `
                 <div class="prep-shop-card">
-                    <div>
-                        <div class="shop-offer-name">${item.name}</div>
-                        <div class="shop-offer-desc">${item.description || ''}</div>
+                    <div class="item-entry-head">
+                        ${renderItemVisual(item.code, item.name)}
+                        <div>
+                            <div class="shop-offer-name">${item.name}</div>
+                            <div class="shop-offer-desc">${item.description || ''}</div>
+                        </div>
                         <div class="carry-item-meta">価格 ${formatNumber(item.base_price)} / 所持 ${formatNumber(stock)} / ${item.shop_pool}</div>
                     </div>
                     <button class="btn btn-sm dungeon-btn-primary" data-buy-stock="${item.code}" ${disabled ? 'disabled' : ''}>購入</button>
@@ -180,9 +226,12 @@
             const usable = MANUAL_ITEM_CODES.includes(code);
             return `
                 <div class="inventory-item">
-                    <div>
-                        <div class="inventory-item-name">${item.name || code}</div>
-                        <div class="inventory-item-desc">${item.description || ''}</div>
+                    <div class="item-entry-head">
+                        ${renderItemVisual(code, item.name || code)}
+                        <div>
+                            <div class="inventory-item-name">${item.name || code}</div>
+                            <div class="inventory-item-desc">${item.description || ''}</div>
+                        </div>
                     </div>
                     <div class="inventory-item-actions">
                         <span class="inventory-qty">x${formatNumber(itemState.quantity)}</span>
@@ -206,6 +255,7 @@
         const flags = state.run.inventory_state?.flags || {};
         const currentX = state.run.current_x;
         const currentY = state.run.current_y;
+        const avatarUrl = playerAvatarUrl(state.user);
 
         board.innerHTML = grid.map((row, y) => row.map((cell, x) => {
             const isPlayer = x === currentX && y === currentY;
@@ -219,22 +269,24 @@
             if ((cell.hint === 'bomb' && flags.bombs_known) || (cell.hint === 'hazard' && flags.hazards_known)) classes.push('hinted');
             if ((cell.type === 'ショップ' || cell.type === '限定ショップ') && cell.revealed) classes.push('shop');
 
-            let label = '？';
+            let content = '？';
             if (isPlayer) {
-                label = '🧙';
+                content = avatarUrl
+                    ? `<img class="player-avatar" src="${avatarUrl}" alt="player" loading="lazy" onerror="this.outerHTML='🧙';">`
+                    : '🧙';
             } else if (cell.revealed) {
-                label = TILE_LABELS[cell.type] || '・';
+                content = TILE_LABELS[cell.type] || '・';
             } else if (flags.stairs_known && cell.type === '下り階段') {
-                label = TILE_LABELS[cell.type];
+                content = TILE_LABELS[cell.type];
             } else if (flags.bombs_known && cell.hint === 'bomb') {
-                label = '⚠️';
+                content = '⚠️';
             } else if (flags.hazards_known && cell.hint === 'hazard') {
-                label = '☠️';
+                content = '☠️';
             }
 
             return `
                 <button class="${classes.join(' ')}" data-x="${x}" data-y="${y}" ${isMove ? '' : 'disabled'}>
-                    <span>${label}</span>
+                    <span>${content}</span>
                 </button>
             `;
         }).join('')).join('');
@@ -255,8 +307,13 @@
         setText('shop-title', type === '限定ショップ' ? '限定商人が現れた' : '行商人に出会った');
         setHtml('shop-offers', offers.map((offer) => `
             <button class="shop-offer" data-buy-item="${offer.code}">
-                <div class="shop-offer-name">${offer.name}</div>
-                <div class="shop-offer-desc">${offer.description}</div>
+                <div class="item-entry-head">
+                    ${renderItemVisual(offer.code, offer.name)}
+                    <div>
+                        <div class="shop-offer-name">${offer.name}</div>
+                        <div class="shop-offer-desc">${offer.description}</div>
+                    </div>
+                </div>
                 <div class="shop-offer-price">${formatNumber(offer.price)} コイン</div>
             </button>
         `).join(''));

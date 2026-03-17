@@ -21,7 +21,7 @@
 <body>
     <div class="dungeon-shell">
         <div id="nav-placeholder"></div>
-        <div id="mobile-life-fixed" class="mobile-life-fixed d-none">❤❤❤</div>
+        <div id="mobile-life-fixed" class="mobile-life-fixed d-none">LIFE ❤❤❤</div>
 
         <section class="dungeon-hero">
             <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-end">
@@ -63,7 +63,7 @@
             <div class="col-lg-7">
                 <div class="dungeon-panel h-100">
                     <div class="panel-title">冒険の掟</div>
-                    <div class="adventure-log">
+                    <div class="adventure-log adventure-rules-scroll">
                         <div class="dungeon-empty">7 x 7 の迷宮を移動して下り階段を探します。</div>
                         <div class="dungeon-empty">初期ライフは ❤❤❤。❤がなくなると死亡です。</div>
                         <div class="dungeon-empty">深い階ほど到達ボーナスが増えますが、転送罠や落とし穴も牙を剥きます。</div>
@@ -71,7 +71,7 @@
                     </div>
                     <div class="panel-title mt-4">入場前ショップ</div>
                     <p class="small text-secondary">準備商人から在庫を補充して、そのまま持ち込み選択に使えます。</p>
-                    <div id="prep-shop-list" class="prep-shop-list"></div>
+                    <button class="dungeon-btn-secondary w-100" type="button" data-bs-toggle="modal" data-bs-target="#prep-shop-modal">入場前ショップを開く</button>
                 </div>
             </div>
         </section>
@@ -224,6 +224,20 @@
                 <div class="modal-body">
                     <div id="shop-offers" class="shop-offers"></div>
                     <button id="shop-skip-btn" class="dungeon-btn-secondary mt-3 w-100" data-busy-disable>何も買わず立ち去る</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="prep-shop-modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered modal-lg">
+            <div class="modal-content dungeon-mobile-modal">
+                <div class="modal-header">
+                    <h5 class="modal-title">入場前ショップ</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="prep-shop-list" class="prep-shop-list"></div>
                 </div>
             </div>
         </div>
