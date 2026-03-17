@@ -165,7 +165,7 @@
         if (!wrap) return;
 
         const stockMap = Object.fromEntries((stocks || []).map((stock) => [stock.item_code, stock.quantity]));
-        const buyable = (catalog || []).filter((item) => ['通常', '両方', 'レリック'].includes(item.shop_pool));
+        const buyable = (catalog || []).filter((item) => ['通常', '両方'].includes(item.shop_pool));
 
         if (!buyable.length) {
             wrap.innerHTML = '<div class="dungeon-empty">購入できるアイテムがありません。</div>';
