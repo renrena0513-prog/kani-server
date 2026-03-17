@@ -23,6 +23,7 @@ create table if not exists public.evd_item_catalog (
     effect_data jsonb not null default '{}'::jsonb,
     is_active boolean not null default true,
     sort_order integer not null default 0,
+    weight integer not null default 1 check (weight >= 0),
     created_at timestamptz not null default now()
 );
 
@@ -71,6 +72,10 @@ create table if not exists public.evd_floor_value_profiles (
     trap_max integer not null default 0,
     thief_coin_loss_min integer not null default 0,
     thief_coin_loss_max integer not null default 0,
+    jewel_gacha_rate_min numeric(6, 4) not null default 1.0000,
+    jewel_gacha_rate_max numeric(6, 4) not null default 1.0000,
+    jewel_mangan_rate_min numeric(6, 4) not null default 0.3500,
+    jewel_mangan_rate_max numeric(6, 4) not null default 0.3500,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
     primary key (profile_id, floor_no)
@@ -173,6 +178,11 @@ alter table public.evd_player_item_stocks add column if not exists account_name 
 alter table public.evd_game_runs add column if not exists account_name text;
 alter table public.evd_run_floors add column if not exists account_name text;
 alter table public.evd_run_events add column if not exists account_name text;
+alter table public.evd_floor_value_profiles add column if not exists jewel_gacha_rate_min numeric(6, 4) not null default 1.0000;
+alter table public.evd_floor_value_profiles add column if not exists jewel_gacha_rate_max numeric(6, 4) not null default 1.0000;
+alter table public.evd_floor_value_profiles add column if not exists jewel_mangan_rate_min numeric(6, 4) not null default 0.3500;
+alter table public.evd_floor_value_profiles add column if not exists jewel_mangan_rate_max numeric(6, 4) not null default 0.3500;
+alter table public.evd_item_catalog add column if not exists weight integer not null default 1;
 alter table public.evd_floor_tile_weight_profiles add column if not exists is_enabled boolean not null default true;
 alter table public.evd_floor_tile_weight_profiles add column if not exists min_count integer not null default 0;
 alter table public.evd_floor_tile_weight_profiles add column if not exists max_count integer;
@@ -184,6 +194,23 @@ update public.evd_floor_tile_weight_profiles
            when max_count < greatest(min_count, 0) then greatest(min_count, 0)
            else max_count
        end;
+
+update public.evd_item_catalog
+   set weight = greatest(coalesce(weight, 1), 0);
+
+do $$
+begin
+    if not exists (
+        select 1
+          from pg_constraint
+         where conname = 'evd_item_catalog_weight_chk'
+           and conrelid = 'public.evd_item_catalog'::regclass
+    ) then
+        alter table public.evd_item_catalog
+            add constraint evd_item_catalog_weight_chk
+            check (weight >= 0);
+    end if;
+end $$;
 
 do $$
 begin
@@ -311,20 +338,21 @@ create policy evd_run_events_rw on public.evd_run_events
 for all using (user_id = public.evd_current_user_id())
 with check (user_id = public.evd_current_user_id());
 
-insert into public.evd_item_catalog (code, name, description, item_kind, shop_pool, carry_in_allowed, base_price, max_stack, effect_data, sort_order)
+insert into public.evd_item_catalog (code, name, description, item_kind, shop_pool, carry_in_allowed, base_price, max_stack, effect_data, sort_order, weight)
 values
-    ('escape_rope', '脱出のひも', 'その場で即帰還して精算する。', '手動', '通常', true, 180, 3, '{"effect":"return"}', 10),
-    ('bomb_radar', '爆弾レーダー', '所持している間、各階層の爆弾系マス数を常時感知する。', '自動', '通常', true, 160, 3, '{"effect":"bomb_radar"}', 20),
-    ('healing_potion', '回復ポーション', 'ライフを 1 回復する。', '手動', '通常', true, 220, 3, '{"effect":"heal","amount":1}', 30),
-    ('insurance_token', '保険札', '死亡時にそのランの所持コイン半分を持ち帰る。', '自動', '通常', true, 260, 1, '{"effect":"insurance"}', 40),
-    ('stairs_search', '階段サーチ', 'その階の下り階段を可視化する。', '手動', '通常', true, 240, 3, '{"effect":"stairs_search"}', 50),
-    ('calamity_map', '厄災の地図', '爆弾以外の危険マスを可視化する。', '手動', '通常', true, 280, 3, '{"effect":"hazard_map"}', 60),
-    ('holy_grail', '女神の聖杯', 'ライフ全快し、最大ライフを 1 増やす。', '手動', '限定', true, 680, 1, '{"effect":"holy_grail"}', 70),
-    ('substitute_doll', '身代わり人形', 'マイナス効果を 3 回まで無効化する。', '自動', '限定', true, 620, 2, '{"effect":"substitute","charges":3}', 80),
-    ('abyss_ticket', '奈落直通札', '3 階層先へ直行する。', '手動', '限定', true, 760, 1, '{"effect":"abyss_ticket","floors":3}', 90),
-    ('golden_contract', '黄金契約書', '無事に帰還した時の報酬を 2 倍にする。', '自動', '限定', true, 820, 1, '{"effect":"golden_contract"}', 100),
-    ('full_scan_map', '完全探査図', 'その階の爆弾位置を可視化する。', '手動', '限定', true, 540, 2, '{"effect":"full_scan"}', 110),
-    ('vault_box', '保全金庫', '入手時点の所持コイン 70% を確保する。', '自動', '限定', true, 740, 1, '{"effect":"vault_box","rate":0.7}', 120)
+    ('escape_rope', '脱出のひも', 'その場で即帰還して精算する。', '手動', '通常', true, 180, 3, '{"effect":"return"}', 10, 14),
+    ('bomb_radar', '爆弾レーダー', '所持している間、各階層の爆弾系マス数を常時感知する。', '自動', '通常', true, 160, 3, '{"effect":"bomb_radar"}', 20, 8),
+    ('healing_potion', '回復ポーション', 'ライフを 1 回復する。', '手動', '通常', true, 220, 3, '{"effect":"heal","amount":1}', 30, 14),
+    ('insurance_token', '保険札', '死亡時にそのランの所持コイン半分を持ち帰る。', '自動', '通常', true, 260, 1, '{"effect":"insurance"}', 40, 6),
+    ('stairs_search', '階段サーチ', 'その階の下り階段を可視化する。', '手動', '通常', true, 240, 3, '{"effect":"stairs_search"}', 50, 8),
+    ('calamity_map', '厄災の地図', '爆弾以外の危険マスを可視化する。', '手動', '通常', true, 280, 3, '{"effect":"hazard_map"}', 60, 6),
+    ('holy_grail', '女神の聖杯', 'ライフ全快し、最大ライフを 1 増やす。', '手動', '限定', true, 680, 1, '{"effect":"holy_grail"}', 70, 2),
+    ('substitute_doll', '身代わり人形', 'マイナス効果を 3 回まで無効化する。', '自動', '限定', true, 620, 2, '{"effect":"substitute","charges":3}', 80, 3),
+    ('abyss_ticket', '奈落直通札', '3 階層先へ直行する。', '手動', '限定', true, 760, 1, '{"effect":"abyss_ticket","floors":3}', 90, 1),
+    ('golden_contract', '黄金契約書', '無事に帰還した時の報酬を 2 倍にする。', '自動', '限定', true, 820, 1, '{"effect":"golden_contract"}', 100, 1),
+    ('full_scan_map', '完全探査図', 'その階の爆弾位置を可視化する。', '手動', '限定', true, 540, 2, '{"effect":"full_scan"}', 110, 3),
+    ('vault_box', '保全金庫', '入手時点の所持コイン 70% を確保する。', '自動', '限定', true, 740, 1, '{"effect":"vault_box","rate":0.7}', 120, 2),
+    ('giant_cup', '巨人の盃', '所持しているだけで最大LIFEが 1 増える。重複しても効果は 1 回のみ。', '自動', 'レリック', false, 1200, 1, '{"effect":"relic_max_life_plus_1"}', 130, 0)
 on conflict (code) do update
 set
     name = excluded.name,
@@ -336,7 +364,8 @@ set
     max_stack = excluded.max_stack,
     effect_data = excluded.effect_data,
     is_active = true,
-    sort_order = excluded.sort_order;
+    sort_order = excluded.sort_order,
+    weight = excluded.weight;
 
 insert into public.evd_game_balance_profiles (name, description, config, is_active)
 select
@@ -358,16 +387,16 @@ select
         "10":{"小銭":[300,480],"宝箱":[650,880],"財宝箱":[1400,1760],"祝福":[0.34,0.62],"罠":[340,620],"呪い":[0.24,0.42]}
       },
       "tile_weights": {
-        "1":{"空白":24,"小銭":14,"宝箱":10,"財宝箱":4,"秘宝箱":1,"宝石箱":2,"祝福":2,"泉":2,"爆弾":8,"大爆発":2,"罠":6,"呪い":3,"盗賊":2,"落とし穴":1,"ショップ":2,"限定ショップ":0},
-        "2":{"空白":22,"小銭":14,"宝箱":10,"財宝箱":4,"秘宝箱":1,"宝石箱":2,"祝福":2,"泉":2,"爆弾":9,"大爆発":2,"罠":6,"呪い":3,"盗賊":2,"落とし穴":1,"ショップ":2,"限定ショップ":0},
-        "3":{"空白":20,"小銭":12,"宝箱":11,"財宝箱":5,"秘宝箱":1,"宝石箱":2,"祝福":2,"泉":2,"爆弾":9,"大爆発":3,"罠":7,"呪い":4,"盗賊":3,"落とし穴":2,"ショップ":2,"限定ショップ":1},
-        "4":{"空白":18,"小銭":12,"宝箱":10,"財宝箱":6,"秘宝箱":1,"宝石箱":2,"祝福":2,"泉":2,"爆弾":10,"大爆発":3,"罠":7,"呪い":4,"盗賊":3,"落とし穴":2,"ショップ":2,"限定ショップ":1},
-        "5":{"空白":16,"小銭":11,"宝箱":10,"財宝箱":6,"秘宝箱":2,"宝石箱":3,"祝福":2,"泉":2,"爆弾":10,"大爆発":4,"罠":7,"呪い":5,"盗賊":3,"落とし穴":2,"転送罠":2,"ショップ":2,"限定ショップ":1},
-        "6":{"空白":15,"小銭":10,"宝箱":10,"財宝箱":7,"秘宝箱":2,"宝石箱":3,"祝福":2,"泉":2,"爆弾":10,"大爆発":4,"罠":8,"呪い":5,"盗賊":3,"落とし穴":2,"転送罠":2,"ショップ":2,"限定ショップ":1},
-        "7":{"空白":14,"小銭":10,"宝箱":9,"財宝箱":7,"秘宝箱":2,"宝石箱":3,"祝福":2,"泉":2,"爆弾":10,"大爆発":5,"罠":8,"呪い":5,"盗賊":4,"落とし穴":2,"転送罠":2,"ショップ":2,"限定ショップ":1},
-        "8":{"空白":12,"小銭":9,"宝箱":9,"財宝箱":8,"秘宝箱":2,"宝石箱":3,"祝福":2,"泉":2,"爆弾":11,"大爆発":5,"罠":8,"呪い":5,"盗賊":4,"落とし穴":2,"転送罠":3,"ショップ":2,"限定ショップ":1},
-        "9":{"空白":10,"小銭":8,"宝箱":8,"財宝箱":9,"秘宝箱":2,"宝石箱":4,"祝福":2,"泉":2,"爆弾":11,"大爆発":6,"罠":9,"呪い":5,"盗賊":4,"落とし穴":2,"転送罠":3,"ショップ":2,"限定ショップ":1},
-        "10":{"空白":8,"小銭":8,"宝箱":8,"財宝箱":10,"秘宝箱":3,"宝石箱":4,"祝福":2,"泉":2,"爆弾":11,"大爆発":6,"罠":9,"呪い":6,"盗賊":4,"落とし穴":3,"転送罠":3,"ショップ":2,"限定ショップ":1}
+        "1":{"空白":24,"小銭":14,"宝箱":10,"財宝箱":4,"秘宝箱":1,"宝石箱":2,"アイテム":3,"祝福":2,"泉":2,"爆弾":8,"大爆発":2,"罠":6,"呪い":3,"盗賊":2,"落とし穴":1,"ショップ":2,"限定ショップ":0},
+        "2":{"空白":22,"小銭":14,"宝箱":10,"財宝箱":4,"秘宝箱":1,"宝石箱":2,"アイテム":3,"祝福":2,"泉":2,"爆弾":9,"大爆発":2,"罠":6,"呪い":3,"盗賊":2,"落とし穴":1,"ショップ":2,"限定ショップ":0},
+        "3":{"空白":20,"小銭":12,"宝箱":11,"財宝箱":5,"秘宝箱":1,"宝石箱":2,"アイテム":3,"祝福":2,"泉":2,"爆弾":9,"大爆発":3,"罠":7,"呪い":4,"盗賊":3,"落とし穴":2,"ショップ":2,"限定ショップ":1},
+        "4":{"空白":18,"小銭":12,"宝箱":10,"財宝箱":6,"秘宝箱":1,"宝石箱":2,"アイテム":3,"祝福":2,"泉":2,"爆弾":10,"大爆発":3,"罠":7,"呪い":4,"盗賊":3,"落とし穴":2,"ショップ":2,"限定ショップ":1},
+        "5":{"空白":16,"小銭":11,"宝箱":10,"財宝箱":6,"秘宝箱":2,"宝石箱":3,"アイテム":3,"祝福":2,"泉":2,"爆弾":10,"大爆発":4,"罠":7,"呪い":5,"盗賊":3,"落とし穴":2,"転送罠":2,"ショップ":2,"限定ショップ":1},
+        "6":{"空白":15,"小銭":10,"宝箱":10,"財宝箱":7,"秘宝箱":2,"宝石箱":3,"アイテム":4,"祝福":2,"泉":2,"爆弾":10,"大爆発":4,"罠":8,"呪い":5,"盗賊":3,"落とし穴":2,"転送罠":2,"ショップ":2,"限定ショップ":1},
+        "7":{"空白":14,"小銭":10,"宝箱":9,"財宝箱":7,"秘宝箱":2,"宝石箱":3,"アイテム":4,"祝福":2,"泉":2,"爆弾":10,"大爆発":5,"罠":8,"呪い":5,"盗賊":4,"落とし穴":2,"転送罠":2,"ショップ":2,"限定ショップ":1},
+        "8":{"空白":12,"小銭":9,"宝箱":9,"財宝箱":8,"秘宝箱":2,"宝石箱":3,"アイテム":4,"祝福":2,"泉":2,"爆弾":11,"大爆発":5,"罠":8,"呪い":5,"盗賊":4,"落とし穴":2,"転送罠":3,"ショップ":2,"限定ショップ":1},
+        "9":{"空白":10,"小銭":8,"宝箱":8,"財宝箱":9,"秘宝箱":2,"宝石箱":4,"アイテム":5,"祝福":2,"泉":2,"爆弾":11,"大爆発":6,"罠":9,"呪い":5,"盗賊":4,"落とし穴":2,"転送罠":3,"ショップ":2,"限定ショップ":1},
+        "10":{"空白":8,"小銭":8,"宝箱":8,"財宝箱":10,"秘宝箱":3,"宝石箱":4,"アイテム":5,"祝福":2,"泉":2,"爆弾":11,"大爆発":6,"罠":9,"呪い":6,"盗賊":4,"落とし穴":3,"転送罠":3,"ショップ":2,"限定ショップ":1}
       }
     }'::jsonb,
     true
@@ -401,7 +430,9 @@ insert into public.evd_floor_value_profiles (
     blessing_min, blessing_max,
     curse_min, curse_max,
     trap_min, trap_max,
-    thief_coin_loss_min, thief_coin_loss_max
+    thief_coin_loss_min, thief_coin_loss_max,
+    jewel_gacha_rate_min, jewel_gacha_rate_max,
+    jewel_mangan_rate_min, jewel_mangan_rate_max
 )
 select
     p.id, v.floor_no,
@@ -411,20 +442,22 @@ select
     v.blessing_min, v.blessing_max,
     v.curse_min, v.curse_max,
     v.trap_min, v.trap_max,
-    v.thief_coin_loss_min, v.thief_coin_loss_max
+    v.thief_coin_loss_min, v.thief_coin_loss_max,
+    v.jewel_gacha_rate_min, v.jewel_gacha_rate_max,
+    v.jewel_mangan_rate_min, v.jewel_mangan_rate_max
 from public.evd_game_balance_profiles p
 join (
     values
-        (1, 40,120, 120,240, 280,420, 0.10,0.25, 0.08,0.25, 60,140, 150,150),
-        (2, 60,140, 160,300, 340,520, 0.12,0.28, 0.10,0.26, 80,170, 150,150),
-        (3, 80,180, 220,360, 420,650, 0.15,0.30, 0.11,0.28, 100,220, 300,300),
-        (4, 100,220, 260,420, 520,760, 0.18,0.34, 0.12,0.30, 130,260, 300,300),
-        (5, 120,260, 320,480, 650,900, 0.20,0.38, 0.14,0.32, 160,320, 500,500),
-        (6, 150,300, 360,540, 760,1050, 0.22,0.42, 0.16,0.34, 190,380, 500,500),
-        (7, 180,340, 420,620, 900,1220, 0.25,0.48, 0.18,0.36, 220,430, 800,800),
-        (8, 210,380, 480,700, 1050,1380, 0.28,0.52, 0.20,0.38, 260,500, 800,800),
-        (9, 250,420, 560,780, 1220,1560, 0.30,0.56, 0.22,0.40, 300,560, 1200,1200),
-        (10, 300,480, 650,880, 1400,1760, 0.34,0.62, 0.24,0.42, 340,620, 1200,1200)
+        (1, 40,120, 120,240, 280,420, 0.10,0.25, 0.08,0.25, 60,140, 150,150, 1.0000,1.0000, 0.3500,0.3500),
+        (2, 60,140, 160,300, 340,520, 0.12,0.28, 0.10,0.26, 80,170, 150,150, 1.0000,1.0000, 0.3500,0.3500),
+        (3, 80,180, 220,360, 420,650, 0.15,0.30, 0.11,0.28, 100,220, 300,300, 1.0000,1.0000, 0.3500,0.3500),
+        (4, 100,220, 260,420, 520,760, 0.18,0.34, 0.12,0.30, 130,260, 300,300, 1.0000,1.0000, 0.3500,0.3500),
+        (5, 120,260, 320,480, 650,900, 0.20,0.38, 0.14,0.32, 160,320, 500,500, 1.0000,1.0000, 0.3500,0.3500),
+        (6, 150,300, 360,540, 760,1050, 0.22,0.42, 0.16,0.34, 190,380, 500,500, 1.0000,1.0000, 0.3500,0.3500),
+        (7, 180,340, 420,620, 900,1220, 0.25,0.48, 0.18,0.36, 220,430, 800,800, 1.0000,1.0000, 0.3500,0.3500),
+        (8, 210,380, 480,700, 1050,1380, 0.28,0.52, 0.20,0.38, 260,500, 800,800, 1.0000,1.0000, 0.3500,0.3500),
+        (9, 250,420, 560,780, 1220,1560, 0.30,0.56, 0.22,0.40, 300,560, 1200,1200, 1.0000,1.0000, 0.3500,0.3500),
+        (10, 300,480, 650,880, 1400,1760, 0.34,0.62, 0.24,0.42, 340,620, 1200,1200, 1.0000,1.0000, 0.3500,0.3500)
 ) as v(
     floor_no,
     coin_small_min, coin_small_max,
@@ -433,7 +466,9 @@ join (
     blessing_min, blessing_max,
     curse_min, curse_max,
     trap_min, trap_max,
-    thief_coin_loss_min, thief_coin_loss_max
+    thief_coin_loss_min, thief_coin_loss_max,
+    jewel_gacha_rate_min, jewel_gacha_rate_max,
+    jewel_mangan_rate_min, jewel_mangan_rate_max
 ) on true
 where p.name = 'default'
 on conflict (profile_id, floor_no) do nothing;
@@ -443,16 +478,16 @@ select p.id, w.floor_no, w.tile_type, true, w.weight, 0, null
 from public.evd_game_balance_profiles p
 join (
     values
-      (1,'空白',24),(1,'小銭',14),(1,'宝箱',10),(1,'財宝箱',4),(1,'秘宝箱',1),(1,'宝石箱',2),(1,'祝福',2),(1,'泉',2),(1,'爆弾',8),(1,'大爆発',2),(1,'罠',6),(1,'呪い',3),(1,'盗賊',2),(1,'落とし穴',1),(1,'転送罠',0),(1,'ショップ',2),(1,'限定ショップ',0),
-      (2,'空白',22),(2,'小銭',14),(2,'宝箱',10),(2,'財宝箱',4),(2,'秘宝箱',1),(2,'宝石箱',2),(2,'祝福',2),(2,'泉',2),(2,'爆弾',9),(2,'大爆発',2),(2,'罠',6),(2,'呪い',3),(2,'盗賊',2),(2,'落とし穴',1),(2,'転送罠',0),(2,'ショップ',2),(2,'限定ショップ',0),
-      (3,'空白',20),(3,'小銭',12),(3,'宝箱',11),(3,'財宝箱',5),(3,'秘宝箱',1),(3,'宝石箱',2),(3,'祝福',2),(3,'泉',2),(3,'爆弾',9),(3,'大爆発',3),(3,'罠',7),(3,'呪い',4),(3,'盗賊',3),(3,'落とし穴',2),(3,'転送罠',0),(3,'ショップ',2),(3,'限定ショップ',1),
-      (4,'空白',18),(4,'小銭',12),(4,'宝箱',10),(4,'財宝箱',6),(4,'秘宝箱',1),(4,'宝石箱',2),(4,'祝福',2),(4,'泉',2),(4,'爆弾',10),(4,'大爆発',3),(4,'罠',7),(4,'呪い',4),(4,'盗賊',3),(4,'落とし穴',2),(4,'転送罠',0),(4,'ショップ',2),(4,'限定ショップ',1),
-      (5,'空白',16),(5,'小銭',11),(5,'宝箱',10),(5,'財宝箱',6),(5,'秘宝箱',2),(5,'宝石箱',3),(5,'祝福',2),(5,'泉',2),(5,'爆弾',10),(5,'大爆発',4),(5,'罠',7),(5,'呪い',5),(5,'盗賊',3),(5,'落とし穴',2),(5,'転送罠',2),(5,'ショップ',2),(5,'限定ショップ',1),
-      (6,'空白',15),(6,'小銭',10),(6,'宝箱',10),(6,'財宝箱',7),(6,'秘宝箱',2),(6,'宝石箱',3),(6,'祝福',2),(6,'泉',2),(6,'爆弾',10),(6,'大爆発',4),(6,'罠',8),(6,'呪い',5),(6,'盗賊',3),(6,'落とし穴',2),(6,'転送罠',2),(6,'ショップ',2),(6,'限定ショップ',1),
-      (7,'空白',14),(7,'小銭',10),(7,'宝箱',9),(7,'財宝箱',7),(7,'秘宝箱',2),(7,'宝石箱',3),(7,'祝福',2),(7,'泉',2),(7,'爆弾',10),(7,'大爆発',5),(7,'罠',8),(7,'呪い',5),(7,'盗賊',4),(7,'落とし穴',2),(7,'転送罠',2),(7,'ショップ',2),(7,'限定ショップ',1),
-      (8,'空白',12),(8,'小銭',9),(8,'宝箱',9),(8,'財宝箱',8),(8,'秘宝箱',2),(8,'宝石箱',3),(8,'祝福',2),(8,'泉',2),(8,'爆弾',11),(8,'大爆発',5),(8,'罠',8),(8,'呪い',5),(8,'盗賊',4),(8,'落とし穴',2),(8,'転送罠',3),(8,'ショップ',2),(8,'限定ショップ',1),
-      (9,'空白',10),(9,'小銭',8),(9,'宝箱',8),(9,'財宝箱',9),(9,'秘宝箱',2),(9,'宝石箱',4),(9,'祝福',2),(9,'泉',2),(9,'爆弾',11),(9,'大爆発',6),(9,'罠',9),(9,'呪い',5),(9,'盗賊',4),(9,'落とし穴',2),(9,'転送罠',3),(9,'ショップ',2),(9,'限定ショップ',1),
-      (10,'空白',8),(10,'小銭',8),(10,'宝箱',8),(10,'財宝箱',10),(10,'秘宝箱',3),(10,'宝石箱',4),(10,'祝福',2),(10,'泉',2),(10,'爆弾',11),(10,'大爆発',6),(10,'罠',9),(10,'呪い',6),(10,'盗賊',4),(10,'落とし穴',3),(10,'転送罠',3),(10,'ショップ',2),(10,'限定ショップ',1)
+      (1,'空白',24),(1,'小銭',14),(1,'宝箱',10),(1,'財宝箱',4),(1,'秘宝箱',1),(1,'宝石箱',2),(1,'アイテム',3),(1,'祝福',2),(1,'泉',2),(1,'爆弾',8),(1,'大爆発',2),(1,'罠',6),(1,'呪い',3),(1,'盗賊',2),(1,'落とし穴',1),(1,'転送罠',0),(1,'ショップ',2),(1,'限定ショップ',0),
+      (2,'空白',22),(2,'小銭',14),(2,'宝箱',10),(2,'財宝箱',4),(2,'秘宝箱',1),(2,'宝石箱',2),(2,'アイテム',3),(2,'祝福',2),(2,'泉',2),(2,'爆弾',9),(2,'大爆発',2),(2,'罠',6),(2,'呪い',3),(2,'盗賊',2),(2,'落とし穴',1),(2,'転送罠',0),(2,'ショップ',2),(2,'限定ショップ',0),
+      (3,'空白',20),(3,'小銭',12),(3,'宝箱',11),(3,'財宝箱',5),(3,'秘宝箱',1),(3,'宝石箱',2),(3,'アイテム',3),(3,'祝福',2),(3,'泉',2),(3,'爆弾',9),(3,'大爆発',3),(3,'罠',7),(3,'呪い',4),(3,'盗賊',3),(3,'落とし穴',2),(3,'転送罠',0),(3,'ショップ',2),(3,'限定ショップ',1),
+      (4,'空白',18),(4,'小銭',12),(4,'宝箱',10),(4,'財宝箱',6),(4,'秘宝箱',1),(4,'宝石箱',2),(4,'アイテム',3),(4,'祝福',2),(4,'泉',2),(4,'爆弾',10),(4,'大爆発',3),(4,'罠',7),(4,'呪い',4),(4,'盗賊',3),(4,'落とし穴',2),(4,'転送罠',0),(4,'ショップ',2),(4,'限定ショップ',1),
+      (5,'空白',16),(5,'小銭',11),(5,'宝箱',10),(5,'財宝箱',6),(5,'秘宝箱',2),(5,'宝石箱',3),(5,'アイテム',3),(5,'祝福',2),(5,'泉',2),(5,'爆弾',10),(5,'大爆発',4),(5,'罠',7),(5,'呪い',5),(5,'盗賊',3),(5,'落とし穴',2),(5,'転送罠',2),(5,'ショップ',2),(5,'限定ショップ',1),
+      (6,'空白',15),(6,'小銭',10),(6,'宝箱',10),(6,'財宝箱',7),(6,'秘宝箱',2),(6,'宝石箱',3),(6,'アイテム',4),(6,'祝福',2),(6,'泉',2),(6,'爆弾',10),(6,'大爆発',4),(6,'罠',8),(6,'呪い',5),(6,'盗賊',3),(6,'落とし穴',2),(6,'転送罠',2),(6,'ショップ',2),(6,'限定ショップ',1),
+      (7,'空白',14),(7,'小銭',10),(7,'宝箱',9),(7,'財宝箱',7),(7,'秘宝箱',2),(7,'宝石箱',3),(7,'アイテム',4),(7,'祝福',2),(7,'泉',2),(7,'爆弾',10),(7,'大爆発',5),(7,'罠',8),(7,'呪い',5),(7,'盗賊',4),(7,'落とし穴',2),(7,'転送罠',2),(7,'ショップ',2),(7,'限定ショップ',1),
+      (8,'空白',12),(8,'小銭',9),(8,'宝箱',9),(8,'財宝箱',8),(8,'秘宝箱',2),(8,'宝石箱',3),(8,'アイテム',4),(8,'祝福',2),(8,'泉',2),(8,'爆弾',11),(8,'大爆発',5),(8,'罠',8),(8,'呪い',5),(8,'盗賊',4),(8,'落とし穴',2),(8,'転送罠',3),(8,'ショップ',2),(8,'限定ショップ',1),
+      (9,'空白',10),(9,'小銭',8),(9,'宝箱',8),(9,'財宝箱',9),(9,'秘宝箱',2),(9,'宝石箱',4),(9,'アイテム',5),(9,'祝福',2),(9,'泉',2),(9,'爆弾',11),(9,'大爆発',6),(9,'罠',9),(9,'呪い',5),(9,'盗賊',4),(9,'落とし穴',2),(9,'転送罠',3),(9,'ショップ',2),(9,'限定ショップ',1),
+      (10,'空白',8),(10,'小銭',8),(10,'宝箱',8),(10,'財宝箱',10),(10,'秘宝箱',3),(10,'宝石箱',4),(10,'アイテム',5),(10,'祝福',2),(10,'泉',2),(10,'爆弾',11),(10,'大爆発',6),(10,'罠',9),(10,'呪い',6),(10,'盗賊',4),(10,'落とし穴',3),(10,'転送罠',3),(10,'ショップ',2),(10,'限定ショップ',1)
 ) as w(floor_no, tile_type, weight) on true
 where p.name = 'default'
 on conflict (profile_id, floor_no, tile_type) do nothing;
@@ -583,6 +618,16 @@ begin
             return public.evd_random_int(v_row.trap_min, v_row.trap_max);
         when '盗賊' then
             return public.evd_random_int(v_row.thief_coin_loss_min, v_row.thief_coin_loss_max);
+        when '祈願符' then
+            if p_numeric then
+                return public.evd_random_numeric(v_row.jewel_gacha_rate_min, v_row.jewel_gacha_rate_max);
+            end if;
+            return public.evd_random_int(v_row.jewel_gacha_rate_min::integer, v_row.jewel_gacha_rate_max::integer);
+        when '満願符' then
+            if p_numeric then
+                return public.evd_random_numeric(v_row.jewel_mangan_rate_min, v_row.jewel_mangan_rate_max);
+            end if;
+            return public.evd_random_int(v_row.jewel_mangan_rate_min::integer, v_row.jewel_mangan_rate_max::integer);
         else
             return 0;
     end case;
@@ -758,7 +803,11 @@ as $$
                 (p_shop_type = 'ショップ' and shop_pool in ('通常', '両方'))
              or (p_shop_type = '限定ショップ' and shop_pool in ('限定', '両方'))
            )
-         order by random()
+         order by
+            case
+                when coalesce(weight, 0) > 0 then -ln(greatest(random(), 1e-9)) / weight
+                else 1e9 + random()
+            end
          limit 3
     ) q;
 $$;
@@ -1019,6 +1068,8 @@ begin
         end loop;
 
         v_run.inventory_state := jsonb_set(v_run.inventory_state, array['carried_items'], v_carried_items, true);
+        v_run.gacha_tickets_gained := 0;
+        v_run.mangan_tickets_gained := 0;
     end if;
 
     update public.evd_game_runs
@@ -1026,6 +1077,8 @@ begin
            death_reason = p_reason,
            result_payout = greatest(v_payout, 0),
            inventory_state = v_run.inventory_state,
+           gacha_tickets_gained = v_run.gacha_tickets_gained,
+           mangan_tickets_gained = v_run.mangan_tickets_gained,
            ended_at = now(),
            updated_at = now(),
            last_active_at = now(),
@@ -1068,6 +1121,8 @@ declare
     v_profile_id uuid;
     v_profile record;
     v_floor_seed jsonb;
+    v_bomb_count integer := 0;
+    v_max_life integer := 3;
     v_inventory jsonb := jsonb_build_object(
         'items', '{}'::jsonb,
         'flags', jsonb_build_object(
@@ -1149,14 +1204,30 @@ begin
         end if;
     end loop;
 
+    if exists (
+        select 1
+          from public.evd_player_item_stocks st
+          join public.evd_item_catalog c on c.code = st.item_code
+         where st.user_id = v_user_id
+           and st.quantity > 0
+           and c.is_active = true
+           and c.shop_pool = 'レリック'
+           and c.effect_data ->> 'effect' = 'relic_max_life_plus_1'
+    ) then
+        v_max_life := v_max_life + 1;
+        v_inventory := jsonb_set(v_inventory, array['flags', 'relic_giant_cup_active'], 'true'::jsonb, true);
+    end if;
+
     insert into public.evd_game_runs (
-        user_id, account_name, generation_profile_id, status, inventory_state, substitute_negates_remaining
+        user_id, account_name, generation_profile_id, status, life, max_life, inventory_state, substitute_negates_remaining
     )
     values (
         v_user_id,
         v_profile.account_name,
         v_profile_id,
         '進行中',
+        v_max_life,
+        v_max_life,
         v_inventory,
         case when coalesce((v_inventory -> 'flags' ->> 'substitute_ready')::boolean, false) then 3 else 0 end
     )
@@ -1184,6 +1255,36 @@ begin
 
     perform public.evd_add_log(v_run_id, v_user_id, v_profile.account_name, 1, 'プレイ開始', '欲望渦巻くダンジョンへ入場した。', jsonb_build_object('carry_items', p_carry_items));
 
+    if coalesce((v_inventory -> 'flags' ->> 'relic_giant_cup_active')::boolean, false) then
+        perform public.evd_add_log(
+            v_run_id,
+            v_user_id,
+            v_profile.account_name,
+            1,
+            'レリック効果',
+            '巨人の盃が輝き、最大LIFEが 1 増加した。',
+            jsonb_build_object('effect', 'relic_max_life_plus_1')
+        );
+    end if;
+
+    if coalesce((v_inventory -> 'items' -> 'bomb_radar' ->> 'quantity')::integer, 0) > 0 then
+        select count(*)
+          into v_bomb_count
+          from jsonb_array_elements(v_floor_seed -> 'grid') as row_cells(cell_row)
+          cross join jsonb_array_elements(row_cells.cell_row) as cell(cell_item)
+         where cell.cell_item ->> 'type' in ('爆弾', '大爆発');
+
+        perform public.evd_add_log(
+            v_run_id,
+            v_user_id,
+            v_profile.account_name,
+            1,
+            '爆弾レーダー',
+            format('爆弾レーダーが反応を示した！この階層には爆弾が %s 個あるようだ・・・', v_bomb_count),
+            jsonb_build_object('bomb_count', v_bomb_count)
+        );
+    end if;
+
     return public.evd_build_snapshot(v_run_id, v_user_id);
 end;
 $$;
@@ -1200,6 +1301,7 @@ as $$
 declare
     v_run public.evd_game_runs%rowtype;
     v_floor_seed jsonb;
+    v_bomb_count integer := 0;
 begin
     select * into v_run from public.evd_game_runs where id = p_run_id and user_id = p_user_id for update;
 
@@ -1244,6 +1346,27 @@ begin
            last_active_at = now(),
            version = version + 1
      where id = p_run_id;
+
+    if coalesce((v_run.inventory_state -> 'items' -> 'bomb_radar' ->> 'quantity')::integer, 0) > 0 then
+        select count(*)
+          into v_bomb_count
+          from public.evd_run_floors f
+          cross join jsonb_array_elements(f.grid) as row_cells(cell_row)
+          cross join jsonb_array_elements(row_cells.cell_row) as cell(cell_item)
+         where f.run_id = p_run_id
+           and f.floor_no = p_target_floor
+           and cell.cell_item ->> 'type' in ('爆弾', '大爆発');
+
+        perform public.evd_add_log(
+            p_run_id,
+            p_user_id,
+            v_run.account_name,
+            p_target_floor,
+            '爆弾レーダー',
+            format('爆弾レーダーが反応を示した！この階層には爆弾が %s 個あるようだ・・・', v_bomb_count),
+            jsonb_build_object('bomb_count', v_bomb_count)
+        );
+    end if;
 end;
 $$;
 
@@ -1267,9 +1390,16 @@ declare
     v_message text := '';
     v_rate_delta numeric := 0;
     v_new_multiplier numeric := 1;
+    v_gacha_rate numeric := 0;
+    v_mangan_rate numeric := 0;
+    v_gacha_gain integer := 0;
+    v_mangan_gain integer := 0;
     v_ransom integer := 0;
     v_item_to_lose text;
     v_item_to_lose_name text;
+    v_pick_item_code text;
+    v_pick_item_name text;
+    v_pick_item_effect text;
     v_offers jsonb;
 begin
     if v_user_id = '' then
@@ -1336,11 +1466,69 @@ begin
             update public.evd_game_runs set badges_gained = badges_gained + 1 where id = p_run_id;
             v_message := '秘宝箱を見つけ、秘宝バッジを 1 個確保した。';
         when '宝石箱' then
+            v_gacha_rate := greatest(0, least(1, coalesce(public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '祈願符', true), 1)));
+            v_mangan_rate := greatest(0, least(1, coalesce(public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '満願符', true), 0.35)));
+            v_gacha_gain := case when random() < v_gacha_rate then 1 else 0 end;
+            v_mangan_gain := case when random() < v_mangan_rate then 1 else 0 end;
             update public.evd_game_runs
-               set gacha_tickets_gained = gacha_tickets_gained + 1,
-                   mangan_tickets_gained = mangan_tickets_gained + case when random() < 0.35 then 1 else 0 end
+               set gacha_tickets_gained = gacha_tickets_gained + v_gacha_gain,
+                   mangan_tickets_gained = mangan_tickets_gained + v_mangan_gain
              where id = p_run_id;
-            v_message := '宝石箱から祈願符と満願符を得た。';
+            v_message := format('宝石箱から祈願符 %s 枚、満願符 %s 枚を得た。', v_gacha_gain, v_mangan_gain);
+        when 'アイテム' then
+            with weighted_pool as (
+                select
+                    code,
+                    name,
+                    effect_data ->> 'effect' as effect,
+                    weight,
+                    sum(weight) over () as total_weight,
+                    sum(weight) over (order by sort_order, code) as cumulative_weight
+                  from public.evd_item_catalog
+                 where is_active = true
+                   and shop_pool <> 'レリック'
+                   and weight > 0
+            ),
+            draw as (
+                select random() * coalesce(max(total_weight), 0) as roll
+                  from weighted_pool
+            )
+            select wp.code, wp.name, wp.effect
+              into v_pick_item_code, v_pick_item_name, v_pick_item_effect
+              from weighted_pool wp
+              cross join draw d
+             where wp.cumulative_weight >= d.roll
+             order by wp.cumulative_weight
+             limit 1;
+
+            if v_pick_item_code is null then
+                v_message := '不思議なマスだったが、何も手に入らなかった。';
+            elsif v_pick_item_effect = 'substitute' then
+                update public.evd_game_runs
+                   set substitute_negates_remaining = substitute_negates_remaining + 3
+                 where id = p_run_id;
+                v_message := format('%s を引き当てた。身代わり効果が付与された。', v_pick_item_name);
+            elsif v_pick_item_effect = 'insurance' then
+                update public.evd_game_runs
+                   set inventory_state = jsonb_set(inventory_state, array['flags', 'insurance_active'], 'true'::jsonb, true)
+                 where id = p_run_id;
+                v_message := format('%s を引き当てた。死亡時保険が有効化された。', v_pick_item_name);
+            elsif v_pick_item_effect = 'golden_contract' then
+                update public.evd_game_runs
+                   set inventory_state = jsonb_set(inventory_state, array['flags', 'golden_contract_active'], 'true'::jsonb, true)
+                 where id = p_run_id;
+                v_message := format('%s を引き当てた。帰還時の倍率効果が有効化された。', v_pick_item_name);
+            elsif v_pick_item_effect = 'vault_box' then
+                update public.evd_game_runs
+                   set secured_coins = secured_coins + floor(run_coins * 0.7)::integer
+                 where id = p_run_id;
+                v_message := format('%s を引き当てた。所持コインの 70%% を確保した。', v_pick_item_name);
+            else
+                update public.evd_game_runs
+                   set inventory_state = public.evd_add_item(inventory_state, v_pick_item_code, 1)
+                 where id = p_run_id;
+                v_message := format('%s を手に入れた。', v_pick_item_name);
+            end if;
         when '祝福' then
             v_rate_delta := public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '祝福', true);
             update public.evd_game_runs
@@ -1736,7 +1924,7 @@ begin
       from public.evd_item_catalog
      where code = p_item_code;
 
-    if not found or not v_item.is_active or v_item.shop_pool not in ('通常', '両方') then
+    if not found or not v_item.is_active or v_item.shop_pool not in ('通常', '両方', 'レリック') then
         raise exception '購入できないアイテムです';
     end if;
 

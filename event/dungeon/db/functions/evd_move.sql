@@ -18,9 +18,16 @@ declare
     v_message text := '';
     v_rate_delta numeric := 0;
     v_new_multiplier numeric := 1;
+    v_gacha_rate numeric := 0;
+    v_mangan_rate numeric := 0;
+    v_gacha_gain integer := 0;
+    v_mangan_gain integer := 0;
     v_ransom integer := 0;
     v_item_to_lose text;
     v_item_to_lose_name text;
+    v_pick_item_code text;
+    v_pick_item_name text;
+    v_pick_item_effect text;
     v_offers jsonb;
 begin
     if v_user_id = '' then
@@ -87,11 +94,69 @@ begin
             update public.evd_game_runs set badges_gained = badges_gained + 1 where id = p_run_id;
             v_message := '秘宝箱を見つけ、秘宝バッジを 1 個確保した。';
         when '宝石箱' then
+            v_gacha_rate := greatest(0, least(1, coalesce(public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '祈願符', true), 1)));
+            v_mangan_rate := greatest(0, least(1, coalesce(public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '満願符', true), 0.35)));
+            v_gacha_gain := case when random() < v_gacha_rate then 1 else 0 end;
+            v_mangan_gain := case when random() < v_mangan_rate then 1 else 0 end;
             update public.evd_game_runs
-               set gacha_tickets_gained = gacha_tickets_gained + 1,
-                   mangan_tickets_gained = mangan_tickets_gained + case when random() < 0.35 then 1 else 0 end
+               set gacha_tickets_gained = gacha_tickets_gained + v_gacha_gain,
+                   mangan_tickets_gained = mangan_tickets_gained + v_mangan_gain
              where id = p_run_id;
-            v_message := '宝石箱から祈願符と満願符を得た。';
+            v_message := format('宝石箱から祈願符 %s 枚、満願符 %s 枚を得た。', v_gacha_gain, v_mangan_gain);
+        when 'アイテム' then
+            with weighted_pool as (
+                select
+                    code,
+                    name,
+                    effect_data ->> 'effect' as effect,
+                    weight,
+                    sum(weight) over () as total_weight,
+                    sum(weight) over (order by sort_order, code) as cumulative_weight
+                 from public.evd_item_catalog
+                 where is_active = true
+                   and shop_pool <> 'レリック'
+                   and weight > 0
+            ),
+            draw as (
+                select random() * coalesce(max(total_weight), 0) as roll
+                  from weighted_pool
+            )
+            select wp.code, wp.name, wp.effect
+              into v_pick_item_code, v_pick_item_name, v_pick_item_effect
+              from weighted_pool wp
+              cross join draw d
+             where wp.cumulative_weight >= d.roll
+             order by wp.cumulative_weight
+             limit 1;
+
+            if v_pick_item_code is null then
+                v_message := '不思議なマスだったが、何も手に入らなかった。';
+            elsif v_pick_item_effect = 'substitute' then
+                update public.evd_game_runs
+                   set substitute_negates_remaining = substitute_negates_remaining + 3
+                 where id = p_run_id;
+                v_message := format('%s を引き当てた。身代わり効果が付与された。', v_pick_item_name);
+            elsif v_pick_item_effect = 'insurance' then
+                update public.evd_game_runs
+                   set inventory_state = jsonb_set(inventory_state, array['flags', 'insurance_active'], 'true'::jsonb, true)
+                 where id = p_run_id;
+                v_message := format('%s を引き当てた。死亡時保険が有効化された。', v_pick_item_name);
+            elsif v_pick_item_effect = 'golden_contract' then
+                update public.evd_game_runs
+                   set inventory_state = jsonb_set(inventory_state, array['flags', 'golden_contract_active'], 'true'::jsonb, true)
+                 where id = p_run_id;
+                v_message := format('%s を引き当てた。帰還時の倍率効果が有効化された。', v_pick_item_name);
+            elsif v_pick_item_effect = 'vault_box' then
+                update public.evd_game_runs
+                   set secured_coins = secured_coins + floor(run_coins * 0.7)::integer
+                 where id = p_run_id;
+                v_message := format('%s を引き当てた。所持コインの 70%% を確保した。', v_pick_item_name);
+            else
+                update public.evd_game_runs
+                   set inventory_state = public.evd_add_item(inventory_state, v_pick_item_code, 1)
+                 where id = p_run_id;
+                v_message := format('%s を手に入れた。', v_pick_item_name);
+            end if;
         when '祝福' then
             v_rate_delta := public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '祝福', true);
             update public.evd_game_runs

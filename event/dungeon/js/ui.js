@@ -11,7 +11,8 @@
         holy_grail: '🏆',
         insurance_token: '🛡️',
         golden_contract: '📜',
-        substitute_doll: '🪆'
+        substitute_doll: '🪆',
+        giant_cup: '🏆'
     };
     const TILE_POPUP_META = {
         '空白': { icon: '🪨', title: '空白マス' },
@@ -20,6 +21,7 @@
         '財宝箱': { icon: '💰', title: '財宝箱' },
         '秘宝箱': { icon: '📛', title: '秘宝箱' },
         '宝石箱': { icon: '💎', title: '宝石箱' },
+        'アイテム': { icon: '🎁', title: 'アイテム' },
         '祝福': { icon: '✨', title: '祝福' },
         '泉': { icon: '⛲', title: '泉' },
         '爆弾': { icon: '💣', title: '爆弾' },
@@ -50,17 +52,6 @@
         return String(message || '')
             .replace(/ライフを\s*(\d+)\s*失った/g, '❤を$1失った')
             .replace(/ライフを\s*(\d+)\s*回復した/g, '❤を$1回復した');
-    }
-
-    function countBombTiles(floor) {
-        const grid = floor?.grid || [];
-        let count = 0;
-        for (const row of grid) {
-            for (const cell of row || []) {
-                if (cell?.type === '爆弾' || cell?.type === '大爆発') count += 1;
-            }
-        }
-        return count;
     }
 
     function playerAvatarUrl(user) {
@@ -160,7 +151,7 @@
         if (!wrap) return;
 
         const stockMap = Object.fromEntries((stocks || []).map((stock) => [stock.item_code, stock.quantity]));
-        const buyable = (catalog || []).filter((item) => ['通常', '両方'].includes(item.shop_pool));
+        const buyable = (catalog || []).filter((item) => ['通常', '両方', 'レリック'].includes(item.shop_pool));
 
         if (!buyable.length) {
             wrap.innerHTML = '<div class="dungeon-empty">購入できるアイテムがありません。</div>';
@@ -180,7 +171,7 @@
                             <div class="carry-item-meta">価格 ${formatNumber(item.base_price)} / 所持 ${formatNumber(stock)} / ${item.shop_pool}</div>
                         </div>
                     </div>
-                    <button class="btn btn-sm dungeon-btn-primary" data-buy-stock="${item.code}" ${disabled ? 'disabled' : ''}>購入</button>
+                    <button class="dungeon-btn-primary prep-shop-buy-btn" data-buy-stock="${item.code}" ${disabled ? 'disabled' : ''}>購入</button>
                 </div>
             `;
         }).join('');
@@ -212,10 +203,7 @@
         const flags = run.inventory_state?.flags || {};
         const bonusMap = run.inventory_state?.floor_bonus_preview || {};
         const nextBonus = bonusMap[String(Math.min(run.current_floor + 1, run.max_floors))] || 0;
-        const hasBombRadar = coalesceHasItem(run, 'bomb_radar');
-        const bombCountText = hasBombRadar ? `${countBombTiles(state.floor)} 個` : '-';
         setTexts(['hud-next-bonus', 'mobile-hud-next-bonus'], `${formatNumber(nextBonus)} コイン`);
-        setTexts(['hud-bomb-count', 'mobile-hud-bomb-count'], bombCountText);
         setTexts(['hud-final-multiplier', 'mobile-hud-final-multiplier'], `x${Number(run.final_return_multiplier || 1).toFixed(1)}`);
         setText('run-status', run.status);
         setText('run-flags', [
@@ -225,11 +213,6 @@
             flags.hazards_known ? '厄災可視化中' : null,
             flags.bombs_known ? '爆弾可視化中' : null
         ].filter(Boolean).join(' / ') || '特記事項なし');
-    }
-
-    function coalesceHasItem(run, code) {
-        const qty = Number(run?.inventory_state?.items?.[code]?.quantity || 0);
-        return qty > 0;
     }
 
     function renderInventoryInto(wrap, run, catalog) {
@@ -421,6 +404,15 @@
         overlay.classList.add('show');
     }
 
+    function showNoticePopup(title, message, icon = '🔔') {
+        const overlay = el('tile-popup');
+        if (!overlay) return;
+        setText('tile-popup-icon', icon);
+        setText('tile-popup-title', title || 'お知らせ');
+        setText('tile-popup-message', normalizeLifeMessage(message || ''));
+        overlay.classList.add('show');
+    }
+
     function hideTilePopup() {
         el('tile-popup')?.classList.remove('show');
     }
@@ -497,6 +489,7 @@
         setBusy,
         setStatus,
         showTilePopup,
+        showNoticePopup,
         hideTilePopup,
         setMobileDirectionPadVisible,
         bindCarrySelection,

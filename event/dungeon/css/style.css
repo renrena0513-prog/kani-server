@@ -246,6 +246,19 @@
             gap: 12px;
         }
 
+        .prep-shop-buy-btn {
+            min-width: 96px;
+            width: 96px;
+            min-height: 44px;
+            padding: 10px 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 0.95rem;
+            line-height: 1;
+        }
+
         .carry-item.selected {
             border-color: rgba(241, 213, 141, 0.5);
             background: rgba(241, 213, 141, 0.12);

@@ -41,6 +41,16 @@ begin
             return public.evd_random_int(v_row.trap_min, v_row.trap_max);
         when '盗賊' then
             return public.evd_random_int(v_row.thief_coin_loss_min, v_row.thief_coin_loss_max);
+        when '祈願符' then
+            if p_numeric then
+                return public.evd_random_numeric(v_row.jewel_gacha_rate_min, v_row.jewel_gacha_rate_max);
+            end if;
+            return public.evd_random_int(v_row.jewel_gacha_rate_min::integer, v_row.jewel_gacha_rate_max::integer);
+        when '満願符' then
+            if p_numeric then
+                return public.evd_random_numeric(v_row.jewel_mangan_rate_min, v_row.jewel_mangan_rate_max);
+            end if;
+            return public.evd_random_int(v_row.jewel_mangan_rate_min::integer, v_row.jewel_mangan_rate_max::integer);
         else
             return 0;
     end case;

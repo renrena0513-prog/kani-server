@@ -61,6 +61,8 @@ begin
         end loop;
 
         v_run.inventory_state := jsonb_set(v_run.inventory_state, array['carried_items'], v_carried_items, true);
+        v_run.gacha_tickets_gained := 0;
+        v_run.mangan_tickets_gained := 0;
     end if;
 
     update public.evd_game_runs
@@ -68,6 +70,8 @@ begin
            death_reason = p_reason,
            result_payout = greatest(v_payout, 0),
            inventory_state = v_run.inventory_state,
+           gacha_tickets_gained = v_run.gacha_tickets_gained,
+           mangan_tickets_gained = v_run.mangan_tickets_gained,
            ended_at = now(),
            updated_at = now(),
            last_active_at = now(),

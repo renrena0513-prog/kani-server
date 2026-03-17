@@ -16,7 +16,11 @@ as $$
                 (p_shop_type = 'ショップ' and shop_pool in ('通常', '両方'))
              or (p_shop_type = '限定ショップ' and shop_pool in ('限定', '両方'))
            )
-         order by random()
+         order by
+            case
+                when coalesce(weight, 0) > 0 then -ln(greatest(random(), 1e-9)) / weight
+                else 1e9 + random()
+            end
          limit 3
     ) q;
 $$;

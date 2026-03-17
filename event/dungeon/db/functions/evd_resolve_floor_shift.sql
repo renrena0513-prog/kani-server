@@ -10,6 +10,7 @@ as $$
 declare
     v_run public.evd_game_runs%rowtype;
     v_floor_seed jsonb;
+    v_bomb_count integer := 0;
 begin
     select * into v_run from public.evd_game_runs where id = p_run_id and user_id = p_user_id for update;
 
@@ -54,5 +55,26 @@ begin
            last_active_at = now(),
            version = version + 1
      where id = p_run_id;
+
+    if coalesce((v_run.inventory_state -> 'items' -> 'bomb_radar' ->> 'quantity')::integer, 0) > 0 then
+        select count(*)
+          into v_bomb_count
+          from public.evd_run_floors f
+          cross join jsonb_array_elements(f.grid) as row_cells(cell_row)
+          cross join jsonb_array_elements(row_cells.cell_row) as cell(cell_item)
+         where f.run_id = p_run_id
+           and f.floor_no = p_target_floor
+           and cell.cell_item ->> 'type' in ('爆弾', '大爆発');
+
+        perform public.evd_add_log(
+            p_run_id,
+            p_user_id,
+            v_run.account_name,
+            p_target_floor,
+            '爆弾レーダー',
+            format('爆弾レーダーが反応を示した！この階層には爆弾が %s 個あるようだ・・・', v_bomb_count),
+            jsonb_build_object('bomb_count', v_bomb_count)
+        );
+    end if;
 end;
 $$;

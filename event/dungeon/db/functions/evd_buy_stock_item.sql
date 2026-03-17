@@ -32,7 +32,7 @@ begin
       from public.evd_item_catalog
      where code = p_item_code;
 
-    if not found or not v_item.is_active or v_item.shop_pool not in ('通常', '両方') then
+    if not found or not v_item.is_active or v_item.shop_pool not in ('通常', '両方', 'レリック') then
         raise exception '購入できないアイテムです';
     end if;
 

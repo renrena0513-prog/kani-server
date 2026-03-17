@@ -10,6 +10,8 @@ declare
     v_profile_id uuid;
     v_profile record;
     v_floor_seed jsonb;
+    v_bomb_count integer := 0;
+    v_max_life integer := 3;
     v_inventory jsonb := jsonb_build_object(
         'items', '{}'::jsonb,
         'flags', jsonb_build_object(
@@ -91,14 +93,30 @@ begin
         end if;
     end loop;
 
+    if exists (
+        select 1
+          from public.evd_player_item_stocks st
+          join public.evd_item_catalog c on c.code = st.item_code
+         where st.user_id = v_user_id
+           and st.quantity > 0
+           and c.is_active = true
+           and c.shop_pool = 'レリック'
+           and c.effect_data ->> 'effect' = 'relic_max_life_plus_1'
+    ) then
+        v_max_life := v_max_life + 1;
+        v_inventory := jsonb_set(v_inventory, array['flags', 'relic_giant_cup_active'], 'true'::jsonb, true);
+    end if;
+
     insert into public.evd_game_runs (
-        user_id, account_name, generation_profile_id, status, inventory_state, substitute_negates_remaining
+        user_id, account_name, generation_profile_id, status, life, max_life, inventory_state, substitute_negates_remaining
     )
     values (
         v_user_id,
         v_profile.account_name,
         v_profile_id,
         '進行中',
+        v_max_life,
+        v_max_life,
         v_inventory,
         case when coalesce((v_inventory -> 'flags' ->> 'substitute_ready')::boolean, false) then 3 else 0 end
     )
@@ -124,7 +142,37 @@ begin
         '進行中'
     );
 
-    perform public.evd_add_log(v_run_id, v_user_id, v_profile.account_name, 1, 'プレイ開始', '欲望ダンジョンへ入場した。', jsonb_build_object('carry_items', p_carry_items));
+    perform public.evd_add_log(v_run_id, v_user_id, v_profile.account_name, 1, 'プレイ開始', '欲望渦巻くダンジョンへ入場した。', jsonb_build_object('carry_items', p_carry_items));
+
+    if coalesce((v_inventory -> 'flags' ->> 'relic_giant_cup_active')::boolean, false) then
+        perform public.evd_add_log(
+            v_run_id,
+            v_user_id,
+            v_profile.account_name,
+            1,
+            'レリック効果',
+            '巨人の盃が輝き、最大LIFEが 1 増加した。',
+            jsonb_build_object('effect', 'relic_max_life_plus_1')
+        );
+    end if;
+
+    if coalesce((v_inventory -> 'items' -> 'bomb_radar' ->> 'quantity')::integer, 0) > 0 then
+        select count(*)
+          into v_bomb_count
+          from jsonb_array_elements(v_floor_seed -> 'grid') as row_cells(cell_row)
+          cross join jsonb_array_elements(row_cells.cell_row) as cell(cell_item)
+         where cell.cell_item ->> 'type' in ('爆弾', '大爆発');
+
+        perform public.evd_add_log(
+            v_run_id,
+            v_user_id,
+            v_profile.account_name,
+            1,
+            '爆弾レーダー',
+            format('爆弾レーダーが反応を示した！この階層には爆弾が %s 個あるようだ・・・', v_bomb_count),
+            jsonb_build_object('bomb_count', v_bomb_count)
+        );
+    end if;
 
     return public.evd_build_snapshot(v_run_id, v_user_id);
 end;
