@@ -64,6 +64,15 @@
             letter-spacing: 0.04em;
         }
 
+        .hero-outline-text {
+            text-shadow:
+                -1px -1px 0 rgba(0, 0, 0, 0.88),
+                 1px -1px 0 rgba(0, 0, 0, 0.88),
+                -1px  1px 0 rgba(0, 0, 0, 0.88),
+                 1px  1px 0 rgba(0, 0, 0, 0.88),
+                 0 2px 10px rgba(0, 0, 0, 0.45);
+        }
+
         .dungeon-lead {
             color: var(--dungeon-muted);
             max-width: 760px;

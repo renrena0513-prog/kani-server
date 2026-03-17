@@ -458,7 +458,7 @@ where p.name = 'default'
 on conflict (profile_id, floor_no, tile_type) do nothing;
 
 insert into public.page_settings (path, name, is_active)
-values ('/event/dungeon/index.html', '期間限定イベント：欲望ダンジョン', true)
+values ('/event/dungeon/index.html', '期間限定イベント：欲望渦巻くダンジョン', true)
 on conflict (path) do update
 set name = excluded.name,
     is_active = excluded.is_active;
@@ -1144,7 +1144,7 @@ begin
         '進行中'
     );
 
-    perform public.evd_add_log(v_run_id, v_user_id, v_profile.account_name, 1, 'プレイ開始', '欲望ダンジョンへ入場した。', jsonb_build_object('carry_items', p_carry_items));
+    perform public.evd_add_log(v_run_id, v_user_id, v_profile.account_name, 1, 'プレイ開始', '欲望渦巻くダンジョンへ入場した。', jsonb_build_object('carry_items', p_carry_items));
 
     return public.evd_build_snapshot(v_run_id, v_user_id);
 end;
