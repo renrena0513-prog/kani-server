@@ -398,6 +398,9 @@
                 banner.textContent = '';
             }
             el('shop-held-panel')?.classList.add('d-none');
+            el('shop-offers')?.classList.remove('d-none');
+            el('shop-skip-btn')?.classList.remove('d-none');
+            el('shop-notice-line')?.classList.remove('d-none');
             setText('shop-held-toggle-btn', '所持アイテム');
             setHtml('shop-held-items', '');
             return;
@@ -407,6 +410,9 @@
         setText('shop-run-coins', formatNumber(state.run?.run_coins || 0));
         setText('shop-held-toggle-btn', '所持アイテム');
         el('shop-held-panel')?.classList.add('d-none');
+        el('shop-offers')?.classList.remove('d-none');
+        el('shop-skip-btn')?.classList.remove('d-none');
+        el('shop-notice-line')?.classList.remove('d-none');
         if (banner) {
             if (latest?.payload?.tile_type && ['ショップ', '限定ショップ'].includes(latest.payload.tile_type) && latest?.message) {
                 banner.textContent = latest.message;

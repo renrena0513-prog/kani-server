@@ -377,9 +377,16 @@
         onToggleShopHeldItems: () => {
             const panel = document.getElementById('shop-held-panel');
             const button = document.getElementById('shop-held-toggle-btn');
-            if (!panel || !button) return;
-            const isHidden = panel.classList.toggle('d-none');
-            button.textContent = isHidden ? '所持アイテム' : '所持アイテムを閉じる';
+            const offers = document.getElementById('shop-offers');
+            const skip = document.getElementById('shop-skip-btn');
+            const notice = document.querySelector('.shop-notice-line');
+            if (!panel || !button || !offers || !skip || !notice) return;
+            const showHeldOnly = panel.classList.contains('d-none');
+            panel.classList.toggle('d-none', !showHeldOnly);
+            offers.classList.toggle('d-none', showHeldOnly);
+            skip.classList.toggle('d-none', showHeldOnly);
+            notice.classList.toggle('d-none', showHeldOnly);
+            button.textContent = showHeldOnly ? '買い物に戻る' : '所持アイテム';
         },
         onToggleMobilePad: () => {
             state.mobilePadVisible = !state.mobilePadVisible;
