@@ -562,8 +562,18 @@
             color: #f7f3e8;
         }
 
+        .dungeon-mobile-modal .modal-title,
+        .dungeon-mobile-modal .modal-body,
+        .dungeon-mobile-modal .modal-body * {
+            color: #f7f3e8;
+        }
+
         .dungeon-mobile-modal .modal-header {
             border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        #shop-modal .btn-close {
+            display: none !important;
         }
 
         .dungeon-mobile-modal .modal-body {
