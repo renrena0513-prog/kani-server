@@ -67,6 +67,10 @@
         }
         if (screenName !== 'game') {
             setMobileDirectionPadVisible(false);
+            const shopModalEl = el('shop-modal');
+            if (shopModalEl && window.bootstrap?.Modal) {
+                window.bootstrap.Modal.getOrCreateInstance(shopModalEl).hide();
+            }
         }
     }
 
@@ -237,17 +241,17 @@
     }
 
     function renderShop(state) {
-        const panel = el('shop-panel');
-        if (!panel) return;
+        const modalEl = el('shop-modal');
+        if (!modalEl || !window.bootstrap?.Modal) return;
         const offers = state.run?.inventory_state?.pending_shop?.offers || [];
         const type = state.run?.inventory_state?.pending_shop?.shop_type;
+        const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
 
         if (!offers.length) {
-            panel.classList.add('d-none');
+            modal.hide();
             return;
         }
 
-        panel.classList.remove('d-none');
         setText('shop-title', type === '限定ショップ' ? '限定商人が現れた' : '行商人に出会った');
         setHtml('shop-offers', offers.map((offer) => `
             <button class="shop-offer" data-buy-item="${offer.code}">
@@ -256,6 +260,9 @@
                 <div class="shop-offer-price">${formatNumber(offer.price)} コイン</div>
             </button>
         `).join(''));
+        if (!modalEl.classList.contains('show')) {
+            modal.show();
+        }
     }
 
     function renderLogs(logs, targetId = 'adventure-log') {

@@ -123,11 +123,6 @@
                                 <button id="stairs-descend-btn" class="dungeon-btn-primary" data-busy-disable>次の階へ進む</button>
                             </div>
                         </div>
-                        <div id="shop-panel" class="choice-panel d-none mt-4">
-                            <div id="shop-title" class="fw-bold mb-2">ショップ</div>
-                            <div id="shop-offers" class="shop-offers"></div>
-                            <button id="shop-skip-btn" class="dungeon-btn-secondary mt-3" data-busy-disable>何も買わず立ち去る</button>
-                        </div>
                     </div>
                 </div>
 
@@ -214,6 +209,21 @@
                 </div>
                 <div class="modal-body">
                     <div id="mobile-inventory-list" class="inventory-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="shop-modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+            <div class="modal-content dungeon-mobile-modal">
+                <div class="modal-header">
+                    <h5 id="shop-title" class="modal-title">ショップ</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="shop-offers" class="shop-offers"></div>
+                    <button id="shop-skip-btn" class="dungeon-btn-secondary mt-3 w-100" data-busy-disable>何も買わず立ち去る</button>
                 </div>
             </div>
         </div>

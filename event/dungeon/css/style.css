@@ -65,12 +65,18 @@
         }
 
         .hero-outline-text {
+            color: #ffffff !important;
             text-shadow:
                 -1px -1px 0 rgba(0, 0, 0, 0.88),
                  1px -1px 0 rgba(0, 0, 0, 0.88),
                 -1px  1px 0 rgba(0, 0, 0, 0.88),
                  1px  1px 0 rgba(0, 0, 0, 0.88),
                  0 2px 10px rgba(0, 0, 0, 0.45);
+        }
+
+        .dungeon-hero .dungeon-lead {
+            color: #ffffff;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
         }
 
         .dungeon-lead {

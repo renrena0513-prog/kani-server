@@ -539,8 +539,8 @@ begin
     update public.profiles
        set coins = coalesce(coins, 0) + greatest(v_payout, 0),
            total_assets = coalesce(total_assets, 0) + greatest(v_payout, 0),
-           gacha_tickets = coalesce(gacha_tickets, 0) + coalesce(v_run.gacha_tickets_gained, 0),
-           mangan_tickets = coalesce(mangan_tickets, 0) + coalesce(v_run.mangan_tickets_gained, 0)
+           gacha_tickets = coalesce(gacha_tickets, 0) + case when p_status = '帰還' then coalesce(v_run.gacha_tickets_gained, 0) else 0 end,
+           mangan_tickets = coalesce(mangan_tickets, 0) + case when p_status = '帰還' then coalesce(v_run.mangan_tickets_gained, 0) else 0 end
      where discord_user_id = p_user_id;
 
     perform public.evd_add_log(
@@ -902,7 +902,7 @@ begin
             end if;
         when '落とし穴' then
             v_damage := 1;
-            v_message := '落とし穴に落ち、1 階下へ落下した。';
+            v_message := '落とし穴に落ち、ライフを 1 失って 1 階下へ落下した。';
         when '転送罠' then
             v_message := '転送罠が発動し、2 階層上へ戻された。';
         when 'ショップ' then
@@ -1217,4 +1217,3 @@ begin
     );
 end;
 $$;
-

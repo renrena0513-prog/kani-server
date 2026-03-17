@@ -149,7 +149,7 @@ begin
             end if;
         when '落とし穴' then
             v_damage := 1;
-            v_message := '落とし穴に落ち、1 階下へ落下した。';
+            v_message := '落とし穴に落ち、ライフを 1 失って 1 階下へ落下した。';
         when '転送罠' then
             v_message := '転送罠が発動し、2 階層上へ戻された。';
         when 'ショップ' then
