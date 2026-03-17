@@ -240,6 +240,7 @@
             .game-layout-row {
                 --bs-gutter-x: 20px;
                 --bs-gutter-y: 20px;
+                align-items: flex-start;
             }
 
             .game-board-panel {

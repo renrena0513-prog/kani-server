@@ -59,7 +59,7 @@
         if (!state.run || !state.floor) return;
         ui.showScreen('game');
         ui.renderHud(state);
-        ui.renderInventory(state.run, state.catalog);
+        ui.renderInventory(state);
         ui.renderBoard(state);
         ui.renderShop(state);
         ui.renderLogs(state.logs);

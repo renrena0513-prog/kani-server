@@ -1724,7 +1724,7 @@ begin
             update public.evd_game_runs
                set substitute_negates_remaining = substitute_negates_remaining - 1
              where id = p_run_id;
-            v_message := format('身代わり人形が砕け、%s を無効化した。', v_cell ->> 'type');
+            v_message := format('身代わり人形が砕け、%s を無効化した。あと %s 回。', v_cell ->> 'type', greatest(v_run.substitute_negates_remaining - 1, 0));
             v_damage := 0;
         else
             update public.evd_game_runs
@@ -1738,7 +1738,7 @@ begin
             update public.evd_game_runs
                set substitute_negates_remaining = substitute_negates_remaining - 1
              where id = p_run_id;
-            v_message := format('身代わり人形が砕け、%s を無効化した。', v_cell ->> 'type');
+            v_message := format('身代わり人形が砕け、%s を無効化した。あと %s 回。', v_cell ->> 'type', greatest(v_run.substitute_negates_remaining - 1, 0));
         else
             update public.evd_game_runs
                set run_coins = greatest(run_coins + v_coin_delta, 0)

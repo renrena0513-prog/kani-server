@@ -209,17 +209,19 @@
         setTexts(['hud-life', 'mobile-hud-life'], lifeText);
         setText('mobile-life-fixed', `LIFE ${lifeText}`);
         setTexts(['hud-run-coins', 'mobile-hud-run-coins'], formatNumber(run.run_coins));
-        setTexts(['hud-badges', 'mobile-hud-badges'], formatNumber(run.badges_gained));
         setTexts(['hud-gacha', 'mobile-hud-gacha'], formatNumber(run.gacha_tickets_gained));
         setTexts(['hud-mangan', 'mobile-hud-mangan'], formatNumber(run.mangan_tickets_gained));
-        setTexts(['hud-negates', 'mobile-hud-negates'], formatNumber(run.substitute_negates_remaining));
         setTexts(['hud-wallet', 'mobile-hud-wallet'], formatNumber(profile.coins));
 
         const flags = run.inventory_state?.flags || {};
         const bonusMap = run.inventory_state?.floor_bonus_preview || {};
         const nextBonus = bonusMap[String(Math.min(run.current_floor + 1, run.max_floors))] || 0;
+        const returnMultiplier = Number(run.final_return_multiplier || 1)
+            * (flags.golden_contract_active ? 2 : 1);
+        const returnCoins = Math.floor((Number(run.run_coins || 0) + Number(run.secured_coins || 0)) * returnMultiplier);
         setTexts(['hud-next-bonus', 'mobile-hud-next-bonus'], `${formatNumber(nextBonus)} コイン`);
-        setTexts(['hud-final-multiplier', 'mobile-hud-final-multiplier'], `x${Number(run.final_return_multiplier || 1).toFixed(2)}`);
+        setTexts(['hud-final-multiplier', 'mobile-hud-final-multiplier'], `x${returnMultiplier.toFixed(2)}`);
+        setTexts(['hud-return-coins', 'mobile-hud-return-coins'], `${formatNumber(returnCoins)} コイン`);
         setText('run-status', run.status);
         setText('run-flags', [
             flags.insurance_active ? '保険札' : null,
@@ -230,11 +232,20 @@
         ].filter(Boolean).join(' / ') || '特記事項なし');
     }
 
-    function renderInventoryInto(wrap, run, catalog) {
+    function renderInventoryInto(wrap, run, catalog, floor = null) {
         if (!wrap || !run) return;
         const items = run.inventory_state?.items || {};
+        const carriedItems = run.inventory_state?.carried_items || {};
         const catalogMap = Object.fromEntries((catalog || []).map((item) => [item.code, item]));
         const itemCodes = Object.keys(items).filter((code) => items[code]?.quantity > 0);
+        const bombCount = (floor?.grid || []).reduce((total, row) => total + (row || []).filter((cell) => (
+            cell?.type === '爆弾' || cell?.type === '大爆発'
+        )).length, 0);
+        const hasSubstituteDoll = Number(run.substitute_negates_remaining || 0) > 0
+            && Number(carriedItems.substitute_doll?.quantity || 0) > 0;
+        if (hasSubstituteDoll && !itemCodes.includes('substitute_doll')) {
+            itemCodes.push('substitute_doll');
+        }
 
         if (!itemCodes.length) {
             wrap.innerHTML = '<div class="dungeon-empty">所持アイテムはありません。</div>';
@@ -242,16 +253,24 @@
         }
 
         wrap.innerHTML = itemCodes.map((code) => {
-            const itemState = items[code];
+            const itemState = code === 'substitute_doll'
+                ? { quantity: Number(run.substitute_negates_remaining || 0) }
+                : items[code];
             const item = catalogMap[code] || {};
             const usable = MANUAL_ITEM_CODES.includes(code);
+            let description = item.description || '';
+            if (code === 'substitute_doll') {
+                description = `マイナス効果をあと ${formatNumber(run.substitute_negates_remaining)} 回まで無効化する。`;
+            } else if (code === 'bomb_radar') {
+                description = `この階層の爆弾は ${formatNumber(bombCount)} 個。`;
+            }
             return `
                 <div class="inventory-item">
                     <div class="item-entry-head">
                         ${renderItemVisual(code, item.name || code)}
                         <div>
                             <div class="inventory-item-name">${item.name || code}</div>
-                            <div class="inventory-item-desc">${item.description || ''}</div>
+                            <div class="inventory-item-desc">${description}</div>
                         </div>
                     </div>
                     <div class="inventory-item-actions">
@@ -263,9 +282,9 @@
         }).join('');
     }
 
-    function renderInventory(run, catalog) {
-        renderInventoryInto(el('inventory-list'), run, catalog);
-        renderInventoryInto(el('mobile-inventory-list'), run, catalog);
+    function renderInventory(state) {
+        renderInventoryInto(el('inventory-list'), state.run, state.catalog, state.floor);
+        renderInventoryInto(el('mobile-inventory-list'), state.run, state.catalog, state.floor);
     }
 
     function renderResultInventory(run, catalog) {
