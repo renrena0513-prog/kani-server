@@ -493,7 +493,7 @@ where p.name = 'default'
 on conflict (profile_id, floor_no, tile_type) do nothing;
 
 insert into public.page_settings (path, name, is_active)
-values ('/event/dungeon/index.html', '期間限定イベント：欲望渦巻くダンジョン', true)
+values ('/event/dungeon/index.html', '期間限定イベント：欲望渦巻くダンジョン', false)
 on conflict (path) do update
 set name = excluded.name,
     is_active = excluded.is_active;

@@ -1,6 +1,14 @@
 // 認証ガード & ページアクセス制御
 (async function () {
     const CACHE_KEY = 'page_settings_cache';
+    const normalizePagePath = (path) => {
+        if (!path) return '/';
+        let normalized = String(path).split('?')[0].split('#')[0];
+        if (!normalized.startsWith('/')) normalized = `/${normalized}`;
+        normalized = normalized.replace(/\/index\.html$/, '');
+        normalized = normalized.replace(/\/+$/, '');
+        return normalized || '/';
+    };
 
     // 認証不要のページ設定（既存ロジック維持）
     const publicPages = ['/login']; // mahjong/index.htmlなども本来はpublicだが、アクセス制限の対象になりうるため一旦ここで判定しない
@@ -65,7 +73,7 @@
     // --- 関数定義 ---
 
     async function checkPageAccess() {
-        const currentPath = window.location.pathname;
+        const currentPath = normalizePagePath(window.location.pathname);
         let settings = null;
 
         try {
@@ -78,7 +86,7 @@
             if (data) {
                 settings = {};
                 data.forEach(item => {
-                    settings[item.path] = item.is_active;
+                    settings[normalizePagePath(item.path)] = item.is_active;
                 });
                 saveSettingsCache(settings);
             }
@@ -94,7 +102,10 @@
         // settingsのキー（例: "/mahjong/"）が現在のパスに含まれているか確認
         if (settings) {
             for (const [pathKey, isActive] of Object.entries(settings)) {
-                if (currentPath.includes(pathKey) && isActive === false) {
+                const targetPath = normalizePagePath(pathKey);
+                const isSamePath = currentPath === targetPath;
+                const isSubPath = targetPath !== '/' && currentPath.startsWith(`${targetPath}/`);
+                if ((isSamePath || isSubPath) && isActive === false) {
                     showMaintenanceScreen();
                     throw new Error('Maintenance Mode'); // 処理を中断
                 }

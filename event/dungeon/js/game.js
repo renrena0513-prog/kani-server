@@ -93,7 +93,7 @@
     function showLatestTilePopup() {
         const latest = state.logs[state.logs.length - 1];
         if (!latest || !latest.payload?.tile_type || latest.step_no === state.lastPopupStep) return;
-        if (latest.payload.tile_type === 'ショップ' || latest.payload.tile_type === '限定ショップ') {
+        if (['ショップ', '限定ショップ', '下り階段'].includes(latest.payload.tile_type)) {
             state.lastPopupStep = latest.step_no;
             return;
         }
@@ -291,7 +291,15 @@
                 ArrowUp: 'up',
                 ArrowDown: 'down',
                 ArrowLeft: 'left',
-                ArrowRight: 'right'
+                ArrowRight: 'right',
+                w: 'up',
+                W: 'up',
+                s: 'down',
+                S: 'down',
+                a: 'left',
+                A: 'left',
+                d: 'right',
+                D: 'right'
             };
             const direction = keyMap[event.key];
             if (!direction) return;
