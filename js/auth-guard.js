@@ -9,43 +9,6 @@
         normalized = normalized.replace(/\/+$/, '');
         return normalized || '/';
     };
-    const currentScript = document.currentScript;
-
-    async function loadEventPageAccessConfig() {
-        if (window.EVENT_PAGE_ACCESS_CONFIG) return window.EVENT_PAGE_ACCESS_CONFIG;
-
-        const fallbackSrc = `${window.location.origin || ''}/js/event-page-access/config.js`;
-        const configSrc = currentScript?.src
-            ? new URL('./event-page-access/config.js', currentScript.src).href
-            : fallbackSrc;
-
-        await new Promise((resolve) => {
-            const script = document.createElement('script');
-            script.src = configSrc;
-            script.async = false;
-            script.onload = resolve;
-            script.onerror = resolve;
-            document.head.appendChild(script);
-        });
-
-        return window.EVENT_PAGE_ACCESS_CONFIG || { restrictedEventAccess: [] };
-    }
-
-    function canAccessRestrictedEventPage(path, userId, config) {
-        const currentPath = normalizePagePath(path);
-        const entries = Array.isArray(config?.restrictedEventAccess) ? config.restrictedEventAccess : [];
-        if (!userId) return false;
-
-        return entries.some((entry) => {
-            const normalizedAllowed = normalizePagePath(entry?.path);
-            const allowedUserIds = Array.isArray(entry?.allowedUserIds) ? entry.allowedUserIds.map(String) : [];
-            const isTargetPath = currentPath === normalizedAllowed || currentPath.startsWith(`${normalizedAllowed}/`);
-            return isTargetPath && allowedUserIds.includes(String(userId));
-        });
-    }
-
-    const eventPageAccessConfig = await loadEventPageAccessConfig();
-
     // 認証不要のページ設定（既存ロジック維持）
     const publicPages = ['/login']; // mahjong/index.htmlなども本来はpublicだが、アクセス制限の対象になりうるため一旦ここで判定しない
     const isLoginPage = window.location.pathname.includes('/login');
@@ -110,8 +73,6 @@
 
     async function checkPageAccess() {
         const currentPath = normalizePagePath(window.location.pathname);
-        const currentUserId = user?.user_metadata?.provider_id || '';
-        const allowEventAccess = canAccessRestrictedEventPage(currentPath, currentUserId, eventPageAccessConfig);
         let settings = null;
 
         try {
@@ -144,7 +105,6 @@
                 const isSamePath = currentPath === targetPath;
                 const isSubPath = targetPath !== '/' && currentPath.startsWith(`${targetPath}/`);
                 if ((isSamePath || isSubPath) && isActive === false) {
-                    if (allowEventAccess) continue;
                     showMaintenanceScreen();
                     throw new Error('Maintenance Mode'); // 処理を中断
                 }
