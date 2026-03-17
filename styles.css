@@ -1,10 +1,10 @@
 /* ========================================
-   縺九↓繧ｵ繝ｼ繝舌�繧､繝吶Φ繝� - Styles
-   Bootstrap 5 + Bootswatch (Lux) 蟇ｾ蠢懃沿
+   かにサーバーイベント - Styles
+   Bootstrap 5 + Bootswatch (Lux) 対応
    ======================================== */
 
 /* ========================================
-   CSS螟画焚
+   CSS Variables
    ======================================== */
 :root {
     --primary-red: #e85a5a;
@@ -18,7 +18,7 @@
 }
 
 /* ========================================
-   繝吶�繧ｹ繧ｹ繧ｿ繧､繝ｫ
+   Base Style
    ======================================== */
 body {
     font-family: var(--font-body);
@@ -66,7 +66,7 @@ body::before {
 
 
 /* ========================================
-   繧ｿ繧､繝医Ν逕ｻ蜒
+   Title Image
    ======================================== */
 .title-image-wrapper {
     display: inline-block;
@@ -79,7 +79,7 @@ body::before {
     filter: drop-shadow(0 4px 15px rgba(0, 0, 0, 0.3));
     animation: titleFloat 4s ease-in-out infinite;
     margin-top: 60px;
-    /* 隱崎ｨｼUI縺ｨ驥阪↑繧峨↑縺�ｈ縺�↓ */
+    /* Reserve top space so auth UI and title do not overlap */
 }
 
 @media (max-width: 576px) {
@@ -113,7 +113,7 @@ body::before {
 }
 
 /* ========================================
-   繧､繝吶Φ繝医き繝ｼ繝会ｼ亥崋螳壹し繧､繧ｺ譫���
+   Event Cards (image size adjusted)
    ======================================== */
 .event-card-frame {
     display: block;
@@ -125,7 +125,7 @@ body::before {
     background: linear-gradient(135deg, var(--cream) 0%, #f5efe0 100%);
     box-shadow: 0 8px 25px var(--shadow), 0 4px 10px rgba(0, 0, 0, 0.15);
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    /* 鬮倥＆繧定�蜍輔↓縺励※逕ｻ蜒上�繧｢繧ｹ繝壹け繝域ｯ斐ｒ菫晄戟 */
+    /* Keep animation smooth while preserving image aspect ratio */
 }
 
 .event-card-frame img {
@@ -133,7 +133,7 @@ body::before {
     height: auto;
     display: block;
     border-radius: 10px;
-    /* contain 縺ｫ螟画峩縺励※隕句�繧後ｒ髦ｲ豁｢ */
+    /* Fit image without cropping */
     object-fit: contain;
     object-position: center;
     transition: transform 0.4s ease, filter 0.3s ease;
@@ -151,7 +151,7 @@ body::before {
 }
 
 /* ========================================
-   邂｡逅�判髱｢繝懊ち繝ｳ
+   Admin Button
    ======================================== */
 .admin-button {
     font-family: var(--font-body);
@@ -181,7 +181,7 @@ body::before {
 }
 
 /* ========================================
-   繝輔ャ繧ｿ繝ｼ
+   Footer
    ======================================== */
 .wave-pattern {
     height: 40px;
@@ -192,7 +192,7 @@ body::before {
 }
 
 /* ========================================
-   隱崎ｨｼUI
+   Auth UI
    ======================================== */
 .auth-container {
     position: fixed;
@@ -204,7 +204,7 @@ body::before {
     gap: 10px;
 }
 
-/* 繝｢繝舌う繝ｫ逕ｨ隱崎ｨｼUI */
+/* Auth UI (Mobile) */
 @media (max-width: 576px) {
     .auth-container {
         top: 10px;
