@@ -58,6 +58,11 @@
             backdrop-filter: blur(5px);
         }
 
+        body[data-dungeon-screen="game"] .dungeon-hero,
+        body[data-dungeon-screen="result"] .dungeon-hero {
+            display: none;
+        }
+
         .dungeon-hero::after {
             content: '';
             position: absolute;
@@ -96,6 +101,11 @@
             max-width: 760px;
             margin-top: 18px;
             line-height: 1.8;
+        }
+
+        body[data-dungeon-screen="game"] .dungeon-lead,
+        body[data-dungeon-screen="result"] .dungeon-lead {
+            display: none;
         }
 
         .dungeon-panel {
