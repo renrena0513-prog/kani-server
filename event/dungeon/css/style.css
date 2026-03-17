@@ -373,6 +373,10 @@
             opacity: 0.45;
         }
 
+        .carry-item-static {
+            cursor: default;
+        }
+
         .carry-item-name,
         .shop-offer-name,
         .inventory-item-name {
@@ -462,6 +466,11 @@
         .adventure-log {
             max-height: 360px;
             overflow: auto;
+        }
+
+        .adventure-rules-list {
+            display: grid;
+            gap: 12px;
         }
 
         .log-line {

@@ -1,1 +1,6 @@
-Error: Failed to run sql query: ERROR: 42601: "v_id" is not a known variable LINE 28: returning id into v_id; ^
+{
+    "code": "42703",
+    "details": null,
+    "hint": null,
+    "message": "column evd_player_item_stocks.name does not exist"
+}

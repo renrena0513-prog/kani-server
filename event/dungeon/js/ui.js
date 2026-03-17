@@ -124,7 +124,7 @@
         const relicWrap = el('relic-items');
         if (!carryWrap || !relicWrap) return;
 
-        const renderStocks = (target, stockList, emptyMessage) => {
+        const renderStocks = (target, stockList, emptyMessage, { selectable = true } = {}) => {
             if (!stockList.length) {
                 target.innerHTML = `<div class="dungeon-empty">${emptyMessage}</div>`;
                 return;
@@ -133,9 +133,10 @@
             target.innerHTML = stockList.map((stock) => {
                 const item = stock.evd_item_catalog || {};
                 const selected = selectedItems.includes(stock.item_code);
-                const disabled = !item.carry_in_allowed;
+                const disabled = selectable && !item.carry_in_allowed;
+                const itemCodeAttr = selectable ? `data-item-code="${stock.item_code}"` : '';
                 return `
-                    <button class="carry-item ${selected ? 'selected' : ''} ${disabled ? 'disabled' : ''}" data-item-code="${stock.item_code}" ${disabled ? 'disabled' : ''}>
+                    <button class="carry-item ${selected ? 'selected' : ''} ${disabled ? 'disabled' : ''} ${selectable ? '' : 'carry-item-static'}" type="button" ${itemCodeAttr} ${disabled ? 'disabled' : ''}>
                         <div class="carry-item-layout">
                             ${renderItemVisual(stock.item_code, item.name)}
                             <div class="carry-item-body">
@@ -156,7 +157,7 @@
         const relicStocks = (stocks || []).filter((stock) => stock.evd_item_catalog?.shop_pool === 'レリック');
 
         renderStocks(carryWrap, regularStocks, '持ち込み可能な在庫がありません。');
-        renderStocks(relicWrap, relicStocks, '所持レリックはありません。');
+        renderStocks(relicWrap, relicStocks, '所持レリックはありません。', { selectable: false });
     }
 
     function renderPrepShop(catalog, stocks, walletCoins) {
