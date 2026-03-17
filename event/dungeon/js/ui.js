@@ -363,6 +363,14 @@
         const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
         const banner = el('shop-event-banner');
         const latest = (state.logs || [])[state.logs.length - 1];
+        const catalogMap = Object.fromEntries((state.catalog || []).map((item) => [item.code, item]));
+        const items = state.run?.inventory_state?.items || {};
+        const carriedItems = state.run?.inventory_state?.carried_items || {};
+        const heldItemCodes = [...new Set([...Object.keys(items), ...Object.keys(carriedItems)])]
+            .filter((code) => Math.max(
+                Number(items[code]?.quantity || 0),
+                Number(carriedItems[code]?.quantity || 0)
+            ) > 0);
 
         if (!offers.length) {
             modal.hide();
@@ -370,6 +378,7 @@
                 banner.classList.add('d-none');
                 banner.textContent = '';
             }
+            setHtml('shop-held-items', '');
             return;
         }
 
@@ -384,6 +393,27 @@
                 banner.textContent = '';
             }
         }
+        setHtml('shop-held-items', heldItemCodes.length ? heldItemCodes.map((code) => {
+            const item = catalogMap[code] || {};
+            const quantity = Math.max(
+                Number(items[code]?.quantity || 0),
+                Number(carriedItems[code]?.quantity || 0)
+            );
+            return `
+                <div class="inventory-item shop-held-item">
+                    <div class="item-entry-head">
+                        ${renderItemVisual(code, item.name || code)}
+                        <div>
+                            <div class="inventory-item-name">${item.name || code}</div>
+                            <div class="inventory-item-desc">${item.description || ''}</div>
+                        </div>
+                    </div>
+                    <div class="inventory-item-actions">
+                        <span class="inventory-qty">x${formatNumber(quantity)}</span>
+                    </div>
+                </div>
+            `;
+        }).join('') : '<div class="dungeon-empty">手持ちアイテムはありません。</div>');
         setHtml('shop-offers', offers.map((offer) => `
             <button class="shop-offer" data-buy-item="${offer.code}">
                 <div class="item-entry-head">

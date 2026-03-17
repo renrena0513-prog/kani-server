@@ -86,9 +86,9 @@
         </section>
 
         <section data-screen="game" class="d-none">
-            <div class="row g-4">
+            <div class="row g-4 game-layout-row">
                 <div class="col-xl-4">
-                    <div class="dungeon-panel mb-4">
+                    <div class="dungeon-panel desktop-side-panel">
                         <div class="panel-title">冒険者 HUD</div>
                         <div class="stat-grid">
                             <div class="stat-card"><div class="stat-label">階層</div><div id="hud-floor" class="stat-value">-</div></div>
@@ -102,15 +102,13 @@
                             <div class="stat-card"><div class="stat-label">帰還倍率</div><div id="hud-final-multiplier" class="stat-value">-</div></div>
                             <div class="stat-card"><div class="stat-label">所持金</div><div id="hud-wallet" class="stat-value">-</div></div>
                         </div>
-                    </div>
-                    <div class="dungeon-panel">
-                        <div class="panel-title">所持品</div>
+                        <div class="panel-title inventory-panel-title">所持品</div>
                         <div id="inventory-list" class="inventory-list"></div>
                     </div>
                 </div>
 
                 <div class="col-xl-5">
-                    <div class="dungeon-panel">
+                    <div class="dungeon-panel game-board-panel">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <div class="panel-title mb-0">迷宮盤面</div>
                             <div class="small text-secondary desktop-key-hint">矢印キー / WASD 対応</div>
@@ -235,6 +233,11 @@
                 <div class="modal-body">
                     <div id="shop-event-banner" class="shop-event-banner d-none"></div>
                     <div class="shop-wallet-line">現在の所持金: <span id="shop-run-coins">0</span> コイン</div>
+                    <div class="shop-notice-line">商人は現在の獲得コインを使用して1つだけ購入可能</div>
+                    <div class="shop-held-panel">
+                        <div class="panel-title">手持ちアイテム</div>
+                        <div id="shop-held-items" class="inventory-list shop-held-items"></div>
+                    </div>
                     <div id="shop-offers" class="shop-offers"></div>
                     <button id="shop-skip-btn" class="dungeon-btn-secondary mt-3 w-100" data-busy-disable>何も買わず立ち去る</button>
                 </div>

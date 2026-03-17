@@ -232,6 +232,21 @@
             gap: 8px;
         }
 
+        .inventory-panel-title {
+            margin-top: 16px;
+        }
+
+        @media (min-width: 1200px) {
+            .game-layout-row {
+                --bs-gutter-x: 20px;
+                --bs-gutter-y: 20px;
+            }
+
+            .game-board-panel {
+                padding-bottom: 12px;
+            }
+        }
+
         .tile {
             aspect-ratio: 1;
             display: grid;
@@ -468,6 +483,12 @@
             overflow: auto;
         }
 
+        @media (min-width: 1200px) {
+            #adventure-log {
+                max-height: 560px;
+            }
+        }
+
         .adventure-rules-list {
             display: grid;
             gap: 12px;
@@ -507,16 +528,34 @@
         }
 
         .shop-wallet-line {
-            display: none;
+            display: block;
             margin-bottom: 10px;
             color: #f7f3e8;
             font-size: 0.9rem;
         }
 
-        @media (max-width: 991px) {
-            .shop-wallet-line {
-                display: block;
-            }
+        .shop-notice-line {
+            margin-bottom: 14px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #f7f3e8;
+            font-size: 0.88rem;
+            line-height: 1.6;
+        }
+
+        .shop-held-panel {
+            margin-bottom: 16px;
+        }
+
+        .shop-held-items {
+            max-height: 220px;
+        }
+
+        .shop-held-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .dungeon-empty {

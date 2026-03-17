@@ -55,8 +55,8 @@ begin
        set coins = coins - v_item.base_price
      where discord_user_id = v_user_id;
 
-    insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, updated_at)
-    values (v_user_id, v_profile.account_name, v_item.name, p_item_code, 1, now())
+    insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, is_set, updated_at)
+    values (v_user_id, v_profile.account_name, v_item.name, p_item_code, 1, false, now())
     on conflict (user_id, item_code) do update
     set quantity = public.evd_player_item_stocks.quantity + 1,
         account_name = excluded.account_name,
@@ -73,6 +73,7 @@ begin
       from (
         select
             st.item_code,
+            st.is_set,
             st.quantity,
             st.updated_at,
             jsonb_build_object(

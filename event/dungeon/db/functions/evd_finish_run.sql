@@ -66,13 +66,14 @@ begin
              where coalesce((e.value ->> 'quantity')::integer, 0) > 0
                and c.item_kind in ('手動', '死亡時', '永続')
         loop
-            insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, updated_at)
+            insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, is_set, updated_at)
             values (
                 p_user_id,
                 v_run.account_name,
                 (select c.name from public.evd_item_catalog c where c.code = v_return_item.item_code),
                 v_return_item.item_code,
                 v_return_item.quantity,
+                false,
                 now()
             )
             on conflict (user_id, item_code) do update
@@ -91,13 +92,14 @@ begin
              where coalesce((e.value ->> 'quantity')::integer, 0) > 0
                and c.item_kind in ('死亡時', '永続')
         loop
-            insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, updated_at)
+            insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, is_set, updated_at)
             values (
                 p_user_id,
                 v_run.account_name,
                 (select c.name from public.evd_item_catalog c where c.code = v_return_item.item_code),
                 v_return_item.item_code,
                 v_return_item.quantity,
+                false,
                 now()
             )
             on conflict (user_id, item_code) do update
@@ -116,13 +118,14 @@ begin
              where coalesce((e.value ->> 'quantity')::integer, 0) > 0
                and c.item_kind = '永続'
         loop
-            insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, updated_at)
+            insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, is_set, updated_at)
             values (
                 p_user_id,
                 v_run.account_name,
                 (select c.name from public.evd_item_catalog c where c.code = v_return_item.item_code),
                 v_return_item.item_code,
                 v_return_item.quantity,
+                false,
                 now()
             )
             on conflict (user_id, item_code) do update
@@ -141,13 +144,14 @@ begin
              where coalesce((e.value ->> 'quantity')::integer, 0) > 0
                and c.item_kind = '永続'
         loop
-            insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, updated_at)
+            insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, is_set, updated_at)
             values (
                 p_user_id,
                 v_run.account_name,
                 (select c.name from public.evd_item_catalog c where c.code = v_return_item.item_code),
                 v_return_item.item_code,
                 v_return_item.quantity,
+                false,
                 now()
             )
             on conflict (user_id, item_code) do update

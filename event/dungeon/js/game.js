@@ -31,6 +31,15 @@
         return hasGreedyBag ? CARRY_LIMIT + 1 : CARRY_LIMIT;
     }
 
+    function syncSelectedCarryItems() {
+        const carryLimit = getCarryLimit();
+        const autoSelected = (state.stocks || [])
+            .filter((stock) => stock.is_set && stock.evd_item_catalog?.carry_in_allowed && Number(stock.quantity || 0) > 0)
+            .slice(0, carryLimit)
+            .map((stock) => stock.item_code);
+        state.selectedCarryItems = autoSelected;
+    }
+
     function renderStart() {
         const carryLimit = getCarryLimit();
         ui.showScreen('start');
@@ -86,6 +95,7 @@
         try {
             const data = await api.getBootstrap();
             Object.assign(state, data);
+            syncSelectedCarryItems();
 
             if (state.run && state.run.status === '進行中') {
                 renderGame();
@@ -120,19 +130,37 @@
         ui.showTilePopup(latest.payload.tile_type, latest.message);
     }
 
-    function toggleCarry(itemCode) {
+    async function toggleCarry(itemCode) {
         const carryLimit = getCarryLimit();
         const index = state.selectedCarryItems.indexOf(itemCode);
-        if (index >= 0) {
-            state.selectedCarryItems.splice(index, 1);
-        } else {
-            if (state.selectedCarryItems.length >= carryLimit) {
-                ui.setStatus(`持ち込みは ${carryLimit} 個までです。`, 'danger');
-                return;
-            }
-            state.selectedCarryItems.push(itemCode);
+        const shouldSet = index < 0;
+
+        if (shouldSet && state.selectedCarryItems.length >= carryLimit) {
+            ui.setStatus(`持ち込みは ${carryLimit} 個までです。`, 'danger');
+            return;
         }
-        ui.renderCarryList(state.stocks, state.selectedCarryItems);
+
+        ui.setBusy(true);
+        try {
+            const payload = await api.rpc('evd_set_stock_item_set', {
+                p_item_code: itemCode,
+                p_is_set: shouldSet
+            });
+            if (payload?.stocks) {
+                state.stocks = payload.stocks;
+            } else {
+                state.stocks = (state.stocks || []).map((stock) => (
+                    stock.item_code === itemCode ? { ...stock, is_set: shouldSet } : stock
+                ));
+            }
+            syncSelectedCarryItems();
+            ui.renderCarryList(state.stocks, state.selectedCarryItems);
+        } catch (error) {
+            console.error(error);
+            ui.setStatus(error.message || '持ち込み設定の保存に失敗しました。', 'danger');
+        } finally {
+            ui.setBusy(false);
+        }
     }
 
     async function startRun() {
