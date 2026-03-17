@@ -2,9 +2,9 @@
         :root {
             --dungeon-bg: #0f1212;
             --dungeon-bg2: #1a1916;
-            --dungeon-panel: rgba(26, 30, 31, 0.92);
-            --dungeon-panel-strong: rgba(17, 20, 21, 0.96);
-            --dungeon-border: rgba(212, 184, 113, 0.32);
+            --dungeon-panel: rgba(26, 30, 31, 0.28);
+            --dungeon-panel-strong: rgba(17, 20, 21, 0.34);
+            --dungeon-border: rgba(212, 184, 113, 0.12);
             --dungeon-gold: #d4b871;
             --dungeon-gold-strong: #f1d58d;
             --dungeon-emerald: #68c7a6;
@@ -26,18 +26,17 @@
         }
 
         .dungeon-shell {
-            max-width: 1280px;
+            max-width: none;
             margin: 0 auto;
-            padding: 96px 16px 48px;
+            padding: 96px 20px 48px;
         }
 
-        .dungeon-hero,
-        .dungeon-panel {
+        .dungeon-hero {
             background: var(--dungeon-panel);
             border: 1px solid var(--dungeon-border);
-            border-radius: 24px;
-            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
-            backdrop-filter: blur(10px);
+            border-radius: 18px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(6px);
         }
 
         .dungeon-hero {
@@ -75,6 +74,11 @@
         .dungeon-panel {
             padding: 18px;
             height: 100%;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            backdrop-filter: none;
         }
 
         .panel-title {
@@ -82,6 +86,8 @@
             font-size: 1.05rem;
             margin-bottom: 14px;
             color: var(--dungeon-gold-strong);
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .status-banner {
@@ -120,6 +126,12 @@
         .stat-value {
             font-size: 1.25rem;
             font-weight: 700;
+        }
+
+        #hud-life {
+            letter-spacing: 0.08em;
+            color: #ff8aa3;
+            font-size: 1.35rem;
         }
 
         .dungeon-board {

@@ -391,9 +391,7 @@ join (
         (10, 2200)
 ) as b(floor_no, bonus_coins) on true
 where p.name = 'default'
-on conflict (profile_id, floor_no) do update
-set bonus_coins = excluded.bonus_coins,
-    updated_at = now();
+on conflict (profile_id, floor_no) do nothing;
 
 insert into public.evd_floor_value_profiles (
     profile_id, floor_no,
@@ -438,23 +436,7 @@ join (
     thief_coin_loss_min, thief_coin_loss_max
 ) on true
 where p.name = 'default'
-on conflict (profile_id, floor_no) do update
-set
-    coin_small_min = excluded.coin_small_min,
-    coin_small_max = excluded.coin_small_max,
-    chest_min = excluded.chest_min,
-    chest_max = excluded.chest_max,
-    treasure_chest_min = excluded.treasure_chest_min,
-    treasure_chest_max = excluded.treasure_chest_max,
-    blessing_min = excluded.blessing_min,
-    blessing_max = excluded.blessing_max,
-    curse_min = excluded.curse_min,
-    curse_max = excluded.curse_max,
-    trap_min = excluded.trap_min,
-    trap_max = excluded.trap_max,
-    thief_coin_loss_min = excluded.thief_coin_loss_min,
-    thief_coin_loss_max = excluded.thief_coin_loss_max,
-    updated_at = now();
+on conflict (profile_id, floor_no) do nothing;
 
 insert into public.evd_floor_tile_weight_profiles (profile_id, floor_no, tile_type, is_enabled, weight, min_count, max_count)
 select p.id, w.floor_no, w.tile_type, true, w.weight, 0, null
@@ -473,12 +455,7 @@ join (
       (10,'空白',8),(10,'小銭',8),(10,'宝箱',8),(10,'財宝箱',10),(10,'秘宝箱',3),(10,'宝石箱',4),(10,'祝福',2),(10,'泉',2),(10,'爆弾',11),(10,'大爆発',6),(10,'罠',9),(10,'呪い',6),(10,'盗賊',4),(10,'落とし穴',3),(10,'転送罠',3),(10,'ショップ',2),(10,'限定ショップ',1)
 ) as w(floor_no, tile_type, weight) on true
 where p.name = 'default'
-on conflict (profile_id, floor_no, tile_type) do update
-set is_enabled = excluded.is_enabled,
-    weight = excluded.weight,
-    min_count = excluded.min_count,
-    max_count = excluded.max_count,
-    updated_at = now();
+on conflict (profile_id, floor_no, tile_type) do nothing;
 
 insert into public.page_settings (path, name, is_active)
 values ('/event/dungeon/index.html', '期間限定イベント：欲望ダンジョン', true)

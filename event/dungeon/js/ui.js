@@ -25,6 +25,20 @@
         return new Intl.NumberFormat('ja-JP').format(Number(value || 0));
     }
 
+    function formatLifeHearts(life, maxLife) {
+        const safeMax = Math.max(0, Number(maxLife || 0));
+        const safeLife = Math.max(0, Math.min(safeMax, Number(life || 0)));
+        const filled = '❤'.repeat(safeLife);
+        const empty = '♡'.repeat(Math.max(0, safeMax - safeLife));
+        return `${filled}${empty}` || '♡';
+    }
+
+    function normalizeLifeMessage(message) {
+        return String(message || '')
+            .replace(/ライフを\s*(\d+)\s*失った/g, '❤を$1失った')
+            .replace(/ライフを\s*(\d+)\s*回復した/g, '❤を$1回復した');
+    }
+
     function el(id) {
         return document.getElementById(id);
     }
@@ -102,7 +116,7 @@
         if (!run) return;
 
         setText('hud-floor', `${run.current_floor} / ${run.max_floors}`);
-        setText('hud-life', `${run.life} / ${run.max_life}`);
+        setText('hud-life', formatLifeHearts(run.life, run.max_life));
         setText('hud-run-coins', formatNumber(run.run_coins));
         setText('hud-secured-coins', formatNumber(run.secured_coins));
         setText('hud-badges', formatNumber(run.badges_gained));
@@ -232,7 +246,7 @@
         wrap.innerHTML = logs.slice().reverse().map((log) => `
             <div class="log-line">
                 <span class="log-time">${new Date(log.created_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}</span>
-                <span>${log.message}</span>
+                <span>${normalizeLifeMessage(log.message)}</span>
             </div>
         `).join('');
     }
@@ -267,7 +281,7 @@
         const meta = TILE_POPUP_META[tileType] || { icon: '❔', title: tileType || 'イベント' };
         setText('tile-popup-icon', meta.icon);
         setText('tile-popup-title', meta.title);
-        setText('tile-popup-message', message || '');
+        setText('tile-popup-message', normalizeLifeMessage(message || ''));
         overlay.classList.add('show');
     }
 
