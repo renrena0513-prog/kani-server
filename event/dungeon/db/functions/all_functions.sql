@@ -265,6 +265,7 @@ declare
     v_floor public.evd_run_floors%rowtype;
     v_profile record;
     v_logs jsonb;
+    v_next_bonus integer := 0;
 begin
     select * into v_run from public.evd_game_runs where id = p_run_id and user_id = p_user_id;
     select * into v_floor from public.evd_run_floors where run_id = p_run_id and floor_no = v_run.current_floor;
@@ -283,8 +284,14 @@ begin
          limit 40
       ) t;
 
+    select coalesce(fbp.bonus_coins, 0)
+      into v_next_bonus
+      from public.evd_floor_bonus_profiles fbp
+     where fbp.profile_id = v_run.generation_profile_id
+       and fbp.floor_no = least(v_run.current_floor + 1, v_run.max_floors);
+
     return jsonb_build_object(
-        'run', to_jsonb(v_run),
+        'run', jsonb_set(to_jsonb(v_run), array['next_floor_bonus'], to_jsonb(coalesce(v_next_bonus, 0)), true),
         'floor', to_jsonb(v_floor),
         'profile', to_jsonb(v_profile),
         'logs', v_logs

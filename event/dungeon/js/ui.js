@@ -214,14 +214,11 @@
         setTexts(['hud-wallet', 'mobile-hud-wallet'], formatNumber(profile.coins));
 
         const flags = run.inventory_state?.flags || {};
-        const bonusMap = run.inventory_state?.floor_bonus_preview || {};
-        const nextBonus = bonusMap[String(Math.min(run.current_floor + 1, run.max_floors))] || 0;
+        const nextBonus = Number(run.next_floor_bonus || 0);
         const returnMultiplier = Number(run.final_return_multiplier || 1)
             * (flags.golden_contract_active ? 2 : 1);
-        const returnCoins = Math.floor((Number(run.run_coins || 0) + Number(run.secured_coins || 0)) * returnMultiplier);
         setTexts(['hud-next-bonus', 'mobile-hud-next-bonus'], `${formatNumber(nextBonus)} コイン`);
         setTexts(['hud-final-multiplier', 'mobile-hud-final-multiplier'], `x${returnMultiplier.toFixed(2)}`);
-        setTexts(['hud-return-coins', 'mobile-hud-return-coins'], `${formatNumber(returnCoins)} コイン`);
         setText('run-status', run.status);
         setText('run-flags', [
             flags.insurance_active ? '保険札' : null,
@@ -290,6 +287,10 @@
     function renderResultInventory(run, catalog) {
         const wrap = el('result-inventory-list');
         if (!wrap || !run) return;
+        if (run.status !== '帰還') {
+            wrap.innerHTML = '<div class="dungeon-empty">持ち帰ったアイテムはありません。</div>';
+            return;
+        }
 
         const items = run.inventory_state?.items || {};
         const carriedItems = run.inventory_state?.carried_items || {};
