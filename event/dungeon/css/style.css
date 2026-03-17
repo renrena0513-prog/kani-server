@@ -535,6 +535,17 @@
             font-size: 0.9rem;
         }
 
+        .shop-top-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 10px;
+        }
+
+        .shop-held-toggle-btn {
+            padding: 8px 12px;
+            font-size: 0.82rem;
+        }
+
         .shop-notice-line {
             margin-bottom: 14px;
             padding: 10px 12px;

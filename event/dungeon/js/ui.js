@@ -397,12 +397,16 @@
                 banner.classList.add('d-none');
                 banner.textContent = '';
             }
+            el('shop-held-panel')?.classList.add('d-none');
+            setText('shop-held-toggle-btn', '所持アイテム');
             setHtml('shop-held-items', '');
             return;
         }
 
         setText('shop-title', type === '限定ショップ' ? '限定商人が現れた' : '行商人に出会った');
         setText('shop-run-coins', formatNumber(state.run?.run_coins || 0));
+        setText('shop-held-toggle-btn', '所持アイテム');
+        el('shop-held-panel')?.classList.add('d-none');
         if (banner) {
             if (latest?.payload?.tile_type && ['ショップ', '限定ショップ'].includes(latest.payload.tile_type) && latest?.message) {
                 banner.textContent = latest.message;
@@ -591,6 +595,7 @@
         el('stairs-descend-btn')?.addEventListener('click', () => handlers.onResolveStairs('descend'));
         el('stairs-return-btn')?.addEventListener('click', () => handlers.onResolveStairs('return'));
         el('shop-skip-btn')?.addEventListener('click', handlers.onSkipShop);
+        el('shop-held-toggle-btn')?.addEventListener('click', handlers.onToggleShopHeldItems);
         el('retry-run-btn')?.addEventListener('click', handlers.onRetry);
         el('tile-popup-close')?.addEventListener('click', handlers.onClosePopup);
         el('item-acquired-close')?.addEventListener('click', handlers.onCloseItemModal);

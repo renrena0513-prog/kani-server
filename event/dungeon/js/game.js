@@ -374,6 +374,13 @@
         onBuyItem: buyItem,
         onBuyStock: buyStock,
         onSkipShop: skipShop,
+        onToggleShopHeldItems: () => {
+            const panel = document.getElementById('shop-held-panel');
+            const button = document.getElementById('shop-held-toggle-btn');
+            if (!panel || !button) return;
+            const isHidden = panel.classList.toggle('d-none');
+            button.textContent = isHidden ? '所持アイテム' : '所持アイテムを閉じる';
+        },
         onToggleMobilePad: () => {
             state.mobilePadVisible = !state.mobilePadVisible;
             ui.setMobileDirectionPadVisible(state.mobilePadVisible);
