@@ -120,31 +120,43 @@
     }
 
     function renderCarryList(stocks, selectedItems) {
-        const wrap = el('carry-items');
-        if (!wrap) return;
+        const carryWrap = el('carry-items');
+        const relicWrap = el('relic-items');
+        if (!carryWrap || !relicWrap) return;
 
-        if (!stocks.length) {
-            wrap.innerHTML = '<div class="dungeon-empty">持ち込み可能な在庫がありません。</div>';
-            return;
-        }
+        const renderStocks = (target, stockList, emptyMessage) => {
+            if (!stockList.length) {
+                target.innerHTML = `<div class="dungeon-empty">${emptyMessage}</div>`;
+                return;
+            }
 
-        wrap.innerHTML = stocks.map((stock) => {
-            const item = stock.evd_item_catalog || {};
-            const selected = selectedItems.includes(stock.item_code);
-            const disabled = !item.carry_in_allowed;
-            return `
-                <button class="carry-item ${selected ? 'selected' : ''} ${disabled ? 'disabled' : ''}" data-item-code="${stock.item_code}" ${disabled ? 'disabled' : ''}>
-                    <div class="item-entry-head">
-                        ${renderItemVisual(stock.item_code, item.name)}
-                        <div>
-                            <div class="carry-item-name">${item.name}</div>
-                            <div class="carry-item-desc">${item.description || ''}</div>
+            target.innerHTML = stockList.map((stock) => {
+                const item = stock.evd_item_catalog || {};
+                const selected = selectedItems.includes(stock.item_code);
+                const disabled = !item.carry_in_allowed;
+                return `
+                    <button class="carry-item ${selected ? 'selected' : ''} ${disabled ? 'disabled' : ''}" data-item-code="${stock.item_code}" ${disabled ? 'disabled' : ''}>
+                        <div class="carry-item-layout">
+                            ${renderItemVisual(stock.item_code, item.name)}
+                            <div class="carry-item-body">
+                                <div class="carry-item-name">${item.name}</div>
+                                <div class="carry-item-desc">${item.description || ''}</div>
+                                <div class="carry-item-meta">在庫 ${formatNumber(stock.quantity)} / ${item.item_kind || '手動'}</div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="carry-item-meta">在庫 ${formatNumber(stock.quantity)} / ${item.item_kind || '手動'}</div>
-                </button>
-            `;
-        }).join('');
+                    </button>
+                `;
+            }).join('');
+        };
+
+        const regularStocks = (stocks || []).filter((stock) => {
+            const item = stock.evd_item_catalog || {};
+            return item.shop_pool !== 'レリック' && item.carry_in_allowed;
+        });
+        const relicStocks = (stocks || []).filter((stock) => stock.evd_item_catalog?.shop_pool === 'レリック');
+
+        renderStocks(carryWrap, regularStocks, '持ち込み可能な在庫がありません。');
+        renderStocks(relicWrap, relicStocks, '所持レリックはありません。');
     }
 
     function renderPrepShop(catalog, stocks, walletCoins) {

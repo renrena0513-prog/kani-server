@@ -52,11 +52,19 @@ begin
               from jsonb_each(v_carried_items)
              where coalesce((value ->> 'quantity')::integer, 0) > 0
         loop
-            insert into public.evd_player_item_stocks (user_id, account_name, item_code, quantity, updated_at)
-            values (p_user_id, v_run.account_name, v_return_item.item_code, v_return_item.quantity, now())
+            insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, updated_at)
+            values (
+                p_user_id,
+                v_run.account_name,
+                (select c.name from public.evd_item_catalog c where c.code = v_return_item.item_code),
+                v_return_item.item_code,
+                v_return_item.quantity,
+                now()
+            )
             on conflict (user_id, item_code) do update
             set quantity = public.evd_player_item_stocks.quantity + excluded.quantity,
                 account_name = excluded.account_name,
+                name = excluded.name,
                 updated_at = now();
         end loop;
 

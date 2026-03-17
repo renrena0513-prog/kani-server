@@ -30,6 +30,7 @@ create table if not exists public.evd_item_catalog (
 create table if not exists public.evd_player_item_stocks (
     user_id text not null,
     account_name text,
+    name text,
     item_code text not null references public.evd_item_catalog(code) on delete cascade,
     quantity integer not null default 0 check (quantity >= 0),
     updated_at timestamptz not null default now(),
@@ -175,6 +176,7 @@ create index if not exists evd_run_events_run_step_idx on public.evd_run_events(
 create index if not exists evd_run_events_user_idx on public.evd_run_events(user_id, created_at desc);
 
 alter table public.evd_player_item_stocks add column if not exists account_name text;
+alter table public.evd_player_item_stocks add column if not exists name text;
 alter table public.evd_game_runs add column if not exists account_name text;
 alter table public.evd_run_floors add column if not exists account_name text;
 alter table public.evd_run_events add column if not exists account_name text;
@@ -259,6 +261,12 @@ update public.evd_player_item_stocks s
   from public.profiles p
  where s.user_id = p.discord_user_id
    and s.account_name is null;
+
+update public.evd_player_item_stocks s
+   set name = c.name
+  from public.evd_item_catalog c
+ where s.item_code = c.code
+   and (s.name is null or s.name = '');
 
 update public.evd_game_runs r
    set account_name = p.account_name
@@ -1059,11 +1067,19 @@ begin
               from jsonb_each(v_carried_items)
              where coalesce((value ->> 'quantity')::integer, 0) > 0
         loop
-            insert into public.evd_player_item_stocks (user_id, account_name, item_code, quantity, updated_at)
-            values (p_user_id, v_run.account_name, v_return_item.item_code, v_return_item.quantity, now())
+            insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, updated_at)
+            values (
+                p_user_id,
+                v_run.account_name,
+                (select c.name from public.evd_item_catalog c where c.code = v_return_item.item_code),
+                v_return_item.item_code,
+                v_return_item.quantity,
+                now()
+            )
             on conflict (user_id, item_code) do update
             set quantity = public.evd_player_item_stocks.quantity + excluded.quantity,
                 account_name = excluded.account_name,
+                name = excluded.name,
                 updated_at = now();
         end loop;
 
@@ -1945,11 +1961,12 @@ begin
        set coins = coins - v_item.base_price
      where discord_user_id = v_user_id;
 
-    insert into public.evd_player_item_stocks (user_id, account_name, item_code, quantity, updated_at)
-    values (v_user_id, v_profile.account_name, p_item_code, 1, now())
+    insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, updated_at)
+    values (v_user_id, v_profile.account_name, v_item.name, p_item_code, 1, now())
     on conflict (user_id, item_code) do update
     set quantity = public.evd_player_item_stocks.quantity + 1,
         account_name = excluded.account_name,
+        name = excluded.name,
         updated_at = now();
 
     select coins, total_assets, gacha_tickets, mangan_tickets, account_name

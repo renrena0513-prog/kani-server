@@ -55,8 +55,12 @@
                     </div>
                     <div class="mt-4">
                         <div class="panel-title">持ち込みアイテム</div>
-                        <p class="small text-secondary">在庫から 2 個まで選択できます。</p>
+                        <p class="small carry-section-note">在庫から 2 個まで選択できます。</p>
                         <div id="carry-items" class="carry-items"></div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="panel-title">レリック</div>
+                        <div id="relic-items" class="carry-items"></div>
                     </div>
                     <div class="d-grid gap-2 mt-4">
                         <button id="resume-run-btn" class="dungeon-btn-secondary" data-busy-disable>進行中のランを再開</button>
@@ -66,7 +70,7 @@
             <div class="col-lg-7">
                 <div class="dungeon-panel h-100">
                     <div class="panel-title">冒険の掟</div>
-                    <div class="adventure-log adventure-rules-scroll">
+                    <div class="adventure-log">
                         <div class="dungeon-empty">7×7の迷宮を進み、階段を見つけてさらに深層を目指すべし。</div>
                         <div class="dungeon-empty">ライフは ❤❤❤ からスタート。すべて失うと、その挑戦は終了だ。</div>
                         <div class="dungeon-empty">深く潜るほど到達ボーナスは大きくなるぞ。</div>
