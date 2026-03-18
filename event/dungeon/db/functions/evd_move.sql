@@ -45,6 +45,10 @@ begin
         raise exception 'ショップの処理を先に完了してください';
     end if;
 
+    if coalesce(v_run.inventory_state -> 'pending_thief', 'null'::jsonb) <> 'null'::jsonb then
+        raise exception '盗賊への対応を先に完了してください';
+    end if;
+
     select * into v_floor from public.evd_run_floors where run_id = p_run_id and floor_no = v_run.current_floor for update;
 
     v_next_x := v_run.current_x + case p_direction when 'left' then -1 when 'right' then 1 else 0 end;
@@ -190,31 +194,15 @@ begin
             v_message := format('呪いにより最終持ち帰り倍率が -%s され x%s になった。', v_rate_delta, v_new_multiplier);
         when '盗賊' then
             v_ransom := coalesce(public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '盗賊')::integer, 150);
-            if exists (
-                select 1
-                  from jsonb_each(coalesce(v_run.inventory_state -> 'items', '{}'::jsonb)) e
-                 where coalesce((e.value ->> 'quantity')::integer, 0) > 0
-            ) then
-                if v_run.run_coins >= v_ransom then
-                    v_coin_delta := -1 * v_ransom;
-                    v_message := format('盗賊に遭遇したが、%s コイン支払って荷物を守った。', v_ransom);
-                else
-                    select key into v_item_to_lose
-                      from jsonb_each(v_run.inventory_state -> 'items')
-                     where coalesce((value ->> 'quantity')::integer, 0) > 0
-                     limit 1;
-                    select name into v_item_to_lose_name
-                      from public.evd_item_catalog
-                     where code = v_item_to_lose;
-                    update public.evd_game_runs
-                       set inventory_state = public.evd_remove_bucket_item(public.evd_remove_item(inventory_state, v_item_to_lose, 1), 'carried_items', v_item_to_lose, 1)
-                     where id = p_run_id;
-                    v_message := format('盗賊に襲われ、%s を 1 個奪われた。', coalesce(v_item_to_lose_name, v_item_to_lose));
-                end if;
-            else
-                v_coin_delta := -1 * least(v_run.run_coins, v_ransom);
-                v_message := format('盗賊に遭遇し、%s コイン奪われた。', abs(v_coin_delta));
-            end if;
+            update public.evd_game_runs
+               set inventory_state = jsonb_set(
+                    inventory_state,
+                    array['pending_thief'],
+                    jsonb_build_object('ransom', v_ransom),
+                    true
+               )
+             where id = p_run_id;
+            return public.evd_build_snapshot(p_run_id, v_user_id);
         when '落とし穴' then
             v_damage := 1;
             v_message := '落とし穴に落ち、ライフを 1 失って 1 階下へ落下した。';

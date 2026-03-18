@@ -113,6 +113,10 @@
             if (stairsModalEl && window.bootstrap?.Modal) {
                 window.bootstrap.Modal.getOrCreateInstance(stairsModalEl).hide();
             }
+            const thiefModalEl = el('thief-modal');
+            if (thiefModalEl && window.bootstrap?.Modal) {
+                window.bootstrap.Modal.getOrCreateInstance(thiefModalEl).hide();
+            }
         }
         if (screenName !== 'start') {
             const prepShopModalEl = el('prep-shop-modal');
@@ -335,6 +339,7 @@
 
         const grid = state.floor.grid || [];
         const flags = state.run.inventory_state?.flags || {};
+        const interactionLocked = !!state.run.inventory_state?.pending_shop || !!state.run.inventory_state?.pending_thief;
         const currentX = state.run.current_x;
         const currentY = state.run.current_y;
         const avatarUrl = playerAvatarUrl(state.user);
@@ -342,7 +347,7 @@
         board.innerHTML = grid.map((row, y) => row.map((cell, x) => {
             const isPlayer = x === currentX && y === currentY;
             const isAdjacent = Math.abs(currentX - x) + Math.abs(currentY - y) === 1;
-            const isMove = isAdjacent && state.run.status === '進行中';
+            const isMove = isAdjacent && state.run.status === '進行中' && !interactionLocked;
             const classes = ['tile'];
             if (cell.revealed) classes.push('revealed');
             if (cell.visited) classes.push('visited');
@@ -468,6 +473,57 @@
             if (!modalEl.classList.contains('show')) modal.show();
         } else {
             modal.hide();
+        }
+    }
+
+    function renderThiefPrompt(state) {
+        const modalEl = el('thief-modal');
+        if (!modalEl || !window.bootstrap?.Modal) return;
+
+        const run = state?.run;
+        const pending = run?.inventory_state?.pending_thief || null;
+        const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+        if (!pending) {
+            modal.hide();
+            el('thief-held-panel')?.classList.add('d-none');
+            setText('thief-held-toggle-btn', '所持アイテム');
+            setHtml('thief-held-items', '');
+            return;
+        }
+
+        const ransom = Number(pending.ransom || 0);
+        const itemCount = Object.values(run?.inventory_state?.items || {}).reduce((total, item) => (
+            total + Math.max(Number(item?.quantity || 0), 0)
+        ), 0);
+        const currentCoins = Number(run?.run_coins || 0);
+        const canGiveItem = itemCount > 0;
+        const canPayCoin = currentCoins >= ransom;
+
+        setText('thief-run-coins', formatNumber(currentCoins));
+        setText('thief-item-note', canGiveItem
+            ? '所持アイテムからランダムに 1 個奪われる。'
+            : '差し出せるアイテムがない。');
+        setText('thief-coin-title', `お金を ${formatNumber(ransom)} コイン差し出す`);
+        setText('thief-coin-note', `${formatNumber(ransom)} コインを差し出す。現在 ${formatNumber(currentCoins)} コイン所持。`);
+        setText('thief-warning-text', canGiveItem || canPayCoin
+            ? '逃走は 30% で即死する。慎重に選べ。'
+            : '差し出せる物がない。逃げるしかない。');
+
+        const itemBtn = el('thief-give-item-btn');
+        const coinBtn = el('thief-pay-coin-btn');
+        if (itemBtn) {
+            itemBtn.classList.toggle('is-unavailable', !canGiveItem);
+            itemBtn.dataset.available = canGiveItem ? 'true' : 'false';
+        }
+        if (coinBtn) {
+            coinBtn.classList.toggle('is-unavailable', !canPayCoin);
+            coinBtn.dataset.available = canPayCoin ? 'true' : 'false';
+        }
+
+        renderInventoryInto(el('thief-held-items'), state.run, state.catalog, state.floor);
+
+        if (!modalEl.classList.contains('show')) {
+            modal.show();
         }
     }
 
@@ -600,6 +656,10 @@
         el('stairs-continue-btn')?.addEventListener('click', handlers.onContinueExplore);
         el('stairs-descend-btn')?.addEventListener('click', () => handlers.onResolveStairs('descend'));
         el('stairs-return-btn')?.addEventListener('click', () => handlers.onResolveStairs('return'));
+        el('thief-give-item-btn')?.addEventListener('click', () => handlers.onResolveThief('item'));
+        el('thief-pay-coin-btn')?.addEventListener('click', () => handlers.onResolveThief('coin'));
+        el('thief-run-btn')?.addEventListener('click', () => handlers.onResolveThief('escape'));
+        el('thief-held-toggle-btn')?.addEventListener('click', handlers.onToggleThiefHeldItems);
         el('shop-skip-btn')?.addEventListener('click', handlers.onSkipShop);
         el('shop-held-toggle-btn')?.addEventListener('click', handlers.onToggleShopHeldItems);
         el('retry-run-btn')?.addEventListener('click', handlers.onRetry);
@@ -623,6 +683,7 @@
         renderBoard,
         renderShop,
         renderStairsPrompt,
+        renderThiefPrompt,
         renderLogs,
         renderResult,
         setBusy,
