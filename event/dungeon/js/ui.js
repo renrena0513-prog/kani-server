@@ -479,10 +479,10 @@
 
         setText('stairs-modal-title', isFinalFloor ? '深部の祭壇を見つけた' : '下り階段を見つけた');
         setText('stairs-modal-description', isFinalFloor
-            ? 'ここが最深部だ。次の階層は存在しない。祭壇に祈りを捧げて帰還する。'
+            ? 'ここが最深部だ。さらに先へは進めない。この階層の探索を続けるか、祭壇に祈りを捧げて帰還する。'
             : 'ここで探索続行、帰還、次の階への降下を選べます。続行後も階段を踏めば再度選択できます。');
         setText('stairs-return-btn', isFinalFloor ? '祭壇に祈りを捧げて帰還' : '戦利品を持って帰還');
-        el('stairs-continue-btn')?.classList.toggle('d-none', isFinalFloor);
+        el('stairs-continue-btn')?.classList.remove('d-none');
         el('stairs-descend-btn')?.classList.toggle('d-none', isFinalFloor);
 
         if (visible) {

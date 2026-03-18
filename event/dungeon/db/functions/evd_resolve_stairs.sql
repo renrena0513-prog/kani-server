@@ -43,12 +43,8 @@ begin
                 c.sort_order,
                 greatest(coalesce(c.weight, 0), 1) as effective_weight
               from public.evd_item_catalog c
-              left join public.evd_player_item_stocks st
-                on st.user_id = v_user_id
-               and st.item_code = c.code
              where c.is_active = true
                and c.shop_pool = 'レリック'
-               and coalesce(st.quantity, 0) < c.max_stack
         )
         select coalesce(
             jsonb_agg(

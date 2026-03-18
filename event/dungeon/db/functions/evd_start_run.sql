@@ -79,6 +79,15 @@ begin
         raise exception '持ち込みは % 個までです', v_carry_limit;
     end if;
 
+    update public.evd_player_item_stocks
+       set is_set = case
+            when item_code = any(coalesce(p_carry_items, '{}'::text[])) then true
+            else false
+       end,
+           account_name = v_profile.account_name,
+           updated_at = now()
+     where user_id = v_user_id;
+
     foreach v_item in array p_carry_items loop
         update public.evd_player_item_stocks
            set quantity = quantity - 1,
