@@ -444,9 +444,13 @@
         onToggleThiefHeldItems: () => {
             const panel = document.getElementById('thief-held-panel');
             const button = document.getElementById('thief-held-toggle-btn');
+            const choices = document.querySelector('#thief-modal .thief-choice-list');
+            const warning = document.getElementById('thief-warning-text');
             if (!panel || !button) return;
             const showHeldOnly = panel.classList.contains('d-none');
             panel.classList.toggle('d-none', !showHeldOnly);
+            if (choices) choices.classList.toggle('d-none', showHeldOnly);
+            if (warning) warning.classList.toggle('d-none', showHeldOnly);
             button.textContent = showHeldOnly ? '選択に戻る' : '所持アイテム';
         },
         onToggleMobilePad: () => {
