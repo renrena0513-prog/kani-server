@@ -16,6 +16,7 @@ declare
     v_item_to_lose text;
     v_item_to_lose_name text;
     v_escape_failed boolean := false;
+    v_escape_chance numeric(6, 4) := 0.70;
 begin
     if v_user_id = '' then
         raise exception 'ログインが必要です';
@@ -51,6 +52,16 @@ begin
     end if;
 
     v_ransom := greatest(coalesce((v_pending ->> 'ransom')::integer, 150), 0);
+
+    select v_escape_chance + least(coalesce(sum(st.quantity), 0), 2) * 0.05
+      into v_escape_chance
+      from public.evd_player_item_stocks st
+      join public.evd_item_catalog c
+        on c.code = st.item_code
+     where st.user_id = v_user_id
+       and st.quantity > 0
+       and c.is_active = true
+       and c.effect_data ->> 'effect' = 'relic_thief_escape_plus_5pct';
 
     case p_action
         when 'item' then
@@ -89,7 +100,7 @@ begin
 
             v_message := format('盗賊へ %s コイン差し出した。', v_ransom);
         when 'escape' then
-            if random() < 0.7 then
+            if random() < v_escape_chance then
                 update public.evd_game_runs
                    set inventory_state = inventory_state - 'pending_thief'
                  where id = p_run_id;

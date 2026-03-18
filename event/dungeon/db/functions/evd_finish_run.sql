@@ -14,6 +14,10 @@ declare
     v_carried_items jsonb;
     v_items jsonb;
     v_return_item record;
+    v_wallet_bonus numeric(8, 2) := 0.0;
+    v_base_death_rate numeric(8, 2) := 0.0;
+    v_death_return_rate numeric(8, 2) := 0.0;
+    v_has_coffin boolean := false;
 begin
     select * into v_run from public.evd_game_runs where id = p_run_id and user_id = p_user_id for update;
     if not found then
@@ -27,14 +31,38 @@ begin
             * v_run.final_return_multiplier
             * case when coalesce((v_flags ->> 'golden_contract_active')::boolean, false) then 2 else 1 end
         )::integer;
-    elsif coalesce((v_run.inventory_state -> 'carried_items' -> 'vault_box' ->> 'quantity')::integer, 0) > 0 then
-        v_payout := v_run.secured_coins + floor(v_run.run_coins * 0.8)::integer;
-    elsif coalesce((v_flags ->> 'insurance_active')::boolean, false) then
-        v_payout := v_run.secured_coins + floor(v_run.run_coins / 2.0)::integer;
-        v_flags := jsonb_set(v_flags, array['insurance_active'], 'false'::jsonb, true);
-        v_run.inventory_state := jsonb_set(v_run.inventory_state, array['flags'], v_flags, true);
     else
-        v_payout := v_run.secured_coins;
+        select least(coalesce(sum(st.quantity), 0), 5) * 0.02
+          into v_wallet_bonus
+          from public.evd_player_item_stocks st
+          join public.evd_item_catalog c
+            on c.code = st.item_code
+         where st.user_id = p_user_id
+           and st.quantity > 0
+           and c.is_active = true
+           and c.effect_data ->> 'effect' = 'relic_death_coin_keep_plus_2pct';
+
+        select exists (
+            select 1
+              from public.evd_player_item_stocks st
+              join public.evd_item_catalog c on c.code = st.item_code
+             where st.user_id = p_user_id
+               and st.quantity > 0
+               and c.is_active = true
+               and c.effect_data ->> 'effect' = 'relic_keep_unused_manual_on_death'
+        )
+          into v_has_coffin;
+
+        if coalesce((v_run.inventory_state -> 'carried_items' -> 'vault_box' ->> 'quantity')::integer, 0) > 0 then
+            v_base_death_rate := 0.80;
+        elsif coalesce((v_flags ->> 'insurance_active')::boolean, false) then
+            v_base_death_rate := 0.50;
+            v_flags := jsonb_set(v_flags, array['insurance_active'], 'false'::jsonb, true);
+            v_run.inventory_state := jsonb_set(v_run.inventory_state, array['flags'], v_flags, true);
+        end if;
+
+        v_death_return_rate := least(1.0, coalesce(v_base_death_rate, 0) + coalesce(v_wallet_bonus, 0));
+        v_payout := v_run.secured_coins + floor(v_run.run_coins * v_death_return_rate)::integer;
     end if;
 
     v_carried_items := coalesce(v_run.inventory_state -> 'carried_items', '{}'::jsonb);
@@ -109,6 +137,34 @@ begin
                 updated_at = now();
         end loop;
     else
+        if v_has_coffin then
+            for v_return_item in
+                select
+                    e.key as item_code,
+                    coalesce((e.value ->> 'quantity')::integer, 0) as quantity
+                  from jsonb_each(v_items) e
+                  join public.evd_item_catalog c on c.code = e.key
+                 where coalesce((e.value ->> 'quantity')::integer, 0) > 0
+                   and c.item_kind = '手動'
+            loop
+                insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, is_set, updated_at)
+                values (
+                    p_user_id,
+                    v_run.account_name,
+                    (select c.name from public.evd_item_catalog c where c.code = v_return_item.item_code),
+                    v_return_item.item_code,
+                    v_return_item.quantity,
+                    false,
+                    now()
+                )
+                on conflict (user_id, item_code) do update
+                set quantity = public.evd_player_item_stocks.quantity + excluded.quantity,
+                    account_name = excluded.account_name,
+                    name = excluded.name,
+                    updated_at = now();
+            end loop;
+        end if;
+
         for v_return_item in
             select
                 e.key as item_code,

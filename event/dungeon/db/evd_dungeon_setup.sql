@@ -41,10 +41,16 @@ update public.evd_item_catalog
         when 'substitute_doll' then 'エピック'
         when 'abyss_ticket' then 'エピック'
         when 'vault_box' then 'エピック'
+        when 'golden_return' then 'エピック'
+        when 'escape_talisman' then 'エピック'
+        when 'underworld_wallet' then 'エピック'
+        when 'merchant_seal' then 'エピック'
         when 'holy_grail' then 'レジェンド'
         when 'golden_contract' then 'レジェンド'
         when 'giant_cup' then 'レジェンド'
         when 'greedy_bag' then 'レジェンド'
+        when 'doom_eye' then 'レジェンド'
+        when 'collector_coffin' then 'レジェンド'
         else 'ノーマル'
    end;
 
@@ -383,8 +389,14 @@ values
     ('golden_contract', '黄金契約書', '無事に帰還した時の報酬を 2 倍にする。', '自動', '限定', true, 820, '{"effect":"golden_contract"}', 100, 1, 'レジェンド'),
     ('full_scan_map', '完全探査図', 'その階の爆弾位置を可視化する。', '手動', '限定', true, 540, '{"effect":"full_scan"}', 110, 3, 'レア'),
     ('vault_box', '不滅証書', '死亡時に所持コインの 80% を持ち帰る。', '死亡時', '限定', true, 740, '{"effect":"vault_box","rate":0.8}', 120, 2, 'エピック'),
-    ('giant_cup', '巨人の盃', '所持しているだけで最大LIFEが 1 増える。重複しても効果は 1 回のみ。', '永続', 'レリック', false, 1200, '{"effect":"relic_max_life_plus_1"}', 130, 0, 'レジェンド'),
-    ('greedy_bag', '強欲の鞄', '所持しているだけで持ち込めるアイテム数が 1 増える。', '永続', 'レリック', false, 1400, '{"effect":"relic_carry_limit_plus_1"}', 140, 0, 'レジェンド')
+    ('giant_cup', '巨人の盃', '所持しているだけで最大LIFEが 1 増える。重複しても効果は 1 回のみ。', '永続', 'レリック', false, 1200, '{"effect":"relic_max_life_plus_1","max_effect_stacks":1}', 130, 0, 'レジェンド'),
+    ('greedy_bag', '強欲の鞄', '所持しているだけで持ち込めるアイテム数が 1 増える。', '永続', 'レリック', false, 1400, '{"effect":"relic_carry_limit_plus_1","max_effect_stacks":1}', 140, 0, 'レジェンド'),
+    ('golden_return', '黄金の帰路', '帰還時の持ち帰り倍率が上がる。', '永続', 'レリック', false, 1250, '{"effect":"relic_return_multiplier_plus_0_05","bonus_per_stack":0.05,"max_bonus":0.20,"max_effect_stacks":4}', 150, 0, 'エピック'),
+    ('escape_talisman', '逃げ足の護符', '盗賊から逃げやすくなる。', '永続', 'レリック', false, 1180, '{"effect":"relic_thief_escape_plus_5pct","bonus_per_stack":0.05,"max_bonus":0.10,"max_effect_stacks":2}', 160, 0, 'エピック'),
+    ('doom_eye', '破滅の魔眼', '常に爆弾レーダーの効果を得る。', '永続', 'レリック', false, 1650, '{"effect":"relic_bomb_radar_always","max_effect_stacks":1}', 170, 0, 'レジェンド'),
+    ('collector_coffin', '回収者の棺', '死亡しても未使用の手動アイテムを失わない。', '永続', 'レリック', false, 1680, '{"effect":"relic_keep_unused_manual_on_death","max_effect_stacks":1}', 180, 0, 'レジェンド'),
+    ('underworld_wallet', '黄泉帰りの財布', '死亡時に持ち帰れるコインが増える。', '永続', 'レリック', false, 1320, '{"effect":"relic_death_coin_keep_plus_2pct","bonus_per_stack":0.02,"max_bonus":0.10,"max_effect_stacks":5}', 190, 0, 'エピック'),
+    ('merchant_seal', '商人の印章', 'ショップ価格が安くなる。', '永続', 'レリック', false, 1280, '{"effect":"relic_shop_discount_plus_5pct","bonus_per_stack":0.05,"max_bonus":0.20,"max_effect_stacks":4}', 200, 0, 'エピック')
 on conflict (code) do update
 set
     name = excluded.name,
@@ -828,15 +840,30 @@ create or replace function public.evd_generate_shop_offers(p_shop_type text)
 returns jsonb
 language sql
 as $$
+    with merchant_discount as (
+        select least(coalesce(sum(st.quantity), 0), 4) * 0.05 as rate
+          from public.evd_player_item_stocks st
+          join public.evd_item_catalog c
+            on c.code = st.item_code
+         where st.user_id = public.evd_current_user_id()
+           and st.quantity > 0
+           and c.is_active = true
+           and c.effect_data ->> 'effect' = 'relic_shop_discount_plus_5pct'
+    )
     select coalesce(jsonb_agg(jsonb_build_object(
         'code', code,
         'name', name,
         'description', description,
-        'price', base_price,
+        'price', price,
         'rarity', rarity
     )), '[]'::jsonb)
     from (
-        select code, name, description, base_price, rarity
+        select
+            code,
+            name,
+            description,
+            floor(base_price * greatest(0::numeric, 1 - coalesce((select rate from merchant_discount), 0)))::integer as price,
+            rarity
           from public.evd_item_catalog
          where is_active = true
            and (
@@ -1061,6 +1088,10 @@ declare
     v_carried_items jsonb;
     v_items jsonb;
     v_return_item record;
+    v_wallet_bonus numeric(8, 2) := 0.0;
+    v_base_death_rate numeric(8, 2) := 0.0;
+    v_death_return_rate numeric(8, 2) := 0.0;
+    v_has_coffin boolean := false;
 begin
     select * into v_run from public.evd_game_runs where id = p_run_id and user_id = p_user_id for update;
     if not found then
@@ -1074,14 +1105,38 @@ begin
             * v_run.final_return_multiplier
             * case when coalesce((v_flags ->> 'golden_contract_active')::boolean, false) then 2 else 1 end
         )::integer;
-    elsif coalesce((v_run.inventory_state -> 'carried_items' -> 'vault_box' ->> 'quantity')::integer, 0) > 0 then
-        v_payout := v_run.secured_coins + floor(v_run.run_coins * 0.8)::integer;
-    elsif coalesce((v_flags ->> 'insurance_active')::boolean, false) then
-        v_payout := v_run.secured_coins + floor(v_run.run_coins / 2.0)::integer;
-        v_flags := jsonb_set(v_flags, array['insurance_active'], 'false'::jsonb, true);
-        v_run.inventory_state := jsonb_set(v_run.inventory_state, array['flags'], v_flags, true);
     else
-        v_payout := v_run.secured_coins;
+        select least(coalesce(sum(st.quantity), 0), 5) * 0.02
+          into v_wallet_bonus
+          from public.evd_player_item_stocks st
+          join public.evd_item_catalog c
+            on c.code = st.item_code
+         where st.user_id = p_user_id
+           and st.quantity > 0
+           and c.is_active = true
+           and c.effect_data ->> 'effect' = 'relic_death_coin_keep_plus_2pct';
+
+        select exists (
+            select 1
+              from public.evd_player_item_stocks st
+              join public.evd_item_catalog c on c.code = st.item_code
+             where st.user_id = p_user_id
+               and st.quantity > 0
+               and c.is_active = true
+               and c.effect_data ->> 'effect' = 'relic_keep_unused_manual_on_death'
+        )
+          into v_has_coffin;
+
+        if coalesce((v_run.inventory_state -> 'carried_items' -> 'vault_box' ->> 'quantity')::integer, 0) > 0 then
+            v_base_death_rate := 0.80;
+        elsif coalesce((v_flags ->> 'insurance_active')::boolean, false) then
+            v_base_death_rate := 0.50;
+            v_flags := jsonb_set(v_flags, array['insurance_active'], 'false'::jsonb, true);
+            v_run.inventory_state := jsonb_set(v_run.inventory_state, array['flags'], v_flags, true);
+        end if;
+
+        v_death_return_rate := least(1.0, coalesce(v_base_death_rate, 0) + coalesce(v_wallet_bonus, 0));
+        v_payout := v_run.secured_coins + floor(v_run.run_coins * v_death_return_rate)::integer;
     end if;
 
     v_carried_items := coalesce(v_run.inventory_state -> 'carried_items', '{}'::jsonb);
@@ -1156,6 +1211,34 @@ begin
                 updated_at = now();
         end loop;
     else
+        if v_has_coffin then
+            for v_return_item in
+                select
+                    e.key as item_code,
+                    coalesce((e.value ->> 'quantity')::integer, 0) as quantity
+                  from jsonb_each(v_items) e
+                  join public.evd_item_catalog c on c.code = e.key
+                 where coalesce((e.value ->> 'quantity')::integer, 0) > 0
+                   and c.item_kind = '手動'
+            loop
+                insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, is_set, updated_at)
+                values (
+                    p_user_id,
+                    v_run.account_name,
+                    (select c.name from public.evd_item_catalog c where c.code = v_return_item.item_code),
+                    v_return_item.item_code,
+                    v_return_item.quantity,
+                    false,
+                    now()
+                )
+                on conflict (user_id, item_code) do update
+                set quantity = public.evd_player_item_stocks.quantity + excluded.quantity,
+                    account_name = excluded.account_name,
+                    name = excluded.name,
+                    updated_at = now();
+            end loop;
+        end if;
+
         for v_return_item in
             select
                 e.key as item_code,
@@ -1275,16 +1358,16 @@ declare
     );
     v_item text;
     v_effect text;
+    v_carry_limit integer := 2;
+    v_initial_return_multiplier numeric(8, 2) := 1.0;
+    v_golden_return_bonus numeric(8, 2) := 0.0;
+    v_has_doom_eye boolean := false;
 begin
     if v_user_id = '' then
         raise exception 'ログインが必要です';
     end if;
 
     perform pg_advisory_xact_lock(hashtext('evd:' || v_user_id));
-
-    if array_length(p_carry_items, 1) > 2 then
-        raise exception '持ち込みは 2 個までです';
-    end if;
 
     if exists (select 1 from public.evd_game_runs where user_id = v_user_id and status = '進行中') then
         raise exception '進行中のランがあります';
@@ -1313,6 +1396,45 @@ begin
      where is_active = true
      order by updated_at desc
      limit 1;
+
+    if exists (
+        select 1
+          from public.evd_player_item_stocks st
+          join public.evd_item_catalog c on c.code = st.item_code
+         where st.user_id = v_user_id
+           and st.quantity > 0
+           and c.is_active = true
+           and c.effect_data ->> 'effect' = 'relic_carry_limit_plus_1'
+    ) then
+        v_carry_limit := 3;
+    end if;
+
+    if array_length(p_carry_items, 1) > v_carry_limit then
+        raise exception '持ち込みは % 個までです', v_carry_limit;
+    end if;
+
+    select least(coalesce(sum(st.quantity), 0), 4) * 0.05
+      into v_golden_return_bonus
+      from public.evd_player_item_stocks st
+      join public.evd_item_catalog c
+        on c.code = st.item_code
+     where st.user_id = v_user_id
+       and st.quantity > 0
+       and c.is_active = true
+       and c.effect_data ->> 'effect' = 'relic_return_multiplier_plus_0_05';
+
+    v_initial_return_multiplier := round((1.0 + coalesce(v_golden_return_bonus, 0))::numeric, 2);
+
+    select exists (
+        select 1
+          from public.evd_player_item_stocks st
+          join public.evd_item_catalog c on c.code = st.item_code
+         where st.user_id = v_user_id
+           and st.quantity > 0
+           and c.is_active = true
+           and c.effect_data ->> 'effect' = 'relic_bomb_radar_always'
+    )
+      into v_has_doom_eye;
 
     update public.evd_player_item_stocks
        set is_set = case
@@ -1367,7 +1489,7 @@ begin
     end if;
 
     insert into public.evd_game_runs (
-        user_id, account_name, generation_profile_id, status, life, max_life, inventory_state, substitute_negates_remaining
+        user_id, account_name, generation_profile_id, status, life, max_life, inventory_state, substitute_negates_remaining, final_return_multiplier
     )
     values (
         v_user_id,
@@ -1377,7 +1499,8 @@ begin
         v_max_life,
         v_max_life,
         v_inventory,
-        case when coalesce((v_inventory -> 'flags' ->> 'substitute_ready')::boolean, false) then 3 else 0 end
+        case when coalesce((v_inventory -> 'flags' ->> 'substitute_ready')::boolean, false) then 3 else 0 end,
+        v_initial_return_multiplier
     )
     returning id into v_run_id;
 
@@ -1415,7 +1538,19 @@ begin
         );
     end if;
 
-    if coalesce((v_inventory -> 'items' -> 'bomb_radar' ->> 'quantity')::integer, 0) > 0 then
+    if coalesce(v_golden_return_bonus, 0) > 0 then
+        perform public.evd_add_log(
+            v_run_id,
+            v_user_id,
+            v_profile.account_name,
+            1,
+            'レリック効果',
+            format('黄金の帰路が導き、初期持ち帰り倍率が +%s された。', to_char(v_golden_return_bonus, 'FM0.00')),
+            jsonb_build_object('effect', 'relic_return_multiplier_plus_0_05', 'bonus', v_golden_return_bonus)
+        );
+    end if;
+
+    if coalesce((v_inventory -> 'items' -> 'bomb_radar' ->> 'quantity')::integer, 0) > 0 or v_has_doom_eye then
         select count(*)
           into v_bomb_count
           from jsonb_array_elements(v_floor_seed -> 'grid') as row_cells(cell_row)
@@ -1427,9 +1562,12 @@ begin
             v_user_id,
             v_profile.account_name,
             1,
-            '爆弾レーダー',
-            format('爆弾レーダーが反応を示した！この階層には爆弾が %s 個あるようだ・・・', v_bomb_count),
-            jsonb_build_object('bomb_count', v_bomb_count)
+            case when v_has_doom_eye then 'レリック効果' else '爆弾レーダー' end,
+            case when v_has_doom_eye
+                 then format('破滅の魔眼がこの階層の爆弾を暴いた。爆弾は %s 個あるようだ・・・', v_bomb_count)
+                 else format('爆弾レーダーが反応を示した！この階層には爆弾が %s 個あるようだ・・・', v_bomb_count)
+            end,
+            jsonb_build_object('bomb_count', v_bomb_count, 'effect', case when v_has_doom_eye then 'relic_bomb_radar_always' else 'bomb_radar' end)
         );
     end if;
 
@@ -1450,6 +1588,7 @@ declare
     v_run public.evd_game_runs%rowtype;
     v_floor_seed jsonb;
     v_bomb_count integer := 0;
+    v_has_doom_eye boolean := false;
 begin
     select * into v_run from public.evd_game_runs where id = p_run_id and user_id = p_user_id for update;
 
@@ -1495,7 +1634,18 @@ begin
            version = version + 1
      where id = p_run_id;
 
-    if coalesce((v_run.inventory_state -> 'items' -> 'bomb_radar' ->> 'quantity')::integer, 0) > 0 then
+    select exists (
+        select 1
+          from public.evd_player_item_stocks st
+          join public.evd_item_catalog c on c.code = st.item_code
+         where st.user_id = p_user_id
+           and st.quantity > 0
+           and c.is_active = true
+           and c.effect_data ->> 'effect' = 'relic_bomb_radar_always'
+    )
+      into v_has_doom_eye;
+
+    if coalesce((v_run.inventory_state -> 'items' -> 'bomb_radar' ->> 'quantity')::integer, 0) > 0 or v_has_doom_eye then
         select count(*)
           into v_bomb_count
           from public.evd_run_floors f
@@ -1510,9 +1660,12 @@ begin
             p_user_id,
             v_run.account_name,
             p_target_floor,
-            '爆弾レーダー',
-            format('爆弾レーダーが反応を示した！この階層には爆弾が %s 個あるようだ・・・', v_bomb_count),
-            jsonb_build_object('bomb_count', v_bomb_count)
+            case when v_has_doom_eye then 'レリック効果' else '爆弾レーダー' end,
+            case when v_has_doom_eye
+                 then format('破滅の魔眼がこの階層の爆弾を暴いた。爆弾は %s 個あるようだ・・・', v_bomb_count)
+                 else format('爆弾レーダーが反応を示した！この階層には爆弾が %s 個あるようだ・・・', v_bomb_count)
+            end,
+            jsonb_build_object('bomb_count', v_bomb_count, 'effect', case when v_has_doom_eye then 'relic_bomb_radar_always' else 'bomb_radar' end)
         );
     end if;
 end;
@@ -1829,6 +1982,7 @@ declare
     v_item_to_lose text;
     v_item_to_lose_name text;
     v_escape_failed boolean := false;
+    v_escape_chance numeric(6, 4) := 0.70;
 begin
     if v_user_id = '' then
         raise exception 'ログインが必要です';
@@ -1864,6 +2018,16 @@ begin
     end if;
 
     v_ransom := greatest(coalesce((v_pending ->> 'ransom')::integer, 150), 0);
+
+    select v_escape_chance + least(coalesce(sum(st.quantity), 0), 2) * 0.05
+      into v_escape_chance
+      from public.evd_player_item_stocks st
+      join public.evd_item_catalog c
+        on c.code = st.item_code
+     where st.user_id = v_user_id
+       and st.quantity > 0
+       and c.is_active = true
+       and c.effect_data ->> 'effect' = 'relic_thief_escape_plus_5pct';
 
     case p_action
         when 'item' then
@@ -1902,7 +2066,7 @@ begin
 
             v_message := format('盗賊へ %s コイン差し出した。', v_ransom);
         when 'escape' then
-            if random() < 0.7 then
+            if random() < v_escape_chance then
                 update public.evd_game_runs
                    set inventory_state = inventory_state - 'pending_thief'
                  where id = p_run_id;
@@ -2074,6 +2238,7 @@ begin
                 c.code,
                 c.name,
                 c.description,
+                c.rarity,
                 c.sort_order,
                 greatest(coalesce(c.weight, 0), 1) as effective_weight
               from public.evd_item_catalog c
@@ -2337,6 +2502,8 @@ declare
     v_profile record;
     v_item record;
     v_stocks jsonb;
+    v_price integer := 0;
+    v_discount_rate numeric(8, 2) := 0.0;
 begin
     if v_user_id = '' then
         raise exception 'ログインが必要です';
@@ -2354,7 +2521,7 @@ begin
         raise exception 'プロフィールが見つかりません';
     end if;
 
-    select code, name, description, base_price, shop_pool, is_active
+    select code, name, description, base_price, shop_pool, is_active, effect_data
       into v_item
       from public.evd_item_catalog
      where code = p_item_code;
@@ -2363,12 +2530,24 @@ begin
         raise exception '購入できないアイテムです';
     end if;
 
-    if coalesce(v_profile.coins, 0) < v_item.base_price then
+    select least(coalesce(sum(st.quantity), 0), 4) * 0.05
+      into v_discount_rate
+      from public.evd_player_item_stocks st
+      join public.evd_item_catalog c
+        on c.code = st.item_code
+     where st.user_id = v_user_id
+       and st.quantity > 0
+       and c.is_active = true
+       and c.effect_data ->> 'effect' = 'relic_shop_discount_plus_5pct';
+
+    v_price := floor(v_item.base_price * greatest(0::numeric, 1 - coalesce(v_discount_rate, 0)))::integer;
+
+    if coalesce(v_profile.coins, 0) < v_price then
         raise exception 'コインが足りません';
     end if;
 
     update public.profiles
-       set coins = coins - v_item.base_price
+       set coins = coins - v_price
      where discord_user_id = v_user_id;
 
     insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, is_set, updated_at)
@@ -2410,7 +2589,7 @@ begin
       ) s;
 
     return jsonb_build_object(
-        'message', format('%s を購入して在庫に追加した。', v_item.name),
+        'message', format('%s を %s コインで購入して在庫に追加した。', v_item.name, v_price),
         'profile', to_jsonb(v_profile),
         'stocks', v_stocks
     );

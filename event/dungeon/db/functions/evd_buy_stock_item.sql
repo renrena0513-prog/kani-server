@@ -9,6 +9,8 @@ declare
     v_profile record;
     v_item record;
     v_stocks jsonb;
+    v_price integer := 0;
+    v_discount_rate numeric(8, 2) := 0.0;
 begin
     if v_user_id = '' then
         raise exception 'ログインが必要です';
@@ -26,7 +28,7 @@ begin
         raise exception 'プロフィールが見つかりません';
     end if;
 
-    select code, name, description, base_price, shop_pool, is_active
+    select code, name, description, base_price, shop_pool, is_active, effect_data
       into v_item
       from public.evd_item_catalog
      where code = p_item_code;
@@ -35,12 +37,24 @@ begin
         raise exception '購入できないアイテムです';
     end if;
 
-    if coalesce(v_profile.coins, 0) < v_item.base_price then
+    select least(coalesce(sum(st.quantity), 0), 4) * 0.05
+      into v_discount_rate
+      from public.evd_player_item_stocks st
+      join public.evd_item_catalog c
+        on c.code = st.item_code
+     where st.user_id = v_user_id
+       and st.quantity > 0
+       and c.is_active = true
+       and c.effect_data ->> 'effect' = 'relic_shop_discount_plus_5pct';
+
+    v_price := floor(v_item.base_price * greatest(0::numeric, 1 - coalesce(v_discount_rate, 0)))::integer;
+
+    if coalesce(v_profile.coins, 0) < v_price then
         raise exception 'コインが足りません';
     end if;
 
     update public.profiles
-       set coins = coins - v_item.base_price
+       set coins = coins - v_price
      where discord_user_id = v_user_id;
 
     insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, is_set, updated_at)
@@ -82,7 +96,7 @@ begin
       ) s;
 
     return jsonb_build_object(
-        'message', format('%s を購入して在庫に追加した。', v_item.name),
+        'message', format('%s を %s コインで購入して在庫に追加した。', v_item.name, v_price),
         'profile', to_jsonb(v_profile),
         'stocks', v_stocks
     );

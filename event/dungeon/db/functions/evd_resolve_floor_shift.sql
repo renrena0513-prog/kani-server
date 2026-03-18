@@ -11,6 +11,7 @@ declare
     v_run public.evd_game_runs%rowtype;
     v_floor_seed jsonb;
     v_bomb_count integer := 0;
+    v_has_doom_eye boolean := false;
 begin
     select * into v_run from public.evd_game_runs where id = p_run_id and user_id = p_user_id for update;
 
@@ -56,7 +57,18 @@ begin
            version = version + 1
      where id = p_run_id;
 
-    if coalesce((v_run.inventory_state -> 'items' -> 'bomb_radar' ->> 'quantity')::integer, 0) > 0 then
+    select exists (
+        select 1
+          from public.evd_player_item_stocks st
+          join public.evd_item_catalog c on c.code = st.item_code
+         where st.user_id = p_user_id
+           and st.quantity > 0
+           and c.is_active = true
+           and c.effect_data ->> 'effect' = 'relic_bomb_radar_always'
+    )
+      into v_has_doom_eye;
+
+    if coalesce((v_run.inventory_state -> 'items' -> 'bomb_radar' ->> 'quantity')::integer, 0) > 0 or v_has_doom_eye then
         select count(*)
           into v_bomb_count
           from public.evd_run_floors f
@@ -71,9 +83,12 @@ begin
             p_user_id,
             v_run.account_name,
             p_target_floor,
-            '爆弾レーダー',
-            format('爆弾レーダーが反応を示した！この階層には爆弾が %s 個あるようだ・・・', v_bomb_count),
-            jsonb_build_object('bomb_count', v_bomb_count)
+            case when v_has_doom_eye then 'レリック効果' else '爆弾レーダー' end,
+            case when v_has_doom_eye
+                 then format('破滅の魔眼がこの階層の爆弾を暴いた。爆弾は %s 個あるようだ・・・', v_bomb_count)
+                 else format('爆弾レーダーが反応を示した！この階層には爆弾が %s 個あるようだ・・・', v_bomb_count)
+            end,
+            jsonb_build_object('bomb_count', v_bomb_count, 'effect', case when v_has_doom_eye then 'relic_bomb_radar_always' else 'bomb_radar' end)
         );
     end if;
 end;

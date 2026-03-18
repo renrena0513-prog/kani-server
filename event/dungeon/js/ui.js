@@ -14,7 +14,13 @@
         substitute_doll: '🪆',
         giant_cup: '🏆',
         greedy_bag: '🎒',
-        vault_box: '📜'
+        vault_box: '📜',
+        golden_return: '🌟',
+        escape_talisman: '🏃',
+        doom_eye: '👁️',
+        collector_coffin: '⚰️',
+        underworld_wallet: '👛',
+        merchant_seal: '🪙'
     };
     const TILE_POPUP_META = {
         '空白': { icon: '🪨', title: '空白マス' },
@@ -95,6 +101,14 @@
         return item?.item_kind || '手動';
     }
 
+    function stockQuantity(stocks, itemCode) {
+        return Number((stocks || []).find((stock) => stock.item_code === itemCode)?.quantity || 0);
+    }
+
+    function merchantDiscountRate(stocks) {
+        return Math.min(stockQuantity(stocks, 'merchant_seal'), 4) * 0.05;
+    }
+
     function el(id) {
         return document.getElementById(id);
     }
@@ -171,7 +185,10 @@
                         <div class="carry-item-layout">
                             ${renderItemVisual(stock.item_code, item.name)}
                             <div class="carry-item-body">
-                                <div class="carry-item-name">${item.name}</div>
+                                <div class="carry-item-head">
+                                    <div class="carry-item-name">${item.name}</div>
+                                    ${selected ? '<span class="carry-selected-badge">選択中</span>' : ''}
+                                </div>
                                 <div class="carry-item-desc">${item.description || ''}</div>
                                 <div class="carry-item-meta">在庫 ${formatNumber(stock.quantity)} / ${item.item_kind || '手動'}</div>
                             </div>
@@ -197,6 +214,7 @@
 
         const stockMap = Object.fromEntries((stocks || []).map((stock) => [stock.item_code, stock.quantity]));
         const buyable = (catalog || []).filter((item) => ['通常', '両方'].includes(item.shop_pool));
+        const discountRate = merchantDiscountRate(stocks);
 
         if (!buyable.length) {
             wrap.innerHTML = '<div class="dungeon-empty">購入できるアイテムがありません。</div>';
@@ -204,7 +222,8 @@
         }
 
         wrap.innerHTML = buyable.map((item) => {
-            const disabled = Number(walletCoins || 0) < Number(item.base_price || 0);
+            const price = Math.floor(Number(item.base_price || 0) * Math.max(0, 1 - discountRate));
+            const disabled = Number(walletCoins || 0) < price;
             const stock = stockMap[item.code] || 0;
             return `
                 <div class="prep-shop-card ${rarityClass(item)}">
@@ -213,7 +232,7 @@
                         <div>
                             <div class="shop-offer-name">${item.name}</div>
                             <div class="shop-offer-desc">${item.description || ''}</div>
-                            <div class="carry-item-meta">価格 ${formatNumber(item.base_price)} / 所持 ${formatNumber(stock)} / ${item.shop_pool}</div>
+                            <div class="carry-item-meta">価格 ${formatNumber(price)} / 所持 ${formatNumber(stock)} / ${item.shop_pool}</div>
                         </div>
                     </div>
                     <button class="dungeon-btn-primary prep-shop-buy-btn" data-buy-stock="${item.code}" ${disabled ? 'disabled' : ''}>購入</button>
@@ -335,6 +354,14 @@
                 description = `マイナス効果をあと ${formatNumber(run.substitute_negates_remaining)} 回まで無効化する。`;
             } else if (code === 'bomb_radar') {
                 description = `この階層の爆弾は ${formatNumber(bombCount)} 個。`;
+            } else if (code === 'doom_eye') {
+                description = `破滅の魔眼が暴く。この階層の爆弾は ${formatNumber(bombCount)} 個。`;
+            } else if (code === 'golden_return') {
+                description = `持ち帰り倍率を底上げする。現在の効果量は +${Math.min(entry.quantity, 4) * 5}% 。`;
+            } else if (code === 'underworld_wallet') {
+                description = `死亡時のコイン持ち帰り率を上げる。現在の追加効果は ${Math.min(entry.quantity, 5) * 2}% 。`;
+            } else if (code === 'merchant_seal') {
+                description = `ショップ価格を下げる。現在の割引率は ${Math.min(entry.quantity, 4) * 5}% 。`;
             }
             return `
                 <div class="inventory-item ${rarityClass(item)}">

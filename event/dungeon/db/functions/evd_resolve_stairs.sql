@@ -40,6 +40,7 @@ begin
                 c.code,
                 c.name,
                 c.description,
+                c.rarity,
                 c.sort_order,
                 greatest(coalesce(c.weight, 0), 1) as effective_weight
               from public.evd_item_catalog c
