@@ -486,6 +486,8 @@
         if (!pending) {
             modal.hide();
             el('thief-held-panel')?.classList.add('d-none');
+            el('thief-modal')?.querySelector('.thief-choice-list')?.classList.remove('d-none');
+            el('thief-warning-text')?.classList.remove('d-none');
             setText('thief-held-toggle-btn', '所持アイテム');
             setHtml('thief-held-items', '');
             return;
@@ -499,6 +501,10 @@
         const canGiveItem = itemCount > 0;
         const canPayCoin = currentCoins >= ransom;
 
+        el('thief-held-panel')?.classList.add('d-none');
+        el('thief-modal')?.querySelector('.thief-choice-list')?.classList.remove('d-none');
+        el('thief-warning-text')?.classList.remove('d-none');
+        setText('thief-held-toggle-btn', '所持アイテム');
         setText('thief-run-coins', formatNumber(currentCoins));
         setText('thief-item-note', canGiveItem
             ? '所持アイテムからランダムに 1 個奪われる。'
@@ -506,7 +512,7 @@
         setText('thief-coin-title', `お金を ${formatNumber(ransom)} コイン差し出す`);
         setText('thief-coin-note', `${formatNumber(ransom)} コインを差し出す。現在 ${formatNumber(currentCoins)} コイン所持。`);
         setText('thief-warning-text', canGiveItem || canPayCoin
-            ? '逃走は 30% で即死する。慎重に選べ。'
+            ? '逃げるのは危険だ。慎重に選べ。'
             : '差し出せる物がない。逃げるしかない。');
 
         const itemBtn = el('thief-give-item-btn');
