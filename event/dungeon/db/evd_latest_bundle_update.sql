@@ -1,15 +1,33 @@
 alter table public.evd_item_catalog
 drop column if exists max_stack;
 
+alter table public.evd_item_catalog
+add column if not exists rarity text not null default 'ノーマル';
+
+update public.evd_item_catalog
+   set rarity = case code
+        when 'insurance_token' then 'レア'
+        when 'calamity_map' then 'レア'
+        when 'full_scan_map' then 'レア'
+        when 'substitute_doll' then 'エピック'
+        when 'abyss_ticket' then 'エピック'
+        when 'vault_box' then 'エピック'
+        when 'holy_grail' then 'レジェンド'
+        when 'golden_contract' then 'レジェンド'
+        when 'giant_cup' then 'レジェンド'
+        when 'greedy_bag' then 'レジェンド'
+        else 'ノーマル'
+   end;
+
 alter table public.evd_player_item_stocks
 add column if not exists is_set boolean not null default false;
 
-insert into public.evd_item_catalog (code, name, description, item_kind, shop_pool, carry_in_allowed, base_price, effect_data, sort_order, weight)
+insert into public.evd_item_catalog (code, name, description, item_kind, shop_pool, carry_in_allowed, base_price, effect_data, sort_order, weight, rarity)
 values
-    ('insurance_token', '保険札', '死亡時にそのランの所持コイン半分を持ち帰る。', '死亡時', '通常', true, 260, '{"effect":"insurance"}', 40, 6),
-    ('vault_box', '不滅証書', '死亡時に所持コインの 80% を持ち帰る。', '死亡時', '限定', true, 740, '{"effect":"vault_box","rate":0.8}', 120, 2),
-    ('giant_cup', '巨人の盃', '所持しているだけで最大LIFEが 1 増える。重複しても効果は 1 回のみ。', '永続', 'レリック', false, 1200, '{"effect":"relic_max_life_plus_1"}', 130, 0),
-    ('greedy_bag', '強欲の鞄', '所持しているだけで持ち込めるアイテム数が 1 増える。', '永続', 'レリック', false, 1400, '{"effect":"relic_carry_limit_plus_1"}', 140, 0)
+    ('insurance_token', '保険札', '死亡時にそのランの所持コイン半分を持ち帰る。', '死亡時', '通常', true, 260, '{"effect":"insurance"}', 40, 6, 'レア'),
+    ('vault_box', '不滅証書', '死亡時に所持コインの 80% を持ち帰る。', '死亡時', '限定', true, 740, '{"effect":"vault_box","rate":0.8}', 120, 2, 'エピック'),
+    ('giant_cup', '巨人の盃', '所持しているだけで最大LIFEが 1 増える。重複しても効果は 1 回のみ。', '永続', 'レリック', false, 1200, '{"effect":"relic_max_life_plus_1"}', 130, 0, 'レジェンド'),
+    ('greedy_bag', '強欲の鞄', '所持しているだけで持ち込めるアイテム数が 1 増える。', '永続', 'レリック', false, 1400, '{"effect":"relic_carry_limit_plus_1"}', 140, 0, 'レジェンド')
 on conflict (code) do update
 set name = excluded.name,
     description = excluded.description,
@@ -19,7 +37,8 @@ set name = excluded.name,
     base_price = excluded.base_price,
     effect_data = excluded.effect_data,
     sort_order = excluded.sort_order,
-    weight = excluded.weight;
+    weight = excluded.weight,
+    rarity = excluded.rarity;
 
 create or replace function public.evd_build_snapshot(p_run_id uuid, p_user_id text)
 returns jsonb
@@ -131,7 +150,8 @@ begin
                 'base_price', c.base_price,
                 'carry_in_allowed', c.carry_in_allowed,
                 'shop_pool', c.shop_pool,
-                'sort_order', c.sort_order
+                'sort_order', c.sort_order,
+                'rarity', c.rarity
             ) as evd_item_catalog,
             c.sort_order
         from public.evd_player_item_stocks st
@@ -219,7 +239,8 @@ begin
                 'base_price', c.base_price,
                 'carry_in_allowed', c.carry_in_allowed,
                 'shop_pool', c.shop_pool,
-                'sort_order', c.sort_order
+                'sort_order', c.sort_order,
+                'rarity', c.rarity
             ) as evd_item_catalog,
             c.sort_order
         from public.evd_player_item_stocks st
@@ -867,7 +888,8 @@ begin
                 jsonb_build_object(
                     'code', picked.code,
                     'name', picked.name,
-                    'description', picked.description
+                    'description', picked.description,
+                    'rarity', picked.rarity
                 )
                 order by picked.sort_order, picked.code
             ),
@@ -875,7 +897,7 @@ begin
         )
           into v_offers
           from (
-            select code, name, description, sort_order
+            select code, name, description, rarity, sort_order
               from relic_pool
              order by -ln(greatest(random(), 1e-9)) / effective_weight
              limit 2
@@ -984,16 +1006,13 @@ begin
         raise exception '受け取れないレリックです';
     end if;
 
-    insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, is_set, updated_at)
-    values (v_user_id, v_run.account_name, v_item.name, p_item_code, 1, false, now())
-    on conflict (user_id, item_code) do update
-    set quantity = public.evd_player_item_stocks.quantity + 1,
-        account_name = excluded.account_name,
-        name = excluded.name,
-        updated_at = now();
-
     update public.evd_game_runs
-       set inventory_state = inventory_state - 'pending_altar_reward'
+       set inventory_state = public.evd_add_bucket_item(
+            inventory_state - 'pending_altar_reward',
+            'carried_items',
+            p_item_code,
+            1
+       )
      where id = p_run_id;
 
     perform public.evd_add_log(

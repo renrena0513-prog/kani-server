@@ -123,7 +123,7 @@
             const matchedItem = latest.payload.item_code
                 ? (state.catalog || []).find((item) => item.code === latest.payload.item_code)
                 : (state.catalog || []).find((item) => latest.message?.includes(item.name));
-            ui.showItemAcquiredModal(matchedItem?.code || null, matchedItem?.name || null, latest.message);
+            ui.showItemAcquiredModal(matchedItem?.code || null, matchedItem?.name || null, latest.message, matchedItem?.rarity || 'ノーマル');
             return;
         }
         if (['ショップ', '限定ショップ', '下り階段'].includes(latest.payload.tile_type)) {

@@ -71,7 +71,8 @@ begin
                 'base_price', c.base_price,
                 'carry_in_allowed', c.carry_in_allowed,
                 'shop_pool', c.shop_pool,
-                'sort_order', c.sort_order
+                'sort_order', c.sort_order,
+                'rarity', c.rarity
             ) as evd_item_catalog,
             c.sort_order
         from public.evd_player_item_stocks st

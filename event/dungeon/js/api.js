@@ -16,7 +16,7 @@
     async function getStocks(userId) {
         const { data, error } = await supabaseClient
             .from('evd_player_item_stocks')
-            .select('item_code, name, quantity, is_set, updated_at, evd_item_catalog(name, description, item_kind, base_price, shop_pool, sort_order)')
+            .select('item_code, name, quantity, is_set, updated_at, evd_item_catalog(name, description, item_kind, base_price, shop_pool, sort_order, rarity)')
             .eq('user_id', userId)
             .gt('quantity', 0)
             .order('updated_at', { ascending: false });

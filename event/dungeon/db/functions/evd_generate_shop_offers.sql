@@ -6,10 +6,11 @@ as $$
         'code', code,
         'name', name,
         'description', description,
-        'price', base_price
+        'price', base_price,
+        'rarity', rarity
     )), '[]'::jsonb)
     from (
-        select code, name, description, base_price
+        select code, name, description, base_price, rarity
           from public.evd_item_catalog
          where is_active = true
            and (

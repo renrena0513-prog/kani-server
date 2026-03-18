@@ -53,16 +53,13 @@ begin
         raise exception '受け取れないレリックです';
     end if;
 
-    insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, is_set, updated_at)
-    values (v_user_id, v_run.account_name, v_item.name, p_item_code, 1, false, now())
-    on conflict (user_id, item_code) do update
-    set quantity = public.evd_player_item_stocks.quantity + 1,
-        account_name = excluded.account_name,
-        name = excluded.name,
-        updated_at = now();
-
     update public.evd_game_runs
-       set inventory_state = inventory_state - 'pending_altar_reward'
+       set inventory_state = public.evd_add_bucket_item(
+            inventory_state - 'pending_altar_reward',
+            'carried_items',
+            p_item_code,
+            1
+       )
      where id = p_run_id;
 
     perform public.evd_add_log(

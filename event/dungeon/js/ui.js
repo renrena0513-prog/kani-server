@@ -75,6 +75,26 @@
         `;
     }
 
+    function normalizeRarity(value) {
+        if (value === 'レア' || value === 'エピック' || value === 'レジェンド') return value;
+        return 'ノーマル';
+    }
+
+    function rarityClass(item) {
+        const rarity = normalizeRarity(item?.rarity);
+        return {
+            'ノーマル': 'item-rarity-normal',
+            'レア': 'item-rarity-rare',
+            'エピック': 'item-rarity-epic',
+            'レジェンド': 'item-rarity-legend'
+        }[rarity];
+    }
+
+    function displayItemKind(item) {
+        if (item?.shop_pool === 'レリック' || item?.item_kind === '永続') return '永続';
+        return item?.item_kind || '手動';
+    }
+
     function el(id) {
         return document.getElementById(id);
     }
@@ -147,7 +167,7 @@
                 const disabled = selectable && !item.carry_in_allowed;
                 const itemCodeAttr = selectable ? `data-item-code="${stock.item_code}"` : '';
                 return `
-                    <button class="carry-item ${selected ? 'selected' : ''} ${disabled ? 'disabled' : ''} ${selectable ? '' : 'carry-item-static'}" type="button" ${itemCodeAttr} ${disabled ? 'disabled' : ''}>
+                    <button class="carry-item ${rarityClass(item)} ${selected ? 'selected' : ''} ${disabled ? 'disabled' : ''} ${selectable ? '' : 'carry-item-static'}" type="button" ${itemCodeAttr} ${disabled ? 'disabled' : ''}>
                         <div class="carry-item-layout">
                             ${renderItemVisual(stock.item_code, item.name)}
                             <div class="carry-item-body">
@@ -187,7 +207,7 @@
             const disabled = Number(walletCoins || 0) < Number(item.base_price || 0);
             const stock = stockMap[item.code] || 0;
             return `
-                <div class="prep-shop-card">
+                <div class="prep-shop-card ${rarityClass(item)}">
                     <div class="item-entry-head">
                         ${renderItemVisual(item.code, item.name)}
                         <div>
@@ -237,31 +257,67 @@
         ].filter(Boolean).join(' / ') || '特記事項なし');
     }
 
-    function renderInventoryInto(wrap, run, catalog, floor = null) {
+    function renderInventoryInto(wrap, state) {
+        const run = state?.run;
+        const catalog = state?.catalog || [];
+        const floor = state?.floor || null;
+        const stocks = state?.stocks || [];
         if (!wrap || !run) return;
         const items = run.inventory_state?.items || {};
         const carriedItems = run.inventory_state?.carried_items || {};
         const catalogMap = Object.fromEntries((catalog || []).map((item) => [item.code, item]));
-        const itemCodes = Object.keys(items).filter((code) => items[code]?.quantity > 0);
         const bombCount = (floor?.grid || []).reduce((total, row) => total + (row || []).filter((cell) => (
             cell?.type === '爆弾' || cell?.type === '大爆発'
         )).length, 0);
-        const hasSubstituteDoll = Number(run.substitute_negates_remaining || 0) > 0;
-        if (hasSubstituteDoll && !itemCodes.includes('substitute_doll')) {
-            itemCodes.push('substitute_doll');
+        const inventoryEntries = new Map();
+
+        Object.entries(items).forEach(([code, itemState]) => {
+            const quantity = Number(itemState?.quantity || 0);
+            if (quantity <= 0) return;
+            inventoryEntries.set(code, { code, quantity, source: 'items' });
+        });
+
+        Object.entries(carriedItems).forEach(([code, itemState]) => {
+            const quantity = Number(itemState?.quantity || 0);
+            const item = catalogMap[code] || {};
+            if (quantity <= 0) return;
+            if (inventoryEntries.has(code)) {
+                const current = inventoryEntries.get(code);
+                inventoryEntries.set(code, { ...current, quantity: Math.max(current.quantity, quantity) });
+                return;
+            }
+            inventoryEntries.set(code, { code, quantity, source: 'carried' });
+            if (item.shop_pool === 'レリック') {
+                inventoryEntries.set(code, { code, quantity, source: 'relic' });
+            }
+        });
+
+        (stocks || []).forEach((stock) => {
+            const item = stock.evd_item_catalog || catalogMap[stock.item_code] || {};
+            if (item.shop_pool !== 'レリック' || Number(stock.quantity || 0) <= 0) return;
+            if (!inventoryEntries.has(stock.item_code)) {
+                inventoryEntries.set(stock.item_code, { code: stock.item_code, quantity: Number(stock.quantity || 0), source: 'relic' });
+            }
+        });
+
+        if (Number(run.substitute_negates_remaining || 0) > 0 && !inventoryEntries.has('substitute_doll')) {
+            inventoryEntries.set('substitute_doll', {
+                code: 'substitute_doll',
+                quantity: Number(run.substitute_negates_remaining || 0),
+                source: 'carried'
+            });
         }
 
+        const itemCodes = Array.from(inventoryEntries.keys());
         if (!itemCodes.length) {
             wrap.innerHTML = '<div class="dungeon-empty">所持アイテムはありません。</div>';
             return;
         }
 
         wrap.innerHTML = itemCodes.map((code) => {
-            const itemState = code === 'substitute_doll'
-                ? { quantity: Number(run.substitute_negates_remaining || 0) }
-                : items[code];
+            const entry = inventoryEntries.get(code) || { quantity: 0 };
             const item = catalogMap[code] || {};
-            const usable = MANUAL_ITEM_CODES.includes(code);
+            const usable = MANUAL_ITEM_CODES.includes(code) && entry.source !== 'relic';
             let description = item.description || '';
             if (code === 'substitute_doll') {
                 description = `マイナス効果をあと ${formatNumber(run.substitute_negates_remaining)} 回まで無効化する。`;
@@ -269,16 +325,17 @@
                 description = `この階層の爆弾は ${formatNumber(bombCount)} 個。`;
             }
             return `
-                <div class="inventory-item">
+                <div class="inventory-item ${rarityClass(item)}">
                     <div class="item-entry-head">
                         ${renderItemVisual(code, item.name || code)}
                         <div>
                             <div class="inventory-item-name">${item.name || code}</div>
+                            <div class="inventory-item-kind">${displayItemKind(item)}</div>
                             <div class="inventory-item-desc">${description}</div>
                         </div>
                     </div>
                     <div class="inventory-item-actions">
-                        <span class="inventory-qty">x${formatNumber(itemState.quantity)}</span>
+                        <span class="inventory-qty">x${formatNumber(entry.quantity)}</span>
                         ${usable ? `<button class="btn btn-sm dungeon-btn-secondary" data-use-item="${code}">使う</button>` : ''}
                     </div>
                 </div>
@@ -287,8 +344,8 @@
     }
 
     function renderInventory(state) {
-        renderInventoryInto(el('inventory-list'), state.run, state.catalog, state.floor);
-        renderInventoryInto(el('mobile-inventory-list'), state.run, state.catalog, state.floor);
+        renderInventoryInto(el('inventory-list'), state);
+        renderInventoryInto(el('mobile-inventory-list'), state);
     }
 
     function renderResultInventory(run, catalog) {
@@ -321,7 +378,7 @@
             );
 
             return `
-                <div class="inventory-item">
+                <div class="inventory-item ${rarityClass(item)}">
                     <div class="item-entry-head">
                         ${renderItemVisual(code, item.name || code)}
                         <div>
@@ -440,7 +497,7 @@
                 Number(carriedItems[code]?.quantity || 0)
             );
             return `
-                <div class="inventory-item shop-held-item">
+                <div class="inventory-item shop-held-item ${rarityClass(item)}">
                     <div class="item-entry-head">
                         ${renderItemVisual(code, item.name || code)}
                         <div>
@@ -455,7 +512,7 @@
             `;
         }).join('') : '<div class="dungeon-empty">手持ちアイテムはありません。</div>');
         setHtml('shop-offers', offers.map((offer) => `
-            <button class="shop-offer" data-buy-item="${offer.code}">
+            <button class="shop-offer ${rarityClass(offer)}" data-buy-item="${offer.code}">
                 <div class="item-entry-head">
                     ${renderItemVisual(offer.code, offer.name)}
                     <div>
@@ -505,7 +562,7 @@
         }
 
         setHtml('altar-reward-offers', pending.offers.map((offer) => `
-            <button class="shop-offer" data-altar-reward="${offer.code}">
+            <button class="shop-offer ${rarityClass(offer)}" data-altar-reward="${offer.code}">
                 <div class="item-entry-head">
                     ${renderItemVisual(offer.code, offer.name)}
                     <div>
@@ -640,10 +697,14 @@
         el('tile-popup')?.classList.remove('show');
     }
 
-    function showItemAcquiredModal(itemCode, itemName, message) {
+    function showItemAcquiredModal(itemCode, itemName, message, itemRarity = 'ノーマル') {
         const overlay = el('item-acquired-modal');
         const visual = el('item-acquired-visual');
-        if (!overlay || !visual) return;
+        const card = overlay?.querySelector('.item-acquired-card');
+        if (!overlay || !visual || !card) return;
+
+        card.classList.remove('item-rarity-normal', 'item-rarity-rare', 'item-rarity-epic', 'item-rarity-legend');
+        card.classList.add(rarityClass({ rarity: itemRarity }));
 
         setText('item-acquired-title', itemName ? `${itemName} を獲得` : 'アイテムを獲得');
         setText('item-acquired-message', normalizeLifeMessage(message || ''));

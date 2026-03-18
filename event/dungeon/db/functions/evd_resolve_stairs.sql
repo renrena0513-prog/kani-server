@@ -51,7 +51,8 @@ begin
                 jsonb_build_object(
                     'code', picked.code,
                     'name', picked.name,
-                    'description', picked.description
+                    'description', picked.description,
+                    'rarity', picked.rarity
                 )
                 order by picked.sort_order, picked.code
             ),
@@ -59,7 +60,7 @@ begin
         )
           into v_offers
           from (
-            select code, name, description, sort_order
+            select code, name, description, rarity, sort_order
               from relic_pool
              order by -ln(greatest(random(), 1e-9)) / effective_weight
              limit 2

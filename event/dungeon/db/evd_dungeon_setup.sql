@@ -19,6 +19,7 @@ create table if not exists public.evd_item_catalog (
     shop_pool text not null default 'なし',
     carry_in_allowed boolean not null default true,
     base_price integer not null default 0,
+    rarity text not null default 'ノーマル',
     effect_data jsonb not null default '{}'::jsonb,
     is_active boolean not null default true,
     sort_order integer not null default 0,
@@ -28,6 +29,24 @@ create table if not exists public.evd_item_catalog (
 
 alter table public.evd_item_catalog
 drop column if exists max_stack;
+
+alter table public.evd_item_catalog
+add column if not exists rarity text not null default 'ノーマル';
+
+update public.evd_item_catalog
+   set rarity = case code
+        when 'insurance_token' then 'レア'
+        when 'calamity_map' then 'レア'
+        when 'full_scan_map' then 'レア'
+        when 'substitute_doll' then 'エピック'
+        when 'abyss_ticket' then 'エピック'
+        when 'vault_box' then 'エピック'
+        when 'holy_grail' then 'レジェンド'
+        when 'golden_contract' then 'レジェンド'
+        when 'giant_cup' then 'レジェンド'
+        when 'greedy_bag' then 'レジェンド'
+        else 'ノーマル'
+   end;
 
 create table if not exists public.evd_player_item_stocks (
     user_id text not null,
@@ -350,22 +369,22 @@ create policy evd_run_events_rw on public.evd_run_events
 for all using (user_id = public.evd_current_user_id())
 with check (user_id = public.evd_current_user_id());
 
-insert into public.evd_item_catalog (code, name, description, item_kind, shop_pool, carry_in_allowed, base_price, effect_data, sort_order, weight)
+insert into public.evd_item_catalog (code, name, description, item_kind, shop_pool, carry_in_allowed, base_price, effect_data, sort_order, weight, rarity)
 values
-    ('escape_rope', '脱出のひも', 'その場で即帰還して精算する。', '手動', '通常', true, 180, '{"effect":"return"}', 10, 14),
-    ('bomb_radar', '爆弾レーダー', '所持している間、各階層の爆弾系マス数を常時感知する。', '自動', '通常', true, 160, '{"effect":"bomb_radar"}', 20, 8),
-    ('healing_potion', '回復ポーション', 'ライフを 1 回復する。', '手動', '通常', true, 220, '{"effect":"heal","amount":1}', 30, 14),
-    ('insurance_token', '保険札', '死亡時にそのランの所持コイン半分を持ち帰る。', '死亡時', '通常', true, 260, '{"effect":"insurance"}', 40, 6),
-    ('stairs_search', '階段サーチ', 'その階の下り階段を可視化する。', '手動', '通常', true, 240, '{"effect":"stairs_search"}', 50, 8),
-    ('calamity_map', '厄災の地図', '爆弾以外の危険マスを可視化する。', '手動', '通常', true, 280, '{"effect":"hazard_map"}', 60, 6),
-    ('holy_grail', '女神の聖杯', 'ライフ全快し、最大ライフを 1 増やす。', '手動', '限定', true, 680, '{"effect":"holy_grail"}', 70, 2),
-    ('substitute_doll', '身代わり人形', 'マイナス効果を 3 回まで無効化する。', '自動', '限定', true, 620, '{"effect":"substitute","charges":3}', 80, 3),
-    ('abyss_ticket', '奈落直通札', '3 階層先へ直行する。', '手動', '限定', true, 760, '{"effect":"abyss_ticket","floors":3}', 90, 1),
-    ('golden_contract', '黄金契約書', '無事に帰還した時の報酬を 2 倍にする。', '自動', '限定', true, 820, '{"effect":"golden_contract"}', 100, 1),
-    ('full_scan_map', '完全探査図', 'その階の爆弾位置を可視化する。', '手動', '限定', true, 540, '{"effect":"full_scan"}', 110, 3),
-    ('vault_box', '不滅証書', '死亡時に所持コインの 80% を持ち帰る。', '死亡時', '限定', true, 740, '{"effect":"vault_box","rate":0.8}', 120, 2),
-    ('giant_cup', '巨人の盃', '所持しているだけで最大LIFEが 1 増える。重複しても効果は 1 回のみ。', '永続', 'レリック', false, 1200, '{"effect":"relic_max_life_plus_1"}', 130, 0),
-    ('greedy_bag', '強欲の鞄', '所持しているだけで持ち込めるアイテム数が 1 増える。', '永続', 'レリック', false, 1400, '{"effect":"relic_carry_limit_plus_1"}', 140, 0)
+    ('escape_rope', '脱出のひも', 'その場で即帰還して精算する。', '手動', '通常', true, 180, '{"effect":"return"}', 10, 14, 'ノーマル'),
+    ('bomb_radar', '爆弾レーダー', '所持している間、各階層の爆弾系マス数を常時感知する。', '自動', '通常', true, 160, '{"effect":"bomb_radar"}', 20, 8, 'ノーマル'),
+    ('healing_potion', '回復ポーション', 'ライフを 1 回復する。', '手動', '通常', true, 220, '{"effect":"heal","amount":1}', 30, 14, 'ノーマル'),
+    ('insurance_token', '保険札', '死亡時にそのランの所持コイン半分を持ち帰る。', '死亡時', '通常', true, 260, '{"effect":"insurance"}', 40, 6, 'レア'),
+    ('stairs_search', '階段サーチ', 'その階の下り階段を可視化する。', '手動', '通常', true, 240, '{"effect":"stairs_search"}', 50, 8, 'ノーマル'),
+    ('calamity_map', '厄災の地図', '爆弾以外の危険マスを可視化する。', '手動', '通常', true, 280, '{"effect":"hazard_map"}', 60, 6, 'レア'),
+    ('holy_grail', '女神の聖杯', 'ライフ全快し、最大ライフを 1 増やす。', '手動', '限定', true, 680, '{"effect":"holy_grail"}', 70, 2, 'レジェンド'),
+    ('substitute_doll', '身代わり人形', 'マイナス効果を 3 回まで無効化する。', '自動', '限定', true, 620, '{"effect":"substitute","charges":3}', 80, 3, 'エピック'),
+    ('abyss_ticket', '奈落直通札', '3 階層先へ直行する。', '手動', '限定', true, 760, '{"effect":"abyss_ticket","floors":3}', 90, 1, 'エピック'),
+    ('golden_contract', '黄金契約書', '無事に帰還した時の報酬を 2 倍にする。', '自動', '限定', true, 820, '{"effect":"golden_contract"}', 100, 1, 'レジェンド'),
+    ('full_scan_map', '完全探査図', 'その階の爆弾位置を可視化する。', '手動', '限定', true, 540, '{"effect":"full_scan"}', 110, 3, 'レア'),
+    ('vault_box', '不滅証書', '死亡時に所持コインの 80% を持ち帰る。', '死亡時', '限定', true, 740, '{"effect":"vault_box","rate":0.8}', 120, 2, 'エピック'),
+    ('giant_cup', '巨人の盃', '所持しているだけで最大LIFEが 1 増える。重複しても効果は 1 回のみ。', '永続', 'レリック', false, 1200, '{"effect":"relic_max_life_plus_1"}', 130, 0, 'レジェンド'),
+    ('greedy_bag', '強欲の鞄', '所持しているだけで持ち込めるアイテム数が 1 増える。', '永続', 'レリック', false, 1400, '{"effect":"relic_carry_limit_plus_1"}', 140, 0, 'レジェンド')
 on conflict (code) do update
 set
     name = excluded.name,
@@ -377,7 +396,8 @@ set
     effect_data = excluded.effect_data,
     is_active = true,
     sort_order = excluded.sort_order,
-    weight = excluded.weight;
+    weight = excluded.weight,
+    rarity = excluded.rarity;
 
 insert into public.evd_game_balance_profiles (name, description, config, is_active)
 select
@@ -812,10 +832,11 @@ as $$
         'code', code,
         'name', name,
         'description', description,
-        'price', base_price
+        'price', base_price,
+        'rarity', rarity
     )), '[]'::jsonb)
     from (
-        select code, name, description, base_price
+        select code, name, description, base_price, rarity
           from public.evd_item_catalog
          where is_active = true
            and (
@@ -2064,7 +2085,8 @@ begin
                 jsonb_build_object(
                     'code', picked.code,
                     'name', picked.name,
-                    'description', picked.description
+                    'description', picked.description,
+                    'rarity', picked.rarity
                 )
                 order by picked.sort_order, picked.code
             ),
@@ -2072,7 +2094,7 @@ begin
         )
           into v_offers
           from (
-            select code, name, description, sort_order
+            select code, name, description, rarity, sort_order
               from relic_pool
              order by -ln(greatest(random(), 1e-9)) / effective_weight
              limit 2
@@ -2181,16 +2203,13 @@ begin
         raise exception '受け取れないレリックです';
     end if;
 
-    insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, is_set, updated_at)
-    values (v_user_id, v_run.account_name, v_item.name, p_item_code, 1, false, now())
-    on conflict (user_id, item_code) do update
-    set quantity = public.evd_player_item_stocks.quantity + 1,
-        account_name = excluded.account_name,
-        name = excluded.name,
-        updated_at = now();
-
     update public.evd_game_runs
-       set inventory_state = inventory_state - 'pending_altar_reward'
+       set inventory_state = public.evd_add_bucket_item(
+            inventory_state - 'pending_altar_reward',
+            'carried_items',
+            p_item_code,
+            1
+       )
      where id = p_run_id;
 
     perform public.evd_add_log(
@@ -2380,7 +2399,8 @@ begin
                 'base_price', c.base_price,
                 'carry_in_allowed', c.carry_in_allowed,
                 'shop_pool', c.shop_pool,
-                'sort_order', c.sort_order
+                'sort_order', c.sort_order,
+                'rarity', c.rarity
             ) as evd_item_catalog,
             c.sort_order
         from public.evd_player_item_stocks st
@@ -2464,7 +2484,8 @@ begin
                 'base_price', c.base_price,
                 'carry_in_allowed', c.carry_in_allowed,
                 'shop_pool', c.shop_pool,
-                'sort_order', c.sort_order
+                'sort_order', c.sort_order,
+                'rarity', c.rarity
             ) as evd_item_catalog,
             c.sort_order
         from public.evd_player_item_stocks st

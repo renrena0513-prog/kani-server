@@ -344,6 +344,24 @@
             color: inherit;
         }
 
+        .item-rarity-rare {
+            border-color: rgba(127, 190, 255, 0.7);
+            box-shadow: inset 0 0 0 1px rgba(127, 190, 255, 0.16);
+            background: linear-gradient(180deg, rgba(72, 118, 170, 0.18), rgba(255, 255, 255, 0.04));
+        }
+
+        .item-rarity-epic {
+            border-color: rgba(172, 118, 255, 0.72);
+            box-shadow: inset 0 0 0 1px rgba(172, 118, 255, 0.16);
+            background: linear-gradient(180deg, rgba(103, 56, 151, 0.22), rgba(255, 255, 255, 0.04));
+        }
+
+        .item-rarity-legend {
+            border-color: rgba(255, 112, 112, 0.72);
+            box-shadow: inset 0 0 0 1px rgba(255, 112, 112, 0.18);
+            background: linear-gradient(180deg, rgba(155, 44, 44, 0.24), rgba(255, 255, 255, 0.04));
+        }
+
         .prep-shop-card {
             display: flex;
             align-items: center;
@@ -488,6 +506,20 @@
             font-size: 0.8rem;
             color: var(--dungeon-muted);
             line-height: 1.7;
+        }
+
+        .inventory-item-kind {
+            display: inline-flex;
+            align-items: center;
+            width: fit-content;
+            margin-bottom: 6px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--dungeon-gold-strong);
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
         }
 
         .carry-item-meta,
