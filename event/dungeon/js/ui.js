@@ -91,7 +91,7 @@
     }
 
     function displayItemKind(item) {
-        if (item?.shop_pool === 'レリック' || item?.item_kind === '永続') return '永続';
+        if (item?.shop_pool === 'レリック' || item?.item_kind === '永続') return '';
         return item?.item_kind || '手動';
     }
 
@@ -257,12 +257,12 @@
         ].filter(Boolean).join(' / ') || '特記事項なし');
     }
 
-    function renderInventoryInto(wrap, state) {
+    function buildInventoryEntries(state) {
         const run = state?.run;
         const catalog = state?.catalog || [];
         const floor = state?.floor || null;
         const stocks = state?.stocks || [];
-        if (!wrap || !run) return;
+        if (!run) return { entries: new Map(), bombCount: 0, catalogMap: {} };
         const items = run.inventory_state?.items || {};
         const carriedItems = run.inventory_state?.carried_items || {};
         const catalogMap = Object.fromEntries((catalog || []).map((item) => [item.code, item]));
@@ -308,14 +308,26 @@
             });
         }
 
-        const itemCodes = Array.from(inventoryEntries.keys());
+        return { entries: inventoryEntries, bombCount, catalogMap };
+    }
+
+    function renderInventoryInto(wrap, state, { relicOnly = false } = {}) {
+        const run = state?.run;
+        if (!wrap || !run) return;
+        const { entries, bombCount, catalogMap } = buildInventoryEntries(state);
+
+        const itemCodes = Array.from(entries.keys()).filter((code) => {
+            const item = catalogMap[code] || {};
+            const isRelic = item.shop_pool === 'レリック' || item.item_kind === '永続';
+            return relicOnly ? isRelic : !isRelic;
+        });
         if (!itemCodes.length) {
-            wrap.innerHTML = '<div class="dungeon-empty">所持アイテムはありません。</div>';
+            wrap.innerHTML = `<div class="dungeon-empty">${relicOnly ? '所持レリックはありません。' : '所持アイテムはありません。'}</div>`;
             return;
         }
 
         wrap.innerHTML = itemCodes.map((code) => {
-            const entry = inventoryEntries.get(code) || { quantity: 0 };
+            const entry = entries.get(code) || { quantity: 0 };
             const item = catalogMap[code] || {};
             const usable = MANUAL_ITEM_CODES.includes(code) && entry.source !== 'relic';
             let description = item.description || '';
@@ -330,13 +342,13 @@
                         ${renderItemVisual(code, item.name || code)}
                         <div>
                             <div class="inventory-item-name">${item.name || code}</div>
-                            <div class="inventory-item-kind">${displayItemKind(item)}</div>
+                            ${displayItemKind(item) ? `<div class="inventory-item-kind">${displayItemKind(item)}</div>` : ''}
                             <div class="inventory-item-desc">${description}</div>
                         </div>
                     </div>
                     <div class="inventory-item-actions">
                         <span class="inventory-qty">x${formatNumber(entry.quantity)}</span>
-                        ${usable ? `<button class="btn btn-sm dungeon-btn-secondary" data-use-item="${code}">使う</button>` : ''}
+                        ${usable && !relicOnly ? `<button class="btn btn-sm dungeon-btn-secondary" data-use-item="${code}">使う</button>` : ''}
                     </div>
                 </div>
             `;
@@ -344,8 +356,10 @@
     }
 
     function renderInventory(state) {
-        renderInventoryInto(el('inventory-list'), state);
-        renderInventoryInto(el('mobile-inventory-list'), state);
+        renderInventoryInto(el('inventory-list'), state, { relicOnly: false });
+        renderInventoryInto(el('mobile-inventory-list'), state, { relicOnly: false });
+        renderInventoryInto(el('relic-inventory-list'), state, { relicOnly: true });
+        renderInventoryInto(el('mobile-relic-inventory-list'), state, { relicOnly: true });
     }
 
     function renderResultInventory(run, catalog) {
