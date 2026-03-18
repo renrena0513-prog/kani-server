@@ -327,6 +327,15 @@ begin
         raise exception '持ち込みは % 個までです', v_carry_limit;
     end if;
 
+    update public.evd_player_item_stocks
+       set is_set = case
+            when item_code = any(coalesce(p_carry_items, '{}'::text[])) then true
+            else false
+       end,
+           account_name = v_profile.account_name,
+           updated_at = now()
+     where user_id = v_user_id;
+
     foreach v_item in array p_carry_items loop
         update public.evd_player_item_stocks
            set quantity = quantity - 1,
@@ -745,7 +754,10 @@ begin
              where id = p_run_id;
             v_message := '珍しい商人が隠し市を開いた。';
         when '下り階段' then
-            v_message := '下り階段を見つけた。';
+            v_message := case
+                when v_run.current_floor >= v_run.max_floors then '深部の祭壇を見つけた。'
+                else '下り階段を見つけた。'
+            end;
         else
             v_message := '何も起こらなかった。';
     end case;
@@ -809,6 +821,206 @@ begin
     end if;
 
     return public.evd_build_snapshot(p_run_id, v_user_id);
+end;
+$$;
+
+create or replace function public.evd_resolve_stairs(p_run_id uuid, p_action text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    v_user_id text := public.evd_current_user_id();
+    v_run public.evd_game_runs%rowtype;
+    v_floor public.evd_run_floors%rowtype;
+    v_current_cell jsonb;
+    v_bonus integer := 0;
+    v_target_floor integer;
+    v_offers jsonb;
+begin
+    perform pg_advisory_xact_lock(hashtext('evd:' || v_user_id));
+
+    select * into v_run from public.evd_game_runs where id = p_run_id and user_id = v_user_id and status = '進行中' for update;
+    if not found then
+        raise exception '進行中のランが見つかりません';
+    end if;
+
+    select * into v_floor
+      from public.evd_run_floors
+     where run_id = p_run_id
+       and floor_no = v_run.current_floor;
+
+    v_current_cell := public.evd_get_cell(v_floor.grid, v_run.current_x, v_run.current_y);
+    if coalesce(v_current_cell ->> 'type', '') <> '下り階段' then
+        raise exception '階段の上にいないため選択できません';
+    end if;
+
+    if v_run.current_floor >= v_run.max_floors then
+        if p_action <> 'return' then
+            raise exception '深部の祭壇では帰還のみ選択できます';
+        end if;
+
+        with relic_pool as (
+            select
+                c.code,
+                c.name,
+                c.description,
+                c.sort_order,
+                greatest(coalesce(c.weight, 0), 1) as effective_weight
+              from public.evd_item_catalog c
+              left join public.evd_player_item_stocks st
+                on st.user_id = v_user_id
+               and st.item_code = c.code
+             where c.is_active = true
+               and c.shop_pool = 'レリック'
+               and coalesce(st.quantity, 0) < c.max_stack
+        )
+        select coalesce(
+            jsonb_agg(
+                jsonb_build_object(
+                    'code', picked.code,
+                    'name', picked.name,
+                    'description', picked.description
+                )
+                order by picked.sort_order, picked.code
+            ),
+            '[]'::jsonb
+        )
+          into v_offers
+          from (
+            select code, name, description, sort_order
+              from relic_pool
+             order by -ln(greatest(random(), 1e-9)) / effective_weight
+             limit 2
+          ) picked;
+
+        if coalesce(jsonb_array_length(v_offers), 0) = 0 then
+            perform public.evd_add_log(p_run_id, v_user_id, v_run.account_name, v_run.current_floor, '帰還', '深部の祭壇を後にして地上へ引き返した。');
+            return public.evd_finish_run(p_run_id, v_user_id, '帰還', '深部の祭壇から帰還');
+        end if;
+
+        update public.evd_game_runs
+           set inventory_state = jsonb_set(inventory_state, array['pending_altar_reward'], jsonb_build_object('offers', v_offers), true)
+         where id = p_run_id;
+
+        perform public.evd_add_log(
+            p_run_id,
+            v_user_id,
+            v_run.account_name,
+            v_run.current_floor,
+            '祭壇報酬',
+            '深部の祭壇が輝き、レリックを 1 つ選べるようになった。',
+            jsonb_build_object('offers', v_offers)
+        );
+
+        return public.evd_build_snapshot(p_run_id, v_user_id);
+    end if;
+
+    if p_action = 'return' then
+        perform public.evd_add_log(p_run_id, v_user_id, v_run.account_name, v_run.current_floor, '帰還', '階段から地上へ引き返した。');
+        return public.evd_finish_run(p_run_id, v_user_id, '帰還', '地上へ帰還');
+    end if;
+
+    v_target_floor := v_run.current_floor + 1;
+    select coalesce(fbp.bonus_coins, 0)
+      into v_bonus
+      from public.evd_floor_bonus_profiles fbp
+     where fbp.profile_id = v_run.generation_profile_id
+       and fbp.floor_no = v_target_floor;
+
+    v_bonus := coalesce(v_bonus, 0);
+
+    update public.evd_game_runs
+       set run_coins = run_coins + v_bonus,
+           floor_bonus_total = floor_bonus_total + v_bonus
+     where id = p_run_id;
+
+    perform public.evd_resolve_floor_shift(p_run_id, v_user_id, v_target_floor, '進行中');
+    perform public.evd_add_log(p_run_id, v_user_id, v_run.account_name, v_target_floor, '次階層へ進行', format('%s 階へ進み、到達ボーナス %s コイン獲得した。', v_target_floor, v_bonus));
+
+    return public.evd_build_snapshot(p_run_id, v_user_id);
+end;
+$$;
+
+create or replace function public.evd_claim_altar_reward(p_run_id uuid, p_item_code text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    v_user_id text := public.evd_current_user_id();
+    v_run public.evd_game_runs%rowtype;
+    v_pending jsonb;
+    v_offer jsonb;
+    v_item record;
+begin
+    if v_user_id = '' then
+        raise exception 'ログインが必要です';
+    end if;
+
+    perform pg_advisory_xact_lock(hashtext('evd:' || v_user_id));
+
+    select * into v_run
+      from public.evd_game_runs
+     where id = p_run_id
+       and user_id = v_user_id
+       and status = '進行中'
+     for update;
+    if not found then
+        raise exception '進行中のランが見つかりません';
+    end if;
+
+    v_pending := coalesce(v_run.inventory_state -> 'pending_altar_reward', 'null'::jsonb);
+    if v_pending = 'null'::jsonb then
+        raise exception '受け取れる祭壇報酬がありません';
+    end if;
+
+    select value
+      into v_offer
+      from jsonb_array_elements(coalesce(v_pending -> 'offers', '[]'::jsonb)) value
+     where value ->> 'code' = p_item_code
+     limit 1;
+
+    if v_offer is null then
+        raise exception '提示されたレリックから選択してください';
+    end if;
+
+    select code, name, max_stack
+      into v_item
+      from public.evd_item_catalog
+     where code = p_item_code
+       and is_active = true
+       and shop_pool = 'レリック';
+
+    if not found then
+        raise exception '受け取れないレリックです';
+    end if;
+
+    insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, is_set, updated_at)
+    values (v_user_id, v_run.account_name, v_item.name, p_item_code, 1, false, now())
+    on conflict (user_id, item_code) do update
+    set quantity = least(public.evd_player_item_stocks.quantity + 1, v_item.max_stack),
+        account_name = excluded.account_name,
+        name = excluded.name,
+        updated_at = now();
+
+    update public.evd_game_runs
+       set inventory_state = inventory_state - 'pending_altar_reward'
+     where id = p_run_id;
+
+    perform public.evd_add_log(
+        p_run_id,
+        v_user_id,
+        v_run.account_name,
+        v_run.current_floor,
+        '祭壇報酬',
+        format('深部の祭壇から %s を授かった。', v_item.name),
+        jsonb_build_object('item_code', p_item_code, 'item_name', v_item.name)
+    );
+
+    return public.evd_finish_run(p_run_id, v_user_id, '帰還', '深部の祭壇から帰還');
 end;
 $$;
 

@@ -117,6 +117,10 @@
             if (thiefModalEl && window.bootstrap?.Modal) {
                 window.bootstrap.Modal.getOrCreateInstance(thiefModalEl).hide();
             }
+            const altarModalEl = el('altar-reward-modal');
+            if (altarModalEl && window.bootstrap?.Modal) {
+                window.bootstrap.Modal.getOrCreateInstance(altarModalEl).hide();
+            }
         }
         if (screenName !== 'start') {
             const prepShopModalEl = el('prep-shop-modal');
@@ -339,7 +343,9 @@
 
         const grid = state.floor.grid || [];
         const flags = state.run.inventory_state?.flags || {};
-        const interactionLocked = !!state.run.inventory_state?.pending_shop || !!state.run.inventory_state?.pending_thief;
+        const interactionLocked = !!state.run.inventory_state?.pending_shop
+            || !!state.run.inventory_state?.pending_thief
+            || !!state.run.inventory_state?.pending_altar_reward;
         const currentX = state.run.current_x;
         const currentY = state.run.current_y;
         const avatarUrl = playerAvatarUrl(state.user);
@@ -465,14 +471,53 @@
         }
     }
 
-    function renderStairsPrompt(visible) {
+    function renderStairsPrompt(visible, state = null) {
         const modalEl = el('stairs-modal');
         if (!modalEl || !window.bootstrap?.Modal) return;
         const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+        const isFinalFloor = Number(state?.run?.current_floor || 0) >= Number(state?.run?.max_floors || 0);
+
+        setText('stairs-modal-title', isFinalFloor ? '深部の祭壇を見つけた' : '下り階段を見つけた');
+        setText('stairs-modal-description', isFinalFloor
+            ? 'ここが最深部だ。次の階層は存在しない。祭壇に祈りを捧げて帰還する。'
+            : 'ここで探索続行、帰還、次の階への降下を選べます。続行後も階段を踏めば再度選択できます。');
+        setText('stairs-return-btn', isFinalFloor ? '祭壇に祈りを捧げて帰還' : '戦利品を持って帰還');
+        el('stairs-continue-btn')?.classList.toggle('d-none', isFinalFloor);
+        el('stairs-descend-btn')?.classList.toggle('d-none', isFinalFloor);
+
         if (visible) {
             if (!modalEl.classList.contains('show')) modal.show();
         } else {
             modal.hide();
+        }
+    }
+
+    function renderAltarRewardPrompt(state) {
+        const modalEl = el('altar-reward-modal');
+        if (!modalEl || !window.bootstrap?.Modal) return;
+
+        const pending = state?.run?.inventory_state?.pending_altar_reward || null;
+        const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+        if (!pending?.offers?.length) {
+            modal.hide();
+            setHtml('altar-reward-offers', '');
+            return;
+        }
+
+        setHtml('altar-reward-offers', pending.offers.map((offer) => `
+            <button class="shop-offer" data-altar-reward="${offer.code}">
+                <div class="item-entry-head">
+                    ${renderItemVisual(offer.code, offer.name)}
+                    <div>
+                        <div class="shop-offer-name">${offer.name}</div>
+                        <div class="shop-offer-desc">${offer.description || ''}</div>
+                    </div>
+                </div>
+            </button>
+        `).join(''));
+
+        if (!modalEl.classList.contains('show')) {
+            modal.show();
         }
     }
 
@@ -655,6 +700,9 @@
 
             const buyStock = event.target.closest('[data-buy-stock]');
             if (buyStock) handlers.onBuyStock(buyStock.dataset.buyStock);
+
+            const altarReward = event.target.closest('[data-altar-reward]');
+            if (altarReward) handlers.onClaimAltarReward(altarReward.dataset.altarReward);
         });
 
         el('start-run-btn')?.addEventListener('click', handlers.onStartRun);
@@ -689,6 +737,7 @@
         renderBoard,
         renderShop,
         renderStairsPrompt,
+        renderAltarRewardPrompt,
         renderThiefPrompt,
         renderLogs,
         renderResult,

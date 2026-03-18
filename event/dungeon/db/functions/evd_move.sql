@@ -221,7 +221,10 @@ begin
              where id = p_run_id;
             v_message := '珍しい商人が隠し市を開いた。';
         when '下り階段' then
-            v_message := '下り階段を見つけた。';
+            v_message := case
+                when v_run.current_floor >= v_run.max_floors then '深部の祭壇を見つけた。'
+                else '下り階段を見つけた。'
+            end;
         else
             v_message := '何も起こらなかった。';
     end case;

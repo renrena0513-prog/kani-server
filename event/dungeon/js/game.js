@@ -62,6 +62,7 @@
         ui.renderInventory(state);
         ui.renderBoard(state);
         ui.renderShop(state);
+        ui.renderAltarRewardPrompt(state);
         ui.renderThiefPrompt(state);
         ui.renderLogs(state.logs);
 
@@ -70,7 +71,10 @@
         if (!onStairs) {
             state.stairsPromptDismissed = false;
         }
-        ui.renderStairsPrompt(onStairs && !state.stairsPromptDismissed);
+        ui.renderStairsPrompt(
+            onStairs && !state.stairsPromptDismissed && !state.run.inventory_state?.pending_altar_reward,
+            state
+        );
         ui.setMobileDirectionPadVisible(state.mobilePadVisible);
     }
 
@@ -193,7 +197,7 @@
     }
 
     async function moveTo(x, y) {
-        if (state.run?.inventory_state?.pending_thief) return;
+        if (state.run?.inventory_state?.pending_thief || state.run?.inventory_state?.pending_altar_reward) return;
         const direction = findDirectionByTarget(x, y);
         if (!direction) return;
         ui.hideTilePopup();
@@ -225,7 +229,7 @@
 
     async function moveByDirection(directionKey) {
         if (!state.run || state.run.status !== '進行中') return;
-        if (state.run.inventory_state?.pending_thief) return;
+        if (state.run.inventory_state?.pending_thief || state.run.inventory_state?.pending_altar_reward) return;
         const dir = DIRECTIONS[directionKey];
         if (!dir) return;
         await moveTo(state.run.current_x + dir.x, state.run.current_y + dir.y);
@@ -276,6 +280,30 @@
         } catch (error) {
             console.error(error);
             ui.setStatus(error.message || '階段処理に失敗しました。', 'danger');
+        } finally {
+            ui.setBusy(false);
+        }
+    }
+
+    async function claimAltarReward(itemCode) {
+        ui.hideTilePopup();
+        ui.hideItemAcquiredModal();
+        ui.setBusy(true);
+        try {
+            const payload = await api.rpc('evd_claim_altar_reward', {
+                p_run_id: state.run.id,
+                p_item_code: itemCode
+            });
+            hydratePayload(payload);
+            await reloadRunSnapshot();
+            if (state.run.status === '進行中') {
+                renderGame();
+            } else {
+                renderResult();
+            }
+        } catch (error) {
+            console.error(error);
+            ui.setStatus(error.message || '祭壇報酬の受け取りに失敗しました。', 'danger');
         } finally {
             ui.setBusy(false);
         }
@@ -388,7 +416,7 @@
     function bindKeyboard() {
         document.addEventListener('keydown', (event) => {
             if (!state.run || state.run.status !== '進行中') return;
-            if (state.run.inventory_state?.pending_thief) return;
+            if (state.run.inventory_state?.pending_thief || state.run.inventory_state?.pending_altar_reward) return;
             const keyMap = {
                 ArrowUp: 'up',
                 ArrowDown: 'down',
@@ -422,6 +450,7 @@
             ui.renderStairsPrompt(false);
         },
         onResolveStairs: resolveStairs,
+        onClaimAltarReward: claimAltarReward,
         onResolveThief: resolveThief,
         onUseItem: useItem,
         onBuyItem: buyItem,

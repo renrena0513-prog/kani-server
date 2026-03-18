@@ -249,10 +249,10 @@
         <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
             <div class="modal-content dungeon-mobile-modal">
                 <div class="modal-header">
-                    <h5 class="modal-title">下り階段を見つけた</h5>
+                    <h5 id="stairs-modal-title" class="modal-title">下り階段を見つけた</h5>
                 </div>
                 <div class="modal-body">
-                    <p class="small text-secondary mb-3">ここで探索続行、帰還、次の階への降下を選べます。続行後も階段を踏めば再度選択できます。</p>
+                    <p id="stairs-modal-description" class="small text-secondary mb-3">ここで探索続行、帰還、次の階への降下を選べます。続行後も階段を踏めば再度選択できます。</p>
                     <div class="d-grid gap-2">
                         <button id="stairs-continue-btn" class="dungeon-btn-secondary" data-busy-disable>この階を探索続行</button>
                         <button id="stairs-return-btn" class="dungeon-btn-secondary" data-busy-disable>戦利品を持って帰還</button>
@@ -294,6 +294,20 @@
                         </button>
                     </div>
                     <p id="thief-warning-text" class="thief-warning-text mb-0">覚悟を決めて選択せよ。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="altar-reward-modal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+            <div class="modal-content dungeon-mobile-modal">
+                <div class="modal-header">
+                    <h5 class="modal-title">深部の祭壇</h5>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-secondary mb-3">祭壇がレリックを 2 つ示した。1 つだけ選んで持ち帰れる。</p>
+                    <div id="altar-reward-offers" class="shop-offers"></div>
                 </div>
             </div>
         </div>
