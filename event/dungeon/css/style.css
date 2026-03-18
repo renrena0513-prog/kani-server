@@ -542,11 +542,6 @@
             gap: 12px;
         }
 
-        #relic-inventory-list .inventory-item,
-        #mobile-relic-inventory-list .inventory-item {
-            background: rgba(255, 255, 255, 0.05);
-        }
-
         .inventory-item-actions {
             display: flex;
             align-items: center;
