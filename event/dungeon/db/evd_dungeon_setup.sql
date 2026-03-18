@@ -19,13 +19,15 @@ create table if not exists public.evd_item_catalog (
     shop_pool text not null default 'なし',
     carry_in_allowed boolean not null default true,
     base_price integer not null default 0,
-    max_stack integer not null default 9,
     effect_data jsonb not null default '{}'::jsonb,
     is_active boolean not null default true,
     sort_order integer not null default 0,
     weight integer not null default 1 check (weight >= 0),
     created_at timestamptz not null default now()
 );
+
+alter table public.evd_item_catalog
+drop column if exists max_stack;
 
 create table if not exists public.evd_player_item_stocks (
     user_id text not null,
@@ -348,22 +350,22 @@ create policy evd_run_events_rw on public.evd_run_events
 for all using (user_id = public.evd_current_user_id())
 with check (user_id = public.evd_current_user_id());
 
-insert into public.evd_item_catalog (code, name, description, item_kind, shop_pool, carry_in_allowed, base_price, max_stack, effect_data, sort_order, weight)
+insert into public.evd_item_catalog (code, name, description, item_kind, shop_pool, carry_in_allowed, base_price, effect_data, sort_order, weight)
 values
-    ('escape_rope', '脱出のひも', 'その場で即帰還して精算する。', '手動', '通常', true, 180, 3, '{"effect":"return"}', 10, 14),
-    ('bomb_radar', '爆弾レーダー', '所持している間、各階層の爆弾系マス数を常時感知する。', '自動', '通常', true, 160, 3, '{"effect":"bomb_radar"}', 20, 8),
-    ('healing_potion', '回復ポーション', 'ライフを 1 回復する。', '手動', '通常', true, 220, 3, '{"effect":"heal","amount":1}', 30, 14),
-    ('insurance_token', '保険札', '死亡時にそのランの所持コイン半分を持ち帰る。', '死亡時', '通常', true, 260, 1, '{"effect":"insurance"}', 40, 6),
-    ('stairs_search', '階段サーチ', 'その階の下り階段を可視化する。', '手動', '通常', true, 240, 3, '{"effect":"stairs_search"}', 50, 8),
-    ('calamity_map', '厄災の地図', '爆弾以外の危険マスを可視化する。', '手動', '通常', true, 280, 3, '{"effect":"hazard_map"}', 60, 6),
-    ('holy_grail', '女神の聖杯', 'ライフ全快し、最大ライフを 1 増やす。', '手動', '限定', true, 680, 1, '{"effect":"holy_grail"}', 70, 2),
-    ('substitute_doll', '身代わり人形', 'マイナス効果を 3 回まで無効化する。', '自動', '限定', true, 620, 2, '{"effect":"substitute","charges":3}', 80, 3),
-    ('abyss_ticket', '奈落直通札', '3 階層先へ直行する。', '手動', '限定', true, 760, 1, '{"effect":"abyss_ticket","floors":3}', 90, 1),
-    ('golden_contract', '黄金契約書', '無事に帰還した時の報酬を 2 倍にする。', '自動', '限定', true, 820, 1, '{"effect":"golden_contract"}', 100, 1),
-    ('full_scan_map', '完全探査図', 'その階の爆弾位置を可視化する。', '手動', '限定', true, 540, 2, '{"effect":"full_scan"}', 110, 3),
-    ('vault_box', '不滅証書', '死亡時に所持コインの 80% を持ち帰る。', '死亡時', '限定', true, 740, 1, '{"effect":"vault_box","rate":0.8}', 120, 2),
-    ('giant_cup', '巨人の盃', '所持しているだけで最大LIFEが 1 増える。重複しても効果は 1 回のみ。', '永続', 'レリック', false, 1200, 1, '{"effect":"relic_max_life_plus_1"}', 130, 0),
-    ('greedy_bag', '強欲の鞄', '所持しているだけで持ち込めるアイテム数が 1 増える。', '永続', 'レリック', false, 1400, 1, '{"effect":"relic_carry_limit_plus_1"}', 140, 0)
+    ('escape_rope', '脱出のひも', 'その場で即帰還して精算する。', '手動', '通常', true, 180, '{"effect":"return"}', 10, 14),
+    ('bomb_radar', '爆弾レーダー', '所持している間、各階層の爆弾系マス数を常時感知する。', '自動', '通常', true, 160, '{"effect":"bomb_radar"}', 20, 8),
+    ('healing_potion', '回復ポーション', 'ライフを 1 回復する。', '手動', '通常', true, 220, '{"effect":"heal","amount":1}', 30, 14),
+    ('insurance_token', '保険札', '死亡時にそのランの所持コイン半分を持ち帰る。', '死亡時', '通常', true, 260, '{"effect":"insurance"}', 40, 6),
+    ('stairs_search', '階段サーチ', 'その階の下り階段を可視化する。', '手動', '通常', true, 240, '{"effect":"stairs_search"}', 50, 8),
+    ('calamity_map', '厄災の地図', '爆弾以外の危険マスを可視化する。', '手動', '通常', true, 280, '{"effect":"hazard_map"}', 60, 6),
+    ('holy_grail', '女神の聖杯', 'ライフ全快し、最大ライフを 1 増やす。', '手動', '限定', true, 680, '{"effect":"holy_grail"}', 70, 2),
+    ('substitute_doll', '身代わり人形', 'マイナス効果を 3 回まで無効化する。', '自動', '限定', true, 620, '{"effect":"substitute","charges":3}', 80, 3),
+    ('abyss_ticket', '奈落直通札', '3 階層先へ直行する。', '手動', '限定', true, 760, '{"effect":"abyss_ticket","floors":3}', 90, 1),
+    ('golden_contract', '黄金契約書', '無事に帰還した時の報酬を 2 倍にする。', '自動', '限定', true, 820, '{"effect":"golden_contract"}', 100, 1),
+    ('full_scan_map', '完全探査図', 'その階の爆弾位置を可視化する。', '手動', '限定', true, 540, '{"effect":"full_scan"}', 110, 3),
+    ('vault_box', '不滅証書', '死亡時に所持コインの 80% を持ち帰る。', '死亡時', '限定', true, 740, '{"effect":"vault_box","rate":0.8}', 120, 2),
+    ('giant_cup', '巨人の盃', '所持しているだけで最大LIFEが 1 増える。重複しても効果は 1 回のみ。', '永続', 'レリック', false, 1200, '{"effect":"relic_max_life_plus_1"}', 130, 0),
+    ('greedy_bag', '強欲の鞄', '所持しているだけで持ち込めるアイテム数が 1 増える。', '永続', 'レリック', false, 1400, '{"effect":"relic_carry_limit_plus_1"}', 140, 0)
 on conflict (code) do update
 set
     name = excluded.name,
@@ -372,7 +374,6 @@ set
     shop_pool = excluded.shop_pool,
     carry_in_allowed = excluded.carry_in_allowed,
     base_price = excluded.base_price,
-    max_stack = excluded.max_stack,
     effect_data = excluded.effect_data,
     is_active = true,
     sort_order = excluded.sort_order,
@@ -2055,12 +2056,8 @@ begin
                 c.sort_order,
                 greatest(coalesce(c.weight, 0), 1) as effective_weight
               from public.evd_item_catalog c
-              left join public.evd_player_item_stocks st
-                on st.user_id = v_user_id
-               and st.item_code = c.code
              where c.is_active = true
                and c.shop_pool = 'レリック'
-               and coalesce(st.quantity, 0) < c.max_stack
         )
         select coalesce(
             jsonb_agg(
@@ -2173,7 +2170,7 @@ begin
         raise exception '提示されたレリックから選択してください';
     end if;
 
-    select code, name, max_stack
+    select code, name
       into v_item
       from public.evd_item_catalog
      where code = p_item_code
@@ -2187,7 +2184,7 @@ begin
     insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, is_set, updated_at)
     values (v_user_id, v_run.account_name, v_item.name, p_item_code, 1, false, now())
     on conflict (user_id, item_code) do update
-    set quantity = least(public.evd_player_item_stocks.quantity + 1, v_item.max_stack),
+    set quantity = public.evd_player_item_stocks.quantity + 1,
         account_name = excluded.account_name,
         name = excluded.name,
         updated_at = now();
@@ -2320,7 +2317,6 @@ declare
     v_user_id text := public.evd_current_user_id();
     v_profile record;
     v_item record;
-    v_stock integer := 0;
     v_stocks jsonb;
 begin
     if v_user_id = '' then
@@ -2339,24 +2335,13 @@ begin
         raise exception 'プロフィールが見つかりません';
     end if;
 
-    select code, name, description, base_price, max_stack, shop_pool, is_active
+    select code, name, description, base_price, shop_pool, is_active
       into v_item
       from public.evd_item_catalog
      where code = p_item_code;
 
     if not found or not v_item.is_active or v_item.shop_pool not in ('通常', '両方', 'レリック') then
         raise exception '購入できないアイテムです';
-    end if;
-
-    select quantity
-      into v_stock
-      from public.evd_player_item_stocks
-     where user_id = v_user_id
-       and item_code = p_item_code;
-
-    v_stock := coalesce(v_stock, 0);
-    if v_stock >= v_item.max_stack then
-        raise exception 'これ以上は持てません';
     end if;
 
     if coalesce(v_profile.coins, 0) < v_item.base_price then

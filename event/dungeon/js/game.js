@@ -385,10 +385,6 @@
             renderStart();
         } catch (error) {
             console.error(error);
-            const message = String(error?.message || '');
-            if (message.includes('これ以上は持てません') || message.includes('所持上限')) {
-                ui.showNoticePopup('入場前ショップ', '所持上限です。', '⚠️');
-            }
             ui.setStatus(error.message || '入場前ショップでの購入に失敗しました。', 'danger');
         } finally {
             ui.setBusy(false);

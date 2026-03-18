@@ -42,7 +42,7 @@ begin
         raise exception '提示されたレリックから選択してください';
     end if;
 
-    select code, name, max_stack
+    select code, name
       into v_item
       from public.evd_item_catalog
      where code = p_item_code
@@ -56,7 +56,7 @@ begin
     insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, is_set, updated_at)
     values (v_user_id, v_run.account_name, v_item.name, p_item_code, 1, false, now())
     on conflict (user_id, item_code) do update
-    set quantity = least(public.evd_player_item_stocks.quantity + 1, v_item.max_stack),
+    set quantity = public.evd_player_item_stocks.quantity + 1,
         account_name = excluded.account_name,
         name = excluded.name,
         updated_at = now();

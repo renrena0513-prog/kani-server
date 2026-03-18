@@ -1,12 +1,15 @@
+alter table public.evd_item_catalog
+drop column if exists max_stack;
+
 alter table public.evd_player_item_stocks
 add column if not exists is_set boolean not null default false;
 
-insert into public.evd_item_catalog (code, name, description, item_kind, shop_pool, carry_in_allowed, base_price, max_stack, effect_data, sort_order, weight)
+insert into public.evd_item_catalog (code, name, description, item_kind, shop_pool, carry_in_allowed, base_price, effect_data, sort_order, weight)
 values
-    ('insurance_token', '保険札', '死亡時にそのランの所持コイン半分を持ち帰る。', '死亡時', '通常', true, 260, 1, '{"effect":"insurance"}', 40, 6),
-    ('vault_box', '不滅証書', '死亡時に所持コインの 80% を持ち帰る。', '死亡時', '限定', true, 740, 1, '{"effect":"vault_box","rate":0.8}', 120, 2),
-    ('giant_cup', '巨人の盃', '所持しているだけで最大LIFEが 1 増える。重複しても効果は 1 回のみ。', '永続', 'レリック', false, 1200, 1, '{"effect":"relic_max_life_plus_1"}', 130, 0),
-    ('greedy_bag', '強欲の鞄', '所持しているだけで持ち込めるアイテム数が 1 増える。', '永続', 'レリック', false, 1400, 1, '{"effect":"relic_carry_limit_plus_1"}', 140, 0)
+    ('insurance_token', '保険札', '死亡時にそのランの所持コイン半分を持ち帰る。', '死亡時', '通常', true, 260, '{"effect":"insurance"}', 40, 6),
+    ('vault_box', '不滅証書', '死亡時に所持コインの 80% を持ち帰る。', '死亡時', '限定', true, 740, '{"effect":"vault_box","rate":0.8}', 120, 2),
+    ('giant_cup', '巨人の盃', '所持しているだけで最大LIFEが 1 増える。重複しても効果は 1 回のみ。', '永続', 'レリック', false, 1200, '{"effect":"relic_max_life_plus_1"}', 130, 0),
+    ('greedy_bag', '強欲の鞄', '所持しているだけで持ち込めるアイテム数が 1 増える。', '永続', 'レリック', false, 1400, '{"effect":"relic_carry_limit_plus_1"}', 140, 0)
 on conflict (code) do update
 set name = excluded.name,
     description = excluded.description,
@@ -14,7 +17,6 @@ set name = excluded.name,
     shop_pool = excluded.shop_pool,
     carry_in_allowed = excluded.carry_in_allowed,
     base_price = excluded.base_price,
-    max_stack = excluded.max_stack,
     effect_data = excluded.effect_data,
     sort_order = excluded.sort_order,
     weight = excluded.weight;
@@ -154,7 +156,6 @@ declare
     v_user_id text := public.evd_current_user_id();
     v_profile record;
     v_item record;
-    v_stock integer := 0;
     v_stocks jsonb;
 begin
     if v_user_id = '' then
@@ -173,24 +174,13 @@ begin
         raise exception 'プロフィールが見つかりません';
     end if;
 
-    select code, name, description, base_price, max_stack, shop_pool, is_active
+    select code, name, description, base_price, shop_pool, is_active
       into v_item
       from public.evd_item_catalog
      where code = p_item_code;
 
     if not found or not v_item.is_active or v_item.shop_pool not in ('通常', '両方', 'レリック') then
         raise exception '購入できないアイテムです';
-    end if;
-
-    select quantity
-      into v_stock
-      from public.evd_player_item_stocks
-     where user_id = v_user_id
-       and item_code = p_item_code;
-
-    v_stock := coalesce(v_stock, 0);
-    if v_stock >= v_item.max_stack then
-        raise exception 'これ以上は持てません';
     end if;
 
     if coalesce(v_profile.coins, 0) < v_item.base_price then
@@ -869,12 +859,8 @@ begin
                 c.sort_order,
                 greatest(coalesce(c.weight, 0), 1) as effective_weight
               from public.evd_item_catalog c
-              left join public.evd_player_item_stocks st
-                on st.user_id = v_user_id
-               and st.item_code = c.code
              where c.is_active = true
                and c.shop_pool = 'レリック'
-               and coalesce(st.quantity, 0) < c.max_stack
         )
         select coalesce(
             jsonb_agg(
@@ -987,7 +973,7 @@ begin
         raise exception '提示されたレリックから選択してください';
     end if;
 
-    select code, name, max_stack
+    select code, name
       into v_item
       from public.evd_item_catalog
      where code = p_item_code
@@ -1001,7 +987,7 @@ begin
     insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, is_set, updated_at)
     values (v_user_id, v_run.account_name, v_item.name, p_item_code, 1, false, now())
     on conflict (user_id, item_code) do update
-    set quantity = least(public.evd_player_item_stocks.quantity + 1, v_item.max_stack),
+    set quantity = public.evd_player_item_stocks.quantity + 1,
         account_name = excluded.account_name,
         name = excluded.name,
         updated_at = now();

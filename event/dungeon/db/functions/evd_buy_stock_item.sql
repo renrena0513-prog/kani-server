@@ -8,7 +8,6 @@ declare
     v_user_id text := public.evd_current_user_id();
     v_profile record;
     v_item record;
-    v_stock integer := 0;
     v_stocks jsonb;
 begin
     if v_user_id = '' then
@@ -27,24 +26,13 @@ begin
         raise exception 'プロフィールが見つかりません';
     end if;
 
-    select code, name, description, base_price, max_stack, shop_pool, is_active
+    select code, name, description, base_price, shop_pool, is_active
       into v_item
       from public.evd_item_catalog
      where code = p_item_code;
 
     if not found or not v_item.is_active or v_item.shop_pool not in ('通常', '両方', 'レリック') then
         raise exception '購入できないアイテムです';
-    end if;
-
-    select quantity
-      into v_stock
-      from public.evd_player_item_stocks
-     where user_id = v_user_id
-       and item_code = p_item_code;
-
-    v_stock := coalesce(v_stock, 0);
-    if v_stock >= v_item.max_stack then
-        raise exception 'これ以上は持てません';
     end if;
 
     if coalesce(v_profile.coins, 0) < v_item.base_price then
