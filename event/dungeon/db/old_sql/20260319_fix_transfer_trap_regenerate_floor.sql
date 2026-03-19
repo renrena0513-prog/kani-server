@@ -1,3 +1,6 @@
+-- Dungeon hotfix: transfer trap should regenerate the target floor map.
+-- For Supabase SQL Editor, paste/run this file as-is.
+
 create or replace function public.evd_resolve_floor_shift(
     p_run_id uuid,
     p_user_id text,
@@ -18,10 +21,7 @@ begin
 
     if p_status = '転送移動' then
         v_floor_seed := public.evd_generate_floor(v_run.generation_profile_id, p_target_floor, v_run.board_size);
-<<<<<<< HEAD
-=======
 
->>>>>>> 7024e14 (ダンジョンイベントの更新と修正)
         insert into public.evd_run_floors (
             run_id, user_id, account_name, floor_no, start_x, start_y, stairs_x, stairs_y, grid, revealed, visited, floor_status
         )

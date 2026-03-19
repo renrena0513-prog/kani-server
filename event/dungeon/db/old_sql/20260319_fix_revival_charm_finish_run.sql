@@ -1,3 +1,6 @@
+-- Dungeon hotfix: ensure revival_charm revives the player before death is finalized.
+-- For Supabase SQL Editor, paste/run this file as-is.
+
 create or replace function public.evd_finish_run(
     p_run_id uuid,
     p_user_id text,
@@ -18,7 +21,6 @@ declare
     v_base_death_rate numeric(8, 2) := 0.0;
     v_death_return_rate numeric(8, 2) := 0.0;
     v_has_coffin boolean := false;
-    v_revive_hp integer := 1;
     v_return_blessing_amount numeric(10, 4) := 1.0;
     v_return_blessing_multiplier numeric(10, 4) := 1.0;
     v_golden_contract_qty integer := 0;
@@ -160,6 +162,8 @@ begin
         end if;
 
         v_run.inventory_state := jsonb_set(v_run.inventory_state, array['carried_items'], v_carried_items, true);
+        v_run.gacha_tickets_gained := 0;
+        v_run.mangan_tickets_gained := 0;
     end if;
 
     if p_status = '帰還' then
@@ -304,6 +308,8 @@ begin
            death_reason = p_reason,
            result_payout = greatest(v_payout, 0),
            inventory_state = v_run.inventory_state,
+           gacha_tickets_gained = v_run.gacha_tickets_gained,
+           mangan_tickets_gained = v_run.mangan_tickets_gained,
            ended_at = now(),
            updated_at = now(),
            last_active_at = now(),
@@ -312,7 +318,9 @@ begin
 
     update public.profiles
        set coins = coalesce(coins, 0) + greatest(v_payout, 0),
-           total_assets = coalesce(total_assets, 0) + greatest(v_payout, 0)
+           total_assets = coalesce(total_assets, 0) + greatest(v_payout, 0),
+           gacha_tickets = coalesce(gacha_tickets, 0) + case when p_status = '帰還' then coalesce(v_run.gacha_tickets_gained, 0) else 0 end,
+           mangan_tickets = coalesce(mangan_tickets, 0) + case when p_status = '帰還' then coalesce(v_run.mangan_tickets_gained, 0) else 0 end
      where discord_user_id = p_user_id;
 
     perform public.evd_add_log(

@@ -577,10 +577,47 @@ declare
     v_golden_contract_qty integer := 0;
     v_return_blessing_qty integer := 0;
     v_selected_escape_bonus text := null;
+    v_revive_hp integer := 1;
 begin
     select * into v_run from public.evd_game_runs where id = p_run_id and user_id = p_user_id for update;
     if not found then
         raise exception 'ランが見つかりません';
+    end if;
+
+    if p_status = '死亡'
+       and greatest(
+            coalesce((v_run.inventory_state -> 'items' -> 'revival_charm' ->> 'quantity')::integer, 0),
+            coalesce((v_run.inventory_state -> 'carried_items' -> 'revival_charm' ->> 'quantity')::integer, 0)
+       ) > 0 then
+        select coalesce((effect_data ->> 'revive_hp')::integer, 1)
+          into v_revive_hp
+          from public.evd_item_catalog
+         where code = 'revival_charm';
+
+        update public.evd_game_runs
+           set life = greatest(v_revive_hp, 1),
+               inventory_state = public.evd_remove_bucket_item(
+                    public.evd_remove_item(inventory_state, 'revival_charm', 1),
+                    'carried_items',
+                    'revival_charm',
+                    1
+               ),
+               updated_at = now(),
+               last_active_at = now(),
+               version = version + 1
+         where id = p_run_id;
+
+        perform public.evd_add_log(
+            p_run_id,
+            p_user_id,
+            v_run.account_name,
+            v_run.current_floor,
+            '自動発動',
+            format('復活の護符が砕け、ライフ %s で復活した。', greatest(v_revive_hp, 1)),
+            jsonb_build_object('effect', 'revive_on_death', 'item_code', 'revival_charm')
+        );
+
+        return public.evd_build_snapshot(p_run_id, p_user_id);
     end if;
 
     v_flags := coalesce(v_run.inventory_state -> 'flags', '{}'::jsonb);
@@ -1073,7 +1110,38 @@ declare
 begin
     select * into v_run from public.evd_game_runs where id = p_run_id and user_id = p_user_id for update;
 
-    if not exists (
+    if p_status = '転送移動' then
+        v_floor_seed := public.evd_generate_floor(v_run.generation_profile_id, p_target_floor, v_run.board_size);
+
+        insert into public.evd_run_floors (
+            run_id, user_id, account_name, floor_no, start_x, start_y, stairs_x, stairs_y, grid, revealed, visited, floor_status
+        )
+        values (
+            p_run_id,
+            p_user_id,
+            v_run.account_name,
+            p_target_floor,
+            (v_floor_seed ->> 'start_x')::integer,
+            (v_floor_seed ->> 'start_y')::integer,
+            (v_floor_seed ->> 'stairs_x')::integer,
+            (v_floor_seed ->> 'stairs_y')::integer,
+            v_floor_seed -> 'grid',
+            v_floor_seed -> 'revealed',
+            v_floor_seed -> 'visited',
+            p_status
+        )
+        on conflict (run_id, floor_no) do update
+           set account_name = excluded.account_name,
+               start_x = excluded.start_x,
+               start_y = excluded.start_y,
+               stairs_x = excluded.stairs_x,
+               stairs_y = excluded.stairs_y,
+               grid = excluded.grid,
+               revealed = excluded.revealed,
+               visited = excluded.visited,
+               floor_status = excluded.floor_status,
+               updated_at = now();
+    elsif not exists (
         select 1 from public.evd_run_floors where run_id = p_run_id and floor_no = p_target_floor
     ) then
         v_floor_seed := public.evd_generate_floor(v_run.generation_profile_id, p_target_floor, v_run.board_size);
@@ -1273,12 +1341,30 @@ begin
     case v_cell ->> 'type'
         when '小銭' then
             v_coin_delta := public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '小銭')::integer;
-            select coalesce(sum(coalesce((e.value ->> 'quantity')::integer, 0) * coalesce((c.effect_data ->> 'amount')::integer, 0)), 0)
+            select coalesce(sum(src.quantity * coalesce((c.effect_data ->> 'amount')::integer, 0)), 0)
               into v_coin_pickup_bonus
-              from jsonb_each(coalesce(v_run.inventory_state -> 'items', '{}'::jsonb)) e
+              from (
+                    select
+                        code,
+                        greatest(max(items_qty), max(carried_qty)) as quantity
+                      from (
+                            select
+                                e.key as code,
+                                coalesce((e.value ->> 'quantity')::integer, 0) as items_qty,
+                                0 as carried_qty
+                              from jsonb_each(coalesce(v_run.inventory_state -> 'items', '{}'::jsonb)) e
+                            union all
+                            select
+                                e.key as code,
+                                0 as items_qty,
+                                coalesce((e.value ->> 'quantity')::integer, 0) as carried_qty
+                              from jsonb_each(coalesce(v_run.inventory_state -> 'carried_items', '{}'::jsonb)) e
+                        ) qty
+                     group by code
+                   ) src
               join public.evd_item_catalog c
-                on c.code = e.key
-             where coalesce((e.value ->> 'quantity')::integer, 0) > 0
+                on c.code = src.code
+             where src.quantity > 0
                and c.effect_data ->> 'effect' = 'add_coin_on_coin_pickup';
             v_coin_delta := v_coin_delta + coalesce(v_coin_pickup_bonus, 0);
             v_message := format('小銭を拾い、%s コイン獲得した。', v_coin_delta);
@@ -1480,7 +1566,10 @@ begin
     select * into v_run from public.evd_game_runs where id = p_run_id;
 
     if v_run.life <= 0 then
-        if coalesce((v_run.inventory_state -> 'items' -> 'revival_charm' ->> 'quantity')::integer, 0) > 0 then
+        if greatest(
+            coalesce((v_run.inventory_state -> 'items' -> 'revival_charm' ->> 'quantity')::integer, 0),
+            coalesce((v_run.inventory_state -> 'carried_items' -> 'revival_charm' ->> 'quantity')::integer, 0)
+        ) > 0 then
             select coalesce((effect_data ->> 'revive_hp')::integer, 1)
               into v_revive_hp
               from public.evd_item_catalog
@@ -1488,7 +1577,12 @@ begin
 
             update public.evd_game_runs
                set life = greatest(v_revive_hp, 1),
-                   inventory_state = public.evd_remove_item(inventory_state, 'revival_charm', 1),
+                   inventory_state = public.evd_remove_bucket_item(
+                        public.evd_remove_item(inventory_state, 'revival_charm', 1),
+                        'carried_items',
+                        'revival_charm',
+                        1
+                   ),
                    updated_at = now(),
                    last_active_at = now(),
                    version = version + 1
@@ -1689,7 +1783,10 @@ begin
     );
 
     if v_escape_failed then
-        if coalesce((v_run.inventory_state -> 'items' -> 'revival_charm' ->> 'quantity')::integer, 0) > 0 then
+        if greatest(
+            coalesce((v_run.inventory_state -> 'items' -> 'revival_charm' ->> 'quantity')::integer, 0),
+            coalesce((v_run.inventory_state -> 'carried_items' -> 'revival_charm' ->> 'quantity')::integer, 0)
+        ) > 0 then
             select coalesce((effect_data ->> 'revive_hp')::integer, 1)
               into v_revive_hp
               from public.evd_item_catalog
@@ -1697,7 +1794,12 @@ begin
 
             update public.evd_game_runs
                set life = greatest(v_revive_hp, 1),
-                   inventory_state = public.evd_remove_item(inventory_state, 'revival_charm', 1),
+                   inventory_state = public.evd_remove_bucket_item(
+                        public.evd_remove_item(inventory_state, 'revival_charm', 1),
+                        'carried_items',
+                        'revival_charm',
+                        1
+                   ),
                    updated_at = now(),
                    last_active_at = now(),
                    version = version + 1

@@ -167,7 +167,10 @@ begin
     );
 
     if v_escape_failed then
-        if coalesce((v_run.inventory_state -> 'items' -> 'revival_charm' ->> 'quantity')::integer, 0) > 0 then
+        if greatest(
+            coalesce((v_run.inventory_state -> 'items' -> 'revival_charm' ->> 'quantity')::integer, 0),
+            coalesce((v_run.inventory_state -> 'carried_items' -> 'revival_charm' ->> 'quantity')::integer, 0)
+        ) > 0 then
             select coalesce((effect_data ->> 'revive_hp')::integer, 1)
               into v_revive_hp
               from public.evd_item_catalog
@@ -175,7 +178,12 @@ begin
 
             update public.evd_game_runs
                set life = greatest(v_revive_hp, 1),
-                   inventory_state = public.evd_remove_item(inventory_state, 'revival_charm', 1),
+                   inventory_state = public.evd_remove_bucket_item(
+                        public.evd_remove_item(inventory_state, 'revival_charm', 1),
+                        'carried_items',
+                        'revival_charm',
+                        1
+                   ),
                    updated_at = now(),
                    last_active_at = now(),
                    version = version + 1
