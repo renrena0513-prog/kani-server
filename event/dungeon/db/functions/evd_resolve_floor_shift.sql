@@ -15,7 +15,37 @@ declare
 begin
     select * into v_run from public.evd_game_runs where id = p_run_id and user_id = p_user_id for update;
 
-    if not exists (
+    if p_status = '転送移動' then
+        v_floor_seed := public.evd_generate_floor(v_run.generation_profile_id, p_target_floor, v_run.board_size);
+        insert into public.evd_run_floors (
+            run_id, user_id, account_name, floor_no, start_x, start_y, stairs_x, stairs_y, grid, revealed, visited, floor_status
+        )
+        values (
+            p_run_id,
+            p_user_id,
+            v_run.account_name,
+            p_target_floor,
+            (v_floor_seed ->> 'start_x')::integer,
+            (v_floor_seed ->> 'start_y')::integer,
+            (v_floor_seed ->> 'stairs_x')::integer,
+            (v_floor_seed ->> 'stairs_y')::integer,
+            v_floor_seed -> 'grid',
+            v_floor_seed -> 'revealed',
+            v_floor_seed -> 'visited',
+            p_status
+        )
+        on conflict (run_id, floor_no) do update
+           set account_name = excluded.account_name,
+               start_x = excluded.start_x,
+               start_y = excluded.start_y,
+               stairs_x = excluded.stairs_x,
+               stairs_y = excluded.stairs_y,
+               grid = excluded.grid,
+               revealed = excluded.revealed,
+               visited = excluded.visited,
+               floor_status = excluded.floor_status,
+               updated_at = now();
+    elsif not exists (
         select 1 from public.evd_run_floors where run_id = p_run_id and floor_no = p_target_floor
     ) then
         v_floor_seed := public.evd_generate_floor(v_run.generation_profile_id, p_target_floor, v_run.board_size);
@@ -85,8 +115,8 @@ begin
             p_target_floor,
             case when v_has_doom_eye then 'レリック効果' else '爆弾レーダー' end,
             case when v_has_doom_eye
-                 then format('破滅の魔眼がこの階層の爆弾を暴いた。爆弾は %s 個あるようだ・・・', v_bomb_count)
-                 else format('爆弾レーダーが反応を示した！この階層には爆弾が %s 個あるようだ・・・', v_bomb_count)
+                 then format('破滅の魔眼がこの階層の爆弾を暴いた。爆弾は %s 個あるようだ...', v_bomb_count)
+                 else format('爆弾レーダーが反応を示した！この階層には爆弾が %s 個あるようだ...', v_bomb_count)
             end,
             jsonb_build_object('bomb_count', v_bomb_count, 'effect', case when v_has_doom_eye then 'relic_bomb_radar_always' else 'bomb_radar' end)
         );

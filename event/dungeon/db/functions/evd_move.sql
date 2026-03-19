@@ -15,8 +15,10 @@ declare
     v_next_y integer;
     v_damage integer := 0;
     v_coin_delta integer := 0;
+    v_actual_coin_loss integer := 0;
     v_message text := '';
     v_rate_delta numeric := 0;
+    v_actual_rate_delta numeric := 0;
     v_new_multiplier numeric := 1;
     v_gacha_rate numeric := 0;
     v_mangan_rate numeric := 0;
@@ -184,38 +186,54 @@ begin
             v_message := '大爆発に巻き込まれ、ライフを 2 失った。';
         when '罠' then
             v_coin_delta := -1 * public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '罠')::integer;
-            v_message := format('罠にかかり、%s コイン失った。', abs(v_coin_delta));
+            v_actual_coin_loss := least(abs(v_coin_delta), coalesce(v_run.run_coins, 0));
+            v_message := format('罠にかかり、%s コイン失った。', v_actual_coin_loss);
         when '呪い' then
             v_rate_delta := public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '呪い', true);
-            update public.evd_game_runs
-               set final_return_multiplier = round(greatest(0.30, (final_return_multiplier - v_rate_delta))::numeric, 2)
-             where id = p_run_id
-            returning final_return_multiplier into v_new_multiplier;
-            v_message := format('呪いにより最終持ち帰り倍率が -%s され x%s になった。', v_rate_delta, v_new_multiplier);
+            if v_run.substitute_negates_remaining > 0 then
+                update public.evd_game_runs
+                   set substitute_negates_remaining = substitute_negates_remaining - 1
+                 where id = p_run_id;
+                v_message := format('身代わり人形が砕け、%s を無効化した。あと %s 回。', v_cell ->> 'type', greatest(v_run.substitute_negates_remaining - 1, 0));
+            else
+                v_new_multiplier := round(greatest(0.30, (v_run.final_return_multiplier - v_rate_delta))::numeric, 2);
+                v_actual_rate_delta := round(greatest(0::numeric, v_run.final_return_multiplier - v_new_multiplier)::numeric, 2);
+                update public.evd_game_runs
+                   set final_return_multiplier = v_new_multiplier
+                 where id = p_run_id;
+                v_message := format('呪いにより最終持ち帰り倍率が -%s され x%s になった。', to_char(v_actual_rate_delta, 'FM0.00'), to_char(v_new_multiplier, 'FM0.00'));
+            end if;
         when '盗賊' then
-            v_ransom := coalesce(public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '盗賊')::integer, 150);
-            update public.evd_game_runs
-               set inventory_state = jsonb_set(
-                    inventory_state,
-                    array['pending_thief'],
-                    jsonb_build_object('ransom', v_ransom),
-                    true
-               )
-             where id = p_run_id;
-            return public.evd_build_snapshot(p_run_id, v_user_id);
+            if v_run.substitute_negates_remaining > 0 then
+                update public.evd_game_runs
+                   set substitute_negates_remaining = substitute_negates_remaining - 1
+                 where id = p_run_id;
+                v_message := format('盗賊と出会ったが、身代わり人形が砕けて逃げ切った。あと %s 回。', greatest(v_run.substitute_negates_remaining - 1, 0));
+            else
+                v_ransom := coalesce(public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '盗賊')::integer, 150);
+                update public.evd_game_runs
+                   set inventory_state = jsonb_set(
+                        inventory_state,
+                        array['pending_thief'],
+                        jsonb_build_object('ransom', v_ransom),
+                        true
+                   )
+                 where id = p_run_id;
+                return public.evd_build_snapshot(p_run_id, v_user_id);
+            end if;
         when '落とし穴' then
             v_damage := 1;
             v_message := '落とし穴に落ち、ライフを 1 失って 1 階下へ落下した。';
         when '転送罠' then
             v_message := '転送罠が発動し、2 階層上へ戻された。';
         when 'ショップ' then
-            v_offers := public.evd_generate_shop_offers('ショップ');
+            v_offers := public.evd_generate_shop_offers(p_run_id, 'ショップ');
             update public.evd_game_runs
                set inventory_state = jsonb_set(inventory_state, array['pending_shop'], jsonb_build_object('shop_type', 'ショップ', 'offers', v_offers), true)
              where id = p_run_id;
             v_message := '行商人が店を広げた。';
         when '限定ショップ' then
-            v_offers := public.evd_generate_shop_offers('限定ショップ');
+            v_offers := public.evd_generate_shop_offers(p_run_id, '限定ショップ');
             update public.evd_game_runs
                set inventory_state = jsonb_set(inventory_state, array['pending_shop'], jsonb_build_object('shop_type', '限定ショップ', 'offers', v_offers), true)
              where id = p_run_id;

@@ -18,13 +18,51 @@ declare
     v_base_death_rate numeric(8, 2) := 0.0;
     v_death_return_rate numeric(8, 2) := 0.0;
     v_has_coffin boolean := false;
+    v_revive_hp integer := 1;
 begin
     select * into v_run from public.evd_game_runs where id = p_run_id and user_id = p_user_id for update;
     if not found then
         raise exception 'ランが見つかりません';
     end if;
 
+    if p_status = '死亡'
+       and greatest(
+            coalesce((v_run.inventory_state -> 'items' -> 'revival_charm' ->> 'quantity')::integer, 0),
+            coalesce((v_run.inventory_state -> 'carried_items' -> 'revival_charm' ->> 'quantity')::integer, 0)
+       ) > 0 then
+        select coalesce((effect_data ->> 'revive_hp')::integer, 1)
+          into v_revive_hp
+          from public.evd_item_catalog
+         where code = 'revival_charm';
+
+        update public.evd_game_runs
+           set life = greatest(v_revive_hp, 1),
+               inventory_state = public.evd_remove_bucket_item(
+                    public.evd_remove_item(inventory_state, 'revival_charm', 1),
+                    'carried_items',
+                    'revival_charm',
+                    1
+               ),
+               updated_at = now(),
+               last_active_at = now(),
+               version = version + 1
+         where id = p_run_id;
+
+        perform public.evd_add_log(
+            p_run_id,
+            p_user_id,
+            v_run.account_name,
+            v_run.current_floor,
+            '自動発動',
+            format('復活の護符が砕け、ライフ %s で復活した。', greatest(v_revive_hp, 1)),
+            jsonb_build_object('effect', 'revive_on_death', 'item_code', 'revival_charm')
+        );
+
+        return public.evd_build_snapshot(p_run_id, p_user_id);
+    end if;
+
     v_flags := coalesce(v_run.inventory_state -> 'flags', '{}'::jsonb);
+    v_items := coalesce(v_run.inventory_state -> 'items', '{}'::jsonb);
     if p_status = '帰還' then
         v_payout := floor(
             (v_run.run_coins + v_run.secured_coins)
@@ -66,7 +104,6 @@ begin
     end if;
 
     v_carried_items := coalesce(v_run.inventory_state -> 'carried_items', '{}'::jsonb);
-    v_items := coalesce(v_run.inventory_state -> 'items', '{}'::jsonb);
 
     if p_status = '死亡' then
         if coalesce((v_run.inventory_state -> 'carried_items' -> 'substitute_doll' ->> 'quantity')::integer, 0) > 0
@@ -80,8 +117,6 @@ begin
         end if;
 
         v_run.inventory_state := jsonb_set(v_run.inventory_state, array['carried_items'], v_carried_items, true);
-        v_run.gacha_tickets_gained := 0;
-        v_run.mangan_tickets_gained := 0;
     end if;
 
     if p_status = '帰還' then
@@ -223,8 +258,6 @@ begin
            death_reason = p_reason,
            result_payout = greatest(v_payout, 0),
            inventory_state = v_run.inventory_state,
-           gacha_tickets_gained = v_run.gacha_tickets_gained,
-           mangan_tickets_gained = v_run.mangan_tickets_gained,
            ended_at = now(),
            updated_at = now(),
            last_active_at = now(),
@@ -233,9 +266,7 @@ begin
 
     update public.profiles
        set coins = coalesce(coins, 0) + greatest(v_payout, 0),
-           total_assets = coalesce(total_assets, 0) + greatest(v_payout, 0),
-           gacha_tickets = coalesce(gacha_tickets, 0) + case when p_status = '帰還' then coalesce(v_run.gacha_tickets_gained, 0) else 0 end,
-           mangan_tickets = coalesce(mangan_tickets, 0) + case when p_status = '帰還' then coalesce(v_run.mangan_tickets_gained, 0) else 0 end
+           total_assets = coalesce(total_assets, 0) + greatest(v_payout, 0)
      where discord_user_id = p_user_id;
 
     perform public.evd_add_log(

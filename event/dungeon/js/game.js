@@ -45,7 +45,6 @@
         ui.showScreen('start');
         ui.renderCarryList(state.stocks, state.selectedCarryItems);
         ui.renderPrepShop(state.catalog, state.stocks, state.profile?.coins || 0);
-        ui.setStatus(`1000コインを支払い、持ち込み ${carryLimit} 個までで探索開始。`);
         document.getElementById('entry-fee-label').textContent = '1000 コイン';
         document.getElementById('wallet-coins-label').textContent = new Intl.NumberFormat('ja-JP').format(state.profile?.coins || 0);
         const carryLimitNote = document.getElementById('carry-limit-note');
@@ -80,7 +79,7 @@
 
     function renderResult() {
         ui.showScreen('result');
-        ui.renderResult(state.run, state.catalog);
+        ui.renderResult(state);
         ui.renderLogs(state.logs, 'result-log');
     }
 
@@ -109,7 +108,7 @@
             }
         } catch (error) {
             console.error(error);
-            ui.setStatus(error.message || '読み込みに失敗しました。', 'danger');
+            console.error(error.message || '読み込みに失敗しました。');
         } finally {
             ui.setBusy(false);
         }
@@ -145,7 +144,7 @@
         const shouldSet = index < 0;
 
         if (shouldSet && state.selectedCarryItems.length >= carryLimit) {
-            ui.setStatus(`持ち込みは ${carryLimit} 個までです。`, 'danger');
+            ui.showNoticePopup('持ち込み上限', `持ち込みは ${carryLimit} 個までです。`, '⚠️');
             return;
         }
 
@@ -166,7 +165,7 @@
             ui.renderCarryList(state.stocks, state.selectedCarryItems);
         } catch (error) {
             console.error(error);
-            ui.setStatus(error.message || '持ち込み設定の保存に失敗しました。', 'danger');
+            ui.showNoticePopup('エラー', error.message || '持ち込み設定の保存に失敗しました。', '⚠️');
         } finally {
             ui.setBusy(false);
         }
@@ -180,11 +179,10 @@
             });
             hydratePayload(payload);
             await reloadRunSnapshot();
-            ui.setStatus('欲望ダンジョンに足を踏み入れた。');
             renderGame();
         } catch (error) {
             console.error(error);
-            ui.setStatus(error.message || 'ラン開始に失敗しました。', 'danger');
+            ui.showNoticePopup('エラー', error.message || 'ラン開始に失敗しました。', '⚠️');
         } finally {
             ui.setBusy(false);
         }
@@ -221,7 +219,7 @@
             }
         } catch (error) {
             console.error(error);
-            ui.setStatus(error.message || '移動に失敗しました。', 'danger');
+            ui.showNoticePopup('エラー', error.message || '移動に失敗しました。', '⚠️');
         } finally {
             ui.setBusy(false);
         }
@@ -253,7 +251,7 @@
             }
         } catch (error) {
             console.error(error);
-            ui.setStatus(error.message || 'アイテム使用に失敗しました。', 'danger');
+            ui.showNoticePopup('エラー', error.message || 'アイテム使用に失敗しました。', '⚠️');
         } finally {
             ui.setBusy(false);
         }
@@ -279,7 +277,7 @@
             }
         } catch (error) {
             console.error(error);
-            ui.setStatus(error.message || '階段処理に失敗しました。', 'danger');
+            ui.showNoticePopup('エラー', error.message || '階段処理に失敗しました。', '⚠️');
         } finally {
             ui.setBusy(false);
         }
@@ -303,7 +301,7 @@
             }
         } catch (error) {
             console.error(error);
-            ui.setStatus(error.message || '祭壇報酬の受け取りに失敗しました。', 'danger');
+            ui.showNoticePopup('エラー', error.message || '祭壇報酬の受け取りに失敗しました。', '⚠️');
         } finally {
             ui.setBusy(false);
         }
@@ -343,7 +341,7 @@
             }
         } catch (error) {
             console.error(error);
-            ui.setStatus(error.message || '盗賊イベントの解決に失敗しました。', 'danger');
+            ui.showNoticePopup('エラー', error.message || '盗賊イベントの解決に失敗しました。', '⚠️');
         } finally {
             ui.setBusy(false);
         }
@@ -365,7 +363,7 @@
             if (message.includes('コインが足りません')) {
                 ui.showNoticePopup('行商人', '所持金が足りません。', '⚠️');
             }
-            ui.setStatus(error.message || '購入に失敗しました。', 'danger');
+            ui.showNoticePopup('エラー', error.message || '購入に失敗しました。', '⚠️');
         } finally {
             ui.setBusy(false);
         }
@@ -380,12 +378,11 @@
 
             state.profile = payload.profile || state.profile;
             state.stocks = payload.stocks || state.stocks;
-            ui.setStatus(payload.message || '在庫を購入しました。');
             ui.showNoticePopup('入場前ショップ', payload.message || 'アイテムを購入しました。', '🛍️');
             renderStart();
         } catch (error) {
             console.error(error);
-            ui.setStatus(error.message || '入場前ショップでの購入に失敗しました。', 'danger');
+            ui.showNoticePopup('エラー', error.message || '入場前ショップでの購入に失敗しました。', '⚠️');
         } finally {
             ui.setBusy(false);
         }
@@ -403,7 +400,7 @@
             renderGame();
         } catch (error) {
             console.error(error);
-            ui.setStatus(error.message || 'ショップ処理に失敗しました。', 'danger');
+            ui.showNoticePopup('エラー', error.message || 'ショップ処理に失敗しました。', '⚠️');
         } finally {
             ui.setBusy(false);
         }

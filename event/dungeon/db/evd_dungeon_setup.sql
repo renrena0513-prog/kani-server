@@ -61,6 +61,7 @@ create table if not exists public.evd_player_item_stocks (
     item_code text not null references public.evd_item_catalog(code) on delete cascade,
     quantity integer not null default 0 check (quantity >= 0),
     is_set boolean not null default false,
+    total_purchase_coins bigint not null default 0 check (total_purchase_coins >= 0),
     updated_at timestamptz not null default now(),
     primary key (user_id, item_code)
 );
@@ -79,6 +80,7 @@ create table if not exists public.evd_floor_bonus_profiles (
     profile_id uuid not null references public.evd_game_balance_profiles(id) on delete cascade,
     floor_no integer not null check (floor_no >= 1),
     bonus_coins integer not null default 0 check (bonus_coins >= 0),
+    shop_price_multiplier numeric(8, 2) not null default 1.00 check (shop_price_multiplier > 0),
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
     primary key (profile_id, floor_no)
@@ -206,6 +208,7 @@ create index if not exists evd_run_events_user_idx on public.evd_run_events(user
 alter table public.evd_player_item_stocks add column if not exists account_name text;
 alter table public.evd_player_item_stocks add column if not exists name text;
 alter table public.evd_player_item_stocks add column if not exists is_set boolean not null default false;
+alter table public.evd_player_item_stocks add column if not exists total_purchase_coins bigint not null default 0;
 alter table public.evd_game_runs add column if not exists account_name text;
 alter table public.evd_run_floors add column if not exists account_name text;
 alter table public.evd_run_events add column if not exists account_name text;
@@ -836,11 +839,25 @@ begin
 end;
 $$;
 
-create or replace function public.evd_generate_shop_offers(p_shop_type text)
+create or replace function public.evd_generate_shop_offers(p_run_id uuid, p_shop_type text)
 returns jsonb
 language sql
 as $$
-    with merchant_discount as (
+    with run_context as (
+        select current_floor, generation_profile_id
+          from public.evd_game_runs
+         where id = p_run_id
+           and user_id = public.evd_current_user_id()
+           and status = '進行中'
+    ),
+    floor_pricing as (
+        select coalesce(fbp.shop_price_multiplier, 1.00::numeric) as multiplier
+          from run_context rc
+          left join public.evd_floor_bonus_profiles fbp
+            on fbp.profile_id = rc.generation_profile_id
+           and fbp.floor_no = rc.current_floor
+    ),
+    merchant_discount as (
         select least(coalesce(sum(st.quantity), 0), 4) * 0.05 as rate
           from public.evd_player_item_stocks st
           join public.evd_item_catalog c
@@ -862,7 +879,11 @@ as $$
             code,
             name,
             description,
-            floor(base_price * greatest(0::numeric, 1 - coalesce((select rate from merchant_discount), 0)))::integer as price,
+            floor(
+                base_price
+                * coalesce((select multiplier from floor_pricing), 1.00::numeric)
+                * greatest(0::numeric, 1 - coalesce((select rate from merchant_discount), 0))
+            )::integer as price,
             rarity
           from public.evd_item_catalog
          where is_active = true
@@ -1866,29 +1887,36 @@ begin
             returning final_return_multiplier into v_new_multiplier;
             v_message := format('呪いにより最終持ち帰り倍率が -%s され x%s になった。', v_rate_delta, v_new_multiplier);
         when '盗賊' then
-            v_ransom := coalesce(public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '盗賊')::integer, 150);
-            update public.evd_game_runs
-               set inventory_state = jsonb_set(
-                    inventory_state,
-                    array['pending_thief'],
-                    jsonb_build_object('ransom', v_ransom),
-                    true
-               )
-             where id = p_run_id;
-            return public.evd_build_snapshot(p_run_id, v_user_id);
+            if v_run.substitute_negates_remaining > 0 then
+                update public.evd_game_runs
+                   set substitute_negates_remaining = substitute_negates_remaining - 1
+                 where id = p_run_id;
+                v_message := format('盗賊と出会ったが、身代わり人形が砕けて逃げ切った。あと %s 回。', greatest(v_run.substitute_negates_remaining - 1, 0));
+            else
+                v_ransom := coalesce(public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '盗賊')::integer, 150);
+                update public.evd_game_runs
+                   set inventory_state = jsonb_set(
+                        inventory_state,
+                        array['pending_thief'],
+                        jsonb_build_object('ransom', v_ransom),
+                        true
+                   )
+                 where id = p_run_id;
+                return public.evd_build_snapshot(p_run_id, v_user_id);
+            end if;
         when '落とし穴' then
             v_damage := 1;
             v_message := '落とし穴に落ち、ライフを 1 失って 1 階下へ落下した。';
         when '転送罠' then
             v_message := '転送罠が発動し、2 階層上へ戻された。';
         when 'ショップ' then
-            v_offers := public.evd_generate_shop_offers('ショップ');
+            v_offers := public.evd_generate_shop_offers(p_run_id, 'ショップ');
             update public.evd_game_runs
                set inventory_state = jsonb_set(inventory_state, array['pending_shop'], jsonb_build_object('shop_type', 'ショップ', 'offers', v_offers), true)
              where id = p_run_id;
             v_message := '行商人が店を広げた。';
         when '限定ショップ' then
-            v_offers := public.evd_generate_shop_offers('限定ショップ');
+            v_offers := public.evd_generate_shop_offers(p_run_id, '限定ショップ');
             update public.evd_game_runs
                set inventory_state = jsonb_set(inventory_state, array['pending_shop'], jsonb_build_object('shop_type', '限定ショップ', 'offers', v_offers), true)
              where id = p_run_id;
@@ -2550,12 +2578,13 @@ begin
        set coins = coins - v_price
      where discord_user_id = v_user_id;
 
-    insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, is_set, updated_at)
-    values (v_user_id, v_profile.account_name, v_item.name, p_item_code, 1, false, now())
+    insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, is_set, total_purchase_coins, updated_at)
+    values (v_user_id, v_profile.account_name, v_item.name, p_item_code, 1, false, v_price, now())
     on conflict (user_id, item_code) do update
     set quantity = public.evd_player_item_stocks.quantity + 1,
         account_name = excluded.account_name,
         name = excluded.name,
+        total_purchase_coins = public.evd_player_item_stocks.total_purchase_coins + excluded.total_purchase_coins,
         updated_at = now();
 
     select coins, total_assets, gacha_tickets, mangan_tickets, account_name

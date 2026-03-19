@@ -78,27 +78,43 @@ begin
                 raise exception 'アイテムを持っていない';
             end if;
 
-            update public.evd_game_runs
-               set inventory_state = public.evd_remove_bucket_item(
-                    public.evd_remove_item(inventory_state - 'pending_thief', v_item_to_lose, 1),
-                    'carried_items',
-                    v_item_to_lose,
-                    1
-               )
-             where id = p_run_id;
+            if v_run.substitute_negates_remaining > 0 then
+                update public.evd_game_runs
+                   set substitute_negates_remaining = substitute_negates_remaining - 1,
+                       inventory_state = inventory_state - 'pending_thief'
+                 where id = p_run_id;
+                v_message := format('身代わり人形が砕け、盗賊への差し出しを無効化した。あと %s 回。', greatest(v_run.substitute_negates_remaining - 1, 0));
+            else
+                update public.evd_game_runs
+                   set inventory_state = public.evd_remove_bucket_item(
+                        public.evd_remove_item(inventory_state - 'pending_thief', v_item_to_lose, 1),
+                        'carried_items',
+                        v_item_to_lose,
+                        1
+                   )
+                 where id = p_run_id;
 
-            v_message := format('盗賊へ %s を差し出した。', coalesce(v_item_to_lose_name, v_item_to_lose));
+                v_message := format('盗賊へ %s を差し出した。', coalesce(v_item_to_lose_name, v_item_to_lose));
+            end if;
         when 'coin' then
             if v_run.run_coins < v_ransom then
                 raise exception '所持金が足りない';
             end if;
 
-            update public.evd_game_runs
-               set run_coins = run_coins - v_ransom,
-                   inventory_state = inventory_state - 'pending_thief'
-             where id = p_run_id;
+            if v_run.substitute_negates_remaining > 0 then
+                update public.evd_game_runs
+                   set substitute_negates_remaining = substitute_negates_remaining - 1,
+                       inventory_state = inventory_state - 'pending_thief'
+                 where id = p_run_id;
+                v_message := format('身代わり人形が砕け、盗賊への支払いを無効化した。あと %s 回。', greatest(v_run.substitute_negates_remaining - 1, 0));
+            else
+                update public.evd_game_runs
+                   set run_coins = run_coins - v_ransom,
+                       inventory_state = inventory_state - 'pending_thief'
+                 where id = p_run_id;
 
-            v_message := format('盗賊へ %s コイン差し出した。', v_ransom);
+                v_message := format('盗賊へ %s コイン差し出した。', v_ransom);
+            end if;
         when 'escape' then
             if random() < v_escape_chance then
                 update public.evd_game_runs
@@ -107,13 +123,21 @@ begin
 
                 v_message := '盗賊から逃げ切った。何も起こらなかった。';
             else
-                update public.evd_game_runs
-                   set life = 0,
-                       inventory_state = inventory_state - 'pending_thief'
-                 where id = p_run_id;
+                if v_run.substitute_negates_remaining > 0 then
+                    update public.evd_game_runs
+                       set substitute_negates_remaining = substitute_negates_remaining - 1,
+                           inventory_state = inventory_state - 'pending_thief'
+                     where id = p_run_id;
+                    v_message := format('身代わり人形が砕け、盗賊の返り討ちを無効化した。あと %s 回。', greatest(v_run.substitute_negates_remaining - 1, 0));
+                else
+                    update public.evd_game_runs
+                       set life = 0,
+                           inventory_state = inventory_state - 'pending_thief'
+                     where id = p_run_id;
 
-                v_message := '盗賊から逃げようとしたが、返り討ちに遭って死亡した。';
-                v_escape_failed := true;
+                    v_message := '盗賊から逃げようとしたが、返り討ちに遭って死亡した。';
+                    v_escape_failed := true;
+                end if;
             end if;
         else
             raise exception '不正な選択です';

@@ -1,15 +1,10 @@
 (function () {
     const { TILE_LABELS, MANUAL_ITEM_CODES } = window.DUNGEON_CONSTANTS;
     const ITEM_FALLBACK_EMOJI = {
-        escape_rope: '🪢',
-        bomb_radar: '📡',
-        healing_potion: '🧪',
-        stairs_search: '🧭',
         calamity_map: '🗺️',
         full_scan_map: '🛰️',
         abyss_ticket: '🕳️',
         holy_grail: '🏆',
-        insurance_token: '🛡️',
         golden_contract: '📜',
         substitute_doll: '🪆',
         giant_cup: '🏆',
@@ -22,25 +17,26 @@
         underworld_wallet: '👛',
         merchant_seal: '🪙'
     };
+
     const TILE_POPUP_META = {
-        '空白': { icon: '🪨', title: '空白マス' },
+        '空白': { icon: '▫️', title: '空白マス' },
         '小銭': { icon: '🪙', title: '小銭' },
-        '宝箱': { icon: '📦', title: '宝箱' },
+        '宝箱': { icon: '🧰', title: '宝箱' },
         '財宝箱': { icon: '💰', title: '財宝箱' },
-        '秘宝箱': { icon: '📛', title: '秘宝箱' },
+        '秘宝箱': { icon: '🗝️', title: '秘宝箱' },
         '宝石箱': { icon: '💎', title: '宝石箱' },
         'アイテム': { icon: '🎁', title: 'アイテム' },
         '祝福': { icon: '✨', title: '祝福' },
         '泉': { icon: '⛲', title: '泉' },
         '爆弾': { icon: '💣', title: '爆弾' },
-        '大爆発': { icon: '☄️', title: '大爆発' },
-        '罠': { icon: '🕳️', title: '罠' },
-        '呪い': { icon: '🕸️', title: '呪い' },
-        '盗賊': { icon: '🦹', title: '盗賊' },
-        '落とし穴': { icon: '🌀', title: '落とし穴' },
-        '転送罠': { icon: '🧭', title: '転送罠' },
+        '大爆発': { icon: '💥', title: '大爆発' },
+        '罠': { icon: '⚠️', title: '罠' },
+        '呪い': { icon: '☠️', title: '呪い' },
+        '盗賊': { icon: '🥷', title: '盗賊' },
+        '落とし穴': { icon: '🕳️', title: '落とし穴' },
+        '転送罠': { icon: '🌀', title: '転送罠' },
         'ショップ': { icon: '🛒', title: 'ショップ' },
-        '限定ショップ': { icon: '🏪', title: '限定ショップ' },
+        '限定ショップ': { icon: '🏬', title: '限定ショップ' },
         '下り階段': { icon: '🪜', title: '下り階段' }
     };
 
@@ -268,12 +264,12 @@
         setTexts(['hud-final-multiplier', 'mobile-hud-final-multiplier'], `x${returnMultiplier.toFixed(2)}`);
         setText('run-status', run.status);
         setText('run-flags', [
-            flags.insurance_active ? '保険札' : null,
-            flags.golden_contract_active ? '黄金契約書' : null,
-            flags.stairs_known ? '階段補足中' : null,
-            flags.hazards_known ? '厄災可視化中' : null,
-            flags.bombs_known ? '爆弾可視化中' : null
-        ].filter(Boolean).join(' / ') || '特記事項なし');
+            flags.insurance_active ? 'insurance' : null,
+            flags.golden_contract_active ? 'golden contract' : null,
+            flags.stairs_known ? 'stairs known' : null,
+            flags.hazards_known ? 'hazards known' : null,
+            flags.bombs_known ? 'bombs known' : null
+        ].filter(Boolean).join(' / ') || 'none');
     }
 
     function buildInventoryEntries(state) {
@@ -292,6 +288,7 @@
 
         Object.entries(items).forEach(([code, itemState]) => {
             const quantity = Number(itemState?.quantity || 0);
+            if (code === 'substitute_doll' && Number(run.substitute_negates_remaining || 0) <= 0) return;
             if (quantity <= 0) return;
             inventoryEntries.set(code, { code, quantity, source: 'items' });
         });
@@ -299,6 +296,7 @@
         Object.entries(carriedItems).forEach(([code, itemState]) => {
             const quantity = Number(itemState?.quantity || 0);
             const item = catalogMap[code] || {};
+            if (code === 'substitute_doll' && Number(run.substitute_negates_remaining || 0) <= 0) return;
             if (quantity <= 0) return;
             if (inventoryEntries.has(code)) {
                 const current = inventoryEntries.get(code);
@@ -389,22 +387,66 @@
         renderInventoryInto(el('mobile-relic-inventory-list'), state, { relicOnly: true });
     }
 
-    function renderResultInventory(run, catalog) {
+    function renderResultInventory(state) {
+        const run = state?.run;
+        const catalog = state?.catalog || [];
+        const stocks = state?.stocks || [];
         const wrap = el('result-inventory-list');
         if (!wrap || !run) return;
-        if (run.status !== '帰還') {
-            wrap.innerHTML = '<div class="dungeon-empty">持ち帰ったアイテムはありません。</div>';
-            return;
-        }
 
         const items = run.inventory_state?.items || {};
         const carriedItems = run.inventory_state?.carried_items || {};
         const catalogMap = Object.fromEntries((catalog || []).map((item) => [item.code, item]));
-        const itemCodes = [...new Set([...Object.keys(items), ...Object.keys(carriedItems)])]
-            .filter((code) => Math.max(
-                Number(items[code]?.quantity || 0),
-                Number(carriedItems[code]?.quantity || 0)
-            ) > 0);
+        const hasCollectorCoffin = (stocks || []).some((stock) => (
+            stock.item_code === 'collector_coffin' && Number(stock.quantity || 0) > 0
+        ));
+
+        const resultEntries = new Map();
+        const addResultEntry = (code, quantity) => {
+            if (quantity <= 0) return;
+            resultEntries.set(code, (resultEntries.get(code) || 0) + quantity);
+        };
+
+        Object.entries(items).forEach(([code, itemState]) => {
+            const quantity = Number(itemState?.quantity || 0);
+            const item = catalogMap[code] || {};
+            if (quantity <= 0) return;
+
+            if (run.status === '帰還') {
+                if (['手動', '死亡時', '永続'].includes(item.item_kind)) {
+                    addResultEntry(code, quantity);
+                }
+                return;
+            }
+
+            if (item.item_kind === '永続') {
+                addResultEntry(code, quantity);
+                return;
+            }
+
+            if (item.item_kind === '手動' && hasCollectorCoffin) {
+                addResultEntry(code, quantity);
+            }
+        });
+
+        Object.entries(carriedItems).forEach(([code, itemState]) => {
+            const quantity = Number(itemState?.quantity || 0);
+            const item = catalogMap[code] || {};
+            if (quantity <= 0) return;
+
+            if (run.status === '帰還') {
+                if (['死亡時', '永続'].includes(item.item_kind)) {
+                    addResultEntry(code, quantity);
+                }
+                return;
+            }
+
+            if (item.item_kind === '永続') {
+                addResultEntry(code, quantity);
+            }
+        });
+
+        const itemCodes = Array.from(resultEntries.keys());
 
         if (!itemCodes.length) {
             wrap.innerHTML = '<div class="dungeon-empty">持ち帰ったアイテムはありません。</div>';
@@ -413,10 +455,7 @@
 
         wrap.innerHTML = itemCodes.map((code) => {
             const item = catalogMap[code] || {};
-            const quantity = Math.max(
-                Number(items[code]?.quantity || 0),
-                Number(carriedItems[code]?.quantity || 0)
-            );
+            const quantity = resultEntries.get(code) || 0;
 
             return `
                 <div class="inventory-item ${rarityClass(item)}">
@@ -669,7 +708,7 @@
             coinBtn.dataset.available = canPayCoin ? 'true' : 'false';
         }
 
-        renderInventoryInto(el('thief-held-items'), state.run, state.catalog, state.floor);
+        renderInventoryInto(el('thief-held-items'), state);
 
         if (!modalEl.classList.contains('show')) {
             modal.show();
@@ -691,7 +730,9 @@
         `).join('');
     }
 
-    function renderResult(run, catalog) {
+    function renderResult(state) {
+        const run = state?.run;
+        const catalog = state?.catalog || [];
         if (!run) return;
         setText('result-status', run.status);
         setText('result-payout', `${formatNumber(run.result_payout)} コイン`);
@@ -699,20 +740,13 @@
         setText('result-gacha', `${formatNumber(run.gacha_tickets_gained)} 枚`);
         setText('result-mangan', `${formatNumber(run.mangan_tickets_gained)} 枚`);
         setText('result-death-reason', run.death_reason || '生還');
-        renderResultInventory(run, catalog);
+        renderResultInventory(state);
     }
 
     function setBusy(isBusy) {
         document.querySelectorAll('[data-busy-disable]').forEach((node) => {
             node.disabled = !!isBusy;
         });
-    }
-
-    function setStatus(message, tone = 'normal') {
-        const node = el('status-banner');
-        if (!node) return;
-        node.textContent = message;
-        node.dataset.tone = tone;
     }
 
     function showTilePopup(tileType, message) {
@@ -844,7 +878,6 @@
         renderLogs,
         renderResult,
         setBusy,
-        setStatus,
         showTilePopup,
         showNoticePopup,
         hideTilePopup,

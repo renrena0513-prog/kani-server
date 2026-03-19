@@ -57,12 +57,13 @@ begin
        set coins = coins - v_price
      where discord_user_id = v_user_id;
 
-    insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, is_set, updated_at)
-    values (v_user_id, v_profile.account_name, v_item.name, p_item_code, 1, false, now())
+    insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, is_set, total_purchase_coins, updated_at)
+    values (v_user_id, v_profile.account_name, v_item.name, p_item_code, 1, false, v_price, now())
     on conflict (user_id, item_code) do update
     set quantity = public.evd_player_item_stocks.quantity + 1,
         account_name = excluded.account_name,
         name = excluded.name,
+        total_purchase_coins = public.evd_player_item_stocks.total_purchase_coins + excluded.total_purchase_coins,
         updated_at = now();
 
     select coins, total_assets, gacha_tickets, mangan_tickets, account_name
