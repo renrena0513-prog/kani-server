@@ -32,6 +32,10 @@ begin
             v_should_consume := true;
             update public.evd_game_runs set life = least(max_life, life + 1) where id = p_run_id;
             perform public.evd_add_log(p_run_id, v_user_id, v_run.account_name, v_run.current_floor, 'アイテム使用', '回復ポーションでライフを 1 回復した。');
+        when 'super_healing_potion' then
+            v_should_consume := true;
+            update public.evd_game_runs set life = least(max_life, life + 2) where id = p_run_id;
+            perform public.evd_add_log(p_run_id, v_user_id, v_run.account_name, v_run.current_floor, 'アイテム使用', '上級回復ポーションでライフを 2 回復した。');
         when 'stairs_search' then
             v_should_consume := true;
             update public.evd_game_runs set inventory_state = jsonb_set(inventory_state, array['flags', 'stairs_known'], 'true'::jsonb, true) where id = p_run_id;
@@ -48,6 +52,13 @@ begin
             v_should_consume := true;
             update public.evd_game_runs set max_life = max_life + 1, life = max_life + 1 where id = p_run_id;
             perform public.evd_add_log(p_run_id, v_user_id, v_run.account_name, v_run.current_floor, 'アイテム使用', '女神の聖杯で完全回復し、最大ライフが 1 増えた。');
+        when 'life_vessel' then
+            v_should_consume := true;
+            update public.evd_game_runs
+               set max_life = max_life + 1,
+                   life = least(max_life + 1, life + 1)
+             where id = p_run_id;
+            perform public.evd_add_log(p_run_id, v_user_id, v_run.account_name, v_run.current_floor, 'アイテム使用', '命の器で最大ライフが 1 増えた。');
         when 'abyss_ticket' then
             v_should_consume := true;
             select coalesce(sum(fbp.bonus_coins), 0)

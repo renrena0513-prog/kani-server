@@ -31,6 +31,8 @@ declare
     v_pick_item_name text;
     v_pick_item_effect text;
     v_offers jsonb;
+    v_coin_pickup_bonus integer := 0;
+    v_revive_hp integer := 1;
 begin
     if v_user_id = '' then
         raise exception 'ログインが必要です';
@@ -89,6 +91,14 @@ begin
     case v_cell ->> 'type'
         when '小銭' then
             v_coin_delta := public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '小銭')::integer;
+            select coalesce(sum(coalesce((e.value ->> 'quantity')::integer, 0) * coalesce((c.effect_data ->> 'amount')::integer, 0)), 0)
+              into v_coin_pickup_bonus
+              from jsonb_each(coalesce(v_run.inventory_state -> 'items', '{}'::jsonb)) e
+              join public.evd_item_catalog c
+                on c.code = e.key
+             where coalesce((e.value ->> 'quantity')::integer, 0) > 0
+               and c.effect_data ->> 'effect' = 'add_coin_on_coin_pickup';
+            v_coin_delta := v_coin_delta + coalesce(v_coin_pickup_bonus, 0);
             v_message := format('小銭を拾い、%s コイン獲得した。', v_coin_delta);
         when '宝箱' then
             v_coin_delta := public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '宝箱')::integer;
@@ -152,7 +162,7 @@ begin
                 v_message := format('%s を引き当てた。死亡時保険が有効化された。', v_pick_item_name);
             elsif v_pick_item_effect = 'golden_contract' then
                 update public.evd_game_runs
-                   set inventory_state = jsonb_set(inventory_state, array['flags', 'golden_contract_active'], 'true'::jsonb, true)
+                   set inventory_state = public.evd_add_item(inventory_state, v_pick_item_code, 1)
                  where id = p_run_id;
                 v_message := format('%s を引き当てた。帰還時の倍率効果が有効化された。', v_pick_item_name);
             elsif v_pick_item_effect = 'vault_box' then
@@ -296,6 +306,33 @@ begin
     select * into v_run from public.evd_game_runs where id = p_run_id;
 
     if v_run.life <= 0 then
+        if coalesce((v_run.inventory_state -> 'items' -> 'revival_charm' ->> 'quantity')::integer, 0) > 0 then
+            select coalesce((effect_data ->> 'revive_hp')::integer, 1)
+              into v_revive_hp
+              from public.evd_item_catalog
+             where code = 'revival_charm';
+
+            update public.evd_game_runs
+               set life = greatest(v_revive_hp, 1),
+                   inventory_state = public.evd_remove_item(inventory_state, 'revival_charm', 1),
+                   updated_at = now(),
+                   last_active_at = now(),
+                   version = version + 1
+             where id = p_run_id;
+
+            perform public.evd_add_log(
+                p_run_id,
+                v_user_id,
+                v_run.account_name,
+                v_run.current_floor,
+                '自動発動',
+                format('復活の護符が砕け、ライフ %s で復活した。', greatest(v_revive_hp, 1)),
+                jsonb_build_object('effect', 'revive_on_death', 'item_code', 'revival_charm')
+            );
+
+            return public.evd_build_snapshot(p_run_id, v_user_id);
+        end if;
+
         return public.evd_finish_run(p_run_id, v_user_id, '死亡', '迷宮で力尽きた');
     end if;
 

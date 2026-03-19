@@ -135,7 +135,7 @@ begin
         elsif v_effect = 'insurance' then
             v_inventory := jsonb_set(v_inventory, array['flags', 'insurance_active'], 'true'::jsonb, true);
         elsif v_effect = 'golden_contract' then
-            v_inventory := jsonb_set(v_inventory, array['flags', 'golden_contract_active'], 'true'::jsonb, true);
+            v_inventory := public.evd_add_item(v_inventory, v_item, 1);
         elsif v_effect = 'vault_box' then
             null;
         else

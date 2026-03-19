@@ -12,6 +12,7 @@ declare
     v_floor_seed jsonb;
     v_bomb_count integer := 0;
     v_has_doom_eye boolean := false;
+    v_floor_heal integer := 0;
 begin
     select * into v_run from public.evd_game_runs where id = p_run_id and user_id = p_user_id for update;
 
@@ -56,6 +57,35 @@ begin
            last_active_at = now(),
            version = version + 1
      where id = p_run_id;
+
+    select coalesce(sum(coalesce((e.value ->> 'quantity')::integer, 0) * coalesce((c.effect_data ->> 'amount')::integer, 0)), 0)
+      into v_floor_heal
+      from public.evd_game_runs gr
+      cross join jsonb_each(coalesce(gr.inventory_state -> 'items', '{}'::jsonb)) e
+      join public.evd_item_catalog c
+        on c.code = e.key
+     where gr.id = p_run_id
+       and coalesce((e.value ->> 'quantity')::integer, 0) > 0
+       and c.effect_data ->> 'effect' = 'heal_hp_on_floor_advance';
+
+    if coalesce(v_floor_heal, 0) > 0 then
+        update public.evd_game_runs
+           set life = least(max_life, life + v_floor_heal),
+               updated_at = now(),
+               last_active_at = now(),
+               version = version + 1
+         where id = p_run_id;
+
+        perform public.evd_add_log(
+            p_run_id,
+            p_user_id,
+            v_run.account_name,
+            p_target_floor,
+            '自動発動',
+            format('再生の護符の力でライフを %s 回復した。', v_floor_heal),
+            jsonb_build_object('effect', 'heal_hp_on_floor_advance', 'amount', v_floor_heal)
+        );
+    end if;
 
     select exists (
         select 1

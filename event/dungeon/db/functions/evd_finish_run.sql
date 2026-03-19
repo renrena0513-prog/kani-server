@@ -18,6 +18,11 @@ declare
     v_base_death_rate numeric(8, 2) := 0.0;
     v_death_return_rate numeric(8, 2) := 0.0;
     v_has_coffin boolean := false;
+    v_return_blessing_amount numeric(10, 4) := 1.0;
+    v_return_blessing_multiplier numeric(10, 4) := 1.0;
+    v_golden_contract_qty integer := 0;
+    v_return_blessing_qty integer := 0;
+    v_selected_escape_bonus text := null;
 begin
     select * into v_run from public.evd_game_runs where id = p_run_id and user_id = p_user_id for update;
     if not found then
@@ -25,12 +30,50 @@ begin
     end if;
 
     v_flags := coalesce(v_run.inventory_state -> 'flags', '{}'::jsonb);
+    v_items := coalesce(v_run.inventory_state -> 'items', '{}'::jsonb);
     if p_status = '帰還' then
-        v_payout := floor(
-            (v_run.run_coins + v_run.secured_coins)
-            * v_run.final_return_multiplier
-            * case when coalesce((v_flags ->> 'golden_contract_active')::boolean, false) then 2 else 1 end
-        )::integer;
+        v_golden_contract_qty := greatest(
+            coalesce((v_items -> 'golden_contract' ->> 'quantity')::integer, 0),
+            case when coalesce((v_flags ->> 'golden_contract_active')::boolean, false) then 1 else 0 end
+        );
+        v_return_blessing_qty := coalesce((v_items -> 'return_blessing' ->> 'quantity')::integer, 0);
+
+        if v_return_blessing_qty > 0 then
+            select coalesce((effect_data ->> 'amount')::numeric, 1.0)
+              into v_return_blessing_amount
+              from public.evd_item_catalog
+             where code = 'return_blessing';
+            v_return_blessing_multiplier := power(greatest(v_return_blessing_amount, 1.0), v_return_blessing_qty);
+        end if;
+
+        if v_golden_contract_qty > 0
+           and (v_run.final_return_multiplier + 1.0) >= (v_run.final_return_multiplier * v_return_blessing_multiplier) then
+            v_selected_escape_bonus := 'golden_contract';
+            if coalesce((v_items -> 'golden_contract' ->> 'quantity')::integer, 0) > 0 then
+                v_run.inventory_state := public.evd_remove_item(v_run.inventory_state, 'golden_contract', 1);
+                v_items := coalesce(v_run.inventory_state -> 'items', '{}'::jsonb);
+            end if;
+
+            v_payout := floor(
+                (v_run.run_coins + v_run.secured_coins)
+                * (v_run.final_return_multiplier + 1.0)
+            )::integer;
+        elsif v_return_blessing_qty > 0 then
+            v_selected_escape_bonus := 'return_blessing';
+            v_run.inventory_state := public.evd_remove_item(v_run.inventory_state, 'return_blessing', v_return_blessing_qty);
+            v_items := coalesce(v_run.inventory_state -> 'items', '{}'::jsonb);
+
+            v_payout := floor(
+                (v_run.run_coins + v_run.secured_coins)
+                * v_run.final_return_multiplier
+                * v_return_blessing_multiplier
+            )::integer;
+        else
+            v_payout := floor(
+                (v_run.run_coins + v_run.secured_coins)
+                * v_run.final_return_multiplier
+            )::integer;
+        end if;
     else
         select least(coalesce(sum(st.quantity), 0), 5) * 0.02
           into v_wallet_bonus
@@ -66,7 +109,6 @@ begin
     end if;
 
     v_carried_items := coalesce(v_run.inventory_state -> 'carried_items', '{}'::jsonb);
-    v_items := coalesce(v_run.inventory_state -> 'items', '{}'::jsonb);
 
     if p_status = '死亡' then
         if coalesce((v_run.inventory_state -> 'carried_items' -> 'substitute_doll' ->> 'quantity')::integer, 0) > 0
@@ -92,7 +134,10 @@ begin
               from jsonb_each(v_items) e
               join public.evd_item_catalog c on c.code = e.key
              where coalesce((e.value ->> 'quantity')::integer, 0) > 0
-               and c.item_kind in ('手動', '死亡時', '永続')
+               and (
+                    c.item_kind in ('手動', '死亡時', '永続')
+                    or c.effect_data ->> 'effect' in ('golden_contract', 'return_multiplier_bonus_on_escape')
+               )
         loop
             insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, is_set, updated_at)
             values (

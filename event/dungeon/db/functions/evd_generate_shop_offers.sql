@@ -47,7 +47,7 @@ as $$
           from public.evd_item_catalog
          where is_active = true
            and (
-                (p_shop_type = 'ショップ' and shop_pool in ('通常', '両方'))
+                (p_shop_type = 'ショップ' and shop_pool in ('通常', '両方', '通常限定'))
              or (p_shop_type = '限定ショップ' and shop_pool in ('限定', '両方'))
            )
          order by

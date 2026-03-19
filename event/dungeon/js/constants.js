@@ -13,33 +13,35 @@ window.DUNGEON_CONSTANTS = {
         right: { x: 1, y: 0, label: '右' }
     },
     TILE_LABELS: {
-        '空白': '・',
+        '空白': '▫️',
         '小銭': '🪙',
-        '宝箱': '📦',
+        '宝箱': '🧰',
         '財宝箱': '💰',
-        '秘宝箱': '📛',
+        '秘宝箱': '🗝️',
         '宝石箱': '💎',
         'アイテム': '🎁',
         '祝福': '✨',
         '泉': '⛲',
         '爆弾': '💣',
-        '大爆発': '☄️',
-        '罠': '🕳️',
-        '呪い': '🕸️',
-        '盗賊': '🦹',
-        '落とし穴': '🌀',
-        '転送罠': '🧭',
+        '大爆発': '💥',
+        '罠': '⚠️',
+        '呪い': '☠️',
+        '盗賊': '🥷',
+        '落とし穴': '🕳️',
+        '転送罠': '🌀',
         'ショップ': '🛒',
-        '限定ショップ': '🏪',
+        '限定ショップ': '🏬',
         '下り階段': '🪜'
     },
     MANUAL_ITEM_CODES: [
         'escape_rope',
         'healing_potion',
+        'super_healing_potion',
         'stairs_search',
         'calamity_map',
         'full_scan_map',
         'abyss_ticket',
-        'holy_grail'
+        'holy_grail',
+        'life_vessel'
     ]
 };
