@@ -5,7 +5,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 // ===== 管理者設定 =====
 const ADMIN_DISCORD_IDS = [
     '666909228300107797', // nameless
-    '1184908452959621233'
+    '1184908452959621233',
 ];
 
 // ===== Discord 通知設定 =====

@@ -18,7 +18,7 @@
 
 </head>
 
-<body>
+<body data-dungeon-screen="start">
     <div class="dungeon-shell">
         <div id="nav-placeholder"></div>
         <div id="mobile-life-fixed" class="mobile-life-fixed d-none">LIFE ❤❤❤</div>
@@ -26,7 +26,6 @@
         <section class="dungeon-hero">
             <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-end">
                 <div>
-                    <p class="mb-2 text-uppercase small text-warning hero-outline-text">RPG Event</p>
                     <h1 class="dungeon-title hero-outline-text">欲望渦巻くダンジョン</h1>
                     <p class="dungeon-lead">
                         石造りの迷宮を踏破し、宝を抱えて帰還する探索イベントです。深く潜るほど報酬も危険も増します。
@@ -34,6 +33,13 @@
                 </div>
             </div>
         </section>
+
+        <div class="hero-action-grid">
+            <button id="start-run-btn" class="hero-image-button hero-image-button-start" type="button" data-busy-disable
+                aria-label="冒険に行く"></button>
+            <button id="prep-shop-open-btn" class="hero-image-button hero-image-button-shop" type="button"
+                data-busy-disable data-bs-toggle="modal" data-bs-target="#prep-shop-modal" aria-label="準備を整える"></button>
+        </div>
 
         <section data-screen="start" class="row g-4">
             <div class="col-lg-5">
@@ -51,11 +57,14 @@
                     </div>
                     <div class="mt-4">
                         <div class="panel-title">持ち込みアイテム</div>
-                        <p class="small text-secondary">在庫から 2 個まで選択できます。</p>
+                        <p id="carry-limit-note" class="small carry-section-note">在庫から 2 個まで選択できます。</p>
                         <div id="carry-items" class="carry-items"></div>
                     </div>
+                    <div class="mt-4">
+                        <div class="panel-title">レリック</div>
+                        <div id="relic-items" class="carry-items"></div>
+                    </div>
                     <div class="d-grid gap-2 mt-4">
-                        <button id="start-run-btn" class="dungeon-btn-primary" data-busy-disable>1000コインで入場する</button>
                         <button id="resume-run-btn" class="dungeon-btn-secondary" data-busy-disable>進行中のランを再開</button>
                     </div>
                 </div>
@@ -63,55 +72,83 @@
             <div class="col-lg-7">
                 <div class="dungeon-panel h-100">
                     <div class="panel-title">冒険の掟</div>
-                    <div class="adventure-log adventure-rules-scroll">
-                        <div class="dungeon-empty">7 x 7 の迷宮を移動して下り階段を探します。</div>
-                        <div class="dungeon-empty">初期ライフは ❤❤❤。❤がなくなると死亡です。</div>
-                        <div class="dungeon-empty">深い階ほど到達ボーナスが増えますが、転送罠や落とし穴も牙を剥きます。</div>
-                        <div class="dungeon-empty">帰還時のみ報酬確定。保険札があれば死亡時も半分持ち帰れます。</div>
+                    <div class="adventure-rules-list">
+                        <div class="dungeon-empty">7×7の迷宮を進み、階段を見つけてさらに深層を目指すべし。</div>
+                        <div class="dungeon-empty">ライフは ❤❤❤ からスタート。すべて失うと、その挑戦は終了だ。</div>
+                        <div class="dungeon-empty">深く潜るほど到達ボーナスは大きくなるぞ。</div>
+                        <div class="dungeon-empty">ただし、深層では危険もさらに増えていく。油断は禁物じゃ。</div>
+                        <div class="dungeon-empty">手に入れた報酬は、無事に帰還しないと手に入らない。</div>
+                        <div class="dungeon-empty">階段を見つけたら、さらに奥へ進むか、ここで帰還するかを見極めるべし。</div>
+                        <div class="dungeon-empty">アイテムをうまく活用し、覚悟を決めて挑むのじゃ。</div>
+                        <div class="dungeon-empty">日によってダンジョンの難易度が変わるらしい……。</div>
+                        <div class="dungeon-empty">ほかにも隠された要素があるようじゃ。プレイヤー同士で攻略を目指すのじゃ。</div>
                     </div>
-                    <div class="panel-title mt-4">入場前ショップ</div>
-                    <p class="small text-secondary">準備商人から在庫を補充して、そのまま持ち込み選択に使えます。</p>
-                    <button class="dungeon-btn-secondary w-100" type="button" data-bs-toggle="modal" data-bs-target="#prep-shop-modal">入場前ショップを開く</button>
                 </div>
             </div>
         </section>
 
         <section data-screen="game" class="d-none">
-            <div class="row g-4">
+            <div class="row g-4 game-layout-row">
                 <div class="col-xl-4">
-                    <div class="dungeon-panel mb-4">
+                    <div class="dungeon-panel desktop-side-panel">
                         <div class="panel-title">冒険者 HUD</div>
                         <div class="stat-grid">
-                            <div class="stat-card"><div class="stat-label">階層</div><div id="hud-floor" class="stat-value">-</div></div>
-                            <div class="stat-card"><div class="stat-label">ライフ</div><div id="hud-life" class="stat-value">-</div></div>
-                            <div class="stat-card"><div class="stat-label">現在コイン</div><div id="hud-run-coins" class="stat-value">-</div></div>
-                            <div class="stat-card"><div class="stat-label">確保済み</div><div id="hud-secured-coins" class="stat-value">-</div></div>
-                            <div class="stat-card"><div class="stat-label">秘宝</div><div id="hud-badges" class="stat-value">-</div></div>
-                            <div class="stat-card"><div class="stat-label">祈願符</div><div id="hud-gacha" class="stat-value">-</div></div>
-                            <div class="stat-card"><div class="stat-label">満願符</div><div id="hud-mangan" class="stat-value">-</div></div>
-                            <div class="stat-card"><div class="stat-label">身代わり残数</div><div id="hud-negates" class="stat-value">-</div></div>
-                            <div class="stat-card"><div class="stat-label">次階ボーナス</div><div id="hud-next-bonus" class="stat-value">-</div></div>
-                            <div class="stat-card"><div class="stat-label">帰還倍率</div><div id="hud-final-multiplier" class="stat-value">-</div></div>
-                            <div class="stat-card"><div class="stat-label">所持金</div><div id="hud-wallet" class="stat-value">-</div></div>
-                            <div class="stat-card"><div class="stat-label">累計資産</div><div id="hud-assets" class="stat-value">-</div></div>
+                            <div class="stat-card">
+                                <div class="stat-label">階層</div>
+                                <div id="hud-floor" class="stat-value">-</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">ライフ</div>
+                                <div id="hud-life" class="stat-value">-</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">🪙 現在コイン</div>
+                                <div id="hud-run-coins" class="stat-value">-</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">帰還倍率</div>
+                                <div id="hud-final-multiplier" class="stat-value">-</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">🎫 祈願符</div>
+                                <div id="hud-gacha" class="stat-value">-</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">🎟️ 満願符</div>
+                                <div id="hud-mangan" class="stat-value">-</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">次階層ボーナス</div>
+                                <div id="hud-next-bonus" class="stat-value">-</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">🪙 所持金</div>
+                                <div id="hud-wallet" class="stat-value">-</div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="dungeon-panel">
-                        <div class="panel-title">所持品</div>
+                        <div class="panel-title inventory-panel-title">所持品</div>
                         <div id="inventory-list" class="inventory-list"></div>
+                        <div class="panel-title inventory-panel-title">レリック</div>
+                        <div id="relic-inventory-list" class="inventory-list"></div>
                     </div>
                 </div>
 
                 <div class="col-xl-5">
-                    <div class="dungeon-panel">
+                    <div class="dungeon-panel game-board-panel">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <div class="panel-title mb-0">迷宮盤面</div>
-                            <div class="small text-secondary desktop-key-hint">矢印キー対応</div>
-                            <button id="mobile-arrow-toggle-btn" class="dungeon-btn-secondary mobile-arrow-toggle-btn d-none" type="button">矢印キー表示</button>
+                            <div class="small text-secondary desktop-key-hint">矢印キー / WASD 対応</div>
+                            <button id="mobile-arrow-toggle-btn"
+                                class="dungeon-btn-secondary mobile-arrow-toggle-btn d-none"
+                                type="button">矢印キー表示</button>
                         </div>
                         <div class="mobile-quick-actions d-none mb-3">
-                            <button class="dungeon-btn-secondary" type="button" data-bs-toggle="modal" data-bs-target="#mobileStatusModal">ステータス</button>
-                            <button class="dungeon-btn-secondary" type="button" data-bs-toggle="modal" data-bs-target="#mobileItemsModal">所持アイテム</button>
+                            <button class="dungeon-btn-secondary" type="button" data-bs-toggle="modal"
+                                data-bs-target="#mobileStatusModal">ステータス</button>
+                            <button class="dungeon-btn-secondary" type="button" data-bs-toggle="modal"
+                                data-bs-target="#mobileItemsModal">所持アイテム</button>
+                            <button class="dungeon-btn-secondary" type="button" data-bs-toggle="modal"
+                                data-bs-target="#mobileRelicsModal">所持レリック</button>
                         </div>
                         <div id="dungeon-board" class="dungeon-board"></div>
                     </div>
@@ -130,17 +167,34 @@
             <div class="dungeon-panel">
                 <div class="panel-title">探索結果</div>
                 <div class="result-grid">
-                    <div class="stat-card"><div class="stat-label">結果</div><div id="result-status" class="stat-value">-</div></div>
-                    <div class="stat-card"><div class="stat-label">払い戻し</div><div id="result-payout" class="stat-value">-</div></div>
-                    <div class="stat-card"><div class="stat-label">確保済み</div><div id="result-secured" class="stat-value">-</div></div>
-                    <div class="stat-card"><div class="stat-label">秘宝</div><div id="result-badges" class="stat-value">-</div></div>
-                    <div class="stat-card"><div class="stat-label">祈願符</div><div id="result-gacha" class="stat-value">-</div></div>
-                    <div class="stat-card"><div class="stat-label">満願符</div><div id="result-mangan" class="stat-value">-</div></div>
+                    <div class="stat-card">
+                        <div class="stat-label">結果</div>
+                        <div id="result-status" class="stat-value">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">🪙 払い戻し</div>
+                        <div id="result-payout" class="stat-value">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">秘宝</div>
+                        <div id="result-badges" class="stat-value">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">🎫 祈願符</div>
+                        <div id="result-gacha" class="stat-value">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">🎟️ 満願符</div>
+                        <div id="result-mangan" class="stat-value">-</div>
+                    </div>
                 </div>
                 <div class="dungeon-empty mt-3">最終記録: <span id="result-death-reason">-</span></div>
                 <div class="d-flex gap-2 flex-wrap mt-4">
-                    <button id="retry-run-btn" class="dungeon-btn-primary" data-busy-disable>もう一度潜る</button>
-                    <a class="dungeon-btn-secondary text-decoration-none d-inline-flex align-items-center" href="../../index.html">ホームへ戻る</a>
+                    <button id="retry-run-btn" class="dungeon-btn-primary" data-busy-disable>拠点に戻る</button>
+                </div>
+                <div class="mt-4">
+                    <div class="panel-title">持ち帰りアイテム</div>
+                    <div id="result-inventory-list" class="inventory-list"></div>
                 </div>
                 <div class="mt-4">
                     <div class="panel-title">冒険ログ</div>
@@ -164,27 +218,67 @@
         </div>
     </div>
 
+    <div id="item-acquired-modal" class="item-acquired-modal" aria-hidden="true">
+        <div class="item-acquired-card">
+            <button id="item-acquired-close" class="tile-popup-close-btn item-acquired-close-btn" type="button"
+                aria-label="閉じる">×</button>
+            <div class="item-acquired-head">
+                <div id="item-acquired-visual" class="item-acquired-visual">🎁</div>
+                <div>
+                    <div class="small text-secondary">アイテム獲得</div>
+                    <h2 id="item-acquired-title" class="tile-popup-title">アイテムを手に入れた</h2>
+                </div>
+            </div>
+            <p id="item-acquired-message" class="item-acquired-message">不思議な力を感じる。</p>
+        </div>
+    </div>
+
     <div class="modal fade" id="mobileStatusModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
             <div class="modal-content dungeon-mobile-modal">
                 <div class="modal-header">
                     <h5 class="modal-title">冒険者ステータス</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="stat-grid">
-                        <div class="stat-card"><div class="stat-label">階層</div><div id="mobile-hud-floor" class="stat-value">-</div></div>
-                        <div class="stat-card"><div class="stat-label">ライフ</div><div id="mobile-hud-life" class="stat-value">-</div></div>
-                        <div class="stat-card"><div class="stat-label">現在コイン</div><div id="mobile-hud-run-coins" class="stat-value">-</div></div>
-                        <div class="stat-card"><div class="stat-label">確保済み</div><div id="mobile-hud-secured-coins" class="stat-value">-</div></div>
-                        <div class="stat-card"><div class="stat-label">秘宝</div><div id="mobile-hud-badges" class="stat-value">-</div></div>
-                        <div class="stat-card"><div class="stat-label">祈願符</div><div id="mobile-hud-gacha" class="stat-value">-</div></div>
-                        <div class="stat-card"><div class="stat-label">満願符</div><div id="mobile-hud-mangan" class="stat-value">-</div></div>
-                        <div class="stat-card"><div class="stat-label">身代わり残数</div><div id="mobile-hud-negates" class="stat-value">-</div></div>
-                        <div class="stat-card"><div class="stat-label">次階ボーナス</div><div id="mobile-hud-next-bonus" class="stat-value">-</div></div>
-                        <div class="stat-card"><div class="stat-label">帰還倍率</div><div id="mobile-hud-final-multiplier" class="stat-value">-</div></div>
-                        <div class="stat-card"><div class="stat-label">所持金</div><div id="mobile-hud-wallet" class="stat-value">-</div></div>
-                        <div class="stat-card"><div class="stat-label">累計資産</div><div id="mobile-hud-assets" class="stat-value">-</div></div>
+                        <div class="stat-card">
+                            <div class="stat-label">階層</div>
+                            <div id="mobile-hud-floor" class="stat-value">-</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">ライフ</div>
+                            <div id="mobile-hud-life" class="stat-value">-</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">現在コイン</div>
+                            <div id="mobile-hud-run-coins" class="stat-value">-</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">帰還倍率</div>
+                            <div id="mobile-hud-final-multiplier" class="stat-value">-</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">祈願符</div>
+                            <div id="mobile-hud-gacha" class="stat-value">-</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">満願符</div>
+                            <div id="mobile-hud-mangan" class="stat-value">-</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">次階層ボーナス</div>
+                            <div id="mobile-hud-next-bonus" class="stat-value">-</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">帰還時獲得コイン</div>
+                            <div id="mobile-hud-return-coins" class="stat-value">-</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">所持金</div>
+                            <div id="mobile-hud-wallet" class="stat-value">-</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -196,7 +290,8 @@
             <div class="modal-content dungeon-mobile-modal">
                 <div class="modal-header">
                     <h5 class="modal-title">所持アイテム</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div id="mobile-inventory-list" class="inventory-list"></div>
@@ -205,7 +300,23 @@
         </div>
     </div>
 
-    <div class="modal fade" id="shop-modal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal fade" id="mobileRelicsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+            <div class="modal-content dungeon-mobile-modal">
+                <div class="modal-header">
+                    <h5 class="modal-title">所持レリック</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="mobile-relic-inventory-list" class="inventory-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="shop-modal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static"
+        data-bs-keyboard="false">
         <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
             <div class="modal-content dungeon-mobile-modal">
                 <div class="modal-header">
@@ -213,27 +324,95 @@
                 </div>
                 <div class="modal-body">
                     <div id="shop-event-banner" class="shop-event-banner d-none"></div>
+                    <div class="shop-top-actions">
+                        <button id="shop-held-toggle-btn" class="dungeon-btn-secondary shop-held-toggle-btn"
+                            type="button">所持アイテム</button>
+                    </div>
                     <div class="shop-wallet-line">現在の所持金: <span id="shop-run-coins">0</span> コイン</div>
+                    <div class="shop-notice-line">商人は現在の獲得コインを使用して1つだけ購入可能</div>
+                    <div id="shop-held-panel" class="shop-held-panel d-none">
+                        <div class="panel-title">手持ちアイテム</div>
+                        <div id="shop-held-items" class="inventory-list shop-held-items"></div>
+                    </div>
                     <div id="shop-offers" class="shop-offers"></div>
-                    <button id="shop-skip-btn" class="dungeon-btn-secondary mt-3 w-100" data-busy-disable>何も買わず立ち去る</button>
+                    <button id="shop-skip-btn" class="dungeon-btn-secondary mt-3 w-100"
+                        data-busy-disable>何も買わず立ち去る</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="modal fade" id="stairs-modal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal fade" id="stairs-modal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static"
+        data-bs-keyboard="false">
         <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
             <div class="modal-content dungeon-mobile-modal">
                 <div class="modal-header">
-                    <h5 class="modal-title">下り階段を見つけた</h5>
+                    <h5 id="stairs-modal-title" class="modal-title">下り階段を見つけた</h5>
                 </div>
                 <div class="modal-body">
-                    <p class="small text-secondary mb-3">ここで探索続行、帰還、次の階への降下を選べます。続行後も階段を踏めば再度選択できます。</p>
+                    <p id="stairs-modal-description" class="small text-secondary mb-3">
+                        ここで探索続行、帰還、次の階への降下を選べます。続行後も階段を踏めば再度選択できます。</p>
                     <div class="d-grid gap-2">
-                        <button id="stairs-continue-btn" class="dungeon-btn-secondary" data-busy-disable>この階を探索続行</button>
-                        <button id="stairs-return-btn" class="dungeon-btn-secondary" data-busy-disable>戦利品を持って帰還</button>
+                        <button id="stairs-continue-btn" class="dungeon-btn-secondary"
+                            data-busy-disable>この階を探索続行</button>
+                        <button id="stairs-return-btn" class="dungeon-btn-secondary"
+                            data-busy-disable>戦利品を持って帰還</button>
                         <button id="stairs-descend-btn" class="dungeon-btn-primary" data-busy-disable>次の階へ進む</button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="thief-modal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static"
+        data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+            <div class="modal-content dungeon-mobile-modal">
+                <div class="modal-header">
+                    <h5 class="modal-title">盗賊に囲まれた</h5>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-secondary mb-3">盗賊が通行料を要求している。どう対応するか選べ。</p>
+                    <div class="shop-top-actions">
+                        <button id="thief-held-toggle-btn" class="dungeon-btn-secondary shop-held-toggle-btn"
+                            type="button">所持アイテム</button>
+                    </div>
+                    <div class="shop-wallet-line">現在の所持金: <span id="thief-run-coins">0</span> コイン</div>
+                    <div id="thief-held-panel" class="shop-held-panel d-none">
+                        <div class="panel-title">手持ちアイテム</div>
+                        <div id="thief-held-items" class="inventory-list shop-held-items"></div>
+                    </div>
+                    <div class="thief-choice-list">
+                        <button id="thief-give-item-btn" class="thief-choice-card" type="button" data-busy-disable>
+                            <span class="thief-choice-title">アイテムを差し出す</span>
+                            <span id="thief-item-note" class="thief-choice-note">所持アイテムからランダムに 1 個奪われる。</span>
+                        </button>
+                        <button id="thief-pay-coin-btn" class="thief-choice-card" type="button" data-busy-disable>
+                            <span id="thief-coin-title" class="thief-choice-title">お金を差し出す</span>
+                            <span id="thief-coin-note" class="thief-choice-note">設定コインを支払ってやり過ごす。</span>
+                        </button>
+                        <button id="thief-run-btn" class="thief-choice-card thief-choice-card-danger" type="button"
+                            data-busy-disable>
+                            <span class="thief-choice-title">逃げる</span>
+                            <span class="thief-choice-note">運が良ければ逃げ切れるかもしれない。</span>
+                        </button>
+                    </div>
+                    <p id="thief-warning-text" class="thief-warning-text mb-0">覚悟を決めて選択せよ。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="altar-reward-modal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static"
+        data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+            <div class="modal-content dungeon-mobile-modal">
+                <div class="modal-header">
+                    <h5 class="modal-title">深部の祭壇</h5>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-secondary mb-3">祭壇がレリックを 2 つ示した。1 つだけ選んで持ち帰れる。</p>
+                    <div id="altar-reward-offers" class="shop-offers"></div>
                 </div>
             </div>
         </div>
@@ -244,7 +423,8 @@
             <div class="modal-content dungeon-mobile-modal">
                 <div class="modal-header">
                     <h5 class="modal-title">入場前ショップ</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div id="prep-shop-list" class="prep-shop-list"></div>

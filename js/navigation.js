@@ -276,6 +276,15 @@ async function updateNavTeamIcon() {
  */
 async function applyPageSettingsToNav() {
     try {
+        const normalizePagePath = (path) => {
+            if (!path) return '/';
+            let normalized = String(path).split('?')[0].split('#')[0];
+            if (!normalized.startsWith('/')) normalized = `/${normalized}`;
+            normalized = normalized.replace(/\/index\.html$/, '');
+            normalized = normalized.replace(/\/+$/, '');
+            return normalized || '/';
+        };
+
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) return;
 
@@ -295,7 +304,7 @@ async function applyPageSettingsToNav() {
             if (data) {
                 settings = {};
                 data.forEach(item => {
-                    settings[item.path] = item.is_active;
+                    settings[normalizePagePath(item.path)] = item.is_active;
                 });
                 sessionStorage.setItem(CACHE_KEY, JSON.stringify({
                     timestamp: Date.now(),
@@ -317,7 +326,7 @@ async function applyPageSettingsToNav() {
 
         const guardedLinks = document.querySelectorAll('[data-page-path]');
         guardedLinks.forEach(link => {
-            const pathKey = link.getAttribute('data-page-path');
+            const pathKey = normalizePagePath(link.getAttribute('data-page-path'));
             if (pathKey && settings[pathKey] === false) {
                 const li = link.closest('li');
                 if (li) li.style.display = 'none';

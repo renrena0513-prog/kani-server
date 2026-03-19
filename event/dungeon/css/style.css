@@ -18,11 +18,27 @@
             font-family: var(--dungeon-font-body);
             min-height: 100vh;
             color: #f7f3e8;
-            background:
-                radial-gradient(circle at top, rgba(241, 213, 141, 0.14), transparent 28%),
-                radial-gradient(circle at 20% 20%, rgba(104, 199, 166, 0.1), transparent 20%),
-                linear-gradient(180deg, var(--dungeon-bg) 0%, var(--dungeon-bg2) 100%);
+            background-color: var(--dungeon-bg);
+            background-image:
+                linear-gradient(180deg, rgba(8, 11, 18, 0.46), rgba(8, 11, 18, 0.74)),
+                url("../images/拠点壁紙PC.png");
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
             background-attachment: fixed;
+        }
+
+        body[data-dungeon-screen="start"],
+        body[data-dungeon-screen="result"] {
+            background-image:
+                linear-gradient(180deg, rgba(35, 22, 8, 0.18), rgba(22, 15, 8, 0.58)),
+                url("../images/拠点壁紙PC.png");
+        }
+
+        body[data-dungeon-screen="game"] {
+            background-image:
+                linear-gradient(180deg, rgba(5, 10, 20, 0.24), rgba(5, 10, 20, 0.72)),
+                url("../images/ダンジョン壁紙PC.png");
         }
 
         .dungeon-shell {
@@ -32,18 +48,19 @@
         }
 
         .dungeon-hero {
-            background: var(--dungeon-panel);
-            border: none;
-            border-radius: 0;
-            box-shadow: none;
-            backdrop-filter: none;
-        }
-
-        .dungeon-hero {
-            padding: 24px;
+            padding: 28px;
             margin-bottom: 20px;
             position: relative;
             overflow: hidden;
+            background: linear-gradient(180deg, rgba(9, 12, 18, 0.28), rgba(9, 12, 18, 0.12));
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 28px;
+            backdrop-filter: blur(5px);
+        }
+
+        body[data-dungeon-screen="game"] .dungeon-hero,
+        body[data-dungeon-screen="result"] .dungeon-hero {
+            display: none;
         }
 
         .dungeon-hero::after {
@@ -82,18 +99,77 @@
         .dungeon-lead {
             color: var(--dungeon-muted);
             max-width: 760px;
-            margin-top: 12px;
+            margin-top: 18px;
             line-height: 1.8;
+        }
+
+        body[data-dungeon-screen="game"] .dungeon-lead,
+        body[data-dungeon-screen="result"] .dungeon-lead {
+            display: none;
         }
 
         .dungeon-panel {
             padding: 18px;
             height: 100%;
-            background: transparent;
-            border: none;
-            border-radius: 0;
-            box-shadow: none;
-            backdrop-filter: none;
+            background: linear-gradient(180deg, rgba(7, 10, 14, 0.5), rgba(7, 10, 14, 0.36));
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+            backdrop-filter: blur(8px);
+        }
+
+        .hero-action-grid {
+            display: none;
+            margin-top: 28px;
+            margin-bottom: 32px;
+        }
+
+        body[data-dungeon-screen="start"] .hero-action-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 24px;
+            max-width: 900px;
+        }
+
+        .hero-image-button {
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            border: 0;
+            border-radius: 28px;
+            background-color: rgba(8, 10, 12, 0.55);
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
+            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+            transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+        }
+
+        .hero-image-button:hover,
+        .hero-image-button:focus-visible {
+            transform: translateY(-4px);
+            box-shadow: 0 26px 50px rgba(0, 0, 0, 0.36);
+            filter: brightness(1.04);
+            outline: 2px solid rgba(255, 255, 255, 0.14);
+            outline-offset: 2px;
+        }
+
+        .hero-image-button:disabled {
+            opacity: 0.7;
+            filter: saturate(0.8);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .hero-image-button-start {
+            background-image: url("../images/出発.png");
+        }
+
+        .hero-image-button-shop {
+            background-image: url("../images/準備ショップ.png");
+        }
+
+        .carry-section-note {
+            color: #ffffff;
         }
 
         .panel-title {
@@ -156,13 +232,31 @@
             gap: 8px;
         }
 
+        .inventory-panel-title {
+            margin-top: 16px;
+        }
+
+        @media (min-width: 1200px) {
+            .game-layout-row {
+                --bs-gutter-x: 20px;
+                --bs-gutter-y: 20px;
+                align-items: flex-start;
+            }
+
+            .game-board-panel {
+                padding-bottom: 12px;
+            }
+        }
+
         .tile {
             aspect-ratio: 1;
+            display: grid;
+            place-items: center;
+            overflow: hidden;
+            padding: 0;
             border-radius: 16px;
             border: 1px solid rgba(255, 255, 255, 0.06);
-            background:
-                linear-gradient(180deg, rgba(65, 67, 66, 0.78), rgba(23, 26, 27, 0.96)),
-                repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.015) 0 8px, transparent 8px 16px);
+            background: linear-gradient(180deg, rgba(65, 67, 66, 0.78), rgba(23, 26, 27, 0.96));
             color: #e6ddc4;
             font-size: 1.3rem;
             transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
@@ -192,6 +286,13 @@
             box-shadow: 0 0 0 2px rgba(104, 199, 166, 0.2);
         }
 
+        .tile > span {
+            width: 100%;
+            height: 100%;
+            display: grid;
+            place-items: center;
+        }
+
         .tile.stairs,
         .tile.shop,
         .tile.hinted {
@@ -219,6 +320,7 @@
 
         .carry-items,
         .prep-shop-list,
+        .thief-choice-list,
         .shop-offers,
         .inventory-list,
         .adventure-log {
@@ -228,6 +330,7 @@
 
         .carry-item,
         .prep-shop-card,
+        .thief-choice-card,
         .shop-offer,
         .inventory-item {
             width: 100%;
@@ -239,11 +342,65 @@
             color: inherit;
         }
 
+        .item-rarity-rare {
+            border-color: rgba(127, 190, 255, 0.7);
+            box-shadow: inset 0 0 0 1px rgba(127, 190, 255, 0.16);
+            background: linear-gradient(180deg, rgba(72, 118, 170, 0.18), rgba(255, 255, 255, 0.04));
+        }
+
+        .item-rarity-epic {
+            border-color: rgba(172, 118, 255, 0.72);
+            box-shadow: inset 0 0 0 1px rgba(172, 118, 255, 0.16);
+            background: linear-gradient(180deg, rgba(103, 56, 151, 0.22), rgba(255, 255, 255, 0.04));
+        }
+
+        .item-rarity-legend {
+            border-color: rgba(255, 112, 112, 0.72);
+            box-shadow: inset 0 0 0 1px rgba(255, 112, 112, 0.18);
+            background: linear-gradient(180deg, rgba(155, 44, 44, 0.24), rgba(255, 255, 255, 0.04));
+        }
+
         .prep-shop-card {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 12px;
+        }
+
+        .thief-choice-card {
+            display: grid;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .thief-choice-card:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        .thief-choice-card.is-unavailable {
+            opacity: 0.52;
+        }
+
+        .thief-choice-card-danger {
+            border-color: rgba(219, 127, 104, 0.26);
+            background: rgba(122, 37, 24, 0.26);
+        }
+
+        .thief-choice-title {
+            font-weight: 700;
+            color: #f7f3e8;
+        }
+
+        .thief-choice-note {
+            font-size: 0.88rem;
+            color: var(--dungeon-muted);
+        }
+
+        .thief-warning-text {
+            margin-top: 14px;
+            color: #ffd6cd;
+            font-size: 0.88rem;
         }
 
         .prep-shop-buy-btn {
@@ -264,8 +421,37 @@
             background: rgba(241, 213, 141, 0.12);
         }
 
+        .carry-item {
+            display: block;
+        }
+
+        .carry-item-layout {
+            display: grid;
+            grid-template-columns: 56px minmax(0, 1fr);
+            gap: 12px;
+            align-items: center;
+        }
+
+        .carry-item-body {
+            min-width: 0;
+            min-height: 56px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .carry-item-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
         .carry-item.disabled {
             opacity: 0.45;
+        }
+
+        .carry-item-static {
+            cursor: default;
         }
 
         .carry-item-name,
@@ -273,6 +459,19 @@
         .inventory-item-name {
             font-weight: 700;
             margin-bottom: 6px;
+        }
+
+        .carry-selected-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: rgba(241, 213, 141, 0.18);
+            border: 1px solid rgba(241, 213, 141, 0.4);
+            color: var(--dungeon-gold-strong);
+            font-size: 0.72rem;
+            font-weight: 700;
+            white-space: nowrap;
         }
 
         .item-entry-head {
@@ -286,12 +485,12 @@
         }
 
         .item-visual {
-            width: 1.15rem;
-            height: 1.15rem;
+            width: 56px;
+            height: 56px;
             display: inline-grid;
             place-items: center;
             flex-shrink: 0;
-            margin-top: 0.1rem;
+            margin-top: 0;
         }
 
         .item-image {
@@ -311,12 +510,12 @@
         }
 
         .player-avatar {
-            width: 1.2em;
-            height: 1.2em;
-            border-radius: 50%;
+            width: 100%;
+            height: 100%;
+            display: block;
             object-fit: cover;
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            vertical-align: middle;
+            border-radius: 12px;
+            border: 0;
         }
 
         .carry-item-desc,
@@ -327,12 +526,31 @@
             line-height: 1.7;
         }
 
+        .inventory-item-kind {
+            display: inline-flex;
+            align-items: center;
+            width: fit-content;
+            margin-bottom: 6px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--dungeon-gold-strong);
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+
         .carry-item-meta,
         .shop-offer-price,
         .inventory-qty {
             font-size: 0.75rem;
             margin-top: 8px;
             color: var(--dungeon-gold-strong);
+        }
+
+        .carry-item-meta {
+            margin-top: auto;
+            text-align: right;
         }
 
         .inventory-item {
@@ -352,6 +570,17 @@
         .adventure-log {
             max-height: 360px;
             overflow: auto;
+        }
+
+        @media (min-width: 1200px) {
+            #adventure-log {
+                max-height: 560px;
+            }
+        }
+
+        .adventure-rules-list {
+            display: grid;
+            gap: 12px;
         }
 
         .log-line {
@@ -388,16 +617,49 @@
         }
 
         .shop-wallet-line {
-            display: none;
+            display: block;
             margin-bottom: 10px;
             color: #f7f3e8;
             font-size: 0.9rem;
         }
 
-        @media (max-width: 991px) {
-            .shop-wallet-line {
-                display: block;
-            }
+        .shop-top-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 10px;
+        }
+
+        .shop-held-toggle-btn {
+            padding: 8px 12px;
+            font-size: 0.82rem;
+        }
+
+        .shop-notice-line {
+            margin-bottom: 14px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #f7f3e8;
+            font-size: 0.88rem;
+            line-height: 1.6;
+        }
+
+        .shop-held-panel {
+            margin-bottom: 16px;
+        }
+
+        .shop-held-items {
+            max-height: 220px;
+        }
+
+        .shop-held-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        #shop-modal .modal-body {
+            min-height: 540px;
         }
 
         .dungeon-empty {
@@ -518,6 +780,86 @@
             line-height: 1;
         }
 
+        .item-acquired-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 1200;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: rgba(4, 7, 10, 0.62);
+            backdrop-filter: blur(6px);
+        }
+
+        .item-acquired-modal.show {
+            display: flex;
+        }
+
+        .item-acquired-card {
+            width: min(92vw, 520px);
+            position: relative;
+            padding: 26px 22px 22px;
+            border-radius: 28px;
+            border: 1px solid rgba(241, 213, 141, 0.38);
+            background: linear-gradient(180deg, rgba(23, 28, 31, 0.98), rgba(12, 15, 17, 0.98));
+            box-shadow: 0 30px 90px rgba(0, 0, 0, 0.52);
+        }
+
+        .item-acquired-head {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+
+        .item-acquired-visual {
+            width: 82px;
+            height: 82px;
+            display: grid;
+            place-items: center;
+            border-radius: 22px;
+            background: rgba(241, 213, 141, 0.12);
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .item-acquired-visual .item-visual {
+            width: 100%;
+            height: 100%;
+            display: grid;
+            place-items: center;
+        }
+
+        .item-acquired-visual .item-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 8px;
+        }
+
+        .item-acquired-fallback,
+        .item-acquired-visual .item-emoji-fallback {
+            display: grid;
+            place-items: center;
+            width: 100%;
+            height: 100%;
+            font-size: 2rem;
+        }
+
+        .item-acquired-message {
+            margin: 0;
+            color: #f7f3e8;
+            line-height: 1.9;
+            font-size: 1.02rem;
+            padding-right: 18px;
+        }
+
+        .item-acquired-close-btn {
+            top: 10px;
+            right: 10px;
+        }
+
         .mobile-life-fixed {
             position: fixed;
             left: 12px;
@@ -631,6 +973,10 @@
                 padding-top: 88px;
             }
 
+            .hero-action-grid {
+                gap: 16px;
+            }
+
             [data-screen="game"] .row {
                 row-gap: 18px;
             }
@@ -680,6 +1026,19 @@
         }
 
         @media (max-width: 767px) {
+            body[data-dungeon-screen="start"],
+            body[data-dungeon-screen="result"] {
+                background-image:
+                    linear-gradient(180deg, rgba(35, 22, 8, 0.16), rgba(22, 15, 8, 0.56)),
+                    url("../images/拠点壁紙SP.png");
+            }
+
+            body[data-dungeon-screen="game"] {
+                background-image:
+                    linear-gradient(180deg, rgba(5, 10, 20, 0.2), rgba(5, 10, 20, 0.68)),
+                    url("../images/ダンジョン壁紙SP.png");
+            }
+
             .dungeon-board {
                 gap: 6px;
             }
@@ -691,5 +1050,18 @@
 
             .stat-grid {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .dungeon-hero {
+                padding: 20px;
+                border-radius: 22px;
+            }
+
+            .hero-action-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-image-button {
+                border-radius: 22px;
             }
         }

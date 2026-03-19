@@ -61,14 +61,24 @@ begin
     select effect_data ->> 'effect' into v_effect from public.evd_item_catalog where code = p_item_code;
 
     if v_effect = 'substitute' then
-        update public.evd_game_runs set substitute_negates_remaining = substitute_negates_remaining + 3 where id = p_run_id;
+        update public.evd_game_runs
+           set substitute_negates_remaining = substitute_negates_remaining + 3,
+               inventory_state = public.evd_add_bucket_item(inventory_state, 'carried_items', p_item_code, 1)
+         where id = p_run_id;
     elsif v_effect = 'insurance' then
-        update public.evd_game_runs set inventory_state = jsonb_set(inventory_state, array['flags', 'insurance_active'], 'true'::jsonb, true) where id = p_run_id;
+        update public.evd_game_runs
+           set inventory_state = public.evd_add_bucket_item(
+                jsonb_set(inventory_state, array['flags', 'insurance_active'], 'true'::jsonb, true),
+                'carried_items',
+                p_item_code,
+                1
+           )
+         where id = p_run_id;
     elsif v_effect = 'golden_contract' then
         update public.evd_game_runs set inventory_state = jsonb_set(inventory_state, array['flags', 'golden_contract_active'], 'true'::jsonb, true) where id = p_run_id;
     elsif v_effect = 'vault_box' then
         update public.evd_game_runs
-           set secured_coins = secured_coins + floor(run_coins * 0.7)::integer
+           set inventory_state = public.evd_add_bucket_item(inventory_state, 'carried_items', p_item_code, 1)
          where id = p_run_id;
     else
         update public.evd_game_runs set inventory_state = public.evd_add_item(inventory_state, p_item_code, 1) where id = p_run_id;

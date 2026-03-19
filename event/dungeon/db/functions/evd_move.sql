@@ -15,8 +15,10 @@ declare
     v_next_y integer;
     v_damage integer := 0;
     v_coin_delta integer := 0;
+    v_actual_coin_loss integer := 0;
     v_message text := '';
     v_rate_delta numeric := 0;
+    v_actual_rate_delta numeric := 0;
     v_new_multiplier numeric := 1;
     v_gacha_rate numeric := 0;
     v_mangan_rate numeric := 0;
@@ -43,6 +45,10 @@ begin
 
     if coalesce(v_run.inventory_state -> 'pending_shop', 'null'::jsonb) <> 'null'::jsonb then
         raise exception 'ショップの処理を先に完了してください';
+    end if;
+
+    if coalesce(v_run.inventory_state -> 'pending_thief', 'null'::jsonb) <> 'null'::jsonb then
+        raise exception '盗賊への対応を先に完了してください';
     end if;
 
     select * into v_floor from public.evd_run_floors where run_id = p_run_id and floor_no = v_run.current_floor for update;
@@ -94,10 +100,8 @@ begin
             update public.evd_game_runs set badges_gained = badges_gained + 1 where id = p_run_id;
             v_message := '秘宝箱を見つけ、秘宝バッジを 1 個確保した。';
         when '宝石箱' then
-            v_gacha_rate := greatest(0, least(1, coalesce(public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '祈願符', true), 1)));
-            v_mangan_rate := greatest(0, least(1, coalesce(public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '満願符', true), 0.35)));
-            v_gacha_gain := case when random() < v_gacha_rate then 1 else 0 end;
-            v_mangan_gain := case when random() < v_mangan_rate then 1 else 0 end;
+            v_gacha_gain := greatest(0, coalesce(public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '祈願符')::integer, 0));
+            v_mangan_gain := greatest(0, coalesce(public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '満願符')::integer, 0));
             update public.evd_game_runs
                set gacha_tickets_gained = gacha_tickets_gained + v_gacha_gain,
                    mangan_tickets_gained = mangan_tickets_gained + v_mangan_gain
@@ -114,7 +118,6 @@ begin
                     sum(weight) over (order by sort_order, code) as cumulative_weight
                  from public.evd_item_catalog
                  where is_active = true
-                   and shop_pool <> 'レリック'
                    and weight > 0
             ),
             draw as (
@@ -133,12 +136,18 @@ begin
                 v_message := '不思議なマスだったが、何も手に入らなかった。';
             elsif v_pick_item_effect = 'substitute' then
                 update public.evd_game_runs
-                   set substitute_negates_remaining = substitute_negates_remaining + 3
+                   set substitute_negates_remaining = substitute_negates_remaining + 3,
+                       inventory_state = public.evd_add_bucket_item(inventory_state, 'carried_items', v_pick_item_code, 1)
                  where id = p_run_id;
                 v_message := format('%s を引き当てた。身代わり効果が付与された。', v_pick_item_name);
             elsif v_pick_item_effect = 'insurance' then
                 update public.evd_game_runs
-                   set inventory_state = jsonb_set(inventory_state, array['flags', 'insurance_active'], 'true'::jsonb, true)
+                   set inventory_state = public.evd_add_bucket_item(
+                        jsonb_set(inventory_state, array['flags', 'insurance_active'], 'true'::jsonb, true),
+                        'carried_items',
+                        v_pick_item_code,
+                        1
+                   )
                  where id = p_run_id;
                 v_message := format('%s を引き当てた。死亡時保険が有効化された。', v_pick_item_name);
             elsif v_pick_item_effect = 'golden_contract' then
@@ -148,9 +157,9 @@ begin
                 v_message := format('%s を引き当てた。帰還時の倍率効果が有効化された。', v_pick_item_name);
             elsif v_pick_item_effect = 'vault_box' then
                 update public.evd_game_runs
-                   set secured_coins = secured_coins + floor(run_coins * 0.7)::integer
+                   set inventory_state = public.evd_add_bucket_item(inventory_state, 'carried_items', v_pick_item_code, 1)
                  where id = p_run_id;
-                v_message := format('%s を引き当てた。所持コインの 70%% を確保した。', v_pick_item_name);
+                v_message := format('%s を引き当てた。死亡時に所持コインの 80%% を持ち帰れる。', v_pick_item_name);
             else
                 update public.evd_game_runs
                    set inventory_state = public.evd_add_item(inventory_state, v_pick_item_code, 1)
@@ -177,40 +186,40 @@ begin
             v_message := '大爆発に巻き込まれ、ライフを 2 失った。';
         when '罠' then
             v_coin_delta := -1 * public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '罠')::integer;
-            v_message := format('罠にかかり、%s コイン失った。', abs(v_coin_delta));
+            v_actual_coin_loss := least(abs(v_coin_delta), coalesce(v_run.run_coins, 0));
+            v_message := format('罠にかかり、%s コイン失った。', v_actual_coin_loss);
         when '呪い' then
             v_rate_delta := public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '呪い', true);
-            update public.evd_game_runs
-               set final_return_multiplier = round(greatest(0.30, (final_return_multiplier - v_rate_delta))::numeric, 2)
-             where id = p_run_id
-            returning final_return_multiplier into v_new_multiplier;
-            v_message := format('呪いにより最終持ち帰り倍率が -%s され x%s になった。', v_rate_delta, v_new_multiplier);
-        when '盗賊' then
-            v_ransom := coalesce(public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '盗賊')::integer, 150);
-            if exists (
-                select 1
-                  from jsonb_each(coalesce(v_run.inventory_state -> 'items', '{}'::jsonb)) e
-                 where coalesce((e.value ->> 'quantity')::integer, 0) > 0
-            ) then
-                if v_run.run_coins >= v_ransom then
-                    v_coin_delta := -1 * v_ransom;
-                    v_message := format('盗賊に遭遇したが、%s コイン支払って荷物を守った。', v_ransom);
-                else
-                    select key into v_item_to_lose
-                      from jsonb_each(v_run.inventory_state -> 'items')
-                     where coalesce((value ->> 'quantity')::integer, 0) > 0
-                     limit 1;
-                    select name into v_item_to_lose_name
-                      from public.evd_item_catalog
-                     where code = v_item_to_lose;
-                    update public.evd_game_runs
-                       set inventory_state = public.evd_remove_bucket_item(public.evd_remove_item(inventory_state, v_item_to_lose, 1), 'carried_items', v_item_to_lose, 1)
-                     where id = p_run_id;
-                    v_message := format('盗賊に襲われ、%s を 1 個奪われた。', coalesce(v_item_to_lose_name, v_item_to_lose));
-                end if;
+            if v_run.substitute_negates_remaining > 0 then
+                update public.evd_game_runs
+                   set substitute_negates_remaining = substitute_negates_remaining - 1
+                 where id = p_run_id;
+                v_message := format('身代わり人形が砕け、%s を無効化した。あと %s 回。', v_cell ->> 'type', greatest(v_run.substitute_negates_remaining - 1, 0));
             else
-                v_coin_delta := -1 * least(v_run.run_coins, v_ransom);
-                v_message := format('盗賊に遭遇し、%s コイン奪われた。', abs(v_coin_delta));
+                v_new_multiplier := round(greatest(0.30, (v_run.final_return_multiplier - v_rate_delta))::numeric, 2);
+                v_actual_rate_delta := round(greatest(0::numeric, v_run.final_return_multiplier - v_new_multiplier)::numeric, 2);
+                update public.evd_game_runs
+                   set final_return_multiplier = v_new_multiplier
+                 where id = p_run_id;
+                v_message := format('呪いにより最終持ち帰り倍率が -%s され x%s になった。', to_char(v_actual_rate_delta, 'FM0.00'), to_char(v_new_multiplier, 'FM0.00'));
+            end if;
+        when '盗賊' then
+            if v_run.substitute_negates_remaining > 0 then
+                update public.evd_game_runs
+                   set substitute_negates_remaining = substitute_negates_remaining - 1
+                 where id = p_run_id;
+                v_message := format('盗賊と出会ったが、身代わり人形が砕けて逃げ切った。あと %s 回。', greatest(v_run.substitute_negates_remaining - 1, 0));
+            else
+                v_ransom := coalesce(public.evd_get_floor_value(v_run.generation_profile_id, v_run.current_floor, '盗賊')::integer, 150);
+                update public.evd_game_runs
+                   set inventory_state = jsonb_set(
+                        inventory_state,
+                        array['pending_thief'],
+                        jsonb_build_object('ransom', v_ransom),
+                        true
+                   )
+                 where id = p_run_id;
+                return public.evd_build_snapshot(p_run_id, v_user_id);
             end if;
         when '落とし穴' then
             v_damage := 1;
@@ -218,19 +227,22 @@ begin
         when '転送罠' then
             v_message := '転送罠が発動し、2 階層上へ戻された。';
         when 'ショップ' then
-            v_offers := public.evd_generate_shop_offers('ショップ');
+            v_offers := public.evd_generate_shop_offers(p_run_id, 'ショップ');
             update public.evd_game_runs
                set inventory_state = jsonb_set(inventory_state, array['pending_shop'], jsonb_build_object('shop_type', 'ショップ', 'offers', v_offers), true)
              where id = p_run_id;
             v_message := '行商人が店を広げた。';
         when '限定ショップ' then
-            v_offers := public.evd_generate_shop_offers('限定ショップ');
+            v_offers := public.evd_generate_shop_offers(p_run_id, '限定ショップ');
             update public.evd_game_runs
                set inventory_state = jsonb_set(inventory_state, array['pending_shop'], jsonb_build_object('shop_type', '限定ショップ', 'offers', v_offers), true)
              where id = p_run_id;
             v_message := '珍しい商人が隠し市を開いた。';
         when '下り階段' then
-            v_message := '下り階段を見つけた。';
+            v_message := case
+                when v_run.current_floor >= v_run.max_floors then '深部の祭壇を見つけた。'
+                else '下り階段を見つけた。'
+            end;
         else
             v_message := '何も起こらなかった。';
     end case;
@@ -240,7 +252,7 @@ begin
             update public.evd_game_runs
                set substitute_negates_remaining = substitute_negates_remaining - 1
              where id = p_run_id;
-            v_message := format('身代わり人形が砕け、%s を無効化した。', v_cell ->> 'type');
+            v_message := format('身代わり人形が砕け、%s を無効化した。あと %s 回。', v_cell ->> 'type', greatest(v_run.substitute_negates_remaining - 1, 0));
             v_damage := 0;
         else
             update public.evd_game_runs
@@ -254,7 +266,7 @@ begin
             update public.evd_game_runs
                set substitute_negates_remaining = substitute_negates_remaining - 1
              where id = p_run_id;
-            v_message := format('身代わり人形が砕け、%s を無効化した。', v_cell ->> 'type');
+            v_message := format('身代わり人形が砕け、%s を無効化した。あと %s 回。', v_cell ->> 'type', greatest(v_run.substitute_negates_remaining - 1, 0));
         else
             update public.evd_game_runs
                set run_coins = greatest(run_coins + v_coin_delta, 0)
@@ -266,7 +278,20 @@ begin
     v_grid := public.evd_set_cell(v_grid, v_next_x, v_next_y, v_cell);
     update public.evd_run_floors set grid = v_grid where id = v_floor.id;
 
-    perform public.evd_add_log(p_run_id, v_user_id, v_run.account_name, v_run.current_floor, 'マス公開', v_message, jsonb_build_object('tile_type', v_cell ->> 'type'));
+    perform public.evd_add_log(
+        p_run_id,
+        v_user_id,
+        v_run.account_name,
+        v_run.current_floor,
+        'マス公開',
+        v_message,
+        jsonb_build_object('tile_type', v_cell ->> 'type')
+            || case
+                when (v_cell ->> 'type') = 'アイテム' and v_pick_item_code is not null then
+                    jsonb_build_object('item_code', v_pick_item_code, 'item_name', v_pick_item_name)
+                else '{}'::jsonb
+            end
+    );
 
     select * into v_run from public.evd_game_runs where id = p_run_id;
 

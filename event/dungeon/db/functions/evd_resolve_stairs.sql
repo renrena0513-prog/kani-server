@@ -11,6 +11,7 @@ declare
     v_current_cell jsonb;
     v_bonus integer := 0;
     v_target_floor integer;
+    v_offers jsonb;
 begin
     perform pg_advisory_xact_lock(hashtext('evd:' || v_user_id));
 
@@ -29,7 +30,66 @@ begin
         raise exception '階段の上にいないため選択できません';
     end if;
 
-    if p_action = 'return' or v_run.current_floor >= v_run.max_floors then
+    if v_run.current_floor >= v_run.max_floors then
+        if p_action <> 'return' then
+            raise exception '深部の祭壇では帰還のみ選択できます';
+        end if;
+
+        with relic_pool as (
+            select
+                c.code,
+                c.name,
+                c.description,
+                c.rarity,
+                c.sort_order,
+                greatest(coalesce(c.weight, 0), 1) as effective_weight
+              from public.evd_item_catalog c
+             where c.is_active = true
+               and c.shop_pool = 'レリック'
+        )
+        select coalesce(
+            jsonb_agg(
+                jsonb_build_object(
+                    'code', picked.code,
+                    'name', picked.name,
+                    'description', picked.description,
+                    'rarity', picked.rarity
+                )
+                order by picked.sort_order, picked.code
+            ),
+            '[]'::jsonb
+        )
+          into v_offers
+          from (
+            select code, name, description, rarity, sort_order
+              from relic_pool
+             order by -ln(greatest(random(), 1e-9)) / effective_weight
+             limit 2
+          ) picked;
+
+        if coalesce(jsonb_array_length(v_offers), 0) = 0 then
+            perform public.evd_add_log(p_run_id, v_user_id, v_run.account_name, v_run.current_floor, '帰還', '深部の祭壇を後にして地上へ引き返した。');
+            return public.evd_finish_run(p_run_id, v_user_id, '帰還', '深部の祭壇から帰還');
+        end if;
+
+        update public.evd_game_runs
+           set inventory_state = jsonb_set(inventory_state, array['pending_altar_reward'], jsonb_build_object('offers', v_offers), true)
+         where id = p_run_id;
+
+        perform public.evd_add_log(
+            p_run_id,
+            v_user_id,
+            v_run.account_name,
+            v_run.current_floor,
+            '祭壇報酬',
+            '深部の祭壇が輝き、レリックを 1 つ選べるようになった。',
+            jsonb_build_object('offers', v_offers)
+        );
+
+        return public.evd_build_snapshot(p_run_id, v_user_id);
+    end if;
+
+    if p_action = 'return' then
         perform public.evd_add_log(p_run_id, v_user_id, v_run.account_name, v_run.current_floor, '帰還', '階段から地上へ引き返した。');
         return public.evd_finish_run(p_run_id, v_user_id, '帰還', '地上へ帰還');
     end if;

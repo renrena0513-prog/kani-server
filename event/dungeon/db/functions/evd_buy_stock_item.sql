@@ -8,8 +8,9 @@ declare
     v_user_id text := public.evd_current_user_id();
     v_profile record;
     v_item record;
-    v_stock integer := 0;
     v_stocks jsonb;
+    v_price integer := 0;
+    v_discount_rate numeric(8, 2) := 0.0;
 begin
     if v_user_id = '' then
         raise exception 'ログインが必要です';
@@ -27,7 +28,7 @@ begin
         raise exception 'プロフィールが見つかりません';
     end if;
 
-    select code, name, description, base_price, max_stack, shop_pool, is_active
+    select code, name, description, base_price, shop_pool, is_active, effect_data
       into v_item
       from public.evd_item_catalog
      where code = p_item_code;
@@ -36,30 +37,33 @@ begin
         raise exception '購入できないアイテムです';
     end if;
 
-    select quantity
-      into v_stock
-      from public.evd_player_item_stocks
-     where user_id = v_user_id
-       and item_code = p_item_code;
+    select least(coalesce(sum(st.quantity), 0), 4) * 0.05
+      into v_discount_rate
+      from public.evd_player_item_stocks st
+      join public.evd_item_catalog c
+        on c.code = st.item_code
+     where st.user_id = v_user_id
+       and st.quantity > 0
+       and c.is_active = true
+       and c.effect_data ->> 'effect' = 'relic_shop_discount_plus_5pct';
 
-    v_stock := coalesce(v_stock, 0);
-    if v_stock >= v_item.max_stack then
-        raise exception 'これ以上は持てません';
-    end if;
+    v_price := floor(v_item.base_price * greatest(0::numeric, 1 - coalesce(v_discount_rate, 0)))::integer;
 
-    if coalesce(v_profile.coins, 0) < v_item.base_price then
+    if coalesce(v_profile.coins, 0) < v_price then
         raise exception 'コインが足りません';
     end if;
 
     update public.profiles
-       set coins = coins - v_item.base_price
+       set coins = coins - v_price
      where discord_user_id = v_user_id;
 
-    insert into public.evd_player_item_stocks (user_id, account_name, item_code, quantity, updated_at)
-    values (v_user_id, v_profile.account_name, p_item_code, 1, now())
+    insert into public.evd_player_item_stocks (user_id, account_name, name, item_code, quantity, is_set, total_purchase_coins, updated_at)
+    values (v_user_id, v_profile.account_name, v_item.name, p_item_code, 1, false, v_price, now())
     on conflict (user_id, item_code) do update
     set quantity = public.evd_player_item_stocks.quantity + 1,
         account_name = excluded.account_name,
+        name = excluded.name,
+        total_purchase_coins = public.evd_player_item_stocks.total_purchase_coins + excluded.total_purchase_coins,
         updated_at = now();
 
     select coins, total_assets, gacha_tickets, mangan_tickets, account_name
@@ -72,6 +76,7 @@ begin
       from (
         select
             st.item_code,
+            st.is_set,
             st.quantity,
             st.updated_at,
             jsonb_build_object(
@@ -81,7 +86,8 @@ begin
                 'base_price', c.base_price,
                 'carry_in_allowed', c.carry_in_allowed,
                 'shop_pool', c.shop_pool,
-                'sort_order', c.sort_order
+                'sort_order', c.sort_order,
+                'rarity', c.rarity
             ) as evd_item_catalog,
             c.sort_order
         from public.evd_player_item_stocks st
@@ -91,7 +97,7 @@ begin
       ) s;
 
     return jsonb_build_object(
-        'message', format('%s を購入して在庫に追加した。', v_item.name),
+        'message', format('%s を %s コインで購入して在庫に追加した。', v_item.name, v_price),
         'profile', to_jsonb(v_profile),
         'stocks', v_stocks
     );
