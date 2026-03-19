@@ -17,6 +17,7 @@ declare
     v_item_to_lose_name text;
     v_escape_failed boolean := false;
     v_escape_chance numeric(6, 4) := 0.70;
+    v_revive_hp integer := 1;
 begin
     if v_user_id = '' then
         raise exception 'ログインが必要です';
@@ -116,7 +117,13 @@ begin
                 v_message := format('盗賊へ %s コイン差し出した。', v_ransom);
             end if;
         when 'escape' then
-            if random() < v_escape_chance then
+            if coalesce((v_run.inventory_state -> 'items' -> 'thief_ward_charm' ->> 'quantity')::integer, 0) > 0 then
+                update public.evd_game_runs
+                   set inventory_state = public.evd_remove_item(inventory_state - 'pending_thief', 'thief_ward_charm', 1)
+                 where id = p_run_id;
+
+                v_message := '盗賊避けの護符が砕け、盗賊から確実に逃げ切った。';
+            elsif random() < v_escape_chance then
                 update public.evd_game_runs
                    set inventory_state = inventory_state - 'pending_thief'
                  where id = p_run_id;
@@ -160,6 +167,33 @@ begin
     );
 
     if v_escape_failed then
+        if coalesce((v_run.inventory_state -> 'items' -> 'revival_charm' ->> 'quantity')::integer, 0) > 0 then
+            select coalesce((effect_data ->> 'revive_hp')::integer, 1)
+              into v_revive_hp
+              from public.evd_item_catalog
+             where code = 'revival_charm';
+
+            update public.evd_game_runs
+               set life = greatest(v_revive_hp, 1),
+                   inventory_state = public.evd_remove_item(inventory_state, 'revival_charm', 1),
+                   updated_at = now(),
+                   last_active_at = now(),
+                   version = version + 1
+             where id = p_run_id;
+
+            perform public.evd_add_log(
+                p_run_id,
+                v_user_id,
+                v_run.account_name,
+                v_run.current_floor,
+                '自動発動',
+                format('復活の護符が砕け、ライフ %s で復活した。', greatest(v_revive_hp, 1)),
+                jsonb_build_object('effect', 'revive_on_death', 'item_code', 'revival_charm')
+            );
+
+            return public.evd_build_snapshot(p_run_id, v_user_id);
+        end if;
+
         return public.evd_finish_run(p_run_id, v_user_id, '死亡', '盗賊から逃げようとして返り討ちに遭った');
     end if;
 

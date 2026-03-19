@@ -257,9 +257,20 @@
         setTexts(['hud-wallet', 'mobile-hud-wallet'], formatNumber(profile.coins));
 
         const flags = run.inventory_state?.flags || {};
+        const items = run.inventory_state?.items || {};
         const nextBonus = Number(run.next_floor_bonus || 0);
-        const returnMultiplier = Number(run.final_return_multiplier || 1)
-            * (flags.golden_contract_active ? 2 : 1);
+        const baseMultiplier = Number(run.final_return_multiplier || 1);
+        const goldenContractQty = Math.max(
+            Number(items.golden_contract?.quantity || 0),
+            flags.golden_contract_active ? 1 : 0
+        );
+        const returnBlessingQty = Number(items.return_blessing?.quantity || 0);
+        const returnBlessingMultiplier = returnBlessingQty > 0 ? Math.pow(1.3, returnBlessingQty) : 1;
+        const goldenContractMultiplier = goldenContractQty > 0 ? (baseMultiplier + 1.0) : baseMultiplier;
+        const blessingMultiplier = returnBlessingQty > 0
+            ? (baseMultiplier * returnBlessingMultiplier)
+            : baseMultiplier;
+        const returnMultiplier = Math.max(baseMultiplier, goldenContractMultiplier, blessingMultiplier);
         setTexts(['hud-next-bonus', 'mobile-hud-next-bonus'], `${formatNumber(nextBonus)} コイン`);
         setTexts(['hud-final-multiplier', 'mobile-hud-final-multiplier'], `x${returnMultiplier.toFixed(2)}`);
         setText('run-status', run.status);

@@ -75,7 +75,9 @@ begin
            )
          where id = p_run_id;
     elsif v_effect = 'golden_contract' then
-        update public.evd_game_runs set inventory_state = jsonb_set(inventory_state, array['flags', 'golden_contract_active'], 'true'::jsonb, true) where id = p_run_id;
+        update public.evd_game_runs
+           set inventory_state = public.evd_add_item(inventory_state, p_item_code, 1)
+         where id = p_run_id;
     elsif v_effect = 'vault_box' then
         update public.evd_game_runs
            set inventory_state = public.evd_add_bucket_item(inventory_state, 'carried_items', p_item_code, 1)
