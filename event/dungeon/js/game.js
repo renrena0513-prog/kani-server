@@ -15,8 +15,12 @@
         selectedCarryItems: [],
         lastPopupStep: null,
         stairsPromptDismissed: false,
-        mobilePadVisible: false
+        mobilePadVisible: false,
+        pressedKeys: new Set(),
+        lastKeyboardMoveAt: 0
     };
+
+    const KEYBOARD_MOVE_COOLDOWN_MS = 350;
 
     function hydratePayload(payload) {
         if (!payload) return;
@@ -407,6 +411,12 @@
     }
 
     function bindKeyboard() {
+        document.addEventListener('keyup', (event) => {
+            state.pressedKeys.delete(event.key);
+        });
+        window.addEventListener('blur', () => {
+            state.pressedKeys.clear();
+        });
         document.addEventListener('keydown', (event) => {
             if (!state.run || state.run.status !== '進行中') return;
             if (state.run.inventory_state?.pending_thief || state.run.inventory_state?.pending_altar_reward) return;
@@ -427,6 +437,11 @@
             const direction = keyMap[event.key];
             if (!direction) return;
             event.preventDefault();
+            if (event.repeat || state.pressedKeys.has(event.key)) return;
+            const now = Date.now();
+            if (now - state.lastKeyboardMoveAt < KEYBOARD_MOVE_COOLDOWN_MS) return;
+            state.pressedKeys.add(event.key);
+            state.lastKeyboardMoveAt = now;
             const dir = DIRECTIONS[direction];
             moveTo(state.run.current_x + dir.x, state.run.current_y + dir.y);
         });
