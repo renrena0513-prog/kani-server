@@ -31,8 +31,9 @@
     }
 
     function getCarryLimit() {
-        const hasGreedyBag = (state.stocks || []).some((stock) => stock.item_code === 'greedy_bag' && Number(stock.quantity || 0) > 0);
-        return hasGreedyBag ? CARRY_LIMIT + 1 : CARRY_LIMIT;
+        const hasGoldenBagSelected = state.selectedCarryItems.includes('golden_bag')
+            || (state.stocks || []).some((stock) => stock.item_code === 'golden_bag' && stock.is_set && Number(stock.quantity || 0) > 0);
+        return hasGoldenBagSelected ? CARRY_LIMIT + 2 : CARRY_LIMIT;
     }
 
     function syncSelectedCarryItems() {
@@ -42,6 +43,10 @@
             .slice(0, carryLimit)
             .map((stock) => stock.item_code);
         state.selectedCarryItems = autoSelected;
+    }
+
+    function hasCarryOverflow() {
+        return state.selectedCarryItems.length > getCarryLimit();
     }
 
     function renderStart() {
@@ -176,6 +181,10 @@
     }
 
     async function startRun() {
+        if (hasCarryOverflow()) {
+            ui.showNoticePopup('持ち込み上限', `持ち込みは ${getCarryLimit()} 個までです。余分な選択を外してください。`, '⚠️');
+            return;
+        }
         ui.setBusy(true);
         try {
             const payload = await api.rpc('evd_start_run', {
@@ -193,6 +202,11 @@
     }
 
     function handleStartRun() {
+        if (hasCarryOverflow()) {
+            ui.showNoticePopup('持ち込み上限', `持ち込みは ${getCarryLimit()} 個までです。余分な選択を外してください。`, '⚠️');
+            return;
+        }
+
         if (state.selectedCarryItems.length > 0) {
             startRun();
             return;

@@ -578,6 +578,8 @@ declare
     v_return_blessing_qty integer := 0;
     v_selected_escape_bonus text := null;
     v_revive_hp integer := 1;
+    v_has_vault_box boolean := false;
+    v_has_insurance_token boolean := false;
 begin
     select * into v_run from public.evd_game_runs where id = p_run_id and user_id = p_user_id for update;
     if not found then
@@ -687,9 +689,12 @@ begin
         )
           into v_has_coffin;
 
-        if coalesce((v_run.inventory_state -> 'carried_items' -> 'vault_box' ->> 'quantity')::integer, 0) > 0 then
+        v_has_vault_box := coalesce((v_run.inventory_state -> 'carried_items' -> 'vault_box' ->> 'quantity')::integer, 0) > 0;
+        v_has_insurance_token := coalesce((v_run.inventory_state -> 'carried_items' -> 'insurance_token' ->> 'quantity')::integer, 0) > 0;
+
+        if v_has_vault_box then
             v_base_death_rate := 0.80;
-        elsif coalesce((v_flags ->> 'insurance_active')::boolean, false) then
+        elsif coalesce((v_flags ->> 'insurance_active')::boolean, false) or v_has_insurance_token then
             v_base_death_rate := 0.50;
             v_flags := jsonb_set(v_flags, array['insurance_active'], 'false'::jsonb, true);
             v_run.inventory_state := jsonb_set(v_run.inventory_state, array['flags'], v_flags, true);
@@ -712,8 +717,7 @@ begin
             v_carried_items := public.evd_remove_bucket_item(jsonb_build_object('carried_items', v_carried_items), 'carried_items', 'substitute_doll', 1) -> 'carried_items';
         end if;
 
-        if coalesce((v_run.inventory_state -> 'carried_items' -> 'insurance_token' ->> 'quantity')::integer, 0) > 0
-           and not coalesce((v_flags ->> 'insurance_active')::boolean, false) then
+        if v_has_insurance_token then
             v_carried_items := public.evd_remove_bucket_item(jsonb_build_object('carried_items', v_carried_items), 'carried_items', 'insurance_token', 1) -> 'carried_items';
         end if;
 
@@ -972,6 +976,10 @@ begin
            and c.effect_data ->> 'effect' = 'relic_carry_limit_plus_1'
     ) then
         v_carry_limit := 3;
+    end if;
+
+    if 'golden_bag' = any(coalesce(p_carry_items, '{}'::text[])) then
+        v_carry_limit := v_carry_limit + 2;
     end if;
 
     if array_length(p_carry_items, 1) > v_carry_limit then

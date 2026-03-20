@@ -34,6 +34,7 @@ declare
     v_coin_pickup_bonus integer := 0;
     v_revive_hp integer := 1;
     v_effective_max_floors integer := 10;
+    v_deferred_floor_shift_damage integer := 0;
 begin
     if v_user_id = '' then
         raise exception 'ログインが必要です';
@@ -253,8 +254,13 @@ begin
                 return public.evd_build_snapshot(p_run_id, v_user_id);
             end if;
         when '落とし穴' then
-            v_damage := 1;
-            v_message := '落とし穴に落ち、ライフを 1 失って 1 階下へ落下した。';
+            if v_run.substitute_negates_remaining > 0 then
+                v_damage := 1;
+                v_message := '落とし穴にかかった。';
+            else
+                v_deferred_floor_shift_damage := 1;
+                v_message := '落とし穴に落ち、1 階下へ移動したあと LIFE を 1 失う。';
+            end if;
         when '転送罠' then
             if v_run.substitute_negates_remaining > 0 then
                 update public.evd_game_runs
@@ -333,6 +339,21 @@ begin
 
     select * into v_run from public.evd_game_runs where id = p_run_id;
 
+    if (v_cell ->> 'type') = '落とし穴' and v_deferred_floor_shift_damage > 0 then
+        perform public.evd_resolve_floor_shift(
+            p_run_id,
+            v_user_id,
+            least(v_effective_max_floors, v_run.current_floor + 1),
+            '落下移動'
+        );
+
+        update public.evd_game_runs
+           set life = greatest(life - v_deferred_floor_shift_damage, 0)
+         where id = p_run_id;
+
+        select * into v_run from public.evd_game_runs where id = p_run_id;
+    end if;
+
     if v_run.life <= 0 then
         if greatest(
             coalesce((v_run.inventory_state -> 'items' -> 'revival_charm' ->> 'quantity')::integer, 0),
@@ -372,7 +393,9 @@ begin
         return public.evd_finish_run(p_run_id, v_user_id, '死亡', '迷宮で力尽きた');
     end if;
 
-    if (v_cell ->> 'type') = '落とし穴' then
+    if (v_cell ->> 'type') = '落とし穴'
+       and v_deferred_floor_shift_damage = 0
+       and v_run.substitute_negates_remaining <= 0 then
         perform public.evd_resolve_floor_shift(p_run_id, v_user_id, least(v_effective_max_floors, v_run.current_floor + 1), '落下移動');
     elsif (v_cell ->> 'type') = '転送罠' and v_run.substitute_negates_remaining <= 0 then
         perform public.evd_resolve_floor_shift(p_run_id, v_user_id, greatest(1, v_run.current_floor - 2), '転送移動');

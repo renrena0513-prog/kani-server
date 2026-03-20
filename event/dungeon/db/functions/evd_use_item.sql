@@ -11,6 +11,7 @@ declare
     v_should_consume boolean := true;
     v_claimed_floor_bonuses jsonb := '[]'::jsonb;
     v_new_claimed_floors jsonb := '[]'::jsonb;
+    v_offers jsonb := '[]'::jsonb;
 begin
     perform pg_advisory_xact_lock(hashtext('evd:' || v_user_id));
 
@@ -89,6 +90,30 @@ begin
 
             perform public.evd_resolve_floor_shift(p_run_id, v_user_id, least(v_run.current_floor + 3, v_run.max_floors), '進行中');
             perform public.evd_add_log(p_run_id, v_user_id, v_run.account_name, least(v_run.current_floor + 3, v_run.max_floors), 'アイテム使用', format('奈落直通札で %s 階層先へ進み、到達ボーナス %s コインを得た。', least(3, v_run.max_floors - v_run.current_floor), v_bonus_sum));
+        when 'merchant_whistle' then
+            v_should_consume := true;
+            v_offers := public.evd_generate_shop_offers(p_run_id, 'ショップ');
+            update public.evd_game_runs
+               set inventory_state = jsonb_set(
+                    inventory_state,
+                    array['pending_shop'],
+                    jsonb_build_object('shop_type', 'ショップ', 'offers', v_offers),
+                    true
+               )
+             where id = p_run_id;
+            perform public.evd_add_log(p_run_id, v_user_id, v_run.account_name, v_run.current_floor, 'アイテム使用', '商人の笛を吹き、その場に通常ショップを呼び出した。');
+        when 'special_merchant_whistle' then
+            v_should_consume := true;
+            v_offers := public.evd_generate_shop_offers(p_run_id, '限定ショップ');
+            update public.evd_game_runs
+               set inventory_state = jsonb_set(
+                    inventory_state,
+                    array['pending_shop'],
+                    jsonb_build_object('shop_type', '限定ショップ', 'offers', v_offers),
+                    true
+               )
+             where id = p_run_id;
+            perform public.evd_add_log(p_run_id, v_user_id, v_run.account_name, v_run.current_floor, 'アイテム使用', '特別商人の笛を吹き、その場に限定ショップを呼び出した。');
         else
             raise exception 'このアイテムは使用できません';
     end case;

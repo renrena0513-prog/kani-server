@@ -15,7 +15,10 @@
         doom_eye: '👁️',
         collector_coffin: '⚰️',
         underworld_wallet: '👛',
-        merchant_seal: '🪙'
+        merchant_seal: '????',
+        merchant_whistle: '??',
+        special_merchant_whistle: '??',
+        golden_bag: '??'
     };
 
     const TILE_POPUP_META = {

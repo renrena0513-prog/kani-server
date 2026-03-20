@@ -40,6 +40,8 @@ window.DUNGEON_CONSTANTS = {
         'stairs_search',
         'calamity_map',
         'full_scan_map',
+        'merchant_whistle',
+        'special_merchant_whistle',
         'abyss_ticket',
         'holy_grail',
         'life_vessel'
