@@ -1,144 +1,3 @@
-create or replace function public.evd_resolve_floor_shift(
-    p_run_id uuid,
-    p_user_id text,
-    p_target_floor integer,
-    p_status text default '進行中'
-)
-returns void
-language plpgsql
-as $$
-declare
-    v_run public.evd_game_runs%rowtype;
-    v_floor_seed jsonb;
-    v_bomb_count integer := 0;
-    v_has_doom_eye boolean := false;
-    v_floor_heal integer := 0;
-    v_regen_floor integer := 0;
-    v_regen_start_floor integer := 0;
-    v_regen_end_floor integer := 0;
-begin
-    select * into v_run from public.evd_game_runs where id = p_run_id and user_id = p_user_id for update;
-
-    v_regen_start_floor := least(v_run.current_floor + case when p_target_floor > v_run.current_floor then 1 else 0 end, p_target_floor);
-    v_regen_end_floor := greatest(v_run.current_floor - case when p_target_floor < v_run.current_floor then 1 else 0 end, p_target_floor);
-
-    for v_regen_floor in least(v_regen_start_floor, v_regen_end_floor)..greatest(v_regen_start_floor, v_regen_end_floor) loop
-        v_floor_seed := public.evd_generate_floor(v_run.generation_profile_id, v_regen_floor, v_run.board_size);
-        insert into public.evd_run_floors (
-            run_id, user_id, account_name, floor_no, start_x, start_y, stairs_x, stairs_y, grid, revealed, visited, floor_status
-        )
-        values (
-            p_run_id,
-            p_user_id,
-            v_run.account_name,
-            v_regen_floor,
-            (v_floor_seed ->> 'start_x')::integer,
-            (v_floor_seed ->> 'start_y')::integer,
-            (v_floor_seed ->> 'stairs_x')::integer,
-            (v_floor_seed ->> 'stairs_y')::integer,
-            v_floor_seed -> 'grid',
-            v_floor_seed -> 'revealed',
-            v_floor_seed -> 'visited',
-            case when v_regen_floor = p_target_floor then p_status else '再生成' end
-        )
-        on conflict (run_id, floor_no) do update
-           set account_name = excluded.account_name,
-               start_x = excluded.start_x,
-               start_y = excluded.start_y,
-               stairs_x = excluded.stairs_x,
-               stairs_y = excluded.stairs_y,
-               grid = excluded.grid,
-               revealed = excluded.revealed,
-               visited = excluded.visited,
-               floor_status = excluded.floor_status,
-               updated_at = now();
-    end loop;
-
-    update public.evd_game_runs
-       set current_floor = p_target_floor,
-           current_x = 3,
-           current_y = 3,
-           inventory_state = jsonb_set(
-                jsonb_set(
-                    jsonb_set(
-                        jsonb_set(inventory_state, array['flags', 'stairs_known'], 'false'::jsonb, true),
-                        array['flags', 'hazards_known'], 'false'::jsonb, true
-                    ),
-                    array['flags', 'bombs_known'], 'false'::jsonb, true
-                ),
-                array['pending_resolution'], 'null'::jsonb, true
-           ),
-           updated_at = now(),
-           last_active_at = now(),
-           version = version + 1
-     where id = p_run_id;
-
-    select coalesce(sum(coalesce((e.value ->> 'quantity')::integer, 0) * coalesce((c.effect_data ->> 'amount')::integer, 0)), 0)
-      into v_floor_heal
-      from public.evd_game_runs gr
-      cross join jsonb_each(coalesce(gr.inventory_state -> 'items', '{}'::jsonb)) e
-      join public.evd_item_catalog c
-        on c.code = e.key
-     where gr.id = p_run_id
-       and coalesce((e.value ->> 'quantity')::integer, 0) > 0
-       and c.effect_data ->> 'effect' = 'heal_hp_on_floor_advance';
-
-    if coalesce(v_floor_heal, 0) > 0 then
-        update public.evd_game_runs
-           set life = least(max_life, life + v_floor_heal),
-               updated_at = now(),
-               last_active_at = now(),
-               version = version + 1
-         where id = p_run_id;
-
-        perform public.evd_add_log(
-            p_run_id,
-            p_user_id,
-            v_run.account_name,
-            p_target_floor,
-            '自動発動',
-            format('再生の護符の力でライフを %s 回復した。', v_floor_heal),
-            jsonb_build_object('effect', 'heal_hp_on_floor_advance', 'amount', v_floor_heal)
-        );
-    end if;
-
-    select exists (
-        select 1
-          from public.evd_player_item_stocks st
-          join public.evd_item_catalog c on c.code = st.item_code
-         where st.user_id = p_user_id
-           and st.quantity > 0
-           and c.is_active = true
-           and c.effect_data ->> 'effect' = 'relic_bomb_radar_always'
-    )
-      into v_has_doom_eye;
-
-    if coalesce((v_run.inventory_state -> 'items' -> 'bomb_radar' ->> 'quantity')::integer, 0) > 0 or v_has_doom_eye then
-        select count(*)
-          into v_bomb_count
-          from public.evd_run_floors f
-          cross join jsonb_array_elements(f.grid) as row_cells(cell_row)
-          cross join jsonb_array_elements(row_cells.cell_row) as cell(cell_item)
-         where f.run_id = p_run_id
-           and f.floor_no = p_target_floor
-           and cell.cell_item ->> 'type' in ('爆弾', '大爆発');
-
-        perform public.evd_add_log(
-            p_run_id,
-            p_user_id,
-            v_run.account_name,
-            p_target_floor,
-            case when v_has_doom_eye then 'レリック効果' else '爆弾レーダー' end,
-            case when v_has_doom_eye
-                 then format('破滅の魔眼がこの階層の爆弾を暴いた。爆弾は %s 個あるようだ...', v_bomb_count)
-                 else format('爆弾レーダーが反応を示した！この階層には爆弾が %s 個あるようだ...', v_bomb_count)
-            end,
-            jsonb_build_object('bomb_count', v_bomb_count, 'effect', case when v_has_doom_eye then 'relic_bomb_radar_always' else 'bomb_radar' end)
-        );
-    end if;
-end;
-$$;
-
 create or replace function public.evd_move(p_run_id uuid, p_direction text)
 returns jsonb
 language plpgsql
@@ -174,6 +33,7 @@ declare
     v_offers jsonb;
     v_coin_pickup_bonus integer := 0;
     v_revive_hp integer := 1;
+    v_effective_max_floors integer := 10;
 begin
     if v_user_id = '' then
         raise exception 'ログインが必要です';
@@ -185,6 +45,8 @@ begin
     if not found then
         raise exception '進行中のランが見つかりません';
     end if;
+
+    v_effective_max_floors := greatest(coalesce(v_run.max_floors, 0), 10);
 
     if coalesce(v_run.inventory_state -> 'pending_shop', 'null'::jsonb) <> 'null'::jsonb then
         raise exception 'ショップの処理を先に完了してください';
@@ -306,10 +168,9 @@ begin
                 v_message := '不思議なマスだったが、何も手に入らなかった。';
             elsif v_pick_item_effect = 'substitute' then
                 update public.evd_game_runs
-                   set substitute_negates_remaining = substitute_negates_remaining + 3,
-                       inventory_state = public.evd_add_bucket_item(inventory_state, 'carried_items', v_pick_item_code, 1)
+                   set substitute_negates_remaining = substitute_negates_remaining + 3
                  where id = p_run_id;
-                v_message := format('%s を引き当てた。身代わり効果が付与された。', v_pick_item_name);
+                v_message := format('%s を引き当てた。身代わり回数が 3 回増えた。', v_pick_item_name);
             elsif v_pick_item_effect = 'insurance' then
                 update public.evd_game_runs
                    set inventory_state = public.evd_add_bucket_item(
@@ -417,7 +278,7 @@ begin
             v_message := '珍しい商人が隠し市を開いた。';
         when '下り階段' then
             v_message := case
-                when v_run.current_floor >= v_run.max_floors then '深部の祭壇を見つけた。'
+                when v_run.current_floor >= v_effective_max_floors then '深部の祭壇を見つけた。'
                 else '下り階段を見つけた。'
             end;
         else
@@ -512,9 +373,175 @@ begin
     end if;
 
     if (v_cell ->> 'type') = '落とし穴' then
-        perform public.evd_resolve_floor_shift(p_run_id, v_user_id, least(v_run.max_floors, v_run.current_floor + 1), '落下移動');
+        perform public.evd_resolve_floor_shift(p_run_id, v_user_id, least(v_effective_max_floors, v_run.current_floor + 1), '落下移動');
     elsif (v_cell ->> 'type') = '転送罠' and v_run.substitute_negates_remaining <= 0 then
         perform public.evd_resolve_floor_shift(p_run_id, v_user_id, greatest(1, v_run.current_floor - 2), '転送移動');
+    end if;
+
+    return public.evd_build_snapshot(p_run_id, v_user_id);
+end;
+$$;
+create or replace function public.evd_shop_purchase(p_run_id uuid, p_item_code text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    v_user_id text := public.evd_current_user_id();
+    v_run public.evd_game_runs%rowtype;
+    v_floor public.evd_run_floors%rowtype;
+    v_pending jsonb;
+    v_offer jsonb;
+    v_effect text;
+    v_price integer;
+    v_grid jsonb;
+    v_cell jsonb;
+begin
+    perform pg_advisory_xact_lock(hashtext('evd:' || v_user_id));
+
+    select * into v_run from public.evd_game_runs where id = p_run_id and user_id = v_user_id and status = '進行中' for update;
+    if not found then
+        raise exception '進行中のランが見つかりません';
+    end if;
+
+    v_pending := v_run.inventory_state -> 'pending_shop';
+    if v_pending is null or v_pending = 'null'::jsonb then
+        raise exception '利用できるショップがありません';
+    end if;
+
+    if p_item_code is null then
+        update public.evd_game_runs
+           set inventory_state = jsonb_set(inventory_state, array['pending_shop'], 'null'::jsonb, true),
+               updated_at = now(),
+               last_active_at = now(),
+               version = version + 1
+         where id = p_run_id;
+
+        select * into v_floor
+          from public.evd_run_floors
+         where run_id = p_run_id
+           and floor_no = v_run.current_floor
+         for update;
+
+        if found then
+            v_grid := v_floor.grid;
+            v_cell := public.evd_get_cell(v_grid, v_run.current_x, v_run.current_y);
+            v_cell := jsonb_set(v_cell, array['type'], to_jsonb('空白'::text), true);
+            v_cell := jsonb_set(v_cell, array['resolved'], 'true'::jsonb, true);
+            v_grid := public.evd_set_cell(v_grid, v_run.current_x, v_run.current_y, v_cell);
+            update public.evd_run_floors
+               set grid = v_grid,
+                   updated_at = now()
+             where id = v_floor.id;
+        end if;
+
+        perform public.evd_add_log(p_run_id, v_user_id, v_run.account_name, v_run.current_floor, 'ショップ購入', '何も買わず立ち去った。');
+        return public.evd_build_snapshot(p_run_id, v_user_id);
+    end if;
+
+    select item
+      into v_offer
+      from jsonb_array_elements(v_pending -> 'offers') as item
+     where item ->> 'code' = p_item_code
+     limit 1;
+
+    if v_offer is null then
+        raise exception 'その商品はありません';
+    end if;
+
+    v_price := (v_offer ->> 'price')::integer;
+    if v_run.run_coins < v_price then
+        raise exception 'コインが足りません';
+    end if;
+
+    update public.evd_game_runs
+       set run_coins = run_coins - v_price,
+           inventory_state = jsonb_set(inventory_state, array['pending_shop'], 'null'::jsonb, true),
+           updated_at = now(),
+           last_active_at = now(),
+           version = version + 1
+     where id = p_run_id;
+
+    select effect_data ->> 'effect' into v_effect from public.evd_item_catalog where code = p_item_code;
+
+    if v_effect = 'substitute' then
+        update public.evd_game_runs
+           set substitute_negates_remaining = substitute_negates_remaining + 3
+         where id = p_run_id;
+    elsif v_effect = 'insurance' then
+        update public.evd_game_runs
+           set inventory_state = public.evd_add_bucket_item(
+                jsonb_set(inventory_state, array['flags', 'insurance_active'], 'true'::jsonb, true),
+                'carried_items',
+                p_item_code,
+                1
+           )
+         where id = p_run_id;
+    elsif v_effect = 'golden_contract' then
+        update public.evd_game_runs
+           set inventory_state = public.evd_add_item(inventory_state, p_item_code, 1)
+         where id = p_run_id;
+    elsif v_effect = 'vault_box' then
+        update public.evd_game_runs
+           set inventory_state = public.evd_add_bucket_item(inventory_state, 'carried_items', p_item_code, 1)
+         where id = p_run_id;
+    else
+        update public.evd_game_runs set inventory_state = public.evd_add_item(inventory_state, p_item_code, 1) where id = p_run_id;
+    end if;
+
+    insert into public.evd_player_item_stocks (
+        user_id,
+        account_name,
+        name,
+        item_code,
+        quantity,
+        is_set,
+        total_purchase_coins,
+        updated_at
+    )
+    values (
+        v_user_id,
+        v_run.account_name,
+        v_offer ->> 'name',
+        p_item_code,
+        0,
+        false,
+        v_price,
+        now()
+    )
+    on conflict (user_id, item_code) do update
+    set account_name = excluded.account_name,
+        name = excluded.name,
+        total_purchase_coins = public.evd_player_item_stocks.total_purchase_coins + excluded.total_purchase_coins,
+        updated_at = now();
+
+    perform public.evd_add_log(
+        p_run_id,
+        v_user_id,
+        v_run.account_name,
+        v_run.current_floor,
+        case when coalesce(v_pending ->> 'shop_type', 'ショップ') = '限定ショップ' then '限定ショップ購入' else 'ショップ購入' end,
+        format('%s を %s コインで購入した。', v_offer ->> 'name', v_price),
+        jsonb_build_object('item_code', p_item_code, 'price', v_price)
+    );
+
+    select * into v_floor
+      from public.evd_run_floors
+     where run_id = p_run_id
+       and floor_no = v_run.current_floor
+     for update;
+
+    if found then
+        v_grid := v_floor.grid;
+        v_cell := public.evd_get_cell(v_grid, v_run.current_x, v_run.current_y);
+        v_cell := jsonb_set(v_cell, array['type'], to_jsonb('空白'::text), true);
+        v_cell := jsonb_set(v_cell, array['resolved'], 'true'::jsonb, true);
+        v_grid := public.evd_set_cell(v_grid, v_run.current_x, v_run.current_y, v_cell);
+        update public.evd_run_floors
+           set grid = v_grid,
+               updated_at = now()
+         where id = v_floor.id;
     end if;
 
     return public.evd_build_snapshot(p_run_id, v_user_id);

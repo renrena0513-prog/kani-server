@@ -9,6 +9,7 @@ declare
     v_run_id uuid;
     v_profile_id uuid;
     v_profile record;
+    v_max_floors integer := 10;
     v_floor_seed jsonb;
     v_bomb_count integer := 0;
     v_max_life integer := 3;
@@ -159,7 +160,7 @@ begin
     end if;
 
     insert into public.evd_game_runs (
-        user_id, account_name, generation_profile_id, status, life, max_life, inventory_state, substitute_negates_remaining, final_return_multiplier
+        user_id, account_name, generation_profile_id, status, life, max_life, max_floors, inventory_state, substitute_negates_remaining, final_return_multiplier
     )
     values (
         v_user_id,
@@ -168,6 +169,7 @@ begin
         '進行中',
         v_max_life,
         v_max_life,
+        v_max_floors,
         v_inventory,
         case when coalesce((v_inventory -> 'flags' ->> 'substitute_ready')::boolean, false) then 3 else 0 end,
         v_initial_return_multiplier

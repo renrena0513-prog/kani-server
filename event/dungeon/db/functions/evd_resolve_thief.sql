@@ -16,7 +16,11 @@ declare
     v_item_to_lose text;
     v_item_to_lose_name text;
     v_escape_failed boolean := false;
-    v_escape_chance numeric(6, 4) := 0.70;
+    v_escape_nothing_rate numeric(6, 4) := 0.50;
+    v_escape_item_loss_rate numeric(6, 4) := 0.20;
+    v_escape_death_rate numeric(6, 4) := 0.30;
+    v_escape_talisman_bonus numeric(6, 4) := 0.00;
+    v_escape_roll numeric(6, 4) := 0.00;
     v_revive_hp integer := 1;
 begin
     if v_user_id = '' then
@@ -54,8 +58,8 @@ begin
 
     v_ransom := greatest(coalesce((v_pending ->> 'ransom')::integer, 150), 0);
 
-    select v_escape_chance + least(coalesce(sum(st.quantity), 0), 2) * 0.05
-      into v_escape_chance
+    select least(coalesce(sum(st.quantity), 0), 2) * 0.05
+      into v_escape_talisman_bonus
       from public.evd_player_item_stocks st
       join public.evd_item_catalog c
         on c.code = st.item_code
@@ -64,22 +68,48 @@ begin
        and c.is_active = true
        and c.effect_data ->> 'effect' = 'relic_thief_escape_plus_5pct';
 
+    v_escape_nothing_rate := least(1.0, v_escape_nothing_rate + coalesce(v_escape_talisman_bonus, 0));
+    v_escape_death_rate := greatest(0.0, v_escape_death_rate - coalesce(v_escape_talisman_bonus, 0));
+
     case p_action
         when 'item' then
-            select e.key, c.name
+            select src.code, c.name
               into v_item_to_lose, v_item_to_lose_name
-              from jsonb_each(coalesce(v_run.inventory_state -> 'items', '{}'::jsonb)) e
+              from (
+                    select
+                        code
+                      from (
+                            select
+                                code,
+                                greatest(max(items_qty), max(carried_qty)) as quantity
+                              from (
+                                    select
+                                        e.key as code,
+                                        coalesce((e.value ->> 'quantity')::integer, 0) as items_qty,
+                                        0 as carried_qty
+                                      from jsonb_each(coalesce(v_run.inventory_state -> 'items', '{}'::jsonb)) e
+                                    union all
+                                    select
+                                        e.key as code,
+                                        0 as items_qty,
+                                        coalesce((e.value ->> 'quantity')::integer, 0) as carried_qty
+                                      from jsonb_each(coalesce(v_run.inventory_state -> 'carried_items', '{}'::jsonb)) e
+                                ) qty
+                             group by code
+                        ) merged
+                     where quantity > 0
+                     order by random()
+                     limit 1
+                ) src
               left join public.evd_item_catalog c
-                on c.code = e.key
-             where coalesce((e.value ->> 'quantity')::integer, 0) > 0
-             order by random()
-             limit 1;
+                on c.code = src.code;
 
             if v_item_to_lose is null then
-                raise exception 'アイテムを持っていない';
-            end if;
-
-            if v_run.substitute_negates_remaining > 0 then
+                update public.evd_game_runs
+                   set inventory_state = inventory_state - 'pending_thief'
+                 where id = p_run_id;
+                v_message := '差し出せるアイテムがなかった。盗賊は舌打ちして去っていった。';
+            elsif v_run.substitute_negates_remaining > 0 then
                 update public.evd_game_runs
                    set substitute_negates_remaining = substitute_negates_remaining - 1,
                        inventory_state = inventory_state - 'pending_thief'
@@ -123,33 +153,93 @@ begin
                  where id = p_run_id;
 
                 v_message := '盗賊避けの護符が砕け、盗賊から確実に逃げ切った。';
-            elsif random() < v_escape_chance then
-                update public.evd_game_runs
-                   set inventory_state = inventory_state - 'pending_thief'
-                 where id = p_run_id;
-
-                v_message := '盗賊から逃げ切った。何も起こらなかった。';
             else
-                if v_run.substitute_negates_remaining > 0 then
+                v_escape_roll := random();
+
+                if v_escape_roll < v_escape_nothing_rate then
                     update public.evd_game_runs
-                       set substitute_negates_remaining = substitute_negates_remaining - 1,
-                           inventory_state = inventory_state - 'pending_thief'
-                     where id = p_run_id;
-                    v_message := format('身代わり人形が砕け、盗賊の返り討ちを無効化した。あと %s 回。', greatest(v_run.substitute_negates_remaining - 1, 0));
-                else
-                    update public.evd_game_runs
-                       set life = 0,
-                           inventory_state = inventory_state - 'pending_thief'
+                       set inventory_state = inventory_state - 'pending_thief'
                      where id = p_run_id;
 
-                    v_message := '盗賊から逃げようとしたが、返り討ちに遭って死亡した。';
-                    v_escape_failed := true;
+                    v_message := '盗賊から逃げ切った。何も起こらなかった。';
+                elsif v_escape_roll < (v_escape_nothing_rate + v_escape_item_loss_rate) then
+                    select src.code, c.name
+                      into v_item_to_lose, v_item_to_lose_name
+                      from (
+                            select
+                                code
+                              from (
+                                    select
+                                        code,
+                                        greatest(max(items_qty), max(carried_qty)) as quantity
+                                      from (
+                                            select
+                                                e.key as code,
+                                                coalesce((e.value ->> 'quantity')::integer, 0) as items_qty,
+                                                0 as carried_qty
+                                              from jsonb_each(coalesce(v_run.inventory_state -> 'items', '{}'::jsonb)) e
+                                            union all
+                                            select
+                                                e.key as code,
+                                                0 as items_qty,
+                                                coalesce((e.value ->> 'quantity')::integer, 0) as carried_qty
+                                              from jsonb_each(coalesce(v_run.inventory_state -> 'carried_items', '{}'::jsonb)) e
+                                        ) qty
+                                     group by code
+                                ) merged
+                             where quantity > 0
+                             order by random()
+                             limit 1
+                        ) src
+                      left join public.evd_item_catalog c
+                        on c.code = src.code;
+
+                    if v_item_to_lose is null then
+                        update public.evd_game_runs
+                           set inventory_state = inventory_state - 'pending_thief'
+                         where id = p_run_id;
+                        v_message := '盗賊から逃げ切った。奪われる物は何もなかった。';
+                    elsif v_run.substitute_negates_remaining > 0 then
+                        update public.evd_game_runs
+                           set substitute_negates_remaining = substitute_negates_remaining - 1,
+                               inventory_state = inventory_state - 'pending_thief'
+                         where id = p_run_id;
+                        v_message := format('身代わり人形が砕け、盗賊の追撃を無効化した。あと %s 回。', greatest(v_run.substitute_negates_remaining - 1, 0));
+                    else
+                        update public.evd_game_runs
+                           set inventory_state = public.evd_remove_bucket_item(
+                                public.evd_remove_item(inventory_state - 'pending_thief', v_item_to_lose, 1),
+                                'carried_items',
+                                v_item_to_lose,
+                                1
+                           )
+                         where id = p_run_id;
+
+                        v_message := format('盗賊からは逃げ切ったが、追いすがられて %s を奪われた。', coalesce(v_item_to_lose_name, v_item_to_lose));
+                    end if;
+                else
+                    if v_run.substitute_negates_remaining > 0 then
+                        update public.evd_game_runs
+                           set substitute_negates_remaining = substitute_negates_remaining - 1,
+                               inventory_state = inventory_state - 'pending_thief'
+                         where id = p_run_id;
+                        v_message := format('身代わり人形が砕け、盗賊の返り討ちを無効化した。あと %s 回。', greatest(v_run.substitute_negates_remaining - 1, 0));
+                    else
+                        update public.evd_game_runs
+                           set life = 0,
+                               inventory_state = inventory_state - 'pending_thief'
+                         where id = p_run_id;
+
+                        v_message := '盗賊から逃げようとしたが、返り討ちに遭って死亡した。';
+                        v_escape_failed := true;
+                    end if;
                 end if;
             end if;
         else
             raise exception '不正な選択です';
     end case;
 
+    v_cell := jsonb_set(v_cell, array['type'], to_jsonb('空白'::text), true);
     v_cell := jsonb_set(v_cell, array['resolved'], 'true'::jsonb, true);
     v_grid := public.evd_set_cell(v_grid, v_run.current_x, v_run.current_y, v_cell);
     update public.evd_run_floors

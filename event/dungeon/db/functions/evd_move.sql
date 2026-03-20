@@ -33,6 +33,8 @@ declare
     v_offers jsonb;
     v_coin_pickup_bonus integer := 0;
     v_revive_hp integer := 1;
+    v_effective_max_floors integer := 10;
+    v_deferred_floor_shift_damage integer := 0;
 begin
     if v_user_id = '' then
         raise exception 'ログインが必要です';
@@ -44,6 +46,8 @@ begin
     if not found then
         raise exception '進行中のランが見つかりません';
     end if;
+
+    v_effective_max_floors := greatest(coalesce(v_run.max_floors, 0), 10);
 
     if coalesce(v_run.inventory_state -> 'pending_shop', 'null'::jsonb) <> 'null'::jsonb then
         raise exception 'ショップの処理を先に完了してください';
@@ -165,10 +169,9 @@ begin
                 v_message := '不思議なマスだったが、何も手に入らなかった。';
             elsif v_pick_item_effect = 'substitute' then
                 update public.evd_game_runs
-                   set substitute_negates_remaining = substitute_negates_remaining + 3,
-                       inventory_state = public.evd_add_bucket_item(inventory_state, 'carried_items', v_pick_item_code, 1)
+                   set substitute_negates_remaining = substitute_negates_remaining + 3
                  where id = p_run_id;
-                v_message := format('%s を引き当てた。身代わり効果が付与された。', v_pick_item_name);
+                v_message := format('%s を引き当てた。身代わり回数が 3 回増えた。', v_pick_item_name);
             elsif v_pick_item_effect = 'insurance' then
                 update public.evd_game_runs
                    set inventory_state = public.evd_add_bucket_item(
@@ -251,8 +254,13 @@ begin
                 return public.evd_build_snapshot(p_run_id, v_user_id);
             end if;
         when '落とし穴' then
-            v_damage := 1;
-            v_message := '落とし穴に落ち、ライフを 1 失って 1 階下へ落下した。';
+            if v_run.substitute_negates_remaining > 0 then
+                v_damage := 1;
+                v_message := '落とし穴にかかった。';
+            else
+                v_deferred_floor_shift_damage := 1;
+                v_message := '落とし穴に落ち、1 階下へ移動したあと LIFE を 1 失う。';
+            end if;
         when '転送罠' then
             if v_run.substitute_negates_remaining > 0 then
                 update public.evd_game_runs
@@ -276,7 +284,7 @@ begin
             v_message := '珍しい商人が隠し市を開いた。';
         when '下り階段' then
             v_message := case
-                when v_run.current_floor >= v_run.max_floors then '深部の祭壇を見つけた。'
+                when v_run.current_floor >= v_effective_max_floors then '深部の祭壇を見つけた。'
                 else '下り階段を見つけた。'
             end;
         else
@@ -331,6 +339,21 @@ begin
 
     select * into v_run from public.evd_game_runs where id = p_run_id;
 
+    if (v_cell ->> 'type') = '落とし穴' and v_deferred_floor_shift_damage > 0 then
+        perform public.evd_resolve_floor_shift(
+            p_run_id,
+            v_user_id,
+            least(v_effective_max_floors, v_run.current_floor + 1),
+            '落下移動'
+        );
+
+        update public.evd_game_runs
+           set life = greatest(life - v_deferred_floor_shift_damage, 0)
+         where id = p_run_id;
+
+        select * into v_run from public.evd_game_runs where id = p_run_id;
+    end if;
+
     if v_run.life <= 0 then
         if greatest(
             coalesce((v_run.inventory_state -> 'items' -> 'revival_charm' ->> 'quantity')::integer, 0),
@@ -370,8 +393,10 @@ begin
         return public.evd_finish_run(p_run_id, v_user_id, '死亡', '迷宮で力尽きた');
     end if;
 
-    if (v_cell ->> 'type') = '落とし穴' then
-        perform public.evd_resolve_floor_shift(p_run_id, v_user_id, least(v_run.max_floors, v_run.current_floor + 1), '落下移動');
+    if (v_cell ->> 'type') = '落とし穴'
+       and v_deferred_floor_shift_damage = 0
+       and v_run.substitute_negates_remaining <= 0 then
+        perform public.evd_resolve_floor_shift(p_run_id, v_user_id, least(v_effective_max_floors, v_run.current_floor + 1), '落下移動');
     elsif (v_cell ->> 'type') = '転送罠' and v_run.substitute_negates_remaining <= 0 then
         perform public.evd_resolve_floor_shift(p_run_id, v_user_id, greatest(1, v_run.current_floor - 2), '転送移動');
     end if;

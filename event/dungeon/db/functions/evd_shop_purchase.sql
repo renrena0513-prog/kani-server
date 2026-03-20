@@ -7,10 +7,13 @@ as $$
 declare
     v_user_id text := public.evd_current_user_id();
     v_run public.evd_game_runs%rowtype;
+    v_floor public.evd_run_floors%rowtype;
     v_pending jsonb;
     v_offer jsonb;
     v_effect text;
     v_price integer;
+    v_grid jsonb;
+    v_cell jsonb;
 begin
     perform pg_advisory_xact_lock(hashtext('evd:' || v_user_id));
 
@@ -31,6 +34,25 @@ begin
                last_active_at = now(),
                version = version + 1
          where id = p_run_id;
+
+        select * into v_floor
+          from public.evd_run_floors
+         where run_id = p_run_id
+           and floor_no = v_run.current_floor
+         for update;
+
+        if found then
+            v_grid := v_floor.grid;
+            v_cell := public.evd_get_cell(v_grid, v_run.current_x, v_run.current_y);
+            v_cell := jsonb_set(v_cell, array['type'], to_jsonb('空白'::text), true);
+            v_cell := jsonb_set(v_cell, array['resolved'], 'true'::jsonb, true);
+            v_grid := public.evd_set_cell(v_grid, v_run.current_x, v_run.current_y, v_cell);
+            update public.evd_run_floors
+               set grid = v_grid,
+                   updated_at = now()
+             where id = v_floor.id;
+        end if;
+
         perform public.evd_add_log(p_run_id, v_user_id, v_run.account_name, v_run.current_floor, 'ショップ購入', '何も買わず立ち去った。');
         return public.evd_build_snapshot(p_run_id, v_user_id);
     end if;
@@ -62,8 +84,7 @@ begin
 
     if v_effect = 'substitute' then
         update public.evd_game_runs
-           set substitute_negates_remaining = substitute_negates_remaining + 3,
-               inventory_state = public.evd_add_bucket_item(inventory_state, 'carried_items', p_item_code, 1)
+           set substitute_negates_remaining = substitute_negates_remaining + 3
          where id = p_run_id;
     elsif v_effect = 'insurance' then
         update public.evd_game_runs
@@ -121,6 +142,24 @@ begin
         format('%s を %s コインで購入した。', v_offer ->> 'name', v_price),
         jsonb_build_object('item_code', p_item_code, 'price', v_price)
     );
+
+    select * into v_floor
+      from public.evd_run_floors
+     where run_id = p_run_id
+       and floor_no = v_run.current_floor
+     for update;
+
+    if found then
+        v_grid := v_floor.grid;
+        v_cell := public.evd_get_cell(v_grid, v_run.current_x, v_run.current_y);
+        v_cell := jsonb_set(v_cell, array['type'], to_jsonb('空白'::text), true);
+        v_cell := jsonb_set(v_cell, array['resolved'], 'true'::jsonb, true);
+        v_grid := public.evd_set_cell(v_grid, v_run.current_x, v_run.current_y, v_cell);
+        update public.evd_run_floors
+           set grid = v_grid,
+               updated_at = now()
+         where id = v_floor.id;
+    end if;
 
     return public.evd_build_snapshot(p_run_id, v_user_id);
 end;

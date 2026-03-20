@@ -13,6 +13,7 @@ declare
     v_target_floor integer;
     v_offers jsonb;
     v_claimed_floor_bonuses jsonb := '[]'::jsonb;
+    v_effective_max_floors integer := 10;
 begin
     perform pg_advisory_xact_lock(hashtext('evd:' || v_user_id));
 
@@ -20,6 +21,8 @@ begin
     if not found then
         raise exception '進行中のランが見つかりません';
     end if;
+
+    v_effective_max_floors := greatest(coalesce(v_run.max_floors, 0), 10);
 
     select * into v_floor
       from public.evd_run_floors
@@ -31,7 +34,7 @@ begin
         raise exception '階段の上にいないため選択できません';
     end if;
 
-    if v_run.current_floor >= v_run.max_floors then
+    if v_run.current_floor >= v_effective_max_floors then
         if p_action <> 'return' then
             raise exception '深部の祭壇では帰還のみ選択できます';
         end if;
@@ -95,7 +98,7 @@ begin
         return public.evd_finish_run(p_run_id, v_user_id, '帰還', '地上へ帰還');
     end if;
 
-    v_target_floor := v_run.current_floor + 1;
+    v_target_floor := least(v_run.current_floor + 1, v_effective_max_floors);
     v_claimed_floor_bonuses := coalesce(v_run.inventory_state -> 'flags' -> 'claimed_floor_bonuses', '[]'::jsonb);
     select coalesce(fbp.bonus_coins, 0)
       into v_bonus

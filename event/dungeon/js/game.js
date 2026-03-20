@@ -335,8 +335,10 @@
 
     async function resolveThief(action) {
         const pending = state.run?.inventory_state?.pending_thief || null;
-        const itemCount = Object.values(state.run?.inventory_state?.items || {}).reduce((total, item) => (
-            total + Math.max(Number(item?.quantity || 0), 0)
+        const itemCount = ['items', 'carried_items'].reduce((total, bucket) => (
+            total + Object.values(state.run?.inventory_state?.[bucket] || {}).reduce((bucketTotal, item) => (
+                bucketTotal + Math.max(Number(item?.quantity || 0), 0)
+            ), 0)
         ), 0);
         const ransom = Number(pending?.ransom || 0);
         const runCoins = Number(state.run?.run_coins || 0);
@@ -478,6 +480,7 @@
             state.stairsPromptDismissed = true;
             ui.hideTilePopup();
             ui.renderStairsPrompt(false);
+            renderGame();
         },
         onResolveStairs: resolveStairs,
         onClaimAltarReward: claimAltarReward,

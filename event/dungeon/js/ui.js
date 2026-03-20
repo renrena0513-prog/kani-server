@@ -248,7 +248,9 @@
         }
 
         const lifeText = formatLifeHearts(run.life, run.max_life);
-        setTexts(['hud-floor', 'mobile-hud-floor'], `${run.current_floor} / ${run.max_floors}`);
+        const configuredMaxFloors = Number(window.DUNGEON_CONSTANTS?.MAX_FLOORS || 10);
+        const effectiveMaxFloors = Math.max(Number(run.max_floors || 0), configuredMaxFloors);
+        setTexts(['hud-floor', 'mobile-hud-floor'], `${run.current_floor} / ${effectiveMaxFloors}`);
         setTexts(['hud-life', 'mobile-hud-life'], lifeText);
         setText('mobile-life-fixed', `LIFE ${lifeText}`);
         setTexts(['hud-run-coins', 'mobile-hud-run-coins'], formatNumber(run.run_coins));
@@ -626,7 +628,10 @@
         const modalEl = el('stairs-modal');
         if (!modalEl || !window.bootstrap?.Modal) return;
         const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
-        const isFinalFloor = Number(state?.run?.current_floor || 0) >= Number(state?.run?.max_floors || 0);
+        const configuredMaxFloors = Number(window.DUNGEON_CONSTANTS?.MAX_FLOORS || 10);
+        const runMaxFloors = Number(state?.run?.max_floors || 0);
+        const effectiveMaxFloors = Math.max(configuredMaxFloors, runMaxFloors);
+        const isFinalFloor = Number(state?.run?.current_floor || 0) >= effectiveMaxFloors;
 
         setText('stairs-modal-title', isFinalFloor ? '深部の祭壇を見つけた' : '下り階段を見つけた');
         setText('stairs-modal-description', isFinalFloor
@@ -690,8 +695,10 @@
         }
 
         const ransom = Number(pending.ransom || 0);
-        const itemCount = Object.values(run?.inventory_state?.items || {}).reduce((total, item) => (
-            total + Math.max(Number(item?.quantity || 0), 0)
+        const itemCount = ['items', 'carried_items'].reduce((total, bucket) => (
+            total + Object.values(run?.inventory_state?.[bucket] || {}).reduce((bucketTotal, item) => (
+                bucketTotal + Math.max(Number(item?.quantity || 0), 0)
+            ), 0)
         ), 0);
         const currentCoins = Number(run?.run_coins || 0);
         const canGiveItem = itemCount > 0;
@@ -947,7 +954,12 @@
             onConfirm: () => handlers.onResolveThief('escape')
         }));
         el('thief-held-toggle-btn')?.addEventListener('click', handlers.onToggleThiefHeldItems);
-        el('shop-skip-btn')?.addEventListener('click', handlers.onSkipShop);
+        el('shop-skip-btn')?.addEventListener('click', () => showActionConfirm({
+            title: 'ショップ終了確認',
+            message: '何も買わずにこの場を離れます。',
+            confirmLabel: '終了する',
+            onConfirm: () => handlers.onSkipShop()
+        }));
         el('shop-held-toggle-btn')?.addEventListener('click', handlers.onToggleShopHeldItems);
         el('retry-run-btn')?.addEventListener('click', handlers.onRetry);
         el('tile-popup-close')?.addEventListener('click', handlers.onClosePopup);
