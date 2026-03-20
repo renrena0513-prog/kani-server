@@ -696,7 +696,12 @@ begin
         end if;
 
         v_death_return_rate := least(1.0, coalesce(v_base_death_rate, 0) + coalesce(v_wallet_bonus, 0));
-        v_payout := v_run.secured_coins + floor(v_run.run_coins * v_death_return_rate)::integer;
+        v_payout := floor(
+            (
+                v_run.secured_coins
+                + floor(v_run.run_coins * v_death_return_rate)::integer
+            ) * v_run.final_return_multiplier
+        )::integer;
     end if;
 
     v_carried_items := coalesce(v_run.inventory_state -> 'carried_items', '{}'::jsonb);
@@ -912,7 +917,8 @@ declare
             'golden_contract_active', false,
             'stairs_known', false,
         'hazards_known', false,
-        'bombs_known', false
+        'bombs_known', false,
+        'claimed_floor_bonuses', '[]'::jsonb
         ),
         'carried_items', '{}'::jsonb,
         'pending_resolution', null,
@@ -1394,8 +1400,9 @@ begin
                     weight,
                     sum(weight) over () as total_weight,
                     sum(weight) over (order by sort_order, code) as cumulative_weight
-                  from public.evd_item_catalog
+                 from public.evd_item_catalog
                  where is_active = true
+                   and shop_pool <> 'レリック'
                    and weight > 0
             ),
             draw as (

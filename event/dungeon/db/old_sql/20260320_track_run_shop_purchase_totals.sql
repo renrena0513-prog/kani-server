@@ -42,7 +42,7 @@ begin
      limit 1;
 
     if v_offer is null then
-        raise exception 'その商品はありません';
+        raise exception 'その品物はありません';
     end if;
 
     v_price := (v_offer ->> 'price')::integer;

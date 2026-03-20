@@ -19,7 +19,8 @@ declare
             'golden_contract_active', false,
             'stairs_known', false,
         'hazards_known', false,
-        'bombs_known', false
+        'bombs_known', false,
+        'claimed_floor_bonuses', '[]'::jsonb
         ),
         'carried_items', '{}'::jsonb,
         'pending_resolution', null,

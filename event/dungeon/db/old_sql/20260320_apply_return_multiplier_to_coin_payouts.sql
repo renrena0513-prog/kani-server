@@ -23,27 +23,12 @@ declare
     v_return_blessing_multiplier numeric(10, 4) := 1.0;
     v_golden_contract_qty integer := 0;
     v_return_blessing_qty integer := 0;
-    v_gacha_ticket_payout integer := 0;
-    v_mangan_ticket_payout integer := 0;
+    v_selected_escape_bonus text := null;
 begin
-    select *
-      into v_run
-      from public.evd_game_runs
-     where id = p_run_id
-       and user_id = p_user_id
-     for update;
-
+    select * into v_run from public.evd_game_runs where id = p_run_id and user_id = p_user_id for update;
     if not found then
         raise exception 'ランが見つかりません';
     end if;
-
-    if p_status <> '帰還' then
-        v_run.gacha_tickets_gained := 0;
-        v_run.mangan_tickets_gained := 0;
-    end if;
-
-    v_gacha_ticket_payout := greatest(coalesce(v_run.gacha_tickets_gained, 0), 0);
-    v_mangan_ticket_payout := greatest(coalesce(v_run.mangan_tickets_gained, 0), 0);
 
     if p_status = '死亡'
        and greatest(
@@ -83,7 +68,6 @@ begin
 
     v_flags := coalesce(v_run.inventory_state -> 'flags', '{}'::jsonb);
     v_items := coalesce(v_run.inventory_state -> 'items', '{}'::jsonb);
-
     if p_status = '帰還' then
         v_golden_contract_qty := greatest(
             coalesce((v_items -> 'golden_contract' ->> 'quantity')::integer, 0),
@@ -101,6 +85,7 @@ begin
 
         if v_golden_contract_qty > 0
            and (v_run.final_return_multiplier + 1.0) >= (v_run.final_return_multiplier * v_return_blessing_multiplier) then
+            v_selected_escape_bonus := 'golden_contract';
             if coalesce((v_items -> 'golden_contract' ->> 'quantity')::integer, 0) > 0 then
                 v_run.inventory_state := public.evd_remove_item(v_run.inventory_state, 'golden_contract', 1);
                 v_items := coalesce(v_run.inventory_state -> 'items', '{}'::jsonb);
@@ -111,6 +96,7 @@ begin
                 * (v_run.final_return_multiplier + 1.0)
             )::integer;
         elsif v_return_blessing_qty > 0 then
+            v_selected_escape_bonus := 'return_blessing';
             v_run.inventory_state := public.evd_remove_item(v_run.inventory_state, 'return_blessing', v_return_blessing_qty);
             v_items := coalesce(v_run.inventory_state -> 'items', '{}'::jsonb);
 
@@ -169,22 +155,12 @@ begin
     if p_status = '死亡' then
         if coalesce((v_run.inventory_state -> 'carried_items' -> 'substitute_doll' ->> 'quantity')::integer, 0) > 0
            and v_run.substitute_negates_remaining < 3 then
-            v_carried_items := public.evd_remove_bucket_item(
-                jsonb_build_object('carried_items', v_carried_items),
-                'carried_items',
-                'substitute_doll',
-                1
-            ) -> 'carried_items';
+            v_carried_items := public.evd_remove_bucket_item(jsonb_build_object('carried_items', v_carried_items), 'carried_items', 'substitute_doll', 1) -> 'carried_items';
         end if;
 
         if coalesce((v_run.inventory_state -> 'carried_items' -> 'insurance_token' ->> 'quantity')::integer, 0) > 0
            and not coalesce((v_flags ->> 'insurance_active')::boolean, false) then
-            v_carried_items := public.evd_remove_bucket_item(
-                jsonb_build_object('carried_items', v_carried_items),
-                'carried_items',
-                'insurance_token',
-                1
-            ) -> 'carried_items';
+            v_carried_items := public.evd_remove_bucket_item(jsonb_build_object('carried_items', v_carried_items), 'carried_items', 'insurance_token', 1) -> 'carried_items';
         end if;
 
         v_run.inventory_state := jsonb_set(v_run.inventory_state, array['carried_items'], v_carried_items, true);
@@ -332,8 +308,6 @@ begin
            death_reason = p_reason,
            result_payout = greatest(v_payout, 0),
            inventory_state = v_run.inventory_state,
-           gacha_tickets_gained = v_gacha_ticket_payout,
-           mangan_tickets_gained = v_mangan_ticket_payout,
            ended_at = now(),
            updated_at = now(),
            last_active_at = now(),
@@ -342,9 +316,7 @@ begin
 
     update public.profiles
        set coins = coalesce(coins, 0) + greatest(v_payout, 0),
-           total_assets = coalesce(total_assets, 0) + greatest(v_payout, 0),
-           gacha_tickets = coalesce(gacha_tickets, 0) + case when p_status = '帰還' then v_gacha_ticket_payout else 0 end,
-           mangan_tickets = coalesce(mangan_tickets, 0) + case when p_status = '帰還' then v_mangan_ticket_payout else 0 end
+           total_assets = coalesce(total_assets, 0) + greatest(v_payout, 0)
      where discord_user_id = p_user_id;
 
     perform public.evd_add_log(

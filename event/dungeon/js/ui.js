@@ -30,7 +30,7 @@
         '泉': { icon: '⛲', title: '泉' },
         '爆弾': { icon: '💣', title: '爆弾' },
         '大爆発': { icon: '💥', title: '大爆発' },
-        '罠': { icon: '⚠️', title: '罠' },
+        '罠': { icon: '🕸', title: '罠' },
         '呪い': { icon: '☠️', title: '呪い' },
         '盗賊': { icon: '🥷', title: '盗賊' },
         '落とし穴': { icon: '🕳️', title: '落とし穴' },
@@ -745,11 +745,14 @@
         const run = state?.run;
         const catalog = state?.catalog || [];
         if (!run) return;
+        const isReturned = run.status === '帰還';
+        const resultGacha = isReturned ? Number(run.gacha_tickets_gained || 0) : 0;
+        const resultMangan = isReturned ? Number(run.mangan_tickets_gained || 0) : 0;
         setText('result-status', run.status);
         setText('result-payout', `${formatNumber(run.result_payout)} コイン`);
         setText('result-badges', `${formatNumber(run.badges_gained)} 個`);
-        setText('result-gacha', `${formatNumber(run.gacha_tickets_gained)} 枚`);
-        setText('result-mangan', `${formatNumber(run.mangan_tickets_gained)} 枚`);
+        setText('result-gacha', `${formatNumber(resultGacha)} 枚`);
+        setText('result-mangan', `${formatNumber(resultMangan)} 枚`);
         setText('result-death-reason', run.death_reason || '生還');
         renderResultInventory(state);
     }
@@ -808,6 +811,44 @@
         overlay.setAttribute('aria-hidden', 'true');
     }
 
+    function showActionConfirm(config) {
+        const modalEl = el('action-confirm-modal');
+        if (!modalEl || !window.bootstrap?.Modal) {
+            config?.onConfirm?.();
+            return;
+        }
+
+        const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+        setText('action-confirm-title', config?.title || '確認');
+        setText('action-confirm-message', config?.message || 'この操作を実行します。');
+        setText('action-confirm-ok-btn', config?.confirmLabel || '実行する');
+        setText('action-confirm-cancel-btn', config?.cancelLabel || '戻る');
+
+        const confirmBtn = el('action-confirm-ok-btn');
+        const cancelBtn = el('action-confirm-cancel-btn');
+
+        const cleanup = () => {
+            confirmBtn?.removeEventListener('click', handleConfirm);
+            cancelBtn?.removeEventListener('click', handleCancel);
+            modalEl.removeEventListener('hidden.bs.modal', handleHidden);
+        };
+        const handleConfirm = () => {
+            cleanup();
+            modal.hide();
+            config?.onConfirm?.();
+        };
+        const handleCancel = () => {
+            cleanup();
+            modal.hide();
+        };
+        const handleHidden = () => cleanup();
+
+        confirmBtn?.addEventListener('click', handleConfirm);
+        cancelBtn?.addEventListener('click', handleCancel);
+        modalEl.addEventListener('hidden.bs.modal', handleHidden);
+        modal.show();
+    }
+
     function setMobileDirectionPadVisible(visible) {
         const pad = el('mobile-direction-pad');
         const toggle = el('mobile-arrow-toggle-btn');
@@ -843,7 +884,17 @@
             if (useItem) handlers.onUseItem(useItem.dataset.useItem);
 
             const buyItem = event.target.closest('[data-buy-item]');
-            if (buyItem) handlers.onBuyItem(buyItem.dataset.buyItem);
+            if (buyItem) {
+                const card = buyItem.closest('[data-buy-item]');
+                const offerName = card?.querySelector('.shop-offer-name')?.textContent?.trim() || 'このアイテム';
+                const offerPrice = card?.querySelector('.shop-offer-price')?.textContent?.trim() || '';
+                showActionConfirm({
+                    title: 'ショップ購入確認',
+                    message: `${offerName}を購入します。${offerPrice}`,
+                    confirmLabel: '購入する',
+                    onConfirm: () => handlers.onBuyItem(buyItem.dataset.buyItem)
+                });
+            }
 
             const buyStock = event.target.closest('[data-buy-stock]');
             if (buyStock) handlers.onBuyStock(buyStock.dataset.buyStock);
@@ -855,11 +906,43 @@
         el('start-run-btn')?.addEventListener('click', handlers.onStartRun);
         el('resume-run-btn')?.addEventListener('click', handlers.onResumeRun);
         el('stairs-continue-btn')?.addEventListener('click', handlers.onContinueExplore);
-        el('stairs-descend-btn')?.addEventListener('click', () => handlers.onResolveStairs('descend'));
-        el('stairs-return-btn')?.addEventListener('click', () => handlers.onResolveStairs('return'));
-        el('thief-give-item-btn')?.addEventListener('click', () => handlers.onResolveThief('item'));
-        el('thief-pay-coin-btn')?.addEventListener('click', () => handlers.onResolveThief('coin'));
-        el('thief-run-btn')?.addEventListener('click', () => handlers.onResolveThief('escape'));
+        el('stairs-descend-btn')?.addEventListener('click', () => showActionConfirm({
+            title: '次の階へ進む確認',
+            message: '次の階へ進みます。現在の階には戻れない場合があります。',
+            confirmLabel: '進む',
+            onConfirm: () => handlers.onResolveStairs('descend')
+        }));
+        el('stairs-return-btn')?.addEventListener('click', () => showActionConfirm({
+            title: '帰還確認',
+            message: '戦利品を持って帰還します。今回の探索を終了します。',
+            confirmLabel: '帰還する',
+            onConfirm: () => handlers.onResolveStairs('return')
+        }));
+        el('thief-give-item-btn')?.addEventListener('click', (event) => {
+            if (event.currentTarget?.dataset.available === 'false') return;
+            showActionConfirm({
+                title: '盗賊対応確認',
+                message: 'アイテムを差し出して盗賊をやり過ごします。',
+                confirmLabel: '差し出す',
+                onConfirm: () => handlers.onResolveThief('item')
+            });
+        });
+        el('thief-pay-coin-btn')?.addEventListener('click', (event) => {
+            if (event.currentTarget?.dataset.available === 'false') return;
+            const title = el('thief-coin-title')?.textContent?.trim() || 'コインを差し出す';
+            showActionConfirm({
+                title: '盗賊対応確認',
+                message: `${title}。この選択を確定します。`,
+                confirmLabel: '支払う',
+                onConfirm: () => handlers.onResolveThief('coin')
+            });
+        });
+        el('thief-run-btn')?.addEventListener('click', () => showActionConfirm({
+            title: '盗賊対応確認',
+            message: '盗賊から逃げます。失敗すると大きな不利益を受ける可能性があります。',
+            confirmLabel: '逃げる',
+            onConfirm: () => handlers.onResolveThief('escape')
+        }));
         el('thief-held-toggle-btn')?.addEventListener('click', handlers.onToggleThiefHeldItems);
         el('shop-skip-btn')?.addEventListener('click', handlers.onSkipShop);
         el('shop-held-toggle-btn')?.addEventListener('click', handlers.onToggleShopHeldItems);
@@ -894,6 +977,7 @@
         hideTilePopup,
         showItemAcquiredModal,
         hideItemAcquiredModal,
+        showActionConfirm,
         setMobileDirectionPadVisible,
         bindCarrySelection,
         bindBoard,

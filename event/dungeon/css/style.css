@@ -894,6 +894,8 @@
             padding: 6px 10px;
             font-size: 0.75rem;
             line-height: 1.2;
+            position: relative;
+            z-index: 1030;
         }
 
         .mobile-direction-pad {
@@ -901,7 +903,7 @@
             left: 10px;
             bottom: 12px;
             transform: none;
-            z-index: 1080;
+            z-index: 1030;
             width: calc(100vw - 20px);
             max-width: none;
             padding: 10px;

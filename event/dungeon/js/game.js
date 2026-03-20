@@ -192,6 +192,21 @@
         }
     }
 
+    function handleStartRun() {
+        if (state.selectedCarryItems.length > 0) {
+            startRun();
+            return;
+        }
+
+        ui.showActionConfirm({
+            title: '丸腰で行くのか？',
+            message: '恐れ入った！！！ 本当に行くのか？',
+            confirmLabel: 'はい',
+            cancelLabel: 'いいえ',
+            onConfirm: () => startRun()
+        });
+    }
+
     function findDirectionByTarget(x, y) {
         const deltaX = x - state.run.current_x;
         const deltaY = y - state.run.current_y;
@@ -450,7 +465,7 @@
     ui.bindCarrySelection(toggleCarry);
     ui.bindBoard(moveTo);
     ui.bindActions({
-        onStartRun: startRun,
+        onStartRun: handleStartRun,
         onResumeRun: renderGame,
         onContinueExplore: () => {
             state.stairsPromptDismissed = true;

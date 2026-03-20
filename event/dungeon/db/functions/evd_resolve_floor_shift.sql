@@ -16,12 +16,8 @@ declare
 begin
     select * into v_run from public.evd_game_runs where id = p_run_id and user_id = p_user_id for update;
 
-    if p_status = '転送移動' then
+    if p_status = '転送移動' or p_target_floor < v_run.current_floor then
         v_floor_seed := public.evd_generate_floor(v_run.generation_profile_id, p_target_floor, v_run.board_size);
-<<<<<<< HEAD
-=======
-
->>>>>>> 7024e14 (ダンジョンイベントの更新と修正)
         insert into public.evd_run_floors (
             run_id, user_id, account_name, floor_no, start_x, start_y, stairs_x, stairs_y, grid, revealed, visited, floor_status
         )

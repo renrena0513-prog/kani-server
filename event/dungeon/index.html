@@ -418,6 +418,24 @@
         </div>
     </div>
 
+    <div class="modal fade" id="action-confirm-modal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static"
+        data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content dungeon-mobile-modal">
+                <div class="modal-header">
+                    <h5 id="action-confirm-title" class="modal-title">確認</h5>
+                </div>
+                <div class="modal-body">
+                    <p id="action-confirm-message" class="small text-secondary mb-3">この操作を実行します。</p>
+                    <div class="d-grid gap-2">
+                        <button id="action-confirm-cancel-btn" class="dungeon-btn-secondary" type="button">戻る</button>
+                        <button id="action-confirm-ok-btn" class="dungeon-btn-primary" type="button" data-busy-disable>実行する</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal fade" id="prep-shop-modal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered modal-lg">
             <div class="modal-content dungeon-mobile-modal">
