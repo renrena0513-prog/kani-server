@@ -491,9 +491,12 @@
 
         const grid = state.floor.grid || [];
         const flags = state.run.inventory_state?.flags || {};
+        const currentCell = grid?.[state.run.current_y]?.[state.run.current_x];
+        const stairsSelectionPending = currentCell?.type === '下り階段' && !state.stairsPromptDismissed;
         const interactionLocked = !!state.run.inventory_state?.pending_shop
             || !!state.run.inventory_state?.pending_thief
-            || !!state.run.inventory_state?.pending_altar_reward;
+            || !!state.run.inventory_state?.pending_altar_reward
+            || stairsSelectionPending;
         const currentX = state.run.current_x;
         const currentY = state.run.current_y;
         const avatarUrl = playerAvatarUrl(state.user);

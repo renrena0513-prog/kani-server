@@ -13,39 +13,42 @@ declare
     v_bomb_count integer := 0;
     v_has_doom_eye boolean := false;
     v_floor_heal integer := 0;
+    v_regen_floor integer := 0;
 begin
     select * into v_run from public.evd_game_runs where id = p_run_id and user_id = p_user_id for update;
 
     if p_status = '転送移動' or p_target_floor < v_run.current_floor then
-        v_floor_seed := public.evd_generate_floor(v_run.generation_profile_id, p_target_floor, v_run.board_size);
-        insert into public.evd_run_floors (
-            run_id, user_id, account_name, floor_no, start_x, start_y, stairs_x, stairs_y, grid, revealed, visited, floor_status
-        )
-        values (
-            p_run_id,
-            p_user_id,
-            v_run.account_name,
-            p_target_floor,
-            (v_floor_seed ->> 'start_x')::integer,
-            (v_floor_seed ->> 'start_y')::integer,
-            (v_floor_seed ->> 'stairs_x')::integer,
-            (v_floor_seed ->> 'stairs_y')::integer,
-            v_floor_seed -> 'grid',
-            v_floor_seed -> 'revealed',
-            v_floor_seed -> 'visited',
-            p_status
-        )
-        on conflict (run_id, floor_no) do update
-           set account_name = excluded.account_name,
-               start_x = excluded.start_x,
-               start_y = excluded.start_y,
-               stairs_x = excluded.stairs_x,
-               stairs_y = excluded.stairs_y,
-               grid = excluded.grid,
-               revealed = excluded.revealed,
-               visited = excluded.visited,
-               floor_status = excluded.floor_status,
-               updated_at = now();
+        for v_regen_floor in p_target_floor..greatest(p_target_floor, v_run.current_floor - 1) loop
+            v_floor_seed := public.evd_generate_floor(v_run.generation_profile_id, v_regen_floor, v_run.board_size);
+            insert into public.evd_run_floors (
+                run_id, user_id, account_name, floor_no, start_x, start_y, stairs_x, stairs_y, grid, revealed, visited, floor_status
+            )
+            values (
+                p_run_id,
+                p_user_id,
+                v_run.account_name,
+                v_regen_floor,
+                (v_floor_seed ->> 'start_x')::integer,
+                (v_floor_seed ->> 'start_y')::integer,
+                (v_floor_seed ->> 'stairs_x')::integer,
+                (v_floor_seed ->> 'stairs_y')::integer,
+                v_floor_seed -> 'grid',
+                v_floor_seed -> 'revealed',
+                v_floor_seed -> 'visited',
+                case when v_regen_floor = p_target_floor then p_status else '再生成' end
+            )
+            on conflict (run_id, floor_no) do update
+               set account_name = excluded.account_name,
+                   start_x = excluded.start_x,
+                   start_y = excluded.start_y,
+                   stairs_x = excluded.stairs_x,
+                   stairs_y = excluded.stairs_y,
+                   grid = excluded.grid,
+                   revealed = excluded.revealed,
+                   visited = excluded.visited,
+                   floor_status = excluded.floor_status,
+                   updated_at = now();
+        end loop;
     elsif not exists (
         select 1 from public.evd_run_floors where run_id = p_run_id and floor_no = p_target_floor
     ) then

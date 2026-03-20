@@ -213,8 +213,14 @@
         return Object.entries(DIRECTIONS).find(([, dir]) => dir.x === deltaX && dir.y === deltaY)?.[0] || null;
     }
 
+    function isStairsSelectionPending() {
+        const currentCell = state.floor?.grid?.[state.run?.current_y]?.[state.run?.current_x];
+        return currentCell?.type === '下り階段' && !state.stairsPromptDismissed;
+    }
+
     async function moveTo(x, y) {
         if (state.run?.inventory_state?.pending_thief || state.run?.inventory_state?.pending_altar_reward) return;
+        if (isStairsSelectionPending()) return;
         const direction = findDirectionByTarget(x, y);
         if (!direction) return;
         ui.hideTilePopup();
@@ -247,6 +253,7 @@
     async function moveByDirection(directionKey) {
         if (!state.run || state.run.status !== '進行中') return;
         if (state.run.inventory_state?.pending_thief || state.run.inventory_state?.pending_altar_reward) return;
+        if (isStairsSelectionPending()) return;
         const dir = DIRECTIONS[directionKey];
         if (!dir) return;
         await moveTo(state.run.current_x + dir.x, state.run.current_y + dir.y);
