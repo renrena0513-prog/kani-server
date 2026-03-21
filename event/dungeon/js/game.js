@@ -31,9 +31,20 @@
     }
 
     function getCarryLimit() {
+        const hasCarryLimitRelic = (state.stocks || []).some((stock) =>
+            Number(stock.quantity || 0) > 0
+            && stock.evd_item_catalog?.effect_data?.effect === 'relic_carry_limit_plus_1'
+        );
         const hasGoldenBagSelected = state.selectedCarryItems.includes('golden_bag')
             || (state.stocks || []).some((stock) => stock.item_code === 'golden_bag' && stock.is_set && Number(stock.quantity || 0) > 0);
-        return hasGoldenBagSelected ? CARRY_LIMIT + 2 : CARRY_LIMIT;
+        let carryLimit = CARRY_LIMIT;
+        if (hasCarryLimitRelic) {
+            carryLimit += 1;
+        }
+        if (hasGoldenBagSelected) {
+            carryLimit += 2;
+        }
+        return carryLimit;
     }
 
     function syncSelectedCarryItems() {

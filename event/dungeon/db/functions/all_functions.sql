@@ -1008,11 +1008,17 @@ begin
             raise exception '持ち込み在庫が不足しています: %', v_item;
         end if;
 
-        v_inventory := public.evd_add_bucket_item(v_inventory, 'carried_items', v_item, 1);
-
         select effect_data ->> 'effect' into v_effect from public.evd_item_catalog where code = v_item;
+        if v_effect = 'carry_limit_plus_2' then
+            null;
+        else
+            v_inventory := public.evd_add_bucket_item(v_inventory, 'carried_items', v_item, 1);
+        end if;
+
         if v_effect = 'substitute' then
             v_inventory := jsonb_set(v_inventory, array['flags', 'substitute_ready'], 'true'::jsonb, true);
+        elsif v_effect = 'carry_limit_plus_2' then
+            null;
         elsif v_effect = 'insurance' then
             v_inventory := jsonb_set(v_inventory, array['flags', 'insurance_active'], 'true'::jsonb, true);
         elsif v_effect = 'golden_contract' then
