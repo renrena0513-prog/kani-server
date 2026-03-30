@@ -10,7 +10,11 @@ declare
     v_item record;
     v_stocks jsonb;
     v_price integer := 0;
+<<<<<<< HEAD:event/dungeon/db/functions/rpc/evd_buy_stock_item.sql
     v_passive_modifiers jsonb := '{}'::jsonb;
+=======
+    v_discount_rate numeric(8, 2) := 0.0;
+>>>>>>> f4551e61db7ebd161209630406706d93ed61315c:event/dungeon/db/functions/evd_buy_stock_item.sql
 begin
     if v_user_id = '' then
         raise exception 'ログインが必要です';
@@ -37,9 +41,24 @@ begin
         raise exception '購入できないアイテムです';
     end if;
 
+<<<<<<< HEAD:event/dungeon/db/functions/rpc/evd_buy_stock_item.sql
     v_passive_modifiers := public.evd_collect_passive_modifiers(v_user_id);
     v_price := floor(v_item.base_price * greatest(0::numeric, 1 - coalesce((v_passive_modifiers ->> 'shop_discount_rate')::numeric, 0)))::integer;
 
+=======
+    select least(coalesce(sum(st.quantity), 0), 4) * 0.05
+      into v_discount_rate
+      from public.evd_player_item_stocks st
+      join public.evd_item_catalog c
+        on c.code = st.item_code
+     where st.user_id = v_user_id
+       and st.quantity > 0
+       and c.is_active = true
+       and c.effect_data ->> 'effect' = 'relic_shop_discount_plus_5pct';
+
+    v_price := floor(v_item.base_price * greatest(0::numeric, 1 - coalesce(v_discount_rate, 0)))::integer;
+
+>>>>>>> f4551e61db7ebd161209630406706d93ed61315c:event/dungeon/db/functions/evd_buy_stock_item.sql
     if coalesce(v_profile.coins, 0) < v_price then
         raise exception 'コインが足りません';
     end if;
