@@ -62,7 +62,6 @@
         ui.renderBoard(state);
         ui.renderShop(state);
         ui.renderAltarRewardPrompt(state);
-        ui.renderThiefPrompt(state);
         ui.renderLogs(state.logs);
 
         const currentCell = state.floor?.grid?.[state.run.current_y]?.[state.run.current_x];
@@ -129,11 +128,6 @@
             state.lastPopupStep = latest.step_no;
             return;
         }
-        if (latest.payload.tile_type === '盗賊') {
-            state.lastPopupStep = latest.step_no;
-            return;
-        }
-
         state.lastPopupStep = latest.step_no;
         ui.showTilePopup(latest.payload.tile_type, latest.message);
     }
@@ -195,7 +189,7 @@
     }
 
     async function moveTo(x, y) {
-        if (state.run?.inventory_state?.pending_thief || state.run?.inventory_state?.pending_altar_reward) return;
+        if (state.run?.inventory_state?.pending_altar_reward) return;
         const direction = findDirectionByTarget(x, y);
         if (!direction) return;
         ui.hideTilePopup();
@@ -227,7 +221,7 @@
 
     async function moveByDirection(directionKey) {
         if (!state.run || state.run.status !== '進行中') return;
-        if (state.run.inventory_state?.pending_thief || state.run.inventory_state?.pending_altar_reward) return;
+        if (state.run.inventory_state?.pending_altar_reward) return;
         const dir = DIRECTIONS[directionKey];
         if (!dir) return;
         await moveTo(state.run.current_x + dir.x, state.run.current_y + dir.y);
@@ -307,46 +301,6 @@
         }
     }
 
-    async function resolveThief(action) {
-        const pending = state.run?.inventory_state?.pending_thief || null;
-        const itemCount = Object.values(state.run?.inventory_state?.items || {}).reduce((total, item) => (
-            total + Math.max(Number(item?.quantity || 0), 0)
-        ), 0);
-        const ransom = Number(pending?.ransom || 0);
-        const runCoins = Number(state.run?.run_coins || 0);
-
-        if (action === 'item' && itemCount <= 0) {
-            ui.showNoticePopup('盗賊', 'アイテムを持っていない', '⚠️');
-            return;
-        }
-        if (action === 'coin' && runCoins < ransom) {
-            ui.showNoticePopup('盗賊', '所持金が足りない', '⚠️');
-            return;
-        }
-
-        ui.hideTilePopup();
-        ui.hideItemAcquiredModal();
-        ui.setBusy(true);
-        try {
-            const payload = await api.rpc('evd_resolve_thief', {
-                p_run_id: state.run.id,
-                p_action: action
-            });
-            hydratePayload(payload);
-            await reloadRunSnapshot();
-            if (state.run.status === '進行中') {
-                renderGame();
-            } else {
-                renderResult();
-            }
-        } catch (error) {
-            console.error(error);
-            ui.showNoticePopup('エラー', error.message || '盗賊イベントの解決に失敗しました。', '⚠️');
-        } finally {
-            ui.setBusy(false);
-        }
-    }
-
     async function buyItem(itemCode) {
         ui.setBusy(true);
         try {
@@ -409,7 +363,7 @@
     function bindKeyboard() {
         document.addEventListener('keydown', (event) => {
             if (!state.run || state.run.status !== '進行中') return;
-            if (state.run.inventory_state?.pending_thief || state.run.inventory_state?.pending_altar_reward) return;
+            if (state.run.inventory_state?.pending_altar_reward) return;
             const keyMap = {
                 ArrowUp: 'up',
                 ArrowDown: 'down',
@@ -444,7 +398,6 @@
         },
         onResolveStairs: resolveStairs,
         onClaimAltarReward: claimAltarReward,
-        onResolveThief: resolveThief,
         onUseItem: useItem,
         onBuyItem: buyItem,
         onBuyStock: buyStock,
@@ -462,18 +415,6 @@
             skip.classList.toggle('d-none', showHeldOnly);
             notice.classList.toggle('d-none', showHeldOnly);
             button.textContent = showHeldOnly ? '買い物に戻る' : '所持アイテム';
-        },
-        onToggleThiefHeldItems: () => {
-            const panel = document.getElementById('thief-held-panel');
-            const button = document.getElementById('thief-held-toggle-btn');
-            const choices = document.querySelector('#thief-modal .thief-choice-list');
-            const warning = document.getElementById('thief-warning-text');
-            if (!panel || !button) return;
-            const showHeldOnly = panel.classList.contains('d-none');
-            panel.classList.toggle('d-none', !showHeldOnly);
-            if (choices) choices.classList.toggle('d-none', showHeldOnly);
-            if (warning) warning.classList.toggle('d-none', showHeldOnly);
-            button.textContent = showHeldOnly ? '選択に戻る' : '所持アイテム';
         },
         onToggleMobilePad: () => {
             state.mobilePadVisible = !state.mobilePadVisible;

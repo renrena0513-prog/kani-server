@@ -1,0 +1,6 @@
+{
+  "code": "doom_eye",
+  "effect": "relic_bomb_radar_always",
+  "collect_phase": "passive_modifiers",
+  "notes": "常時爆弾可視化を有効化する"
+}

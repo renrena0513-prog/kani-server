@@ -1,0 +1,6 @@
+{
+  "code": "underworld_wallet",
+  "effect": "relic_death_coin_keep_plus_2pct",
+  "collect_phase": "passive_modifiers",
+  "settlement_phase": "settlement_death"
+}

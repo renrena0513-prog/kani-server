@@ -1,0 +1,6 @@
+{
+  "code": "giant_cup",
+  "effect": "relic_max_life_plus_1",
+  "collect_phase": "passive_modifiers",
+  "notes": "開始時 max_life を +1 する"
+}

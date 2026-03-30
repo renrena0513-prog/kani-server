@@ -320,7 +320,6 @@
 
         .carry-items,
         .prep-shop-list,
-        .thief-choice-list,
         .shop-offers,
         .inventory-list,
         .adventure-log {
@@ -330,7 +329,6 @@
 
         .carry-item,
         .prep-shop-card,
-        .thief-choice-card,
         .shop-offer,
         .inventory-item {
             width: 100%;
@@ -365,42 +363,6 @@
             align-items: center;
             justify-content: space-between;
             gap: 12px;
-        }
-
-        .thief-choice-card {
-            display: grid;
-            gap: 6px;
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .thief-choice-card:disabled {
-            opacity: 0.45;
-            cursor: not-allowed;
-        }
-
-        .thief-choice-card.is-unavailable {
-            opacity: 0.52;
-        }
-
-        .thief-choice-card-danger {
-            border-color: rgba(219, 127, 104, 0.26);
-            background: rgba(122, 37, 24, 0.26);
-        }
-
-        .thief-choice-title {
-            font-weight: 700;
-            color: #f7f3e8;
-        }
-
-        .thief-choice-note {
-            font-size: 0.88rem;
-            color: var(--dungeon-muted);
-        }
-
-        .thief-warning-text {
-            margin-top: 14px;
-            color: #ffd6cd;
-            font-size: 0.88rem;
         }
 
         .prep-shop-buy-btn {

@@ -1,0 +1,38 @@
+{
+  "granted_item_effects": [
+    "substitute",
+    "insurance",
+    "golden_contract",
+    "vault_box"
+  ],
+  "passive_modifier_effects": [
+    "relic_shop_discount_plus_5pct",
+    "relic_carry_limit_plus_1",
+    "relic_return_multiplier_plus_0_05",
+    "relic_bomb_radar_always",
+    "relic_max_life_plus_1",
+    "relic_death_coin_keep_plus_2pct",
+    "relic_keep_unused_manual_on_death"
+  ],
+  "use_item_effects": [
+    "escape_run",
+    "bomb_radar",
+    "reveal_stairs",
+    "reveal_hazards",
+    "reveal_bombs",
+    "heal_hp",
+    "increase_max_hp",
+    "increase_max_hp_full_restore",
+    "advance_floor_with_bonus"
+  ],
+  "settlement_escape_effects": [
+    "golden_contract",
+    "return_multiplier_bonus_on_escape"
+  ],
+  "settlement_death_effects": [
+    "vault_box",
+    "insurance",
+    "relic_death_coin_keep_plus_2pct",
+    "relic_keep_unused_manual_on_death"
+  ]
+}

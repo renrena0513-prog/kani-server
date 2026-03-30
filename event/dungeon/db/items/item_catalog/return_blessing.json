@@ -1,0 +1,5 @@
+{
+  "code": "return_blessing",
+  "effect": "return_multiplier_bonus_on_escape",
+  "settlement_phase": "settlement_escape"
+}

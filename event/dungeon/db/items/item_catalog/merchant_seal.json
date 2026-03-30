@@ -1,0 +1,6 @@
+{
+  "code": "merchant_seal",
+  "effect": "relic_shop_discount_plus_5pct",
+  "collect_phase": "passive_modifiers",
+  "notes": "所持数に応じてショップ割引率を集計する"
+}

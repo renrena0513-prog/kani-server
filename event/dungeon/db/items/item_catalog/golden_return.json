@@ -1,0 +1,6 @@
+{
+  "code": "golden_return",
+  "effect": "relic_return_multiplier_plus_0_05",
+  "collect_phase": "passive_modifiers",
+  "notes": "初期持ち帰り倍率を加算する"
+}

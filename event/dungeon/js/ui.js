@@ -1,22 +1,5 @@
-(function () {
+﻿(function () {
     const { TILE_LABELS, MANUAL_ITEM_CODES } = window.DUNGEON_CONSTANTS;
-    const ITEM_FALLBACK_EMOJI = {
-        calamity_map: '🗺️',
-        full_scan_map: '🛰️',
-        abyss_ticket: '🕳️',
-        holy_grail: '🏆',
-        golden_contract: '📜',
-        substitute_doll: '🪆',
-        giant_cup: '🏆',
-        greedy_bag: '🎒',
-        vault_box: '📜',
-        golden_return: '🌟',
-        escape_talisman: '🏃',
-        doom_eye: '👁️',
-        collector_coffin: '⚰️',
-        underworld_wallet: '👛',
-        merchant_seal: '🪙'
-    };
 
     const TILE_POPUP_META = {
         '空白': { icon: '▫️', title: '空白マス' },
@@ -32,9 +15,6 @@
         '大爆発': { icon: '💥', title: '大爆発' },
         '罠': { icon: '⚠️', title: '罠' },
         '呪い': { icon: '☠️', title: '呪い' },
-        '盗賊': { icon: '🥷', title: '盗賊' },
-        '落とし穴': { icon: '🕳️', title: '落とし穴' },
-        '転送罠': { icon: '🌀', title: '転送罠' },
         'ショップ': { icon: '🛒', title: 'ショップ' },
         '限定ショップ': { icon: '🏬', title: '限定ショップ' },
         '下り階段': { icon: '🪜', title: '下り階段' }
@@ -66,7 +46,7 @@
     }
 
     function renderItemVisual(itemCode, itemName) {
-        const emoji = ITEM_FALLBACK_EMOJI[itemCode] || '🎒';
+        const emoji = '🎁';
         const src = `/event/dungeon/images/${itemCode}.png`;
         return `
             <span class="item-visual" aria-hidden="true">
@@ -142,10 +122,6 @@
             const stairsModalEl = el('stairs-modal');
             if (stairsModalEl && window.bootstrap?.Modal) {
                 window.bootstrap.Modal.getOrCreateInstance(stairsModalEl).hide();
-            }
-            const thiefModalEl = el('thief-modal');
-            if (thiefModalEl && window.bootstrap?.Modal) {
-                window.bootstrap.Modal.getOrCreateInstance(thiefModalEl).hide();
             }
             const altarModalEl = el('altar-reward-modal');
             if (altarModalEl && window.bootstrap?.Modal) {
@@ -273,6 +249,14 @@
         const returnMultiplier = Math.max(baseMultiplier, goldenContractMultiplier, blessingMultiplier);
         setTexts(['hud-next-bonus', 'mobile-hud-next-bonus'], `${formatNumber(nextBonus)} コイン`);
         setTexts(['hud-final-multiplier', 'mobile-hud-final-multiplier'], `x${returnMultiplier.toFixed(2)}`);
+        setText('run-status', run.status);
+        setText('run-flags', [
+            flags.insurance_active ? 'insurance' : null,
+            flags.golden_contract_active ? 'golden contract' : null,
+            flags.stairs_known ? 'stairs known' : null,
+            flags.hazards_known ? 'hazards known' : null,
+            flags.bombs_known ? 'bombs known' : null
+        ].filter(Boolean).join(' / ') || 'none');
     }
 
     function buildInventoryEntries(state) {
@@ -484,7 +468,6 @@
         const grid = state.floor.grid || [];
         const flags = state.run.inventory_state?.flags || {};
         const interactionLocked = !!state.run.inventory_state?.pending_shop
-            || !!state.run.inventory_state?.pending_thief
             || !!state.run.inventory_state?.pending_altar_reward;
         const currentX = state.run.current_x;
         const currentY = state.run.current_y;
@@ -661,63 +644,6 @@
         }
     }
 
-    function renderThiefPrompt(state) {
-        const modalEl = el('thief-modal');
-        if (!modalEl || !window.bootstrap?.Modal) return;
-
-        const run = state?.run;
-        const pending = run?.inventory_state?.pending_thief || null;
-        const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
-        if (!pending) {
-            modal.hide();
-            el('thief-held-panel')?.classList.add('d-none');
-            el('thief-modal')?.querySelector('.thief-choice-list')?.classList.remove('d-none');
-            el('thief-warning-text')?.classList.remove('d-none');
-            setText('thief-held-toggle-btn', '所持アイテム');
-            setHtml('thief-held-items', '');
-            return;
-        }
-
-        const ransom = Number(pending.ransom || 0);
-        const itemCount = Object.values(run?.inventory_state?.items || {}).reduce((total, item) => (
-            total + Math.max(Number(item?.quantity || 0), 0)
-        ), 0);
-        const currentCoins = Number(run?.run_coins || 0);
-        const canGiveItem = itemCount > 0;
-        const canPayCoin = currentCoins >= ransom;
-
-        el('thief-held-panel')?.classList.add('d-none');
-        el('thief-modal')?.querySelector('.thief-choice-list')?.classList.remove('d-none');
-        el('thief-warning-text')?.classList.remove('d-none');
-        setText('thief-held-toggle-btn', '所持アイテム');
-        setText('thief-run-coins', formatNumber(currentCoins));
-        setText('thief-item-note', canGiveItem
-            ? '所持アイテムからランダムに 1 個奪われる。'
-            : '差し出せるアイテムがない。');
-        setText('thief-coin-title', `お金を ${formatNumber(ransom)} コイン差し出す`);
-        setText('thief-coin-note', `${formatNumber(ransom)} コインを差し出す。現在 ${formatNumber(currentCoins)} コイン所持。`);
-        setText('thief-warning-text', canGiveItem || canPayCoin
-            ? '逃げるのは危険だ。慎重に選べ。'
-            : '差し出せる物がない。逃げるしかない。');
-
-        const itemBtn = el('thief-give-item-btn');
-        const coinBtn = el('thief-pay-coin-btn');
-        if (itemBtn) {
-            itemBtn.classList.toggle('is-unavailable', !canGiveItem);
-            itemBtn.dataset.available = canGiveItem ? 'true' : 'false';
-        }
-        if (coinBtn) {
-            coinBtn.classList.toggle('is-unavailable', !canPayCoin);
-            coinBtn.dataset.available = canPayCoin ? 'true' : 'false';
-        }
-
-        renderInventoryInto(el('thief-held-items'), state.run, state.catalog, state.floor);
-
-        if (!modalEl.classList.contains('show')) {
-            modal.show();
-        }
-    }
-
     function renderLogs(logs, targetId = 'adventure-log') {
         const wrap = el(targetId);
         if (!wrap) return;
@@ -849,10 +775,6 @@
         el('stairs-continue-btn')?.addEventListener('click', handlers.onContinueExplore);
         el('stairs-descend-btn')?.addEventListener('click', () => handlers.onResolveStairs('descend'));
         el('stairs-return-btn')?.addEventListener('click', () => handlers.onResolveStairs('return'));
-        el('thief-give-item-btn')?.addEventListener('click', () => handlers.onResolveThief('item'));
-        el('thief-pay-coin-btn')?.addEventListener('click', () => handlers.onResolveThief('coin'));
-        el('thief-run-btn')?.addEventListener('click', () => handlers.onResolveThief('escape'));
-        el('thief-held-toggle-btn')?.addEventListener('click', handlers.onToggleThiefHeldItems);
         el('shop-skip-btn')?.addEventListener('click', handlers.onSkipShop);
         el('shop-held-toggle-btn')?.addEventListener('click', handlers.onToggleShopHeldItems);
         el('retry-run-btn')?.addEventListener('click', handlers.onRetry);
@@ -877,7 +799,6 @@
         renderShop,
         renderStairsPrompt,
         renderAltarRewardPrompt,
-        renderThiefPrompt,
         renderLogs,
         renderResult,
         setBusy,
@@ -892,3 +813,4 @@
         bindActions
     };
 })();
+
