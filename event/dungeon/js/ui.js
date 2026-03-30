@@ -1,25 +1,5 @@
 ﻿(function () {
     const { TILE_LABELS, MANUAL_ITEM_CODES } = window.DUNGEON_CONSTANTS;
-<<<<<<< HEAD
-=======
-    const ITEM_FALLBACK_EMOJI = {
-        calamity_map: '🗺️',
-        full_scan_map: '🛰️',
-        abyss_ticket: '🕳️',
-        holy_grail: '🏆',
-        golden_contract: '📜',
-        substitute_doll: '🪆',
-        giant_cup: '🏆',
-        greedy_bag: '🎒',
-        vault_box: '📜',
-        golden_return: '🌟',
-        escape_talisman: '🏃',
-        doom_eye: '👁️',
-        collector_coffin: '⚰️',
-        underworld_wallet: '👛',
-        merchant_seal: '🪙'
-    };
->>>>>>> f4551e61db7ebd161209630406706d93ed61315c
 
     const TILE_POPUP_META = {
         '空白': { icon: '▫️', title: '空白マス' },
@@ -35,12 +15,6 @@
         '大爆発': { icon: '💥', title: '大爆発' },
         '罠': { icon: '⚠️', title: '罠' },
         '呪い': { icon: '☠️', title: '呪い' },
-<<<<<<< HEAD
-=======
-        '盗賊': { icon: '🥷', title: '盗賊' },
-        '落とし穴': { icon: '🕳️', title: '落とし穴' },
-        '転送罠': { icon: '🌀', title: '転送罠' },
->>>>>>> f4551e61db7ebd161209630406706d93ed61315c
         'ショップ': { icon: '🛒', title: 'ショップ' },
         '限定ショップ': { icon: '🏬', title: '限定ショップ' },
         '下り階段': { icon: '🪜', title: '下り階段' }
@@ -149,13 +123,6 @@
             if (stairsModalEl && window.bootstrap?.Modal) {
                 window.bootstrap.Modal.getOrCreateInstance(stairsModalEl).hide();
             }
-<<<<<<< HEAD
-=======
-            const thiefModalEl = el('thief-modal');
-            if (thiefModalEl && window.bootstrap?.Modal) {
-                window.bootstrap.Modal.getOrCreateInstance(thiefModalEl).hide();
-            }
->>>>>>> f4551e61db7ebd161209630406706d93ed61315c
             const altarModalEl = el('altar-reward-modal');
             if (altarModalEl && window.bootstrap?.Modal) {
                 window.bootstrap.Modal.getOrCreateInstance(altarModalEl).hide();
@@ -501,10 +468,6 @@
         const grid = state.floor.grid || [];
         const flags = state.run.inventory_state?.flags || {};
         const interactionLocked = !!state.run.inventory_state?.pending_shop
-<<<<<<< HEAD
-=======
-            || !!state.run.inventory_state?.pending_thief
->>>>>>> f4551e61db7ebd161209630406706d93ed61315c
             || !!state.run.inventory_state?.pending_altar_reward;
         const currentX = state.run.current_x;
         const currentY = state.run.current_y;
@@ -681,66 +644,6 @@
         }
     }
 
-<<<<<<< HEAD
-=======
-    function renderThiefPrompt(state) {
-        const modalEl = el('thief-modal');
-        if (!modalEl || !window.bootstrap?.Modal) return;
-
-        const run = state?.run;
-        const pending = run?.inventory_state?.pending_thief || null;
-        const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
-        if (!pending) {
-            modal.hide();
-            el('thief-held-panel')?.classList.add('d-none');
-            el('thief-modal')?.querySelector('.thief-choice-list')?.classList.remove('d-none');
-            el('thief-warning-text')?.classList.remove('d-none');
-            setText('thief-held-toggle-btn', '所持アイテム');
-            setHtml('thief-held-items', '');
-            return;
-        }
-
-        const ransom = Number(pending.ransom || 0);
-        const itemCount = Object.values(run?.inventory_state?.items || {}).reduce((total, item) => (
-            total + Math.max(Number(item?.quantity || 0), 0)
-        ), 0);
-        const currentCoins = Number(run?.run_coins || 0);
-        const canGiveItem = itemCount > 0;
-        const canPayCoin = currentCoins >= ransom;
-
-        el('thief-held-panel')?.classList.add('d-none');
-        el('thief-modal')?.querySelector('.thief-choice-list')?.classList.remove('d-none');
-        el('thief-warning-text')?.classList.remove('d-none');
-        setText('thief-held-toggle-btn', '所持アイテム');
-        setText('thief-run-coins', formatNumber(currentCoins));
-        setText('thief-item-note', canGiveItem
-            ? '所持アイテムからランダムに 1 個奪われる。'
-            : '差し出せるアイテムがない。');
-        setText('thief-coin-title', `お金を ${formatNumber(ransom)} コイン差し出す`);
-        setText('thief-coin-note', `${formatNumber(ransom)} コインを差し出す。現在 ${formatNumber(currentCoins)} コイン所持。`);
-        setText('thief-warning-text', canGiveItem || canPayCoin
-            ? '逃げるのは危険だ。慎重に選べ。'
-            : '差し出せる物がない。逃げるしかない。');
-
-        const itemBtn = el('thief-give-item-btn');
-        const coinBtn = el('thief-pay-coin-btn');
-        if (itemBtn) {
-            itemBtn.classList.toggle('is-unavailable', !canGiveItem);
-            itemBtn.dataset.available = canGiveItem ? 'true' : 'false';
-        }
-        if (coinBtn) {
-            coinBtn.classList.toggle('is-unavailable', !canPayCoin);
-            coinBtn.dataset.available = canPayCoin ? 'true' : 'false';
-        }
-
-        renderInventoryInto(el('thief-held-items'), state);
-
-        if (!modalEl.classList.contains('show')) {
-            modal.show();
-        }
-    }
-
->>>>>>> f4551e61db7ebd161209630406706d93ed61315c
     function renderLogs(logs, targetId = 'adventure-log') {
         const wrap = el(targetId);
         if (!wrap) return;
@@ -900,10 +803,6 @@
         renderShop,
         renderStairsPrompt,
         renderAltarRewardPrompt,
-<<<<<<< HEAD
-=======
-        renderThiefPrompt,
->>>>>>> f4551e61db7ebd161209630406706d93ed61315c
         renderLogs,
         renderResult,
         setBusy,

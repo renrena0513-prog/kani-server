@@ -1,0 +1,15 @@
+supabase-config.js:1 Uncaught SyntaxError: Unexpected token '<<'
+constants.js:29 Uncaught SyntaxError: Unexpected token '<<'
+api.js:2 Uncaught TypeError: Cannot destructure property 'LOG_LIMIT' of 'window.DUNGEON_CONSTANTS' as it is undefined.
+    at api.js:2:13
+    at api.js:148:3
+ui.js:3 Uncaught SyntaxError: Unexpected token '<<'
+game.js:2 Uncaught TypeError: Cannot destructure property 'DIRECTIONS' of 'window.DUNGEON_CONSTANTS' as it is undefined.
+    at game.js:2:13
+    at game.js:440:3
+auth-guard.js:17 Uncaught (in promise) ReferenceError: supabaseClient is not defined
+    at auth-guard.js:17:35
+    at auth-guard.js:215:3
+index.html:1 Blocked aria-hidden on an element because its descendant retained focus. The focus must not be hidden from assistive technology users. Avoid using aria-hidden on a focused element or its ancestor. Consider using the inert attribute instead, which will also prevent focus. For more details, see the aria-hidden section of the WAI-ARIA specification at https://w3c.github.io/aria/#aria-hidden.
+Element with focus: <button.btn-close btn-close-white>
+Ancestor with aria-hidden: <div.modal fade#prep-shop-modal> <div class=​"modal fade" id=​"prep-shop-modal" tabindex=​"-1" style=​"display:​ block;​" aria-hidden=​"true">​…​</div>​
