@@ -545,10 +545,15 @@
     }
 
     async function loadTeamsForJoin() {
-        const { data: teams } = await supabaseClient.from('poker_teams').select('id, team_name');
+        const { data: teams } = await supabaseClient.from('poker_teams').select('id, team_name, icon_url');
         const el = document.getElementById('team-list-for-join');
         if (!teams || teams.length === 0) { el.innerHTML = '<p class="text-muted">チームがありません</p>'; return; }
-        el.innerHTML = teams.map(t => `<div class="team-list-item" onclick="selectJoinTeam('${t.id}', this)"><span>🏅 ${t.team_name}</span></div>`).join('');
+        el.innerHTML = teams.map(t => {
+            const iconHtml = t.icon_url
+                ? `<img src="${t.icon_url}" style="width:28px;height:28px;object-fit:contain;border-radius:5px;margin-right:8px;flex-shrink:0;">`
+                : `<span style="margin-right:8px;">🏅</span>`;
+            return `<div class="team-list-item" onclick="selectJoinTeam('${t.id}', this)">${iconHtml}<span>${t.team_name}</span></div>`;
+        }).join('');
     }
 
     function selectJoinTeam(id, el) {

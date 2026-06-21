@@ -346,6 +346,7 @@
     let allResults = [];
     let profileMap = {};
     let allTeamNames = new Set();
+    let teamIconMap = {};
     let currentTour = 'all';
     let currentMode = 'individual';
     let currentSub  = 'score';
@@ -369,8 +370,10 @@
             (profiles || []).forEach(p => { profileMap[p.discord_user_id] = p; });
         }
 
-        const { data: teams } = await supabaseClient.from('poker_teams').select('id,team_name');
+        const { data: teams } = await supabaseClient.from('poker_teams').select('id,team_name,icon_url');
         allTeamNames = new Set((teams || []).map(t => t.team_name));
+        teamIconMap = {};
+        (teams || []).forEach(t => { if (t.icon_url) teamIconMap[t.team_name] = t.icon_url; });
 
         buildTourFilter();
 
@@ -541,10 +544,14 @@
                 const s = t.score;
                 const cls = i < 3 ? RCLS[i] : 'rn';
                 const med = i < 3 ? MEDALS[i] : `<span style="font-size:1.1rem;color:rgba(255,255,255,.3);">${i+1}</span>`;
+                const iconHtml = teamIconMap[t.name]
+                    ? `<img src="${teamIconMap[t.name]}" style="width:32px;height:32px;object-fit:contain;border-radius:6px;margin-right:10px;flex-shrink:0;">`
+                    : `<span style="margin-right:10px;font-size:1.4rem;">🏅</span>`;
                 return `<div class="team-row ${cls}">
                     <span class="team-medal">${med}</span>
+                    ${iconHtml}
                     <div class="team-info">
-                        <div class="team-name-text">🏅 ${t.name}</div>
+                        <div class="team-name-text">${t.name}</div>
                         <div class="team-meta">${t.count}試合</div>
                     </div>
                     <div>
