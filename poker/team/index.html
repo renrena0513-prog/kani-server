@@ -650,7 +650,7 @@
     // --- チームアイコン ---
     let iconFileSelected = null;
 
-    document.getElementById('iconModal').addEventListener('show.bs.modal', () => {
+    document.getElementById('iconModal').addEventListener('show.bs.modal', async () => {
         document.getElementById('icon-badge-name').value = '';
         document.getElementById('icon-badge-desc').value = '';
         document.getElementById('icon-file-error').style.display = 'none';
@@ -662,6 +662,24 @@
         prompt.style.display = ''; fname.style.display = 'none';
         document.getElementById('icon-file-input').value = '';
         document.getElementById('remove-icon-btn').style.display = myTeam.icon_url ? '' : 'none';
+
+        // 既存バッジがあれば名前・説明・画像を表示
+        if (myTeam.logo_badge_id) {
+            const { data: badge } = await supabaseClient.from('badges')
+                .select('name, description, image_url').eq('id', myTeam.logo_badge_id).maybeSingle();
+            if (badge) {
+                // 【】を除いた名前を表示
+                document.getElementById('icon-badge-name').value = badge.name.replace(/^【(.*)】$/, '$1');
+                document.getElementById('icon-badge-desc').value = badge.description || '';
+                if (badge.image_url) {
+                    preview.src = badge.image_url;
+                    preview.style.display = '';
+                    prompt.style.display = 'none';
+                    fname.textContent = '現在のアイコン（変更する場合は新しい画像を選択）';
+                    fname.style.display = '';
+                }
+            }
+        }
     });
 
     function onIconFileSelect(event) {
