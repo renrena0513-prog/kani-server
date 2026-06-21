@@ -64,7 +64,7 @@ async function fetchProfiles() {
 async function fetchTeams() {
     const { data, error } = await supabaseClient
         .from('poker_teams')
-        .select('id, team_name')
+        .select('id, team_name, icon_url')
         .order('team_name');
     if (!error) allTeams = data || [];
 }
@@ -400,17 +400,24 @@ function showTeamDropdown(idx) {
 function renderTeamDropdownItems(idx) {
     const list = document.getElementById(`team-dropdown-list-${idx}`);
     let html = `<div class="dropdown-item-flex" onclick="clearTeam(${idx})"><span class="small text-muted">選択解除</span></div>`;
-    html += allTeams.map(t =>
-        `<div class="dropdown-item-flex" onclick="selectTeam(${idx}, '${t.id}', '${t.team_name.replace(/'/g, "\\'")}')">
-            <span style="margin-right:8px;">🏅</span><span class="small">${t.team_name}</span></div>`
-    ).join('');
+    html += allTeams.map(t => {
+        const iconHtml = t.icon_url
+            ? `<img src="${t.icon_url}" style="width:20px;height:20px;object-fit:contain;border-radius:4px;margin-right:8px;">`
+            : `<span style="margin-right:8px;">🏅</span>`;
+        return `<div class="dropdown-item-flex" onclick="selectTeam(${idx}, '${t.id}', '${t.team_name.replace(/'/g, "\\'")}')">
+            ${iconHtml}<span class="small">${t.team_name}</span></div>`;
+    }).join('');
     list.innerHTML = html;
 }
 
 function applyTeam(idx, teamId, teamName) {
     document.getElementById(`player-team-input-${idx}`).value = teamId;
     const display = document.getElementById(`selected-team-display-${idx}`);
-    display.innerHTML = `🏅 <span style="font-weight:bold;">${teamName}</span>`;
+    const team = allTeams.find(t => t.id === teamId);
+    const iconHtml = team?.icon_url
+        ? `<img src="${team.icon_url}" style="width:20px;height:20px;object-fit:contain;border-radius:4px;margin-right:6px;">`
+        : `🏅 `;
+    display.innerHTML = `${iconHtml}<span style="font-weight:bold;">${teamName}</span>`;
 }
 
 function selectTeam(idx, teamId, teamName) {

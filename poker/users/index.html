@@ -95,7 +95,7 @@
             // ポーカー専用チーム取得
             const { data: teams } = await supabaseClient
                 .from('poker_teams')
-                .select('id, team_name, creator_discord_id')
+                .select('id, team_name, creator_discord_id, icon_url')
                 .order('team_name');
 
             // ポーカープロフィール取得（チーム所属情報）
@@ -171,7 +171,9 @@
                 <h2 class="accordion-header">
                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}">
                         <div class="d-flex align-items-center">
-                            <span class="team-icon">🏅</span>
+                            ${team.icon_url
+                                ? `<img src="${team.icon_url}" alt="" class="team-icon" style="width:36px;height:36px;object-fit:contain;border-radius:6px;">`
+                                : `<span class="team-icon">🏅</span>`}
                             <span class="fw-bold fs-5">${team.team_name}</span>
                             <span class="badge bg-secondary ms-3 rounded-pill">${members.length}名</span>
                         </div>

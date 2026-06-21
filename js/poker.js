@@ -1,6 +1,7 @@
 // ポーカーランキングページ
 let allPokerRecords = [];
 let allProfiles = [];
+let teamIconMap = {}; // team_name -> icon_url
 let currentTournament = 'all';
 let currentMainFilter = 'individual';
 let currentSubFilter = 'all';
@@ -31,6 +32,11 @@ async function fetchData() {
             .from('profiles')
             .select('*, is_hidden, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name)');
         allProfiles = (profiles || []).filter(p => !p.is_hidden);
+
+        const { data: teamsData } = await supabaseClient
+            .from('poker_teams').select('team_name, icon_url');
+        teamIconMap = {};
+        (teamsData || []).forEach(t => { if (t.icon_url) teamIconMap[t.team_name] = t.icon_url; });
 
         renderTournamentButtons();
         renderMainFilters();
@@ -333,7 +339,7 @@ function renderPodium(top3, type, summary, summaryOld, formatDelta, getVal) {
         const crown = rank === 1 ? '<div class="podium-crown">👑</div>' : '';
         const profile = getProfileForSummary(s);
         const displayName = profile?.account_name || s.nickname || 'Unknown';
-        const avatarUrl = profile?.avatar_url || '';
+        const avatarUrl = s.isTeam ? (teamIconMap[s.key] || '') : (profile?.avatar_url || '');
         const canLink = !s.isTeam && (profile?.discord_user_id || s.discord_user_id);
         const linkDiscordId = s.discord_user_id || profile?.discord_user_id;
         const linkUrl = canLink ? `../mypage/index.html?user=${linkDiscordId}` : '#';
@@ -343,6 +349,7 @@ function renderPodium(top3, type, summary, summaryOld, formatDelta, getVal) {
         const deltaValue = getVal(s, type) - getVal(summaryOld[s.key], type);
         const delta = formatDelta(deltaValue, type);
         const anchorId = s.isTeam ? `rank-team-${encodeURIComponent(s.key)}` : `rank-player-${s.discord_user_id || 'unknown'}`;
+        const teamIconStyle = 'width:64px;height:64px;object-fit:contain;border-radius:8px;';
 
         return `
             <div class="col-12" id="${anchorId}">
@@ -355,9 +362,9 @@ function renderPodium(top3, type, summary, summaryOld, formatDelta, getVal) {
                         <a href="${linkUrl}" class="text-decoration-none podium-player-info ${linkClass}">
                             <div class="podium-avatar-wrapper">
                                 <div style="width:64px;height:64px;" class="flex-shrink-0 d-flex align-items-center justify-content-center">
-                                    ${avatarUrl
-                                        ? `<img src="${avatarUrl}" alt="${displayName}" class="podium-avatar">`
-                                        : `<img src="https://cdn.discordapp.com/embed/avatars/0.png" class="podium-avatar">`}
+                                    ${s.isTeam
+                                        ? (avatarUrl ? `<img src="${avatarUrl}" alt="${displayName}" style="${teamIconStyle}">` : `<span style="font-size:2rem;">🏅</span>`)
+                                        : (avatarUrl ? `<img src="${avatarUrl}" alt="${displayName}" class="podium-avatar">` : `<img src="https://cdn.discordapp.com/embed/avatars/0.png" class="podium-avatar">`)}
                                 </div>
                             </div>
                             <div class="podium-identity-row">
@@ -392,7 +399,7 @@ function renderRows(list, type, summary, summaryOld, formatDelta, getVal, offset
         const rankValue = offset === -1 ? '-' : (idx + 1 + offset);
         const profile = getProfileForSummary(s);
         const displayName = profile?.account_name || s.nickname || 'Unknown';
-        const avatarUrl = profile?.avatar_url || '';
+        const avatarUrl = s.isTeam ? (teamIconMap[s.key] || '') : (profile?.avatar_url || '');
         const canLink = !s.isTeam && (profile?.discord_user_id || s.discord_user_id);
         const linkDiscordId = s.discord_user_id || profile?.discord_user_id;
         const linkUrl = canLink ? `../mypage/index.html?user=${linkDiscordId}` : '#';
@@ -408,7 +415,9 @@ function renderRows(list, type, summary, summaryOld, formatDelta, getVal, offset
                 <td class="ps-4 text-start">
                     <a href="${linkUrl}" class="text-decoration-none d-flex align-items-center justify-content-start gap-2 ${linkClass}">
                         <div style="width:32px;height:32px;" class="flex-shrink-0 d-flex align-items-center justify-content-center">
-                            ${avatarUrl ? `<img src="${avatarUrl}" alt="${displayName}" class="rounded-circle" style="width:32px;height:32px;object-fit:cover;">` : ''}
+                            ${s.isTeam
+                                ? (avatarUrl ? `<img src="${avatarUrl}" alt="${displayName}" style="width:32px;height:32px;object-fit:contain;border-radius:6px;">` : `<span style="font-size:1.4rem;">🏅</span>`)
+                                : (avatarUrl ? `<img src="${avatarUrl}" alt="${displayName}" class="rounded-circle" style="width:32px;height:32px;object-fit:cover;">` : '')}
                         </div>
                         <span class="${canLink ? 'hover-underline' : ''} fw-bold">${displayName}</span>
                     </a>
