@@ -562,15 +562,19 @@ async function submitScores() {
         submitted_by_discord_user_id: submittedBy
     }));
 
-    // デイリーボーナスチェック（挿入前に本日初記録かを確認）
+    // デイリーボーナスチェック（挿入前に各プレイヤーの本日初参加を確認）
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
-    const { count: todayCount } = await supabaseClient
-        .from('poker_results')
-        .select('id', { count: 'exact', head: true })
-        .eq('submitted_by_discord_user_id', submittedBy)
-        .gte('event_datetime', todayStart.toISOString());
-    const isFirstRecordToday = (todayCount === 0);
+    const playerIds = dataToInsert.map(p => p.discord_user_id).filter(Boolean);
+    const firstTimeTodaySet = new Set();
+    for (const pid of playerIds) {
+        const { count } = await supabaseClient
+            .from('poker_results')
+            .select('id', { count: 'exact', head: true })
+            .eq('discord_user_id', pid)
+            .gte('event_datetime', todayStart.toISOString());
+        if (count === 0) firstTimeTodaySet.add(pid);
+    }
 
     document.getElementById('loading-overlay').style.display = 'flex';
 
@@ -628,33 +632,32 @@ async function submitScores() {
             }
         }
 
-        // デイリーボーナス付与（本日初記録なら参加プレイヤー全員に+10,000コイン）
-        let dailyBonusAwarded = false;
-        if (isFirstRecordToday) {
-            for (const player of dataToInsert) {
-                if (!player.discord_user_id) continue;
-                try {
-                    const { data: prof } = await supabaseClient
-                        .from('profiles').select('coins, total_assets')
-                        .eq('discord_user_id', player.discord_user_id).single();
-                    await supabaseClient.from('profiles').update({
-                        coins: (prof?.coins || 0) + 10000,
-                        total_assets: (prof?.total_assets || 0) + 10000
-                    }).eq('discord_user_id', player.discord_user_id);
-                    await logActivity(player.discord_user_id, 'poker', {
-                        amount: 10000,
-                        matchId: matchId,
-                        details: { note: '初記録デイリーボーナス' }
-                    });
-                } catch (err) {
-                    console.error(`デイリーボーナスエラー (${player.account_name}):`, err);
-                }
+        // デイリーボーナス付与（各プレイヤーの本日初参加なら+10,000コイン）
+        const bonusReceivers = [];
+        for (const player of dataToInsert) {
+            if (!player.discord_user_id) continue;
+            if (!firstTimeTodaySet.has(player.discord_user_id)) continue;
+            try {
+                const { data: prof } = await supabaseClient
+                    .from('profiles').select('coins, total_assets')
+                    .eq('discord_user_id', player.discord_user_id).single();
+                await supabaseClient.from('profiles').update({
+                    coins: (prof?.coins || 0) + 10000,
+                    total_assets: (prof?.total_assets || 0) + 10000
+                }).eq('discord_user_id', player.discord_user_id);
+                await logActivity(player.discord_user_id, 'poker', {
+                    amount: 10000,
+                    matchId: matchId,
+                    details: { note: '初参加デイリーボーナス' }
+                });
+                bonusReceivers.push(player.account_name);
+            } catch (err) {
+                console.error(`デイリーボーナスエラー (${player.account_name}):`, err);
             }
-            dailyBonusAwarded = true;
         }
 
-        await sendDiscordNotification(dataToInsert, playerCount, dailyBonusAwarded);
-        const bonusMsg = dailyBonusAwarded ? '　🎁 本日初記録ボーナス +10,000コイン（全員）！' : '';
+        await sendDiscordNotification(dataToInsert, playerCount, bonusReceivers);
+        const bonusMsg = bonusReceivers.length > 0 ? `　🎁 初参加ボーナス +10,000コイン: ${bonusReceivers.join('、')}` : '';
         showNotice('スコアを送信しました！コインが各プレイヤーに付与されました。' + bonusMsg, 'success');
         clearFormAfterSubmit();
         resetBtn();
@@ -670,7 +673,7 @@ function clearFormAfterSubmit() {
     // 送信後もフォームの選択状態を保持する（何もしない）
 }
 
-async function sendDiscordNotification(matchData, playerCount, dailyBonusAwarded = false) {
+async function sendDiscordNotification(matchData, playerCount, bonusReceivers = []) {
     if (!matchData || matchData.length === 0) return;
     if (typeof DISCORD_WEBHOOK_URL === 'undefined' || !DISCORD_WEBHOOK_URL) return;
 
@@ -698,10 +701,10 @@ async function sendDiscordNotification(matchData, playerCount, dailyBonusAwarded
         : '不明';
 
     const fields = [...rankFields];
-    if (dailyBonusAwarded) {
+    if (bonusReceivers.length > 0) {
         fields.push({
-            name: '🎁 本日初記録ボーナス',
-            value: `参加者全員に **+10,000 コイン** 付与！`,
+            name: '🎁 本日初参加ボーナス +10,000コイン',
+            value: bonusReceivers.join('、'),
             inline: false
         });
     }
