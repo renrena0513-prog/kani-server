@@ -728,6 +728,9 @@
                 <div class="jp-scroll-outer" id="jp-scroll-outer">
                     <div class="jp-rod"></div>
                     <div class="jp-scroll-paper" id="jp-scroll-paper">
+                        <div id="fortune-badge-wrap" style="display:none; margin-bottom:10px; opacity:0; transition: opacity .5s ease .6s;">
+                            <img id="fortune-badge-img" src="" alt="" style="width:110px;height:110px;object-fit:contain;filter:drop-shadow(0 0 18px rgba(212,168,83,.8)) drop-shadow(0 0 40px rgba(212,168,83,.4));">
+                        </div>
                         <span id="fortune-rank" class="jp-rank-text"></span>
                         <div id="fortune-reward" class="jp-reward-text"></div>
                         <div id="streak-bonus-line" class="jp-reward-text" style="font-size:.85rem;margin-top:2px;"></div>
@@ -1147,12 +1150,31 @@
 
                 document.getElementById('fortune-rank').textContent = selected.rank;
 
+                // Fetch badge info if needed
+                let badgeInfo = null;
+                if (selected.badge_id) {
+                    const { data: bd } = await supabaseClient.from('badges')
+                        .select('name,image_url').eq('id', selected.badge_id).single();
+                    badgeInfo = bd;
+                }
+
                 let rewardHtml = '';
                 if (coinReward !== 0) rewardHtml += `<span style="color:${coinReward>0?'#27ae60':'#e74c3c'}">🪙 ${coinReward>=0?'+':''}${coinReward.toLocaleString()}</span> `;
                 if (ticketReward !== 0) rewardHtml += `<span style="color:#d4a574">🎫 ${ticketReward>=0?'+':''}${ticketReward}枚</span>`;
                 if (manganReward !== 0) rewardHtml += ` <span style="color:#d4a574">🧧 ${manganReward>=0?'+':''}${manganReward}枚</span>`;
+                if (badgeInfo) rewardHtml += `<span style="color:#d4a853">🎖 隠しバッジ「${badgeInfo.name}」獲得！</span>`;
 
                 document.getElementById('fortune-reward').innerHTML = rewardHtml || '<span style="color:#999">報酬なし</span>';
+
+                // Show badge image
+                const badgeWrap = document.getElementById('fortune-badge-wrap');
+                if (badgeInfo?.image_url) {
+                    document.getElementById('fortune-badge-img').src = badgeInfo.image_url;
+                    badgeWrap.style.display = 'block';
+                    requestAnimationFrame(() => { badgeWrap.style.opacity = '1'; });
+                } else {
+                    badgeWrap.style.display = 'none';
+                }
                 const streakLabel = newStreak >= 10
                     ? `🔥 連続10日MAX ＋${streakBonus.toLocaleString()}コイン`
                     : `🔥 連続${newStreak}日ボーナス ＋${streakBonus.toLocaleString()}コイン`;
