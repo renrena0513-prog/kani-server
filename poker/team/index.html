@@ -203,7 +203,7 @@
                     <textarea class="form-control" id="icon-badge-desc" rows="2" placeholder="バッジの説明文"></textarea>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label fw-bold">画像 <span class="text-danger">*</span> <span class="text-muted small">（100KB以内、PNG/JPG/GIF/WebP）</span></label>
+                    <label class="form-label fw-bold">画像 <span class="text-danger">*</span> <span class="text-muted small">（WebPのみ・100KB以内）</span></label>
                     <div class="icon-upload-box" id="icon-upload-box" onclick="document.getElementById('icon-file-input').click()">
                         <div id="icon-upload-prompt">
                             <div style="font-size:2rem;">🖼️</div>
@@ -212,7 +212,7 @@
                         <img id="icon-preview-img" class="icon-preview-img" alt="プレビュー">
                         <div id="icon-file-name" class="text-muted small mt-1" style="display:none;"></div>
                     </div>
-                    <input type="file" id="icon-file-input" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none;" onchange="onIconFileSelect(event)">
+                    <input type="file" id="icon-file-input" accept="image/webp" style="display:none;" onchange="onIconFileSelect(event)">
                     <div id="icon-file-error" class="text-danger small mt-1" style="display:none;"></div>
                 </div>
             </div>
@@ -715,8 +715,14 @@
         const errEl = document.getElementById('icon-file-error');
         errEl.style.display = 'none';
         if (!file) return;
+        if (file.type !== 'image/webp') {
+            errEl.textContent = 'WebP形式の画像のみアップロード可能です。';
+            errEl.style.display = '';
+            event.target.value = '';
+            return;
+        }
         if (file.size > 100 * 1024) {
-            errEl.textContent = `ファイルサイズが大きすぎます（${(file.size/1024).toFixed(1)}KB）。100KB以内にしてください。`;
+            errEl.textContent = `ファイルサイズは100KB以内にしてください（現在: ${(file.size/1024).toFixed(1)}KB）。`;
             errEl.style.display = '';
             event.target.value = '';
             return;
