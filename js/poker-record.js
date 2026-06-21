@@ -151,11 +151,12 @@ function refreshRankBadges() {
     });
 }
 
-/** ドラッグ＆ドロップによる行並び替え */
+/** ドラッグ＆ドロップ + タッチによる行並び替え */
 function initDragSort() {
     const container = document.getElementById('players-container');
     if (!container) return;
 
+    // ── デスクトップ: HTML5 drag ──
     let dragSrc = null;
 
     container.querySelectorAll('.player-entry').forEach(row => {
@@ -167,35 +168,95 @@ function initDragSort() {
             e.dataTransfer.effectAllowed = 'move';
         });
         row.addEventListener('dragend', () => {
-            dragSrc.style.opacity = '';
+            if (dragSrc) dragSrc.style.opacity = '';
+            dragSrc = null;
             container.querySelectorAll('.player-entry').forEach(r => r.classList.remove('drag-over'));
             refreshRankBadges();
         });
-        row.addEventListener('dragover', e => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-        });
-        row.addEventListener('dragenter', e => {
-            e.preventDefault();
-            if (row !== dragSrc) row.classList.add('drag-over');
-        });
+        row.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; });
+        row.addEventListener('dragenter', e => { e.preventDefault(); if (row !== dragSrc) row.classList.add('drag-over'); });
         row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
         row.addEventListener('drop', e => {
             e.stopPropagation();
-            if (dragSrc !== row) {
-                // 入れ替え位置を判定してinsertBefore
+            if (dragSrc && dragSrc !== row) {
                 const rows = [...container.querySelectorAll('.player-entry')];
                 const srcIdx = rows.indexOf(dragSrc);
                 const dstIdx = rows.indexOf(row);
-                if (srcIdx < dstIdx) {
-                    container.insertBefore(dragSrc, row.nextSibling);
-                } else {
-                    container.insertBefore(dragSrc, row);
-                }
+                container.insertBefore(dragSrc, srcIdx < dstIdx ? row.nextSibling : row);
             }
             row.classList.remove('drag-over');
         });
     });
+
+    // ── モバイル: Touch ──
+    let touchSrc = null;
+    let touchClone = null;
+    let touchOffX = 0, touchOffY = 0;
+
+    container.querySelectorAll('.player-entry').forEach(row => {
+        row.addEventListener('touchstart', e => {
+            // ✕ボタンやドロップダウン操作は除外
+            if (e.target.closest('.btn-clear, .custom-dropdown-container, input, select')) return;
+
+            touchSrc = row;
+            const touch = e.touches[0];
+            const rect = row.getBoundingClientRect();
+            touchOffX = touch.clientX - rect.left;
+            touchOffY = touch.clientY - rect.top;
+
+            // クローン（幽霊）を作成
+            touchClone = row.cloneNode(true);
+            touchClone.style.cssText = `
+                position:fixed; z-index:9999; pointer-events:none; opacity:0.85;
+                width:${rect.width}px; left:${rect.left}px; top:${rect.top}px;
+                border-radius:10px; background:white;
+                box-shadow:0 8px 24px rgba(0,0,0,0.25);
+            `;
+            document.body.appendChild(touchClone);
+            row.style.opacity = '0.3';
+        }, { passive: true });
+
+        row.addEventListener('touchmove', e => {
+            if (!touchSrc || !touchClone) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            touchClone.style.left = (touch.clientX - touchOffX) + 'px';
+            touchClone.style.top  = (touch.clientY - touchOffY) + 'px';
+
+            // どの行の上にいるか判定してハイライト
+            container.querySelectorAll('.player-entry').forEach(r => r.classList.remove('drag-over'));
+            const target = rowAtPoint(container, touch.clientX, touch.clientY);
+            if (target && target !== touchSrc) target.classList.add('drag-over');
+        }, { passive: false });
+
+        row.addEventListener('touchend', e => {
+            if (!touchSrc || !touchClone) return;
+            const touch = e.changedTouches[0];
+            touchClone.remove();
+            touchClone = null;
+            touchSrc.style.opacity = '';
+
+            const target = rowAtPoint(container, touch.clientX, touch.clientY);
+            if (target && target !== touchSrc) {
+                const rows = [...container.querySelectorAll('.player-entry')];
+                const srcIdx = rows.indexOf(touchSrc);
+                const dstIdx = rows.indexOf(target);
+                container.insertBefore(touchSrc, srcIdx < dstIdx ? target.nextSibling : target);
+            }
+            container.querySelectorAll('.player-entry').forEach(r => r.classList.remove('drag-over'));
+            touchSrc = null;
+            refreshRankBadges();
+        });
+    });
+}
+
+/** 座標からcontainer内のplayer-entry行を返す */
+function rowAtPoint(container, x, y) {
+    for (const row of container.querySelectorAll('.player-entry')) {
+        const r = row.getBoundingClientRect();
+        if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return row;
+    }
+    return null;
 }
 
 function getFilteredProfiles(idx) {
