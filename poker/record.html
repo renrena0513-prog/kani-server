@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>スコア記録 | ポーカー大会</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../styles.css">
+    <style>
+        :root {
+            --primary-blue: #1a4d8c;
+            --deep-blue: #0d2f5c;
+            --cream: #faf5e8;
+            --gold: #d4a853;
+            --font-title: 'Noto Serif JP', serif;
+            --font-body: 'M PLUS Rounded 1c', sans-serif;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: var(--font-body); background: linear-gradient(135deg, #0d2f5c 0%, #1a4d8c 50%, #153d70 100%); min-height: 100vh; background-attachment: fixed; color: #333; padding: 20px; }
+        .page-header { font-family: var(--font-title); color: white; text-shadow: 2px 4px 12px rgba(0,0,0,0.3); margin-bottom: 2.5rem; font-size: 2.8rem; letter-spacing: 2px; }
+        .form-card { background: white; border-radius: 24px; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); margin-bottom: 25px; max-width: 1200px; margin-left: auto; margin-right: auto; }
+        .form-card h3 { color: var(--deep-blue); font-size: 1.3rem; margin-bottom: 25px; font-weight: 700; padding-bottom: 15px; border-bottom: 3px solid var(--gold); }
+        .form-card label { color: #555; font-size: 0.85rem; font-weight: 600; margin-bottom: 8px; display: block; }
+        .form-card .form-control, .form-card .form-select { background: #f8f9fa; border: 2px solid #e9ecef; border-radius: 12px; padding: 12px 16px; transition: all 0.3s; font-size: 0.95rem; }
+        .form-card .form-control:focus, .form-card .form-select:focus { background: white; border-color: var(--primary-blue); box-shadow: 0 0 0 4px rgba(26,77,140,0.1); }
+        /* Notice modal */
+        #notice-modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.45); z-index: 10050; }
+        #notice-modal.active { display: flex; }
+        .notice-dialog { width: min(92vw, 420px); background: #fff; border-radius: 16px; padding: 18px 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.25); }
+        .notice-title { font-weight: 700; margin-bottom: 8px; }
+        .notice-message { color: #333; font-size: 0.95rem; line-height: 1.5; margin-bottom: 14px; }
+        .notice-actions { display: flex; justify-content: flex-end; }
+        .notice-actions .btn { min-width: 96px; }
+        .notice-dialog.success .notice-title { color: #2e7d32; }
+        .notice-dialog.warning .notice-title { color: #b26a00; }
+        .notice-dialog.error .notice-title { color: #b3261e; }
+        /* プレイヤーカード */
+        .player-entry { padding: 20px 0; border-bottom: 1px solid #eee; }
+        .player-entry:last-child { border-bottom: none; }
+        .player-row { flex-wrap: nowrap; }
+        .account-col { flex: 1 1 0; min-width: 100px; }
+        .rebuy-col { flex: 0 0 15%; max-width: 15%; }
+        @media (max-width: 768px) {
+            .player-row { flex-wrap: wrap; }
+            .account-col { flex: 0 0 100%; max-width: 100%; margin-bottom: 10px; }
+            .rebuy-col { flex: 0 0 45%; max-width: 45%; }
+            .team-col { flex: 0 0 100%; max-width: 100%; margin-bottom: 10px; }
+        }
+        .player-entry label { color: #666; font-size: 0.8rem; font-weight: 600; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .player-entry .form-control { background: #f8f9fa; border: 2px solid #dee2e6; border-radius: 10px; padding: 10px 14px; }
+        .player-entry .form-control:focus { background: white; border-color: var(--primary-blue); box-shadow: 0 0 0 3px rgba(26,77,140,0.1); }
+        /* カスタムドロップダウン */
+        .custom-dropdown-container { position: relative; }
+        .custom-dropdown-list { position: absolute; top: calc(100% + 8px); left: 0; right: 0; background: white; border: 2px solid #e9ecef; border-radius: 12px; max-height: 400px; overflow-y: auto; z-index: 2000; display: none; box-shadow: 0 10px 40px rgba(0,0,0,0.15); }
+        .dropdown-item-flex { display: flex; align-items: center; padding: 12px 16px; cursor: pointer; transition: all 0.2s; border-bottom: 1px solid #f1f3f5; }
+        .dropdown-item-flex:last-child { border-bottom: none; }
+        .dropdown-item-flex:hover { background: linear-gradient(to right, #f8f9fa, #e9ecef); }
+        .dropdown-avatar { width: 32px; height: 32px; border-radius: 50%; margin-right: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); border: 2px solid white; }
+        /* 選択済みプレイヤー */
+        .selected-player-badge { display: none; align-items: center; gap: 6px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border: 2px solid #dee2e6; border-radius: 12px; padding: 8px 14px; height: 44px; }
+        .selected-player-badge .badge-avatar { width: 28px; height: 28px; border-radius: 50%; border: 2px solid white; flex-shrink: 0; }
+        .selected-player-badge .name { font-size: 0.95rem; font-weight: 600; color: #333; margin: 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .btn-clear { padding: 0 8px; cursor: pointer; color: #adb5bd; font-size: 1.4rem; transition: all 0.2s; flex-shrink: 0; margin-left: auto; }
+        .btn-clear:hover { color: #dc3545; }
+        .rank-badge { display: flex; align-items: center; justify-content: center; height: 38px; }
+        /* 送信ボタン */
+        .btn-submit { background: linear-gradient(135deg, var(--gold) 0%, #b8892d 100%); border: none; padding: 18px 60px; font-size: 1.15rem; font-weight: 700; border-radius: 50px; color: white; box-shadow: 0 8px 25px rgba(212,168,83,0.4); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); letter-spacing: 1px; }
+        .btn-submit:hover { transform: translateY(-3px); box-shadow: 0 12px 35px rgba(212,168,83,0.5); }
+        /* ナビ */
+        .nav-dropdown { position: fixed; top: 20px; right: 20px; z-index: 1000; }
+        .notification-badge { background: #dc3545; color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 10px; margin-left: auto; }
+        /* スコア表 */
+        .score-table { width: 100%; border-collapse: collapse; }
+        .score-table th { background: var(--deep-blue); color: white; padding: 8px 12px; text-align: left; font-size: 0.85rem; }
+        .score-table td { padding: 8px 12px; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+        .score-table tr:last-child td { border-bottom: none; }
+    </style>
+</head>
+<body>
+    <!-- 右上ナビゲーション -->
+    <div class="nav-dropdown dropdown" style="position:fixed;top:20px;right:20px;z-index:1000;">
+        <button class="btn dropdown-toggle" type="button" id="navDropdown" data-bs-toggle="dropdown" aria-expanded="false"
+            style="background:linear-gradient(135deg,var(--gold) 0%,#b8892d 100%);color:white;padding:12px 24px;border-radius:25px;font-weight:bold;">
+            📝 メニュー
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navDropdown">
+            <li><a class="dropdown-item" href="../index.html">🏠 ホームに戻る</a></li>
+            <li><a class="dropdown-item" href="../mypage/index.html">👤 マイページ</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="./index.html">🃏 ランキング</a></li>
+            <li><a class="dropdown-item" href="./record.html">📝 記録する</a></li>
+            <li><a class="dropdown-item" href="./users/index.html">👥 ユーザー一覧</a></li>
+            <li><a class="dropdown-item" href="./team/index.html">🏅 チーム管理
+                <span id="team-notification-badge" class="notification-badge" style="display:none;">0</span></a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="../badge/list.html">📛 バッジ一覧</a></li>
+            <li><a class="dropdown-item" href="../badge/shop.html">🛒 バッジショップ</a></li>
+            <li><a class="dropdown-item" href="../ranking/index.html">💰 資産ランキング</a></li>
+            <li class="admin-only" style="display:none;"><hr class="dropdown-divider"></li>
+            <li class="admin-only" style="display:none;"><a class="dropdown-item" href="../admin/index.html">⚙️ 管理画面</a></li>
+        </ul>
+    </div>
+
+    <div class="container py-5" style="padding-top:80px!important;max-width:1200px;">
+        <header class="text-center">
+            <h1 class="page-header fw-bold">📝 スコア記録</h1>
+        </header>
+
+        <!-- 試合情報 -->
+        <div class="form-card">
+            <h3>🎯 試合情報</h3>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">大会名</label>
+                    <select id="form-tournament" class="form-select">
+                        <option value="第一回ポーカー大会">第一回ポーカー大会</option>
+                        <option value="期間外">期間外</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">試合形式</label>
+                    <select id="form-match" class="form-select" onchange="changeMatchMode()">
+                        <option value="個人戦">個人戦</option>
+                        <option value="チーム戦">チーム戦</option>
+                        <option value="個人戦（期間外）">個人戦（期間外）</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">参加人数</label>
+                    <select id="form-player-count" class="form-select" onchange="changePlayerCount()">
+                        <option value="3">3人</option>
+                        <option value="4" selected>4人</option>
+                        <option value="5">5人</option>
+                        <option value="6">6人</option>
+                        <option value="7">7人</option>
+                        <option value="8">8人</option>
+                        <option value="9">9人</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">スコアシステム</label>
+                    <div class="fw-bold fs-6 text-dark py-2">順位ポイント制</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- プレイヤー情報 -->
+        <div class="form-card">
+            <h3>👥 プレイヤー情報（1位から順に入力）</h3>
+            <form id="score-form">
+                <div id="players-container"></div>
+            </form>
+        </div>
+
+        <!-- ルール説明 -->
+        <div class="form-card">
+            <h3 onclick="toggleRuleSettings()" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+                ⚙️ スコアシステム
+                <span id="rule-toggle-icon" style="font-size:1rem;">▼</span>
+            </h3>
+            <div id="rule-settings-content" style="display:none;">
+                <table class="score-table">
+                    <thead>
+                        <tr><th>順位</th><th>スコアポイント</th><th>コイン報酬</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>🥇 1位</td><td class="text-success fw-bold">+50 pts</td><td>💰 +80枚</td></tr>
+                        <tr><td>🥈 2位</td><td class="text-success">+20 pts</td><td>💰 +60枚</td></tr>
+                        <tr><td>🥉 3位</td><td class="text-muted">0 pts</td><td>💰 +40枚</td></tr>
+                        <tr><td>4位</td><td class="text-danger">-20 pts</td><td>💰 +30枚</td></tr>
+                        <tr><td>5位</td><td class="text-danger">-30 pts</td><td>💰 +30枚</td></tr>
+                        <tr><td>6位以下</td><td class="text-danger">-35〜-40 pts</td><td>💰 +30枚</td></tr>
+                    </tbody>
+                </table>
+                <div class="alert alert-info mt-3 mb-0" style="font-size:0.9rem;">
+                    <strong>🎫 祈願符ドロップ</strong>：参加で30%、記録者は50%の確率で獲得。1位は追加で80%の確率でボーナス。
+                </div>
+            </div>
+        </div>
+
+        <!-- 送信ボタン -->
+        <div class="d-flex justify-content-center align-items-center mt-4 mb-5">
+            <button type="button" onclick="submitScores()" class="btn btn-submit">
+                ✓ スコアを送信する
+            </button>
+        </div>
+    </div>
+
+    <!-- Notice Modal -->
+    <div id="notice-modal" role="dialog" aria-modal="true">
+        <div class="notice-dialog info" id="notice-dialog">
+            <div class="notice-title" id="notice-title">お知らせ</div>
+            <div class="notice-message" id="notice-message">-</div>
+            <div class="notice-actions">
+                <button class="btn btn-outline-dark" type="button" onclick="closeNotice()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:none;justify-content:center;align-items:center;z-index:9999;color:white;backdrop-filter:blur(5px);">
+        <div class="text-center">
+            <div class="spinner-border text-light mb-3" style="width:4rem;height:4rem;"></div>
+            <div style="font-size:1.2rem;font-weight:600;">送信中...</div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabase-config.js"></script>
+    <script src="../js/auth-guard.js"></script>
+    <script src="../js/survey-modal.js"></script>
+    <script src="../js/navigation.js"></script>
+    <script src="../js/poker-record.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            initAccordionNav('../');
+        });
+    </script>
+    <script>
+        async function checkTeamNotifications() {
+            const user = await getCurrentUser();
+            if (!user) return;
+            const impersonated = getImpersonatedUser();
+            const discordId = impersonated ? impersonated.discord_user_id : user.user_metadata.provider_id;
+            const { data: myTeams } = await supabaseClient.from('teams').select('id').eq('creator_discord_id', discordId);
+            if (!myTeams || myTeams.length === 0) return;
+            const teamIds = myTeams.map(t => t.id);
+            const { data: pending } = await supabaseClient.from('team_join_requests').select('id').in('team_id', teamIds).in('status', ['pending', 'leave_pending']);
+            const count = pending?.length || 0;
+            if (count > 0) {
+                const badge = document.getElementById('team-notification-badge');
+                if (badge) { badge.textContent = count; badge.style.display = 'inline'; }
+            }
+        }
+        document.addEventListener('DOMContentLoaded', checkTeamNotifications);
+    </script>
+</body>
+</html>
