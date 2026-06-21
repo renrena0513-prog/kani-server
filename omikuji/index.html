@@ -1006,12 +1006,13 @@
 
         function wasYesterday(dateStr) {
             if (!dateStr) return false;
-            const JST = 9 * 3600000;
-            const toDay = d => {
-                const j = new Date(d.getTime() + JST);
-                return Date.UTC(j.getUTCFullYear(), j.getUTCMonth(), j.getUTCDate());
+            const toJSTDateStr = d => {
+                const jst = new Date(d.getTime() + 9 * 3600000);
+                return `${jst.getUTCFullYear()}-${String(jst.getUTCMonth()+1).padStart(2,'0')}-${String(jst.getUTCDate()).padStart(2,'0')}`;
             };
-            return toDay(new Date()) - toDay(new Date(dateStr)) === 86400000;
+            const now = new Date();
+            const yesterday = new Date(now.getTime() - 86400000);
+            return toJSTDateStr(new Date(dateStr)) === toJSTDateStr(yesterday);
         }
 
         function renderStreakBadge(streak, isMax) {
