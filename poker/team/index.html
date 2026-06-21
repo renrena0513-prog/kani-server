@@ -628,6 +628,7 @@
             const requesterName = teamMembers.find(m => m.discord_user_id === effectiveDiscordId)?.account_name || '不明';
             await supabaseClient.from('team_admin_requests').insert({
                 type: 'kick',
+                game_type: 'poker',
                 team_id: myTeam.id,
                 team_name: myTeam.team_name,
                 target_discord_id: discordId,
@@ -649,6 +650,7 @@
             const requesterName = teamMembers.find(m => m.discord_user_id === effectiveDiscordId)?.account_name || '不明';
             await supabaseClient.from('team_admin_requests').insert({
                 type: 'dissolution',
+                game_type: 'poker',
                 team_id: myTeam.id,
                 team_name: myTeam.team_name,
                 requester_discord_id: effectiveDiscordId,

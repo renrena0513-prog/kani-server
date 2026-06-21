@@ -2391,6 +2391,10 @@ async function fetchTeamRequests() {
     const teamsMap = {};
     if (teams) teams.forEach(t => teamsMap[t.id] = t.name);
 
+    const gameLabel = (req) => req.game_type === 'poker'
+        ? '<span class="badge bg-primary me-1">🃏 ポーカー</span>'
+        : '<span class="badge bg-secondary me-1">🀄 麻雀</span>';
+
     // 追放申請リスト
     if (kickList) {
         if (!kicks || kicks.length === 0) {
@@ -2398,13 +2402,14 @@ async function fetchTeamRequests() {
         } else {
             kickList.innerHTML = kicks.map(req => {
                 const requester = profilesCache[req.requester_discord_id] || { name: '不明', avatar: '' };
-                const target = profilesCache[req.target_discord_id] || { name: '不明', avatar: '' };
+                const target = profilesCache[req.target_discord_id] || { name: req.target_name || '不明', avatar: '' };
                 return `
                     <div class="card mb-2 p-3">
                         <div class="d-flex align-items-center justify-content-between">
                             <div>
-                                <div class="small text-muted mb-1">申請者: ${escapeHtml(requester.name)}</div>
+                                <div class="mb-1">${gameLabel(req)}<span class="small text-muted">申請者: ${escapeHtml(requester.name)}</span></div>
                                 <div><strong>対象:</strong> ${escapeHtml(target.name)}</div>
+                                <div class="small text-muted">チーム: ${escapeHtml(req.team_name || '不明')}</div>
                                 ${req.reason ? `<div class="small text-muted mt-1">理由: ${escapeHtml(req.reason)}</div>` : ''}
                             </div>
                             <div class="d-flex gap-2">
@@ -2425,17 +2430,17 @@ async function fetchTeamRequests() {
         } else {
             dissList.innerHTML = diss.map(req => {
                 const requester = profilesCache[req.requester_discord_id] || { name: '不明', avatar: '' };
-                const teamName = teamsMap[req.team_id] || '不明なチーム';
+                const teamName = req.team_name || teamsMap[req.team_id] || '不明なチーム';
                 return `
                     <div class="card mb-2 p-3">
                         <div class="d-flex align-items-center justify-content-between">
                             <div>
-                                <div class="small text-muted mb-1">申請者: ${escapeHtml(requester.name)}</div>
+                                <div class="mb-1">${gameLabel(req)}<span class="small text-muted">申請者: ${escapeHtml(requester.name)}</span></div>
                                 <div><strong>チーム:</strong> ${escapeHtml(teamName)}</div>
                                 ${req.reason ? `<div class="small text-muted mt-1">理由: ${escapeHtml(req.reason)}</div>` : ''}
                             </div>
                             <div class="d-flex gap-2">
-                                <button class="btn btn-danger btn-sm" onclick="approveDissolution('${req.id}', '${req.team_id}')">承認（解散）</button>
+                                <button class="btn btn-danger btn-sm" onclick="approveDissolution('${req.id}', '${req.team_id}', '${req.game_type || ''}')">承認（解散）</button>
                                 <button class="btn btn-outline-secondary btn-sm" onclick="rejectRequest('${req.id}')">却下</button>
                             </div>
                         </div>
@@ -2453,14 +2458,23 @@ async function rejectRequest(id) {
 
 async function approveKick(id) {
     const { data: req } = await supabaseClient.from('team_admin_requests').select('*').eq('id', id).single();
-    await supabaseClient.from('profiles').update({ team_id: null }).eq('discord_user_id', req.target_discord_id);
+    if (req.game_type === 'poker') {
+        await supabaseClient.from('poker_profiles').update({ team_id: null }).eq('discord_user_id', req.target_discord_id);
+    } else {
+        await supabaseClient.from('profiles').update({ team_id: null }).eq('discord_user_id', req.target_discord_id);
+    }
     await supabaseClient.from('team_admin_requests').update({ status: 'approved' }).eq('id', id);
     fetchTeamRequests();
 }
 
-async function approveDissolution(id, teamId) {
-    await supabaseClient.from('profiles').update({ team_id: null }).eq('team_id', teamId);
-    await supabaseClient.from('teams').delete().eq('id', teamId);
+async function approveDissolution(id, teamId, gameType) {
+    if (gameType === 'poker') {
+        await supabaseClient.from('poker_profiles').update({ team_id: null }).eq('team_id', teamId);
+        await supabaseClient.from('poker_teams').delete().eq('id', teamId);
+    } else {
+        await supabaseClient.from('profiles').update({ team_id: null }).eq('team_id', teamId);
+        await supabaseClient.from('teams').delete().eq('id', teamId);
+    }
     await supabaseClient.from('team_admin_requests').update({ status: 'approved' }).eq('id', id);
     fetchTeamRequests();
 }
