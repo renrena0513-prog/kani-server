@@ -702,7 +702,14 @@
                 if (badgeId) {
                     await supabaseClient.from('badges').update({ image_url: imageUrl }).eq('id', badgeId);
                 } else {
+                    // 22000番台で次のIDを採番
+                    const { data: maxRow } = await supabaseClient.from('badges')
+                        .select('id').gte('id', 22000).lt('id', 23000)
+                        .order('id', { ascending: false }).limit(1).maybeSingle();
+                    const newId = maxRow ? maxRow.id + 1 : 22000;
+
                     const { data: nb } = await supabaseClient.from('badges').insert([{
+                        id: newId,
                         name: myTeam.team_name + 'バッジ',
                         image_url: imageUrl,
                         price: 0,
