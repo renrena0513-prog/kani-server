@@ -373,12 +373,11 @@ async function submitScores() {
         }
     }
 
-    // スコア計算
-    const actualPlayerCount = tempData.length;
-    const umaTable = POKER_UMA[actualPlayerCount] || {};
+    // スコア計算（フォーム選択の参加人数でUMAテーブルを引く）
+    const umaTable = POKER_UMA[playerCount] || {};
     tempData.forEach(p => {
         p.final_score = umaTable[p.rank] ?? 0;
-        p.player_count = actualPlayerCount;
+        p.player_count = playerCount;
     });
 
     // 挿入データ構築
