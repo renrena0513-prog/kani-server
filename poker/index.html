@@ -488,6 +488,21 @@
         return { main: sc(p.score), sub: p.count + '試合' };
     }
 
+    function getSortValue(p) {
+        if (currentSub === 'count') return p.count;
+        if (currentSub === 'win')   return p.count > 0 ? p.wins / p.count : 0;
+        if (currentSub === 'plus')  return p.count > 0 ? p.positives / p.count : 0;
+        return p.score;
+    }
+
+    function assignRanks(players) {
+        players.forEach((p, i) => {
+            if (i === 0) { p.rankNo = 1; }
+            else if (getSortValue(p) === getSortValue(players[i - 1])) { p.rankNo = players[i - 1].rankNo; }
+            else { p.rankNo = i + 1; }
+        });
+    }
+
     function renderIndividual(players) {
         const podiumEl  = document.getElementById('podium-list');
         const listEl    = document.getElementById('rank-list');
@@ -498,11 +513,18 @@
             listEl.innerHTML = ''; restLabel.style.display = 'none'; return;
         }
 
-        podiumEl.innerHTML = players.slice(0,3).map((p,i) => {
+        assignRanks(players);
+
+        const podium = players.filter(p => p.rankNo <= 3);
+        const rest   = players.filter(p => p.rankNo > 3);
+
+        podiumEl.innerHTML = podium.map(p => {
             const v = subVal(p);
             const mainCls = currentSub === 'score' ? scCls(p.score) : '';
-            return `<div class="podium-row ${RCLS[i]}">
-                <span class="podium-medal">${MEDALS[i]}</span>
+            const rcls = RCLS[p.rankNo - 1] || 'rn';
+            const medal = MEDALS[p.rankNo - 1] || p.rankNo;
+            return `<div class="podium-row ${rcls}">
+                <span class="podium-medal">${medal}</span>
                 <img src="${av(p.avatar,p.name)}" class="podium-avatar"
                     onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff'">
                 <div class="podium-info">
@@ -516,13 +538,12 @@
             </div>`;
         }).join('');
 
-        const rest = players.slice(3);
         restLabel.style.display = rest.length ? '' : 'none';
-        listEl.innerHTML = rest.map((p,i) => {
+        listEl.innerHTML = rest.map(p => {
             const v = subVal(p);
             const mainCls = currentSub === 'score' ? scCls(p.score) : '';
             return `<div class="rank-row">
-                <span class="rank-no">${i+4}</span>
+                <span class="rank-no">${p.rankNo}</span>
                 <img src="${av(p.avatar,p.name)}" class="rank-avatar"
                     onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff'">
                 <div class="rank-info">
@@ -538,12 +559,18 @@
     }
 
     function renderTeam(teamList) {
+        // 同スコアは同順位
+        teamList.forEach((t, i) => {
+            if (i === 0) { t.rankNo = 1; }
+            else if (t.score === teamList[i-1].score) { t.rankNo = teamList[i-1].rankNo; }
+            else { t.rankNo = i + 1; }
+        });
         document.getElementById('team-list').innerHTML = teamList.length === 0
             ? '<div class="empty-state">データがありません</div>'
-            : teamList.map((t,i) => {
+            : teamList.map(t => {
                 const s = t.score;
-                const cls = i < 3 ? RCLS[i] : 'rn';
-                const med = i < 3 ? MEDALS[i] : `<span style="font-size:1.1rem;color:rgba(255,255,255,.3);">${i+1}</span>`;
+                const cls = t.rankNo <= 3 ? RCLS[t.rankNo - 1] : 'rn';
+                const med = t.rankNo <= 3 ? MEDALS[t.rankNo - 1] : `<span style="font-size:1.1rem;color:rgba(255,255,255,.3);">${t.rankNo}</span>`;
                 const iconHtml = teamIconMap[t.name]
                     ? `<img src="${teamIconMap[t.name]}" style="width:32px;height:32px;object-fit:contain;border-radius:6px;margin-right:10px;flex-shrink:0;">`
                     : `<span style="margin-right:10px;font-size:1.4rem;">🏅</span>`;
