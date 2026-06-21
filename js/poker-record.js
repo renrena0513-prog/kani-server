@@ -364,7 +364,7 @@ function selectPlayer(idx, discordUserId, accountName) {
     }
 }
 
-function clearPlayer(idx) {
+function clearPlayer(idx, clearTeamToo = true) {
     const input = document.querySelector(`#player-row-${idx} .player-account`);
     const badge = document.getElementById(`selected-badge-${idx}`);
     input.value = '';
@@ -372,11 +372,12 @@ function clearPlayer(idx) {
     input.dataset.accountName = '';
     input.style.display = 'block';
     badge.style.display = 'none';
-    // チームも同時にリセット
-    const teamInput = document.getElementById(`player-team-input-${idx}`);
-    const teamDisplay = document.getElementById(`selected-team-display-${idx}`);
-    if (teamInput) teamInput.value = '';
-    if (teamDisplay) teamDisplay.innerHTML = '<span class="text-muted small">チームを選択</span>';
+    if (clearTeamToo) {
+        const teamInput = document.getElementById(`player-team-input-${idx}`);
+        const teamDisplay = document.getElementById(`selected-team-display-${idx}`);
+        if (teamInput) teamInput.value = '';
+        if (teamDisplay) teamDisplay.innerHTML = '<span class="text-muted small">チームを選択</span>';
+    }
     input.focus();
 }
 
@@ -423,8 +424,8 @@ function applyTeam(idx, teamId, teamName) {
 function selectTeam(idx, teamId, teamName) {
     applyTeam(idx, teamId, teamName);
     document.getElementById(`team-dropdown-list-${idx}`).style.display = 'none';
-    // チーム変更時は選択済みプレイヤーをクリアしドロップダウンを再フィルタ
-    clearPlayer(idx);
+    // チーム変更時はプレイヤーのみクリア（チーム表示は維持）
+    clearPlayer(idx, false);
 }
 
 function clearTeam(idx) {
