@@ -58,8 +58,8 @@ async function fetchProfiles() {
 
 async function fetchTeams() {
     const { data, error } = await supabaseClient
-        .from('teams')
-        .select('*, logo_badge:badges!logo_badge_id(image_url)')
+        .from('poker_teams')
+        .select('id, team_name')
         .order('team_name');
     if (!error) allTeams = data || [];
 }
@@ -228,20 +228,17 @@ function showTeamDropdown(idx) {
 function renderTeamDropdownItems(idx) {
     const list = document.getElementById(`team-dropdown-list-${idx}`);
     let html = `<div class="dropdown-item-flex" onclick="clearTeam(${idx})"><span class="small text-muted">選択解除</span></div>`;
-    html += allTeams.map(t => {
-        const logo = t.logo_badge?.image_url;
-        const logoHtml = logo ? `<img src="${logo}" style="width:24px;height:24px;object-fit:contain;margin-right:8px;">` : `<span style="width:24px;text-align:center;margin-right:8px;">🏅</span>`;
-        return `<div class="dropdown-item-flex" onclick="selectTeam(${idx}, '${t.id}', '${t.team_name.replace(/'/g, "\\'")}', '${logo || ''}')">
-            ${logoHtml}<span class="small">${t.team_name}</span></div>`;
-    }).join('');
+    html += allTeams.map(t =>
+        `<div class="dropdown-item-flex" onclick="selectTeam(${idx}, '${t.id}', '${t.team_name.replace(/'/g, "\\'")}')">
+            <span style="margin-right:8px;">🏅</span><span class="small">${t.team_name}</span></div>`
+    ).join('');
     list.innerHTML = html;
 }
 
-function selectTeam(idx, teamId, teamName, logoUrl) {
+function selectTeam(idx, teamId, teamName) {
     document.getElementById(`player-team-input-${idx}`).value = teamId;
     const display = document.getElementById(`selected-team-display-${idx}`);
-    const logoHtml = logoUrl ? `<img src="${logoUrl}" style="width:20px;height:20px;object-fit:contain;">` : '🏅';
-    display.innerHTML = `${logoHtml}<span style="font-weight:bold;">${teamName}</span>`;
+    display.innerHTML = `🏅 <span style="font-weight:bold;">${teamName}</span>`;
     document.getElementById(`team-dropdown-list-${idx}`).style.display = 'none';
 }
 

@@ -209,10 +209,18 @@
         const ids = [...new Set(allResults.map(r => r.discord_user_id).filter(Boolean))];
         const { data: profiles } = await supabaseClient
             .from('profiles')
-            .select('discord_user_id, account_name, discord_avatar_url, team_name')
+            .select('discord_user_id, account_name, discord_avatar_url')
             .in('discord_user_id', ids);
         const profileMap = {};
         (profiles || []).forEach(p => profileMap[p.discord_user_id] = p);
+
+        // ポーカー専用チーム所属取得
+        const { data: pokerProfiles } = await supabaseClient
+            .from('poker_profiles')
+            .select('discord_user_id, team_name')
+            .in('discord_user_id', ids);
+        const pokerTeamMap = {};
+        (pokerProfiles || []).forEach(p => pokerTeamMap[p.discord_user_id] = p.team_name || '');
 
         // 集計
         players = {};
@@ -224,7 +232,7 @@
                     id: r.discord_user_id,
                     name: p.account_name || r.account_name,
                     avatar: p.discord_avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(r.account_name)}&background=1a4d8c&color=fff`,
-                    team: p.team_name || '',
+                    team: pokerTeamMap[r.discord_user_id] || '',
                     results: [],
                     score: 0, count: 0, r1: 0, rLast: 0,
                 };

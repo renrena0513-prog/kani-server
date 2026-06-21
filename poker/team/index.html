@@ -23,27 +23,22 @@
         .page-header { font-family: var(--font-title); color: white; text-shadow: 2px 4px 12px rgba(0,0,0,0.3); }
         .content-card { background: rgba(255,255,255,0.97); border-radius: 24px; padding: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.25); margin-bottom: 25px; }
         .section-title { font-family: var(--font-title); color: var(--deep-blue); border-bottom: 3px solid var(--gold); padding-bottom: 10px; margin-bottom: 20px; font-size: 1.2rem; font-weight: 700; }
-        /* ボタン */
         .btn-blue { background: linear-gradient(135deg, var(--primary-blue), var(--deep-blue)); color: white; border: none; padding: 12px 28px; border-radius: 20px; font-weight: 700; cursor: pointer; transition: all 0.3s; }
         .btn-blue:hover { opacity: 0.85; transform: translateY(-1px); color: white; }
-        .btn-gold { background: linear-gradient(135deg, var(--gold), #b8892d); color: white; border: none; padding: 12px 28px; border-radius: 20px; font-weight: 700; cursor: pointer; transition: all 0.3s; }
-        .btn-gold:hover { opacity: 0.85; transform: translateY(-1px); color: white; }
         .btn-danger-outline { background: transparent; color: #dc3545; border: 2px solid #dc3545; padding: 10px 20px; border-radius: 10px; transition: all 0.3s; cursor: pointer; font-weight: 600; }
         .btn-danger-outline:hover { background: #dc3545; color: white; }
         .btn-warning-outline { background: transparent; color: #b07000; border: 2px solid #ffc107; padding: 10px 20px; border-radius: 10px; transition: all 0.3s; cursor: pointer; font-weight: 600; }
         .btn-warning-outline:hover { background: #ffc107; color: #333; }
-        /* メンバーカード */
         .member-card { display: flex; align-items: center; padding: 14px; background: #f8f9fa; border-radius: 14px; margin-bottom: 10px; transition: all 0.2s; }
         .member-card:hover { background: #e9f0fb; }
         .member-avatar { width: 48px; height: 48px; border-radius: 50%; margin-right: 14px; border: 2px solid var(--gold); flex-shrink: 0; }
         .member-name { font-weight: 700; color: #222; }
-        .member-role { font-size: 0.8rem; color: #666; background: #e9ecef; padding: 4px 10px; border-radius: 15px; margin-left: auto; }
+        .member-role { font-size: 0.8rem; color: #666; background: #e9ecef; padding: 4px 10px; border-radius: 15px; margin-left: 12px; }
         .request-card { display: flex; align-items: center; padding: 15px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 12px; margin-bottom: 10px; }
-        .leave-request-card { background: #f8d7da; border: 1px solid #dc3545; }
+        .leave-request-card { background: #f8d7da; border-color: #dc3545; }
         .request-actions { display: flex; gap: 10px; margin-left: auto; }
         .btn-approve { background: var(--deep-blue); color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600; }
         .btn-reject { background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600; }
-        /* スコアランキング */
         .member-score-table { width: 100%; border-collapse: separate; border-spacing: 0 4px; font-size: 0.9rem; }
         .member-score-table thead th { background: var(--deep-blue); color: white; padding: 10px 14px; }
         .member-score-table thead th:first-child { border-radius: 8px 0 0 8px; }
@@ -57,31 +52,23 @@
         .member-score-table tr.rank-2 { background: linear-gradient(135deg,#f0f0f0 0%,#a0a0a0 100%); }
         .member-score-table tr.rank-3 { background: linear-gradient(135deg,#f5d4b5 0%,#b87333 100%); }
         .member-score-table tr.rank-1 td, .member-score-table tr.rank-2 td, .member-score-table tr.rank-3 td { background: transparent; }
-        /* チーム統計 */
         .stat-card-mini { background: #fff; border-radius: 12px; padding: 15px; text-align: center; border: 2px solid #dee2e6; transition: all 0.3s; }
         .stat-card-mini:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-color: var(--gold); }
         .stat-label-mini { font-size: 0.75rem; color: #6c757d; font-weight: 600; margin-bottom: 5px; }
         .stat-value-mini { font-size: 1.3rem; font-weight: 700; color: var(--deep-blue); }
-        /* 空状態 */
         .empty-state { text-align: center; padding: 40px; color: #666; }
         .empty-state-icon { font-size: 4rem; margin-bottom: 20px; }
-        /* member-select */
         .member-select { cursor: pointer; }
         .member-select.selected { background: rgba(26,77,140,0.1) !important; border: 2px solid var(--primary-blue); }
-        /* ナビバッジ */
-        .notification-badge { background: #dc3545; color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 10px; margin-left: 4px; }
-        /* チームリスト */
-        .team-list-item { display: flex; align-items: center; justify-content: space-between; padding: 15px; border: 1px solid #dee2e6; border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; }
+        .team-list-item { display: flex; align-items: center; padding: 15px; border: 1px solid #dee2e6; border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; }
         .team-list-item:hover { background: #f8f9fa; border-color: var(--gold); }
         .team-list-item.selected { border-color: var(--primary-blue); background: rgba(26,77,140,0.08); }
-        /* modal */
         .modal-header-blue { background: var(--deep-blue); color: white; }
         .score-positive { color: #1e7e34; font-weight: 700; }
         .score-negative { color: #b31d1d; font-weight: 700; }
     </style>
 </head>
 <body>
-    <!-- 右上ナビ -->
     <div class="nav-dropdown dropdown" style="position:fixed;top:20px;right:20px;z-index:1000;">
         <button class="btn dropdown-toggle" type="button" id="navDropdown" data-bs-toggle="dropdown"
             style="background:linear-gradient(135deg,var(--gold) 0%,#b8892d 100%);color:white;padding:12px 24px;border-radius:25px;font-weight:bold;">
@@ -107,93 +94,72 @@
     <div class="container py-5" style="padding-top:80px!important;max-width:1000px;">
         <header class="text-center mb-5">
             <h1 class="page-header display-4 fw-bold">🏅 チーム管理</h1>
+            <p style="color:rgba(255,255,255,0.7);">ポーカー大会専用チーム</p>
         </header>
 
         <div id="loading" class="content-card text-center py-5">
-            <div class="spinner-border" style="color:var(--primary-blue);" role="status">
-                <span class="visually-hidden">読み込み中...</span>
-            </div>
+            <div class="spinner-border" style="color:var(--primary-blue);" role="status"></div>
         </div>
 
-        <!-- 未ログイン -->
         <div id="not-logged-in" class="content-card" style="display:none;">
             <div class="empty-state">
                 <div class="empty-state-icon">🔒</div>
                 <h3>ログインが必要です</h3>
-                <p class="text-muted">チーム管理機能を使用するにはDiscordでログインしてください</p>
-                <button onclick="loginWithDiscord()" class="btn btn-lg btn-blue">Discordでログイン</button>
+                <button onclick="loginWithDiscord()" class="btn btn-lg btn-blue mt-3">Discordでログイン</button>
             </div>
         </div>
 
-        <!-- 未所属 -->
         <div id="no-team" class="content-card" style="display:none;">
             <div class="empty-state">
                 <div class="empty-state-icon">🏅</div>
                 <h3>チームに所属していません</h3>
                 <p class="text-muted">新しいチームを作成するか、既存のチームに加入申請してください</p>
                 <div class="d-flex gap-3 justify-content-center flex-wrap mt-3">
-                    <button class="btn-blue btn" data-bs-toggle="modal" data-bs-target="#createTeamModal">➕ チームを作成</button>
+                    <button class="btn btn-blue" data-bs-toggle="modal" data-bs-target="#createTeamModal">➕ チームを作成</button>
                     <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#joinTeamModal">🤝 チームに加入</button>
                 </div>
             </div>
         </div>
 
-        <!-- チームコンテンツ -->
         <div id="team-content" style="display:none;">
-            <!-- チーム基本情報 + メンバー -->
             <div class="content-card">
                 <h2 id="team-name-header" class="section-title">🏅 チーム名</h2>
 
-                <!-- 加入申請（管理者のみ） -->
                 <div id="join-requests-section" style="display:none;">
                     <h4 class="mb-3">📬 加入申請</h4>
                     <div id="join-requests-list"></div>
                 </div>
-
-                <!-- 脱退申請（管理者のみ） -->
                 <div id="leave-requests-section" style="display:none;">
                     <h4 class="mb-3 mt-4">🚪 脱退申請</h4>
                     <div id="leave-requests-list"></div>
                 </div>
 
-                <!-- メンバー一覧 -->
                 <h4 class="mb-3 mt-4">👥 メンバー一覧</h4>
                 <div id="members-list"></div>
 
-                <!-- メンバー用ボタン -->
                 <div id="member-actions" class="text-center mt-4" style="display:none;">
                     <button onclick="requestLeave()" class="btn-danger-outline">🚪 脱退申請を送る</button>
                 </div>
-
-                <!-- 脱退申請中 -->
                 <div id="leave-pending" class="text-center mt-4" style="display:none;">
                     <div class="alert alert-warning"><strong>⏳ 脱退申請中</strong><br>チームリーダーの承認をお待ちください。</div>
                 </div>
-
-                <!-- 管理者用ボタン -->
                 <div id="admin-actions" class="d-flex gap-3 justify-content-center mt-4 flex-wrap" style="display:none!important;">
                     <button class="btn-warning-outline" data-bs-toggle="modal" data-bs-target="#transferModal">👑 リーダーを譲渡</button>
                     <button class="btn-danger-outline" onclick="dissolveTeam()">💥 チームを解散</button>
                 </div>
             </div>
 
-            <!-- メンバースコアランキング -->
             <div class="content-card">
                 <h3 class="section-title">🏆 メンバースコアランキング</h3>
                 <div id="member-scores">
-                    <div class="text-center py-3">
-                        <div class="spinner-border spinner-border-sm" role="status"></div> 読み込み中...
-                    </div>
+                    <div class="text-center py-3"><div class="spinner-border spinner-border-sm" role="status"></div> 読み込み中...</div>
                 </div>
             </div>
 
-            <!-- チーム統計 -->
             <div class="content-card">
                 <h3 class="section-title">📊 チーム戦績</h3>
                 <div class="row g-3 mb-4" id="team-stats-grid"></div>
-
-                <!-- チーム戦ログ -->
-                <h4 class="mt-3 mb-3">📝 最近のチーム戦</h4>
+                <h4 class="mt-3 mb-3">📝 最近の試合</h4>
                 <div id="team-battle-log">
                     <div class="text-center py-3"><div class="spinner-border spinner-border-sm" role="status"></div> 読み込み中...</div>
                 </div>
@@ -203,68 +169,58 @@
 
     <!-- リーダー譲渡モーダル -->
     <div class="modal fade" id="transferModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header modal-header-blue">
-                    <h5 class="modal-title">👑 リーダーを譲渡</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-muted mb-3">新しいリーダーを選択してください</p>
-                    <div id="transfer-member-list"></div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
-                    <button type="button" class="btn btn-primary" id="confirmTransferBtn" onclick="confirmTransfer()" disabled>譲渡する</button>
-                </div>
+        <div class="modal-dialog"><div class="modal-content">
+            <div class="modal-header modal-header-blue">
+                <h5 class="modal-title">👑 リーダーを譲渡</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-        </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3">新しいリーダーを選択してください</p>
+                <div id="transfer-member-list"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                <button type="button" class="btn btn-primary" id="confirmTransferBtn" onclick="confirmTransfer()" disabled>譲渡する</button>
+            </div>
+        </div></div>
     </div>
 
     <!-- チーム作成モーダル -->
     <div class="modal fade" id="createTeamModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header modal-header-blue">
-                    <h5 class="modal-title">➕ チームを作成</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">チーム名</label>
-                        <input type="text" class="form-control" id="newTeamName" placeholder="チーム名を入力">
-                    </div>
-                    <div id="create-team-error" class="text-danger" style="display:none;"></div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
-                    <button type="button" class="btn btn-primary" onclick="createTeam()">作成</button>
-                </div>
+        <div class="modal-dialog"><div class="modal-content">
+            <div class="modal-header modal-header-blue">
+                <h5 class="modal-title">➕ チームを作成</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-        </div>
+            <div class="modal-body">
+                <label class="form-label">チーム名</label>
+                <input type="text" class="form-control" id="newTeamName" placeholder="チーム名を入力">
+                <div id="create-team-error" class="text-danger mt-2" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                <button type="button" class="btn btn-primary" onclick="createTeam()">作成</button>
+            </div>
+        </div></div>
     </div>
 
     <!-- チーム加入モーダル -->
     <div class="modal fade" id="joinTeamModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header modal-header-blue">
-                    <h5 class="modal-title">🤝 チームに加入</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-muted mb-3">加入したいチームを選択してください</p>
-                    <div id="team-list-for-join">
-                        <div class="text-center py-3"><div class="spinner-border spinner-border-sm" role="status"></div> 読み込み中...</div>
-                    </div>
-                    <div id="join-team-error" class="text-danger mt-2" style="display:none;"></div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
-                    <button type="button" class="btn btn-primary" id="sendJoinRequestBtn" onclick="sendJoinRequest()" disabled>加入申請を送る</button>
-                </div>
+        <div class="modal-dialog"><div class="modal-content">
+            <div class="modal-header modal-header-blue">
+                <h5 class="modal-title">🤝 チームに加入</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-        </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3">加入したいチームを選択してください</p>
+                <div id="team-list-for-join"></div>
+                <div id="join-team-error" class="text-danger mt-2" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                <button type="button" class="btn btn-primary" id="sendJoinRequestBtn" onclick="sendJoinRequest()" disabled>加入申請を送る</button>
+            </div>
+        </div></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -277,7 +233,6 @@
     document.addEventListener('DOMContentLoaded', () => { initAccordionNav('../../'); });
 
     let currentUser = null;
-    let myProfile = null;
     let myTeam = null;
     let isTeamAdmin = false;
     let teamMembers = [];
@@ -297,17 +252,23 @@
         const impersonated = getImpersonatedUser();
         effectiveDiscordId = impersonated ? impersonated.discord_user_id : currentUser.user_metadata.provider_id;
 
-        const { data: profile } = await supabaseClient.from('profiles').select('*').eq('discord_user_id', effectiveDiscordId).maybeSingle();
-        myProfile = profile;
+        const { data: pProfile } = await supabaseClient
+            .from('poker_profiles')
+            .select('*')
+            .eq('discord_user_id', effectiveDiscordId)
+            .maybeSingle();
 
-        if (!profile || !profile.team_id) {
+        if (!pProfile || !pProfile.team_id) {
             document.getElementById('loading').style.display = 'none';
             document.getElementById('no-team').style.display = 'block';
-            loadTeamsForJoin();
             return;
         }
 
-        const { data: team } = await supabaseClient.from('teams').select('*, logo_badge:badges!logo_badge_id(image_url)').eq('id', profile.team_id).single();
+        const { data: team } = await supabaseClient
+            .from('poker_teams')
+            .select('*')
+            .eq('id', pProfile.team_id)
+            .single();
         myTeam = team;
         isTeamAdmin = team.creator_discord_id === effectiveDiscordId;
 
@@ -317,10 +278,7 @@
     }
 
     async function renderTeamContent() {
-        const logoUrl = myTeam.logo_badge?.image_url;
-        const logoHtml = logoUrl ? `<img src="${logoUrl}" style="width:30px;height:30px;object-fit:contain;margin-right:8px;">` : '🏅 ';
-        const headerEl = document.getElementById('team-name-header');
-        headerEl.innerHTML = logoHtml + myTeam.team_name;
+        document.getElementById('team-name-header').textContent = '🏅 ' + myTeam.team_name;
 
         if (isTeamAdmin) {
             document.getElementById('join-requests-section').style.display = 'block';
@@ -332,17 +290,37 @@
             await checkMyLeaveRequest();
         }
 
-        const { data: members } = await supabaseClient.from('profiles').select('discord_user_id, account_name, discord_avatar_url').eq('team_id', myTeam.id).order('account_name');
-        teamMembers = members || [];
+        const { data: pokerMembers } = await supabaseClient
+            .from('poker_profiles')
+            .select('discord_user_id')
+            .eq('team_id', myTeam.id);
+
+        const memberIds = (pokerMembers || []).map(m => m.discord_user_id);
+        let profileMap = {};
+        if (memberIds.length > 0) {
+            const { data: profiles } = await supabaseClient
+                .from('profiles')
+                .select('discord_user_id, account_name, discord_avatar_url')
+                .in('discord_user_id', memberIds);
+            (profiles || []).forEach(p => { profileMap[p.discord_user_id] = p; });
+        }
+
+        teamMembers = memberIds.map(id => ({
+            discord_user_id: id,
+            account_name: profileMap[id]?.account_name || id,
+            discord_avatar_url: profileMap[id]?.discord_avatar_url || null,
+        }));
 
         document.getElementById('members-list').innerHTML = teamMembers.map(m => {
             const isAdmin = m.discord_user_id === myTeam.creator_discord_id;
-            const avatar = m.discord_avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.account_name||'?')}&background=1a4d8c&color=fff`;
-            const kickBtn = (!isAdmin && isTeamAdmin) ? `<button class="btn btn-outline-danger btn-sm ms-auto" onclick="kickMember('${m.discord_user_id}','${(m.account_name||'').replace(/'/g,"\\'")}')">追放</button>` : '';
+            const avatar = m.discord_avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.account_name)}&background=1a4d8c&color=fff`;
+            const kickBtn = (!isAdmin && isTeamAdmin)
+                ? `<button class="btn btn-outline-danger btn-sm ms-auto" onclick="kickMember('${m.discord_user_id}','${m.account_name.replace(/'/g,"\\'")}')">追放</button>`
+                : '';
             return `<div class="member-card">
                 <img src="${avatar}" class="member-avatar" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff'">
-                <span class="member-name">${m.account_name || '名称未設定'}</span>
-                ${isAdmin ? '<span class="member-role ms-3">👑 リーダー</span>' : ''}
+                <span class="member-name">${m.account_name}</span>
+                ${isAdmin ? '<span class="member-role">👑 リーダー</span>' : ''}
                 ${kickBtn}
             </div>`;
         }).join('') || '<p class="text-muted">メンバーがいません</p>';
@@ -353,14 +331,20 @@
     }
 
     async function loadJoinRequests() {
-        const { data } = await supabaseClient.from('team_join_requests').select('*, profiles(account_name, discord_avatar_url)').eq('team_id', myTeam.id).eq('status', 'pending');
+        const { data } = await supabaseClient
+            .from('poker_team_join_requests')
+            .select('id, discord_user_id')
+            .eq('team_id', myTeam.id).eq('status', 'pending');
         const el = document.getElementById('join-requests-list');
         if (!data || data.length === 0) { el.innerHTML = '<p class="text-muted small">加入申請はありません</p>'; return; }
+        const ids = data.map(r => r.discord_user_id);
+        const { data: profiles } = await supabaseClient.from('profiles').select('discord_user_id, account_name, discord_avatar_url').in('discord_user_id', ids);
+        const pm = {}; (profiles || []).forEach(p => pm[p.discord_user_id] = p);
         el.innerHTML = data.map(r => {
-            const name = r.profiles?.account_name || r.discord_user_id;
-            const avatar = r.profiles?.discord_avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1a4d8c&color=fff`;
+            const name = pm[r.discord_user_id]?.account_name || r.discord_user_id;
+            const avatar = pm[r.discord_user_id]?.discord_avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1a4d8c&color=fff`;
             return `<div class="request-card">
-                <img src="${avatar}" class="member-avatar" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff'">
+                <img src="${avatar}" class="member-avatar">
                 <span class="fw-bold ms-2">${name}</span>
                 <div class="request-actions">
                     <button class="btn-approve" onclick="approveJoin('${r.id}','${r.discord_user_id}')">承認</button>
@@ -371,14 +355,20 @@
     }
 
     async function loadLeaveRequests() {
-        const { data } = await supabaseClient.from('team_join_requests').select('*, profiles(account_name, discord_avatar_url)').eq('team_id', myTeam.id).eq('status', 'leave_pending');
+        const { data } = await supabaseClient
+            .from('poker_team_join_requests')
+            .select('id, discord_user_id')
+            .eq('team_id', myTeam.id).eq('status', 'leave_pending');
         const el = document.getElementById('leave-requests-list');
         if (!data || data.length === 0) { el.innerHTML = '<p class="text-muted small">脱退申請はありません</p>'; return; }
+        const ids = data.map(r => r.discord_user_id);
+        const { data: profiles } = await supabaseClient.from('profiles').select('discord_user_id, account_name, discord_avatar_url').in('discord_user_id', ids);
+        const pm = {}; (profiles || []).forEach(p => pm[p.discord_user_id] = p);
         el.innerHTML = data.map(r => {
-            const name = r.profiles?.account_name || r.discord_user_id;
-            const avatar = r.profiles?.discord_avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1a4d8c&color=fff`;
+            const name = pm[r.discord_user_id]?.account_name || r.discord_user_id;
+            const avatar = pm[r.discord_user_id]?.discord_avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1a4d8c&color=fff`;
             return `<div class="request-card leave-request-card">
-                <img src="${avatar}" class="member-avatar" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff'">
+                <img src="${avatar}" class="member-avatar">
                 <span class="fw-bold ms-2">${name}</span>
                 <div class="request-actions">
                     <button class="btn-approve" onclick="approveLeave('${r.id}','${r.discord_user_id}')">承認</button>
@@ -389,37 +379,45 @@
     }
 
     async function checkMyLeaveRequest() {
-        const { data } = await supabaseClient.from('team_join_requests').select('id').eq('discord_user_id', effectiveDiscordId).eq('team_id', myTeam.id).eq('status', 'leave_pending').maybeSingle();
-        if (data) { document.getElementById('leave-pending').style.display = 'block'; }
-        else { document.getElementById('member-actions').style.display = 'block'; }
+        const { data } = await supabaseClient
+            .from('poker_team_join_requests')
+            .select('id')
+            .eq('discord_user_id', effectiveDiscordId)
+            .eq('team_id', myTeam.id)
+            .eq('status', 'leave_pending')
+            .maybeSingle();
+        if (data) document.getElementById('leave-pending').style.display = 'block';
+        else document.getElementById('member-actions').style.display = 'block';
     }
 
     async function loadMemberScores() {
         const memberIds = teamMembers.map(m => m.discord_user_id);
-        if (memberIds.length === 0) { document.getElementById('member-scores').innerHTML = '<p class="text-muted">データなし</p>'; return; }
-
-        const { data: results } = await supabaseClient.from('poker_results').select('discord_user_id, final_score, rank, player_count').in('discord_user_id', memberIds);
+        if (memberIds.length === 0) return;
+        const { data: results } = await supabaseClient
+            .from('poker_results')
+            .select('discord_user_id, final_score, rank, player_count')
+            .in('discord_user_id', memberIds);
         const stats = {};
-        teamMembers.forEach(m => { stats[m.discord_user_id] = { name: m.account_name, avatar: m.discord_avatar_url, score: 0, count: 0, r1: 0 }; });
+        teamMembers.forEach(m => { stats[m.discord_user_id] = { ...m, score: 0, count: 0, r1: 0 }; });
         (results || []).forEach(r => {
             if (!stats[r.discord_user_id]) return;
             stats[r.discord_user_id].score += Number(r.final_score);
             stats[r.discord_user_id].count++;
             if (r.rank === 1) stats[r.discord_user_id].r1++;
         });
-        const sorted = Object.entries(stats).sort((a, b) => b[1].score - a[1].score);
+        const sorted = Object.values(stats).sort((a, b) => b.score - a.score);
+        const medals = ['🥇','🥈','🥉'];
         document.getElementById('member-scores').innerHTML = `
             <table class="member-score-table">
                 <thead><tr><th>#</th><th>メンバー</th><th>合計スコア</th><th>試合数</th><th>1位率</th></tr></thead>
-                <tbody>${sorted.map(([id, s], i) => {
-                    const rankCls = i < 3 ? ` class="rank-${i+1}"` : '';
-                    const medals = ['🥇','🥈','🥉'];
-                    const medal = i < 3 ? medals[i] : i+1;
-                    const avatar = s.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name||'?')}&background=1a4d8c&color=fff`;
-                    const score = s.score;
-                    const scoreCls = score >= 0 ? 'score-positive' : 'score-negative';
-                    const winRate = s.count > 0 ? Math.round(s.r1/s.count*100) : 0;
-                    return `<tr${rankCls}><td>${medal}</td><td><img src="${avatar}" style="width:28px;height:28px;border-radius:50%;margin-right:8px;"> ${s.name||'?'}</td><td class="${scoreCls}">${score>=0?'+':''}${score}</td><td>${s.count}</td><td>${winRate}%</td></tr>`;
+                <tbody>${sorted.map((s, i) => {
+                    const rc = i < 3 ? ` class="rank-${i+1}"` : '';
+                    const medal = i < 3 ? medals[i] : i + 1;
+                    const avatar = s.discord_avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.account_name||'?')}&background=1a4d8c&color=fff`;
+                    const sc = s.score;
+                    const cls = sc >= 0 ? 'score-positive' : 'score-negative';
+                    const wr = s.count > 0 ? Math.round(s.r1/s.count*100) : 0;
+                    return `<tr${rc}><td>${medal}</td><td><img src="${avatar}" style="width:28px;height:28px;border-radius:50%;margin-right:8px;">${s.account_name}</td><td class="${cls}">${sc>=0?'+':''}${sc}</td><td>${s.count}</td><td>${wr}%</td></tr>`;
                 }).join('')}</tbody>
             </table>`;
     }
@@ -427,46 +425,41 @@
     async function loadTeamStats() {
         const memberIds = teamMembers.map(m => m.discord_user_id);
         if (memberIds.length === 0) return;
-
-        const { data: results } = await supabaseClient.from('poker_results').select('discord_user_id, final_score, rank, player_count, tournament_type, match_mode, event_datetime, account_name, match_id, rebuy_count').in('discord_user_id', memberIds).order('event_datetime', { ascending: false });
+        const { data: results } = await supabaseClient
+            .from('poker_results')
+            .select('discord_user_id, final_score, rank, player_count, tournament_type, event_datetime, account_name')
+            .in('discord_user_id', memberIds)
+            .order('event_datetime', { ascending: false });
         const all = results || [];
-
-        const totalScore = all.reduce((s, r) => s + Number(r.final_score), 0);
-        const count = all.length;
-        const avgScore = count > 0 ? (totalScore / count).toFixed(1) : '-';
-        const maxScore = count > 0 ? Math.max(...all.map(r => Number(r.final_score))) : '-';
-        const r1Count = all.filter(r => r.rank === 1).length;
-        const rLastCount = all.filter(r => r.rank >= r.player_count).length;
-        const winRate = count > 0 ? (r1Count/count*100).toFixed(1)+'%' : '-';
-        const avoidRate = count > 0 ? ((1-rLastCount/count)*100).toFixed(1)+'%' : '-';
-        const avgRank = count > 0 ? (all.reduce((s,r) => s + r.rank, 0)/count).toFixed(2) : '-';
-
+        const total = all.reduce((s, r) => s + Number(r.final_score), 0);
+        const cnt = all.length;
+        const avg = cnt > 0 ? (total/cnt).toFixed(1) : '-';
+        const max = cnt > 0 ? Math.max(...all.map(r => Number(r.final_score))) : '-';
+        const r1 = all.filter(r => r.rank === 1).length;
+        const rL = all.filter(r => r.rank >= r.player_count).length;
+        const wr = cnt > 0 ? (r1/cnt*100).toFixed(1)+'%' : '-';
+        const av = cnt > 0 ? ((1-rL/cnt)*100).toFixed(1)+'%' : '-';
+        const ar = cnt > 0 ? (all.reduce((s,r)=>s+r.rank,0)/cnt).toFixed(2) : '-';
         document.getElementById('team-stats-grid').innerHTML = [
-            ['合計スコア', totalScore > 0 ? '+'+totalScore : totalScore],
-            ['試合数', count],
-            ['平均スコア', avgScore],
-            ['最大スコア', maxScore > 0 ? '+'+maxScore : maxScore],
-            ['1位率', winRate],
-            ['ラス回避', avoidRate],
-            ['平均順位', avgRank],
-        ].map(([label, val]) => `
-            <div class="col-6 col-md-4 col-lg-3">
-                <div class="stat-card-mini"><div class="stat-label-mini">${label}</div><div class="stat-value-mini">${val}</div></div>
-            </div>`).join('');
+            ['合計スコア', total>=0?'+'+total:total],
+            ['試合数', cnt],
+            ['平均スコア', avg],
+            ['最大スコア', max>=0?'+'+max:max],
+            ['1位率', wr],
+            ['ラス回避', av],
+            ['平均順位', ar],
+        ].map(([l,v])=>`<div class="col-6 col-md-4"><div class="stat-card-mini"><div class="stat-label-mini">${l}</div><div class="stat-value-mini">${v}</div></div></div>`).join('');
 
-        // チーム戦ログ（チーム戦のみ）
-        const teamBattles = all.filter(r => r.match_mode === 'チーム戦');
-        const logEl = document.getElementById('team-battle-log');
-        if (teamBattles.length === 0) { logEl.innerHTML = '<p class="text-muted">チーム戦の記録がありません</p>'; return; }
-        logEl.innerHTML = `<div style="overflow-x:auto;"><table class="member-score-table"><thead><tr><th>日時</th><th>プレイヤー</th><th>大会</th><th>順位</th><th>スコア</th></tr></thead><tbody>${
-            teamBattles.slice(0, 30).map(r => {
+        const log = document.getElementById('team-battle-log');
+        if (all.length === 0) { log.innerHTML = '<p class="text-muted">試合記録がありません</p>'; return; }
+        log.innerHTML = `<div style="overflow-x:auto;"><table class="member-score-table"><thead><tr><th>日時</th><th>プレイヤー</th><th>大会</th><th>順位</th><th>スコア</th></tr></thead><tbody>${
+            all.slice(0,30).map(r => {
                 const d = new Date(r.event_datetime);
                 const ds = `${d.getMonth()+1}/${d.getDate()}`;
-                const score = Number(r.final_score);
-                const scoreCls = score >= 0 ? 'score-positive' : 'score-negative';
-                const medals = ['','🥇','🥈','🥉'];
-                const medal = r.rank <= 3 ? medals[r.rank] : '';
-                return `<tr><td>${ds}</td><td>${r.account_name}</td><td style="font-size:0.8rem;">${r.tournament_type}</td><td>${medal}${r.rank}位</td><td class="${scoreCls}">${score>=0?'+':''}${score}</td></tr>`;
+                const sc = Number(r.final_score);
+                const cls = sc>=0?'score-positive':'score-negative';
+                const m2 = ['','🥇','🥈','🥉'];
+                return `<tr><td>${ds}</td><td>${r.account_name}</td><td style="font-size:0.8rem;">${r.tournament_type}</td><td>${r.rank<=3?m2[r.rank]:''}${r.rank}位</td><td class="${cls}">${sc>=0?'+':''}${sc}</td></tr>`;
             }).join('')
         }</tbody></table></div>`;
     }
@@ -475,17 +468,18 @@
     async function createTeam() {
         const name = document.getElementById('newTeamName').value.trim();
         const errEl = document.getElementById('create-team-error');
+        errEl.style.display = 'none';
         if (!name) { errEl.textContent = 'チーム名を入力してください'; errEl.style.display = 'block'; return; }
-        const { data: exist } = await supabaseClient.from('teams').select('id').eq('team_name', name).maybeSingle();
+        const { data: exist } = await supabaseClient.from('poker_teams').select('id').eq('team_name', name).maybeSingle();
         if (exist) { errEl.textContent = 'そのチーム名は既に使われています'; errEl.style.display = 'block'; return; }
-        const { data: team, error } = await supabaseClient.from('teams').insert({ team_name: name, creator_discord_id: effectiveDiscordId }).select().single();
-        if (error) { errEl.textContent = 'エラーが発生しました: ' + error.message; errEl.style.display = 'block'; return; }
-        await supabaseClient.from('profiles').update({ team_id: team.id, team_name: name }).eq('discord_user_id', effectiveDiscordId);
+        const { data: team, error } = await supabaseClient.from('poker_teams').insert({ team_name: name, creator_discord_id: effectiveDiscordId }).select().single();
+        if (error) { errEl.textContent = 'エラー: ' + error.message; errEl.style.display = 'block'; return; }
+        await supabaseClient.from('poker_profiles').upsert({ discord_user_id: effectiveDiscordId, team_id: team.id, team_name: name }, { onConflict: 'discord_user_id' });
         location.reload();
     }
 
     async function loadTeamsForJoin() {
-        const { data: teams } = await supabaseClient.from('teams').select('id, team_name, creator_discord_id');
+        const { data: teams } = await supabaseClient.from('poker_teams').select('id, team_name');
         const el = document.getElementById('team-list-for-join');
         if (!teams || teams.length === 0) { el.innerHTML = '<p class="text-muted">チームがありません</p>'; return; }
         el.innerHTML = teams.map(t => `<div class="team-list-item" onclick="selectJoinTeam('${t.id}', this)"><span>🏅 ${t.team_name}</span></div>`).join('');
@@ -500,56 +494,56 @@
 
     async function sendJoinRequest() {
         if (!selectedJoinTeamId) return;
-        const { error } = await supabaseClient.from('team_join_requests').insert({ team_id: selectedJoinTeamId, discord_user_id: effectiveDiscordId, status: 'pending' });
         const errEl = document.getElementById('join-team-error');
+        const { error } = await supabaseClient.from('poker_team_join_requests').insert({ team_id: selectedJoinTeamId, discord_user_id: effectiveDiscordId, status: 'pending' });
         if (error) { errEl.textContent = 'エラー: ' + error.message; errEl.style.display = 'block'; return; }
         alert('加入申請を送りました。リーダーの承認をお待ちください。');
         bootstrap.Modal.getInstance(document.getElementById('joinTeamModal')).hide();
     }
 
     async function approveJoin(requestId, discordId) {
-        const { data: req } = await supabaseClient.from('team_join_requests').select('team_id').eq('id', requestId).single();
-        const { data: team } = await supabaseClient.from('teams').select('team_name').eq('id', req.team_id).single();
-        await supabaseClient.from('team_join_requests').update({ status: 'approved' }).eq('id', requestId);
-        await supabaseClient.from('profiles').update({ team_id: req.team_id, team_name: team.team_name }).eq('discord_user_id', discordId);
+        const { data: req } = await supabaseClient.from('poker_team_join_requests').select('team_id').eq('id', requestId).single();
+        await supabaseClient.from('poker_team_join_requests').update({ status: 'approved' }).eq('id', requestId);
+        await supabaseClient.from('poker_profiles').upsert({ discord_user_id: discordId, team_id: req.team_id, team_name: myTeam.team_name }, { onConflict: 'discord_user_id' });
         location.reload();
     }
 
     async function rejectJoin(requestId) {
-        await supabaseClient.from('team_join_requests').update({ status: 'rejected' }).eq('id', requestId);
+        await supabaseClient.from('poker_team_join_requests').update({ status: 'rejected' }).eq('id', requestId);
         location.reload();
     }
 
     async function requestLeave() {
         if (!confirm('脱退申請を送りますか？')) return;
-        await supabaseClient.from('team_join_requests').insert({ team_id: myTeam.id, discord_user_id: effectiveDiscordId, status: 'leave_pending' });
+        await supabaseClient.from('poker_team_join_requests').insert({ team_id: myTeam.id, discord_user_id: effectiveDiscordId, status: 'leave_pending' });
         location.reload();
     }
 
     async function approveLeave(requestId, discordId) {
-        await supabaseClient.from('team_join_requests').update({ status: 'left' }).eq('id', requestId);
-        await supabaseClient.from('profiles').update({ team_id: null, team_name: null }).eq('discord_user_id', discordId);
+        await supabaseClient.from('poker_team_join_requests').update({ status: 'left' }).eq('id', requestId);
+        await supabaseClient.from('poker_profiles').upsert({ discord_user_id: discordId, team_id: null, team_name: null }, { onConflict: 'discord_user_id' });
         location.reload();
     }
 
     async function rejectLeave(requestId) {
-        await supabaseClient.from('team_join_requests').update({ status: 'rejected' }).eq('id', requestId);
+        await supabaseClient.from('poker_team_join_requests').update({ status: 'rejected' }).eq('id', requestId);
         location.reload();
     }
 
     async function kickMember(discordId, name) {
         if (!confirm(`${name} をチームから追放しますか？`)) return;
-        await supabaseClient.from('profiles').update({ team_id: null, team_name: null }).eq('discord_user_id', discordId);
-        await supabaseClient.from('team_join_requests').delete().eq('team_id', myTeam.id).eq('discord_user_id', discordId);
+        await supabaseClient.from('poker_profiles').upsert({ discord_user_id: discordId, team_id: null, team_name: null }, { onConflict: 'discord_user_id' });
+        await supabaseClient.from('poker_team_join_requests').delete().eq('team_id', myTeam.id).eq('discord_user_id', discordId);
         location.reload();
     }
 
     async function dissolveTeam() {
         if (!confirm('チームを解散しますか？メンバー全員がチームから外れます。')) return;
-        const memberIds = teamMembers.map(m => m.discord_user_id);
-        if (memberIds.length > 0) await supabaseClient.from('profiles').update({ team_id: null, team_name: null }).in('discord_user_id', memberIds);
-        await supabaseClient.from('team_join_requests').delete().eq('team_id', myTeam.id);
-        await supabaseClient.from('teams').delete().eq('id', myTeam.id);
+        for (const m of teamMembers) {
+            await supabaseClient.from('poker_profiles').upsert({ discord_user_id: m.discord_user_id, team_id: null, team_name: null }, { onConflict: 'discord_user_id' });
+        }
+        await supabaseClient.from('poker_team_join_requests').delete().eq('team_id', myTeam.id);
+        await supabaseClient.from('poker_teams').delete().eq('id', myTeam.id);
         location.reload();
     }
 
@@ -573,11 +567,10 @@
 
     async function confirmTransfer() {
         if (!selectedNewLeader || !confirm('本当にリーダーを譲渡しますか？')) return;
-        await supabaseClient.from('teams').update({ creator_discord_id: selectedNewLeader }).eq('id', myTeam.id);
+        await supabaseClient.from('poker_teams').update({ creator_discord_id: selectedNewLeader }).eq('id', myTeam.id);
         location.reload();
     }
 
-    // 加入モーダル開時
     document.getElementById('joinTeamModal').addEventListener('show.bs.modal', loadTeamsForJoin);
     </script>
 </body>
