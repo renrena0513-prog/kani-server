@@ -417,7 +417,8 @@ async function submitScores() {
             if (player.rank === 1 && Math.random() < 0.80) ticketReward++;
 
             const rankBonus = POKER_RANK_BONUS[player.rank] || 0;
-            const coinReward = POKER_BASE_REWARD + rankBonus;
+            const scoreBonus = player.final_score > 0 ? Math.floor(player.final_score) : 0;
+            const coinReward = POKER_BASE_REWARD + rankBonus + scoreBonus;
 
             try {
                 const { data: profile } = await supabaseClient
@@ -436,7 +437,8 @@ async function submitScores() {
                 }
 
                 if (Object.keys(updates).length > 0) {
-                    await supabaseClient.from('profiles').update(updates).eq('discord_user_id', player.discord_user_id);
+                    const { error: updateErr } = await supabaseClient.from('profiles').update(updates).eq('discord_user_id', player.discord_user_id);
+                    if (updateErr) console.error(`プロフィール更新エラー (${player.account_name}):`, updateErr);
                 }
 
                 await logActivity(player.discord_user_id, 'poker', {
@@ -448,9 +450,10 @@ async function submitScores() {
                         team: player.team_name,
                         coin_reward: coinReward,
                         ticket_reward: ticketReward,
-                        breakdown: { base: POKER_BASE_REWARD, rank: rankBonus }
+                        breakdown: { base: POKER_BASE_REWARD, rank: rankBonus, score: scoreBonus }
                     }
                 });
+                console.log(`${player.account_name} 報酬: コイン=${coinReward}(基本${POKER_BASE_REWARD}+順位${rankBonus}+スコア${scoreBonus}), チケット=${ticketReward}`);
             } catch (err) {
                 console.error(`報酬付与エラー (${player.account_name}):`, err);
             }
@@ -479,6 +482,8 @@ function clearFormAfterSubmit() {
 
 async function sendDiscordNotification(matchData) {
     if (!matchData || matchData.length === 0) return;
+    if (typeof DISCORD_WEBHOOK_URL === 'undefined' || !DISCORD_WEBHOOK_URL) return;
+
     const first = matchData[0];
     const matchType = first.match_mode;
 
@@ -489,7 +494,8 @@ async function sendDiscordNotification(matchData) {
         const teamInfo = p.team_name ? ` (${p.team_name})` : '';
         const scoreStr = (p.final_score > 0 ? '+' : '') + p.final_score.toFixed(1);
         const rankBonus = POKER_RANK_BONUS[p.rank] || 0;
-        const reward = POKER_BASE_REWARD + rankBonus;
+        const scoreBonus = p.final_score > 0 ? Math.floor(p.final_score) : 0;
+        const reward = POKER_BASE_REWARD + rankBonus + scoreBonus;
         return `${medal} **${p.rank}位**: ${nameDisplay}${teamInfo}\n` +
                `　　 **${scoreStr} pts**　(💰+${reward})`;
     }).join('\n');
@@ -508,12 +514,15 @@ async function sendDiscordNotification(matchData) {
     };
 
     try {
-        await supabaseClient.functions.invoke('notify-discord', {
-            body: {
+        await fetch(DISCORD_WEBHOOK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
                 content: matchData.filter(p => p.discord_user_id).map(p => `<@${p.discord_user_id}>`).join(' '),
                 embeds: [embed]
-            }
+            })
         });
+        console.log('Discord通知送信成功');
     } catch (err) {
         console.error('Discord通知エラー:', err);
     }
