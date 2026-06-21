@@ -1004,12 +1004,45 @@
         let omikujiSettings = [];
         let selectedRankClass = '';
 
-        function wasYesterday(dateStr) {
-            if (!dateStr) return false;
+        // 活動ログからJST日付ベースで連続日数を計算
+        async function calcStreakFromLogs(userId) {
+            const { data: logs } = await supabaseClient
+                .from('activity_logs')
+                .select('created_at')
+                .eq('discord_user_id', userId)
+                .eq('action_type', 'omikuji')
+                .order('created_at', { ascending: false })
+                .limit(15);
+
+            if (!logs || logs.length === 0) return { prevStreak: 0, isConsecutive: false };
+
             const todayMidnight = getJSTMidnight();
-            const yesterdayMidnight = new Date(todayMidnight.getTime() - 86400000);
-            const last = new Date(dateStr);
-            return last >= yesterdayMidnight && last < todayMidnight;
+            const todayStr = todayMidnight.toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' });
+
+            // JST日付に変換・今日より前の日だけ・ユニーク化・新しい順
+            const pastDays = [...new Set(
+                logs
+                    .map(l => new Date(l.created_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' }))
+                    .filter(d => d < todayStr)
+            )].sort().reverse();
+
+            if (pastDays.length === 0) return { prevStreak: 0, isConsecutive: false };
+
+            const yesterdayStr = new Date(todayMidnight.getTime() - 86400000)
+                .toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' });
+
+            if (pastDays[0] !== yesterdayStr) return { prevStreak: 0, isConsecutive: false };
+
+            // 連続日数カウント（昨日から遡る）
+            let streak = 1;
+            for (let i = 1; i < pastDays.length; i++) {
+                const expected = new Date(todayMidnight.getTime() - (i + 1) * 86400000)
+                    .toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' });
+                if (pastDays[i] === expected) streak++;
+                else break;
+            }
+
+            return { prevStreak: streak, isConsecutive: true };
         }
 
         function renderStreakBadge(streak, isMax) {
@@ -1063,12 +1096,10 @@
                 document.getElementById('before-draw').style.display = 'none';
                 document.getElementById('already-drawn').style.display = 'block';
             } else {
-                const streak = profile?.consecutive_omikuji_days || 0;
-                const isConsecutive = wasYesterday(profile?.last_omikuji_at);
-                const displayStreak = isConsecutive ? streak : 0;
-                if (displayStreak > 0) {
+                const { prevStreak, isConsecutive } = await calcStreakFromLogs(currentUserId);
+                if (isConsecutive && prevStreak > 0) {
                     document.getElementById('streak-info').innerHTML =
-                        renderStreakBadge(displayStreak, displayStreak >= 10);
+                        renderStreakBadge(prevStreak, prevStreak >= 10);
                 }
             }
         }
@@ -1103,17 +1134,10 @@
                 ticketReward  = selected.ticket_reward || 0;
                 manganReward  = selected.mangan_ticket_reward || 0;
 
-                // Consecutive streak bonus
-                const prevStreak = profile.consecutive_omikuji_days || 0;
-                const isConsecutive = wasYesterday(profile.last_omikuji_at);
+                // 連続ボーナス：活動ログから計算（管理者リセットの影響を受けない）
+                const { prevStreak, isConsecutive } = await calcStreakFromLogs(currentUserId);
                 const newStreak = Math.min(isConsecutive ? prevStreak + 1 : 1, 11);
                 const streakBonus = isConsecutive ? (newStreak - 1) * 500 : 0;
-                console.log('[連続ボーナス]', {
-                    last_omikuji_at: profile.last_omikuji_at,
-                    prevStreak, isConsecutive, newStreak, streakBonus,
-                    todayMidnight: getJSTMidnight().toISOString(),
-                    yesterdayMidnight: new Date(getJSTMidnight().getTime() - 86400000).toISOString()
-                });
 
                 newCoins        = Math.max(0, (profile.coins || 0) + coinReward + streakBonus);
                 newTotalAssets  = profile.total_assets || 0;
