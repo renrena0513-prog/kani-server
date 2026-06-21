@@ -174,25 +174,28 @@
         .score-neg { color:#f87171; }
         .score-zero { color:rgba(255,255,255,.4); }
 
-        /* ── チームカード ── */
-        .team-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:14px; }
-        .team-card {
-            background:rgba(255,255,255,.05);
-            border:1px solid rgba(255,255,255,.1);
-            border-radius:18px; padding:22px 18px;
-            text-align:center; transition:all .22s;
+        /* ── チームリスト ── */
+        .team-list { display:flex; flex-direction:column; gap:12px; }
+        .team-row {
+            display:flex; align-items:center; gap:14px;
+            border-radius:18px; padding:16px 20px;
+            transition:transform .2s;
         }
-        .team-card:hover { transform:translateY(-4px); box-shadow:0 14px 36px rgba(0,0,0,.3); }
-        .team-card.r1 { border-color:rgba(212,168,83,.4); background:rgba(212,168,83,.08); }
-        .team-card.r2 { border-color:rgba(176,190,197,.3); background:rgba(176,190,197,.06); }
-        .team-card.r3 { border-color:rgba(205,127,50,.3); background:rgba(205,127,50,.06); }
-        .team-medal { font-size:1.9rem; margin-bottom:5px; }
-        .team-name { font-family:var(--fn); font-weight:700; font-size:1rem; margin-bottom:10px; }
-        .team-score { font-family:var(--fn); font-size:2rem; font-weight:900; line-height:1; margin-bottom:4px; }
-        .team-card.r1 .team-score { color:var(--gold2); }
-        .team-card.r2 .team-score { color:var(--silver); }
-        .team-card.r3 .team-score { color:var(--bronze); }
-        .team-meta { font-size:.76rem; color:rgba(255,255,255,.38); }
+        .team-row:hover { transform:translateX(4px); }
+        .team-row.r1 { background:linear-gradient(90deg,rgba(212,168,83,.22) 0%,rgba(212,168,83,.07) 100%); border:1px solid rgba(212,168,83,.35); }
+        .team-row.r2 { background:linear-gradient(90deg,rgba(176,190,197,.18) 0%,rgba(176,190,197,.05) 100%); border:1px solid rgba(176,190,197,.25); }
+        .team-row.r3 { background:linear-gradient(90deg,rgba(205,127,50,.16) 0%,rgba(205,127,50,.04) 100%); border:1px solid rgba(205,127,50,.2); }
+        .team-row.rn { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); }
+        .team-medal { font-size:2rem; min-width:40px; text-align:center; }
+        .team-info { flex:1; min-width:0; }
+        .team-name-text { font-weight:700; font-size:1rem; }
+        .team-meta { font-size:.75rem; color:rgba(255,255,255,.4); margin-top:2px; }
+        .team-score-col { font-family:var(--fn); font-weight:900; text-align:right; }
+        .team-row.r1 .team-score-col { font-size:1.9rem; color:var(--gold2); }
+        .team-row.r2 .team-score-col { font-size:1.6rem; color:var(--silver); }
+        .team-row.r3 .team-score-col { font-size:1.4rem; color:var(--bronze); }
+        .team-row.rn .team-score-col { font-size:1.1rem; color:rgba(255,255,255,.7); }
+        .team-cnt { font-size:.7rem; color:rgba(255,255,255,.35); text-align:right; }
 
         /* ── セクション区切り ── */
         .section-label {
@@ -217,12 +220,27 @@
         }
         @keyframes spin { to { transform:rotate(360deg); } }
 
+        /* サブフィルター */
+        .sub-btn {
+            padding:5px 16px; border-radius:50px;
+            border:1.5px solid rgba(255,255,255,.18);
+            background:rgba(255,255,255,.04);
+            color:rgba(255,255,255,.5);
+            font-size:.8rem; font-weight:600;
+            cursor:pointer; transition:all .2s;
+        }
+        .sub-btn.active {
+            background:rgba(255,255,255,.15);
+            border-color:rgba(255,255,255,.4);
+            color:white;
+        }
+        .sub-btn:hover:not(.active) { border-color:rgba(255,255,255,.3); color:rgba(255,255,255,.8); }
+
         @media (max-width:600px) {
             .r1 .podium-avatar { width:52px;height:52px; }
             .r2 .podium-avatar { width:46px;height:46px; }
             .r3 .podium-avatar { width:42px;height:42px; }
             .r1 .podium-score { font-size:1.5rem; }
-            .team-grid { grid-template-columns:1fr 1fr; }
         }
     </style>
 </head>
@@ -288,6 +306,16 @@
                     <button class="mode-btn" onclick="setMode('team',this)">🏅 チーム</button>
                 </div>
             </div>
+            <!-- サブフィルター -->
+            <div id="sub-filter-wrap">
+                <div class="filter-label">📊 指標</div>
+                <div class="filter-group" id="sub-filter">
+                    <button class="sub-btn active" onclick="setSub('score',this)">合計スコア</button>
+                    <button class="sub-btn" onclick="setSub('count',this)">試合回数</button>
+                    <button class="sub-btn" onclick="setSub('win',this)">優勝率</button>
+                    <button class="sub-btn" onclick="setSub('plus',this)">入賞率</button>
+                </div>
+            </div>
         </div>
 
         <div class="main-wrap">
@@ -300,7 +328,7 @@
 
             <!-- チームビュー -->
             <div id="view-team" style="display:none;">
-                <div class="team-grid" id="team-grid"></div>
+                <div class="team-list" id="team-list"></div>
             </div>
         </div>
     </div>
@@ -320,17 +348,20 @@
     let allTeamNames = new Set();
     let currentTour = 'all';
     let currentMode = 'individual';
+    let currentSub  = 'score';
+
+    // 大会名インデックス（onclick用）
+    let tourList = [];
 
     document.addEventListener('DOMContentLoaded', loadRanking);
 
     async function loadRanking() {
         const { data: results, error } = await supabaseClient
             .from('poker_results')
-            .select('discord_user_id,account_name,final_score,team_name,tournament_type,match_mode,event_datetime');
+            .select('discord_user_id,account_name,final_score,rank,team_name,tournament_type,match_mode,event_datetime');
         if (error) { console.error(error); return; }
         allResults = results || [];
 
-        // プロフィール取得
         const ids = [...new Set(allResults.map(r => r.discord_user_id).filter(Boolean))];
         if (ids.length > 0) {
             const { data: profiles } = await supabaseClient
@@ -338,7 +369,6 @@
             (profiles || []).forEach(p => { profileMap[p.discord_user_id] = p; });
         }
 
-        // チームマスタ取得
         const { data: teams } = await supabaseClient.from('poker_teams').select('id,team_name');
         allTeamNames = new Set((teams || []).map(t => t.team_name));
 
@@ -350,22 +380,20 @@
     }
 
     function buildTourFilter() {
-        // DBにある tournament_type を収集
-        const tours = [...new Set(allResults.map(r => r.tournament_type).filter(Boolean))].sort();
+        tourList = [...new Set(allResults.map(r => r.tournament_type).filter(Boolean))].sort();
         const container = document.getElementById('tour-filter');
-        // 全期間を先頭に、大会名を後ろに並べる
-        let html = `<button class="tour-btn active" onclick="setTour('all',this)">全期間</button>`;
-        tours.forEach(t => {
-            html += `<button class="tour-btn" onclick="setTour(${JSON.stringify(t)},this)">${t}</button>`;
+        let html = `<button class="tour-btn active" onclick="setTour(-1,this)">全期間</button>`;
+        tourList.forEach((t, i) => {
+            html += `<button class="tour-btn" onclick="setTour(${i},this)">${t}</button>`;
         });
         container.innerHTML = html;
     }
 
-    function setTour(val, btn) {
-        currentTour = val;
+    function setTour(idx, btn) {
+        currentTour = idx === -1 ? 'all' : tourList[idx];
         document.querySelectorAll('.tour-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        document.getElementById('hero-sub-text').textContent = val === 'all' ? '全期間' : val;
+        document.getElementById('hero-sub-text').textContent = currentTour === 'all' ? '全期間' : currentTour;
         render();
     }
 
@@ -373,14 +401,21 @@
         currentMode = val;
         document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        // チームモードではサブフィルター非表示
+        document.getElementById('sub-filter-wrap').style.display = val === 'individual' ? '' : 'none';
+        render();
+    }
+
+    function setSub(val, btn) {
+        currentSub = val;
+        document.querySelectorAll('.sub-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
         render();
     }
 
     function filtered() {
-        return allResults.filter(r => {
-            if (currentTour !== 'all' && r.tournament_type !== currentTour) return false;
-            return true;
-        });
+        if (currentTour === 'all') return allResults;
+        return allResults.filter(r => r.tournament_type === currentTour);
     }
 
     function aggregateIndividual(rows) {
@@ -389,25 +424,34 @@
             const key = r.discord_user_id || r.account_name;
             if (!map[key]) {
                 const p = profileMap[r.discord_user_id] || {};
-                map[key] = { id: r.discord_user_id, name: p.account_name || r.account_name, avatar: p.avatar_url || null, team: r.team_name || '', score: 0, count: 0 };
+                map[key] = { id: r.discord_user_id, name: p.account_name || r.account_name,
+                    avatar: p.avatar_url || null, team: r.team_name || '',
+                    score: 0, count: 0, wins: 0, positives: 0 };
             }
             map[key].score += Number(r.final_score);
             map[key].count++;
+            if (Number(r.rank) === 1) map[key].wins++;
+            if (Number(r.final_score) > 0) map[key].positives++;
         });
-        return Object.values(map).sort((a,b) => b.score - a.score);
+        const arr = Object.values(map);
+        const sorters = {
+            score:  (a,b) => b.score - a.score,
+            count:  (a,b) => b.count - a.count || b.score - a.score,
+            win:    (a,b) => (b.wins/b.count) - (a.wins/a.count) || b.count - a.count,
+            plus:   (a,b) => (b.positives/b.count) - (a.positives/a.count) || b.count - a.count,
+        };
+        return arr.sort(sorters[currentSub] || sorters.score);
     }
 
     function aggregateTeam(rows) {
         const map = {};
         rows.forEach(r => {
             if (!r.team_name || !allTeamNames.has(r.team_name)) return;
-            if (!map[r.team_name]) map[r.team_name] = { name: r.team_name, score: 0, count: 0, members: new Set() };
+            if (!map[r.team_name]) map[r.team_name] = { name: r.team_name, score: 0, count: 0 };
             map[r.team_name].score += Number(r.final_score);
             map[r.team_name].count++;
-            if (r.discord_user_id) map[r.team_name].members.add(r.discord_user_id);
         });
-        // マスタにあるが記録なしチームも追加
-        allTeamNames.forEach(n => { if (!map[n]) map[n] = { name: n, score: 0, count: 0, members: new Set() }; });
+        allTeamNames.forEach(n => { if (!map[n]) map[n] = { name: n, score: 0, count: 0 }; });
         return Object.values(map).sort((a,b) => b.score - a.score);
     }
 
@@ -429,9 +473,17 @@
     }
     function sc(v) { return v > 0 ? '+' + v : String(v); }
     function scCls(v) { return v > 0 ? 'score-pos' : v < 0 ? 'score-neg' : 'score-zero'; }
+    function pct(n, d) { return d === 0 ? '-%' : Math.round(n/d*100) + '%'; }
 
     const MEDALS = ['🥇','🥈','🥉'];
     const RCLS   = ['r1','r2','r3'];
+
+    function subVal(p) {
+        if (currentSub === 'count') return { main: p.count + '試合', sub: sc(p.score) + 'pt' };
+        if (currentSub === 'win')   return { main: pct(p.wins, p.count), sub: p.wins + '回優勝 / ' + p.count + '試合' };
+        if (currentSub === 'plus')  return { main: pct(p.positives, p.count), sub: p.positives + '回入賞 / ' + p.count + '試合' };
+        return { main: sc(p.score), sub: p.count + '試合' };
+    }
 
     function renderIndividual(players) {
         const podiumEl  = document.getElementById('podium-list');
@@ -440,14 +492,12 @@
 
         if (players.length === 0) {
             podiumEl.innerHTML = '<div class="empty-state">データがありません</div>';
-            listEl.innerHTML = '';
-            restLabel.style.display = 'none';
-            return;
+            listEl.innerHTML = ''; restLabel.style.display = 'none'; return;
         }
 
-        const top3 = players.slice(0, 3);
-        podiumEl.innerHTML = top3.map((p, i) => {
-            const s = p.score;
+        podiumEl.innerHTML = players.slice(0,3).map((p,i) => {
+            const v = subVal(p);
+            const mainCls = currentSub === 'score' ? scCls(p.score) : '';
             return `<div class="podium-row ${RCLS[i]}">
                 <span class="podium-medal">${MEDALS[i]}</span>
                 <img src="${av(p.avatar,p.name)}" class="podium-avatar"
@@ -457,16 +507,17 @@
                     <div class="podium-sub">${p.team || '　'}</div>
                 </div>
                 <div>
-                    <div class="podium-score ${scCls(s)}">${sc(s)}</div>
-                    <div class="podium-cnt">${p.count}試合</div>
+                    <div class="podium-score ${mainCls}">${v.main}</div>
+                    <div class="podium-cnt">${v.sub}</div>
                 </div>
             </div>`;
         }).join('');
 
         const rest = players.slice(3);
         restLabel.style.display = rest.length ? '' : 'none';
-        listEl.innerHTML = rest.map((p, i) => {
-            const s = p.score;
+        listEl.innerHTML = rest.map((p,i) => {
+            const v = subVal(p);
+            const mainCls = currentSub === 'score' ? scCls(p.score) : '';
             return `<div class="rank-row">
                 <span class="rank-no">${i+4}</span>
                 <img src="${av(p.avatar,p.name)}" class="rank-avatar"
@@ -476,26 +527,29 @@
                     <div class="rank-team">${p.team || '　'}</div>
                 </div>
                 <div>
-                    <div class="rank-score ${scCls(s)}">${sc(s)}</div>
-                    <div class="rank-games">${p.count}試合</div>
+                    <div class="rank-score ${mainCls}">${v.main}</div>
+                    <div class="rank-games">${v.sub}</div>
                 </div>
             </div>`;
         }).join('');
     }
 
     function renderTeam(teamList) {
-        const medals = ['🥇','🥈','🥉'];
-        document.getElementById('team-grid').innerHTML = teamList.length === 0
-            ? '<div class="empty-state" style="grid-column:1/-1;">データがありません</div>'
-            : teamList.map((t, i) => {
+        document.getElementById('team-list').innerHTML = teamList.length === 0
+            ? '<div class="empty-state">データがありません</div>'
+            : teamList.map((t,i) => {
                 const s = t.score;
-                const cls = i < 3 ? RCLS[i] : '';
-                const med = i < 3 ? medals[i] : `<span style="font-size:1.3rem;color:rgba(255,255,255,.3);">${i+1}</span>`;
-                return `<div class="team-card ${cls}">
-                    <div class="team-medal">${med}</div>
-                    <div class="team-name">🏅 ${t.name}</div>
-                    <div class="team-score ${scCls(s)}">${sc(s)}</div>
-                    <div class="team-meta">${t.count}試合</div>
+                const cls = i < 3 ? RCLS[i] : 'rn';
+                const med = i < 3 ? MEDALS[i] : `<span style="font-size:1.1rem;color:rgba(255,255,255,.3);">${i+1}</span>`;
+                return `<div class="team-row ${cls}">
+                    <span class="team-medal">${med}</span>
+                    <div class="team-info">
+                        <div class="team-name-text">🏅 ${t.name}</div>
+                        <div class="team-meta">${t.count}試合</div>
+                    </div>
+                    <div>
+                        <div class="team-score-col ${scCls(s)}">${sc(s)}</div>
+                    </div>
                 </div>`;
             }).join('');
     }
