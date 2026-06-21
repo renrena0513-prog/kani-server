@@ -1009,7 +1009,7 @@
             const { data: logs } = await supabaseClient
                 .from('activity_logs')
                 .select('created_at')
-                .eq('discord_user_id', userId)
+                .eq('user_id', userId)
                 .eq('action_type', 'omikuji')
                 .order('created_at', { ascending: false })
                 .limit(15);
