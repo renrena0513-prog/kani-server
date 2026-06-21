@@ -44,10 +44,13 @@
         .account-col { flex: 1 1 0; min-width: 100px; }
         .rebuy-col { flex: 0 0 15%; max-width: 15%; }
         @media (max-width: 768px) {
+            body { padding: 0; }
+            .form-card { border-radius: 0; margin-bottom: 8px; padding: 24px 16px; }
             .player-row { flex-wrap: wrap; }
             .account-col { flex: 0 0 100%; max-width: 100%; margin-bottom: 10px; }
             .rebuy-col { flex: 0 0 45%; max-width: 45%; }
             .team-col { flex: 0 0 100%; max-width: 100%; margin-bottom: 10px; }
+            .page-header { padding: 20px 16px 0; font-size: 2rem; }
         }
         .player-entry label { color: #666; font-size: 0.8rem; font-weight: 600; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
         .player-entry .form-control { background: #f8f9fa; border: 2px solid #dee2e6; border-radius: 10px; padding: 10px 14px; }
