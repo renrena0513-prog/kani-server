@@ -188,6 +188,11 @@
                                 style="font-size: 0.85rem; padding: 8px 14px;">📛 バッジ</button>
                         </li>
                         <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="tab-poker-btn" data-bs-toggle="tab"
+                                data-bs-target="#tab-poker" type="button" role="tab"
+                                style="font-size: 0.85rem; padding: 8px 14px;">🃏 ポーカー統計</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
                             <button class="nav-link" id="tab-activity-btn" data-bs-toggle="tab"
                                 data-bs-target="#tab-activity" type="button" role="tab"
                                 style="font-size: 0.85rem; padding: 8px 14px;">📋 活動</button>
@@ -582,7 +587,84 @@
                     </div>
                     </div><!-- /tab-badges -->
 
-                    <!-- Tab 3: 最近の活動 -->
+                    <!-- Tab 3: ポーカー統計 -->
+                    <div class="tab-pane fade" id="tab-poker" role="tabpanel">
+                    <div class="profile-card mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                            <h4 style="font-family: var(--font-title); color: var(--deep-purple); margin: 0;">
+                                🃏 ポーカー統計
+                            </h4>
+                            <div class="mahjong-filter-group">
+                                <label class="filter-label-mini">🏆 大会</label>
+                                <select id="poker-tournament-select" class="mahjong-filter-select"
+                                    onchange="renderPokerStats()">
+                                    <option value="all">全シーズン</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div id="poker-stats-loading" class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">読み込み中...</span>
+                            </div>
+                        </div>
+
+                        <div id="poker-stats-content" style="display: none;">
+                            <div class="row g-3 mb-3">
+                                <div class="col-6 col-md-3">
+                                    <div class="stat-card-mini">
+                                        <div class="stat-label-mini">試合数</div>
+                                        <div class="stat-value-mini" id="poker-stat-games">-</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="stat-card-mini">
+                                        <div class="stat-label-mini">合計スコア</div>
+                                        <div class="stat-value-mini" id="poker-stat-total">-</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="stat-card-mini">
+                                        <div class="stat-label-mini">平均スコア</div>
+                                        <div class="stat-value-mini" id="poker-stat-avg">-</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="stat-card-mini">
+                                        <div class="stat-label-mini">最大スコア</div>
+                                        <div class="stat-value-mini" id="poker-stat-max">-</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-6 col-md-4">
+                                    <div class="stat-card-mini">
+                                        <div class="stat-label-mini">1位率</div>
+                                        <div class="stat-value-mini" id="poker-stat-win-rate">-</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <div class="stat-card-mini">
+                                        <div class="stat-label-mini">ラス回避率</div>
+                                        <div class="stat-value-mini" id="poker-stat-avoid">-</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <div class="stat-card-mini">
+                                        <div class="stat-label-mini">平均順位</div>
+                                        <div class="stat-value-mini" id="poker-stat-avg-rank">-</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="poker-no-stats-msg" class="text-center text-muted py-3" style="display: none;">
+                            まだポーカー大会に参加していません
+                        </div>
+                    </div>
+                    </div><!-- /tab-poker -->
+
+                    <!-- Tab 4: 最近の活動 -->
                     <div class="tab-pane fade" id="tab-activity" role="tabpanel">
                     <!-- 最近の活動セクション -->
                     <div class="profile-card mb-4" id="activity-section">
@@ -765,6 +847,7 @@
     <script src="../js/mypage/badge-inventory.js"></script>
     <script src="../js/mypage/badges-actions.js"></script>
     <script src="../js/mypage/mahjong-stats.js"></script>
+    <script src="../js/mypage/poker-stats.js"></script>
     <script src="../js/mypage/transactions.js"></script>
     <script src="../js/mypage/team-notifications.js"></script>
 </body>

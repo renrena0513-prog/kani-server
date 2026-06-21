@@ -63,6 +63,9 @@
             // 麻雀統計の読み込み（共有ロジック）
             await loadMahjongStats();
 
+            // ポーカー統計の読み込み
+            await loadPokerStats();
+
             // バッジコレクションの読み込み
             await loadOwnedBadges();
 
