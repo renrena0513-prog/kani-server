@@ -58,17 +58,23 @@
         .stat-value-mini { font-size: 1.3rem; font-weight: 700; color: #fff; }
         .empty-state { text-align: center; padding: 40px; color: rgba(255,255,255,0.7); }
         .text-muted { color: rgba(255,255,255,0.5) !important; }
-        /* モーダル内は白背景なので文字を暗くリセット */
-        .modal-content { color: #333; }
-        .modal-content .text-muted { color: #6c757d !important; }
-        .modal-content .form-label { color: #444; }
-        .modal-content .form-control, .modal-content .form-select { color: #333; background: #fff; border-color: #dee2e6; }
+        /* モーダル グラスモーフィズム */
+        .modal-content { background: rgba(13,47,92,0.92); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(255,255,255,0.18); color: #fff; border-radius: 16px; }
+        .modal-content .text-muted { color: rgba(255,255,255,0.5) !important; }
+        .modal-content .form-label { color: rgba(255,255,255,0.8); }
+        .modal-content .form-control, .modal-content .form-select { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); color: #fff; }
+        .modal-content .form-control::placeholder { color: rgba(255,255,255,0.35); }
+        .modal-content .form-control:focus, .modal-content .form-select:focus { background: rgba(255,255,255,0.15); border-color: var(--gold); box-shadow: 0 0 0 3px rgba(212,168,83,0.2); color: #fff; }
+        .modal-content .form-select option { background: #0d2f5c; }
+        .modal-footer { border-top-color: rgba(255,255,255,0.12); }
+        .modal-header { border-bottom-color: rgba(255,255,255,0.12); }
+        .modal-header .btn-close { filter: brightness(0) invert(1); }
         .empty-state-icon { font-size: 4rem; margin-bottom: 20px; }
         .member-select { cursor: pointer; }
         .member-select.selected { background: rgba(255,255,255,0.2) !important; border: 2px solid rgba(255,255,255,0.5); }
-        .team-list-item { display: flex; align-items: center; padding: 15px; border: 1px solid #dee2e6; border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; color: #333; }
-        .team-list-item:hover { background: #f8f9fa; border-color: var(--gold); }
-        .team-list-item.selected { border-color: var(--primary-blue); background: rgba(26,77,140,0.08); }
+        .team-list-item { display: flex; align-items: center; padding: 15px; border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; color: #fff; }
+        .team-list-item:hover { background: rgba(255,255,255,0.1); border-color: var(--gold); }
+        .team-list-item.selected { border-color: var(--gold); background: rgba(212,168,83,0.15); }
         .modal-header-blue { background: var(--deep-blue); color: white; }
         .score-positive { color: #4ade80; font-weight: 700; }
         .score-negative { color: #f87171; font-weight: 700; }
