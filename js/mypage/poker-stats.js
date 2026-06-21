@@ -11,6 +11,23 @@ async function loadPokerStats() {
             targetDiscordId = user.user_metadata.provider_id;
         }
 
+        // ポーカーチーム取得
+        const { data: pokerProfile } = await supabaseClient
+            .from('poker_profiles')
+            .select('team_id, poker_teams(team_name, icon_url)')
+            .eq('discord_user_id', targetDiscordId)
+            .maybeSingle();
+
+        const teamDisplay = document.getElementById('user-poker-team-display');
+        const teamName = document.getElementById('user-poker-team-name');
+        if (teamDisplay && pokerProfile?.poker_teams?.team_name) {
+            const icon = pokerProfile.poker_teams.icon_url
+                ? `<img src="${pokerProfile.poker_teams.icon_url}" style="width:18px;height:18px;object-fit:contain;border-radius:3px;margin-right:4px;vertical-align:middle;">`
+                : '🃏 ';
+            teamName.innerHTML = `${icon}${pokerProfile.poker_teams.team_name}`;
+            teamDisplay.style.display = 'block';
+        }
+
         const { data, error } = await supabaseClient
             .from('poker_results')
             .select('final_score, rank, player_count, match_mode, tournament_type')
