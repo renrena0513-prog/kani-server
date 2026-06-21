@@ -101,18 +101,17 @@
             // ポーカープロフィール取得（チーム所属情報）
             const { data: pokerProfiles } = await supabaseClient
                 .from('poker_profiles')
-                .select('discord_user_id, team_id, team_name');
+                .select('discord_user_id, team_id');
+            const pokerMemberIds = new Set((pokerProfiles || []).map(p => p.discord_user_id));
 
-            // 全プロフィール（名前・アバター）取得
-            const allIds = (pokerProfiles || []).map(p => p.discord_user_id);
-            let profileMap = {};
-            if (allIds.length > 0) {
-                const { data: profiles } = await supabaseClient
-                    .from('profiles')
-                    .select('discord_user_id, account_name, avatar_url')
-                    .in('discord_user_id', allIds);
-                (profiles || []).forEach(p => { profileMap[p.discord_user_id] = p; });
-            }
+            // 全サーバーメンバーのプロフィール取得
+            const { data: allProfiles } = await supabaseClient
+                .from('profiles')
+                .select('discord_user_id, account_name, avatar_url, is_hidden')
+                .order('account_name');
+            const visibleProfiles = (allProfiles || []).filter(p => !p.is_hidden);
+            const profileMap = {};
+            visibleProfiles.forEach(p => { profileMap[p.discord_user_id] = p; });
 
             // スコア集計（poker_results）
             const { data: results } = await supabaseClient
@@ -127,22 +126,27 @@
             // チーム → メンバーマップ
             const teamMemberMap = {};
             (teams || []).forEach(t => { teamMemberMap[t.id] = []; });
-            const unaffiliated = [];
             (pokerProfiles || []).forEach(pp => {
+                if (!pp.team_id || !teamMemberMap[pp.team_id]) return;
                 const profile = profileMap[pp.discord_user_id] || {};
-                const entry = {
+                teamMemberMap[pp.team_id].push({
                     discord_user_id: pp.discord_user_id,
                     account_name: profile.account_name || pp.discord_user_id,
                     avatar_url: profile.avatar_url || null,
                     score: scoreMap[pp.discord_user_id] || 0,
-                    team_id: pp.team_id,
-                };
-                if (pp.team_id && teamMemberMap[pp.team_id]) {
-                    teamMemberMap[pp.team_id].push(entry);
-                } else {
-                    unaffiliated.push(entry);
-                }
+                });
             });
+
+            // 未所属 = 全サーバーメンバーのうちポーカーチーム未所属の人
+            const unaffiliated = visibleProfiles
+                .filter(p => !pokerMemberIds.has(p.discord_user_id) ||
+                    (pokerProfiles||[]).find(pp => pp.discord_user_id === p.discord_user_id && !pp.team_id))
+                .map(p => ({
+                    discord_user_id: p.discord_user_id,
+                    account_name: p.account_name || p.discord_user_id,
+                    avatar_url: p.avatar_url || null,
+                    score: scoreMap[p.discord_user_id] || 0,
+                }));
 
             renderUsers(teams || [], teamMemberMap, unaffiliated);
             document.getElementById('users-loading').style.display = 'none';
