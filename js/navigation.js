@@ -409,7 +409,11 @@ async function applyPageSettingsToNav() {
         const { data } = await supabaseClient.from('page_settings').select('path, is_active');
         if (!data) return;
         const settings = {};
-        data.forEach(item => { settings[normalize(item.path)] = item.is_active; });
+        // false（無効）を優先: 同じパスに複数エントリある場合、一つでもfalseなら非表示
+        data.forEach(item => {
+            const key = normalize(item.path);
+            if (settings[key] !== false) settings[key] = item.is_active;
+        });
 
         document.querySelectorAll('[data-page-path]').forEach(link => {
             const key = normalize(link.getAttribute('data-page-path'));
