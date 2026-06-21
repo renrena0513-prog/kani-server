@@ -785,8 +785,9 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label">バッジ付与（任意）</label>
+                    <input type="text" class="form-control form-control-sm mb-1" id="badge-search" placeholder="🔍 バッジ名で検索…" oninput="filterBadges(this.value)">
                     <div class="border rounded p-2 bg-white" style="max-height:180px;overflow-y:auto;">
-                        <div class="badge-select-item" data-badge-id="" onclick="selectBadge(this)">
+                        <div class="badge-select-item" id="badge-none-item" data-badge-id="" onclick="selectBadge(this)">
                             <span>🚫 なし</span>
                         </div>
                         <div id="badge-select-list"></div>
@@ -1204,7 +1205,7 @@
                 const { data } = await supabaseClient.from('badges').select('id,name,image_url').order('name');
                 allBadges = data || [];
                 document.getElementById('badge-select-list').innerHTML = allBadges.map(b =>
-                    `<div class="badge-select-item" data-badge-id="${b.id}" onclick="selectBadge(this)">
+                    `<div class="badge-select-item" data-badge-id="${b.id}" data-name="${b.name}" onclick="selectBadge(this)">
                         <img src="${b.image_url}" onerror="this.style.display='none'">
                         <span>${b.name}</span>
                     </div>`).join('');
@@ -1252,7 +1253,19 @@
             }
             form.scrollIntoView({ behavior: 'smooth' });
         }
-        function closeEntryForm() { document.getElementById('entry-form').style.display = 'none'; }
+        function closeEntryForm() {
+            document.getElementById('entry-form').style.display = 'none';
+            document.getElementById('badge-search').value = '';
+            filterBadges('');
+        }
+        function filterBadges(q) {
+            const lower = q.toLowerCase();
+            document.getElementById('badge-none-item').style.display = lower ? 'none' : '';
+            document.querySelectorAll('#badge-select-list .badge-select-item').forEach(el => {
+                const name = (el.querySelector('span')?.textContent || '').toLowerCase();
+                el.style.display = name.includes(lower) ? '' : 'none';
+            });
+        }
         function selectBadge(el) {
             document.querySelectorAll('.badge-select-item').forEach(e => e.classList.remove('selected'));
             el.classList.add('selected');
