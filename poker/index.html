@@ -229,28 +229,27 @@
 <body class="bg-felt">
 
     <!-- ナビ -->
-    <div style="position:fixed;top:20px;right:20px;z-index:1000;">
-        <div class="dropdown">
-            <button class="btn dropdown-toggle" type="button" id="navDropdown" data-bs-toggle="dropdown"
-                style="background:linear-gradient(135deg,var(--gold) 0%,#b8892d 100%);color:white;padding:10px 22px;border-radius:25px;font-weight:bold;border:none;">
-                📝 メニュー
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navDropdown">
-                <li><a class="dropdown-item" href="../index.html">🏠 ホームに戻る</a></li>
-                <li><a class="dropdown-item" href="../mypage/index.html">👤 マイページ</a></li>
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="./index.html">🃏 ランキング</a></li>
-                <li><a class="dropdown-item" href="./record.html">📝 記録する</a></li>
-                <li><a class="dropdown-item" href="./users/index.html">👥 ユーザー一覧</a></li>
-                <li><a class="dropdown-item" href="./team/index.html">🏅 チーム管理</a></li>
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="../badge/list.html">📛 バッジ一覧</a></li>
-                <li><a class="dropdown-item" href="../badge/shop.html">🛒 バッジショップ</a></li>
-                <li><a class="dropdown-item" href="../ranking/index.html">💰 資産ランキング</a></li>
-                <li class="admin-only" style="display:none;"><hr class="dropdown-divider"></li>
-                <li class="admin-only" style="display:none;"><a class="dropdown-item" href="../admin/index.html">⚙️ 管理画面</a></li>
-            </ul>
-        </div>
+    <div class="nav-dropdown dropdown" style="position:fixed;top:20px;right:20px;z-index:1000;">
+        <button class="btn dropdown-toggle" type="button" id="navDropdown" data-bs-toggle="dropdown" aria-expanded="false"
+            style="background:linear-gradient(135deg,var(--gold) 0%,#b8892d 100%);color:white;padding:12px 24px;border-radius:25px;font-weight:bold;">
+            📝 メニュー
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navDropdown">
+            <li><a class="dropdown-item" href="../index.html">🏠 ホームに戻る</a></li>
+            <li><a class="dropdown-item" href="../mypage/index.html">👤 マイページ</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="./index.html">🃏 ランキング</a></li>
+            <li><a class="dropdown-item" href="./record.html">📝 記録する</a></li>
+            <li><a class="dropdown-item" href="./users/index.html">👥 ユーザー一覧</a></li>
+            <li><a class="dropdown-item" href="./team/index.html">🏅 チーム管理
+                <span id="team-notification-badge" class="notification-badge" style="display:none;">0</span></a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="../badge/list.html">📛 バッジ一覧</a></li>
+            <li><a class="dropdown-item" href="../badge/shop.html">🛒 バッジショップ</a></li>
+            <li><a class="dropdown-item" href="../ranking/index.html">💰 資産ランキング</a></li>
+            <li class="admin-only" style="display:none;"><hr class="dropdown-divider"></li>
+            <li class="admin-only" style="display:none;"><a class="dropdown-item" href="../admin/index.html">⚙️ 管理画面</a></li>
+        </ul>
     </div>
 
     <!-- ヘッダー -->
