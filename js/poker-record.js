@@ -3,8 +3,14 @@ let allProfiles = [];
 let allTeams = [];
 let isAdmin = false;
 
-// スコアテーブル（順位 → スコアポイント）
-const POKER_UMA = { 1: 50, 2: 20, 3: 0, 4: -20, 5: -30, 6: -35, 7: -40, 8: -40, 9: -40 };
+// スコアテーブル（人数 → 順位 → スコアポイント）
+const POKER_UMA = {
+    4: { 1:  4, 2:  2, 3: -2, 4: -4 },
+    5: { 1:  5, 2:  3, 3:  0, 4: -3, 5: -5 },
+    6: { 1:  6, 2:  4, 3:  1, 4: -1, 5: -4, 6: -6 },
+    7: { 1:  7, 2:  5, 3:  2, 4:  0, 5: -2, 6: -5, 7: -7 },
+    8: { 1:  8, 2:  6, 3:  3, 4:  1, 5: -1, 6: -3, 7: -6, 8: -8 },
+};
 // コイン報酬（順位別ボーナス）
 const POKER_RANK_BONUS = { 1: 50, 2: 30, 3: 10 };
 const POKER_BASE_REWARD = 30;
@@ -334,8 +340,9 @@ async function submitScores() {
 
     // スコア計算
     const actualPlayerCount = tempData.length;
+    const umaTable = POKER_UMA[actualPlayerCount] || {};
     tempData.forEach(p => {
-        p.final_score = POKER_UMA[p.rank] ?? -40;
+        p.final_score = umaTable[p.rank] ?? 0;
         p.player_count = actualPlayerCount;
     });
 
