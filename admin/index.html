@@ -708,7 +708,12 @@
                             </li>
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="records-tab" data-bs-toggle="pill"
-                                    data-bs-target="#records-pane" type="button" role="tab">🏆 大会記録管理</button>
+                                    data-bs-target="#records-pane" type="button" role="tab">🀄 麻雀記録管理</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="poker-records-tab" data-bs-toggle="pill"
+                                    data-bs-target="#poker-records-pane" type="button" role="tab"
+                                    onclick="fetchPokerRecords()">🃏 ポーカー記録管理</button>
                             </li>
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="team-requests-tab" data-bs-toggle="pill"
@@ -1081,6 +1086,31 @@
                                 <span id="logs-page-info" class="fw-bold">1 / -</span>
                                 <button id="next-logs-btn" onclick="changeLogsPage(1)"
                                     class="btn btn-outline-secondary btn-sm">次へ ▶</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ポーカー記録管理タブ -->
+                    <div class="tab-pane fade" id="poker-records-pane" role="tabpanel" tabindex="0">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h2 class="mb-0" style="font-family:var(--font-title);color:var(--deep-gray);">🃏 ポーカー記録管理</h2>
+                            <button onclick="fetchPokerRecords()" class="btn btn-outline-primary btn-sm">🔄 更新</button>
+                        </div>
+                        <div class="admin-section">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle" style="font-size:0.9rem;">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>日時</th>
+                                            <th>人数</th>
+                                            <th>結果</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="poker-records-body">
+                                        <tr><td colspan="4" class="text-center text-muted py-4">タブを開くと読み込まれます</td></tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
@@ -1700,6 +1730,35 @@
             </div>
         </div>
 
+        <!-- ポーカー記録編集モーダル -->
+        <div class="modal fade" id="pokerEditModal" tabindex="-1" aria-labelledby="pokerEditModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="pokerEditModalLabel">🃏 ポーカー記録編集</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted">日時</label>
+                                <input type="datetime-local" class="form-control" id="poker-edit-datetime">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small text-muted">参加人数</label>
+                                <input type="number" class="form-control" id="poker-edit-player-count" min="4" max="8">
+                            </div>
+                        </div>
+                        <div id="poker-edit-players"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                        <button type="button" class="btn btn-primary" onclick="savePokerMatch()">保存する</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- ローディングオーバーレイ -->
         <div id="loading-overlay" class="loading-overlay">
             <div class="spinner-border text-light" role="status">
@@ -1722,6 +1781,7 @@
         <!-- 管理ロジック -->
         <script src="../js/admin_v2.js?v=20260111_04"></script>
         <script src="../js/admin-pages.js"></script>
+        <script src="../js/admin-poker.js"></script>
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 initAccordionNav('../');
