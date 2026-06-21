@@ -631,8 +631,6 @@
     let iconFileSelected = null;
 
     document.getElementById('iconModal').addEventListener('show.bs.modal', () => {
-        document.getElementById('icon-badge-name').value = '';
-        document.getElementById('icon-badge-desc').value = '';
         document.getElementById('icon-file-error').style.display = 'none';
         iconFileSelected = null;
         const preview = document.getElementById('icon-preview-img');
