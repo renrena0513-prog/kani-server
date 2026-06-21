@@ -78,10 +78,15 @@
         .score-table td { padding: 8px 12px; border-bottom: 1px solid #eee; font-size: 0.9rem; }
         .score-table tr:last-child td { border-bottom: none; }
         /* ドラッグ */
-        .player-entry { cursor: grab; transition: background .15s; }
-        .player-entry:active { cursor: grabbing; }
+        .player-entry { transition: background .15s; }
         .player-entry.drag-over { background: #e8f0fe; border-radius: 10px; outline: 2px dashed var(--primary-blue); }
-        .drag-hint { font-size: .78rem; color: #aaa; text-align: right; margin-bottom: 6px; }
+        .drag-handle {
+            font-size: 1.3rem; color: #bbb; cursor: grab; padding: 4px 6px;
+            line-height: 1; user-select: none; touch-action: none;
+            flex-shrink: 0;
+        }
+        .drag-handle:hover { color: #888; }
+        .drag-handle:active { cursor: grabbing; }
     </style>
 </head>
 <body>

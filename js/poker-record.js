@@ -90,7 +90,8 @@ function setupPlayerInputs(count) {
         container.innerHTML += `
             <div class="player-entry" id="player-row-${i}" data-row-index="${i}">
                 <div class="row g-2 align-items-center player-row">
-                    <div class="col-auto d-flex align-items-center" style="min-width:50px;">
+                    <div class="col-auto d-flex align-items-center gap-1" style="min-width:60px;">
+                        <span class="drag-handle" title="ドラッグで順位変更">⠿</span>
                         <span id="rank-badge-${i}" class="badge bg-secondary fs-6 d-flex align-items-center justify-content-center rank-badge" style="height:38px;width:40px;">${i}位</span>
                     </div>
                     <div class="col team-col">
@@ -160,9 +161,17 @@ function initDragSort() {
     let dragSrc = null;
 
     container.querySelectorAll('.player-entry').forEach(row => {
-        row.setAttribute('draggable', 'true');
+        // ハンドル要素からのみドラッグ開始を許可
+        const handle = row.querySelector('.drag-handle');
+        if (handle) {
+            handle.addEventListener('mousedown', () => { row.setAttribute('draggable', 'true'); });
+            document.addEventListener('mouseup', () => { row.setAttribute('draggable', 'false'); }, { once: false });
+        }
 
         row.addEventListener('dragstart', e => {
+            if (!row.getAttribute('draggable') || row.getAttribute('draggable') === 'false') {
+                e.preventDefault(); return;
+            }
             dragSrc = row;
             row.style.opacity = '0.4';
             e.dataTransfer.effectAllowed = 'move';
@@ -195,8 +204,8 @@ function initDragSort() {
 
     container.querySelectorAll('.player-entry').forEach(row => {
         row.addEventListener('touchstart', e => {
-            // ✕ボタンやドロップダウン操作は除外
-            if (e.target.closest('.btn-clear, .custom-dropdown-container, input, select')) return;
+            // ハンドルを触ったときだけ発動
+            if (!e.target.closest('.drag-handle')) return;
 
             touchSrc = row;
             const touch = e.touches[0];
