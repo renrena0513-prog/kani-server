@@ -1,167 +1,528 @@
 <!DOCTYPE html>
 <html lang="ja">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>おみくじ - かに鯖</title>
+    <title>御神籤 - かに鯖</title>
     <link rel="icon" type="image/png" href="../images/favicon.png">
     <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Kosugi+Maru&family=Noto+Sans+JP:wght@400;700&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700;900&family=Kosugi+Maru&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../styles.css">
     <style>
-        :root {
-            --deep-purple: #5a4a7a;
-            --gold: #d4a574;
-            --font-title: 'Kosugi Maru', sans-serif;
-        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+            background: #06040f;
             min-height: 100vh;
+            font-family: 'Noto Serif JP', serif;
+            overflow-x: hidden;
         }
 
-        .page-header {
-            color: #fff;
-            font-family: var(--font-title);
-            text-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-            margin-bottom: 30px;
+        /* ── Canvas layers ── */
+        #bg-canvas, #fx-canvas {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+        }
+        #fx-canvas { z-index: 20; }
+
+        /* ── Background atmosphere ── */
+        .jp-atmosphere {
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 80% 60% at 50% -10%, rgba(80,20,120,.55) 0%, transparent 70%),
+                radial-gradient(ellipse 60% 40% at 20% 80%, rgba(139,0,0,.12) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 40% at 80% 80%, rgba(139,0,0,.12) 0%, transparent 60%),
+                #06040f;
+            z-index: 1;
         }
 
-        .omikuji-card {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-            text-align: center;
-            max-width: 500px;
-            margin: 0 auto;
+        /* ── Moon ── */
+        .jp-moon {
+            position: fixed;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 38% 38%, #fffef5, #fef3c7 40%, #fde68a);
+            box-shadow:
+                0 0 30px rgba(253,230,138,.5),
+                0 0 80px rgba(253,230,138,.25),
+                0 0 160px rgba(253,230,138,.1);
+            z-index: 2;
+        }
+        .jp-moon-halo {
+            position: fixed;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 130px;
+            height: 130px;
+            border-radius: 50%;
+            background: transparent;
+            box-shadow: 0 0 60px 30px rgba(253,230,138,.08);
+            z-index: 2;
         }
 
-        .fortune-box {
-            padding: 30px;
-            border-radius: 15px;
-            margin: 20px 0;
-            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+        /* ── Torii ── */
+        .jp-torii {
+            position: fixed;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: .07;
+            z-index: 2;
+            pointer-events: none;
         }
 
-        .fortune-rank {
-            font-size: 3rem;
-            font-weight: bold;
-            font-family: var(--font-title);
-            color: var(--deep-purple);
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        /* ── Japanese lattice overlay ── */
+        .jp-grid {
+            position: fixed;
+            inset: 0;
+            opacity: .015;
+            background-image:
+                linear-gradient(rgba(255,200,100,.8) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,200,100,.8) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: 2;
+            pointer-events: none;
         }
 
-        .fortune-reward {
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin-top: 10px;
-        }
-
-        .fortune-reward.positive {
-            color: #27ae60;
-        }
-
-        .fortune-reward.negative {
-            color: #e74c3c;
-        }
-
-        .fortune-message {
-            margin-top: 20px;
-            font-size: 1.1rem;
-            color: #555;
-            line-height: 1.8;
-        }
-
-        .draw-button {
-            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        /* ── Nav (preserved) ── */
+        .nav-dropdown { position: fixed; top: 20px; right: 20px; z-index: 1000; }
+        .record-button {
+            background: linear-gradient(135deg, #b8892d, #d4a853);
             color: white;
-            border: none;
-            padding: 15px 50px;
-            font-size: 1.3rem;
+            padding: 10px 22px;
+            border-radius: 25px;
             font-weight: bold;
+            font-size: 1rem;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(212,168,83,.4);
+        }
+        .nav-dropdown-menu {
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,.3);
+            min-width: 200px;
+            border: none;
+        }
+        .dropdown-item { padding: 10px 18px; color: #333; }
+
+        /* ── Main scene ── */
+        .jp-scene {
+            position: relative;
+            z-index: 10;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 80px 20px 120px;
+        }
+
+        /* ── Title ── */
+        .jp-title {
+            font-family: 'Noto Serif JP', serif;
+            font-weight: 900;
+            font-size: 2.8rem;
+            color: #f5e6c8;
+            letter-spacing: .3em;
+            text-shadow:
+                0 0 20px rgba(212,168,83,.9),
+                0 0 50px rgba(212,168,83,.4),
+                0 2px 8px rgba(0,0,0,.8);
+            margin-bottom: 6px;
+        }
+        .jp-subtitle {
+            font-size: .85rem;
+            color: rgba(245,230,200,.4);
+            letter-spacing: .25em;
+            margin-bottom: 50px;
+        }
+
+        /* ── Cylinder (omikuji box) ── */
+        .jp-cylinder-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 36px;
+            transition: opacity .5s, transform .5s;
+        }
+        .jp-cylinder-wrap.hide {
+            opacity: 0;
+            transform: scale(.8) translateY(20px);
+            pointer-events: none;
+        }
+
+        .jp-cylinder {
+            position: relative;
+            width: 80px;
+            cursor: default;
+            filter: drop-shadow(0 12px 30px rgba(139,0,0,.6));
+        }
+
+        /* Top oval */
+        .jp-cyl-top {
+            width: 80px;
+            height: 22px;
+            background: radial-gradient(ellipse at 50% 40%, #d43030, #8b0000);
+            border-radius: 50%;
+            position: relative;
+            z-index: 3;
+            box-shadow: 0 4px 8px rgba(0,0,0,.4);
+        }
+        /* Body */
+        .jp-cyl-body {
+            width: 80px;
+            height: 160px;
+            background: linear-gradient(90deg,
+                #5c0000 0%, #8b0000 15%, #cc2020 40%,
+                #dd3333 50%, #cc2020 60%, #8b0000 85%, #5c0000 100%);
+            margin-top: -11px;
+            position: relative;
+            overflow: hidden;
+            box-shadow:
+                inset 3px 0 8px rgba(255,255,255,.08),
+                inset -3px 0 8px rgba(0,0,0,.4);
+        }
+        /* Gold character 御 on front */
+        .jp-cyl-body::after {
+            content: '御';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.6rem;
+            font-weight: 900;
+            color: rgba(212,168,83,.7);
+            text-shadow: 0 0 10px rgba(212,168,83,.5);
+            letter-spacing: 0;
+        }
+        /* Gold bands */
+        .jp-cyl-band {
+            position: absolute;
+            left: -4px;
+            right: -4px;
+            height: 10px;
+            background: linear-gradient(90deg, #8b6914, #f0d060, #d4a853, #f0d060, #8b6914);
+            border-radius: 5px;
+            z-index: 4;
+        }
+        .jp-cyl-band.top { top: 22px; }
+        .jp-cyl-band.bottom { bottom: 0; }
+
+        /* Bottom oval */
+        .jp-cyl-bottom {
+            width: 80px;
+            height: 20px;
+            background: radial-gradient(ellipse at 50% 60%, #8b0000, #5c0000);
+            border-radius: 50%;
+            margin-top: -10px;
+            position: relative;
+            z-index: 3;
+            box-shadow: 0 6px 16px rgba(0,0,0,.5);
+        }
+
+        /* Sticks */
+        .jp-sticks {
+            position: absolute;
+            top: -45px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 5px;
+            z-index: 5;
+        }
+        .jp-stick {
+            width: 7px;
+            border-radius: 4px;
+            background: linear-gradient(180deg, #f5deb3 0%, #d2b48c 60%, #a0785a 100%);
+            box-shadow: 1px 0 3px rgba(0,0,0,.4);
+        }
+        .jp-stick:nth-child(1) { height: 70px; }
+        .jp-stick:nth-child(2) { height: 60px; margin-top: 10px; }
+        .jp-stick:nth-child(3) { height: 65px; margin-top: 5px; }
+        .jp-stick:nth-child(4) { height: 55px; margin-top: 15px; }
+
+        /* Cylinder glow (ambient) */
+        .jp-cylinder::before {
+            content: '';
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 20px;
+            background: radial-gradient(ellipse, rgba(139,0,0,.5), transparent);
+            border-radius: 50%;
+        }
+
+        /* ── Shake animation ── */
+        @keyframes jpShake {
+            0%,100% { transform: rotate(0) translateX(0); }
+            8%  { transform: rotate(-7deg) translateX(-10px); }
+            16% { transform: rotate(6deg)  translateX(12px); }
+            24% { transform: rotate(-8deg) translateX(-14px); }
+            32% { transform: rotate(7deg)  translateX(14px); }
+            40% { transform: rotate(-6deg) translateX(-12px); }
+            48% { transform: rotate(8deg)  translateX(16px); }
+            56% { transform: rotate(-7deg) translateX(-14px); }
+            64% { transform: rotate(6deg)  translateX(12px); }
+            72% { transform: rotate(-5deg) translateX(-10px); }
+            80% { transform: rotate(4deg)  translateX(8px); }
+            90% { transform: rotate(-2deg) translateX(-4px); }
+        }
+        .jp-cylinder.shaking { animation: jpShake 1.8s cubic-bezier(.36,.07,.19,.97); }
+
+        /* ── Draw button ── */
+        .jp-draw-btn {
+            background: linear-gradient(135deg, #7a0000, #aa0000);
+            color: #f5e6c8;
+            border: 2px solid rgba(212,168,83,.7);
+            padding: 15px 48px;
+            font-size: 1.1rem;
+            font-family: 'Noto Serif JP', serif;
+            font-weight: 700;
+            letter-spacing: .12em;
             border-radius: 50px;
             cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 5px 20px rgba(231, 76, 60, 0.4);
+            box-shadow:
+                0 6px 20px rgba(139,0,0,.5),
+                0 0 30px rgba(212,168,83,.15),
+                inset 0 1px 0 rgba(255,255,255,.1);
+            transition: all .3s;
         }
-
-        .draw-button:hover:not(:disabled) {
+        .jp-draw-btn:hover:not(:disabled) {
             transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(231, 76, 60, 0.5);
+            box-shadow: 0 10px 30px rgba(139,0,0,.6), 0 0 40px rgba(212,168,83,.25);
+            border-color: rgba(212,168,83,1);
         }
-
-        .draw-button:disabled {
-            background: #aaa;
+        .jp-draw-btn:disabled {
+            background: rgba(255,255,255,.05);
+            border-color: rgba(255,255,255,.1);
+            color: rgba(255,255,255,.3);
             cursor: not-allowed;
             box-shadow: none;
+            transform: none;
         }
 
-        .already-drawn {
-            color: #999;
-            font-size: 1.1rem;
+        /* ── Scroll result ── */
+        .jp-scroll-outer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            opacity: 0;
+            transform: translateY(30px) scale(.95);
+            transition: opacity .6s ease, transform .6s ease;
+        }
+        .jp-scroll-outer.revealed {
+            opacity: 1;
+            transform: translateY(0) scale(1);
         }
 
-        .access-denied {
-            color: #e74c3c;
-            font-size: 1.2rem;
+        /* Scroll rods */
+        .jp-rod {
+            width: 260px;
+            height: 18px;
+            background: linear-gradient(90deg, #3d1f0a, #7b4a1e, #a0652a, #7b4a1e, #3d1f0a);
+            border-radius: 9px;
+            box-shadow: 0 4px 12px rgba(0,0,0,.6), inset 0 2px 3px rgba(255,255,255,.1);
+            position: relative;
+            z-index: 2;
+        }
+        /* Round knobs at ends */
+        .jp-rod::before, .jp-rod::after {
+            content: '';
+            position: absolute;
+            top: -3px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 40% 35%, #c4813a, #5c2d0a);
+            box-shadow: 0 3px 8px rgba(0,0,0,.5);
+        }
+        .jp-rod::before { left: -6px; }
+        .jp-rod::after  { right: -6px; }
+
+        /* Scroll paper body */
+        .jp-scroll-paper {
+            width: 260px;
+            background: linear-gradient(180deg,
+                #fdf8ee 0%, #faf0d8 30%, #f8ead0 50%, #faf0d8 70%, #fdf8ee 100%);
+            box-shadow:
+                4px 0 12px rgba(0,0,0,.25),
+                -4px 0 12px rgba(0,0,0,.25),
+                inset 0 0 40px rgba(180,130,60,.08);
+            padding: 28px 28px 32px;
+            text-align: center;
+            overflow: hidden;
+            clip-path: inset(0 0 100% 0);
+            transition: clip-path .8s cubic-bezier(.4,0,.2,1) .1s;
+        }
+        .jp-scroll-paper.unrolled {
+            clip-path: inset(0 0 0% 0);
         }
 
-        /* アニメーション */
-        @keyframes shake {
-
-            0%,
-            100% {
-                transform: translateX(0);
-            }
-
-            10%,
-            30%,
-            50%,
-            70%,
-            90% {
-                transform: translateX(-5px);
-            }
-
-            20%,
-            40%,
-            60%,
-            80% {
-                transform: translateX(5px);
-            }
+        /* Paper texture lines */
+        .jp-scroll-paper::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(
+                180deg,
+                transparent 0px, transparent 28px,
+                rgba(180,130,60,.06) 28px, rgba(180,130,60,.06) 29px
+            );
+            pointer-events: none;
         }
 
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        /* Rank text */
+        .jp-rank-text {
+            font-family: 'Noto Serif JP', serif;
+            font-weight: 900;
+            font-size: 3rem;
+            letter-spacing: .15em;
+            color: #5a1a1a;
+            opacity: 0;
+            transform: scale(.7);
+            transition: opacity .5s ease .7s, transform .5s cubic-bezier(.175,.885,.32,1.275) .7s;
+            display: block;
+            margin-bottom: 8px;
+            text-shadow: 1px 1px 0 rgba(212,168,83,.2);
+        }
+        .jp-scroll-paper.unrolled .jp-rank-text {
+            opacity: 1;
+            transform: scale(1);
         }
 
-        .shaking {
-            animation: shake 0.8s ease-in-out;
+        /* Rank color overrides */
+        .rank-god      .jp-rank-text { background: linear-gradient(135deg,#FFD700,#FF8C00,#FFD700); -webkit-background-clip:text; background-clip:text; color:transparent; font-size:3.4rem; }
+        .rank-super    .jp-rank-text { color: #7a5a00; text-shadow: 0 0 8px rgba(212,168,83,.4); }
+        .rank-daikichi .jp-rank-text { color: #7a3a00; }
+        .rank-kichi    .jp-rank-text { color: #2a5a3a; }
+        .rank-suekichi .jp-rank-text { color: #4a3a6a; }
+        .rank-kyo      .jp-rank-text { color: #5a5a5a; }
+        .rank-daikyo   .jp-rank-text { color: #3a3a3a; font-size: 2.6rem; }
+
+        /* God rank glow on scroll */
+        .rank-god .jp-scroll-paper {
+            background: linear-gradient(180deg, #fffef5, #fff8dc, #fef3c7, #fff8dc, #fffef5);
+            box-shadow: 4px 0 12px rgba(212,168,83,.4), -4px 0 12px rgba(212,168,83,.4),
+                        0 0 40px rgba(212,168,83,.2);
         }
 
-        .fade-in {
-            animation: fadeIn 0.5s ease-out;
+        /* Reward */
+        .jp-reward-text {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin: 6px 0 12px;
+            opacity: 0;
+            transition: opacity .4s ease 1.1s;
+            font-family: 'Noto Serif JP', serif;
+        }
+        .jp-scroll-paper.unrolled .jp-reward-text { opacity: 1; }
+
+        /* Divider */
+        .jp-scroll-divider {
+            width: 80%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(90,26,26,.25), transparent);
+            margin: 10px auto;
         }
 
-        /* ナビゲーションドロップダウン */
-        .nav-dropdown {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
+        /* Message */
+        .jp-msg-text {
+            font-size: .9rem;
+            line-height: 1.9;
+            color: #5a3a1a;
+            opacity: 0;
+            transition: opacity .4s ease 1.3s;
+        }
+        .jp-scroll-paper.unrolled .jp-msg-text { opacity: 1; }
+
+        /* Seal */
+        .jp-seal {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 40% 40%, #aa0000, #600000);
+            border: 2px solid rgba(180,60,60,.6);
+            margin: 14px auto 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255,200,160,.9);
+            font-size: 1rem;
+            font-weight: 900;
+            box-shadow: 0 4px 12px rgba(139,0,0,.5), inset 0 1px 2px rgba(255,255,255,.1);
+            opacity: 0;
+            transition: opacity .4s ease 1.5s;
+        }
+        .jp-scroll-paper.unrolled .jp-seal { opacity: 1; }
+
+        /* Action buttons */
+        .jp-actions {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+            opacity: 0;
+            transition: opacity .4s ease 1.8s;
+        }
+        .jp-actions.visible { opacity: 1; }
+
+        .jp-action-btn {
+            background: rgba(255,255,255,.06);
+            border: 1px solid rgba(245,230,200,.2);
+            color: rgba(245,230,200,.7);
+            padding: 10px 32px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-family: 'Noto Serif JP', serif;
+            font-size: .9rem;
+            letter-spacing: .08em;
+            transition: all .2s;
+        }
+        .jp-action-btn:hover { background: rgba(255,255,255,.1); color: rgba(245,230,200,.9); }
+        .jp-pay-btn {
+            background: linear-gradient(135deg, #7a0000, #aa0000);
+            border-color: rgba(212,168,83,.5);
+            color: #f5e6c8;
+        }
+        .jp-pay-btn:hover { background: linear-gradient(135deg,#9a0000,#cc0000); }
+
+        /* ── Already drawn ── */
+        .jp-already-card {
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(245,230,200,.12);
+            border-radius: 20px;
+            padding: 48px 40px;
+            text-align: center;
+            color: rgba(245,230,200,.6);
+        }
+        .jp-already-icon { font-size: 3rem; margin-bottom: 16px; }
+        .jp-already-main { font-size: 1.1rem; margin-bottom: 8px; }
+        .jp-already-sub { font-size: .85rem; opacity: .5; margin-bottom: 20px; }
+        .jp-already-link { color: rgba(212,168,83,.7); font-size: .9rem; text-decoration: none; }
+        .jp-already-link:hover { color: rgba(212,168,83,1); }
+
+        /* ── Login prompt ── */
+        .jp-login-card {
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(245,230,200,.12);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            color: rgba(245,230,200,.7);
         }
 
-        /* 管理設定パネル */
+        /* ── Admin settings (unchanged from before) ── */
         .admin-settings-btn {
             position: fixed;
             bottom: 24px;
@@ -173,7 +534,7 @@
             background: linear-gradient(135deg, #5a4a7a, #3d2f5a);
             border: none;
             color: white;
-            font-size: 1.3rem;
+            font-size: 1.2rem;
             cursor: pointer;
             box-shadow: 0 4px 16px rgba(90,74,122,.5);
             display: flex;
@@ -187,7 +548,7 @@
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,.6);
+            background: rgba(0,0,0,.7);
             z-index: 3000;
             overflow-y: auto;
             padding: 20px;
@@ -202,7 +563,8 @@
             max-width: 700px;
             margin: 40px auto;
         }
-        .admin-panel h2 { font-size: 1.3rem; font-weight: 700; margin-bottom: 20px; color: #333; }
+        .admin-panel h2 { font-size: 1.3rem; font-weight: 700; margin-bottom: 20px; color: #333; font-family: sans-serif; }
+
         .entry-row {
             background: #f8f9fa;
             border-radius: 12px;
@@ -211,6 +573,7 @@
             display: flex;
             align-items: center;
             gap: 12px;
+            font-family: sans-serif;
         }
         .entry-rank { font-weight: 700; font-size: 1rem; min-width: 80px; }
         .entry-details { flex: 1; font-size: .85rem; color: #555; }
@@ -221,149 +584,148 @@
             border-radius: 14px;
             padding: 20px;
             margin-top: 16px;
+            font-family: sans-serif;
         }
         .entry-form .form-label { font-weight: 600; font-size: .85rem; color: #444; }
+
         .badge-select-item {
-            display: flex; align-items: center; gap: 8px; padding: 6px 10px;
-            border-radius: 8px; cursor: pointer; transition: background .15s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background .15s;
+            font-family: sans-serif;
         }
         .badge-select-item:hover { background: #e8eeff; }
         .badge-select-item.selected { background: #d0daff; }
         .badge-select-item img { width: 28px; height: 28px; object-fit: contain; border-radius: 4px; }
-
-        .record-button {
-            background: linear-gradient(135deg, var(--gold) 0%, #b8892d 100%);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 25px;
-            font-weight: bold;
-            font-size: 1.1rem;
-            box-shadow: 0 6px 20px rgba(212, 168, 83, 0.5);
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            border: none;
-            cursor: pointer;
-        }
-
-        .record-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(212, 168, 83, 0.6);
-            color: white;
-        }
-
-        .nav-dropdown-menu {
-            border-radius: 12px;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
-            min-width: 200px;
-            overflow: hidden;
-            border: none;
-        }
-
-        .dropdown-item {
-            padding: 12px 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: #333;
-            transition: background 0.2s;
-        }
     </style>
 </head>
-
 <body>
-    <!-- 右上のナビゲーションドロップダウン -->
+
+    <!-- Background layers -->
+    <div class="jp-atmosphere"></div>
+    <div class="jp-grid"></div>
+    <canvas id="bg-canvas"></canvas>
+    <canvas id="fx-canvas"></canvas>
+
+    <!-- Moon -->
+    <div class="jp-moon"></div>
+    <div class="jp-moon-halo"></div>
+
+    <!-- Torii silhouette -->
+    <svg class="jp-torii" width="700" height="260" viewBox="0 0 700 260" fill="#cc2200">
+        <!-- 笠木 (top curved beam) -->
+        <path d="M30,95 Q350,45 670,95 L680,118 Q350,68 20,118 Z"/>
+        <!-- 島木 -->
+        <rect x="60" y="125" width="580" height="22" rx="4"/>
+        <!-- 貫 -->
+        <rect x="90" y="175" width="520" height="15" rx="4"/>
+        <!-- Left pillar -->
+        <rect x="108" y="100" width="28" height="160" rx="8"/>
+        <!-- Right pillar -->
+        <rect x="564" y="100" width="28" height="160" rx="8"/>
+        <!-- Pillar caps -->
+        <ellipse cx="122" cy="100" rx="22" ry="8"/>
+        <ellipse cx="578" cy="100" rx="22" ry="8"/>
+    </svg>
+
+    <!-- Nav -->
     <div class="nav-dropdown dropdown">
-        <button class="record-button dropdown-toggle" type="button" id="navDropdown" data-bs-toggle="dropdown"
-            aria-expanded="false">
+        <button class="record-button dropdown-toggle" type="button" id="navDropdown" data-bs-toggle="dropdown">
             📝 メニュー
         </button>
         <ul class="dropdown-menu nav-dropdown-menu dropdown-menu-end" aria-labelledby="navDropdown">
             <li><a class="dropdown-item" href="../index.html">🏠 ホームに戻る</a></li>
             <li><a class="dropdown-item" href="../mypage/index.html">👤 マイページ</a></li>
-            <li>
-                <hr class="dropdown-divider">
-            </li>
-            <li><a class="dropdown-item" href="../mahjong/index.html">📊 ランキング</a></li>
-            <li><a class="dropdown-item" href="../mahjong/record.html">📝 記録する</a></li>
-            <li><a class="dropdown-item" href="../mahjong/users/index.html">👥 ユーザー一覧</a></li>
-            <li><a class="dropdown-item" href="../mahjong/team/index.html">🏅 チーム管理</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="../mahjong/index.html">📊 麻雀ランキング</a></li>
+            <li><a class="dropdown-item" href="../poker/index.html">🃏 ポーカーランキング</a></li>
+            <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item" href="../badge/list.html">📛 バッジ一覧</a></li>
             <li><a class="dropdown-item" href="../badge/shop.html">🛒 バッジショップ</a></li>
-            <li>
-                <hr class="dropdown-divider">
-            </li>
+            <li><a class="dropdown-item" href="../ranking/index.html">💰 資産ランキング</a></li>
+            <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item" href="./index.html">🎋 おみくじ</a></li>
-            <li class="admin-only" style="display:none;">
-                <hr class="dropdown-divider">
-            </li>
-            <li class="admin-only" style="display:none;">
-                <a class="dropdown-item" href="../admin/index.html">⚙️ 管理画面</a>
-            </li>
+            <li class="admin-only" style="display:none;"><hr class="dropdown-divider"></li>
+            <li class="admin-only" style="display:none;"><a class="dropdown-item" href="../admin/index.html">⚙️ 管理画面</a></li>
         </ul>
     </div>
 
-    <div class="container py-5">
-        <header class="text-center">
-            <h1 class="page-header display-4 fw-bold">🎋 おみくじ</h1>
-            <p class="text-white-50">1日1回の運試し！</p>
-        </header>
+    <!-- Admin gear button -->
+    <button class="admin-settings-btn admin-only" style="display:none;" onclick="toggleAdminPanel()" title="おみくじ設定">⚙️</button>
 
-        <div class="omikuji-card">
-            <!-- アクセス拒否表示 -->
-            <div id="access-denied" style="display: none;">
-                <div class="access-denied mb-4">
-                    <p>🚫 このページは管理者限定です</p>
-                </div>
-                <a href="../index.html" class="btn btn-outline-secondary">ホームに戻る</a>
+    <!-- Main scene -->
+    <div class="jp-scene">
+        <h1 class="jp-title">御 神 籤</h1>
+        <p class="jp-subtitle">一日一度の運試し</p>
+
+        <!-- Login prompt -->
+        <div id="login-prompt" style="display:none;">
+            <div class="jp-login-card">
+                <p style="margin-bottom:20px;">おみくじを引くにはログインしてください</p>
+                <button onclick="loginWithDiscord()" class="jp-draw-btn">Discordでログイン</button>
             </div>
+        </div>
 
-            <!-- ログイン促進 -->
-            <div id="login-prompt" style="display: none;">
-                <p class="mb-4">おみくじを引くにはログインしてください</p>
-                <button onclick="loginWithDiscord()" class="btn btn-primary">Discordでログイン</button>
-            </div>
+        <!-- Omikuji UI -->
+        <div id="omikuji-ui" style="display:none;">
 
-            <!-- おみくじUI -->
-            <div id="omikuji-ui" style="display: none;">
-                <!-- 引く前 -->
-                <div id="before-draw">
-                    <p class="mb-4" style="font-size: 1.1rem;">今日の運勢を占いましょう！</p>
-                    <button id="draw-button" class="draw-button" onclick="drawOmikuji()">
-                        🎋 おみくじを引く
-                    </button>
-                </div>
-
-                <!-- 引いた後 -->
-                <div id="after-draw" style="display: none;">
-                    <div id="result-box" class="fortune-box fade-in">
-                        <div id="fortune-rank" class="fortune-rank"></div>
-                        <div id="fortune-reward" class="fortune-reward"></div>
+            <!-- Before draw -->
+            <div id="before-draw" style="display:flex;flex-direction:column;align-items:center;">
+                <div class="jp-cylinder-wrap" id="jp-cylinder-wrap">
+                    <div class="jp-cylinder" id="jp-cylinder">
+                        <div class="jp-sticks">
+                            <div class="jp-stick"></div>
+                            <div class="jp-stick"></div>
+                            <div class="jp-stick"></div>
+                            <div class="jp-stick"></div>
+                        </div>
+                        <div class="jp-cyl-top"></div>
+                        <div class="jp-cyl-body">
+                            <div class="jp-cyl-band top"></div>
+                            <div class="jp-cyl-band bottom"></div>
+                        </div>
+                        <div class="jp-cyl-bottom"></div>
                     </div>
-                    <div id="fortune-message" class="fortune-message"></div>
-                    <button id="pay-penalty-btn" class="btn btn-danger mt-3" style="display: none;" onclick="payOmikujiPenalty()">
-                        🪙 支払う
-                    </button>
-                    <button id="mypage-confirm-btn" class="btn btn-outline-secondary mt-4" onclick="location.href='../mypage/index.html'">
-                        マイページで確認
-                    </button>
                 </div>
+                <button id="draw-button" class="jp-draw-btn" onclick="drawOmikuji()">🎋 おみくじを引く</button>
+            </div>
 
-                <!-- 既に引いた -->
-                <div id="already-drawn" style="display: none;">
-                    <p class="already-drawn">🌙 本日は既におみくじを引いています</p>
-                    <p class="text-muted mt-3">次のおみくじは明日の0時以降に引けます</p>
-                    <a href="../mypage/index.html" class="btn btn-outline-primary mt-3">マイページへ</a>
+            <!-- After draw -->
+            <div id="after-draw" style="display:none; flex-direction:column; align-items:center;">
+                <div class="jp-scroll-outer" id="jp-scroll-outer">
+                    <div class="jp-rod"></div>
+                    <div class="jp-scroll-paper" id="jp-scroll-paper">
+                        <span id="fortune-rank" class="jp-rank-text"></span>
+                        <div id="fortune-reward" class="jp-reward-text"></div>
+                        <div class="jp-scroll-divider"></div>
+                        <div id="fortune-message" class="jp-msg-text"></div>
+                        <div class="jp-seal">神</div>
+                    </div>
+                    <div class="jp-rod"></div>
+                </div>
+                <div class="jp-actions" id="jp-actions">
+                    <button id="pay-penalty-btn" class="jp-action-btn jp-pay-btn" style="display:none;" onclick="payOmikujiPenalty()">🪙 支払う</button>
+                    <button id="mypage-confirm-btn" class="jp-action-btn" onclick="location.href='../mypage/index.html'">マイページで確認</button>
+                </div>
+            </div>
+
+            <!-- Already drawn -->
+            <div id="already-drawn" style="display:none;">
+                <div class="jp-already-card">
+                    <div class="jp-already-icon">🌙</div>
+                    <p class="jp-already-main">本日は既におみくじを引いています</p>
+                    <p class="jp-already-sub">次のおみくじは明日の0時以降に</p>
+                    <a href="../mypage/index.html" class="jp-already-link">マイページへ →</a>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 管理設定ボタン（管理者のみ表示） -->
-    <button class="admin-settings-btn admin-only" style="display:none;" onclick="toggleAdminPanel()" title="おみくじ設定">⚙️</button>
-
-    <!-- 管理設定パネル -->
+    <!-- Admin settings panel -->
     <div class="admin-panel-overlay" id="admin-panel-overlay" onclick="overlayClose(event)">
         <div class="admin-panel">
             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -372,8 +734,6 @@
             </div>
             <div id="admin-entry-list"></div>
             <button class="btn btn-primary mt-3 w-100" onclick="openEntryForm()">＋ 新しい運勢を追加</button>
-
-            <!-- 追加/編集フォーム -->
             <div class="entry-form" id="entry-form" style="display:none;">
                 <input type="hidden" id="ef-id">
                 <div class="row g-2 mb-2">
@@ -418,18 +778,208 @@
     <script src="../js/auth-guard.js"></script>
     <script src="../js/navigation.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            initAccordionNav('../');
-        });
+        document.addEventListener('DOMContentLoaded', () => initAccordionNav('../'));
     </script>
+
+    <!-- ── Background canvas (sakura petals) ── -->
+    <script>
+    (function() {
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+        let W, H, petals = [];
+
+        function resize() {
+            W = canvas.width  = window.innerWidth;
+            H = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Petal colors
+        const COLORS = ['#ffb7c5','#ffc0cb','#ffd1dc','#ffe4e8','#fff0f3'];
+
+        function createPetal() {
+            return {
+                x: Math.random() * W,
+                y: -20 - Math.random() * 100,
+                size: 4 + Math.random() * 7,
+                speed: 0.6 + Math.random() * 1.2,
+                drift: (Math.random() - .5) * .4,
+                rot: Math.random() * Math.PI * 2,
+                rotSpeed: (Math.random() - .5) * .04,
+                sway: Math.random() * Math.PI * 2,
+                swayAmp: 0.5 + Math.random() * 1.0,
+                swaySpeed: 0.008 + Math.random() * 0.015,
+                alpha: 0.3 + Math.random() * 0.5,
+                color: COLORS[Math.floor(Math.random() * COLORS.length)]
+            };
+        }
+
+        for (let i = 0; i < 70; i++) {
+            const p = createPetal();
+            p.y = Math.random() * H; // start scattered
+            petals.push(p);
+        }
+
+        function drawPetal(p) {
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.globalAlpha = p.alpha;
+            ctx.fillStyle = p.color;
+            // 5-petal flower shape
+            for (let i = 0; i < 5; i++) {
+                ctx.save();
+                ctx.rotate(i * Math.PI * 2 / 5);
+                ctx.beginPath();
+                ctx.ellipse(0, -p.size * .55, p.size * .28, p.size * .55, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+            // Center
+            ctx.fillStyle = '#fff5f7';
+            ctx.beginPath();
+            ctx.arc(0, 0, p.size * .18, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function loop() {
+            ctx.clearRect(0, 0, W, H);
+            petals.forEach(p => {
+                p.y += p.speed;
+                p.sway += p.swaySpeed;
+                p.x += Math.sin(p.sway) * p.swayAmp + p.drift;
+                p.rot += p.rotSpeed;
+                if (p.y > H + 30) { Object.assign(p, createPetal()); }
+                drawPetal(p);
+            });
+            requestAnimationFrame(loop);
+        }
+        loop();
+    })();
+    </script>
+
+    <!-- ── Effect canvas (result particles) ── -->
+    <script>
+    (function() {
+        const canvas = document.getElementById('fx-canvas');
+        const ctx = canvas.getContext('2d');
+        let W, H, particles = [], animId = null;
+
+        function resize() {
+            W = canvas.width  = window.innerWidth;
+            H = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        window.launchParticles = function(rankClass) {
+            if (animId) cancelAnimationFrame(animId);
+            particles = [];
+
+            const cx = W / 2;
+            const cy = H / 2;
+
+            let count, colors, sizeRange;
+            if (rankClass === 'rank-god') {
+                count = 300;
+                colors = ['#FFD700','#FFA500','#FF6347','#FF1493','#00BFFF','#7FFF00','#FFD700','#FFD700'];
+                sizeRange = [3, 9];
+            } else if (rankClass === 'rank-super') {
+                count = 180;
+                colors = ['#FFD700','#FFC200','#FFD700','#fffacd','#f5e6c8'];
+                sizeRange = [2, 7];
+            } else if (rankClass === 'rank-daikichi') {
+                count = 120;
+                colors = ['#FFD700','#d4a853','#ffb7c5','#ffd1dc','#f5e6c8'];
+                sizeRange = [2, 6];
+            } else if (rankClass === 'rank-kichi') {
+                count = 80;
+                colors = ['#d4a853','#c8e6c9','#a5d6a7','#fff9c4'];
+                sizeRange = [2, 5];
+            } else if (rankClass === 'rank-suekichi') {
+                count = 50;
+                colors = ['#ce93d8','#ba68c8','#9575cd','#ffe0b2'];
+                sizeRange = [2, 4];
+            } else {
+                count = 30;
+                colors = ['#aaa','#ccc','#888'];
+                sizeRange = [1, 4];
+            }
+
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 3 + Math.random() * (rankClass === 'rank-god' ? 12 : 8);
+                particles.push({
+                    x: cx, y: cy,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - (Math.random() * 4),
+                    size: sizeRange[0] + Math.random() * (sizeRange[1] - sizeRange[0]),
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    alpha: 1,
+                    gravity: 0.15 + Math.random() * 0.1,
+                    rot: Math.random() * Math.PI * 2,
+                    rotSpeed: (Math.random() - .5) * .15,
+                    shape: Math.random() < .4 ? 'circle' : 'rect'
+                });
+            }
+
+            function draw() {
+                ctx.clearRect(0, 0, W, H);
+                particles = particles.filter(p => p.alpha > .02);
+                particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += p.gravity;
+                    p.vx *= 0.99;
+                    p.rot += p.rotSpeed;
+                    p.alpha -= 0.012;
+
+                    ctx.save();
+                    ctx.globalAlpha = Math.max(0, p.alpha);
+                    ctx.fillStyle = p.color;
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.rot);
+                    if (p.shape === 'circle') {
+                        ctx.beginPath();
+                        ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else {
+                        ctx.fillRect(-p.size, -p.size * .4, p.size * 2, p.size * .8);
+                    }
+                    ctx.restore();
+                });
+                if (particles.length > 0) {
+                    animId = requestAnimationFrame(draw);
+                } else {
+                    ctx.clearRect(0, 0, W, H);
+                }
+            }
+            draw();
+        };
+    })();
+    </script>
+
+    <!-- ── Omikuji logic ── -->
     <script>
         let currentUserId = null;
         let omikujiSettings = [];
+        let selectedRankClass = '';
+
+        function getRankClass(rank) {
+            if (rank === '神引き')          return 'rank-god';
+            if (rank === '超大吉')           return 'rank-super';
+            if (['大吉','ねむ吉','かに吉'].includes(rank)) return 'rank-daikichi';
+            if (['中吉','吉'].includes(rank)) return 'rank-kichi';
+            if (rank === '末吉')             return 'rank-suekichi';
+            if (rank === '凶')               return 'rank-kyo';
+            if (['大凶','むすめ凶'].includes(rank)) return 'rank-daikyo';
+            return 'rank-kichi';
+        }
 
         async function initOmikuji() {
             const user = await getCurrentUser();
-
-            // なりすまし対応
             currentUserId = await getEffectiveUserId();
 
             if (!user && !currentUserId) {
@@ -437,25 +987,20 @@
                 return;
             }
 
-            // おみくじ設定を取得
             const { data: settings, error: settingsError } = await supabaseClient
-                .from('omikuji_settings')
-                .select('*');
+                .from('omikuji_settings').select('*');
 
             if (settingsError || !settings || settings.length === 0) {
                 document.getElementById('omikuji-ui').style.display = 'block';
-                document.getElementById('before-draw').innerHTML = '<p class="text-danger">おみくじの設定が見つかりません。管理者にお問い合わせください。</p>';
+                document.getElementById('before-draw').innerHTML = '<p style="color:#f87171;">おみくじの設定が見つかりません。</p>';
                 return;
             }
 
             omikujiSettings = settings;
 
-            // 本日既に引いたかチェック
             const { data: profile } = await supabaseClient
-                .from('profiles')
-                .select('last_omikuji_at')
-                .eq('discord_user_id', currentUserId)
-                .single();
+                .from('profiles').select('last_omikuji_at')
+                .eq('discord_user_id', currentUserId).single();
 
             document.getElementById('omikuji-ui').style.display = 'block';
 
@@ -471,164 +1016,129 @@
         async function drawOmikuji() {
             const button = document.getElementById('draw-button');
             button.disabled = true;
-            button.textContent = '占い中...';
-            button.classList.add('shaking');
+            button.textContent = '占い中…';
+
+            // Start cylinder shake
+            const cyl = document.getElementById('jp-cylinder');
+            cyl.classList.add('shaking');
+
+            let selected, message, coinReward, ticketReward, manganReward,
+                isMusumeKyo, displayPenalty, newCoins, newTotalAssets, newTickets, newManganTickets;
 
             try {
-                // 重み付きランダム選択
-                const totalWeight = omikujiSettings.reduce((sum, s) => sum + s.weight, 0);
-                let random = Math.random() * totalWeight;
-                let selected = omikujiSettings[0];
+                // Weight random pick
+                const totalWeight = omikujiSettings.reduce((s, x) => s + x.weight, 0);
+                let rand = Math.random() * totalWeight;
+                selected = omikujiSettings[0];
+                for (const s of omikujiSettings) { rand -= s.weight; if (rand <= 0) { selected = s; break; } }
 
-                for (const setting of omikujiSettings) {
-                    random -= setting.weight;
-                    if (random <= 0) {
-                        selected = setting;
-                        break;
-                    }
-                }
-
-                // メッセージをランダムに選択
                 const messages = selected.messages || ['今日も良い一日を！'];
-                const message = messages[Math.floor(Math.random() * messages.length)];
+                message = messages[Math.floor(Math.random() * messages.length)];
 
-                // 現在のプロフィールを取得
                 const { data: profile, error: profileError } = await supabaseClient
-                    .from('profiles')
-                    .select('coins, total_assets, gacha_tickets, mangan_tickets')
-                    .eq('discord_user_id', currentUserId)
-                    .single();
-
+                    .from('profiles').select('coins,total_assets,gacha_tickets,mangan_tickets')
+                    .eq('discord_user_id', currentUserId).single();
                 if (profileError) throw profileError;
 
-                let coinReward = selected.reward || 0;
-                const ticketReward = selected.ticket_reward || 0;
-                const manganReward = selected.mangan_ticket_reward || 0;
-                const isMusumeKyo = selected.rank === 'むすめ凶';
-                const displayPenalty = isMusumeKyo ? -999 : null;
+                coinReward    = selected.reward || 0;
+                ticketReward  = selected.ticket_reward || 0;
+                manganReward  = selected.mangan_ticket_reward || 0;
+                isMusumeKyo   = selected.rank === 'むすめ凶';
+                displayPenalty = isMusumeKyo ? -999 : null;
 
-                let newCoins = (profile.coins || 0) + coinReward;
-                let newTotalAssets = profile.total_assets || 0;
-                let newTickets = (profile.gacha_tickets || 0) + ticketReward;
-                let newManganTickets = (profile.mangan_tickets || 0) + manganReward;
-
-                // マイナスの場合は0以下にしない
-                if (newCoins < 0) newCoins = 0;
-                if (newTickets < 0) newTickets = 0;
-                if (newManganTickets < 0) newManganTickets = 0;
-
-                // コインプラス分を総資産に加算
-                if (coinReward > 0) {
-                    newTotalAssets += coinReward;
-                }
+                newCoins        = Math.max(0, (profile.coins || 0) + coinReward);
+                newTotalAssets  = profile.total_assets || 0;
+                newTickets      = Math.max(0, (profile.gacha_tickets || 0) + ticketReward);
+                newManganTickets = Math.max(0, (profile.mangan_tickets || 0) + manganReward);
+                if (coinReward > 0) newTotalAssets += coinReward;
 
                 if (isMusumeKyo) {
-                    // 日時だけ確定。報酬は支払いボタンを押すまで反映しない。
-                    const { error: updateError } = await supabaseClient
-                        .from('profiles')
+                    const { error } = await supabaseClient.from('profiles')
                         .update({ last_omikuji_at: new Date().toISOString() })
                         .eq('discord_user_id', currentUserId);
-                    if (updateError) throw updateError;
+                    if (error) throw error;
                     pendingOmikuji = { coinReward, ticketReward, manganReward, message, rank: selected.rank };
                 } else {
-                    // プロフィールを更新
-                    const { error: updateError } = await supabaseClient
-                        .from('profiles')
-                        .update({
-                            coins: newCoins,
-                            total_assets: newTotalAssets,
-                            gacha_tickets: newTickets,
-                            mangan_tickets: newManganTickets,
-                            last_omikuji_at: new Date().toISOString()
-                        })
-                        .eq('discord_user_id', currentUserId);
-                    if (updateError) throw updateError;
+                    const { error } = await supabaseClient.from('profiles').update({
+                        coins: newCoins, total_assets: newTotalAssets,
+                        gacha_tickets: newTickets, mangan_tickets: newManganTickets,
+                        last_omikuji_at: new Date().toISOString()
+                    }).eq('discord_user_id', currentUserId);
+                    if (error) throw error;
 
-                    // バッジ付与（設定されている場合）
+                    // Badge grant
                     if (selected.badge_id) {
-                        const { data: alreadyHas } = await supabaseClient
-                            .from('user_badges_new')
-                            .select('id')
-                            .eq('user_id', currentUserId)
-                            .eq('badge_id', selected.badge_id)
-                            .maybeSingle();
-                        if (!alreadyHas) {
-                            await supabaseClient.from('user_badges_new').insert([{
-                                user_id: currentUserId,
-                                badge_id: selected.badge_id,
-                                purchased_price: 0
-                            }]);
+                        const { data: has } = await supabaseClient.from('user_badges_new')
+                            .select('id').eq('user_id', currentUserId).eq('badge_id', selected.badge_id).maybeSingle();
+                        if (!has) {
+                            await supabaseClient.from('user_badges_new')
+                                .insert([{ user_id: currentUserId, badge_id: selected.badge_id, purchased_price: 0 }]);
                         }
                     }
 
-                    // 活動ログを記録
                     if (typeof logActivity === 'function') {
                         await logActivity(currentUserId, 'omikuji', {
                             amount: coinReward,
-                            details: {
-                                rank: selected.rank,
-                                message: message,
-                                ticket_reward: ticketReward,
-                                mangan_ticket_reward: manganReward,
-                                badge_id: selected.badge_id || null
-                            }
+                            details: { rank: selected.rank, message, ticket_reward: ticketReward, mangan_ticket_reward: manganReward, badge_id: selected.badge_id || null }
                         });
                     }
                 }
 
-                // 少し待ってから結果を表示
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                // Wait for shake to finish (1.8s total) then reveal
+                await new Promise(r => setTimeout(r, 1800));
 
-                // 結果を表示
-                document.getElementById('before-draw').style.display = 'none';
-                document.getElementById('after-draw').style.display = 'block';
+                // Hide cylinder
+                document.getElementById('jp-cylinder-wrap').classList.add('hide');
+                await new Promise(r => setTimeout(r, 400));
+
+                // Prepare result content
+                selectedRankClass = getRankClass(selected.rank);
+                const scrollPaper = document.getElementById('jp-scroll-paper');
+                scrollPaper.className = `jp-scroll-paper ${selectedRankClass}`;
 
                 document.getElementById('fortune-rank').textContent = selected.rank;
 
-                const rewardEl = document.getElementById('fortune-reward');
+                // Reward HTML
                 let rewardHtml = '';
-                if (coinReward !== 0) {
-                    rewardHtml += `<span class="${coinReward > 0 ? 'text-success' : 'text-danger'}">🪙 ${coinReward >= 0 ? '+' : ''}${coinReward.toLocaleString()}</span> `;
-                }
-                if (displayPenalty !== null) {
-                    rewardHtml += `<span class="text-danger">🪙 ${displayPenalty.toLocaleString()}</span> `;
-                }
-                if (ticketReward !== 0) {
-                    rewardHtml += `<span style="color: #d4a574;">🎫 ${ticketReward >= 0 ? '+' : ''}${ticketReward}枚</span>`;
-                }
-                if (manganReward !== 0) {
-                    rewardHtml += ` <span style="color: #d4a574;">🧧 ${manganReward >= 0 ? '+' : ''}${manganReward}枚</span>`;
-                }
+                if (coinReward !== 0) rewardHtml += `<span style="color:${coinReward>0?'#27ae60':'#e74c3c'}">🪙 ${coinReward>=0?'+':''}${coinReward.toLocaleString()}</span> `;
+                if (displayPenalty !== null) rewardHtml += `<span style="color:#e74c3c">🪙 ${displayPenalty.toLocaleString()}</span> `;
+                if (ticketReward !== 0) rewardHtml += `<span style="color:#d4a574">🎫 ${ticketReward>=0?'+':''}${ticketReward}枚</span>`;
+                if (manganReward !== 0) rewardHtml += ` <span style="color:#d4a574">🧧 ${manganReward>=0?'+':''}${manganReward}枚</span>`;
 
                 let baseHtml = '';
-                if (coinReward !== 0) {
-                    baseHtml += `<span class="${coinReward > 0 ? 'text-success' : 'text-danger'}">🪙 ${coinReward >= 0 ? '+' : ''}${coinReward.toLocaleString()}</span> `;
-                }
-                if (ticketReward !== 0) {
-                    baseHtml += `<span style="color: #d4a574;">🎫 ${ticketReward >= 0 ? '+' : ''}${ticketReward}枚</span>`;
-                }
-                if (manganReward !== 0) {
-                    baseHtml += ` <span style="color: #d4a574;">🧧 ${manganReward >= 0 ? '+' : ''}${manganReward}枚</span>`;
-                }
-                baseRewardHtml = baseHtml || '<span class="text-muted">報酬なし</span>';
+                if (coinReward !== 0) baseHtml += `<span style="color:${coinReward>0?'#27ae60':'#e74c3c'}">🪙 ${coinReward>=0?'+':''}${coinReward.toLocaleString()}</span> `;
+                if (ticketReward !== 0) baseHtml += `<span style="color:#d4a574">🎫 ${ticketReward>=0?'+':''}${ticketReward}枚</span>`;
+                if (manganReward !== 0) baseHtml += ` <span style="color:#d4a574">🧧 ${manganReward>=0?'+':''}${manganReward}枚</span>`;
+                baseRewardHtml = baseHtml || '<span style="color:#999">報酬なし</span>';
 
-                if (isMusumeKyo) {
-                    rewardEl.innerHTML = `<span class="text-danger">🪙 ${displayPenalty.toLocaleString()}</span>`;
-                } else {
-                    rewardEl.innerHTML = rewardHtml || '<span class="text-muted">報酬なし</span>';
-                }
-                rewardEl.className = 'fortune-reward'; // 個別に色を指定するのでクラスはリセット
-
+                document.getElementById('fortune-reward').innerHTML = isMusumeKyo
+                    ? `<span style="color:#e74c3c">🪙 ${displayPenalty.toLocaleString()}</span>`
+                    : (rewardHtml || '<span style="color:#999">報酬なし</span>');
                 document.getElementById('fortune-message').textContent = message;
-                const payBtn = document.getElementById('pay-penalty-btn');
+
+                const payBtn    = document.getElementById('pay-penalty-btn');
                 const mypageBtn = document.getElementById('mypage-confirm-btn');
-                if (payBtn) {
-                    payBtn.style.display = isMusumeKyo ? 'inline-block' : 'none';
-                    payBtn.disabled = false;
-                }
-                if (mypageBtn) {
-                    mypageBtn.style.display = isMusumeKyo ? 'none' : 'inline-block';
-                }
+                payBtn.style.display    = isMusumeKyo ? 'inline-block' : 'none';
+                payBtn.disabled         = false;
+                mypageBtn.style.display = isMusumeKyo ? 'none' : 'inline-block';
+
+                // Show result
+                const afterDraw = document.getElementById('after-draw');
+                afterDraw.style.display = 'flex';
+
+                // Animate scroll in
+                await new Promise(r => setTimeout(r, 50));
+                document.getElementById('jp-scroll-outer').classList.add('revealed');
+                await new Promise(r => setTimeout(r, 200));
+                scrollPaper.classList.add('unrolled');
+
+                // Show actions
+                await new Promise(r => setTimeout(r, 1600));
+                document.getElementById('jp-actions').classList.add('visible');
+
+                // Particles
+                await new Promise(r => setTimeout(r, 200));
+                launchParticles(selectedRankClass);
 
             } catch (err) {
                 console.error('Omikuji error:', err);
@@ -636,76 +1146,45 @@
                 button.disabled = false;
                 button.textContent = '🎋 おみくじを引く';
             } finally {
-                button.classList.remove('shaking');
+                cyl.classList.remove('shaking');
             }
         }
 
         async function payOmikujiPenalty() {
             if (!pendingOmikuji) return;
             const payBtn = document.getElementById('pay-penalty-btn');
-            if (payBtn) {
-                payBtn.disabled = true;
-                payBtn.textContent = 'マイページで確認';
-                payBtn.classList.remove('btn-danger');
-                payBtn.classList.add('btn-outline-secondary');
-                payBtn.onclick = () => {
-                    location.href = '../mypage/index.html';
-                };
-            }
-            const rewardEl = document.getElementById('fortune-reward');
-            if (rewardEl) {
-                rewardEl.innerHTML = baseRewardHtml || '<span class="text-muted">報酬なし</span>';
-            }
+            payBtn.disabled = true;
+            payBtn.textContent = 'マイページで確認';
+            payBtn.classList.remove('jp-pay-btn');
+            payBtn.onclick = () => location.href = '../mypage/index.html';
+
+            document.getElementById('fortune-reward').innerHTML = baseRewardHtml || '<span style="color:#999">報酬なし</span>';
+
             try {
-                const { data: profile, error: profileError } = await supabaseClient
-                    .from('profiles')
-                    .select('coins, total_assets, gacha_tickets, mangan_tickets')
-                    .eq('discord_user_id', currentUserId)
-                    .single();
-                if (profileError) throw profileError;
+                const { data: profile } = await supabaseClient.from('profiles')
+                    .select('coins,total_assets,gacha_tickets,mangan_tickets')
+                    .eq('discord_user_id', currentUserId).single();
 
-                const coinReward = pendingOmikuji.coinReward || 0;
-                const ticketReward = pendingOmikuji.ticketReward || 0;
-                const manganReward = pendingOmikuji.manganReward || 0;
+                const c = pendingOmikuji.coinReward || 0;
+                const t = pendingOmikuji.ticketReward || 0;
+                const m = pendingOmikuji.manganReward || 0;
 
-                let newCoins = (profile.coins || 0) + coinReward;
-                let newTotalAssets = profile.total_assets || 0;
-                let newTickets = (profile.gacha_tickets || 0) + ticketReward;
-                let newManganTickets = (profile.mangan_tickets || 0) + manganReward;
-
-                if (newCoins < 0) newCoins = 0;
-                if (newTickets < 0) newTickets = 0;
-                if (newManganTickets < 0) newManganTickets = 0;
-                if (coinReward > 0) {
-                    newTotalAssets += coinReward;
-                }
-
-                const { error: updateError } = await supabaseClient
-                    .from('profiles')
-                    .update({
-                        coins: newCoins,
-                        total_assets: newTotalAssets,
-                        gacha_tickets: newTickets,
-                        mangan_tickets: newManganTickets
-                    })
-                    .eq('discord_user_id', currentUserId);
-                if (updateError) throw updateError;
+                await supabaseClient.from('profiles').update({
+                    coins: Math.max(0, (profile.coins||0)+c),
+                    total_assets: c>0 ? (profile.total_assets||0)+c : profile.total_assets||0,
+                    gacha_tickets: Math.max(0, (profile.gacha_tickets||0)+t),
+                    mangan_tickets: Math.max(0, (profile.mangan_tickets||0)+m)
+                }).eq('discord_user_id', currentUserId);
 
                 if (typeof logActivity === 'function') {
                     await logActivity(currentUserId, 'omikuji', {
-                        amount: coinReward,
-                        details: {
-                            rank: pendingOmikuji.rank,
-                            message: pendingOmikuji.message,
-                            ticket_reward: ticketReward,
-                            mangan_ticket_reward: manganReward
-                        }
+                        amount: c,
+                        details: { rank: pendingOmikuji.rank, message: pendingOmikuji.message, ticket_reward: t, mangan_ticket_reward: m }
                     });
                 }
                 pendingOmikuji = null;
-            } catch (err) {
-                console.error('Omikuji penalty apply error:', err);
-            }
+            } catch (err) { console.error(err); }
+
             document.getElementById('fortune-message').textContent = 'ちっ、持ってねーのかよ！しけてんなー。しゃーなしこれやるよ';
         }
 
@@ -720,41 +1199,32 @@
             const isOpen = overlay.classList.toggle('open');
             if (isOpen) loadAdminPanel();
         }
-
         function overlayClose(e) {
             if (e.target === document.getElementById('admin-panel-overlay')) toggleAdminPanel();
         }
-
         async function loadAdminPanel() {
-            // バッジ一覧取得（初回のみ）
             if (allBadges.length === 0) {
                 const { data } = await supabaseClient.from('badges').select('id,name,image_url').order('name');
                 allBadges = data || [];
-                const listEl = document.getElementById('badge-select-list');
-                listEl.innerHTML = allBadges.map(b => `
-                    <div class="badge-select-item" data-badge-id="${b.id}" onclick="selectBadge(this)">
+                document.getElementById('badge-select-list').innerHTML = allBadges.map(b =>
+                    `<div class="badge-select-item" data-badge-id="${b.id}" onclick="selectBadge(this)">
                         <img src="${b.image_url}" onerror="this.style.display='none'">
                         <span>${b.name}</span>
                     </div>`).join('');
             }
-
-            // 設定一覧取得
-            const { data: settings } = await supabaseClient
-                .from('omikuji_settings').select('*').order('weight', { ascending: false });
+            const { data: settings } = await supabaseClient.from('omikuji_settings').select('*').order('weight', { ascending: false });
             renderAdminList(settings || []);
         }
-
         function renderAdminList(settings) {
-            const totalWeight = settings.reduce((s, r) => s + Number(r.weight), 0);
+            const total = settings.reduce((s,r) => s + Number(r.weight), 0);
             document.getElementById('admin-entry-list').innerHTML = settings.map(s => {
-                const pct = totalWeight > 0 ? (Number(s.weight) / totalWeight * 100).toFixed(1) : 0;
+                const pct = total > 0 ? (Number(s.weight)/total*100).toFixed(1) : 0;
                 const badge = allBadges.find(b => b.id === s.badge_id);
-                const badgeLabel = badge ? `🎖 ${badge.name}` : '';
                 return `<div class="entry-row">
                     <div class="entry-rank">${s.rank}</div>
                     <div class="entry-details">
-                        🪙 ${(s.reward || 0).toLocaleString()}　確率 ${pct}%　${badgeLabel}
-                        <div class="text-muted" style="font-size:.78rem;">${(s.messages||[]).join(' / ')}</div>
+                        🪙 ${(s.reward||0).toLocaleString()}　確率 ${pct}%${badge ? `　🎖 ${badge.name}` : ''}
+                        <div style="color:#888;font-size:.78rem;">${(s.messages||[]).join(' / ')}</div>
                     </div>
                     <div class="entry-actions">
                         <button class="btn btn-sm btn-outline-primary" onclick="openEntryForm('${s.id}')">編集</button>
@@ -763,76 +1233,58 @@
                 </div>`;
             }).join('') || '<p class="text-muted text-center">設定がありません</p>';
         }
-
         function openEntryForm(id = null) {
             closeEntryForm();
-            document.getElementById('entry-form').style.display = 'block';
-            document.getElementById('ef-id').value = '';
-            document.getElementById('ef-rank').value = '';
-            document.getElementById('ef-reward').value = '';
-            document.getElementById('ef-weight').value = '';
-            document.getElementById('ef-messages').value = '';
+            const form = document.getElementById('entry-form');
+            form.style.display = 'block';
+            ['ef-id','ef-rank','ef-reward','ef-weight','ef-messages'].forEach(i => document.getElementById(i).value = '');
             selectBadge(document.querySelector('.badge-select-item[data-badge-id=""]'));
-
             if (id) {
-                supabaseClient.from('omikuji_settings').select('*').eq('id', id).single().then(({ data: s }) => {
+                supabaseClient.from('omikuji_settings').select('*').eq('id',id).single().then(({data:s}) => {
                     if (!s) return;
-                    document.getElementById('ef-id').value = s.id;
-                    document.getElementById('ef-rank').value = s.rank;
-                    document.getElementById('ef-reward').value = s.reward || 0;
-                    document.getElementById('ef-weight').value = s.weight;
-                    document.getElementById('ef-messages').value = (s.messages || []).join('\n');
+                    document.getElementById('ef-id').value       = s.id;
+                    document.getElementById('ef-rank').value     = s.rank;
+                    document.getElementById('ef-reward').value   = s.reward || 0;
+                    document.getElementById('ef-weight').value   = s.weight;
+                    document.getElementById('ef-messages').value = (s.messages||[]).join('\n');
                     if (s.badge_id) {
                         const el = document.querySelector(`.badge-select-item[data-badge-id="${s.badge_id}"]`);
                         if (el) selectBadge(el);
                     }
                 });
             }
-            document.getElementById('entry-form').scrollIntoView({ behavior: 'smooth' });
+            form.scrollIntoView({ behavior: 'smooth' });
         }
-
-        function closeEntryForm() {
-            document.getElementById('entry-form').style.display = 'none';
-        }
-
+        function closeEntryForm() { document.getElementById('entry-form').style.display = 'none'; }
         function selectBadge(el) {
             document.querySelectorAll('.badge-select-item').forEach(e => e.classList.remove('selected'));
             el.classList.add('selected');
             selectedBadgeId = el.dataset.badgeId || '';
             document.getElementById('ef-badge-id').value = selectedBadgeId;
         }
-
         async function saveEntry() {
-            const id = document.getElementById('ef-id').value;
-            const rank = document.getElementById('ef-rank').value.trim();
-            const reward = Number(document.getElementById('ef-reward').value) || 0;
-            const weight = Number(document.getElementById('ef-weight').value) || 1;
-            const messages = document.getElementById('ef-messages').value
-                .split('\n').map(s => s.trim()).filter(Boolean);
+            const id       = document.getElementById('ef-id').value;
+            const rank     = document.getElementById('ef-rank').value.trim();
+            const reward   = Number(document.getElementById('ef-reward').value) || 0;
+            const weight   = Number(document.getElementById('ef-weight').value) || 1;
+            const messages = document.getElementById('ef-messages').value.split('\n').map(s=>s.trim()).filter(Boolean);
             const badge_id = selectedBadgeId || null;
-
-            if (!rank) { alert('運勢名を入力してください'); return; }
-            if (messages.length === 0) { alert('コメントを1つ以上入力してください'); return; }
-
+            if (!rank)            { alert('運勢名を入力してください'); return; }
+            if (!messages.length) { alert('コメントを1つ以上入力してください'); return; }
             const payload = { rank, reward, weight, messages, badge_id };
-            let error;
-            if (id) {
-                ({ error } = await supabaseClient.from('omikuji_settings').update(payload).eq('id', id));
-            } else {
-                ({ error } = await supabaseClient.from('omikuji_settings').insert([payload]));
-            }
-            if (error) { alert('保存エラー: ' + error.message); return; }
+            const { error } = id
+                ? await supabaseClient.from('omikuji_settings').update(payload).eq('id',id)
+                : await supabaseClient.from('omikuji_settings').insert([payload]);
+            if (error) { alert('保存エラー: '+error.message); return; }
             closeEntryForm();
             await loadAdminPanel();
         }
-
         async function deleteEntry(id, rank) {
             if (!confirm(`「${rank}」を削除しますか？`)) return;
-            const { error } = await supabaseClient.from('omikuji_settings').delete().eq('id', id);
-            if (error) { alert('削除エラー: ' + error.message); return; }
+            const { error } = await supabaseClient.from('omikuji_settings').delete().eq('id',id);
+            if (error) { alert('削除エラー: '+error.message); return; }
             await loadAdminPanel();
         }
     </script>
 </body>
-
 </html>
