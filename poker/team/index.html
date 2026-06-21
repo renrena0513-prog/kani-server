@@ -319,9 +319,16 @@
 
         const { data: team } = await supabaseClient
             .from('poker_teams')
-            .select('*, logo_badge:badges!logo_badge_id(image_url, name)')
+            .select('*')
             .eq('id', pProfile.team_id)
             .single();
+        // logo_badge_id があればバッジ情報を別途取得
+        if (team && team.logo_badge_id) {
+            const { data: badge } = await supabaseClient.from('badges').select('image_url, name').eq('id', team.logo_badge_id).maybeSingle();
+            team.logo_badge = badge || null;
+        } else if (team) {
+            team.logo_badge = null;
+        }
         myTeam = team;
         isTeamAdmin = team.creator_discord_id === effectiveDiscordId;
 
