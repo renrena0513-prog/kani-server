@@ -717,7 +717,11 @@
             let badgeId = myTeam.logo_badge_id || null;
             try {
                 if (badgeId) {
-                    await supabaseClient.from('badges').update({ image_url: imageUrl }).eq('id', badgeId);
+                    await supabaseClient.from('badges').update({
+                        name: `【${badgeName}】`,
+                        description: badgeDesc || null,
+                        image_url: imageUrl
+                    }).eq('id', badgeId);
                 } else {
                     // sort_orderを22000番台で採番
                     const { data: maxRow } = await supabaseClient.from('badges')
