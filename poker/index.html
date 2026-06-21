@@ -174,28 +174,49 @@
         .score-neg { color:#f87171; }
         .score-zero { color:rgba(255,255,255,.4); }
 
-        /* ── チームリスト ── */
-        .team-list { display:flex; flex-direction:column; gap:12px; }
-        .team-row {
-            display:flex; align-items:center; gap:14px;
-            border-radius:18px; padding:16px 20px;
-            transition:transform .2s;
-        }
-        .team-row:hover { transform:translateX(4px); }
-        .team-row.r1 { background:linear-gradient(90deg,rgba(212,168,83,.22) 0%,rgba(212,168,83,.07) 100%); border:1px solid rgba(212,168,83,.35); }
-        .team-row.r2 { background:linear-gradient(90deg,rgba(176,190,197,.18) 0%,rgba(176,190,197,.05) 100%); border:1px solid rgba(176,190,197,.25); }
-        .team-row.r3 { background:linear-gradient(90deg,rgba(205,127,50,.16) 0%,rgba(205,127,50,.04) 100%); border:1px solid rgba(205,127,50,.2); }
-        .team-row.rn { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); }
-        .team-medal { font-size:2rem; min-width:40px; text-align:center; }
-        .team-info { flex:1; min-width:0; }
-        .team-name-text { font-weight:700; font-size:1rem; }
-        .team-meta { font-size:.75rem; color:rgba(255,255,255,.4); margin-top:2px; }
-        .team-score-col { font-family:var(--fn); font-weight:900; text-align:right; }
-        .team-row.r1 .team-score-col { font-size:1.9rem; color:var(--gold2); }
-        .team-row.r2 .team-score-col { font-size:1.6rem; color:var(--silver); }
-        .team-row.r3 .team-score-col { font-size:1.4rem; color:var(--bronze); }
-        .team-row.rn .team-score-col { font-size:1.1rem; color:rgba(255,255,255,.7); }
-        .team-cnt { font-size:.7rem; color:rgba(255,255,255,.35); text-align:right; }
+        /* ── チームカード ── */
+        .team-list { display:flex; flex-direction:column; gap:10px; }
+        .team-card { border-radius:16px; overflow:hidden; cursor:pointer; transition:transform .2s, box-shadow .2s; }
+        .team-card:hover { transform:translateY(-2px); }
+        .team-card.r1 { background:linear-gradient(135deg,rgba(212,168,83,.28) 0%,rgba(212,168,83,.08) 100%); border:1px solid rgba(212,168,83,.45); box-shadow:0 0 18px rgba(212,168,83,.15); }
+        .team-card.r2 { background:linear-gradient(135deg,rgba(176,190,197,.22) 0%,rgba(176,190,197,.06) 100%); border:1px solid rgba(176,190,197,.32); box-shadow:0 0 12px rgba(176,190,197,.1); }
+        .team-card.r3 { background:linear-gradient(135deg,rgba(205,127,50,.2) 0%,rgba(205,127,50,.05) 100%); border:1px solid rgba(205,127,50,.28); box-shadow:0 0 10px rgba(205,127,50,.08); }
+        .team-card.rf { background:linear-gradient(135deg,rgba(100,180,255,.14) 0%,rgba(100,180,255,.04) 100%); border:1px solid rgba(100,180,255,.25); }
+        .team-card.rn { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); }
+        /* カードヘッダー */
+        .tc-header { display:flex; align-items:center; gap:12px; padding:14px 16px 8px; }
+        .tc-medal { font-size:1.9rem; min-width:36px; text-align:center; line-height:1; }
+        .tc-icon { width:40px; height:40px; object-fit:contain; border-radius:8px; flex-shrink:0; }
+        .tc-icon-placeholder { width:40px; height:40px; display:flex; align-items:center; justify-content:center; font-size:1.6rem; flex-shrink:0; }
+        .tc-info { flex:1; min-width:0; }
+        .tc-name { font-weight:700; font-size:1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .tc-finalist-tag { display:inline-block; font-size:.65rem; font-weight:700; letter-spacing:.06em; color:var(--gold2); background:rgba(212,168,83,.18); border:1px solid rgba(212,168,83,.35); border-radius:20px; padding:1px 8px; margin-top:3px; }
+        .tc-score { font-family:var(--fn); font-weight:900; text-align:right; }
+        .team-card.r1 .tc-score { font-size:1.8rem; color:var(--gold2); }
+        .team-card.r2 .tc-score { font-size:1.55rem; color:var(--silver); }
+        .team-card.r3 .tc-score { font-size:1.35rem; color:var(--bronze); }
+        .team-card.rf .tc-score { font-size:1.15rem; color:rgba(100,180,255,.9); }
+        .team-card.rn .tc-score { font-size:1.1rem; color:rgba(255,255,255,.7); }
+        .tc-arrow { font-size:.8rem; color:rgba(255,255,255,.3); margin-left:4px; transition:transform .2s; }
+        .team-card.open .tc-arrow { transform:rotate(180deg); }
+        /* 統計行 */
+        .tc-stats { display:flex; padding:0 16px 12px; gap:0; }
+        .tc-stat { flex:1; text-align:center; }
+        .tc-stat-label { font-size:.68rem; color:rgba(255,255,255,.38); }
+        .tc-stat-val { font-size:.9rem; font-weight:700; color:rgba(255,255,255,.8); }
+        /* メンバー展開 */
+        .tc-members { display:none; padding:10px 16px 14px; border-top:1px solid rgba(255,255,255,.1); }
+        .team-card.open .tc-members { display:block; }
+        .tc-member-row { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,.05); }
+        .tc-member-row:last-child { border-bottom:none; }
+        .tc-member-avatar { width:32px; height:32px; border-radius:50%; border:2px solid rgba(255,255,255,.15); flex-shrink:0; }
+        .tc-member-name { flex:1; font-size:.88rem; font-weight:600; }
+        .tc-member-score { font-family:var(--fn); font-size:.88rem; font-weight:700; }
+        /* 決勝ライン区切り */
+        .finalist-sep { display:flex; align-items:center; gap:10px; margin:6px 0; }
+        .finalist-sep span { font-size:.72rem; font-weight:700; color:rgba(255,255,255,.28); white-space:nowrap; }
+        .finalist-sep::before, .finalist-sep::after { content:''; flex:1; height:1px; background:rgba(255,255,255,.12); }
+        .finalist-banner { text-align:center; padding:8px 12px; background:rgba(212,168,83,.1); border:1px solid rgba(212,168,83,.25); border-radius:10px; font-size:.75rem; font-weight:700; color:rgba(212,168,83,.9); letter-spacing:.08em; margin-bottom:6px; }
 
         /* ── セクション区切り ── */
         .section-label {
@@ -448,14 +469,27 @@
 
     function aggregateTeam(rows) {
         const map = {};
+        const memberMap = {};
         rows.forEach(r => {
             if (!r.team_name || !allTeamNames.has(r.team_name)) return;
-            if (!map[r.team_name]) map[r.team_name] = { name: r.team_name, score: 0, count: 0 };
-            map[r.team_name].score += Number(r.final_score);
-            map[r.team_name].count++;
+            const tn = r.team_name;
+            if (!map[tn]) map[tn] = { name: tn, score: 0, count: 0, wins: 0, positives: 0 };
+            map[tn].score += Number(r.final_score);
+            map[tn].count++;
+            if (Number(r.rank) === 1) map[tn].wins++;
+            if (Number(r.final_score) > 0) map[tn].positives++;
+            const uid = r.discord_user_id || r.account_name;
+            if (!memberMap[tn]) memberMap[tn] = {};
+            if (!memberMap[tn][uid]) {
+                const p = profileMap[r.discord_user_id] || {};
+                memberMap[tn][uid] = { name: p.account_name || r.account_name, avatar: p.avatar_url || null, score: 0 };
+            }
+            memberMap[tn][uid].score += Number(r.final_score);
         });
-        allTeamNames.forEach(n => { if (!map[n]) map[n] = { name: n, score: 0, count: 0 }; });
-        return Object.values(map).sort((a,b) => b.score - a.score);
+        allTeamNames.forEach(n => { if (!map[n]) map[n] = { name: n, score: 0, count: 0, wins: 0, positives: 0 }; });
+        const arr = Object.values(map).sort((a,b) => b.score - a.score);
+        arr.forEach(t => { t.members = Object.values(memberMap[t.name] || {}).sort((a,b) => b.score - a.score); });
+        return arr;
     }
 
     function render() {
@@ -558,34 +592,83 @@
         }).join('');
     }
 
+    function toggleTeamCard(el) {
+        el.classList.toggle('open');
+    }
+
     function renderTeam(teamList) {
+        const el = document.getElementById('team-list');
+        if (teamList.length === 0) { el.innerHTML = '<div class="empty-state">データがありません</div>'; return; }
+
         // 同スコアは同順位
         teamList.forEach((t, i) => {
             if (i === 0) { t.rankNo = 1; }
             else if (t.score === teamList[i-1].score) { t.rankNo = teamList[i-1].rankNo; }
             else { t.rankNo = i + 1; }
         });
-        document.getElementById('team-list').innerHTML = teamList.length === 0
-            ? '<div class="empty-state">データがありません</div>'
-            : teamList.map(t => {
-                const s = t.score;
-                const cls = t.rankNo <= 3 ? RCLS[t.rankNo - 1] : 'rn';
-                const med = t.rankNo <= 3 ? MEDALS[t.rankNo - 1] : `<span style="font-size:1.1rem;color:rgba(255,255,255,.3);">${t.rankNo}</span>`;
-                const iconHtml = teamIconMap[t.name]
-                    ? `<img src="${teamIconMap[t.name]}" style="width:32px;height:32px;object-fit:contain;border-radius:6px;margin-right:10px;flex-shrink:0;">`
-                    : `<span style="margin-right:10px;font-size:1.4rem;">🏅</span>`;
-                return `<div class="team-row ${cls}">
-                    <span class="team-medal">${med}</span>
+
+        const FINALIST_RANK = 5;
+        let html = '';
+        let sepInserted = false;
+
+        // 決勝進出バナー（上位5位以内チームが存在する場合）
+        const hasFinalist = teamList.some(t => t.rankNo <= FINALIST_RANK);
+        if (hasFinalist) {
+            html += `<div class="finalist-banner">🏆 上位5チーム 決勝卓進出</div>`;
+        }
+
+        teamList.forEach((t, idx) => {
+            // 決勝ライン区切り
+            if (!sepInserted && t.rankNo > FINALIST_RANK) {
+                sepInserted = true;
+                html += `<div class="finalist-sep"><span>── 決勝卓進出ライン ──</span></div>`;
+            }
+
+            const isFinalist = t.rankNo <= FINALIST_RANK;
+            const cls = t.rankNo === 1 ? 'r1' : t.rankNo === 2 ? 'r2' : t.rankNo === 3 ? 'r3' : isFinalist ? 'rf' : 'rn';
+            const medal = t.rankNo <= 3 ? MEDALS[t.rankNo - 1] : `<span style="font-size:1rem;font-weight:900;color:rgba(255,255,255,.4);">${t.rankNo}</span>`;
+            const iconHtml = teamIconMap[t.name]
+                ? `<img src="${teamIconMap[t.name]}" class="tc-icon" alt="">`
+                : `<div class="tc-icon-placeholder">🏅</div>`;
+            const winRate  = t.count > 0 ? Math.round(t.wins / t.count * 100) + '%' : '-%';
+            const posRate  = t.count > 0 ? Math.round(t.positives / t.count * 100) + '%' : '-%';
+            const finalistTag = isFinalist ? `<div class="tc-finalist-tag">✦ 決勝進出</div>` : '';
+
+            const memberRows = t.members.length > 0
+                ? t.members.map(m => {
+                    const mavatar = m.avatar
+                        ? `<img src="${m.avatar}" class="tc-member-avatar" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff'">`
+                        : `<img src="https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=1a4d8c&color=fff" class="tc-member-avatar">`;
+                    const sc2 = m.score > 0 ? `+${m.score}` : String(m.score);
+                    const mcls = m.score > 0 ? 'score-pos' : m.score < 0 ? 'score-neg' : 'score-zero';
+                    return `<div class="tc-member-row">${mavatar}<span class="tc-member-name">${m.name}</span><span class="tc-member-score ${mcls}">${sc2} pt</span></div>`;
+                }).join('')
+                : '<div style="font-size:.8rem;color:rgba(255,255,255,.3);padding:6px 0;">記録なし</div>';
+
+            html += `
+            <div class="team-card ${cls}" onclick="toggleTeamCard(this)">
+                <div class="tc-header">
+                    <span class="tc-medal">${medal}</span>
                     ${iconHtml}
-                    <div class="team-info">
-                        <div class="team-name-text">${t.name}</div>
-                        <div class="team-meta">${t.count}試合</div>
+                    <div class="tc-info">
+                        <div class="tc-name">${t.name}</div>
+                        ${finalistTag}
                     </div>
-                    <div>
-                        <div class="team-score-col ${scCls(s)}">${sc(s)}</div>
+                    <div style="text-align:right;">
+                        <div class="tc-score ${scCls(t.score)}">${sc(t.score)}</div>
                     </div>
-                </div>`;
-            }).join('');
+                    <span class="tc-arrow">▼</span>
+                </div>
+                <div class="tc-stats">
+                    <div class="tc-stat"><div class="tc-stat-label">試合数</div><div class="tc-stat-val">${t.count}</div></div>
+                    <div class="tc-stat"><div class="tc-stat-label">優勝率</div><div class="tc-stat-val">${winRate}</div></div>
+                    <div class="tc-stat"><div class="tc-stat-label">入賞率</div><div class="tc-stat-val">${posRate}</div></div>
+                </div>
+                <div class="tc-members">${memberRows}</div>
+            </div>`;
+        });
+
+        el.innerHTML = html;
     }
     </script>
 </body>
