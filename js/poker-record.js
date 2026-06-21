@@ -628,30 +628,33 @@ async function submitScores() {
             }
         }
 
-        // デイリーボーナス付与（本日初記録の記録者に+10,000コイン）
+        // デイリーボーナス付与（本日初記録なら参加プレイヤー全員に+10,000コイン）
         let dailyBonusAwarded = false;
-        if (isFirstRecordToday && submittedBy) {
-            try {
-                const { data: recProf } = await supabaseClient
-                    .from('profiles').select('coins, total_assets')
-                    .eq('discord_user_id', submittedBy).single();
-                await supabaseClient.from('profiles').update({
-                    coins: (recProf?.coins || 0) + 10000,
-                    total_assets: (recProf?.total_assets || 0) + 10000
-                }).eq('discord_user_id', submittedBy);
-                await logActivity(submittedBy, 'poker', {
-                    amount: 10000,
-                    matchId: matchId,
-                    details: { note: '記録者デイリーボーナス' }
-                });
-                dailyBonusAwarded = true;
-            } catch (err) {
-                console.error('デイリーボーナスエラー:', err);
+        if (isFirstRecordToday) {
+            for (const player of dataToInsert) {
+                if (!player.discord_user_id) continue;
+                try {
+                    const { data: prof } = await supabaseClient
+                        .from('profiles').select('coins, total_assets')
+                        .eq('discord_user_id', player.discord_user_id).single();
+                    await supabaseClient.from('profiles').update({
+                        coins: (prof?.coins || 0) + 10000,
+                        total_assets: (prof?.total_assets || 0) + 10000
+                    }).eq('discord_user_id', player.discord_user_id);
+                    await logActivity(player.discord_user_id, 'poker', {
+                        amount: 10000,
+                        matchId: matchId,
+                        details: { note: '初記録デイリーボーナス' }
+                    });
+                } catch (err) {
+                    console.error(`デイリーボーナスエラー (${player.account_name}):`, err);
+                }
             }
+            dailyBonusAwarded = true;
         }
 
         await sendDiscordNotification(dataToInsert, playerCount, dailyBonusAwarded);
-        const bonusMsg = dailyBonusAwarded ? '　🎁 本日初記録ボーナス +10,000コイン！' : '';
+        const bonusMsg = dailyBonusAwarded ? '　🎁 本日初記録ボーナス +10,000コイン（全員）！' : '';
         showNotice('スコアを送信しました！コインが各プレイヤーに付与されました。' + bonusMsg, 'success');
         clearFormAfterSubmit();
         resetBtn();
@@ -698,7 +701,7 @@ async function sendDiscordNotification(matchData, playerCount, dailyBonusAwarded
     if (dailyBonusAwarded) {
         fields.push({
             name: '🎁 本日初記録ボーナス',
-            value: `${reporterMention} に **+10,000 コイン** 付与！`,
+            value: `参加者全員に **+10,000 コイン** 付与！`,
             inline: false
         });
     }
