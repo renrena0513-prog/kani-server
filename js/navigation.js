@@ -404,7 +404,7 @@ async function applyPageSettingsToNav() {
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) return;
         const discordId = user.user_metadata?.provider_id;
-        if (typeof ADMIN_DISCORD_IDS !== 'undefined' && ADMIN_DISCORD_IDS.includes(discordId)) return;
+        const isAdmin = typeof ADMIN_DISCORD_IDS !== 'undefined' && ADMIN_DISCORD_IDS.includes(discordId);
 
         const { data } = await supabaseClient.from('page_settings').select('path, is_active');
         if (!data) return;
@@ -418,26 +418,33 @@ async function applyPageSettingsToNav() {
         document.querySelectorAll('[data-page-path]').forEach(link => {
             const key = normalize(link.getAttribute('data-page-path'));
             if (key && settings[key] === false) {
-                link.style.display = 'none';
+                if (isAdmin) {
+                    // 管理者: グレーアウトで非表示中を表示
+                    link.style.opacity = '0.4';
+                    link.style.textDecoration = 'line-through';
+                    link.title = '🚧 現在非表示中（一般ユーザーには見えません）';
+                } else {
+                    link.style.display = 'none';
+                }
             }
         });
 
-        // グループ内の全リンクが非表示なら親グループも非表示にする
-        document.querySelectorAll('[data-nav-group]').forEach(el => {
-            const group = el.getAttribute('data-nav-group');
-            // デスクトップ: .topnav-group
-            if (el.classList.contains('topnav-group')) {
-                const items = el.querySelectorAll('[data-page-path]');
-                const allHidden = items.length > 0 && [...items].every(i => i.style.display === 'none');
-                if (allHidden) el.style.display = 'none';
-            }
-            // モバイル: drawer-group-label はグループラベル、サブ項目のグループが全非表示なら隠す
-            if (el.classList.contains('drawer-group-label')) {
-                const subs = document.querySelectorAll(`.drawer-sub[data-nav-group="${group}"]`);
-                const allHidden = subs.length > 0 && [...subs].every(i => i.style.display === 'none');
-                if (allHidden) el.style.display = 'none';
-            }
-        });
+        if (!isAdmin) {
+            // グループ内の全リンクが非表示なら親グループも非表示にする
+            document.querySelectorAll('[data-nav-group]').forEach(el => {
+                const group = el.getAttribute('data-nav-group');
+                if (el.classList.contains('topnav-group')) {
+                    const items = el.querySelectorAll('[data-page-path]');
+                    const allHidden = items.length > 0 && [...items].every(i => i.style.display === 'none');
+                    if (allHidden) el.style.display = 'none';
+                }
+                if (el.classList.contains('drawer-group-label')) {
+                    const subs = document.querySelectorAll(`.drawer-sub[data-nav-group="${group}"]`);
+                    const allHidden = subs.length > 0 && [...subs].every(i => i.style.display === 'none');
+                    if (allHidden) el.style.display = 'none';
+                }
+            });
+        }
     } catch(e) { console.warn('applyPageSettingsToNav:', e); }
 }
 
