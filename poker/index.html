@@ -186,14 +186,10 @@
         /* カードヘッダー */
         .tc-header { display:flex; align-items:center; gap:12px; padding:14px 16px 8px; }
         .tc-medal { font-size:1.9rem; min-width:36px; text-align:center; line-height:1; }
-        .tc-icon { width:56px; height:56px; object-fit:contain; border-radius:12px; flex-shrink:0; border:2px solid rgba(255,255,255,.2); box-shadow:0 4px 14px rgba(0,0,0,.35); background:rgba(255,255,255,.06); }
-        .team-card.r1 .tc-icon { border-color:rgba(212,168,83,.5); box-shadow:0 4px 18px rgba(212,168,83,.3); }
-        .team-card.r2 .tc-icon { border-color:rgba(176,190,197,.45); box-shadow:0 4px 14px rgba(176,190,197,.2); }
-        .team-card.r3 .tc-icon { border-color:rgba(205,127,50,.4); box-shadow:0 4px 14px rgba(205,127,50,.2); }
-        .tc-icon-placeholder { width:56px; height:56px; display:flex; align-items:center; justify-content:center; font-size:2rem; flex-shrink:0; border-radius:12px; background:rgba(255,255,255,.06); border:2px solid rgba(255,255,255,.1); }
+        .tc-icon { width:72px; height:72px; object-fit:contain; flex-shrink:0; border:none; background:none; border-radius:0; }
+        .tc-icon-placeholder { width:72px; height:72px; display:flex; align-items:center; justify-content:center; font-size:2.4rem; flex-shrink:0; }
         .tc-info { flex:1; min-width:0; }
         .tc-name { font-weight:700; font-size:1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        .tc-finalist-tag { display:inline-block; font-size:.65rem; font-weight:700; letter-spacing:.06em; color:var(--gold2); background:rgba(212,168,83,.18); border:1px solid rgba(212,168,83,.35); border-radius:20px; padding:1px 8px; margin-top:3px; }
         .tc-score { font-family:var(--fn); font-weight:900; text-align:right; }
         .team-card.r1 .tc-score { font-size:1.8rem; color:var(--gold2); }
         .team-card.r2 .tc-score { font-size:1.55rem; color:var(--silver); }
@@ -622,11 +618,6 @@
         let html = '';
         let sepInserted = false;
 
-        // 決勝進出バナー（上位5位以内チームが存在する場合）
-        const hasFinalist = teamList.some(t => t.rankNo <= FINALIST_RANK);
-        if (hasFinalist) {
-            html += `<div class="finalist-banner">🏆 上位5チーム 決勝卓進出</div>`;
-        }
 
         teamList.forEach((t, idx) => {
             // 決勝ライン区切り
@@ -643,7 +634,7 @@
                 : `<div class="tc-icon-placeholder">🏅</div>`;
             const winRate  = t.count > 0 ? Math.round(t.wins / t.count * 100) + '%' : '-%';
             const posRate  = t.count > 0 ? Math.round(t.positives / t.count * 100) + '%' : '-%';
-            const finalistTag = isFinalist ? `<div class="tc-finalist-tag">✦ 決勝進出</div>` : '';
+
 
             const memberRows = t.members.length > 0
                 ? t.members.map(m => {
@@ -663,7 +654,6 @@
                     ${iconHtml}
                     <div class="tc-info">
                         <div class="tc-name">${t.name}</div>
-                        ${finalistTag}
                     </div>
                     <div style="text-align:right;">
                         <div class="tc-score ${scCls(t.score)}">${sc(t.score)}</div>
