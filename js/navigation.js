@@ -171,14 +171,14 @@ function getTopNavStyles() {
     }
     .topnav-dropdown {
         position: absolute;
-        top: calc(100% + 8px);
+        top: 100%;
         left: 50%;
         transform: translateX(-50%);
         background: white;
         border-radius: 12px;
         box-shadow: 0 8px 32px rgba(0,0,0,.22);
         min-width: 190px;
-        padding: 6px 0;
+        padding: 14px 0 6px;  /* 上部paddingで隙間をホバー範囲内に */
         display: none;
         z-index: 9100;
     }
