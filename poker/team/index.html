@@ -559,6 +559,14 @@
         const { data: req } = await supabaseClient.from('poker_team_join_requests').select('team_id').eq('id', requestId).single();
         await supabaseClient.from('poker_team_join_requests').update({ status: 'approved' }).eq('id', requestId);
         await supabaseClient.from('poker_profiles').upsert({ discord_user_id: discordId, team_id: req.team_id, team_name: myTeam.team_name }, { onConflict: 'discord_user_id' });
+        // チームバッジ付与
+        if (myTeam.logo_badge_id) {
+            const { data: exist } = await supabaseClient.from('user_badges_new')
+                .select('uuid').eq('user_id', discordId).eq('badge_id', myTeam.logo_badge_id).limit(1);
+            if (!exist || exist.length === 0) {
+                await supabaseClient.from('user_badges_new').insert([{ user_id: discordId, badge_id: myTeam.logo_badge_id, purchased_price: 0 }]);
+            }
+        }
         location.reload();
     }
 
