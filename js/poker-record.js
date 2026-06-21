@@ -268,17 +268,27 @@ function rowAtPoint(container, x, y) {
     return null;
 }
 
+function getSelectedDiscordIds(excludeIdx) {
+    const ids = new Set();
+    document.querySelectorAll('.player-account').forEach((input, i) => {
+        const rowIdx = input.closest('.player-entry')?.id?.replace('player-row-', '');
+        if (rowIdx !== String(excludeIdx) && input.dataset.discordUserId) {
+            ids.add(input.dataset.discordUserId);
+        }
+    });
+    return ids;
+}
+
 function getFilteredProfiles(idx) {
     const teamId = document.getElementById(`player-team-input-${idx}`)?.value || '';
+    const selectedIds = getSelectedDiscordIds(idx);
     let candidates;
     if (teamId) {
-        // チーム選択済み → そのチームのメンバーのみ
         candidates = allProfiles.filter(p => pokerMemberMap[p.discord_user_id] === teamId);
     } else {
-        // チーム未選択 → ポーカーチーム所属者のみ（未所属省く）
         candidates = allProfiles.filter(p => pokerMemberMap[p.discord_user_id]);
     }
-    return candidates;
+    return candidates.filter(p => !selectedIds.has(p.discord_user_id));
 }
 
 function showDropdown(idx) {
