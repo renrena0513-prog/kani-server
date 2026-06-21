@@ -397,14 +397,12 @@ async function applyPageSettingsToNav() {
             if (!path) return '/';
             let p = String(path).split('?')[0].split('#')[0];
             if (!p.startsWith('/')) p = '/' + p;
-            p = p.replace(/\/index\.html$/, '').replace(/\/+$/, '');
+            p = p.replace(/\.html$/, '').replace(/\/index$/, '').replace(/\/+$/, '');
             return p || '/';
         };
 
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) return;
-        const discordId = user.user_metadata.provider_id;
-        if (typeof ADMIN_DISCORD_IDS !== 'undefined' && ADMIN_DISCORD_IDS.includes(discordId)) return;
 
         const { data } = await supabaseClient.from('page_settings').select('path, is_active');
         if (!data) return;
