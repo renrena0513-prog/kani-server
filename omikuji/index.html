@@ -1048,10 +1048,12 @@
         function renderStreakBadge(streak, isMax) {
             if (!streak || streak < 1) return '';
             const cls = isMax ? 'jp-streak-badge jp-streak-max' : 'jp-streak-badge';
-            const nextBonus = Math.min(streak, 10) * 500;
+            // 今日引いたときのボーナス = prevStreak * 500
+            const todayBonus = Math.min(streak, 10) * 500;
+            const todayDay = streak + 1;
             const label = isMax
-                ? `🔥 連続<span class="streak-count">11日</span>達成！ MAX +5,000コイン`
-                : `🔥 連続<span class="streak-count">${streak}日</span>目 ／ 明日 +${nextBonus.toLocaleString()}コイン`;
+                ? `🔥 連続<span class="streak-count">11日</span>達成！ 今回 +5,000コイン（MAX）`
+                : `🔥 連続<span class="streak-count">${todayDay}日目</span> 今回 +${todayBonus.toLocaleString()}コイン`;
             return `<div class="${cls}">${label}</div>`;
         }
 
