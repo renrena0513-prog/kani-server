@@ -284,6 +284,10 @@ function getTopNavStyles() {
         .topnav-hamburger { display: flex; }
     }
 
+    /* ── Bootstrap モーダルをナビより前面に ── */
+    .modal-backdrop { z-index: 9200 !important; }
+    .modal          { z-index: 9300 !important; }
+
     /* ── 旧ドロップダウンボタンを隠す（pages側に残っていても無効化） ── */
     .nav-dropdown:not(#site-topnav) { display: none !important; }
 
