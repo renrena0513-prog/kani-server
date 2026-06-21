@@ -2,6 +2,63 @@
  * ページアクセス管理用のスクリプト
  */
 
+// ナビゲーションに存在する全ページの定義
+const ALL_NAV_PAGES = [
+    { name: 'ホーム',                   path: '/' },
+    { name: 'マイページ',               path: '/mypage' },
+    { name: '麻雀大会 - ランキング',    path: '/mahjong' },
+    { name: '麻雀大会 - 記録する',      path: '/mahjong/record' },
+    { name: '麻雀大会 - ユーザー一覧',  path: '/mahjong/users' },
+    { name: '麻雀大会 - チーム管理',    path: '/mahjong/team' },
+    { name: '麻雀大会 - チーム戦グラフ',path: '/mahjong/team/graph' },
+    { name: 'ポーカー大会 - ランキング',path: '/poker' },
+    { name: 'ポーカー大会 - 記録する',  path: '/poker/record' },
+    { name: 'ポーカー大会 - ユーザー一覧', path: '/poker/users' },
+    { name: 'ポーカー大会 - チーム管理', path: '/poker/team' },
+    { name: '資産ランキング',            path: '/ranking' },
+    { name: 'バッジ一覧',               path: '/badge/list' },
+    { name: 'バッジショップ',           path: '/badge/shop' },
+    { name: 'おみくじ',                 path: '/omikuji' },
+    { name: 'お賽銭箱',                 path: '/omikuji/osaisen' },
+    { name: 'ギフトコード',             path: '/giftcode' },
+    { name: '交換所',                   path: '/exchange' },
+];
+
+// 未登録ページを一括追加
+async function syncNavPages() {
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        const updatedBy = user ? (user.user_metadata.full_name || user.email) : 'system';
+
+        const { data: existing } = await supabaseClient.from('page_settings').select('path');
+        const existingPaths = new Set((existing || []).map(p => p.path));
+
+        const toInsert = ALL_NAV_PAGES
+            .filter(p => !existingPaths.has(p.path))
+            .map(p => ({
+                name: p.name,
+                path: p.path,
+                is_active: true,
+                updated_at: new Date().toISOString(),
+                updated_by: updatedBy,
+            }));
+
+        if (toInsert.length === 0) {
+            alert('全ページはすでに登録済みです。');
+            return;
+        }
+
+        const { error } = await supabaseClient.from('page_settings').insert(toInsert);
+        if (error) throw error;
+
+        alert(`${toInsert.length}件のページを追加しました。`);
+        fetchPageSettings();
+    } catch (err) {
+        console.error('同期エラー:', err);
+        alert(`エラー: ${err.message}`);
+    }
+}
+
 // ページ設定の取得と表示
 async function fetchPageSettings() {
     const listBody = document.getElementById('pages-list-body');

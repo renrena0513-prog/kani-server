@@ -11,43 +11,43 @@ function generateTopNav(basePath = '../') {
 
         <!-- デスクトップメニュー -->
         <div class="topnav-links">
-            <a class="topnav-link" href="${basePath}index.html">🏠 ホーム</a>
-            <a class="topnav-link" href="${basePath}mypage/index.html">👤 マイページ</a>
+            <a class="topnav-link" href="${basePath}index.html" data-page-path="/">🏠 ホーム</a>
+            <a class="topnav-link" href="${basePath}mypage/index.html" data-page-path="/mypage">👤 マイページ</a>
 
             <!-- 麻雀大会 -->
-            <div class="topnav-group">
+            <div class="topnav-group" data-nav-group="mahjong">
                 <button class="topnav-link topnav-group-btn">🀄 麻雀大会 <span class="tn-chevron">▾</span></button>
                 <div class="topnav-dropdown">
-                    <a class="topnav-dd-item" href="${basePath}mahjong/index.html">📊 ランキング</a>
-                    <a class="topnav-dd-item" href="${basePath}mahjong/record.html">📝 記録する</a>
-                    <a class="topnav-dd-item" href="${basePath}mahjong/users/index.html">👥 ユーザー一覧</a>
-                    <a class="topnav-dd-item" href="${basePath}mahjong/team/index.html">🏅 チーム管理 <span id="team-notification-badge" class="topnav-badge" style="display:none;">0</span></a>
-                    <a class="topnav-dd-item" href="${basePath}mahjong/team/graph.html">📈 チーム戦グラフ</a>
+                    <a class="topnav-dd-item" href="${basePath}mahjong/index.html" data-page-path="/mahjong">📊 ランキング</a>
+                    <a class="topnav-dd-item" href="${basePath}mahjong/record.html" data-page-path="/mahjong/record">📝 記録する</a>
+                    <a class="topnav-dd-item" href="${basePath}mahjong/users/index.html" data-page-path="/mahjong/users">👥 ユーザー一覧</a>
+                    <a class="topnav-dd-item" href="${basePath}mahjong/team/index.html" data-page-path="/mahjong/team">🏅 チーム管理 <span id="team-notification-badge" class="topnav-badge" style="display:none;">0</span></a>
+                    <a class="topnav-dd-item" href="${basePath}mahjong/team/graph.html" data-page-path="/mahjong/team/graph">📈 チーム戦グラフ</a>
                 </div>
             </div>
 
             <!-- ポーカー大会 -->
-            <div class="topnav-group">
+            <div class="topnav-group" data-nav-group="poker">
                 <button class="topnav-link topnav-group-btn">🃏 ポーカー大会 <span class="tn-chevron">▾</span></button>
                 <div class="topnav-dropdown">
-                    <a class="topnav-dd-item" href="${basePath}poker/index.html">📊 ランキング</a>
-                    <a class="topnav-dd-item" href="${basePath}poker/record.html">📝 記録する</a>
-                    <a class="topnav-dd-item" href="${basePath}poker/users/index.html">👥 ユーザー一覧</a>
-                    <a class="topnav-dd-item" href="${basePath}poker/team/index.html">🏅 チーム管理</a>
+                    <a class="topnav-dd-item" href="${basePath}poker/index.html" data-page-path="/poker">📊 ランキング</a>
+                    <a class="topnav-dd-item" href="${basePath}poker/record.html" data-page-path="/poker/record">📝 記録する</a>
+                    <a class="topnav-dd-item" href="${basePath}poker/users/index.html" data-page-path="/poker/users">👥 ユーザー一覧</a>
+                    <a class="topnav-dd-item" href="${basePath}poker/team/index.html" data-page-path="/poker/team">🏅 チーム管理</a>
                 </div>
             </div>
 
             <!-- おたのしみ -->
-            <div class="topnav-group">
+            <div class="topnav-group" data-nav-group="fun">
                 <button class="topnav-link topnav-group-btn">🎉 おたのしみ <span class="tn-chevron">▾</span></button>
                 <div class="topnav-dropdown">
-                    <a class="topnav-dd-item" href="${basePath}ranking/index.html">💰 資産ランキング</a>
-                    <a class="topnav-dd-item" href="${basePath}badge/list.html">📛 バッジ一覧</a>
-                    <a class="topnav-dd-item" href="${basePath}badge/shop.html">🛒 バッジショップ</a>
-                    <a class="topnav-dd-item" href="${basePath}omikuji/index.html">🎋 おみくじ</a>
-                    <a class="topnav-dd-item" href="${basePath}omikuji/osaisen.html">🧧 お賽銭箱</a>
-                    <a class="topnav-dd-item" href="${basePath}giftcode/index.html">🎁 ギフトコード</a>
-                    <a class="topnav-dd-item" href="${basePath}exchange/index.html">🔄 交換所</a>
+                    <a class="topnav-dd-item" href="${basePath}ranking/index.html" data-page-path="/ranking">💰 資産ランキング</a>
+                    <a class="topnav-dd-item" href="${basePath}badge/list.html" data-page-path="/badge/list">📛 バッジ一覧</a>
+                    <a class="topnav-dd-item" href="${basePath}badge/shop.html" data-page-path="/badge/shop">🛒 バッジショップ</a>
+                    <a class="topnav-dd-item" href="${basePath}omikuji/index.html" data-page-path="/omikuji">🎋 おみくじ</a>
+                    <a class="topnav-dd-item" href="${basePath}omikuji/osaisen.html" data-page-path="/omikuji/osaisen">🧧 お賽銭箱</a>
+                    <a class="topnav-dd-item" href="${basePath}giftcode/index.html" data-page-path="/giftcode">🎁 ギフトコード</a>
+                    <a class="topnav-dd-item" href="${basePath}exchange/index.html" data-page-path="/exchange">🔄 交換所</a>
                 </div>
             </div>
 
@@ -63,27 +63,27 @@ function generateTopNav(basePath = '../') {
 
     <!-- モバイルドロワー -->
     <div id="topnav-drawer">
-        <a class="drawer-item" href="${basePath}index.html">🏠 ホーム</a>
-        <a class="drawer-item" href="${basePath}mypage/index.html">👤 マイページ</a>
-        <div class="drawer-group-label">🀄 麻雀大会</div>
-        <a class="drawer-item drawer-sub" href="${basePath}mahjong/index.html">📊 ランキング</a>
-        <a class="drawer-item drawer-sub" href="${basePath}mahjong/record.html">📝 記録する</a>
-        <a class="drawer-item drawer-sub" href="${basePath}mahjong/users/index.html">👥 ユーザー一覧</a>
-        <a class="drawer-item drawer-sub" href="${basePath}mahjong/team/index.html">🏅 チーム管理</a>
-        <a class="drawer-item drawer-sub" href="${basePath}mahjong/team/graph.html">📈 グラフ</a>
-        <div class="drawer-group-label">🃏 ポーカー大会</div>
-        <a class="drawer-item drawer-sub" href="${basePath}poker/index.html">📊 ランキング</a>
-        <a class="drawer-item drawer-sub" href="${basePath}poker/record.html">📝 記録する</a>
-        <a class="drawer-item drawer-sub" href="${basePath}poker/users/index.html">👥 ユーザー一覧</a>
-        <a class="drawer-item drawer-sub" href="${basePath}poker/team/index.html">🏅 チーム管理</a>
-        <div class="drawer-group-label">🎉 おたのしみ</div>
-        <a class="drawer-item drawer-sub" href="${basePath}ranking/index.html">💰 資産ランキング</a>
-        <a class="drawer-item drawer-sub" href="${basePath}badge/list.html">📛 バッジ一覧</a>
-        <a class="drawer-item drawer-sub" href="${basePath}badge/shop.html">🛒 バッジショップ</a>
-        <a class="drawer-item drawer-sub" href="${basePath}omikuji/index.html">🎋 おみくじ</a>
-        <a class="drawer-item drawer-sub" href="${basePath}omikuji/osaisen.html">🧧 お賽銭箱</a>
-        <a class="drawer-item drawer-sub" href="${basePath}giftcode/index.html">🎁 ギフトコード</a>
-        <a class="drawer-item drawer-sub" href="${basePath}exchange/index.html">🔄 交換所</a>
+        <a class="drawer-item" href="${basePath}index.html" data-page-path="/">🏠 ホーム</a>
+        <a class="drawer-item" href="${basePath}mypage/index.html" data-page-path="/mypage">👤 マイページ</a>
+        <div class="drawer-group-label" data-nav-group="mahjong">🀄 麻雀大会</div>
+        <a class="drawer-item drawer-sub" href="${basePath}mahjong/index.html" data-page-path="/mahjong" data-nav-group="mahjong">📊 ランキング</a>
+        <a class="drawer-item drawer-sub" href="${basePath}mahjong/record.html" data-page-path="/mahjong/record" data-nav-group="mahjong">📝 記録する</a>
+        <a class="drawer-item drawer-sub" href="${basePath}mahjong/users/index.html" data-page-path="/mahjong/users" data-nav-group="mahjong">👥 ユーザー一覧</a>
+        <a class="drawer-item drawer-sub" href="${basePath}mahjong/team/index.html" data-page-path="/mahjong/team" data-nav-group="mahjong">🏅 チーム管理</a>
+        <a class="drawer-item drawer-sub" href="${basePath}mahjong/team/graph.html" data-page-path="/mahjong/team/graph" data-nav-group="mahjong">📈 グラフ</a>
+        <div class="drawer-group-label" data-nav-group="poker">🃏 ポーカー大会</div>
+        <a class="drawer-item drawer-sub" href="${basePath}poker/index.html" data-page-path="/poker" data-nav-group="poker">📊 ランキング</a>
+        <a class="drawer-item drawer-sub" href="${basePath}poker/record.html" data-page-path="/poker/record" data-nav-group="poker">📝 記録する</a>
+        <a class="drawer-item drawer-sub" href="${basePath}poker/users/index.html" data-page-path="/poker/users" data-nav-group="poker">👥 ユーザー一覧</a>
+        <a class="drawer-item drawer-sub" href="${basePath}poker/team/index.html" data-page-path="/poker/team" data-nav-group="poker">🏅 チーム管理</a>
+        <div class="drawer-group-label" data-nav-group="fun">🎉 おたのしみ</div>
+        <a class="drawer-item drawer-sub" href="${basePath}ranking/index.html" data-page-path="/ranking" data-nav-group="fun">💰 資産ランキング</a>
+        <a class="drawer-item drawer-sub" href="${basePath}badge/list.html" data-page-path="/badge/list" data-nav-group="fun">📛 バッジ一覧</a>
+        <a class="drawer-item drawer-sub" href="${basePath}badge/shop.html" data-page-path="/badge/shop" data-nav-group="fun">🛒 バッジショップ</a>
+        <a class="drawer-item drawer-sub" href="${basePath}omikuji/index.html" data-page-path="/omikuji" data-nav-group="fun">🎋 おみくじ</a>
+        <a class="drawer-item drawer-sub" href="${basePath}omikuji/osaisen.html" data-page-path="/omikuji/osaisen" data-nav-group="fun">🧧 お賽銭箱</a>
+        <a class="drawer-item drawer-sub" href="${basePath}giftcode/index.html" data-page-path="/giftcode" data-nav-group="fun">🎁 ギフトコード</a>
+        <a class="drawer-item drawer-sub" href="${basePath}exchange/index.html" data-page-path="/exchange" data-nav-group="fun">🔄 交換所</a>
         <a class="drawer-item admin-only" href="${basePath}admin/index.html" style="display:none;">⚙️ 管理画面</a>
     </div>
     <div id="topnav-overlay"></div>
@@ -415,6 +415,23 @@ async function applyPageSettingsToNav() {
             const key = normalize(link.getAttribute('data-page-path'));
             if (key && settings[key] === false) {
                 link.style.display = 'none';
+            }
+        });
+
+        // グループ内の全リンクが非表示なら親グループも非表示にする
+        document.querySelectorAll('[data-nav-group]').forEach(el => {
+            const group = el.getAttribute('data-nav-group');
+            // デスクトップ: .topnav-group
+            if (el.classList.contains('topnav-group')) {
+                const items = el.querySelectorAll('[data-page-path]');
+                const allHidden = items.length > 0 && [...items].every(i => i.style.display === 'none');
+                if (allHidden) el.style.display = 'none';
+            }
+            // モバイル: drawer-group-label はグループラベル、サブ項目のグループが全非表示なら隠す
+            if (el.classList.contains('drawer-group-label')) {
+                const subs = document.querySelectorAll(`.drawer-sub[data-nav-group="${group}"]`);
+                const allHidden = subs.length > 0 && [...subs].every(i => i.style.display === 'none');
+                if (allHidden) el.style.display = 'none';
             }
         });
     } catch(e) { console.warn('applyPageSettingsToNav:', e); }

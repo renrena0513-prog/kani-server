@@ -1120,7 +1120,10 @@
                             <div class="d-flex justify-content-between align-items-center mb-4 section-toolbar">
                             <h2 class="mb-0" style="font-family: var(--font-title); color: var(--deep-gray);">🚧
                                 ページアクセス管理</h2>
-                            <button onclick="fetchPageSettings()" class="btn btn-outline-primary btn-sm">🔄 更新</button>
+                            <div class="d-flex gap-2">
+                                <button onclick="syncNavPages()" class="btn btn-outline-success btn-sm">➕ 全ページを同期</button>
+                                <button onclick="fetchPageSettings()" class="btn btn-outline-primary btn-sm">🔄 更新</button>
+                            </div>
                         </div>
 
                         <div class="alert alert-info border-0 shadow-sm">
