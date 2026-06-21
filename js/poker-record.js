@@ -63,17 +63,7 @@ function changePlayerCount() {
     setupPlayerInputs(count);
 }
 
-function changeMatchMode() {
-    const match = document.getElementById('form-match').value;
-    const isTeam = match === 'チーム戦';
-    document.querySelectorAll('.team-col').forEach(el => {
-        el.style.display = isTeam ? 'block' : 'none';
-    });
-}
-
 function setupPlayerInputs(count) {
-    const match = document.getElementById('form-match').value;
-    const isTeam = match === 'チーム戦';
     const container = document.getElementById('players-container');
     container.innerHTML = '';
 
@@ -84,7 +74,7 @@ function setupPlayerInputs(count) {
                     <div class="col-auto d-flex align-items-center" style="min-width:50px;">
                         <span id="rank-badge-${i}" class="badge bg-secondary fs-6 d-flex align-items-center justify-content-center rank-badge" style="height:38px;width:40px;">${i}位</span>
                     </div>
-                    <div class="col team-col" style="display:${isTeam ? 'block' : 'none'};">
+                    <div class="col team-col">
                         <label class="small text-muted">チーム名</label>
                         <div class="custom-dropdown-container">
                             <input type="hidden" class="player-team" id="player-team-input-${i}" value="">
@@ -110,10 +100,6 @@ function setupPlayerInputs(count) {
                             </div>
                             <div class="custom-dropdown-list" id="dropdown-list-${i}"></div>
                         </div>
-                    </div>
-                    <div class="col rebuy-col" style="flex:0 0 15%;max-width:15%;">
-                        <label class="small text-muted">リバイ数</label>
-                        <input type="number" class="form-control form-control-sm player-rebuy" placeholder="0" min="0" value="0">
                     </div>
                 </div>
             </div>
@@ -282,8 +268,8 @@ async function submitScores() {
         document.getElementById('loading-overlay').style.display = 'none';
     };
 
-    const tournament = document.getElementById('form-tournament').value;
-    const match = document.getElementById('form-match').value;
+    const tournament = '第二回ポーカー大会';
+    const match = 'チーム戦';
     const playerCount = Number(document.getElementById('form-player-count').value) || 4;
 
     const entries = document.querySelectorAll('.player-entry');
@@ -293,25 +279,22 @@ async function submitScores() {
         const input = entry.querySelector('.player-account');
         const discordUserId = input.dataset.discordUserId || '';
         const accountName = input.dataset.accountName || input.value.trim();
-        const rebuyCount = Number(entry.querySelector('.player-rebuy').value || 0);
         const rankIdx = entry.dataset.rowIndex;
 
         if (!accountName) continue;
 
+        const teamId = entry.querySelector('.player-team')?.value;
         let teamName = null;
-        if (match === 'チーム戦') {
-            const teamId = entry.querySelector('.player-team')?.value;
-            if (teamId) {
-                const team = allTeams.find(t => t.id === teamId);
-                teamName = team?.team_name || null;
-            }
+        if (teamId) {
+            const team = allTeams.find(t => t.id === teamId);
+            teamName = team?.team_name || null;
         }
 
         tempData.push({
             discord_user_id: discordUserId || null,
             account_name: accountName,
             rank: Number(rankIdx),
-            rebuy_count: rebuyCount,
+            rebuy_count: 0,
             team_name: teamName
         });
     }
@@ -343,12 +326,10 @@ async function submitScores() {
         return;
     }
 
-    if (match === 'チーム戦') {
-        if (tempData.some(p => !p.team_name)) {
-            showNotice('チーム戦では全員のチームを選択してください。', 'warning');
-            resetBtn();
-            return;
-        }
+    if (tempData.some(p => !p.team_name)) {
+        showNotice('全員のチームを選択してください。', 'warning');
+        resetBtn();
+        return;
     }
 
     // スコア計算

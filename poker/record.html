@@ -112,23 +112,16 @@
         <!-- 試合情報 -->
         <div class="form-card">
             <h3>🎯 試合情報</h3>
-            <div class="row g-3">
-                <div class="col-md-3">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
                     <label class="form-label">大会名</label>
-                    <select id="form-tournament" class="form-select">
-                        <option value="第一回ポーカー大会">第一回ポーカー大会</option>
-                        <option value="期間外">期間外</option>
-                    </select>
+                    <div class="fw-bold fs-6 text-dark py-2">第二回ポーカー大会</div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label">試合形式</label>
-                    <select id="form-match" class="form-select" onchange="changeMatchMode()">
-                        <option value="個人戦">個人戦</option>
-                        <option value="チーム戦">チーム戦</option>
-                        <option value="個人戦（期間外）">個人戦（期間外）</option>
-                    </select>
+                    <div class="fw-bold fs-6 text-dark py-2">チーム戦</div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label">参加人数</label>
                     <select id="form-player-count" class="form-select" onchange="changePlayerCount()">
                         <option value="3">3人</option>
@@ -140,10 +133,6 @@
                         <option value="9">9人</option>
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label">スコアシステム</label>
-                    <div class="fw-bold fs-6 text-dark py-2">順位ポイント制</div>
-                </div>
             </div>
         </div>
 
@@ -153,32 +142,6 @@
             <form id="score-form">
                 <div id="players-container"></div>
             </form>
-        </div>
-
-        <!-- ルール説明 -->
-        <div class="form-card">
-            <h3 onclick="toggleRuleSettings()" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
-                ⚙️ スコアシステム
-                <span id="rule-toggle-icon" style="font-size:1rem;">▼</span>
-            </h3>
-            <div id="rule-settings-content" style="display:none;">
-                <table class="score-table">
-                    <thead>
-                        <tr><th>順位</th><th>スコアポイント</th><th>コイン報酬</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr><td>🥇 1位</td><td class="text-success fw-bold">+50 pts</td><td>💰 +80枚</td></tr>
-                        <tr><td>🥈 2位</td><td class="text-success">+20 pts</td><td>💰 +60枚</td></tr>
-                        <tr><td>🥉 3位</td><td class="text-muted">0 pts</td><td>💰 +40枚</td></tr>
-                        <tr><td>4位</td><td class="text-danger">-20 pts</td><td>💰 +30枚</td></tr>
-                        <tr><td>5位</td><td class="text-danger">-30 pts</td><td>💰 +30枚</td></tr>
-                        <tr><td>6位以下</td><td class="text-danger">-35〜-40 pts</td><td>💰 +30枚</td></tr>
-                    </tbody>
-                </table>
-                <div class="alert alert-info mt-3 mb-0" style="font-size:0.9rem;">
-                    <strong>🎫 祈願符ドロップ</strong>：参加で30%、記録者は50%の確率で獲得。1位は追加で80%の確率でボーナス。
-                </div>
-            </div>
         </div>
 
         <!-- 送信ボタン -->
