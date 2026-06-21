@@ -4,7 +4,7 @@ let allTeams = [];
 let pokerMemberMap = {}; // discord_user_id -> team_id (poker_profilesから)
 let isAdmin = false;
 
-// スコアテーブル（人数 → 順位 → スコアポイント）
+// スコアテーブル（人数 → 順位 → スコアポイント、整数）
 const POKER_UMA = {
     4: { 1:  4, 2:  2, 3: -2, 4: -4 },
     5: { 1:  5, 2:  3, 3:  0, 4: -3, 5: -5 },
@@ -12,9 +12,14 @@ const POKER_UMA = {
     7: { 1:  7, 2:  5, 3:  2, 4:  0, 5: -2, 6: -5, 7: -7 },
     8: { 1:  8, 2:  6, 3:  3, 4:  1, 5: -1, 6: -3, 7: -6, 8: -8 },
 };
-// コイン報酬（順位別ボーナス）
-const POKER_RANK_BONUS = { 1: 50, 2: 30, 3: 10 };
-const POKER_BASE_REWARD = 30;
+// コイン報酬テーブル（人数 → 順位 → 固定コイン数）
+const POKER_COIN_TABLE = {
+    4: { 1: 1800, 2: 1400, 3:  600, 4:  200 },
+    5: { 1: 2200, 2: 1800, 3: 1200, 4:  600, 5:  200 },
+    6: { 1: 2600, 2: 2200, 3: 1600, 4: 1200, 5:  600, 6:  200 },
+    7: { 1: 3000, 2: 2600, 3: 2000, 4: 1600, 5: 1200, 6:  600, 7:  200 },
+    8: { 1: 3400, 2: 3000, 3: 2400, 4: 2000, 5: 1600, 6: 1200, 7:  600, 8:  200 },
+};
 
 function showNotice(message, type = 'info') {
     const modal = document.getElementById('notice-modal');
@@ -387,10 +392,10 @@ async function submitScores() {
         }
     }
 
-    // スコア計算（フォーム選択の参加人数でUMAテーブルを引く）
+    // スコア計算（フォーム選択の参加人数でUMAテーブルを引く、整数）
     const umaTable = POKER_UMA[playerCount] || {};
     tempData.forEach(p => {
-        p.final_score = umaTable[p.rank] ?? 0;
+        p.final_score = umaTable[p.rank] ?? 0; // 整数
         p.player_count = playerCount;
     });
 
@@ -421,6 +426,7 @@ async function submitScores() {
         if (error) throw error;
 
         // 報酬付与
+        const coinTable = POKER_COIN_TABLE[playerCount] || {};
         for (const player of dataToInsert) {
             if (!player.discord_user_id) continue;
 
@@ -429,9 +435,7 @@ async function submitScores() {
             let ticketReward = Math.random() < ticketChance ? 1 : 0;
             if (player.rank === 1 && Math.random() < 0.80) ticketReward++;
 
-            const rankBonus = POKER_RANK_BONUS[player.rank] || 0;
-            const scoreBonus = player.final_score > 0 ? Math.floor(player.final_score) : 0;
-            const coinReward = POKER_BASE_REWARD + rankBonus + scoreBonus;
+            const coinReward = coinTable[player.rank] || 0;
 
             try {
                 const { data: profile } = await supabaseClient
@@ -463,16 +467,15 @@ async function submitScores() {
                         team: player.team_name,
                         coin_reward: coinReward,
                         ticket_reward: ticketReward,
-                        breakdown: { base: POKER_BASE_REWARD, rank: rankBonus, score: scoreBonus }
                     }
                 });
-                console.log(`${player.account_name} 報酬: コイン=${coinReward}(基本${POKER_BASE_REWARD}+順位${rankBonus}+スコア${scoreBonus}), チケット=${ticketReward}`);
+                console.log(`${player.account_name} 報酬: コイン=${coinReward}, チケット=${ticketReward}`);
             } catch (err) {
                 console.error(`報酬付与エラー (${player.account_name}):`, err);
             }
         }
 
-        await sendDiscordNotification(dataToInsert);
+        await sendDiscordNotification(dataToInsert, playerCount);
         showNotice('スコアを送信しました！コインが各プレイヤーに付与されました。', 'success');
         clearFormAfterSubmit();
         resetBtn();
@@ -493,22 +496,21 @@ function clearFormAfterSubmit() {
     }
 }
 
-async function sendDiscordNotification(matchData) {
+async function sendDiscordNotification(matchData, playerCount) {
     if (!matchData || matchData.length === 0) return;
     if (typeof DISCORD_WEBHOOK_URL === 'undefined' || !DISCORD_WEBHOOK_URL) return;
 
     const first = matchData[0];
     const matchType = first.match_mode;
+    const coinTable = POKER_COIN_TABLE[playerCount] || {};
 
     const sorted = [...matchData].sort((a, b) => a.rank - b.rank);
     const scoreDisplay = sorted.map(p => {
         const medal = p.rank === 1 ? '🥇' : p.rank === 2 ? '🥈' : p.rank === 3 ? '🥉' : '🔹';
         const nameDisplay = p.discord_user_id ? `<@${p.discord_user_id}>` : p.account_name;
         const teamInfo = p.team_name ? ` (${p.team_name})` : '';
-        const scoreStr = (p.final_score > 0 ? '+' : '') + p.final_score.toFixed(1);
-        const rankBonus = POKER_RANK_BONUS[p.rank] || 0;
-        const scoreBonus = p.final_score > 0 ? Math.floor(p.final_score) : 0;
-        const reward = POKER_BASE_REWARD + rankBonus + scoreBonus;
+        const scoreStr = (p.final_score > 0 ? '+' : '') + p.final_score;
+        const reward = coinTable[p.rank] || 0;
         return `${medal} **${p.rank}位**: ${nameDisplay}${teamInfo}\n` +
                `　　 **${scoreStr} pts**　(💰+${reward})`;
     }).join('\n');
