@@ -140,11 +140,11 @@ function setupPlayerInputs(count) {
                         <div class="custom-dropdown-container">
                             <input type="hidden" class="player-team" id="player-team-input-${i}" value="">
                             <div class="form-control form-control-sm d-flex align-items-center justify-content-between"
-                                 style="cursor:pointer;background:white;padding:8px 12px;height:38px;" onclick="showTeamDropdown(${i})">
+                                 style="cursor:pointer;padding:8px 12px;height:38px;" onclick="showTeamDropdown(${i})">
                                 <div class="d-flex align-items-center gap-2" id="selected-team-display-${i}" style="flex-grow:1;overflow:hidden;">
-                                    <span class="text-muted small">チームを選択</span>
+                                    <span style="color:rgba(255,255,255,0.45);font-size:.875rem;">チームを選択</span>
                                 </div>
-                                <span class="small text-muted">▼</span>
+                                <span style="color:rgba(255,255,255,0.5);font-size:.875rem;">▼</span>
                             </div>
                             <div class="custom-dropdown-list" id="team-dropdown-list-${i}"></div>
                         </div>
@@ -472,13 +472,13 @@ function showTeamDropdown(idx) {
 
 function renderTeamDropdownItems(idx) {
     const list = document.getElementById(`team-dropdown-list-${idx}`);
-    let html = `<div class="dropdown-item-flex" onclick="clearTeam(${idx})"><span class="small text-muted">選択解除</span></div>`;
+    let html = `<div class="dropdown-item-flex" onclick="clearTeam(${idx})"><span style="color:rgba(255,255,255,0.5);font-size:.875rem;">選択解除</span></div>`;
     html += allTeams.map(t => {
         const iconHtml = t.icon_url
             ? `<img src="${t.icon_url}" style="width:20px;height:20px;object-fit:contain;border-radius:4px;margin-right:8px;">`
             : `<span style="margin-right:8px;">🏅</span>`;
         return `<div class="dropdown-item-flex" onclick="selectTeam(${idx}, '${t.id}', '${t.team_name.replace(/'/g, "\\'")}')">
-            ${iconHtml}<span class="small">${t.team_name}</span></div>`;
+            ${iconHtml}<span style="font-size:.875rem;">${t.team_name}</span></div>`;
     }).join('');
     list.innerHTML = html;
 }
@@ -490,7 +490,7 @@ function applyTeam(idx, teamId, teamName) {
     const iconHtml = team?.icon_url
         ? `<img src="${team.icon_url}" style="width:20px;height:20px;object-fit:contain;border-radius:4px;margin-right:6px;">`
         : `🏅 `;
-    display.innerHTML = `${iconHtml}<span style="font-weight:bold;">${teamName}</span>`;
+    display.innerHTML = `${iconHtml}<span style="font-weight:bold;color:#fff;">${teamName}</span>`;
 }
 
 function selectTeam(idx, teamId, teamName) {
@@ -502,7 +502,7 @@ function selectTeam(idx, teamId, teamName) {
 
 function clearTeam(idx) {
     document.getElementById(`player-team-input-${idx}`).value = '';
-    document.getElementById(`selected-team-display-${idx}`).innerHTML = '<span class="text-muted small">チームを選択</span>';
+    document.getElementById(`selected-team-display-${idx}`).innerHTML = '<span style="color:rgba(255,255,255,0.45);font-size:.875rem;">チームを選択</span>';
     document.getElementById(`team-dropdown-list-${idx}`).style.display = 'none';
     clearPlayer(idx);
 }
