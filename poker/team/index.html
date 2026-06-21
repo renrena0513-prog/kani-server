@@ -191,14 +191,6 @@
             </div>
             <div class="modal-body">
                 <div class="mb-3">
-                    <label class="form-label fw-bold">バッジ名 <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="icon-badge-name" placeholder="例：チームAのバッジ" maxlength="50">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-bold">説明文</label>
-                    <textarea class="form-control" id="icon-badge-desc" rows="2" placeholder="チームの説明など"></textarea>
-                </div>
-                <div class="mb-3">
                     <label class="form-label fw-bold">画像 <span class="text-danger">*</span> <span class="text-muted small">（100KB以内、PNG/JPG/GIF/WebP）</span></label>
                     <div class="icon-upload-box" id="icon-upload-box" onclick="document.getElementById('icon-file-input').click()">
                         <div id="icon-upload-prompt">
@@ -322,13 +314,6 @@
             .select('*')
             .eq('id', pProfile.team_id)
             .single();
-        // logo_badge_id があればバッジ情報を別途取得
-        if (team?.logo_badge_id) {
-            const { data: badge } = await supabaseClient.from('badges').select('image_url, name').eq('id', team.logo_badge_id).maybeSingle();
-            team.logo_badge = badge || null;
-        } else if (team) {
-            team.logo_badge = null;
-        }
         myTeam = team;
         isTeamAdmin = team.creator_discord_id === effectiveDiscordId;
 
@@ -341,7 +326,7 @@
         document.getElementById('team-name-header').textContent = '🏅 ' + myTeam.team_name;
 
         // チームアイコン表示
-        const logoUrl = myTeam.logo_badge?.image_url || null;
+        const logoUrl = myTeam.icon_url || null;
         if (logoUrl) {
             document.getElementById('team-icon-img').src = logoUrl;
             document.getElementById('team-icon-img').style.display = '';
@@ -574,10 +559,6 @@
         const { data: req } = await supabaseClient.from('poker_team_join_requests').select('team_id').eq('id', requestId).single();
         await supabaseClient.from('poker_team_join_requests').update({ status: 'approved' }).eq('id', requestId);
         await supabaseClient.from('poker_profiles').upsert({ discord_user_id: discordId, team_id: req.team_id, team_name: myTeam.team_name }, { onConflict: 'discord_user_id' });
-        // チームバッジ付与
-        if (myTeam.logo_badge_id) {
-            await grantTeamBadgeToMembers(myTeam.logo_badge_id, [discordId]);
-        }
         location.reload();
     }
 
@@ -650,8 +631,7 @@
     let iconFileSelected = null;
 
     document.getElementById('iconModal').addEventListener('show.bs.modal', () => {
-        // フォームリセット
-        document.getElementById('icon-badge-name').value = myTeam.logo_badge?.name || '';
+        document.getElementById('icon-badge-name').value = '';
         document.getElementById('icon-badge-desc').value = '';
         document.getElementById('icon-file-error').style.display = 'none';
         iconFileSelected = null;
@@ -661,8 +641,7 @@
         preview.style.display = 'none'; preview.src = '';
         prompt.style.display = ''; fname.style.display = 'none';
         document.getElementById('icon-file-input').value = '';
-        // 現在アイコンがあれば削除ボタン表示
-        document.getElementById('remove-icon-btn').style.display = myTeam.logo_badge_id ? '' : 'none';
+        document.getElementById('remove-icon-btn').style.display = myTeam.icon_url ? '' : 'none';
     });
 
     function onIconFileSelect(event) {
@@ -689,52 +668,23 @@
     }
 
     async function saveTeamIcon() {
-        const name = document.getElementById('icon-badge-name').value.trim();
-        const desc = document.getElementById('icon-badge-desc').value.trim();
         const errEl = document.getElementById('icon-file-error');
         errEl.style.display = 'none';
 
-        if (!name) { errEl.textContent = 'バッジ名を入力してください'; errEl.style.display = ''; return; }
-        if (!iconFileSelected && !myTeam.logo_badge_id) { errEl.textContent = '画像を選択してください'; errEl.style.display = ''; return; }
+        if (!iconFileSelected) { errEl.textContent = '画像を選択してください'; errEl.style.display = ''; return; }
 
         const btn = document.getElementById('confirmIconBtn');
         btn.disabled = true; btn.textContent = '保存中...';
 
         try {
-            let badgeId = myTeam.logo_badge_id;
+            const ext = iconFileSelected.name.split('.').pop();
+            const fileName = `team_poker_${myTeam.id}_${Date.now()}.${ext}`;
+            const { error: upErr } = await supabaseClient.storage.from('badges').upload(fileName, iconFileSelected, { contentType: iconFileSelected.type, upsert: true });
+            if (upErr) throw upErr;
+            const { data: urlData } = supabaseClient.storage.from('badges').getPublicUrl(fileName);
 
-            if (iconFileSelected) {
-                // 画像アップロード
-                const ext = iconFileSelected.name.split('.').pop();
-                const fileName = `team_poker_${myTeam.id}_${Date.now()}.${ext}`;
-                const { error: upErr } = await supabaseClient.storage.from('badges').upload(fileName, iconFileSelected, { contentType: iconFileSelected.type, upsert: true });
-                if (upErr) throw upErr;
-                const { data: urlData } = supabaseClient.storage.from('badges').getPublicUrl(fileName);
-                const imageUrl = urlData.publicUrl;
-
-                if (badgeId) {
-                    // 既存バッジを更新
-                    const { error } = await supabaseClient.from('badges').update({ name, description: desc || null, image_url: imageUrl }).eq('id', badgeId);
-                    if (error) throw error;
-                } else {
-                    // 新規バッジ作成
-                    const { data: newBadge, error } = await supabaseClient.from('badges').insert([{
-                        name, description: desc || null, image_url: imageUrl,
-                        price: 0, is_shop_listed: false, fixed_rarity_name: 'チーム限定'
-                    }]).select('id').single();
-                    if (error) throw error;
-                    badgeId = newBadge.id;
-                }
-            } else if (badgeId) {
-                // 画像変更なし、名前・説明のみ更新
-                await supabaseClient.from('badges').update({ name, description: desc || null }).eq('id', badgeId);
-            }
-
-            // poker_teams に logo_badge_id をセット
-            await supabaseClient.from('poker_teams').update({ logo_badge_id: badgeId }).eq('id', myTeam.id);
-
-            // 全メンバーにバッジ付与（重複なし）
-            await grantTeamBadgeToMembers(badgeId, teamMembers.map(m => m.discord_user_id));
+            const { error: updateErr } = await supabaseClient.from('poker_teams').update({ icon_url: urlData.publicUrl }).eq('id', myTeam.id);
+            if (updateErr) throw updateErr;
 
             bootstrap.Modal.getInstance(document.getElementById('iconModal')).hide();
             location.reload();
@@ -746,19 +696,9 @@
         }
     }
 
-    async function grantTeamBadgeToMembers(badgeId, discordIds) {
-        for (const uid of discordIds) {
-            const { data: exist } = await supabaseClient.from('user_badges_new')
-                .select('uuid').eq('user_id', uid).eq('badge_id', badgeId).limit(1);
-            if (!exist || exist.length === 0) {
-                await supabaseClient.from('user_badges_new').insert([{ user_id: uid, badge_id: badgeId, purchased_price: 0 }]);
-            }
-        }
-    }
-
     async function removeTeamIcon() {
         if (!confirm('チームアイコンを削除しますか？')) return;
-        await supabaseClient.from('poker_teams').update({ logo_badge_id: null }).eq('id', myTeam.id);
+        await supabaseClient.from('poker_teams').update({ icon_url: null }).eq('id', myTeam.id);
         bootstrap.Modal.getInstance(document.getElementById('iconModal')).hide();
         location.reload();
     }
