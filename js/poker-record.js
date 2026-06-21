@@ -126,15 +126,76 @@ function setupPlayerInputs(count) {
     }
 
     // 順位バッジを初期化（1位〜N位の色付け）
-    for (let i = 1; i <= count; i++) {
-        const badge = document.getElementById(`rank-badge-${i}`);
-        if (!badge) continue;
+    refreshRankBadges();
+
+    // ドラッグ＆ドロップ初期化
+    initDragSort();
+}
+
+/** 順位バッジの色を現在の行順に合わせて更新 */
+function refreshRankBadges() {
+    const container = document.getElementById('players-container');
+    if (!container) return;
+    const rows = container.querySelectorAll('.player-entry');
+    rows.forEach((row, i) => {
+        const rank = i + 1;
+        row.dataset.rowIndex = rank;
+        const badge = row.querySelector('.rank-badge');
+        if (!badge) return;
+        badge.textContent = `${rank}位`;
         badge.className = 'badge fs-6 d-flex align-items-center justify-content-center rank-badge';
-        if (i === 1) badge.classList.add('bg-warning', 'text-dark');
-        else if (i === 2) badge.classList.add('bg-info', 'text-dark');
-        else if (i === 3) badge.classList.add('bg-success');
+        if (rank === 1) badge.classList.add('bg-warning', 'text-dark');
+        else if (rank === 2) badge.classList.add('bg-info', 'text-dark');
+        else if (rank === 3) badge.classList.add('bg-success');
         else badge.classList.add('bg-danger');
-    }
+    });
+}
+
+/** ドラッグ＆ドロップによる行並び替え */
+function initDragSort() {
+    const container = document.getElementById('players-container');
+    if (!container) return;
+
+    let dragSrc = null;
+
+    container.querySelectorAll('.player-entry').forEach(row => {
+        row.setAttribute('draggable', 'true');
+
+        row.addEventListener('dragstart', e => {
+            dragSrc = row;
+            row.style.opacity = '0.4';
+            e.dataTransfer.effectAllowed = 'move';
+        });
+        row.addEventListener('dragend', () => {
+            dragSrc.style.opacity = '';
+            container.querySelectorAll('.player-entry').forEach(r => r.classList.remove('drag-over'));
+            refreshRankBadges();
+        });
+        row.addEventListener('dragover', e => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        });
+        row.addEventListener('dragenter', e => {
+            e.preventDefault();
+            if (row !== dragSrc) row.classList.add('drag-over');
+        });
+        row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+        row.addEventListener('drop', e => {
+            e.stopPropagation();
+            if (dragSrc !== row) {
+                // 入れ替え位置を判定してinsertBefore
+                const rows = [...container.querySelectorAll('.player-entry')];
+                const srcIdx = rows.indexOf(dragSrc);
+                const dstIdx = rows.indexOf(row);
+                if (srcIdx < dstIdx) {
+                    container.insertBefore(dragSrc, row.nextSibling);
+                } else {
+                    container.insertBefore(dragSrc, row);
+                }
+            }
+            row.classList.remove('drag-over');
+        });
+    });
 }
 
 function getFilteredProfiles(idx) {
@@ -241,6 +302,11 @@ function clearPlayer(idx) {
     input.dataset.accountName = '';
     input.style.display = 'block';
     badge.style.display = 'none';
+    // チームも同時にリセット
+    const teamInput = document.getElementById(`player-team-input-${idx}`);
+    const teamDisplay = document.getElementById(`selected-team-display-${idx}`);
+    if (teamInput) teamInput.value = '';
+    if (teamDisplay) teamDisplay.innerHTML = '<span class="text-muted small">チームを選択</span>';
     input.focus();
 }
 
@@ -488,12 +554,7 @@ async function submitScores() {
 }
 
 function clearFormAfterSubmit() {
-    const count = Number(document.getElementById('form-player-count').value) || 4;
-    for (let i = 1; i <= count; i++) {
-        const rebuy = document.querySelector(`#player-row-${i} .player-rebuy`);
-        if (rebuy) rebuy.value = '0';
-        clearPlayer(i);
-    }
+    // 送信後もフォームの選択状態を保持する（何もしない）
 }
 
 async function sendDiscordNotification(matchData, playerCount) {
