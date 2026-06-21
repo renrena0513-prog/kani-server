@@ -1,6 +1,7 @@
 // ポーカー記録ページ用ロジック
 let allProfiles = [];
 let allTeams = [];
+let pokerMemberMap = {}; // discord_user_id -> team_id (poker_profilesから)
 let isAdmin = false;
 
 // スコアテーブル（人数 → 順位 → スコアポイント）
@@ -34,8 +35,7 @@ function closeNotice() {
 
 document.addEventListener('DOMContentLoaded', async () => {
     await checkAdminStatus();
-    await fetchProfiles();
-    await fetchTeams();
+    await Promise.all([fetchProfiles(), fetchTeams(), fetchPokerProfiles()]);
     changePlayerCount();
 });
 
@@ -62,6 +62,14 @@ async function fetchTeams() {
         .select('id, team_name')
         .order('team_name');
     if (!error) allTeams = data || [];
+}
+
+async function fetchPokerProfiles() {
+    const { data } = await supabaseClient
+        .from('poker_profiles')
+        .select('discord_user_id, team_id');
+    pokerMemberMap = {};
+    (data || []).forEach(p => { pokerMemberMap[p.discord_user_id] = p.team_id || null; });
 }
 
 function changePlayerCount() {
@@ -124,6 +132,19 @@ function setupPlayerInputs(count) {
     }
 }
 
+function getFilteredProfiles(idx) {
+    const teamId = document.getElementById(`player-team-input-${idx}`)?.value || '';
+    let candidates;
+    if (teamId) {
+        // チーム選択済み → そのチームのメンバーのみ
+        candidates = allProfiles.filter(p => pokerMemberMap[p.discord_user_id] === teamId);
+    } else {
+        // チーム未選択 → ポーカーチーム所属者のみ（未所属省く）
+        candidates = allProfiles.filter(p => pokerMemberMap[p.discord_user_id]);
+    }
+    return candidates;
+}
+
 function showDropdown(idx) {
     document.querySelectorAll('.custom-dropdown-list').forEach(l => l.style.display = 'none');
     document.querySelectorAll('.player-entry').forEach(e => { e.style.zIndex = ''; e.style.position = ''; });
@@ -132,7 +153,7 @@ function showDropdown(idx) {
     const entry = document.getElementById(`player-row-${idx}`);
     entry.style.position = 'relative';
     entry.style.zIndex = '1000';
-    renderDropdownItems(idx, allProfiles);
+    renderDropdownItems(idx, getFilteredProfiles(idx));
     list.style.display = 'block';
 
     setTimeout(() => {
@@ -151,9 +172,9 @@ function showDropdown(idx) {
 function filterDropdown(idx) {
     const input = document.querySelector(`#player-row-${idx} .player-account`);
     const val = input.value.trim().toLowerCase();
-    let candidates = allProfiles;
+    let candidates = getFilteredProfiles(idx);
     if (val) {
-        candidates = allProfiles.filter(p => {
+        candidates = candidates.filter(p => {
             const name = (p.account_name || '').toLowerCase();
             return name.includes(val) || (p.discord_user_id || '').includes(val);
         });
@@ -240,12 +261,15 @@ function selectTeam(idx, teamId, teamName) {
     const display = document.getElementById(`selected-team-display-${idx}`);
     display.innerHTML = `🏅 <span style="font-weight:bold;">${teamName}</span>`;
     document.getElementById(`team-dropdown-list-${idx}`).style.display = 'none';
+    // チーム変更時は選択済みプレイヤーをクリアし、ドロップダウンを再フィルタ
+    clearPlayer(idx);
 }
 
 function clearTeam(idx) {
     document.getElementById(`player-team-input-${idx}`).value = '';
     document.getElementById(`selected-team-display-${idx}`).innerHTML = '<span class="text-muted small">チームを選択</span>';
     document.getElementById(`team-dropdown-list-${idx}`).style.display = 'none';
+    clearPlayer(idx);
 }
 
 function toggleRuleSettings() {
@@ -309,12 +333,6 @@ async function submitScores() {
         return;
     }
 
-    if (!isAdmin && tempData.length !== playerCount) {
-        showNotice(`${playerCount}人分のアカウント名をすべて入力してください。`, 'warning');
-        resetBtn();
-        return;
-    }
-
     const discordIds = tempData.filter(p => p.discord_user_id).map(p => p.discord_user_id);
     if (new Set(discordIds).size !== discordIds.length) {
         showNotice('同じユーザーが複数選択されています。', 'warning');
@@ -329,10 +347,30 @@ async function submitScores() {
         return;
     }
 
+    // 人数不足チェック
+    if (tempData.length !== playerCount) {
+        if (!isAdmin) {
+            showNotice(`${playerCount}人分のアカウント名をすべて入力してください。`, 'warning');
+            resetBtn();
+            return;
+        }
+        if (!confirm(`${playerCount}人分埋まっていませんが（現在${tempData.length}人）、管理者権限で強制送信しますか？`)) {
+            resetBtn();
+            return;
+        }
+    }
+
+    // チーム未選択チェック
     if (tempData.some(p => !p.team_name)) {
-        showNotice('全員のチームを選択してください。', 'warning');
-        resetBtn();
-        return;
+        if (!isAdmin) {
+            showNotice('全員のチームを選択してください。', 'warning');
+            resetBtn();
+            return;
+        }
+        if (!confirm('チームが未選択のプレイヤーがいます。管理者権限で強制送信しますか？')) {
+            resetBtn();
+            return;
+        }
     }
 
     // スコア計算
