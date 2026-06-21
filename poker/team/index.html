@@ -676,9 +676,10 @@
 
         try {
             const ext = iconFileSelected.name.split('.').pop();
-            const fileName = `team_poker_${myTeam.id}_${Date.now()}.${ext}`;
-            const { error: upErr } = await supabaseClient.storage.from('badges').upload(fileName, iconFileSelected, { contentType: iconFileSelected.type, upsert: true });
-            if (upErr) throw upErr;
+            const fileName = `team_${Math.random().toString(36).substring(2)}.${ext}`;
+            await supabaseClient.storage.from('badges').upload(fileName, iconFileSelected, {
+                contentType: iconFileSelected.type || 'image/png'
+            });
             const { data: urlData } = supabaseClient.storage.from('badges').getPublicUrl(fileName);
 
             const { error: updateErr } = await supabaseClient.from('poker_teams').update({ icon_url: urlData.publicUrl }).eq('id', myTeam.id);
