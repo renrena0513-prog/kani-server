@@ -436,7 +436,6 @@
         const total = all.reduce((s, r) => s + Number(r.final_score), 0);
         const cnt = all.length;
         const avg = cnt > 0 ? (total/cnt).toFixed(1) : '-';
-        const max = cnt > 0 ? Math.max(...all.map(r => Number(r.final_score))) : '-';
         const r1  = all.filter(r => Number(r.rank) === 1).length;
         const pos = all.filter(r => Number(r.final_score) > 0).length;
         const wr  = cnt > 0 ? (r1/cnt*100).toFixed(1)  + '%' : '-';
@@ -446,7 +445,6 @@
             ['合計スコア', total >= 0 ? '+'+total : total],
             ['試合数',     cnt],
             ['平均スコア', avg],
-            ['最大スコア', max >= 0 ? '+'+max : max],
             ['優勝率',     wr],
             ['入賞率',     pr],
             ['平均順位',   ar],
