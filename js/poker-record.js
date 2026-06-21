@@ -82,8 +82,49 @@ function changePlayerCount() {
     setupPlayerInputs(count);
 }
 
+function capturePlayerStates() {
+    const states = [];
+    document.querySelectorAll('.player-entry').forEach(row => {
+        const input = row.querySelector('.player-account');
+        const badge = row.querySelector('.selected-player-badge');
+        const teamInput = row.querySelector('[id^="player-team-input-"]');
+        const teamDisplay = row.querySelector('[id^="selected-team-display-"]');
+        states.push({
+            discordUserId: input?.dataset.discordUserId || '',
+            accountName: input?.dataset.accountName || '',
+            avatarSrc: badge?.querySelector('.badge-avatar')?.src || '',
+            displayName: badge?.querySelector('.name')?.textContent || '',
+            badgeVisible: badge?.style.display !== 'none',
+            teamId: teamInput?.value || '',
+            teamHtml: teamDisplay?.innerHTML || ''
+        });
+    });
+    return states;
+}
+
+function restorePlayerState(i, state) {
+    if (!state || !state.discordUserId) return;
+    const input = document.querySelector(`#player-row-${i} .player-account`);
+    const badge = document.getElementById(`selected-badge-${i}`);
+    const teamInput = document.getElementById(`player-team-input-${i}`);
+    const teamDisplay = document.getElementById(`selected-team-display-${i}`);
+    if (input) {
+        input.dataset.discordUserId = state.discordUserId;
+        input.dataset.accountName = state.accountName;
+        input.style.display = 'none';
+    }
+    if (badge) {
+        badge.querySelector('.badge-avatar').src = state.avatarSrc;
+        badge.querySelector('.name').textContent = state.displayName;
+        badge.style.display = 'flex';
+    }
+    if (teamInput) teamInput.value = state.teamId;
+    if (teamDisplay && state.teamHtml) teamDisplay.innerHTML = state.teamHtml;
+}
+
 function setupPlayerInputs(count) {
     const container = document.getElementById('players-container');
+    const prevStates = capturePlayerStates();
     container.innerHTML = '';
 
     for (let i = 1; i <= count; i++) {
@@ -125,6 +166,9 @@ function setupPlayerInputs(count) {
             </div>
         `;
     }
+
+    // 以前の入力を復元
+    prevStates.forEach((state, i) => restorePlayerState(i + 1, state));
 
     // 順位バッジを初期化（1位〜N位の色付け）
     refreshRankBadges();
@@ -184,7 +228,7 @@ function initDragSort() {
         });
         row.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; });
         row.addEventListener('dragenter', e => { e.preventDefault(); if (row !== dragSrc) row.classList.add('drag-over'); });
-        row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+        row.addEventListener('dragleave', e => { if (!row.contains(e.relatedTarget)) row.classList.remove('drag-over'); });
         row.addEventListener('drop', e => {
             e.stopPropagation();
             if (dragSrc && dragSrc !== row) {
