@@ -6,123 +6,314 @@
     <title>ランキング | ポーカー大会</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700;900&family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../styles.css">
     <style>
         :root {
-            --primary-blue: #1a4d8c;
-            --deep-blue: #0d2f5c;
-            --cream: #faf5e8;
+            --blue1: #0a1628;
+            --blue2: #0d2f5c;
+            --blue3: #1a4d8c;
             --gold: #d4a853;
-            --font-title: 'Noto Serif JP', serif;
-            --font-body: 'M PLUS Rounded 1c', sans-serif;
+            --gold2: #f0c060;
+            --silver: #b0bec5;
+            --bronze: #cd7f32;
+            --fn: 'Noto Serif JP', serif;
+            --fb: 'M PLUS Rounded 1c', sans-serif;
         }
-        * { box-sizing: border-box; }
-        body { font-family: var(--font-body); background: linear-gradient(135deg, #0d2f5c 0%, #1a4d8c 50%, #153d70 100%); min-height: 100vh; background-attachment: fixed; text-transform: none !important; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--fb);
+            background: var(--blue1);
+            min-height: 100vh;
+            color: white;
+            text-transform: none !important;
+            overflow-x: hidden;
+        }
         h1,h2,h3,h4,h5,h6,.btn { text-transform: none !important; }
-        .page-header { font-family: var(--font-title); color: white; text-shadow: 2px 4px 12px rgba(0,0,0,0.3); }
-        .section-card { background: rgba(255,255,255,0.97); border-radius: 24px; padding: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.25); margin-bottom: 30px; }
-        .section-title { font-family: var(--font-title); color: var(--deep-blue); border-bottom: 3px solid var(--gold); padding-bottom: 10px; margin-bottom: 24px; font-size: 1.3rem; font-weight: 700; }
-        /* タブ */
-        .tab-bar { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
-        .tab-btn { padding: 8px 20px; border-radius: 20px; border: 2px solid #dee2e6; background: white; color: #555; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 0.9rem; }
-        .tab-btn.active { background: var(--deep-blue); border-color: var(--deep-blue); color: white; }
-        .tab-btn:hover:not(.active) { border-color: var(--primary-blue); color: var(--primary-blue); }
-        /* ランキングテーブル */
-        .rank-table { width: 100%; border-collapse: separate; border-spacing: 0 6px; }
-        .rank-table thead th { background: var(--deep-blue); color: white; padding: 12px 16px; font-size: 0.85rem; font-weight: 600; }
-        .rank-table thead th:first-child { border-radius: 10px 0 0 10px; }
-        .rank-table thead th:last-child { border-radius: 0 10px 10px 0; }
-        .rank-table tbody tr { background: #f8f9fa; transition: all 0.2s; }
-        .rank-table tbody tr:hover { background: #e9f0fb; transform: translateX(3px); }
-        .rank-table td { padding: 12px 16px; vertical-align: middle; }
-        .rank-table td:first-child { border-radius: 10px 0 0 10px; }
-        .rank-table td:last-child { border-radius: 0 10px 10px 0; }
-        /* 1〜3位 */
-        .rank-table tr.gold { background: linear-gradient(135deg, #fff7ad 0%, #ffe066 100%); }
-        .rank-table tr.silver { background: linear-gradient(135deg, #f0f0f0 0%, #c0c0c0 100%); }
-        .rank-table tr.bronze { background: linear-gradient(135deg, #f5d4b5 0%, #cd7f32 100%); }
-        .rank-table tr.gold td, .rank-table tr.silver td, .rank-table tr.bronze td { background: transparent; }
-        /* 順位バッジ */
-        .rank-num { font-weight: 700; font-size: 1rem; min-width: 32px; display: inline-block; text-align: center; }
-        /* アバター */
-        .player-avatar { width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--gold); margin-right: 10px; flex-shrink: 0; }
-        /* スコア */
-        .score-pos { color: #1a6e2e; font-weight: 700; }
-        .score-neg { color: #b31d1d; font-weight: 700; }
-        .score-zero { color: #888; }
-        /* ローディング */
-        #loading-state { text-align: center; padding: 60px; color: white; }
+
+        /* ── 背景 ── */
+        .bg-felt {
+            background:
+                radial-gradient(ellipse at 20% 10%, rgba(26,77,140,.5) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 90%, rgba(13,47,92,.6) 0%, transparent 60%),
+                linear-gradient(160deg, #0a1628 0%, #0d2447 40%, #0a1628 100%);
+            min-height: 100vh;
+        }
+        .bg-felt::before {
+            content: '♠ ♥ ♦ ♣';
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%,-50%);
+            font-size: 22vw;
+            opacity: .025;
+            pointer-events: none;
+            white-space: nowrap;
+            letter-spacing: .3em;
+            color: white;
+            z-index: 0;
+        }
+
+        /* ── ヘッダー ── */
+        .page-hero {
+            position: relative; z-index: 1;
+            text-align: center;
+            padding: 90px 20px 32px;
+        }
+        .hero-eyebrow { font-size:.78rem; letter-spacing:.3em; color:var(--gold); margin-bottom:8px; }
+        .hero-title {
+            font-family: var(--fn);
+            font-size: clamp(2.2rem,7vw,4rem);
+            font-weight: 900;
+            background: linear-gradient(135deg,#fff 20%,var(--gold2) 60%,var(--gold) 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.1; margin-bottom: 6px;
+        }
+        .hero-suits { margin-top:12px; font-size:1.5rem; letter-spacing:.5em; }
+        .hero-suits .h,.hero-suits .d { color:#e53e3e; }
+
+        /* ── フィルター共通 ── */
+        .filter-wrap {
+            position: relative; z-index: 1;
+            display: flex; flex-direction: column;
+            align-items: center; gap: 10px;
+            margin: 0 auto 32px;
+            padding: 0 16px;
+        }
+        .filter-label { font-size:.72rem; letter-spacing:.2em; color:rgba(255,255,255,.35); margin-bottom:2px; text-align:center; }
+        .filter-group { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+
+        /* 大会フィルター（ゴールド系） */
+        .tour-btn {
+            padding: 7px 22px;
+            border-radius: 50px;
+            border: 2px solid rgba(212,168,83,.4);
+            background: rgba(212,168,83,.06);
+            color: rgba(255,255,255,.6);
+            font-weight: 700; font-size:.88rem;
+            cursor: pointer; transition: all .22s;
+        }
+        .tour-btn.active {
+            background: linear-gradient(135deg,var(--gold) 0%,#b8892d 100%);
+            border-color: var(--gold);
+            color: white;
+            box-shadow: 0 5px 20px rgba(212,168,83,.4);
+        }
+        .tour-btn:hover:not(.active) { border-color:rgba(212,168,83,.7); color:white; }
+
+        /* 形式フィルター（青系） */
+        .mode-btn {
+            padding: 7px 22px;
+            border-radius: 50px;
+            border: 2px solid rgba(255,255,255,.18);
+            background: rgba(255,255,255,.05);
+            color: rgba(255,255,255,.55);
+            font-weight: 700; font-size:.88rem;
+            cursor: pointer; transition: all .22s;
+        }
+        .mode-btn.active {
+            background: linear-gradient(135deg,var(--blue3) 0%,var(--blue2) 100%);
+            border-color: rgba(100,160,255,.6);
+            color: white;
+            box-shadow: 0 5px 20px rgba(26,77,140,.5);
+        }
+        .mode-btn:hover:not(.active) { border-color:rgba(255,255,255,.4); color:white; }
+
+        /* ── コンテナ ── */
+        .main-wrap { position:relative; z-index:1; max-width:860px; margin:0 auto; padding:0 16px 80px; }
+
+        /* ── ポジウム TOP3（縦並び帯スタイル） ── */
+        .podium-list { display:flex; flex-direction:column; gap:12px; margin-bottom:28px; }
+
+        .podium-row {
+            display: flex; align-items: center; gap: 14px;
+            border-radius: 18px; padding: 16px 20px;
+            position: relative; overflow: hidden;
+            transition: transform .2s;
+        }
+        .podium-row:hover { transform: translateX(4px); }
+        .podium-row.r1 {
+            background: linear-gradient(90deg,rgba(212,168,83,.22) 0%,rgba(212,168,83,.07) 100%);
+            border: 1px solid rgba(212,168,83,.35);
+        }
+        .podium-row.r2 {
+            background: linear-gradient(90deg,rgba(176,190,197,.18) 0%,rgba(176,190,197,.05) 100%);
+            border: 1px solid rgba(176,190,197,.25);
+        }
+        .podium-row.r3 {
+            background: linear-gradient(90deg,rgba(205,127,50,.16) 0%,rgba(205,127,50,.04) 100%);
+            border: 1px solid rgba(205,127,50,.2);
+        }
+        .podium-medal { font-size:2rem; min-width:40px; text-align:center; }
+        .podium-avatar {
+            border-radius: 50%; object-fit: cover;
+            border: 3px solid rgba(255,255,255,.2);
+            flex-shrink: 0;
+        }
+        .r1 .podium-avatar { width:64px;height:64px;border-color:var(--gold); box-shadow:0 0 0 3px rgba(212,168,83,.25); }
+        .r2 .podium-avatar { width:56px;height:56px;border-color:var(--silver); }
+        .r3 .podium-avatar { width:50px;height:50px;border-color:var(--bronze); }
+        .podium-info { flex:1; min-width:0; }
+        .podium-name { font-weight:700; font-size:1.05rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .r2 .podium-name,.r3 .podium-name { font-size:.95rem; color:rgba(255,255,255,.9); }
+        .podium-sub { font-size:.75rem; color:rgba(255,255,255,.4); margin-top:2px; }
+        .podium-score { font-family:var(--fn); font-weight:900; text-align:right; }
+        .r1 .podium-score { font-size:1.9rem; color:var(--gold2); }
+        .r2 .podium-score { font-size:1.6rem; color:var(--silver); }
+        .r3 .podium-score { font-size:1.4rem; color:var(--bronze); }
+        .podium-cnt { font-size:.7rem; color:rgba(255,255,255,.35); text-align:right; }
+
+        /* ── ランキングリスト ── */
+        .rank-list { display:flex; flex-direction:column; gap:7px; }
+        .rank-row {
+            display:flex; align-items:center; gap:14px;
+            background:rgba(255,255,255,.05);
+            border:1px solid rgba(255,255,255,.08);
+            border-radius:14px; padding:12px 18px;
+            transition: all .18s;
+        }
+        .rank-row:hover { background:rgba(255,255,255,.09); transform:translateX(4px); }
+        .rank-no { font-family:var(--fn); font-weight:900; font-size:1rem; min-width:28px; text-align:center; color:rgba(255,255,255,.35); }
+        .rank-avatar { width:38px;height:38px;border-radius:50%;border:2px solid rgba(255,255,255,.12);flex-shrink:0; }
+        .rank-info { flex:1; min-width:0; }
+        .rank-name { font-weight:700; font-size:.9rem; white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+        .rank-team { font-size:.73rem; color:rgba(255,255,255,.38); margin-top:1px; }
+        .rank-score { font-family:var(--fn); font-weight:700; font-size:1.1rem; text-align:right; min-width:55px; }
+        .rank-games { font-size:.7rem; color:rgba(255,255,255,.32); text-align:right; }
+
+        .score-pos { color:#4ade80; }
+        .score-neg { color:#f87171; }
+        .score-zero { color:rgba(255,255,255,.4); }
+
+        /* ── チームカード ── */
+        .team-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:14px; }
+        .team-card {
+            background:rgba(255,255,255,.05);
+            border:1px solid rgba(255,255,255,.1);
+            border-radius:18px; padding:22px 18px;
+            text-align:center; transition:all .22s;
+        }
+        .team-card:hover { transform:translateY(-4px); box-shadow:0 14px 36px rgba(0,0,0,.3); }
+        .team-card.r1 { border-color:rgba(212,168,83,.4); background:rgba(212,168,83,.08); }
+        .team-card.r2 { border-color:rgba(176,190,197,.3); background:rgba(176,190,197,.06); }
+        .team-card.r3 { border-color:rgba(205,127,50,.3); background:rgba(205,127,50,.06); }
+        .team-medal { font-size:1.9rem; margin-bottom:5px; }
+        .team-name { font-family:var(--fn); font-weight:700; font-size:1rem; margin-bottom:10px; }
+        .team-score { font-family:var(--fn); font-size:2rem; font-weight:900; line-height:1; margin-bottom:4px; }
+        .team-card.r1 .team-score { color:var(--gold2); }
+        .team-card.r2 .team-score { color:var(--silver); }
+        .team-card.r3 .team-score { color:var(--bronze); }
+        .team-meta { font-size:.76rem; color:rgba(255,255,255,.38); }
+
+        /* ── セクション区切り ── */
+        .section-label {
+            display:flex; align-items:center; gap:10px;
+            margin:4px 0 16px;
+        }
+        .section-label span { font-size:.72rem; letter-spacing:.18em; color:rgba(255,255,255,.32); }
+        .section-label::before,.section-label::after { content:''; flex:1; height:1px; background:rgba(255,255,255,.09); }
+
+        /* ── 空状態 ── */
+        .empty-state { text-align:center; padding:60px 20px; color:rgba(255,255,255,.3); font-size:.9rem; }
+
+        /* ── ローディング ── */
+        #loading-state { text-align:center; padding:80px 20px; position:relative; z-index:1; }
+        .spinner-ring {
+            width:48px; height:48px;
+            border:4px solid rgba(255,255,255,.1);
+            border-top-color:var(--gold);
+            border-radius:50%;
+            animation:spin .8s linear infinite;
+            margin:0 auto 14px;
+        }
+        @keyframes spin { to { transform:rotate(360deg); } }
+
+        @media (max-width:600px) {
+            .r1 .podium-avatar { width:52px;height:52px; }
+            .r2 .podium-avatar { width:46px;height:46px; }
+            .r3 .podium-avatar { width:42px;height:42px; }
+            .r1 .podium-score { font-size:1.5rem; }
+            .team-grid { grid-template-columns:1fr 1fr; }
+        }
     </style>
 </head>
-<body>
-    <div class="nav-dropdown dropdown" style="position:fixed;top:20px;right:20px;z-index:1000;">
-        <button class="btn dropdown-toggle" type="button" id="navDropdown" data-bs-toggle="dropdown"
-            style="background:linear-gradient(135deg,var(--gold) 0%,#b8892d 100%);color:white;padding:12px 24px;border-radius:25px;font-weight:bold;">
-            📝 メニュー
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navDropdown">
-            <li><a class="dropdown-item" href="../index.html">🏠 ホームに戻る</a></li>
-            <li><a class="dropdown-item" href="../mypage/index.html">👤 マイページ</a></li>
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" href="./index.html">🃏 ランキング</a></li>
-            <li><a class="dropdown-item" href="./record.html">📝 記録する</a></li>
-            <li><a class="dropdown-item" href="./users/index.html">👥 ユーザー一覧</a></li>
-            <li><a class="dropdown-item" href="./team/index.html">🏅 チーム管理</a></li>
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" href="../badge/list.html">📛 バッジ一覧</a></li>
-            <li><a class="dropdown-item" href="../badge/shop.html">🛒 バッジショップ</a></li>
-            <li><a class="dropdown-item" href="../ranking/index.html">💰 資産ランキング</a></li>
-            <li class="admin-only" style="display:none;"><hr class="dropdown-divider"></li>
-            <li class="admin-only" style="display:none;"><a class="dropdown-item" href="../admin/index.html">⚙️ 管理画面</a></li>
-        </ul>
+<body class="bg-felt">
+
+    <!-- ナビ -->
+    <div style="position:fixed;top:20px;right:20px;z-index:1000;">
+        <div class="dropdown">
+            <button class="btn dropdown-toggle" type="button" id="navDropdown" data-bs-toggle="dropdown"
+                style="background:linear-gradient(135deg,var(--gold) 0%,#b8892d 100%);color:white;padding:10px 22px;border-radius:25px;font-weight:bold;border:none;">
+                📝 メニュー
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navDropdown">
+                <li><a class="dropdown-item" href="../index.html">🏠 ホームに戻る</a></li>
+                <li><a class="dropdown-item" href="../mypage/index.html">👤 マイページ</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="./index.html">🃏 ランキング</a></li>
+                <li><a class="dropdown-item" href="./record.html">📝 記録する</a></li>
+                <li><a class="dropdown-item" href="./users/index.html">👥 ユーザー一覧</a></li>
+                <li><a class="dropdown-item" href="./team/index.html">🏅 チーム管理</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="../badge/list.html">📛 バッジ一覧</a></li>
+                <li><a class="dropdown-item" href="../badge/shop.html">🛒 バッジショップ</a></li>
+                <li><a class="dropdown-item" href="../ranking/index.html">💰 資産ランキング</a></li>
+                <li class="admin-only" style="display:none;"><hr class="dropdown-divider"></li>
+                <li class="admin-only" style="display:none;"><a class="dropdown-item" href="../admin/index.html">⚙️ 管理画面</a></li>
+            </ul>
+        </div>
     </div>
 
-    <div class="container py-5" style="padding-top:80px!important;max-width:900px;">
-        <header class="text-center mb-5">
-            <h1 class="page-header display-4 fw-bold">🃏 ポーカー大会</h1>
-            <p style="color:rgba(255,255,255,0.8);font-size:1.1rem;">第二回ポーカー大会</p>
-        </header>
+    <!-- ヘッダー -->
+    <div class="page-hero">
+        <div class="hero-eyebrow" id="hero-sub-text">ポーカー大会</div>
+        <h1 class="hero-title">POKER RANKING</h1>
+        <div class="hero-suits">
+            <span class="s">♠</span>
+            <span class="h">♥</span>
+            <span class="d">♦</span>
+            <span class="c">♣</span>
+        </div>
+    </div>
 
-        <div id="loading-state">
-            <div class="spinner-border text-light mb-3" style="width:3rem;height:3rem;"></div>
-            <div style="font-size:1rem;opacity:0.8;">読み込み中...</div>
+    <!-- ローディング -->
+    <div id="loading-state">
+        <div class="spinner-ring"></div>
+        <div style="color:rgba(255,255,255,.5);font-size:.9rem;">読み込み中...</div>
+    </div>
+
+    <!-- メインコンテンツ -->
+    <div id="main-content" style="display:none;">
+
+        <!-- フィルター -->
+        <div class="filter-wrap">
+            <!-- 大会フィルター -->
+            <div>
+                <div class="filter-label">🏆 大会</div>
+                <div class="filter-group" id="tour-filter"></div>
+            </div>
+            <!-- 形式フィルター -->
+            <div>
+                <div class="filter-label">📋 表示形式</div>
+                <div class="filter-group" id="mode-filter">
+                    <button class="mode-btn active" onclick="setMode('individual',this)">👤 個人</button>
+                    <button class="mode-btn" onclick="setMode('team',this)">🏅 チーム</button>
+                </div>
+            </div>
         </div>
 
-        <div id="main-content" style="display:none;">
-            <!-- 個人ランキング -->
-            <div class="section-card">
-                <h3 class="section-title">👤 個人合計ポイント</h3>
-                <table class="rank-table">
-                    <thead>
-                        <tr>
-                            <th style="width:50px;">#</th>
-                            <th>プレイヤー</th>
-                            <th>チーム</th>
-                            <th style="text-align:right;">合計</th>
-                            <th style="text-align:right;">試合数</th>
-                        </tr>
-                    </thead>
-                    <tbody id="individual-body"></tbody>
-                </table>
+        <div class="main-wrap">
+            <!-- 個人ビュー -->
+            <div id="view-individual">
+                <div class="podium-list" id="podium-list"></div>
+                <div class="section-label" id="rest-label" style="display:none;"><span>4位以下</span></div>
+                <div class="rank-list" id="rank-list"></div>
             </div>
 
-            <!-- チームランキング -->
-            <div class="section-card">
-                <h3 class="section-title">🏅 チーム合計ポイント</h3>
-                <table class="rank-table">
-                    <thead>
-                        <tr>
-                            <th style="width:50px;">#</th>
-                            <th>チーム</th>
-                            <th style="text-align:right;">合計</th>
-                            <th style="text-align:right;">試合数</th>
-                            <th style="text-align:right;">メンバー</th>
-                        </tr>
-                    </thead>
-                    <tbody id="team-body"></tbody>
-                </table>
+            <!-- チームビュー -->
+            <div id="view-team" style="display:none;">
+                <div class="team-grid" id="team-grid"></div>
             </div>
         </div>
     </div>
@@ -135,108 +326,191 @@
     <script src="../js/navigation.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', () => { initAccordionNav('../'); });
+
+    // ── 状態 ──
+    let allResults = [];
+    let profileMap = {};
+    let allTeamNames = new Set();
+    let currentTour = 'all';
+    let currentMode = 'individual';
+
     document.addEventListener('DOMContentLoaded', loadRanking);
 
-    const MEDALS = ['🥇', '🥈', '🥉'];
-    const ROW_CLS = ['gold', 'silver', 'bronze'];
-
     async function loadRanking() {
-        // 全試合結果
         const { data: results, error } = await supabaseClient
             .from('poker_results')
-            .select('discord_user_id, account_name, final_score, team_name');
+            .select('discord_user_id,account_name,final_score,team_name,tournament_type,match_mode,event_datetime');
         if (error) { console.error(error); return; }
+        allResults = results || [];
 
-        // プロフィール（アバター用）
-        const ids = [...new Set((results||[]).map(r=>r.discord_user_id).filter(Boolean))];
-        let profileMap = {};
+        // プロフィール取得
+        const ids = [...new Set(allResults.map(r => r.discord_user_id).filter(Boolean))];
         if (ids.length > 0) {
             const { data: profiles } = await supabaseClient
-                .from('profiles')
-                .select('discord_user_id, account_name, avatar_url')
-                .in('discord_user_id', ids);
-            (profiles||[]).forEach(p => { profileMap[p.discord_user_id] = p; });
+                .from('profiles').select('discord_user_id,account_name,avatar_url').in('discord_user_id', ids);
+            (profiles || []).forEach(p => { profileMap[p.discord_user_id] = p; });
         }
 
-        // ポーカーチーム（チーム名一覧）
-        const { data: teams } = await supabaseClient.from('poker_teams').select('id, team_name');
-        const teamNames = new Set((teams||[]).map(t => t.team_name));
+        // チームマスタ取得
+        const { data: teams } = await supabaseClient.from('poker_teams').select('id,team_name');
+        allTeamNames = new Set((teams || []).map(t => t.team_name));
 
-        // --- 個人集計 ---
-        const playerMap = {};
-        (results||[]).forEach(r => {
-            const key = r.discord_user_id || r.account_name;
-            if (!playerMap[key]) {
-                const p = profileMap[r.discord_user_id] || {};
-                playerMap[key] = {
-                    id: r.discord_user_id,
-                    name: p.account_name || r.account_name,
-                    avatar: p.avatar_url || null,
-                    team: r.team_name || '',
-                    score: 0,
-                    count: 0,
-                };
-            }
-            playerMap[key].score += Number(r.final_score);
-            playerMap[key].count++;
-        });
-        const players = Object.values(playerMap).sort((a,b) => b.score - a.score);
-
-        // --- チーム集計 ---
-        const teamMap = {};
-        (results||[]).forEach(r => {
-            if (!r.team_name || !teamNames.has(r.team_name)) return;
-            if (!teamMap[r.team_name]) {
-                teamMap[r.team_name] = { name: r.team_name, score: 0, count: 0, members: new Set() };
-            }
-            teamMap[r.team_name].score += Number(r.final_score);
-            teamMap[r.team_name].count++;
-            if (r.discord_user_id) teamMap[r.team_name].members.add(r.discord_user_id);
-        });
-        // poker_teamsにあるがresultsにないチームも0点で追加
-        (teams||[]).forEach(t => {
-            if (!teamMap[t.team_name]) {
-                teamMap[t.team_name] = { name: t.team_name, score: 0, count: 0, members: new Set() };
-            }
-        });
-        const teamList = Object.values(teamMap).sort((a,b) => b.score - a.score);
-
-        // 個人テーブル描画
-        document.getElementById('individual-body').innerHTML = players.map((p, i) => {
-            const rankLabel = i < 3 ? MEDALS[i] : `<span class="rank-num">${i+1}</span>`;
-            const rowCls = i < 3 ? ROW_CLS[i] : '';
-            const avatar = p.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=1a4d8c&color=fff`;
-            const sc = p.score;
-            const scoreCls = sc > 0 ? 'score-pos' : sc < 0 ? 'score-neg' : 'score-zero';
-            return `<tr class="${rowCls}">
-                <td>${rankLabel}</td>
-                <td><div class="d-flex align-items-center">
-                    <img src="${avatar}" class="player-avatar" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff'">
-                    <span class="fw-bold">${p.name}</span>
-                </div></td>
-                <td><span style="font-size:0.85rem;color:#666;">${p.team || '-'}</span></td>
-                <td style="text-align:right;" class="${scoreCls}">${sc>0?'+':''}${sc}</td>
-                <td style="text-align:right;color:#888;">${p.count}</td>
-            </tr>`;
-        }).join('') || '<tr><td colspan="5" class="text-center text-muted py-4">データがありません</td></tr>';
-
-        // チームテーブル描画
-        document.getElementById('team-body').innerHTML = teamList.map((t, i) => {
-            const rankLabel = i < 3 ? MEDALS[i] : `<span class="rank-num">${i+1}</span>`;
-            const rowCls = i < 3 ? ROW_CLS[i] : '';
-            const sc = t.score;
-            const scoreCls = sc > 0 ? 'score-pos' : sc < 0 ? 'score-neg' : 'score-zero';
-            return `<tr class="${rowCls}">
-                <td>${rankLabel}</td>
-                <td><span class="fw-bold">🏅 ${t.name}</span></td>
-                <td style="text-align:right;" class="${scoreCls}">${sc>0?'+':''}${sc}</td>
-                <td style="text-align:right;color:#888;">${t.count}</td>
-                <td style="text-align:right;color:#888;">${t.members.size}人</td>
-            </tr>`;
-        }).join('') || '<tr><td colspan="5" class="text-center text-muted py-4">データがありません</td></tr>';
+        buildTourFilter();
 
         document.getElementById('loading-state').style.display = 'none';
         document.getElementById('main-content').style.display = '';
+        render();
+    }
+
+    function buildTourFilter() {
+        // DBにある tournament_type を収集
+        const tours = [...new Set(allResults.map(r => r.tournament_type).filter(Boolean))].sort();
+        const container = document.getElementById('tour-filter');
+        // 全期間を先頭に、大会名を後ろに並べる
+        let html = `<button class="tour-btn active" onclick="setTour('all',this)">全期間</button>`;
+        tours.forEach(t => {
+            html += `<button class="tour-btn" onclick="setTour(${JSON.stringify(t)},this)">${t}</button>`;
+        });
+        container.innerHTML = html;
+    }
+
+    function setTour(val, btn) {
+        currentTour = val;
+        document.querySelectorAll('.tour-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('hero-sub-text').textContent = val === 'all' ? '全期間' : val;
+        render();
+    }
+
+    function setMode(val, btn) {
+        currentMode = val;
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        render();
+    }
+
+    function filtered() {
+        return allResults.filter(r => {
+            if (currentTour !== 'all' && r.tournament_type !== currentTour) return false;
+            return true;
+        });
+    }
+
+    function aggregateIndividual(rows) {
+        const map = {};
+        rows.forEach(r => {
+            const key = r.discord_user_id || r.account_name;
+            if (!map[key]) {
+                const p = profileMap[r.discord_user_id] || {};
+                map[key] = { id: r.discord_user_id, name: p.account_name || r.account_name, avatar: p.avatar_url || null, team: r.team_name || '', score: 0, count: 0 };
+            }
+            map[key].score += Number(r.final_score);
+            map[key].count++;
+        });
+        return Object.values(map).sort((a,b) => b.score - a.score);
+    }
+
+    function aggregateTeam(rows) {
+        const map = {};
+        rows.forEach(r => {
+            if (!r.team_name || !allTeamNames.has(r.team_name)) return;
+            if (!map[r.team_name]) map[r.team_name] = { name: r.team_name, score: 0, count: 0, members: new Set() };
+            map[r.team_name].score += Number(r.final_score);
+            map[r.team_name].count++;
+            if (r.discord_user_id) map[r.team_name].members.add(r.discord_user_id);
+        });
+        // マスタにあるが記録なしチームも追加
+        allTeamNames.forEach(n => { if (!map[n]) map[n] = { name: n, score: 0, count: 0, members: new Set() }; });
+        return Object.values(map).sort((a,b) => b.score - a.score);
+    }
+
+    function render() {
+        const rows = filtered();
+        if (currentMode === 'individual') {
+            document.getElementById('view-individual').style.display = '';
+            document.getElementById('view-team').style.display = 'none';
+            renderIndividual(aggregateIndividual(rows));
+        } else {
+            document.getElementById('view-individual').style.display = 'none';
+            document.getElementById('view-team').style.display = '';
+            renderTeam(aggregateTeam(rows));
+        }
+    }
+
+    function av(url, name) {
+        return url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1a4d8c&color=fff`;
+    }
+    function sc(v) { return v > 0 ? '+' + v : String(v); }
+    function scCls(v) { return v > 0 ? 'score-pos' : v < 0 ? 'score-neg' : 'score-zero'; }
+
+    const MEDALS = ['🥇','🥈','🥉'];
+    const RCLS   = ['r1','r2','r3'];
+
+    function renderIndividual(players) {
+        const podiumEl  = document.getElementById('podium-list');
+        const listEl    = document.getElementById('rank-list');
+        const restLabel = document.getElementById('rest-label');
+
+        if (players.length === 0) {
+            podiumEl.innerHTML = '<div class="empty-state">データがありません</div>';
+            listEl.innerHTML = '';
+            restLabel.style.display = 'none';
+            return;
+        }
+
+        const top3 = players.slice(0, 3);
+        podiumEl.innerHTML = top3.map((p, i) => {
+            const s = p.score;
+            return `<div class="podium-row ${RCLS[i]}">
+                <span class="podium-medal">${MEDALS[i]}</span>
+                <img src="${av(p.avatar,p.name)}" class="podium-avatar"
+                    onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff'">
+                <div class="podium-info">
+                    <div class="podium-name">${p.name}</div>
+                    <div class="podium-sub">${p.team || '　'}</div>
+                </div>
+                <div>
+                    <div class="podium-score ${scCls(s)}">${sc(s)}</div>
+                    <div class="podium-cnt">${p.count}試合</div>
+                </div>
+            </div>`;
+        }).join('');
+
+        const rest = players.slice(3);
+        restLabel.style.display = rest.length ? '' : 'none';
+        listEl.innerHTML = rest.map((p, i) => {
+            const s = p.score;
+            return `<div class="rank-row">
+                <span class="rank-no">${i+4}</span>
+                <img src="${av(p.avatar,p.name)}" class="rank-avatar"
+                    onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff'">
+                <div class="rank-info">
+                    <div class="rank-name">${p.name}</div>
+                    <div class="rank-team">${p.team || '　'}</div>
+                </div>
+                <div>
+                    <div class="rank-score ${scCls(s)}">${sc(s)}</div>
+                    <div class="rank-games">${p.count}試合</div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function renderTeam(teamList) {
+        const medals = ['🥇','🥈','🥉'];
+        document.getElementById('team-grid').innerHTML = teamList.length === 0
+            ? '<div class="empty-state" style="grid-column:1/-1;">データがありません</div>'
+            : teamList.map((t, i) => {
+                const s = t.score;
+                const cls = i < 3 ? RCLS[i] : '';
+                const med = i < 3 ? medals[i] : `<span style="font-size:1.3rem;color:rgba(255,255,255,.3);">${i+1}</span>`;
+                return `<div class="team-card ${cls}">
+                    <div class="team-medal">${med}</div>
+                    <div class="team-name">🏅 ${t.name}</div>
+                    <div class="team-score ${scCls(s)}">${sc(s)}</div>
+                    <div class="team-meta">${t.count}試合 · ${t.members.size}人</div>
+                </div>`;
+            }).join('');
     }
     </script>
 </body>
