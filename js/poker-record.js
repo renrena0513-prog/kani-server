@@ -711,7 +711,7 @@ async function sendDiscordNotification(matchData, playerCount, bonusReceivers = 
     fields.push({ name: '✍️ 記録者', value: reporterMention, inline: false });
 
     const embed = {
-        title: `🃏 ${matchType} 結果`,
+        title: `🃏 ${matchType}　${playerCount}人トーナメント　結果`,
         color: 0x1a4d8c,
         fields,
         timestamp: new Date().toISOString(),
