@@ -72,12 +72,6 @@
         </footer>
     </div>
 
-    <!-- ユーザー情報（認証後に表示） -->
-    <div class="auth-container">
-        <div id="user-info" style="display: none; align-items: center;"></div>
-        <a id="mypage-link" style="display: none;"></a>
-    </div>
-
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Supabase -->
@@ -87,6 +81,10 @@
     <script src="js/auth-guard.js"></script>
     <!-- 【一時的】アンケートモーダル（撤去時は下1行を削除） -->
     <script src="js/survey-modal.js"></script>
+    <script src="js/navigation.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => { initAccordionNav('./'); });
+    </script>
 </body>
 
 </html>
