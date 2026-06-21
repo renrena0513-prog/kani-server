@@ -1006,13 +1006,10 @@
 
         function wasYesterday(dateStr) {
             if (!dateStr) return false;
-            const toJSTDateStr = d => {
-                const jst = new Date(d.getTime() + 9 * 3600000);
-                return `${jst.getUTCFullYear()}-${String(jst.getUTCMonth()+1).padStart(2,'0')}-${String(jst.getUTCDate()).padStart(2,'0')}`;
-            };
-            const now = new Date();
-            const yesterday = new Date(now.getTime() - 86400000);
-            return toJSTDateStr(new Date(dateStr)) === toJSTDateStr(yesterday);
+            const todayMidnight = getJSTMidnight();
+            const yesterdayMidnight = new Date(todayMidnight.getTime() - 86400000);
+            const last = new Date(dateStr);
+            return last >= yesterdayMidnight && last < todayMidnight;
         }
 
         function renderStreakBadge(streak, isMax) {
