@@ -1163,12 +1163,25 @@
                 }
 
                 let rewardHtml = '';
-                if (coinReward !== 0) rewardHtml += `<span style="color:${coinReward>0?'#27ae60':'#e74c3c'}">🪙 ${coinReward>=0?'+':''}${coinReward.toLocaleString()}</span> `;
-                if (ticketReward !== 0) rewardHtml += `<span style="color:#d4a574">🎫 ${ticketReward>=0?'+':''}${ticketReward}枚</span>`;
+                if (coinReward !== 0) rewardHtml += `<span style="color:${coinReward>0?'#27ae60':'#e74c3c'}">🪙 ${coinReward>=0?'+':''}${coinReward.toLocaleString()}</span>`;
+                if (ticketReward !== 0) rewardHtml += ` <span style="color:#d4a574">🎫 ${ticketReward>=0?'+':''}${ticketReward}枚</span>`;
                 if (manganReward !== 0) rewardHtml += ` <span style="color:#d4a574">🧧 ${manganReward>=0?'+':''}${manganReward}枚</span>`;
-                if (badgeInfo) rewardHtml += `<span style="color:#d4a853">🎖 隠しバッジ「${badgeInfo.name}」獲得！</span>`;
+                if (badgeInfo) rewardHtml += ` <span style="color:#d4a853">🎖 隠しバッジ「${badgeInfo.name}」獲得！</span>`;
 
                 document.getElementById('fortune-reward').innerHTML = rewardHtml || '<span style="color:#999">報酬なし</span>';
+
+                // Streak bonus line
+                const streakBonusEl = document.getElementById('streak-bonus-line');
+                if (streakBonus > 0) {
+                    const streakLabel = newStreak >= 11
+                        ? `🔥 連続11日達成！ ＋${streakBonus.toLocaleString()}コイン（MAX）`
+                        : `🔥 連続${newStreak}日ボーナス ＋${streakBonus.toLocaleString()}コイン`;
+                    streakBonusEl.innerHTML = `<span style="color:#ffb030;font-weight:700;">${streakLabel}</span>`;
+                    streakBonusEl.style.display = 'block';
+                } else {
+                    streakBonusEl.innerHTML = '';
+                    streakBonusEl.style.display = 'none';
+                }
 
                 // Show badge image
                 const badgeWrap = document.getElementById('fortune-badge-wrap');
@@ -1178,15 +1191,6 @@
                     requestAnimationFrame(() => { badgeWrap.style.opacity = '1'; });
                 } else {
                     badgeWrap.style.display = 'none';
-                }
-                if (streakBonus > 0) {
-                    const streakLabel = newStreak >= 11
-                        ? `🔥 連続11日MAX ＋${streakBonus.toLocaleString()}コイン`
-                        : `🔥 連続${newStreak}日ボーナス ＋${streakBonus.toLocaleString()}コイン`;
-                    document.getElementById('streak-bonus-line').innerHTML =
-                        `<span style="color:#ffb030">${streakLabel}</span>`;
-                } else {
-                    document.getElementById('streak-bonus-line').innerHTML = '';
                 }
                 document.getElementById('fortune-message').textContent = message;
 
