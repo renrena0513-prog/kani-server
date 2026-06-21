@@ -5,7 +5,7 @@ create table if not exists public.poker_results (
   event_datetime              timestamptz not null default now(),
   discord_user_id             text,
   account_name                text        not null,
-  tournament_type             text        not null default '第一回ポーカー大会',
+  tournament_type             text        not null default '第二回ポーカー大会',
   match_mode                  text        not null default '個人戦',
   team_name                   text,
   player_count                integer     not null default 4,

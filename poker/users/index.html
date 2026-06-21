@@ -18,58 +18,30 @@
             --font-title: 'Noto Serif JP', serif;
             --font-body: 'M PLUS Rounded 1c', sans-serif;
         }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: var(--font-body); background: linear-gradient(135deg, #0d2f5c 0%, #1a4d8c 50%, #153d70 100%); min-height: 100vh; background-attachment: fixed; }
+        * { box-sizing: border-box; }
+        body { font-family: var(--font-body); background: linear-gradient(135deg, #0d2f5c 0%, #1a4d8c 50%, #153d70 100%); min-height: 100vh; background-attachment: fixed; text-transform: none !important; }
+        h1,h2,h3,h4,h5,h6,.btn,.nav-link { text-transform: none !important; }
         .page-header { font-family: var(--font-title); color: white; text-shadow: 2px 4px 12px rgba(0,0,0,0.3); }
         .content-card { background: rgba(255,255,255,0.97); border-radius: 24px; padding: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.25); margin-bottom: 25px; }
-        .section-title { font-family: var(--font-title); color: var(--deep-blue); border-bottom: 3px solid var(--gold); padding-bottom: 10px; margin-bottom: 20px; font-size: 1.2rem; font-weight: 700; }
+        /* アコーディオン */
+        .accordion-button:not(.collapsed) { background: rgba(26,77,140,0.08); color: var(--deep-blue); font-weight: bold; box-shadow: none; }
+        .accordion-button:focus { box-shadow: none; }
+        .accordion-item { border: 1px solid rgba(0,0,0,0.1); margin-bottom: 10px; border-radius: 14px !important; overflow: hidden; }
+        .accordion-button { border-radius: 14px !important; }
+        .team-icon { width: 40px; height: 40px; object-fit: contain; margin-right: 12px; font-size: 1.8em; display: inline-flex; align-items: center; justify-content: center; }
         /* ユーザーカード */
-        .user-card { display: flex; align-items: center; padding: 16px; background: #f8f9fa; border-radius: 14px; margin-bottom: 10px; transition: all 0.2s; border: 2px solid transparent; cursor: pointer; }
-        .user-card:hover { background: #e9f0fb; border-color: var(--primary-blue); transform: translateX(4px); }
-        .user-card.selected { background: rgba(26,77,140,0.08); border-color: var(--primary-blue); }
-        .user-avatar { width: 48px; height: 48px; border-radius: 50%; margin-right: 14px; border: 2px solid var(--gold); flex-shrink: 0; }
-        .user-name { font-weight: 700; color: #222; }
-        .user-stats { display: flex; gap: 10px; margin-top: 4px; flex-wrap: wrap; }
-        .user-stat-badge { font-size: 0.75rem; color: #555; background: #e9ecef; padding: 2px 8px; border-radius: 10px; }
-        /* 詳細パネル */
-        #detail-panel { display: none; }
-        .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
-        .stat-box { background: #f8f9fa; border-radius: 14px; padding: 16px; text-align: center; border: 2px solid #e9ecef; transition: all 0.3s; }
-        .stat-box:hover { border-color: var(--gold); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .stat-box .label { font-size: 0.72rem; color: #777; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-        .stat-box .value { font-size: 1.4rem; font-weight: 700; color: var(--deep-blue); }
-        .stat-box .sub { font-size: 0.72rem; color: #999; }
-        /* 試合履歴 */
-        .history-table { width: 100%; border-collapse: separate; border-spacing: 0 4px; font-size: 0.88rem; }
-        .history-table thead th { background: var(--deep-blue); color: white; padding: 10px 14px; }
-        .history-table thead th:first-child { border-radius: 8px 0 0 8px; }
-        .history-table thead th:last-child { border-radius: 0 8px 8px 0; }
-        .history-table tbody tr { background: #f8f9fa; transition: all 0.2s; }
-        .history-table tbody tr:hover { background: #e9f0fb; }
-        .history-table td { padding: 10px 14px; }
-        .history-table td:first-child { border-radius: 8px 0 0 8px; }
-        .history-table td:last-child { border-radius: 0 8px 8px 0; }
-        /* rank colors */
-        .rank-1 { color: #c9a227; font-weight: 700; }
-        .rank-2 { color: #777; font-weight: 700; }
-        .rank-3 { color: #a0522d; font-weight: 700; }
-        /* スコアバー */
-        .score-positive { color: #1e7e34; font-weight: 700; }
-        .score-negative { color: #b31d1d; font-weight: 700; }
-        /* フィルター */
-        .filter-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; align-items: center; }
-        .filter-bar input { border-radius: 20px; border: 2px solid #dee2e6; padding: 8px 18px; font-size: 0.9rem; transition: all 0.3s; min-width: 200px; }
-        .filter-bar input:focus { border-color: var(--primary-blue); box-shadow: 0 0 0 3px rgba(26,77,140,0.12); outline: none; }
-        .filter-bar select { border-radius: 20px; border: 2px solid #dee2e6; padding: 8px 14px; font-size: 0.9rem; }
-        /* ナビバッジ */
-        .notification-badge { background: #dc3545; color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 10px; margin-left: auto; }
-        /* ページネーション */
-        .load-more-btn { background: linear-gradient(135deg, var(--primary-blue), var(--deep-blue)); color: white; border: none; padding: 10px 30px; border-radius: 20px; font-weight: 600; cursor: pointer; margin: 12px auto 0; display: block; }
-        .load-more-btn:hover { opacity: 0.88; }
+        .user-card { display: flex; align-items: center; padding: 12px; background: #f8f9fa; border-radius: 12px; margin-bottom: 8px; transition: all 0.2s; }
+        .user-card:hover { background: #e9f0fb; transform: translateX(4px); }
+        .user-avatar { width: 44px; height: 44px; border-radius: 50%; margin-right: 12px; border: 2px solid var(--gold); flex-shrink: 0; }
+        .user-name { font-weight: 600; color: #333; }
+        .leader-badge { font-size: 0.75rem; color: #666; background: #e9ecef; padding: 2px 8px; border-radius: 12px; margin-left: 10px; }
+        /* スコア */
+        .user-score { margin-left: auto; font-weight: 700; font-size: 0.9rem; }
+        .score-pos { color: #1e7e34; }
+        .score-neg { color: #b31d1d; }
     </style>
 </head>
 <body>
-    <!-- 右上ナビ -->
     <div class="nav-dropdown dropdown" style="position:fixed;top:20px;right:20px;z-index:1000;">
         <button class="btn dropdown-toggle" type="button" id="navDropdown" data-bs-toggle="dropdown"
             style="background:linear-gradient(135deg,var(--gold) 0%,#b8892d 100%);color:white;padding:12px 24px;border-radius:25px;font-weight:bold;">
@@ -82,8 +54,7 @@
             <li><a class="dropdown-item" href="../index.html">🃏 ランキング</a></li>
             <li><a class="dropdown-item" href="../record.html">📝 記録する</a></li>
             <li><a class="dropdown-item" href="./index.html">👥 ユーザー一覧</a></li>
-            <li><a class="dropdown-item" href="../team/index.html">🏅 チーム管理
-                <span id="team-notification-badge" class="notification-badge" style="display:none;">0</span></a></li>
+            <li><a class="dropdown-item" href="../team/index.html">🏅 チーム管理</a></li>
             <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item" href="../../badge/list.html">📛 バッジ一覧</a></li>
             <li><a class="dropdown-item" href="../../badge/shop.html">🛒 バッジショップ</a></li>
@@ -93,85 +64,18 @@
         </ul>
     </div>
 
-    <div class="container py-5" style="padding-top:80px!important;max-width:1400px;">
+    <div class="container py-5" style="padding-top:80px!important;max-width:900px;">
         <header class="text-center mb-5">
             <h1 class="page-header display-4 fw-bold">👥 ユーザー一覧</h1>
+            <p style="color:rgba(255,255,255,0.7);">第二回ポーカー大会</p>
         </header>
 
-        <div id="loading-state" class="content-card text-center py-5">
-            <div class="spinner-border" style="color:var(--primary-blue);" role="status">
-                <span class="visually-hidden">読み込み中...</span>
+        <div class="content-card">
+            <div id="users-loading" class="text-center py-5">
+                <div class="spinner-border" style="color:var(--primary-blue);" role="status"></div>
             </div>
-        </div>
-
-        <div id="main-content" style="display:none;">
-            <div class="row g-4">
-                <!-- 左: ユーザーリスト -->
-                <div class="col-lg-4">
-                    <div class="content-card" style="position:sticky;top:20px;max-height:85vh;overflow-y:auto;">
-                        <h3 class="section-title">🎴 プレイヤー</h3>
-                        <div class="filter-bar">
-                            <input type="text" id="search-input" placeholder="名前で検索..." oninput="filterUsers()">
-                            <select id="sort-select" class="form-select" onchange="filterUsers()" style="border-radius:20px;">
-                                <option value="score">スコア順</option>
-                                <option value="count">試合数順</option>
-                                <option value="win_rate">1位率順</option>
-                            </select>
-                        </div>
-                        <div id="users-list"></div>
-                    </div>
-                </div>
-
-                <!-- 右: 詳細 -->
-                <div class="col-lg-8">
-                    <div id="no-selection" class="content-card text-center py-5">
-                        <div style="font-size:3rem;margin-bottom:16px;">🃏</div>
-                        <h4 class="text-muted">左のリストからプレイヤーを選択</h4>
-                        <p class="text-muted">詳細な統計と試合履歴が表示されます</p>
-                    </div>
-
-                    <div id="detail-panel">
-                        <!-- プロフィール -->
-                        <div class="content-card">
-                            <div class="d-flex align-items-center gap-3 mb-4">
-                                <img id="detail-avatar" src="" alt="" style="width:72px;height:72px;border-radius:50%;border:3px solid var(--gold);">
-                                <div>
-                                    <h3 id="detail-name" class="fw-bold mb-1" style="color:var(--deep-blue);font-size:1.5rem;"></h3>
-                                    <span id="detail-team" class="badge" style="background:var(--primary-blue);font-size:0.85rem;"></span>
-                                </div>
-                            </div>
-                            <!-- スタッツ -->
-                            <div class="stat-grid" id="detail-stats"></div>
-                        </div>
-
-                        <!-- 試合履歴 -->
-                        <div class="content-card">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h4 class="section-title mb-0">📋 試合履歴</h4>
-                                <select id="history-filter" class="form-select" style="width:auto;border-radius:14px;" onchange="renderHistory()">
-                                    <option value="all">全大会</option>
-                                </select>
-                            </div>
-                            <div id="history-container" style="overflow-x:auto;">
-                                <table class="history-table">
-                                    <thead>
-                                        <tr>
-                                            <th>日時</th>
-                                            <th>大会</th>
-                                            <th>形式</th>
-                                            <th>人数</th>
-                                            <th>順位</th>
-                                            <th>スコア</th>
-                                            <th>リバイ</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="history-body"></tbody>
-                                </table>
-                            </div>
-                            <button class="load-more-btn" id="load-more-btn" onclick="loadMoreHistory()" style="display:none;">さらに読み込む</button>
-                        </div>
-                    </div>
-                </div>
+            <div id="users-content" style="display:none;">
+                <div id="teams-container"></div>
             </div>
         </div>
     </div>
@@ -184,209 +88,136 @@
     <script src="../../js/navigation.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', () => { initAccordionNav('../../'); });
+    document.addEventListener('DOMContentLoaded', loadUsersData);
 
-    let allResults = [];
-    let players = {};      // discord_user_id -> {name, avatar, stats, results}
-    let displayedPlayers = [];
-    let selectedId = null;
-    let historyPage = 0;
-    const HISTORY_PAGE_SIZE = 20;
+    async function loadUsersData() {
+        try {
+            // ポーカー専用チーム取得
+            const { data: teams } = await supabaseClient
+                .from('poker_teams')
+                .select('id, team_name, creator_discord_id')
+                .order('team_name');
 
-    const POKER_UMA = { 1: 50, 2: 20, 3: 0, 4: -20, 5: -30, 6: -35, 7: -40, 8: -40, 9: -40 };
-    const RANK_MEDALS = ['', '🥇', '🥈', '🥉'];
+            // ポーカープロフィール取得（チーム所属情報）
+            const { data: pokerProfiles } = await supabaseClient
+                .from('poker_profiles')
+                .select('discord_user_id, team_id, team_name');
 
-    async function init() {
-        const user = await getCurrentUser();
-        const { data, error } = await supabaseClient
-            .from('poker_results')
-            .select('*')
-            .order('event_datetime', { ascending: false });
-
-        if (error) { console.error(error); return; }
-        allResults = data || [];
-
-        // プロフィール取得
-        const ids = [...new Set(allResults.map(r => r.discord_user_id).filter(Boolean))];
-        const { data: profiles } = await supabaseClient
-            .from('profiles')
-            .select('discord_user_id, account_name, avatar_url')
-            .in('discord_user_id', ids);
-        const profileMap = {};
-        (profiles || []).forEach(p => profileMap[p.discord_user_id] = p);
-
-        // ポーカー専用チーム所属取得
-        const { data: pokerProfiles } = await supabaseClient
-            .from('poker_profiles')
-            .select('discord_user_id, team_name')
-            .in('discord_user_id', ids);
-        const pokerTeamMap = {};
-        (pokerProfiles || []).forEach(p => pokerTeamMap[p.discord_user_id] = p.team_name || '');
-
-        // 集計
-        players = {};
-        allResults.forEach(r => {
-            if (!r.discord_user_id) return;
-            if (!players[r.discord_user_id]) {
-                const p = profileMap[r.discord_user_id] || {};
-                players[r.discord_user_id] = {
-                    id: r.discord_user_id,
-                    name: p.account_name || r.account_name,
-                    avatar: p.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(r.account_name)}&background=1a4d8c&color=fff`,
-                    team: pokerTeamMap[r.discord_user_id] || '',
-                    results: [],
-                    score: 0, count: 0, r1: 0, rLast: 0,
-                };
+            // 全プロフィール（名前・アバター）取得
+            const allIds = (pokerProfiles || []).map(p => p.discord_user_id);
+            let profileMap = {};
+            if (allIds.length > 0) {
+                const { data: profiles } = await supabaseClient
+                    .from('profiles')
+                    .select('discord_user_id, account_name, avatar_url')
+                    .in('discord_user_id', allIds);
+                (profiles || []).forEach(p => { profileMap[p.discord_user_id] = p; });
             }
-            const pl = players[r.discord_user_id];
-            pl.results.push(r);
-            pl.score += Number(r.final_score);
-            pl.count++;
-            if (r.rank === 1) pl.r1++;
-            if (r.rank >= r.player_count) pl.rLast++;
-        });
 
-        document.getElementById('loading-state').style.display = 'none';
-        document.getElementById('main-content').style.display = '';
-        filterUsers();
-        checkTeamNotifications();
-    }
-
-    function filterUsers() {
-        const q = document.getElementById('search-input').value.toLowerCase();
-        const sort = document.getElementById('sort-select').value;
-        displayedPlayers = Object.values(players)
-            .filter(p => p.name.toLowerCase().includes(q))
-            .sort((a, b) => {
-                if (sort === 'score') return b.score - a.score;
-                if (sort === 'count') return b.count - a.count;
-                if (sort === 'win_rate') return (b.r1/b.count||0) - (a.r1/a.count||0);
-                return 0;
+            // スコア集計（poker_results）
+            const { data: results } = await supabaseClient
+                .from('poker_results')
+                .select('discord_user_id, final_score');
+            const scoreMap = {};
+            (results || []).forEach(r => {
+                if (!r.discord_user_id) return;
+                scoreMap[r.discord_user_id] = (scoreMap[r.discord_user_id] || 0) + Number(r.final_score);
             });
-        renderList();
-    }
 
-    function renderList() {
-        const el = document.getElementById('users-list');
-        if (displayedPlayers.length === 0) { el.innerHTML = '<p class="text-muted text-center py-3">プレイヤーが見つかりません</p>'; return; }
-        el.innerHTML = displayedPlayers.map((p, i) => `
-            <div class="user-card ${selectedId === p.id ? 'selected' : ''}" onclick="selectPlayer('${p.id}')">
-                <span style="font-size:1.1rem;font-weight:700;color:#aaa;min-width:24px;">${i+1}</span>
-                <img class="user-avatar" src="${p.avatar}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=1a4d8c&color=fff'">
-                <div style="flex:1;min-width:0;">
-                    <div class="user-name">${p.name}</div>
-                    <div class="user-stats">
-                        <span class="user-stat-badge">📊 ${p.score > 0 ? '+' : ''}${p.score}</span>
-                        <span class="user-stat-badge">🎴 ${p.count}試合</span>
-                        <span class="user-stat-badge">🥇 ${p.count > 0 ? Math.round(p.r1/p.count*100) : 0}%</span>
-                    </div>
-                </div>
-            </div>
-        `).join('');
-    }
+            // チーム → メンバーマップ
+            const teamMemberMap = {};
+            (teams || []).forEach(t => { teamMemberMap[t.id] = []; });
+            const unaffiliated = [];
+            (pokerProfiles || []).forEach(pp => {
+                const profile = profileMap[pp.discord_user_id] || {};
+                const entry = {
+                    discord_user_id: pp.discord_user_id,
+                    account_name: profile.account_name || pp.discord_user_id,
+                    avatar_url: profile.avatar_url || null,
+                    score: scoreMap[pp.discord_user_id] || 0,
+                    team_id: pp.team_id,
+                };
+                if (pp.team_id && teamMemberMap[pp.team_id]) {
+                    teamMemberMap[pp.team_id].push(entry);
+                } else {
+                    unaffiliated.push(entry);
+                }
+            });
 
-    function selectPlayer(id) {
-        selectedId = id;
-        renderList();
-        const p = players[id];
-        if (!p) return;
-
-        document.getElementById('no-selection').style.display = 'none';
-        document.getElementById('detail-panel').style.display = '';
-
-        // アバター・名前
-        document.getElementById('detail-avatar').src = p.avatar;
-        document.getElementById('detail-avatar').onerror = function() { this.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=1a4d8c&color=fff`; };
-        document.getElementById('detail-name').textContent = p.name;
-        const teamBadge = document.getElementById('detail-team');
-        if (p.team) { teamBadge.textContent = '🏅 ' + p.team; teamBadge.style.display = ''; }
-        else { teamBadge.style.display = 'none'; }
-
-        // 統計
-        const count = p.count;
-        const winRate = count > 0 ? (p.r1/count*100).toFixed(1) : '-';
-        const avoidRate = count > 0 ? ((1-p.rLast/count)*100).toFixed(1) : '-';
-        const avgScore = count > 0 ? (p.score/count).toFixed(1) : '-';
-        const maxScore = p.results.length > 0 ? Math.max(...p.results.map(r => Number(r.final_score))) : '-';
-        const avgRank = count > 0 ? (p.results.reduce((a,r) => a + r.rank, 0)/count).toFixed(2) : '-';
-        const totalRebuy = p.results.reduce((a,r) => a + (r.rebuy_count||0), 0);
-        document.getElementById('detail-stats').innerHTML = `
-            <div class="stat-box"><div class="label">合計スコア</div><div class="value ${p.score>=0?'score-positive':'score-negative'}">${p.score>0?'+':''}${p.score}</div></div>
-            <div class="stat-box"><div class="label">試合数</div><div class="value">${count}</div></div>
-            <div class="stat-box"><div class="label">平均スコア</div><div class="value">${avgScore}</div></div>
-            <div class="stat-box"><div class="label">最大スコア</div><div class="value score-positive">+${maxScore}</div></div>
-            <div class="stat-box"><div class="label">1位率</div><div class="value">${winRate}%</div><div class="sub">${p.r1}回</div></div>
-            <div class="stat-box"><div class="label">ラス回避</div><div class="value">${avoidRate}%</div></div>
-            <div class="stat-box"><div class="label">平均順位</div><div class="value">${avgRank}</div></div>
-            <div class="stat-box"><div class="label">総リバイ</div><div class="value">${totalRebuy}</div><div class="sub">回</div></div>
-        `;
-
-        // 大会フィルター更新
-        const tournaments = [...new Set(p.results.map(r => r.tournament_type))];
-        const hf = document.getElementById('history-filter');
-        hf.innerHTML = '<option value="all">全大会</option>' + tournaments.map(t => `<option value="${t}">${t}</option>`).join('');
-
-        historyPage = 0;
-        renderHistory();
-    }
-
-    function renderHistory() {
-        const p = players[selectedId];
-        if (!p) return;
-        const filter = document.getElementById('history-filter').value;
-        const filtered = filter === 'all' ? p.results : p.results.filter(r => r.tournament_type === filter);
-        historyPage = 0;
-        const slice = filtered.slice(0, HISTORY_PAGE_SIZE);
-        const tbody = document.getElementById('history-body');
-        tbody.innerHTML = slice.map(r => historyRow(r)).join('');
-        const btn = document.getElementById('load-more-btn');
-        btn.style.display = filtered.length > HISTORY_PAGE_SIZE ? '' : 'none';
-        btn._all = filtered;
-    }
-
-    function loadMoreHistory() {
-        const btn = document.getElementById('load-more-btn');
-        const all = btn._all;
-        historyPage++;
-        const slice = all.slice(0, (historyPage+1)*HISTORY_PAGE_SIZE);
-        document.getElementById('history-body').innerHTML = slice.map(r => historyRow(r)).join('');
-        if (slice.length >= all.length) btn.style.display = 'none';
-    }
-
-    function historyRow(r) {
-        const d = new Date(r.event_datetime);
-        const dateStr = `${d.getMonth()+1}/${d.getDate()} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-        const medal = r.rank <= 3 ? RANK_MEDALS[r.rank] : '';
-        const rankCls = r.rank <= 3 ? `rank-${r.rank}` : '';
-        const score = Number(r.final_score);
-        const scoreCls = score >= 0 ? 'score-positive' : 'score-negative';
-        return `<tr>
-            <td>${dateStr}</td>
-            <td style="font-size:0.8rem;">${r.tournament_type}</td>
-            <td style="font-size:0.8rem;">${r.match_mode}</td>
-            <td>${r.player_count}人</td>
-            <td class="${rankCls}">${medal}${r.rank}位</td>
-            <td class="${scoreCls}">${score>=0?'+':''}${score}</td>
-            <td>${r.rebuy_count||0}回</td>
-        </tr>`;
-    }
-
-    async function checkTeamNotifications() {
-        const user = await getCurrentUser();
-        if (!user) return;
-        const impersonated = getImpersonatedUser();
-        const discordId = impersonated ? impersonated.discord_user_id : user.user_metadata.provider_id;
-        const { data: myTeams } = await supabaseClient.from('teams').select('id').eq('creator_discord_id', discordId);
-        if (!myTeams || myTeams.length === 0) return;
-        const teamIds = myTeams.map(t => t.id);
-        const { data: pending } = await supabaseClient.from('team_join_requests').select('id').in('team_id', teamIds).in('status', ['pending','leave_pending']);
-        const count = pending?.length || 0;
-        if (count > 0) {
-            const badge = document.getElementById('team-notification-badge');
-            if (badge) { badge.textContent = count; badge.style.display = 'inline'; }
+            renderUsers(teams || [], teamMemberMap, unaffiliated);
+            document.getElementById('users-loading').style.display = 'none';
+            document.getElementById('users-content').style.display = 'block';
+        } catch (err) {
+            console.error(err);
+            document.getElementById('users-loading').innerHTML = '<p class="text-danger">データの読み込みに失敗しました</p>';
         }
     }
 
-    document.addEventListener('DOMContentLoaded', init);
+    function renderUsers(teams, teamMemberMap, unaffiliated) {
+        const container = document.getElementById('teams-container');
+        const accordion = document.createElement('div');
+        accordion.className = 'accordion';
+
+        teams.forEach(team => {
+            const members = (teamMemberMap[team.id] || []).sort((a,b) => b.score - a.score);
+            const collapseId = `collapseTeam${team.id.replace(/-/g,'')}`;
+            const item = document.createElement('div');
+            item.className = 'accordion-item';
+            item.innerHTML = `
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}">
+                        <div class="d-flex align-items-center">
+                            <span class="team-icon">🏅</span>
+                            <span class="fw-bold fs-5">${team.team_name}</span>
+                            <span class="badge bg-secondary ms-3 rounded-pill">${members.length}名</span>
+                        </div>
+                    </button>
+                </h2>
+                <div id="${collapseId}" class="accordion-collapse collapse">
+                    <div class="accordion-body">
+                        ${members.length > 0 ? members.map(u => userCard(u, u.discord_user_id === team.creator_discord_id)).join('') : '<p class="text-muted">メンバーはいません</p>'}
+                    </div>
+                </div>`;
+            accordion.appendChild(item);
+        });
+
+        // 未所属
+        const sortedUnaffiliated = unaffiliated.sort((a,b) => b.score - a.score);
+        const unaffItem = document.createElement('div');
+        unaffItem.className = 'accordion-item';
+        unaffItem.innerHTML = `
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseUnaffiliated">
+                    <div class="d-flex align-items-center">
+                        <span class="team-icon">🚫</span>
+                        <span class="fw-bold fs-5">未所属</span>
+                        <span class="badge bg-secondary ms-3 rounded-pill">${sortedUnaffiliated.length}名</span>
+                    </div>
+                </button>
+            </h2>
+            <div id="collapseUnaffiliated" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                    ${sortedUnaffiliated.length > 0 ? sortedUnaffiliated.map(u => userCard(u, false)).join('') : '<p class="text-muted">未所属のプレイヤーはいません</p>'}
+                </div>
+            </div>`;
+        accordion.appendChild(unaffItem);
+
+        container.innerHTML = '';
+        container.appendChild(accordion);
+    }
+
+    function userCard(u, isLeader) {
+        const avatar = u.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.account_name)}&background=1a4d8c&color=fff`;
+        const sc = u.score;
+        const scoreCls = sc > 0 ? 'score-pos' : sc < 0 ? 'score-neg' : '';
+        const scoreStr = sc > 0 ? `+${sc}` : `${sc}`;
+        return `<div class="user-card">
+            <img src="${avatar}" class="user-avatar" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff'">
+            <span class="user-name">${u.account_name}</span>
+            ${isLeader ? '<span class="leader-badge">👑 リーダー</span>' : ''}
+            <span class="user-score ${scoreCls}">${sc !== 0 ? scoreStr + ' pts' : '-'}</span>
+        </div>`;
+    }
     </script>
 </body>
 </html>
