@@ -22,7 +22,6 @@ function generateTopNav(basePath = '../') {
                     <a class="topnav-dd-item" href="${basePath}mahjong/record.html">📝 記録する</a>
                     <a class="topnav-dd-item" href="${basePath}mahjong/users/index.html">👥 ユーザー一覧</a>
                     <a class="topnav-dd-item" href="${basePath}mahjong/team/index.html">🏅 チーム管理 <span id="team-notification-badge" class="topnav-badge" style="display:none;">0</span></a>
-                    <a class="topnav-dd-item" href="${basePath}mahjong/team/divide.html">🧩 チーム分け</a>
                     <a class="topnav-dd-item" href="${basePath}mahjong/team/graph.html">📈 チーム戦グラフ</a>
                 </div>
             </div>
@@ -71,7 +70,6 @@ function generateTopNav(basePath = '../') {
         <a class="drawer-item drawer-sub" href="${basePath}mahjong/record.html">📝 記録する</a>
         <a class="drawer-item drawer-sub" href="${basePath}mahjong/users/index.html">👥 ユーザー一覧</a>
         <a class="drawer-item drawer-sub" href="${basePath}mahjong/team/index.html">🏅 チーム管理</a>
-        <a class="drawer-item drawer-sub" href="${basePath}mahjong/team/divide.html">🧩 チーム分け</a>
         <a class="drawer-item drawer-sub" href="${basePath}mahjong/team/graph.html">📈 グラフ</a>
         <div class="drawer-group-label">🃏 ポーカー大会</div>
         <a class="drawer-item drawer-sub" href="${basePath}poker/index.html">📊 ランキング</a>
