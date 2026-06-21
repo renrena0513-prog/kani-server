@@ -721,7 +721,7 @@
                     </div>
                 </div>
                 <button id="draw-button" class="jp-draw-btn" onclick="drawOmikuji()">🎋 おみくじを引く</button>
-                <div style="margin-top:20px; text-align:center; color:rgba(245,230,200,.35); font-size:.78rem; line-height:1.8; letter-spacing:.05em; font-family:'Noto Serif JP',serif;">
+                <div id="streak-hint" style="margin-top:20px; text-align:center; color:rgba(245,230,200,.35); font-size:.78rem; line-height:1.8; letter-spacing:.05em; font-family:'Noto Serif JP',serif;">
                     🔥 連続で引くごとに +500コイン増加<br>
                     2日目 +500 → 11日目 MAX +5,000コイン
                 </div>
@@ -1100,6 +1100,7 @@
                 if (isConsecutive && prevStreak > 0) {
                     document.getElementById('streak-info').innerHTML =
                         renderStreakBadge(prevStreak, prevStreak >= 10);
+                    document.getElementById('streak-hint').style.display = 'none';
                 }
             }
         }
