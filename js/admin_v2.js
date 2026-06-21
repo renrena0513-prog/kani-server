@@ -2847,26 +2847,31 @@ function changeLogsPage(delta) {
     }
 }
 
+async function clearOmikujiDateIfNeeded(logId, userId) {
+    // おみくじログなら last_omikuji_at を null に戻す
+    if (userId) {
+        await supabaseClient.from('profiles')
+            .update({ last_omikuji_at: null })
+            .eq('discord_user_id', userId);
+    }
+}
+
 async function revertLog(logId) {
     if (!confirm('取り消しますか？')) return;
 
-    console.log('=== revertLog called ===');
-    console.log('logId:', logId);
-    console.log('logId type:', typeof logId);
-
     toggleLoading(true);
     try {
+        // ログ情報を先に取得（おみくじ判定のため）
+        const { data: logData } = await supabaseClient
+            .from('activity_logs').select('action_type, user_id').eq('id', logId).maybeSingle();
+
         const { data, error } = await supabaseClient.rpc('revert_activity_log', { p_log_id: logId });
-
-        console.log('RPC response - data:', data);
-        console.log('RPC response - error:', error);
-
-        if (error) {
-            console.error('RPC Error details:', JSON.stringify(error, null, 2));
-            throw error;
-        }
+        if (error) throw error;
 
         if (data?.ok) {
+            if (logData?.action_type === 'omikuji') {
+                await clearOmikujiDateIfNeeded(logId, logData.user_id);
+            }
             alert('成功');
             fetchActivityLogs(currentLogsPage);
         } else {
@@ -2913,12 +2918,23 @@ async function revertSelectedLogs() {
     let successCount = 0;
     let errorCount = 0;
 
+    // おみくじ判定のため対象ログを先取得
+    const { data: logsData } = await supabaseClient
+        .from('activity_logs').select('id, action_type, user_id').in('id', logIds);
+    const logMap = {};
+    (logsData || []).forEach(l => { logMap[l.id] = l; });
+
     for (const logId of logIds) {
         try {
             const { data, error } = await supabaseClient.rpc('revert_activity_log', { p_log_id: logId });
             if (error) throw error;
-            if (data?.ok) successCount++;
-            else errorCount++;
+            if (data?.ok) {
+                const log = logMap[logId];
+                if (log?.action_type === 'omikuji') {
+                    await clearOmikujiDateIfNeeded(logId, log.user_id);
+                }
+                successCount++;
+            } else errorCount++;
         } catch (err) {
             console.error('一括取消エラー:', logId, err);
             errorCount++;
