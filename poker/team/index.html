@@ -682,8 +682,40 @@
             });
             const { data: urlData } = supabaseClient.storage.from('badges').getPublicUrl(fileName);
 
-            const { error: updateErr } = await supabaseClient.from('poker_teams').update({ icon_url: urlData.publicUrl }).eq('id', myTeam.id);
+            const imageUrl = urlData.publicUrl;
+
+            // poker_teams に icon_url を保存
+            const { error: updateErr } = await supabaseClient.from('poker_teams').update({ icon_url: imageUrl }).eq('id', myTeam.id);
             if (updateErr) throw updateErr;
+
+            // badges テーブルにレコード作成（またはアップデート）してメンバーに付与
+            let badgeId = myTeam.logo_badge_id || null;
+            try {
+                if (badgeId) {
+                    await supabaseClient.from('badges').update({ image_url: imageUrl }).eq('id', badgeId);
+                } else {
+                    const { data: nb } = await supabaseClient.from('badges').insert([{
+                        name: myTeam.team_name + 'バッジ',
+                        image_url: imageUrl,
+                        price: 0,
+                        is_shop_listed: false,
+                        fixed_rarity_name: 'チーム限定'
+                    }]).select('id').single();
+                    if (nb) {
+                        badgeId = nb.id;
+                        await supabaseClient.from('poker_teams').update({ logo_badge_id: badgeId }).eq('id', myTeam.id);
+                    }
+                }
+                if (badgeId) {
+                    for (const m of teamMembers) {
+                        const { data: exist } = await supabaseClient.from('user_badges_new')
+                            .select('uuid').eq('user_id', m.discord_user_id).eq('badge_id', badgeId).limit(1);
+                        if (!exist || exist.length === 0) {
+                            await supabaseClient.from('user_badges_new').insert([{ user_id: m.discord_user_id, badge_id: badgeId, purchased_price: 0 }]);
+                        }
+                    }
+                }
+            } catch(_) { /* バッジ付与失敗はスキップ（アイコン保存は成功済み） */ }
 
             bootstrap.Modal.getInstance(document.getElementById('iconModal')).hide();
             location.reload();
