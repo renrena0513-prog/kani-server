@@ -1175,11 +1175,15 @@
                 } else {
                     badgeWrap.style.display = 'none';
                 }
-                const streakLabel = newStreak >= 10
-                    ? `🔥 連続10日MAX ＋${streakBonus.toLocaleString()}コイン`
-                    : `🔥 連続${newStreak}日ボーナス ＋${streakBonus.toLocaleString()}コイン`;
-                document.getElementById('streak-bonus-line').innerHTML =
-                    `<span style="color:#ffb030">${streakLabel}</span>`;
+                if (streakBonus > 0) {
+                    const streakLabel = newStreak >= 10
+                        ? `🔥 連続10日MAX ＋${streakBonus.toLocaleString()}コイン`
+                        : `🔥 連続${newStreak}日ボーナス ＋${streakBonus.toLocaleString()}コイン`;
+                    document.getElementById('streak-bonus-line').innerHTML =
+                        `<span style="color:#ffb030">${streakLabel}</span>`;
+                } else {
+                    document.getElementById('streak-bonus-line').innerHTML = '';
+                }
                 document.getElementById('fortune-message').textContent = message;
 
                 document.getElementById('mypage-confirm-btn').style.display = 'inline-block';
