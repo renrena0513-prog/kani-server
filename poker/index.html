@@ -40,19 +40,7 @@
                 linear-gradient(160deg, #0a1628 0%, #0d2447 40%, #0a1628 100%);
             min-height: 100vh;
         }
-        .bg-felt::before {
-            content: '♠ ♥ ♦ ♣';
-            position: fixed;
-            top: 50%; left: 50%;
-            transform: translate(-50%,-50%);
-            font-size: 22vw;
-            opacity: .025;
-            pointer-events: none;
-            white-space: nowrap;
-            letter-spacing: .3em;
-            color: white;
-            z-index: 0;
-        }
+        .bg-felt::before { display: none; }
 
         /* ── ヘッダー ── */
         .page-hero {
@@ -508,7 +496,7 @@
                     <div class="team-medal">${med}</div>
                     <div class="team-name">🏅 ${t.name}</div>
                     <div class="team-score ${scCls(s)}">${sc(s)}</div>
-                    <div class="team-meta">${t.count}試合 · ${t.members.size}人</div>
+                    <div class="team-meta">${t.count}試合</div>
                 </div>`;
             }).join('');
     }
