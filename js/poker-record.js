@@ -286,10 +286,11 @@ function initDragSort() {
             touchClone.style.top  = (touch.clientY - touchOffY) + 'px';
 
             // 画面端で自動スクロール
-            const ZONE = 80;
+            const ZONE = 100;
             const vy = touch.clientY;
-            if (vy < ZONE) startAutoScroll(-1);
-            else if (vy > window.innerHeight - ZONE) startAutoScroll(1);
+            const speed = dist => Math.round((ZONE - dist) / ZONE * 30 + 12);
+            if (vy < ZONE) startAutoScroll(-speed(vy));
+            else if (vy > window.innerHeight - ZONE) startAutoScroll(speed(window.innerHeight - vy));
             else stopAutoScroll();
 
             // どの行の上にいるか判定してハイライト
