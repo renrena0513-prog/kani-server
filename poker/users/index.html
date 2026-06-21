@@ -219,12 +219,15 @@
         const sc = u.score;
         const scoreCls = sc > 0 ? 'score-pos' : sc < 0 ? 'score-neg' : '';
         const scoreStr = sc > 0 ? `+${sc}` : `${sc}`;
-        return `<div class="user-card">
+        const href = u.discord_user_id ? `../../mypage/index.html?user=${u.discord_user_id}` : null;
+        const tag = href ? `a href="${href}"` : 'div';
+        const closeTag = href ? 'a' : 'div';
+        return `<${tag} class="user-card" style="${href ? 'text-decoration:none;' : ''}">
             <img src="${avatar}" class="user-avatar" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff'">
             <span class="user-name">${u.account_name}</span>
             ${isLeader ? '<span class="leader-badge">👑 リーダー</span>' : ''}
             <span class="user-score ${scoreCls}">${sc !== 0 ? scoreStr + ' pts' : '-'}</span>
-        </div>`;
+        </${closeTag}>`;
     }
     </script>
 </body>
