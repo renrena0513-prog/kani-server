@@ -191,6 +191,18 @@
             </div>
             <div class="modal-body">
                 <div class="mb-3">
+                    <label class="form-label fw-bold">バッジ名 <span class="text-danger">*</span> <span class="text-muted small">（【】は自動でつきます）</span></label>
+                    <div class="input-group">
+                        <span class="input-group-text">【</span>
+                        <input type="text" class="form-control" id="icon-badge-name" placeholder="例：ななち" maxlength="30">
+                        <span class="input-group-text">】</span>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">説明文</label>
+                    <textarea class="form-control" id="icon-badge-desc" rows="2" placeholder="バッジの説明文"></textarea>
+                </div>
+                <div class="mb-3">
                     <label class="form-label fw-bold">画像 <span class="text-danger">*</span> <span class="text-muted small">（100KB以内、PNG/JPG/GIF/WebP）</span></label>
                     <div class="icon-upload-box" id="icon-upload-box" onclick="document.getElementById('icon-file-input').click()">
                         <div id="icon-upload-prompt">
@@ -639,6 +651,8 @@
     let iconFileSelected = null;
 
     document.getElementById('iconModal').addEventListener('show.bs.modal', () => {
+        document.getElementById('icon-badge-name').value = '';
+        document.getElementById('icon-badge-desc').value = '';
         document.getElementById('icon-file-error').style.display = 'none';
         iconFileSelected = null;
         const preview = document.getElementById('icon-preview-img');
@@ -677,6 +691,9 @@
         const errEl = document.getElementById('icon-file-error');
         errEl.style.display = 'none';
 
+        const badgeName = document.getElementById('icon-badge-name').value.trim();
+        const badgeDesc = document.getElementById('icon-badge-desc').value.trim();
+        if (!badgeName) { errEl.textContent = 'バッジ名を入力してください'; errEl.style.display = ''; return; }
         if (!iconFileSelected) { errEl.textContent = '画像を選択してください'; errEl.style.display = ''; return; }
 
         const btn = document.getElementById('confirmIconBtn');
@@ -709,11 +726,15 @@
                     const newSortOrder = maxRow ? maxRow.sort_order + 1 : 22000;
 
                     const { data: nb } = await supabaseClient.from('badges').insert([{
-                        name: myTeam.team_name + 'バッジ',
+                        name: `【${badgeName}】`,
+                        description: badgeDesc || null,
                         image_url: imageUrl,
                         price: 0,
                         is_shop_listed: false,
-                        fixed_rarity_name: 'チーム限定',
+                        fixed_rarity_name: 'Unknown',
+                        sales_type: '限定品',
+                        label: '第二回ポーカー大会',
+                        requirements: `第二回ポーカー大会にチーム「${myTeam.team_name}」の一員として参加する。`,
                         sort_order: newSortOrder
                     }]).select('id').single();
                     if (nb) {
