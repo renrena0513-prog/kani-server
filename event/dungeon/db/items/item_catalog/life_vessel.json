@@ -1,0 +1,5 @@
+{
+  "code": "life_vessel",
+  "effect": "increase_max_hp",
+  "use_phase": "use_item"
+}

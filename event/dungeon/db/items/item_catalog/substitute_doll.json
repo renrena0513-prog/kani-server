@@ -1,0 +1,6 @@
+{
+  "code": "substitute_doll",
+  "effect": "substitute",
+  "grant_phase": "granted_item",
+  "notes": "付与時に carried_items へ積み、substitute_ready を立てる"
+}

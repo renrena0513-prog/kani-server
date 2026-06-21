@@ -1,0 +1,5 @@
+{
+  "code": "healing_potion",
+  "effect": "heal_hp",
+  "use_phase": "use_item"
+}

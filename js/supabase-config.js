@@ -380,3 +380,4 @@ function getRarityClass(rarityName) {
     return '';
 }
 
+

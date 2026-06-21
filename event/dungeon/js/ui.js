@@ -1,25 +1,5 @@
-(function () {
+﻿(function () {
     const { TILE_LABELS, MANUAL_ITEM_CODES } = window.DUNGEON_CONSTANTS;
-    const ITEM_FALLBACK_EMOJI = {
-        calamity_map: '🗺️',
-        full_scan_map: '🛰️',
-        abyss_ticket: '🕳️',
-        holy_grail: '🏆',
-        golden_contract: '📜',
-        substitute_doll: '🪆',
-        giant_cup: '🏆',
-        greedy_bag: '🎒',
-        vault_box: '📜',
-        golden_return: '🌟',
-        escape_talisman: '🏃',
-        doom_eye: '👁️',
-        collector_coffin: '⚰️',
-        underworld_wallet: '👛',
-        merchant_seal: '????',
-        merchant_whistle: '??',
-        special_merchant_whistle: '??',
-        golden_bag: '??'
-    };
 
     const TILE_POPUP_META = {
         '空白': { icon: '▫️', title: '空白マス' },
@@ -33,11 +13,8 @@
         '泉': { icon: '⛲', title: '泉' },
         '爆弾': { icon: '💣', title: '爆弾' },
         '大爆発': { icon: '💥', title: '大爆発' },
-        '罠': { icon: '🕸', title: '罠' },
+        '罠': { icon: '⚠️', title: '罠' },
         '呪い': { icon: '☠️', title: '呪い' },
-        '盗賊': { icon: '🥷', title: '盗賊' },
-        '落とし穴': { icon: '🕳️', title: '落とし穴' },
-        '転送罠': { icon: '🌀', title: '転送罠' },
         'ショップ': { icon: '🛒', title: 'ショップ' },
         '限定ショップ': { icon: '🏬', title: '限定ショップ' },
         '下り階段': { icon: '🪜', title: '下り階段' }
@@ -69,7 +46,7 @@
     }
 
     function renderItemVisual(itemCode, itemName) {
-        const emoji = ITEM_FALLBACK_EMOJI[itemCode] || '🎒';
+        const emoji = '🎁';
         const src = `/event/dungeon/images/${itemCode}.png`;
         return `
             <span class="item-visual" aria-hidden="true">
@@ -145,10 +122,6 @@
             const stairsModalEl = el('stairs-modal');
             if (stairsModalEl && window.bootstrap?.Modal) {
                 window.bootstrap.Modal.getOrCreateInstance(stairsModalEl).hide();
-            }
-            const thiefModalEl = el('thief-modal');
-            if (thiefModalEl && window.bootstrap?.Modal) {
-                window.bootstrap.Modal.getOrCreateInstance(thiefModalEl).hide();
             }
             const altarModalEl = el('altar-reward-modal');
             if (altarModalEl && window.bootstrap?.Modal) {
@@ -251,9 +224,7 @@
         }
 
         const lifeText = formatLifeHearts(run.life, run.max_life);
-        const configuredMaxFloors = Number(window.DUNGEON_CONSTANTS?.MAX_FLOORS || 10);
-        const effectiveMaxFloors = Math.max(Number(run.max_floors || 0), configuredMaxFloors);
-        setTexts(['hud-floor', 'mobile-hud-floor'], `${run.current_floor} / ${effectiveMaxFloors}`);
+        setTexts(['hud-floor', 'mobile-hud-floor'], `${run.current_floor} / ${run.max_floors}`);
         setTexts(['hud-life', 'mobile-hud-life'], lifeText);
         setText('mobile-life-fixed', `LIFE ${lifeText}`);
         setTexts(['hud-run-coins', 'mobile-hud-run-coins'], formatNumber(run.run_coins));
@@ -496,12 +467,8 @@
 
         const grid = state.floor.grid || [];
         const flags = state.run.inventory_state?.flags || {};
-        const currentCell = grid?.[state.run.current_y]?.[state.run.current_x];
-        const stairsSelectionPending = currentCell?.type === '下り階段' && !state.stairsPromptDismissed;
         const interactionLocked = !!state.run.inventory_state?.pending_shop
-            || !!state.run.inventory_state?.pending_thief
-            || !!state.run.inventory_state?.pending_altar_reward
-            || stairsSelectionPending;
+            || !!state.run.inventory_state?.pending_altar_reward;
         const currentX = state.run.current_x;
         const currentY = state.run.current_y;
         const avatarUrl = playerAvatarUrl(state.user);
@@ -631,10 +598,7 @@
         const modalEl = el('stairs-modal');
         if (!modalEl || !window.bootstrap?.Modal) return;
         const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
-        const configuredMaxFloors = Number(window.DUNGEON_CONSTANTS?.MAX_FLOORS || 10);
-        const runMaxFloors = Number(state?.run?.max_floors || 0);
-        const effectiveMaxFloors = Math.max(configuredMaxFloors, runMaxFloors);
-        const isFinalFloor = Number(state?.run?.current_floor || 0) >= effectiveMaxFloors;
+        const isFinalFloor = Number(state?.run?.current_floor || 0) >= Number(state?.run?.max_floors || 0);
 
         setText('stairs-modal-title', isFinalFloor ? '深部の祭壇を見つけた' : '下り階段を見つけた');
         setText('stairs-modal-description', isFinalFloor
@@ -680,65 +644,6 @@
         }
     }
 
-    function renderThiefPrompt(state) {
-        const modalEl = el('thief-modal');
-        if (!modalEl || !window.bootstrap?.Modal) return;
-
-        const run = state?.run;
-        const pending = run?.inventory_state?.pending_thief || null;
-        const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
-        if (!pending) {
-            modal.hide();
-            el('thief-held-panel')?.classList.add('d-none');
-            el('thief-modal')?.querySelector('.thief-choice-list')?.classList.remove('d-none');
-            el('thief-warning-text')?.classList.remove('d-none');
-            setText('thief-held-toggle-btn', '所持アイテム');
-            setHtml('thief-held-items', '');
-            return;
-        }
-
-        const ransom = Number(pending.ransom || 0);
-        const itemCount = ['items', 'carried_items'].reduce((total, bucket) => (
-            total + Object.values(run?.inventory_state?.[bucket] || {}).reduce((bucketTotal, item) => (
-                bucketTotal + Math.max(Number(item?.quantity || 0), 0)
-            ), 0)
-        ), 0);
-        const currentCoins = Number(run?.run_coins || 0);
-        const canGiveItem = itemCount > 0;
-        const canPayCoin = currentCoins >= ransom;
-
-        el('thief-held-panel')?.classList.add('d-none');
-        el('thief-modal')?.querySelector('.thief-choice-list')?.classList.remove('d-none');
-        el('thief-warning-text')?.classList.remove('d-none');
-        setText('thief-held-toggle-btn', '所持アイテム');
-        setText('thief-run-coins', formatNumber(currentCoins));
-        setText('thief-item-note', canGiveItem
-            ? '所持アイテムからランダムに 1 個奪われる。'
-            : '差し出せるアイテムがない。');
-        setText('thief-coin-title', `お金を ${formatNumber(ransom)} コイン差し出す`);
-        setText('thief-coin-note', `${formatNumber(ransom)} コインを差し出す。現在 ${formatNumber(currentCoins)} コイン所持。`);
-        setText('thief-warning-text', canGiveItem || canPayCoin
-            ? '逃げるのは危険だ。慎重に選べ。'
-            : '差し出せる物がない。逃げるしかない。');
-
-        const itemBtn = el('thief-give-item-btn');
-        const coinBtn = el('thief-pay-coin-btn');
-        if (itemBtn) {
-            itemBtn.classList.toggle('is-unavailable', !canGiveItem);
-            itemBtn.dataset.available = canGiveItem ? 'true' : 'false';
-        }
-        if (coinBtn) {
-            coinBtn.classList.toggle('is-unavailable', !canPayCoin);
-            coinBtn.dataset.available = canPayCoin ? 'true' : 'false';
-        }
-
-        renderInventoryInto(el('thief-held-items'), state);
-
-        if (!modalEl.classList.contains('show')) {
-            modal.show();
-        }
-    }
-
     function renderLogs(logs, targetId = 'adventure-log') {
         const wrap = el(targetId);
         if (!wrap) return;
@@ -758,14 +663,11 @@
         const run = state?.run;
         const catalog = state?.catalog || [];
         if (!run) return;
-        const isReturned = run.status === '帰還';
-        const resultGacha = isReturned ? Number(run.gacha_tickets_gained || 0) : 0;
-        const resultMangan = isReturned ? Number(run.mangan_tickets_gained || 0) : 0;
         setText('result-status', run.status);
         setText('result-payout', `${formatNumber(run.result_payout)} コイン`);
         setText('result-badges', `${formatNumber(run.badges_gained)} 個`);
-        setText('result-gacha', `${formatNumber(resultGacha)} 枚`);
-        setText('result-mangan', `${formatNumber(resultMangan)} 枚`);
+        setText('result-gacha', `${formatNumber(run.gacha_tickets_gained)} 枚`);
+        setText('result-mangan', `${formatNumber(run.mangan_tickets_gained)} 枚`);
         setText('result-death-reason', run.death_reason || '生還');
         renderResultInventory(state);
     }
@@ -824,44 +726,6 @@
         overlay.setAttribute('aria-hidden', 'true');
     }
 
-    function showActionConfirm(config) {
-        const modalEl = el('action-confirm-modal');
-        if (!modalEl || !window.bootstrap?.Modal) {
-            config?.onConfirm?.();
-            return;
-        }
-
-        const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
-        setText('action-confirm-title', config?.title || '確認');
-        setText('action-confirm-message', config?.message || 'この操作を実行します。');
-        setText('action-confirm-ok-btn', config?.confirmLabel || '実行する');
-        setText('action-confirm-cancel-btn', config?.cancelLabel || '戻る');
-
-        const confirmBtn = el('action-confirm-ok-btn');
-        const cancelBtn = el('action-confirm-cancel-btn');
-
-        const cleanup = () => {
-            confirmBtn?.removeEventListener('click', handleConfirm);
-            cancelBtn?.removeEventListener('click', handleCancel);
-            modalEl.removeEventListener('hidden.bs.modal', handleHidden);
-        };
-        const handleConfirm = () => {
-            cleanup();
-            modal.hide();
-            config?.onConfirm?.();
-        };
-        const handleCancel = () => {
-            cleanup();
-            modal.hide();
-        };
-        const handleHidden = () => cleanup();
-
-        confirmBtn?.addEventListener('click', handleConfirm);
-        cancelBtn?.addEventListener('click', handleCancel);
-        modalEl.addEventListener('hidden.bs.modal', handleHidden);
-        modal.show();
-    }
-
     function setMobileDirectionPadVisible(visible) {
         const pad = el('mobile-direction-pad');
         const toggle = el('mobile-arrow-toggle-btn');
@@ -897,17 +761,7 @@
             if (useItem) handlers.onUseItem(useItem.dataset.useItem);
 
             const buyItem = event.target.closest('[data-buy-item]');
-            if (buyItem) {
-                const card = buyItem.closest('[data-buy-item]');
-                const offerName = card?.querySelector('.shop-offer-name')?.textContent?.trim() || 'このアイテム';
-                const offerPrice = card?.querySelector('.shop-offer-price')?.textContent?.trim() || '';
-                showActionConfirm({
-                    title: 'ショップ購入確認',
-                    message: `${offerName}を購入します。${offerPrice}`,
-                    confirmLabel: '購入する',
-                    onConfirm: () => handlers.onBuyItem(buyItem.dataset.buyItem)
-                });
-            }
+            if (buyItem) handlers.onBuyItem(buyItem.dataset.buyItem);
 
             const buyStock = event.target.closest('[data-buy-stock]');
             if (buyStock) handlers.onBuyStock(buyStock.dataset.buyStock);
@@ -919,50 +773,13 @@
         el('start-run-btn')?.addEventListener('click', handlers.onStartRun);
         el('resume-run-btn')?.addEventListener('click', handlers.onResumeRun);
         el('stairs-continue-btn')?.addEventListener('click', handlers.onContinueExplore);
-        el('stairs-descend-btn')?.addEventListener('click', () => showActionConfirm({
-            title: '次の階へ進む確認',
-            message: '次の階へ進みます。現在の階には戻れない場合があります。',
-            confirmLabel: '進む',
-            onConfirm: () => handlers.onResolveStairs('descend')
-        }));
-        el('stairs-return-btn')?.addEventListener('click', () => showActionConfirm({
-            title: '帰還確認',
-            message: '戦利品を持って帰還します。今回の探索を終了します。',
-            confirmLabel: '帰還する',
-            onConfirm: () => handlers.onResolveStairs('return')
-        }));
-        el('thief-give-item-btn')?.addEventListener('click', (event) => {
-            if (event.currentTarget?.dataset.available === 'false') return;
-            showActionConfirm({
-                title: '盗賊対応確認',
-                message: 'アイテムを差し出して盗賊をやり過ごします。',
-                confirmLabel: '差し出す',
-                onConfirm: () => handlers.onResolveThief('item')
-            });
-        });
-        el('thief-pay-coin-btn')?.addEventListener('click', (event) => {
-            if (event.currentTarget?.dataset.available === 'false') return;
-            const title = el('thief-coin-title')?.textContent?.trim() || 'コインを差し出す';
-            showActionConfirm({
-                title: '盗賊対応確認',
-                message: `${title}。この選択を確定します。`,
-                confirmLabel: '支払う',
-                onConfirm: () => handlers.onResolveThief('coin')
-            });
-        });
-        el('thief-run-btn')?.addEventListener('click', () => showActionConfirm({
-            title: '盗賊対応確認',
-            message: '盗賊から逃げます。失敗すると大きな不利益を受ける可能性があります。',
-            confirmLabel: '逃げる',
-            onConfirm: () => handlers.onResolveThief('escape')
-        }));
+        el('stairs-descend-btn')?.addEventListener('click', () => handlers.onResolveStairs('descend'));
+        el('stairs-return-btn')?.addEventListener('click', () => handlers.onResolveStairs('return'));
+        el('thief-give-item-btn')?.addEventListener('click', () => handlers.onResolveThief('item'));
+        el('thief-pay-coin-btn')?.addEventListener('click', () => handlers.onResolveThief('coin'));
+        el('thief-run-btn')?.addEventListener('click', () => handlers.onResolveThief('escape'));
         el('thief-held-toggle-btn')?.addEventListener('click', handlers.onToggleThiefHeldItems);
-        el('shop-skip-btn')?.addEventListener('click', () => showActionConfirm({
-            title: 'ショップ終了確認',
-            message: '何も買わずにこの場を離れます。',
-            confirmLabel: '終了する',
-            onConfirm: () => handlers.onSkipShop()
-        }));
+        el('shop-skip-btn')?.addEventListener('click', handlers.onSkipShop);
         el('shop-held-toggle-btn')?.addEventListener('click', handlers.onToggleShopHeldItems);
         el('retry-run-btn')?.addEventListener('click', handlers.onRetry);
         el('tile-popup-close')?.addEventListener('click', handlers.onClosePopup);
@@ -986,7 +803,6 @@
         renderShop,
         renderStairsPrompt,
         renderAltarRewardPrompt,
-        renderThiefPrompt,
         renderLogs,
         renderResult,
         setBusy,
@@ -995,10 +811,10 @@
         hideTilePopup,
         showItemAcquiredModal,
         hideItemAcquiredModal,
-        showActionConfirm,
         setMobileDirectionPadVisible,
         bindCarrySelection,
         bindBoard,
         bindActions
     };
 })();
+

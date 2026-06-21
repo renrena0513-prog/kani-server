@@ -1,0 +1,5 @@
+{
+  "code": "bomb_radar",
+  "effect": "bomb_radar",
+  "use_phase": "use_item"
+}

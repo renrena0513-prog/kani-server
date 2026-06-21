@@ -1,0 +1,6 @@
+{
+  "code": "vault_box",
+  "effect": "vault_box",
+  "grant_phase": "granted_item",
+  "notes": "付与時に carried_items へ積み、死亡時の持ち帰り率補正に使う"
+}

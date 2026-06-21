@@ -1,0 +1,5 @@
+{
+  "code": "calamity_map",
+  "effect": "reveal_hazards",
+  "use_phase": "use_item"
+}

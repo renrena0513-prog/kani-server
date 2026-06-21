@@ -1,0 +1,5 @@
+{
+  "code": "full_scan_map",
+  "effect": "reveal_bombs",
+  "use_phase": "use_item"
+}

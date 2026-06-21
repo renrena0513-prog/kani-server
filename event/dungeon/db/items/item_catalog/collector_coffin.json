@@ -1,0 +1,6 @@
+{
+  "code": "collector_coffin",
+  "effect": "relic_keep_unused_manual_on_death",
+  "collect_phase": "passive_modifiers",
+  "settlement_phase": "settlement_death"
+}

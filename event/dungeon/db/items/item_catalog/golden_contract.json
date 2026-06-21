@@ -1,0 +1,6 @@
+{
+  "code": "golden_contract",
+  "effect": "golden_contract",
+  "grant_phase": "granted_item",
+  "notes": "付与時は items に積み、帰還時の追加倍率候補として消費される"
+}

@@ -1,0 +1,6 @@
+{
+  "code": "insurance_token",
+  "effect": "insurance",
+  "grant_phase": "granted_item",
+  "notes": "付与時に carried_items へ積み、insurance_active を立てる"
+}

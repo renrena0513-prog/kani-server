@@ -1,0 +1,6 @@
+{
+  "code": "greedy_bag",
+  "effect": "relic_carry_limit_plus_1",
+  "collect_phase": "passive_modifiers",
+  "notes": "持ち込み上限を +1 する"
+}

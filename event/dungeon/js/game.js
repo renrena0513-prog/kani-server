@@ -15,12 +15,8 @@
         selectedCarryItems: [],
         lastPopupStep: null,
         stairsPromptDismissed: false,
-        mobilePadVisible: false,
-        pressedKeys: new Set(),
-        lastKeyboardMoveAt: 0
+        mobilePadVisible: false
     };
-
-    const KEYBOARD_MOVE_COOLDOWN_MS = 350;
 
     function hydratePayload(payload) {
         if (!payload) return;
@@ -31,20 +27,8 @@
     }
 
     function getCarryLimit() {
-        const hasCarryLimitRelic = (state.stocks || []).some((stock) =>
-            Number(stock.quantity || 0) > 0
-            && stock.evd_item_catalog?.effect_data?.effect === 'relic_carry_limit_plus_1'
-        );
-        const hasGoldenBagSelected = state.selectedCarryItems.includes('golden_bag')
-            || (state.stocks || []).some((stock) => stock.item_code === 'golden_bag' && stock.is_set && Number(stock.quantity || 0) > 0);
-        let carryLimit = CARRY_LIMIT;
-        if (hasCarryLimitRelic) {
-            carryLimit += 1;
-        }
-        if (hasGoldenBagSelected) {
-            carryLimit += 2;
-        }
-        return carryLimit;
+        const hasGreedyBag = (state.stocks || []).some((stock) => stock.item_code === 'greedy_bag' && Number(stock.quantity || 0) > 0);
+        return hasGreedyBag ? CARRY_LIMIT + 1 : CARRY_LIMIT;
     }
 
     function syncSelectedCarryItems() {
@@ -54,10 +38,6 @@
             .slice(0, carryLimit)
             .map((stock) => stock.item_code);
         state.selectedCarryItems = autoSelected;
-    }
-
-    function hasCarryOverflow() {
-        return state.selectedCarryItems.length > getCarryLimit();
     }
 
     function renderStart() {
@@ -82,7 +62,6 @@
         ui.renderBoard(state);
         ui.renderShop(state);
         ui.renderAltarRewardPrompt(state);
-        ui.renderThiefPrompt(state);
         ui.renderLogs(state.logs);
 
         const currentCell = state.floor?.grid?.[state.run.current_y]?.[state.run.current_x];
@@ -149,11 +128,6 @@
             state.lastPopupStep = latest.step_no;
             return;
         }
-        if (latest.payload.tile_type === '盗賊') {
-            state.lastPopupStep = latest.step_no;
-            return;
-        }
-
         state.lastPopupStep = latest.step_no;
         ui.showTilePopup(latest.payload.tile_type, latest.message);
     }
@@ -192,10 +166,6 @@
     }
 
     async function startRun() {
-        if (hasCarryOverflow()) {
-            ui.showNoticePopup('持ち込み上限', `持ち込みは ${getCarryLimit()} 個までです。余分な選択を外してください。`, '⚠️');
-            return;
-        }
         ui.setBusy(true);
         try {
             const payload = await api.rpc('evd_start_run', {
@@ -212,40 +182,14 @@
         }
     }
 
-    function handleStartRun() {
-        if (hasCarryOverflow()) {
-            ui.showNoticePopup('持ち込み上限', `持ち込みは ${getCarryLimit()} 個までです。余分な選択を外してください。`, '⚠️');
-            return;
-        }
-
-        if (state.selectedCarryItems.length > 0) {
-            startRun();
-            return;
-        }
-
-        ui.showActionConfirm({
-            title: '丸腰で行くのか？',
-            message: '恐れ入った！！！ 本当に行くのか？',
-            confirmLabel: 'はい',
-            cancelLabel: 'いいえ',
-            onConfirm: () => startRun()
-        });
-    }
-
     function findDirectionByTarget(x, y) {
         const deltaX = x - state.run.current_x;
         const deltaY = y - state.run.current_y;
         return Object.entries(DIRECTIONS).find(([, dir]) => dir.x === deltaX && dir.y === deltaY)?.[0] || null;
     }
 
-    function isStairsSelectionPending() {
-        const currentCell = state.floor?.grid?.[state.run?.current_y]?.[state.run?.current_x];
-        return currentCell?.type === '下り階段' && !state.stairsPromptDismissed;
-    }
-
     async function moveTo(x, y) {
-        if (state.run?.inventory_state?.pending_thief || state.run?.inventory_state?.pending_altar_reward) return;
-        if (isStairsSelectionPending()) return;
+        if (state.run?.inventory_state?.pending_altar_reward) return;
         const direction = findDirectionByTarget(x, y);
         if (!direction) return;
         ui.hideTilePopup();
@@ -277,8 +221,7 @@
 
     async function moveByDirection(directionKey) {
         if (!state.run || state.run.status !== '進行中') return;
-        if (state.run.inventory_state?.pending_thief || state.run.inventory_state?.pending_altar_reward) return;
-        if (isStairsSelectionPending()) return;
+        if (state.run.inventory_state?.pending_altar_reward) return;
         const dir = DIRECTIONS[directionKey];
         if (!dir) return;
         await moveTo(state.run.current_x + dir.x, state.run.current_y + dir.y);
@@ -358,48 +301,6 @@
         }
     }
 
-    async function resolveThief(action) {
-        const pending = state.run?.inventory_state?.pending_thief || null;
-        const itemCount = ['items', 'carried_items'].reduce((total, bucket) => (
-            total + Object.values(state.run?.inventory_state?.[bucket] || {}).reduce((bucketTotal, item) => (
-                bucketTotal + Math.max(Number(item?.quantity || 0), 0)
-            ), 0)
-        ), 0);
-        const ransom = Number(pending?.ransom || 0);
-        const runCoins = Number(state.run?.run_coins || 0);
-
-        if (action === 'item' && itemCount <= 0) {
-            ui.showNoticePopup('盗賊', 'アイテムを持っていない', '⚠️');
-            return;
-        }
-        if (action === 'coin' && runCoins < ransom) {
-            ui.showNoticePopup('盗賊', '所持金が足りない', '⚠️');
-            return;
-        }
-
-        ui.hideTilePopup();
-        ui.hideItemAcquiredModal();
-        ui.setBusy(true);
-        try {
-            const payload = await api.rpc('evd_resolve_thief', {
-                p_run_id: state.run.id,
-                p_action: action
-            });
-            hydratePayload(payload);
-            await reloadRunSnapshot();
-            if (state.run.status === '進行中') {
-                renderGame();
-            } else {
-                renderResult();
-            }
-        } catch (error) {
-            console.error(error);
-            ui.showNoticePopup('エラー', error.message || '盗賊イベントの解決に失敗しました。', '⚠️');
-        } finally {
-            ui.setBusy(false);
-        }
-    }
-
     async function buyItem(itemCode) {
         ui.setBusy(true);
         try {
@@ -460,15 +361,9 @@
     }
 
     function bindKeyboard() {
-        document.addEventListener('keyup', (event) => {
-            state.pressedKeys.delete(event.key);
-        });
-        window.addEventListener('blur', () => {
-            state.pressedKeys.clear();
-        });
         document.addEventListener('keydown', (event) => {
             if (!state.run || state.run.status !== '進行中') return;
-            if (state.run.inventory_state?.pending_thief || state.run.inventory_state?.pending_altar_reward) return;
+            if (state.run.inventory_state?.pending_altar_reward) return;
             const keyMap = {
                 ArrowUp: 'up',
                 ArrowDown: 'down',
@@ -486,11 +381,6 @@
             const direction = keyMap[event.key];
             if (!direction) return;
             event.preventDefault();
-            if (event.repeat || state.pressedKeys.has(event.key)) return;
-            const now = Date.now();
-            if (now - state.lastKeyboardMoveAt < KEYBOARD_MOVE_COOLDOWN_MS) return;
-            state.pressedKeys.add(event.key);
-            state.lastKeyboardMoveAt = now;
             const dir = DIRECTIONS[direction];
             moveTo(state.run.current_x + dir.x, state.run.current_y + dir.y);
         });
@@ -499,17 +389,15 @@
     ui.bindCarrySelection(toggleCarry);
     ui.bindBoard(moveTo);
     ui.bindActions({
-        onStartRun: handleStartRun,
+        onStartRun: startRun,
         onResumeRun: renderGame,
         onContinueExplore: () => {
             state.stairsPromptDismissed = true;
             ui.hideTilePopup();
             ui.renderStairsPrompt(false);
-            renderGame();
         },
         onResolveStairs: resolveStairs,
         onClaimAltarReward: claimAltarReward,
-        onResolveThief: resolveThief,
         onUseItem: useItem,
         onBuyItem: buyItem,
         onBuyStock: buyStock,
@@ -527,18 +415,6 @@
             skip.classList.toggle('d-none', showHeldOnly);
             notice.classList.toggle('d-none', showHeldOnly);
             button.textContent = showHeldOnly ? '買い物に戻る' : '所持アイテム';
-        },
-        onToggleThiefHeldItems: () => {
-            const panel = document.getElementById('thief-held-panel');
-            const button = document.getElementById('thief-held-toggle-btn');
-            const choices = document.querySelector('#thief-modal .thief-choice-list');
-            const warning = document.getElementById('thief-warning-text');
-            if (!panel || !button) return;
-            const showHeldOnly = panel.classList.contains('d-none');
-            panel.classList.toggle('d-none', !showHeldOnly);
-            if (choices) choices.classList.toggle('d-none', showHeldOnly);
-            if (warning) warning.classList.toggle('d-none', showHeldOnly);
-            button.textContent = showHeldOnly ? '選択に戻る' : '所持アイテム';
         },
         onToggleMobilePad: () => {
             state.mobilePadVisible = !state.mobilePadVisible;
