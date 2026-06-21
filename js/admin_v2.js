@@ -2848,10 +2848,9 @@ function changeLogsPage(delta) {
 }
 
 async function clearOmikujiDateIfNeeded(logId, userId) {
-    // おみくじログなら last_omikuji_at を null に戻す
     if (userId) {
         await supabaseClient.from('profiles')
-            .update({ last_omikuji_at: null })
+            .update({ last_omikuji_at: null, consecutive_omikuji_days: 0 })
             .eq('discord_user_id', userId);
     }
 }
