@@ -497,6 +497,34 @@
         }
         .jp-pay-btn:hover { background: linear-gradient(135deg,#9a0000,#cc0000); }
 
+        /* ── Streak badge ── */
+        .jp-streak-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255,140,0,.12);
+            border: 1px solid rgba(255,140,0,.3);
+            border-radius: 20px;
+            padding: 6px 18px;
+            color: #ffd080;
+            font-size: .88rem;
+            font-family: 'Noto Serif JP', serif;
+            letter-spacing: .06em;
+            margin-bottom: 24px;
+        }
+        .jp-streak-badge .streak-flame { font-size: 1.1rem; }
+        .jp-streak-badge .streak-count { font-weight: 700; font-size: 1.05rem; color: #ffb030; }
+        .jp-streak-max {
+            color: #FFD700;
+            border-color: rgba(255,215,0,.5);
+            background: rgba(255,215,0,.1);
+            animation: streakGlow 2s ease-in-out infinite;
+        }
+        @keyframes streakGlow {
+            0%,100% { box-shadow: 0 0 8px rgba(255,215,0,.2); }
+            50%      { box-shadow: 0 0 20px rgba(255,215,0,.5); }
+        }
+
         /* ── Already drawn ── */
         .jp-already-card {
             background: rgba(255,255,255,.04);
@@ -675,6 +703,7 @@
 
             <!-- Before draw -->
             <div id="before-draw" style="display:flex;flex-direction:column;align-items:center;">
+                <div id="streak-info"></div>
                 <div class="jp-cylinder-wrap" id="jp-cylinder-wrap">
                     <div class="jp-cylinder" id="jp-cylinder">
                         <div class="jp-sticks">
@@ -701,6 +730,7 @@
                     <div class="jp-scroll-paper" id="jp-scroll-paper">
                         <span id="fortune-rank" class="jp-rank-text"></span>
                         <div id="fortune-reward" class="jp-reward-text"></div>
+                        <div id="streak-bonus-line" class="jp-reward-text" style="font-size:.85rem;margin-top:2px;"></div>
                         <div class="jp-scroll-divider"></div>
                         <div id="fortune-message" class="jp-msg-text"></div>
                         <div class="jp-seal">神</div>
@@ -708,7 +738,6 @@
                     <div class="jp-rod"></div>
                 </div>
                 <div class="jp-actions" id="jp-actions">
-                    <button id="pay-penalty-btn" class="jp-action-btn jp-pay-btn" style="display:none;" onclick="payOmikujiPenalty()">🪙 支払う</button>
                     <button id="mypage-confirm-btn" class="jp-action-btn" onclick="location.href='../mypage/index.html'">マイページで確認</button>
                 </div>
             </div>
@@ -967,8 +996,28 @@
         let omikujiSettings = [];
         let selectedRankClass = '';
 
+        function wasYesterday(dateStr) {
+            if (!dateStr) return false;
+            const JST = 9 * 3600000;
+            const toDay = d => {
+                const j = new Date(d.getTime() + JST);
+                return Date.UTC(j.getUTCFullYear(), j.getUTCMonth(), j.getUTCDate());
+            };
+            return toDay(new Date()) - toDay(new Date(dateStr)) === 86400000;
+        }
+
+        function renderStreakBadge(streak, isMax) {
+            if (!streak || streak < 1) return '';
+            const cls = isMax ? 'jp-streak-badge jp-streak-max' : 'jp-streak-badge';
+            const nextBonus = Math.min(streak + 1, 10) * 500;
+            const label = isMax
+                ? `🔥 連続<span class="streak-count">10日</span>達成！ MAX +${(5000).toLocaleString()}コイン`
+                : `🔥 連続<span class="streak-count">${streak}日</span>目 ／ 明日は +${nextBonus.toLocaleString()}ボーナス`;
+            return `<div class="${cls}">${label}</div>`;
+        }
+
         function getRankClass(rank) {
-            if (rank === '神引き')          return 'rank-god';
+            if (rank === '天照大御神')       return 'rank-god';
             if (rank === '超大吉')           return 'rank-super';
             if (['大吉','ねむ吉','かに吉'].includes(rank)) return 'rank-daikichi';
             if (['中吉','吉'].includes(rank)) return 'rank-kichi';
@@ -999,7 +1048,7 @@
             omikujiSettings = settings;
 
             const { data: profile } = await supabaseClient
-                .from('profiles').select('last_omikuji_at')
+                .from('profiles').select('last_omikuji_at,consecutive_omikuji_days')
                 .eq('discord_user_id', currentUserId).single();
 
             document.getElementById('omikuji-ui').style.display = 'block';
@@ -1007,26 +1056,30 @@
             if (profile?.last_omikuji_at && hasDrawnOmikujiToday(profile.last_omikuji_at)) {
                 document.getElementById('before-draw').style.display = 'none';
                 document.getElementById('already-drawn').style.display = 'block';
+            } else {
+                const streak = profile?.consecutive_omikuji_days || 0;
+                const isConsecutive = wasYesterday(profile?.last_omikuji_at);
+                const displayStreak = isConsecutive ? streak : 0;
+                if (displayStreak > 0) {
+                    document.getElementById('streak-info').innerHTML =
+                        renderStreakBadge(displayStreak, displayStreak >= 10);
+                }
             }
         }
 
         let baseRewardHtml = '';
-        let pendingOmikuji = null;
-
         async function drawOmikuji() {
             const button = document.getElementById('draw-button');
             button.disabled = true;
             button.textContent = '占い中…';
 
-            // Start cylinder shake
             const cyl = document.getElementById('jp-cylinder');
             cyl.classList.add('shaking');
 
             let selected, message, coinReward, ticketReward, manganReward,
-                isMusumeKyo, displayPenalty, newCoins, newTotalAssets, newTickets, newManganTickets;
+                newCoins, newTotalAssets, newTickets, newManganTickets;
 
             try {
-                // Weight random pick
                 const totalWeight = omikujiSettings.reduce((s, x) => s + x.weight, 0);
                 let rand = Math.random() * totalWeight;
                 selected = omikujiSettings[0];
@@ -1036,108 +1089,89 @@
                 message = messages[Math.floor(Math.random() * messages.length)];
 
                 const { data: profile, error: profileError } = await supabaseClient
-                    .from('profiles').select('coins,total_assets,gacha_tickets,mangan_tickets')
+                    .from('profiles').select('coins,total_assets,gacha_tickets,mangan_tickets,last_omikuji_at,consecutive_omikuji_days')
                     .eq('discord_user_id', currentUserId).single();
                 if (profileError) throw profileError;
 
                 coinReward    = selected.reward || 0;
                 ticketReward  = selected.ticket_reward || 0;
                 manganReward  = selected.mangan_ticket_reward || 0;
-                isMusumeKyo   = selected.rank === 'むすめ凶';
-                displayPenalty = isMusumeKyo ? -999 : null;
 
-                newCoins        = Math.max(0, (profile.coins || 0) + coinReward);
+                // Consecutive streak bonus
+                const prevStreak = profile.consecutive_omikuji_days || 0;
+                const isConsecutive = wasYesterday(profile.last_omikuji_at);
+                const newStreak = Math.min(isConsecutive ? prevStreak + 1 : 1, 10);
+                const streakBonus = newStreak * 500;
+
+                newCoins        = Math.max(0, (profile.coins || 0) + coinReward + streakBonus);
                 newTotalAssets  = profile.total_assets || 0;
                 newTickets      = Math.max(0, (profile.gacha_tickets || 0) + ticketReward);
                 newManganTickets = Math.max(0, (profile.mangan_tickets || 0) + manganReward);
                 if (coinReward > 0) newTotalAssets += coinReward;
+                newTotalAssets += streakBonus;
 
-                if (isMusumeKyo) {
-                    const { error } = await supabaseClient.from('profiles')
-                        .update({ last_omikuji_at: new Date().toISOString() })
-                        .eq('discord_user_id', currentUserId);
-                    if (error) throw error;
-                    pendingOmikuji = { coinReward, ticketReward, manganReward, message, rank: selected.rank };
-                } else {
-                    const { error } = await supabaseClient.from('profiles').update({
-                        coins: newCoins, total_assets: newTotalAssets,
-                        gacha_tickets: newTickets, mangan_tickets: newManganTickets,
-                        last_omikuji_at: new Date().toISOString()
-                    }).eq('discord_user_id', currentUserId);
-                    if (error) throw error;
+                const { error } = await supabaseClient.from('profiles').update({
+                    coins: newCoins, total_assets: newTotalAssets,
+                    gacha_tickets: newTickets, mangan_tickets: newManganTickets,
+                    last_omikuji_at: new Date().toISOString(),
+                    consecutive_omikuji_days: newStreak
+                }).eq('discord_user_id', currentUserId);
+                if (error) throw error;
 
-                    // Badge grant
-                    if (selected.badge_id) {
-                        const { data: has } = await supabaseClient.from('user_badges_new')
-                            .select('id').eq('user_id', currentUserId).eq('badge_id', selected.badge_id).maybeSingle();
-                        if (!has) {
-                            await supabaseClient.from('user_badges_new')
-                                .insert([{ user_id: currentUserId, badge_id: selected.badge_id, purchased_price: 0 }]);
-                        }
-                    }
-
-                    if (typeof logActivity === 'function') {
-                        await logActivity(currentUserId, 'omikuji', {
-                            amount: coinReward,
-                            details: { rank: selected.rank, message, ticket_reward: ticketReward, mangan_ticket_reward: manganReward, badge_id: selected.badge_id || null }
-                        });
+                // Badge grant
+                if (selected.badge_id) {
+                    const { data: has } = await supabaseClient.from('user_badges_new')
+                        .select('id').eq('user_id', currentUserId).eq('badge_id', selected.badge_id).maybeSingle();
+                    if (!has) {
+                        await supabaseClient.from('user_badges_new')
+                            .insert([{ user_id: currentUserId, badge_id: selected.badge_id, purchased_price: 0 }]);
                     }
                 }
 
-                // Wait for shake to finish (1.8s total) then reveal
+                if (typeof logActivity === 'function') {
+                    await logActivity(currentUserId, 'omikuji', {
+                        amount: coinReward + streakBonus,
+                        details: { rank: selected.rank, message, ticket_reward: ticketReward, mangan_ticket_reward: manganReward, badge_id: selected.badge_id || null, streak_bonus: streakBonus, streak_days: newStreak }
+                    });
+                }
+
                 await new Promise(r => setTimeout(r, 1800));
 
-                // Hide cylinder
                 document.getElementById('jp-cylinder-wrap').classList.add('hide');
                 await new Promise(r => setTimeout(r, 400));
 
-                // Prepare result content
                 selectedRankClass = getRankClass(selected.rank);
                 const scrollPaper = document.getElementById('jp-scroll-paper');
                 scrollPaper.className = `jp-scroll-paper ${selectedRankClass}`;
 
                 document.getElementById('fortune-rank').textContent = selected.rank;
 
-                // Reward HTML
                 let rewardHtml = '';
                 if (coinReward !== 0) rewardHtml += `<span style="color:${coinReward>0?'#27ae60':'#e74c3c'}">🪙 ${coinReward>=0?'+':''}${coinReward.toLocaleString()}</span> `;
-                if (displayPenalty !== null) rewardHtml += `<span style="color:#e74c3c">🪙 ${displayPenalty.toLocaleString()}</span> `;
                 if (ticketReward !== 0) rewardHtml += `<span style="color:#d4a574">🎫 ${ticketReward>=0?'+':''}${ticketReward}枚</span>`;
                 if (manganReward !== 0) rewardHtml += ` <span style="color:#d4a574">🧧 ${manganReward>=0?'+':''}${manganReward}枚</span>`;
 
-                let baseHtml = '';
-                if (coinReward !== 0) baseHtml += `<span style="color:${coinReward>0?'#27ae60':'#e74c3c'}">🪙 ${coinReward>=0?'+':''}${coinReward.toLocaleString()}</span> `;
-                if (ticketReward !== 0) baseHtml += `<span style="color:#d4a574">🎫 ${ticketReward>=0?'+':''}${ticketReward}枚</span>`;
-                if (manganReward !== 0) baseHtml += ` <span style="color:#d4a574">🧧 ${manganReward>=0?'+':''}${manganReward}枚</span>`;
-                baseRewardHtml = baseHtml || '<span style="color:#999">報酬なし</span>';
-
-                document.getElementById('fortune-reward').innerHTML = isMusumeKyo
-                    ? `<span style="color:#e74c3c">🪙 ${displayPenalty.toLocaleString()}</span>`
-                    : (rewardHtml || '<span style="color:#999">報酬なし</span>');
+                document.getElementById('fortune-reward').innerHTML = rewardHtml || '<span style="color:#999">報酬なし</span>';
+                const streakLabel = newStreak >= 10
+                    ? `🔥 連続10日MAX ＋${streakBonus.toLocaleString()}コイン`
+                    : `🔥 連続${newStreak}日ボーナス ＋${streakBonus.toLocaleString()}コイン`;
+                document.getElementById('streak-bonus-line').innerHTML =
+                    `<span style="color:#ffb030">${streakLabel}</span>`;
                 document.getElementById('fortune-message').textContent = message;
 
-                const payBtn    = document.getElementById('pay-penalty-btn');
-                const mypageBtn = document.getElementById('mypage-confirm-btn');
-                payBtn.style.display    = isMusumeKyo ? 'inline-block' : 'none';
-                payBtn.disabled         = false;
-                mypageBtn.style.display = isMusumeKyo ? 'none' : 'inline-block';
+                document.getElementById('mypage-confirm-btn').style.display = 'inline-block';
 
-                // Show result
                 document.getElementById('before-draw').style.display = 'none';
-                const afterDraw = document.getElementById('after-draw');
-                afterDraw.style.display = 'flex';
+                document.getElementById('after-draw').style.display = 'flex';
 
-                // Animate scroll in
                 await new Promise(r => setTimeout(r, 50));
                 document.getElementById('jp-scroll-outer').classList.add('revealed');
                 await new Promise(r => setTimeout(r, 200));
                 scrollPaper.classList.add('unrolled');
 
-                // Show actions
                 await new Promise(r => setTimeout(r, 1600));
                 document.getElementById('jp-actions').classList.add('visible');
 
-                // Particles
                 await new Promise(r => setTimeout(r, 200));
                 launchParticles(selectedRankClass);
 
@@ -1149,44 +1183,6 @@
             } finally {
                 cyl.classList.remove('shaking');
             }
-        }
-
-        async function payOmikujiPenalty() {
-            if (!pendingOmikuji) return;
-            const payBtn = document.getElementById('pay-penalty-btn');
-            payBtn.disabled = true;
-            payBtn.textContent = 'マイページで確認';
-            payBtn.classList.remove('jp-pay-btn');
-            payBtn.onclick = () => location.href = '../mypage/index.html';
-
-            document.getElementById('fortune-reward').innerHTML = baseRewardHtml || '<span style="color:#999">報酬なし</span>';
-
-            try {
-                const { data: profile } = await supabaseClient.from('profiles')
-                    .select('coins,total_assets,gacha_tickets,mangan_tickets')
-                    .eq('discord_user_id', currentUserId).single();
-
-                const c = pendingOmikuji.coinReward || 0;
-                const t = pendingOmikuji.ticketReward || 0;
-                const m = pendingOmikuji.manganReward || 0;
-
-                await supabaseClient.from('profiles').update({
-                    coins: Math.max(0, (profile.coins||0)+c),
-                    total_assets: c>0 ? (profile.total_assets||0)+c : profile.total_assets||0,
-                    gacha_tickets: Math.max(0, (profile.gacha_tickets||0)+t),
-                    mangan_tickets: Math.max(0, (profile.mangan_tickets||0)+m)
-                }).eq('discord_user_id', currentUserId);
-
-                if (typeof logActivity === 'function') {
-                    await logActivity(currentUserId, 'omikuji', {
-                        amount: c,
-                        details: { rank: pendingOmikuji.rank, message: pendingOmikuji.message, ticket_reward: t, mangan_ticket_reward: m }
-                    });
-                }
-                pendingOmikuji = null;
-            } catch (err) { console.error(err); }
-
-            document.getElementById('fortune-message').textContent = 'ちっ、持ってねーのかよ！しけてんなー。しゃーなしこれやるよ';
         }
 
         document.addEventListener('DOMContentLoaded', initOmikuji);
