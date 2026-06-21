@@ -209,7 +209,7 @@
         const ids = [...new Set(allResults.map(r => r.discord_user_id).filter(Boolean))];
         const { data: profiles } = await supabaseClient
             .from('profiles')
-            .select('discord_user_id, account_name, discord_avatar_url')
+            .select('discord_user_id, account_name, avatar_url')
             .in('discord_user_id', ids);
         const profileMap = {};
         (profiles || []).forEach(p => profileMap[p.discord_user_id] = p);
@@ -231,7 +231,7 @@
                 players[r.discord_user_id] = {
                     id: r.discord_user_id,
                     name: p.account_name || r.account_name,
-                    avatar: p.discord_avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(r.account_name)}&background=1a4d8c&color=fff`,
+                    avatar: p.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(r.account_name)}&background=1a4d8c&color=fff`,
                     team: pokerTeamMap[r.discord_user_id] || '',
                     results: [],
                     score: 0, count: 0, r1: 0, rLast: 0,

@@ -300,7 +300,7 @@
         if (memberIds.length > 0) {
             const { data: profiles } = await supabaseClient
                 .from('profiles')
-                .select('discord_user_id, account_name, discord_avatar_url')
+                .select('discord_user_id, account_name, avatar_url')
                 .in('discord_user_id', memberIds);
             (profiles || []).forEach(p => { profileMap[p.discord_user_id] = p; });
         }
@@ -308,12 +308,12 @@
         teamMembers = memberIds.map(id => ({
             discord_user_id: id,
             account_name: profileMap[id]?.account_name || id,
-            discord_avatar_url: profileMap[id]?.discord_avatar_url || null,
+            avatar_url: profileMap[id]?.avatar_url || null,
         }));
 
         document.getElementById('members-list').innerHTML = teamMembers.map(m => {
             const isAdmin = m.discord_user_id === myTeam.creator_discord_id;
-            const avatar = m.discord_avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.account_name)}&background=1a4d8c&color=fff`;
+            const avatar = m.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.account_name)}&background=1a4d8c&color=fff`;
             const kickBtn = (!isAdmin && isTeamAdmin)
                 ? `<button class="btn btn-outline-danger btn-sm ms-auto" onclick="kickMember('${m.discord_user_id}','${m.account_name.replace(/'/g,"\\'")}')">追放</button>`
                 : '';
@@ -338,11 +338,11 @@
         const el = document.getElementById('join-requests-list');
         if (!data || data.length === 0) { el.innerHTML = '<p class="text-muted small">加入申請はありません</p>'; return; }
         const ids = data.map(r => r.discord_user_id);
-        const { data: profiles } = await supabaseClient.from('profiles').select('discord_user_id, account_name, discord_avatar_url').in('discord_user_id', ids);
+        const { data: profiles } = await supabaseClient.from('profiles').select('discord_user_id, account_name, avatar_url').in('discord_user_id', ids);
         const pm = {}; (profiles || []).forEach(p => pm[p.discord_user_id] = p);
         el.innerHTML = data.map(r => {
             const name = pm[r.discord_user_id]?.account_name || r.discord_user_id;
-            const avatar = pm[r.discord_user_id]?.discord_avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1a4d8c&color=fff`;
+            const avatar = pm[r.discord_user_id]?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1a4d8c&color=fff`;
             return `<div class="request-card">
                 <img src="${avatar}" class="member-avatar">
                 <span class="fw-bold ms-2">${name}</span>
@@ -362,11 +362,11 @@
         const el = document.getElementById('leave-requests-list');
         if (!data || data.length === 0) { el.innerHTML = '<p class="text-muted small">脱退申請はありません</p>'; return; }
         const ids = data.map(r => r.discord_user_id);
-        const { data: profiles } = await supabaseClient.from('profiles').select('discord_user_id, account_name, discord_avatar_url').in('discord_user_id', ids);
+        const { data: profiles } = await supabaseClient.from('profiles').select('discord_user_id, account_name, avatar_url').in('discord_user_id', ids);
         const pm = {}; (profiles || []).forEach(p => pm[p.discord_user_id] = p);
         el.innerHTML = data.map(r => {
             const name = pm[r.discord_user_id]?.account_name || r.discord_user_id;
-            const avatar = pm[r.discord_user_id]?.discord_avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1a4d8c&color=fff`;
+            const avatar = pm[r.discord_user_id]?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1a4d8c&color=fff`;
             return `<div class="request-card leave-request-card">
                 <img src="${avatar}" class="member-avatar">
                 <span class="fw-bold ms-2">${name}</span>
@@ -413,7 +413,7 @@
                 <tbody>${sorted.map((s, i) => {
                     const rc = i < 3 ? ` class="rank-${i+1}"` : '';
                     const medal = i < 3 ? medals[i] : i + 1;
-                    const avatar = s.discord_avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.account_name||'?')}&background=1a4d8c&color=fff`;
+                    const avatar = s.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.account_name||'?')}&background=1a4d8c&color=fff`;
                     const sc = s.score;
                     const cls = sc >= 0 ? 'score-positive' : 'score-negative';
                     const wr = s.count > 0 ? Math.round(s.r1/s.count*100) : 0;
@@ -552,7 +552,7 @@
         const others = teamMembers.filter(m => m.discord_user_id !== myTeam.creator_discord_id);
         if (others.length === 0) { container.innerHTML = '<p class="text-muted">他のメンバーがいません</p>'; return; }
         container.innerHTML = others.map(m => {
-            const avatar = m.discord_avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.account_name||'?')}&background=1a4d8c&color=fff`;
+            const avatar = m.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.account_name||'?')}&background=1a4d8c&color=fff`;
             return `<div class="member-card member-select" onclick="selectNewLeader('${m.discord_user_id}', this)">
                 <img src="${avatar}" class="member-avatar"><span class="member-name">${m.account_name}</span></div>`;
         }).join('');
