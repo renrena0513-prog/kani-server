@@ -113,12 +113,13 @@ async function deletePokerMatch(matchId) {
             .eq('action_type', 'poker');
         if (logDelErr) throw logDelErr;
 
-        // 5. poker_results を削除
-        const { error: recDelErr } = await supabaseClient
+        // 5. poker_results を削除（count で実際に消えたか確認）
+        const { error: recDelErr, count: delCount } = await supabaseClient
             .from('poker_results')
-            .delete()
+            .delete({ count: 'exact' })
             .eq('match_id', matchId);
         if (recDelErr) throw recDelErr;
+        if (delCount === 0) throw new Error('RLSポリシーにより削除がブロックされました。Supabase ダッシュボードで poker_results テーブルに DELETE ポリシーを追加してください。');
 
         await fetchPokerRecords();
         alert('削除しました。付与コインと活動ログも取り消しました。');
