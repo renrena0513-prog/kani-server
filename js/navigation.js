@@ -35,6 +35,20 @@ function generateAccordionNav(basePath = '../') {
                     </ul>
                 </li>
                 
+                <!-- ポーカー大会グループ -->
+                <li class="nav-group">
+                    <div class="nav-group-header" onclick="toggleNavGroup(this, event)" data-group="poker">
+                        <span>🃏 ポーカー大会</span>
+                        <span class="nav-chevron">▼</span>
+                    </div>
+                    <ul class="nav-group-items" id="nav-group-poker">
+                        <li><a class="dropdown-item sub-item" href="${basePath}poker/index.html">📊 ランキング</a></li>
+                        <li><a class="dropdown-item sub-item" href="${basePath}poker/record.html">📝 記録する</a></li>
+                        <li><a class="dropdown-item sub-item" href="${basePath}poker/users/index.html">👥 ユーザー一覧</a></li>
+                        <li><a class="dropdown-item sub-item" href="${basePath}poker/team/index.html">🏅 チーム管理</a></li>
+                    </ul>
+                </li>
+
                 <!-- お楽しみグループ -->
                 <li class="nav-group">
                     <div class="nav-group-header" onclick="toggleNavGroup(this, event)" data-group="fun">
