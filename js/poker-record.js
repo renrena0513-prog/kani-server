@@ -245,6 +245,15 @@ function initDragSort() {
     let touchSrc = null;
     let touchClone = null;
     let touchOffX = 0, touchOffY = 0;
+    let autoScrollTimer = null;
+
+    function stopAutoScroll() {
+        if (autoScrollTimer) { clearInterval(autoScrollTimer); autoScrollTimer = null; }
+    }
+    function startAutoScroll(dir) {
+        stopAutoScroll();
+        autoScrollTimer = setInterval(() => window.scrollBy(0, dir * 10), 16);
+    }
 
     container.querySelectorAll('.player-entry').forEach(row => {
         row.addEventListener('touchstart', e => {
@@ -276,6 +285,13 @@ function initDragSort() {
             touchClone.style.left = (touch.clientX - touchOffX) + 'px';
             touchClone.style.top  = (touch.clientY - touchOffY) + 'px';
 
+            // 画面端で自動スクロール
+            const ZONE = 80;
+            const vy = touch.clientY;
+            if (vy < ZONE) startAutoScroll(-1);
+            else if (vy > window.innerHeight - ZONE) startAutoScroll(1);
+            else stopAutoScroll();
+
             // どの行の上にいるか判定してハイライト
             container.querySelectorAll('.player-entry').forEach(r => r.classList.remove('drag-over'));
             const target = rowAtPoint(container, touch.clientX, touch.clientY);
@@ -283,6 +299,7 @@ function initDragSort() {
         }, { passive: false });
 
         row.addEventListener('touchend', e => {
+            stopAutoScroll();
             if (!touchSrc || !touchClone) return;
             const touch = e.changedTouches[0];
             touchClone.remove();
