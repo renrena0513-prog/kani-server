@@ -403,6 +403,8 @@ async function applyPageSettingsToNav() {
 
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) return;
+        const discordId = user.user_metadata?.provider_id;
+        if (typeof ADMIN_DISCORD_IDS !== 'undefined' && ADMIN_DISCORD_IDS.includes(discordId)) return;
 
         const { data } = await supabaseClient.from('page_settings').select('path, is_active');
         if (!data) return;
