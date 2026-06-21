@@ -68,20 +68,64 @@ function renderPokerRecords() {
 
 async function deletePokerMatch(matchId) {
     const players = pokerMatchGroups[matchId] || [];
-    const names = players.sort((a, b) => a.rank - b.rank).map(p => `${p.rank}位: ${p.account_name}`).join(', ');
-    if (!confirm(`以下の試合記録を全員分削除しますか？\n\n${names}`)) return;
+    const names = players.sort((a, b) => a.rank - b.rank).map(p => `${p.rank}位: ${p.account_name}`).join('\n');
+    if (!confirm(`以下の試合記録を削除します。\n付与されたコインと活動ログも削除されます。\n\n${names}`)) return;
 
-    const { error } = await supabaseClient
-        .from('poker_results')
-        .delete()
-        .eq('match_id', matchId);
+    try {
+        // 1. この試合の活動ログを取得（付与コイン額を確認）
+        const { data: logs, error: logFetchErr } = await supabaseClient
+            .from('activity_logs')
+            .select('user_id, amount')
+            .eq('match_id', matchId)
+            .eq('action_type', 'poker');
+        if (logFetchErr) throw logFetchErr;
 
-    if (error) {
-        alert('削除エラー: ' + error.message);
-        return;
+        // 2. ユーザーごとの付与コイン合計を集計
+        const coinByUser = {};
+        (logs || []).forEach(log => {
+            if (log.user_id && log.amount > 0) {
+                coinByUser[log.user_id] = (coinByUser[log.user_id] || 0) + log.amount;
+            }
+        });
+
+        // 3. コインを引き戻す
+        for (const [userId, amount] of Object.entries(coinByUser)) {
+            const { data: profile, error: profErr } = await supabaseClient
+                .from('profiles')
+                .select('coins, total_assets')
+                .eq('discord_user_id', userId)
+                .maybeSingle();
+            if (profErr) throw profErr;
+            if (profile) {
+                const { error: updErr } = await supabaseClient.from('profiles').update({
+                    coins: Math.max(0, (profile.coins || 0) - amount),
+                    total_assets: Math.max(0, (profile.total_assets || 0) - amount),
+                }).eq('discord_user_id', userId);
+                if (updErr) throw updErr;
+            }
+        }
+
+        // 4. 活動ログを削除
+        const { error: logDelErr } = await supabaseClient
+            .from('activity_logs')
+            .delete()
+            .eq('match_id', matchId)
+            .eq('action_type', 'poker');
+        if (logDelErr) throw logDelErr;
+
+        // 5. poker_results を削除
+        const { error: recDelErr } = await supabaseClient
+            .from('poker_results')
+            .delete()
+            .eq('match_id', matchId);
+        if (recDelErr) throw recDelErr;
+
+        await fetchPokerRecords();
+        alert('削除しました。付与コインと活動ログも取り消しました。');
+    } catch (err) {
+        alert('削除エラー: ' + err.message);
+        console.error('deletePokerMatch error:', err);
     }
-
-    await fetchPokerRecords();
 }
 
 async function openPokerEditModal(matchId) {
