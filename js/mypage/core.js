@@ -234,6 +234,28 @@
                 if (teamNameEl) teamNameEl.textContent = teamName;
             }
 
+            // ポーカーチームを取得して表示
+            (async () => {
+                const { data: pokerProfile } = await supabaseClient
+                    .from('poker_profiles')
+                    .select('team_id, poker_teams!team_id(team_name, icon_url)')
+                    .eq('discord_user_id', targetId)
+                    .maybeSingle();
+                const pokerTeam = pokerProfile?.poker_teams;
+                if (pokerTeam) {
+                    const el = document.getElementById('user-poker-team-display');
+                    if (el) {
+                        const badgeEl = el.querySelector('.badge');
+                        let logoHtml = '🃏 ';
+                        if (pokerTeam.icon_url) {
+                            logoHtml = `<img src="${pokerTeam.icon_url}" alt="poker logo" style="width:20px;height:20px;object-fit:contain;margin-right:4px;border-radius:3px;"> `;
+                        }
+                        badgeEl.innerHTML = `${logoHtml}<span>${pokerTeam.team_name}</span>`;
+                        el.style.display = '';
+                    }
+                }
+            })();
+
             // 左バッジ画像を設定
             const badgeImg = document.getElementById('user-equipped-badge');
             const badge = profile?.badges;
