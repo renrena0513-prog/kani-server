@@ -161,6 +161,76 @@
             z-index: 1000;
         }
 
+        /* 管理設定パネル */
+        .admin-settings-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 2000;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #5a4a7a, #3d2f5a);
+            border: none;
+            color: white;
+            font-size: 1.3rem;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(90,74,122,.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform .2s;
+        }
+        .admin-settings-btn:hover { transform: scale(1.1); }
+
+        .admin-panel-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.6);
+            z-index: 3000;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        .admin-panel-overlay.open { display: flex; align-items: flex-start; justify-content: center; }
+
+        .admin-panel {
+            background: #fff;
+            border-radius: 20px;
+            padding: 30px;
+            width: 100%;
+            max-width: 700px;
+            margin: 40px auto;
+        }
+        .admin-panel h2 { font-size: 1.3rem; font-weight: 700; margin-bottom: 20px; color: #333; }
+        .entry-row {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .entry-rank { font-weight: 700; font-size: 1rem; min-width: 80px; }
+        .entry-details { flex: 1; font-size: .85rem; color: #555; }
+        .entry-actions { display: flex; gap: 6px; }
+
+        .entry-form {
+            background: #f0f4ff;
+            border-radius: 14px;
+            padding: 20px;
+            margin-top: 16px;
+        }
+        .entry-form .form-label { font-weight: 600; font-size: .85rem; color: #444; }
+        .badge-select-item {
+            display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+            border-radius: 8px; cursor: pointer; transition: background .15s;
+        }
+        .badge-select-item:hover { background: #e8eeff; }
+        .badge-select-item.selected { background: #d0daff; }
+        .badge-select-item img { width: 28px; height: 28px; object-fit: contain; border-radius: 4px; }
+
         .record-button {
             background: linear-gradient(135deg, var(--gold) 0%, #b8892d 100%);
             color: white;
@@ -290,6 +360,58 @@
         </div>
     </div>
 
+    <!-- 管理設定ボタン（管理者のみ表示） -->
+    <button class="admin-settings-btn admin-only" style="display:none;" onclick="toggleAdminPanel()" title="おみくじ設定">⚙️</button>
+
+    <!-- 管理設定パネル -->
+    <div class="admin-panel-overlay" id="admin-panel-overlay" onclick="overlayClose(event)">
+        <div class="admin-panel">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="mb-0">⚙️ おみくじ設定</h2>
+                <button class="btn btn-sm btn-outline-secondary" onclick="toggleAdminPanel()">✕ 閉じる</button>
+            </div>
+            <div id="admin-entry-list"></div>
+            <button class="btn btn-primary mt-3 w-100" onclick="openEntryForm()">＋ 新しい運勢を追加</button>
+
+            <!-- 追加/編集フォーム -->
+            <div class="entry-form" id="entry-form" style="display:none;">
+                <input type="hidden" id="ef-id">
+                <div class="row g-2 mb-2">
+                    <div class="col-6">
+                        <label class="form-label">運勢名</label>
+                        <input type="text" class="form-control form-control-sm" id="ef-rank" placeholder="大吉">
+                    </div>
+                    <div class="col-3">
+                        <label class="form-label">コイン</label>
+                        <input type="number" class="form-control form-control-sm" id="ef-reward" placeholder="1000">
+                    </div>
+                    <div class="col-3">
+                        <label class="form-label">重み</label>
+                        <input type="number" class="form-control form-control-sm" id="ef-weight" placeholder="10" step="0.1">
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">ランダムコメント（1行1メッセージ）</label>
+                    <textarea class="form-control form-control-sm" id="ef-messages" rows="4" placeholder="良い一日になりそう！&#10;幸運が訪れます。"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">バッジ付与（任意）</label>
+                    <div class="border rounded p-2 bg-white" style="max-height:180px;overflow-y:auto;">
+                        <div class="badge-select-item" data-badge-id="" onclick="selectBadge(this)">
+                            <span>🚫 なし</span>
+                        </div>
+                        <div id="badge-select-list"></div>
+                    </div>
+                    <input type="hidden" id="ef-badge-id">
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-success btn-sm flex-grow-1" onclick="saveEntry()">💾 保存</button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="closeEntryForm()">キャンセル</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../js/supabase-config.js"></script>
@@ -404,9 +526,7 @@
                     // 日時だけ確定。報酬は支払いボタンを押すまで反映しない。
                     const { error: updateError } = await supabaseClient
                         .from('profiles')
-                        .update({
-                            last_omikuji_at: new Date().toISOString()
-                        })
+                        .update({ last_omikuji_at: new Date().toISOString() })
                         .eq('discord_user_id', currentUserId);
                     if (updateError) throw updateError;
                     pendingOmikuji = { coinReward, ticketReward, manganReward, message, rank: selected.rank };
@@ -422,8 +542,24 @@
                             last_omikuji_at: new Date().toISOString()
                         })
                         .eq('discord_user_id', currentUserId);
-
                     if (updateError) throw updateError;
+
+                    // バッジ付与（設定されている場合）
+                    if (selected.badge_id) {
+                        const { data: alreadyHas } = await supabaseClient
+                            .from('user_badges_new')
+                            .select('id')
+                            .eq('user_id', currentUserId)
+                            .eq('badge_id', selected.badge_id)
+                            .maybeSingle();
+                        if (!alreadyHas) {
+                            await supabaseClient.from('user_badges_new').insert([{
+                                user_id: currentUserId,
+                                badge_id: selected.badge_id,
+                                purchased_price: 0
+                            }]);
+                        }
+                    }
 
                     // 活動ログを記録
                     if (typeof logActivity === 'function') {
@@ -433,7 +569,8 @@
                                 rank: selected.rank,
                                 message: message,
                                 ticket_reward: ticketReward,
-                                mangan_ticket_reward: manganReward
+                                mangan_ticket_reward: manganReward,
+                                badge_id: selected.badge_id || null
                             }
                         });
                     }
@@ -573,6 +710,128 @@
         }
 
         document.addEventListener('DOMContentLoaded', initOmikuji);
+
+        // ── 管理パネル ──────────────────────────────
+        let allBadges = [];
+        let selectedBadgeId = '';
+
+        function toggleAdminPanel() {
+            const overlay = document.getElementById('admin-panel-overlay');
+            const isOpen = overlay.classList.toggle('open');
+            if (isOpen) loadAdminPanel();
+        }
+
+        function overlayClose(e) {
+            if (e.target === document.getElementById('admin-panel-overlay')) toggleAdminPanel();
+        }
+
+        async function loadAdminPanel() {
+            // バッジ一覧取得（初回のみ）
+            if (allBadges.length === 0) {
+                const { data } = await supabaseClient.from('badges').select('id,name,image_url').order('name');
+                allBadges = data || [];
+                const listEl = document.getElementById('badge-select-list');
+                listEl.innerHTML = allBadges.map(b => `
+                    <div class="badge-select-item" data-badge-id="${b.id}" onclick="selectBadge(this)">
+                        <img src="${b.image_url}" onerror="this.style.display='none'">
+                        <span>${b.name}</span>
+                    </div>`).join('');
+            }
+
+            // 設定一覧取得
+            const { data: settings } = await supabaseClient
+                .from('omikuji_settings').select('*').order('weight', { ascending: false });
+            renderAdminList(settings || []);
+        }
+
+        function renderAdminList(settings) {
+            const totalWeight = settings.reduce((s, r) => s + Number(r.weight), 0);
+            document.getElementById('admin-entry-list').innerHTML = settings.map(s => {
+                const pct = totalWeight > 0 ? (Number(s.weight) / totalWeight * 100).toFixed(1) : 0;
+                const badge = allBadges.find(b => b.id === s.badge_id);
+                const badgeLabel = badge ? `🎖 ${badge.name}` : '';
+                return `<div class="entry-row">
+                    <div class="entry-rank">${s.rank}</div>
+                    <div class="entry-details">
+                        🪙 ${(s.reward || 0).toLocaleString()}　確率 ${pct}%　${badgeLabel}
+                        <div class="text-muted" style="font-size:.78rem;">${(s.messages||[]).join(' / ')}</div>
+                    </div>
+                    <div class="entry-actions">
+                        <button class="btn btn-sm btn-outline-primary" onclick="openEntryForm('${s.id}')">編集</button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteEntry('${s.id}','${s.rank}')">削除</button>
+                    </div>
+                </div>`;
+            }).join('') || '<p class="text-muted text-center">設定がありません</p>';
+        }
+
+        function openEntryForm(id = null) {
+            closeEntryForm();
+            document.getElementById('entry-form').style.display = 'block';
+            document.getElementById('ef-id').value = '';
+            document.getElementById('ef-rank').value = '';
+            document.getElementById('ef-reward').value = '';
+            document.getElementById('ef-weight').value = '';
+            document.getElementById('ef-messages').value = '';
+            selectBadge(document.querySelector('.badge-select-item[data-badge-id=""]'));
+
+            if (id) {
+                supabaseClient.from('omikuji_settings').select('*').eq('id', id).single().then(({ data: s }) => {
+                    if (!s) return;
+                    document.getElementById('ef-id').value = s.id;
+                    document.getElementById('ef-rank').value = s.rank;
+                    document.getElementById('ef-reward').value = s.reward || 0;
+                    document.getElementById('ef-weight').value = s.weight;
+                    document.getElementById('ef-messages').value = (s.messages || []).join('\n');
+                    if (s.badge_id) {
+                        const el = document.querySelector(`.badge-select-item[data-badge-id="${s.badge_id}"]`);
+                        if (el) selectBadge(el);
+                    }
+                });
+            }
+            document.getElementById('entry-form').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function closeEntryForm() {
+            document.getElementById('entry-form').style.display = 'none';
+        }
+
+        function selectBadge(el) {
+            document.querySelectorAll('.badge-select-item').forEach(e => e.classList.remove('selected'));
+            el.classList.add('selected');
+            selectedBadgeId = el.dataset.badgeId || '';
+            document.getElementById('ef-badge-id').value = selectedBadgeId;
+        }
+
+        async function saveEntry() {
+            const id = document.getElementById('ef-id').value;
+            const rank = document.getElementById('ef-rank').value.trim();
+            const reward = Number(document.getElementById('ef-reward').value) || 0;
+            const weight = Number(document.getElementById('ef-weight').value) || 1;
+            const messages = document.getElementById('ef-messages').value
+                .split('\n').map(s => s.trim()).filter(Boolean);
+            const badge_id = selectedBadgeId || null;
+
+            if (!rank) { alert('運勢名を入力してください'); return; }
+            if (messages.length === 0) { alert('コメントを1つ以上入力してください'); return; }
+
+            const payload = { rank, reward, weight, messages, badge_id };
+            let error;
+            if (id) {
+                ({ error } = await supabaseClient.from('omikuji_settings').update(payload).eq('id', id));
+            } else {
+                ({ error } = await supabaseClient.from('omikuji_settings').insert([payload]));
+            }
+            if (error) { alert('保存エラー: ' + error.message); return; }
+            closeEntryForm();
+            await loadAdminPanel();
+        }
+
+        async function deleteEntry(id, rank) {
+            if (!confirm(`「${rank}」を削除しますか？`)) return;
+            const { error } = await supabaseClient.from('omikuji_settings').delete().eq('id', id);
+            if (error) { alert('削除エラー: ' + error.message); return; }
+            await loadAdminPanel();
+        }
     </script>
 </body>
 
