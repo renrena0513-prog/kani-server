@@ -323,7 +323,7 @@
             .eq('id', pProfile.team_id)
             .single();
         // logo_badge_id があればバッジ情報を別途取得
-        if (team && team.logo_badge_id) {
+        if (team?.logo_badge_id) {
             const { data: badge } = await supabaseClient.from('badges').select('image_url, name').eq('id', team.logo_badge_id).maybeSingle();
             team.logo_badge = badge || null;
         } else if (team) {
