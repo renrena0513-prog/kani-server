@@ -398,26 +398,28 @@
             .select('discord_user_id, final_score, rank, player_count')
             .in('discord_user_id', memberIds);
         const stats = {};
-        teamMembers.forEach(m => { stats[m.discord_user_id] = { ...m, score: 0, count: 0, r1: 0 }; });
+        teamMembers.forEach(m => { stats[m.discord_user_id] = { ...m, score: 0, count: 0, wins: 0, positives: 0 }; });
         (results || []).forEach(r => {
             if (!stats[r.discord_user_id]) return;
             stats[r.discord_user_id].score += Number(r.final_score);
             stats[r.discord_user_id].count++;
-            if (r.rank === 1) stats[r.discord_user_id].r1++;
+            if (Number(r.rank) === 1) stats[r.discord_user_id].wins++;
+            if (Number(r.final_score) > 0) stats[r.discord_user_id].positives++;
         });
         const sorted = Object.values(stats).sort((a, b) => b.score - a.score);
         const medals = ['🥇','🥈','🥉'];
         document.getElementById('member-scores').innerHTML = `
             <table class="member-score-table">
-                <thead><tr><th>#</th><th>メンバー</th><th>合計スコア</th><th>試合数</th><th>1位率</th></tr></thead>
+                <thead><tr><th>#</th><th>メンバー</th><th>合計スコア</th><th>試合数</th><th>優勝率</th><th>入賞率</th></tr></thead>
                 <tbody>${sorted.map((s, i) => {
                     const rc = i < 3 ? ` class="rank-${i+1}"` : '';
                     const medal = i < 3 ? medals[i] : i + 1;
                     const avatar = s.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.account_name||'?')}&background=1a4d8c&color=fff`;
                     const sc = s.score;
                     const cls = sc >= 0 ? 'score-positive' : 'score-negative';
-                    const wr = s.count > 0 ? Math.round(s.r1/s.count*100) : 0;
-                    return `<tr${rc}><td>${medal}</td><td><img src="${avatar}" style="width:28px;height:28px;border-radius:50%;margin-right:8px;">${s.account_name}</td><td class="${cls}">${sc>=0?'+':''}${sc}</td><td>${s.count}</td><td>${wr}%</td></tr>`;
+                    const wr  = s.count > 0 ? Math.round(s.wins/s.count*100)      + '%' : '-';
+                    const pr  = s.count > 0 ? Math.round(s.positives/s.count*100) + '%' : '-';
+                    return `<tr${rc}><td>${medal}</td><td><img src="${avatar}" style="width:28px;height:28px;border-radius:50%;margin-right:8px;">${s.account_name}</td><td class="${cls}">${sc>=0?'+':''}${sc}</td><td>${s.count}</td><td>${wr}</td><td>${pr}</td></tr>`;
                 }).join('')}</tbody>
             </table>`;
     }
@@ -435,19 +437,19 @@
         const cnt = all.length;
         const avg = cnt > 0 ? (total/cnt).toFixed(1) : '-';
         const max = cnt > 0 ? Math.max(...all.map(r => Number(r.final_score))) : '-';
-        const r1 = all.filter(r => r.rank === 1).length;
-        const rL = all.filter(r => r.rank >= r.player_count).length;
-        const wr = cnt > 0 ? (r1/cnt*100).toFixed(1)+'%' : '-';
-        const av = cnt > 0 ? ((1-rL/cnt)*100).toFixed(1)+'%' : '-';
-        const ar = cnt > 0 ? (all.reduce((s,r)=>s+r.rank,0)/cnt).toFixed(2) : '-';
+        const r1  = all.filter(r => Number(r.rank) === 1).length;
+        const pos = all.filter(r => Number(r.final_score) > 0).length;
+        const wr  = cnt > 0 ? (r1/cnt*100).toFixed(1)  + '%' : '-';
+        const pr  = cnt > 0 ? (pos/cnt*100).toFixed(1) + '%' : '-';
+        const ar  = cnt > 0 ? (all.reduce((s,r)=>s+Number(r.rank),0)/cnt).toFixed(2) : '-';
         document.getElementById('team-stats-grid').innerHTML = [
-            ['合計スコア', total>=0?'+'+total:total],
-            ['試合数', cnt],
+            ['合計スコア', total >= 0 ? '+'+total : total],
+            ['試合数',     cnt],
             ['平均スコア', avg],
-            ['最大スコア', max>=0?'+'+max:max],
-            ['1位率', wr],
-            ['ラス回避', av],
-            ['平均順位', ar],
+            ['最大スコア', max >= 0 ? '+'+max : max],
+            ['優勝率',     wr],
+            ['入賞率',     pr],
+            ['平均順位',   ar],
         ].map(([l,v])=>`<div class="col-6 col-md-4"><div class="stat-card-mini"><div class="stat-label-mini">${l}</div><div class="stat-value-mini">${v}</div></div></div>`).join('');
 
         const log = document.getElementById('team-battle-log');
