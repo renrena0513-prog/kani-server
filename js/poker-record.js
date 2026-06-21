@@ -216,6 +216,16 @@ function selectPlayer(idx, discordUserId, accountName) {
     badgeEl.style.display = 'flex';
 
     document.getElementById(`dropdown-list-${idx}`).style.display = 'none';
+
+    // 所属チームを自動セット（チームが未選択の場合のみ）
+    const currentTeamId = document.getElementById(`player-team-input-${idx}`)?.value;
+    if (!currentTeamId) {
+        const teamId = pokerMemberMap[discordUserId];
+        if (teamId) {
+            const team = allTeams.find(t => t.id === teamId);
+            if (team) applyTeam(idx, team.id, team.team_name);
+        }
+    }
 }
 
 function clearPlayer(idx) {
@@ -256,12 +266,16 @@ function renderTeamDropdownItems(idx) {
     list.innerHTML = html;
 }
 
-function selectTeam(idx, teamId, teamName) {
+function applyTeam(idx, teamId, teamName) {
     document.getElementById(`player-team-input-${idx}`).value = teamId;
     const display = document.getElementById(`selected-team-display-${idx}`);
     display.innerHTML = `🏅 <span style="font-weight:bold;">${teamName}</span>`;
+}
+
+function selectTeam(idx, teamId, teamName) {
+    applyTeam(idx, teamId, teamName);
     document.getElementById(`team-dropdown-list-${idx}`).style.display = 'none';
-    // チーム変更時は選択済みプレイヤーをクリアし、ドロップダウンを再フィルタ
+    // チーム変更時は選択済みプレイヤーをクリアしドロップダウンを再フィルタ
     clearPlayer(idx);
 }
 
