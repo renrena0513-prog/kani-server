@@ -66,6 +66,12 @@
         .modal-header-blue { background: var(--deep-blue); color: white; }
         .score-positive { color: #1e7e34; font-weight: 700; }
         .score-negative { color: #b31d1d; font-weight: 700; }
+        .team-icon { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 3px solid var(--gold); box-shadow: 0 4px 16px rgba(0,0,0,0.2); flex-shrink: 0; }
+        .team-icon-placeholder { width: 72px; height: 72px; border-radius: 50%; border: 3px dashed #ccc; display: flex; align-items: center; justify-content: center; font-size: 2rem; color: #bbb; background: #f8f9fa; flex-shrink: 0; }
+        .icon-preview-wrap { position: relative; display: inline-block; }
+        .icon-preview-img { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid var(--gold); display: none; }
+        .icon-upload-box { border: 2px dashed #ccc; border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; color: #666; transition: all 0.2s; }
+        .icon-upload-box:hover { border-color: var(--primary-blue); background: #f0f4ff; }
     </style>
 </head>
 <body>
@@ -123,7 +129,16 @@
 
         <div id="team-content" style="display:none;">
             <div class="content-card">
-                <h2 id="team-name-header" class="section-title">🏅 チーム名</h2>
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <div id="team-icon-wrap">
+                        <div class="team-icon-placeholder" id="team-icon-placeholder" title="アイコンを設定">🏅</div>
+                        <img id="team-icon-img" class="team-icon" src="" alt="チームアイコン" style="display:none;">
+                    </div>
+                    <div>
+                        <h2 id="team-name-header" class="section-title mb-1">🏅 チーム名</h2>
+                        <button id="icon-set-btn" class="btn btn-sm btn-outline-secondary" style="display:none;" data-bs-toggle="modal" data-bs-target="#iconModal">🖼️ アイコンを設定</button>
+                    </div>
+                </div>
 
                 <div id="join-requests-section" style="display:none;">
                     <h4 class="mb-3">📬 加入申請</h4>
@@ -165,6 +180,44 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- チームアイコン設定モーダル -->
+    <div class="modal fade" id="iconModal" tabindex="-1">
+        <div class="modal-dialog"><div class="modal-content">
+            <div class="modal-header modal-header-blue">
+                <h5 class="modal-title">🖼️ チームアイコンを設定</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">バッジ名 <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="icon-badge-name" placeholder="例：チームAのバッジ" maxlength="50">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">説明文</label>
+                    <textarea class="form-control" id="icon-badge-desc" rows="2" placeholder="チームの説明など"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">画像 <span class="text-danger">*</span> <span class="text-muted small">（100KB以内、PNG/JPG/GIF/WebP）</span></label>
+                    <div class="icon-upload-box" id="icon-upload-box" onclick="document.getElementById('icon-file-input').click()">
+                        <div id="icon-upload-prompt">
+                            <div style="font-size:2rem;">🖼️</div>
+                            <div class="mt-1">クリックして画像を選択</div>
+                        </div>
+                        <img id="icon-preview-img" class="icon-preview-img" alt="プレビュー">
+                        <div id="icon-file-name" class="text-muted small mt-1" style="display:none;"></div>
+                    </div>
+                    <input type="file" id="icon-file-input" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none;" onchange="onIconFileSelect(event)">
+                    <div id="icon-file-error" class="text-danger small mt-1" style="display:none;"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                <button type="button" class="btn btn-outline-danger btn-sm me-auto" id="remove-icon-btn" onclick="removeTeamIcon()" style="display:none;">削除</button>
+                <button type="button" class="btn btn-primary" id="confirmIconBtn" onclick="saveTeamIcon()">設定する</button>
+            </div>
+        </div></div>
     </div>
 
     <!-- リーダー譲渡モーダル -->
@@ -266,7 +319,7 @@
 
         const { data: team } = await supabaseClient
             .from('poker_teams')
-            .select('*')
+            .select('*, logo_badge:badges!logo_badge_id(image_url, name)')
             .eq('id', pProfile.team_id)
             .single();
         myTeam = team;
@@ -279,6 +332,15 @@
 
     async function renderTeamContent() {
         document.getElementById('team-name-header').textContent = '🏅 ' + myTeam.team_name;
+
+        // チームアイコン表示
+        const logoUrl = myTeam.logo_badge?.image_url || null;
+        if (logoUrl) {
+            document.getElementById('team-icon-img').src = logoUrl;
+            document.getElementById('team-icon-img').style.display = '';
+            document.getElementById('team-icon-placeholder').style.display = 'none';
+        }
+        if (isTeamAdmin) document.getElementById('icon-set-btn').style.display = '';
 
         if (isTeamAdmin) {
             document.getElementById('join-requests-section').style.display = 'block';
@@ -505,6 +567,10 @@
         const { data: req } = await supabaseClient.from('poker_team_join_requests').select('team_id').eq('id', requestId).single();
         await supabaseClient.from('poker_team_join_requests').update({ status: 'approved' }).eq('id', requestId);
         await supabaseClient.from('poker_profiles').upsert({ discord_user_id: discordId, team_id: req.team_id, team_name: myTeam.team_name }, { onConflict: 'discord_user_id' });
+        // チームバッジ付与
+        if (myTeam.logo_badge_id) {
+            await grantTeamBadgeToMembers(myTeam.logo_badge_id, [discordId]);
+        }
         location.reload();
     }
 
@@ -572,6 +638,123 @@
     }
 
     document.getElementById('joinTeamModal').addEventListener('show.bs.modal', loadTeamsForJoin);
+
+    // --- チームアイコン ---
+    let iconFileSelected = null;
+
+    document.getElementById('iconModal').addEventListener('show.bs.modal', () => {
+        // フォームリセット
+        document.getElementById('icon-badge-name').value = myTeam.logo_badge?.name || '';
+        document.getElementById('icon-badge-desc').value = '';
+        document.getElementById('icon-file-error').style.display = 'none';
+        iconFileSelected = null;
+        const preview = document.getElementById('icon-preview-img');
+        const prompt = document.getElementById('icon-upload-prompt');
+        const fname = document.getElementById('icon-file-name');
+        preview.style.display = 'none'; preview.src = '';
+        prompt.style.display = ''; fname.style.display = 'none';
+        document.getElementById('icon-file-input').value = '';
+        // 現在アイコンがあれば削除ボタン表示
+        document.getElementById('remove-icon-btn').style.display = myTeam.logo_badge_id ? '' : 'none';
+    });
+
+    function onIconFileSelect(event) {
+        const file = event.target.files[0];
+        const errEl = document.getElementById('icon-file-error');
+        errEl.style.display = 'none';
+        if (!file) return;
+        if (file.size > 100 * 1024) {
+            errEl.textContent = `ファイルサイズが大きすぎます（${(file.size/1024).toFixed(1)}KB）。100KB以内にしてください。`;
+            errEl.style.display = '';
+            event.target.value = '';
+            return;
+        }
+        iconFileSelected = file;
+        const preview = document.getElementById('icon-preview-img');
+        const prompt = document.getElementById('icon-upload-prompt');
+        const fname = document.getElementById('icon-file-name');
+        const reader = new FileReader();
+        reader.onload = e => { preview.src = e.target.result; preview.style.display = ''; };
+        reader.readAsDataURL(file);
+        prompt.style.display = 'none';
+        fname.textContent = file.name + ` (${(file.size/1024).toFixed(1)}KB)`;
+        fname.style.display = '';
+    }
+
+    async function saveTeamIcon() {
+        const name = document.getElementById('icon-badge-name').value.trim();
+        const desc = document.getElementById('icon-badge-desc').value.trim();
+        const errEl = document.getElementById('icon-file-error');
+        errEl.style.display = 'none';
+
+        if (!name) { errEl.textContent = 'バッジ名を入力してください'; errEl.style.display = ''; return; }
+        if (!iconFileSelected && !myTeam.logo_badge_id) { errEl.textContent = '画像を選択してください'; errEl.style.display = ''; return; }
+
+        const btn = document.getElementById('confirmIconBtn');
+        btn.disabled = true; btn.textContent = '保存中...';
+
+        try {
+            let badgeId = myTeam.logo_badge_id;
+
+            if (iconFileSelected) {
+                // 画像アップロード
+                const ext = iconFileSelected.name.split('.').pop();
+                const fileName = `team_poker_${myTeam.id}_${Date.now()}.${ext}`;
+                const { error: upErr } = await supabaseClient.storage.from('badges').upload(fileName, iconFileSelected, { contentType: iconFileSelected.type, upsert: true });
+                if (upErr) throw upErr;
+                const { data: urlData } = supabaseClient.storage.from('badges').getPublicUrl(fileName);
+                const imageUrl = urlData.publicUrl;
+
+                if (badgeId) {
+                    // 既存バッジを更新
+                    const { error } = await supabaseClient.from('badges').update({ name, description: desc || null, image_url: imageUrl }).eq('id', badgeId);
+                    if (error) throw error;
+                } else {
+                    // 新規バッジ作成
+                    const { data: newBadge, error } = await supabaseClient.from('badges').insert([{
+                        name, description: desc || null, image_url: imageUrl,
+                        price: 0, is_shop_listed: false, fixed_rarity_name: 'チーム限定'
+                    }]).select('id').single();
+                    if (error) throw error;
+                    badgeId = newBadge.id;
+                }
+            } else if (badgeId) {
+                // 画像変更なし、名前・説明のみ更新
+                await supabaseClient.from('badges').update({ name, description: desc || null }).eq('id', badgeId);
+            }
+
+            // poker_teams に logo_badge_id をセット
+            await supabaseClient.from('poker_teams').update({ logo_badge_id: badgeId }).eq('id', myTeam.id);
+
+            // 全メンバーにバッジ付与（重複なし）
+            await grantTeamBadgeToMembers(badgeId, teamMembers.map(m => m.discord_user_id));
+
+            bootstrap.Modal.getInstance(document.getElementById('iconModal')).hide();
+            location.reload();
+        } catch(e) {
+            errEl.textContent = 'エラー: ' + e.message;
+            errEl.style.display = '';
+        } finally {
+            btn.disabled = false; btn.textContent = '設定する';
+        }
+    }
+
+    async function grantTeamBadgeToMembers(badgeId, discordIds) {
+        for (const uid of discordIds) {
+            const { data: exist } = await supabaseClient.from('user_badges_new')
+                .select('uuid').eq('user_id', uid).eq('badge_id', badgeId).limit(1);
+            if (!exist || exist.length === 0) {
+                await supabaseClient.from('user_badges_new').insert([{ user_id: uid, badge_id: badgeId, purchased_price: 0 }]);
+            }
+        }
+    }
+
+    async function removeTeamIcon() {
+        if (!confirm('チームアイコンを削除しますか？')) return;
+        await supabaseClient.from('poker_teams').update({ logo_badge_id: null }).eq('id', myTeam.id);
+        bootstrap.Modal.getInstance(document.getElementById('iconModal')).hide();
+        location.reload();
+    }
     </script>
 </body>
 </html>
