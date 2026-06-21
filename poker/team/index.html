@@ -610,20 +610,43 @@
     }
 
     async function kickMember(discordId, name) {
-        if (!confirm(`${name} をチームから追放しますか？`)) return;
-        await supabaseClient.from('poker_profiles').upsert({ discord_user_id: discordId, team_id: null, team_name: null }, { onConflict: 'discord_user_id' });
-        await supabaseClient.from('poker_team_join_requests').delete().eq('team_id', myTeam.id).eq('discord_user_id', discordId);
-        location.reload();
+        if (!confirm(`${name}の追放をサイト管理者に申請しますか？`)) return;
+        try {
+            const requesterName = teamMembers.find(m => m.discord_user_id === effectiveDiscordId)?.account_name || '不明';
+            await supabaseClient.from('team_admin_requests').insert({
+                type: 'kick',
+                team_id: myTeam.id,
+                team_name: myTeam.team_name,
+                target_discord_id: discordId,
+                target_name: name,
+                requester_discord_id: effectiveDiscordId,
+                requester_name: requesterName,
+                status: 'pending'
+            });
+            alert('追放申請をサイト管理者に送信しました。承認をお待ちください。');
+        } catch (err) {
+            console.error('追放申請エラー:', err);
+            alert('エラーが発生しました');
+        }
     }
 
     async function dissolveTeam() {
-        if (!confirm('チームを解散しますか？メンバー全員がチームから外れます。')) return;
-        for (const m of teamMembers) {
-            await supabaseClient.from('poker_profiles').upsert({ discord_user_id: m.discord_user_id, team_id: null, team_name: null }, { onConflict: 'discord_user_id' });
+        if (!confirm('チームの解散をサイト管理者に申請しますか？')) return;
+        try {
+            const requesterName = teamMembers.find(m => m.discord_user_id === effectiveDiscordId)?.account_name || '不明';
+            await supabaseClient.from('team_admin_requests').insert({
+                type: 'dissolution',
+                team_id: myTeam.id,
+                team_name: myTeam.team_name,
+                requester_discord_id: effectiveDiscordId,
+                requester_name: requesterName,
+                status: 'pending'
+            });
+            alert('解散申請をサイト管理者に送信しました。承認をお待ちください。');
+        } catch (err) {
+            console.error('解散申請エラー:', err);
+            alert('エラーが発生しました');
         }
-        await supabaseClient.from('poker_team_join_requests').delete().eq('team_id', myTeam.id);
-        await supabaseClient.from('poker_teams').delete().eq('id', myTeam.id);
-        location.reload();
     }
 
     function renderTransferList() {
