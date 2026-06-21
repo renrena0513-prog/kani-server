@@ -562,6 +562,16 @@ async function submitScores() {
         submitted_by_discord_user_id: submittedBy
     }));
 
+    // デイリーボーナスチェック（挿入前に本日初記録かを確認）
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const { count: todayCount } = await supabaseClient
+        .from('poker_results')
+        .select('id', { count: 'exact', head: true })
+        .eq('submitted_by_discord_user_id', submittedBy)
+        .gte('event_datetime', todayStart.toISOString());
+    const isFirstRecordToday = (todayCount === 0);
+
     document.getElementById('loading-overlay').style.display = 'flex';
 
     try {
@@ -618,8 +628,31 @@ async function submitScores() {
             }
         }
 
-        await sendDiscordNotification(dataToInsert, playerCount);
-        showNotice('スコアを送信しました！コインが各プレイヤーに付与されました。', 'success');
+        // デイリーボーナス付与（本日初記録の記録者に+10,000コイン）
+        let dailyBonusAwarded = false;
+        if (isFirstRecordToday && submittedBy) {
+            try {
+                const { data: recProf } = await supabaseClient
+                    .from('profiles').select('coins, total_assets')
+                    .eq('discord_user_id', submittedBy).single();
+                await supabaseClient.from('profiles').update({
+                    coins: (recProf?.coins || 0) + 10000,
+                    total_assets: (recProf?.total_assets || 0) + 10000
+                }).eq('discord_user_id', submittedBy);
+                await logActivity(submittedBy, 'poker', {
+                    amount: 10000,
+                    matchId: matchId,
+                    details: { note: '記録者デイリーボーナス' }
+                });
+                dailyBonusAwarded = true;
+            } catch (err) {
+                console.error('デイリーボーナスエラー:', err);
+            }
+        }
+
+        await sendDiscordNotification(dataToInsert, playerCount, dailyBonusAwarded);
+        const bonusMsg = dailyBonusAwarded ? '　🎁 本日初記録ボーナス +10,000コイン！' : '';
+        showNotice('スコアを送信しました！コインが各プレイヤーに付与されました。' + bonusMsg, 'success');
         clearFormAfterSubmit();
         resetBtn();
     } catch (err) {
@@ -634,34 +667,47 @@ function clearFormAfterSubmit() {
     // 送信後もフォームの選択状態を保持する（何もしない）
 }
 
-async function sendDiscordNotification(matchData, playerCount) {
+async function sendDiscordNotification(matchData, playerCount, dailyBonusAwarded = false) {
     if (!matchData || matchData.length === 0) return;
     if (typeof DISCORD_WEBHOOK_URL === 'undefined' || !DISCORD_WEBHOOK_URL) return;
 
     const first = matchData[0];
     const matchType = first.match_mode;
     const coinTable = POKER_COIN_TABLE[playerCount] || {};
-
     const sorted = [...matchData].sort((a, b) => a.rank - b.rank);
-    const scoreDisplay = sorted.map(p => {
-        const medal = p.rank === 1 ? '🥇' : p.rank === 2 ? '🥈' : p.rank === 3 ? '🥉' : '🔹';
-        const nameDisplay = p.discord_user_id ? `<@${p.discord_user_id}>` : p.account_name;
-        const teamInfo = p.team_name ? ` (${p.team_name})` : '';
-        const scoreStr = (p.final_score > 0 ? '+' : '') + p.final_score;
-        const reward = coinTable[p.rank] || 0;
-        return `${medal} **${p.rank}位**: ${nameDisplay}${teamInfo}\n` +
-               `　　 **${scoreStr} pts**　(💰+${reward})`;
-    }).join('\n');
 
-    const reporterMention = first.submitted_by_discord_user_id ? `<@${first.submitted_by_discord_user_id}>` : '不明';
+    const MEDALS = ['🥇', '🥈', '🥉'];
+    const rankFields = sorted.map(p => {
+        const medal = MEDALS[p.rank - 1] || `**${p.rank}位**`;
+        const nameDisplay = p.discord_user_id ? `<@${p.discord_user_id}>` : `**${p.account_name}**`;
+        const teamInfo = p.team_name ? `\n🏅 ${p.team_name}` : '';
+        const scoreStr = (p.final_score > 0 ? '+' : '') + p.final_score;
+        const reward = (coinTable[p.rank] || 0).toLocaleString();
+        return {
+            name: `${medal}　${p.rank}位`,
+            value: `${nameDisplay}${teamInfo}\n> **${scoreStr} pts** ・ 💰 +${reward}`,
+            inline: false
+        };
+    });
+
+    const reporterMention = first.submitted_by_discord_user_id
+        ? `<@${first.submitted_by_discord_user_id}>`
+        : '不明';
+
+    const fields = [...rankFields];
+    if (dailyBonusAwarded) {
+        fields.push({
+            name: '🎁 本日初記録ボーナス',
+            value: `${reporterMention} に **+10,000 コイン** 付与！`,
+            inline: false
+        });
+    }
+    fields.push({ name: '✍️ 記録者', value: reporterMention, inline: false });
 
     const embed = {
         title: `🃏 ${matchType} 結果`,
-        description: scoreDisplay + '\n━━━━━━━━━━━━━━━━',
         color: 0x1a4d8c,
-        fields: [
-            { name: '✍️ 記録者', value: reporterMention, inline: true }
-        ],
+        fields,
         timestamp: new Date().toISOString(),
         footer: { text: 'かに鯖ポーカー大会システム' }
     };
