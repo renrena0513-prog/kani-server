@@ -397,9 +397,9 @@
         teamIconMap = {};
         (teams || []).forEach(t => { if (t.icon_url) teamIconMap[t.team_name] = t.icon_url; });
 
-        const { data: pokerProfiles } = await supabaseClient.from('poker_profiles').select('discord_user_id,chips').gt('chips', 0);
+        const { data: tipProfiles } = await supabaseClient.from('profiles').select('discord_user_id,tip').gt('tip', 0);
         chipMap = {};
-        (pokerProfiles || []).forEach(p => { chipMap[p.discord_user_id] = p.chips || 0; });
+        (tipProfiles || []).forEach(p => { chipMap[p.discord_user_id] = p.tip || 0; });
 
         buildTourFilter();
 

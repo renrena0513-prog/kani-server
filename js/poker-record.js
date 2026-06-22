@@ -681,7 +681,7 @@ async function submitScores() {
             try {
                 const { data: profile } = await supabaseClient
                     .from('profiles')
-                    .select('coins, total_assets, gacha_tickets')
+                    .select('coins, total_assets, gacha_tickets, tip')
                     .eq('discord_user_id', player.discord_user_id)
                     .single();
 
@@ -699,18 +699,11 @@ async function submitScores() {
                     if (updateErr) console.error(`プロフィール更新エラー (${player.account_name}):`, updateErr);
                 }
 
-                // チップ付与（poker_profiles）
+                // チップ付与（profiles.tip）
                 if (chipReward > 0) {
-                    const { data: pp } = await supabaseClient
-                        .from('poker_profiles')
-                        .select('chips')
-                        .eq('discord_user_id', player.discord_user_id)
-                        .maybeSingle();
-                    if (pp !== null) {
-                        await supabaseClient.from('poker_profiles')
-                            .update({ chips: (pp?.chips || 0) + chipReward })
-                            .eq('discord_user_id', player.discord_user_id);
-                    }
+                    await supabaseClient.from('profiles')
+                        .update({ tip: (profile?.tip || 0) + chipReward })
+                        .eq('discord_user_id', player.discord_user_id);
                 }
 
                 await logActivity(player.discord_user_id, 'poker', {
