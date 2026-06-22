@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 
 <head>
@@ -477,7 +477,7 @@
                         return {
                             discord_user_id: id,
                             account_name: profile.account_name || id,
-                            avatar_url: profile.avatar_url || 'https://via.placeholder.com/40',
+                            avatar_url: profile.avatar_url || 'https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=40',
                             revenue: revenueMap[id] || 0,
                             listings: creatorCounts[id] || 0,
                             sales: salesMap[id] || 0
@@ -502,7 +502,7 @@
                                 <td>
                                     <div class="user-cell">
                                         <div class="user-main">
-                                            <img src="${item.avatar_url}" class="user-avatar" onerror="this.src='https://via.placeholder.com/40'">
+                                            <img src="${item.avatar_url}" class="user-avatar" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=40'">
                                             <a href="../mypage/index.html?user=${item.discord_user_id}" class="text-decoration-none text-dark fw-bold user-name">
                                                 ${item.account_name || '名称未設定'}
                                             </a>
@@ -631,7 +631,7 @@
                 tbody.innerHTML = rankingData.map((item, index) => {
                     const rank = index + 1;
                     const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
-                    const avatar = item.avatar_url || 'https://via.placeholder.com/40';
+                    const avatar = item.avatar_url || 'https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=40';
 
                     // 左バッジのミュータント判定とHTML生成
                     let badgeImgLeft = '';
@@ -667,7 +667,7 @@
                             <td>
                                 <div class="user-cell">
                                     <div class="user-main">
-                                        <img src="${avatar}" class="user-avatar" onerror="this.src='https://via.placeholder.com/40'">
+                                        <img src="${avatar}" class="user-avatar" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=40'">
                                         ${badgeImgLeft}
                                         <a href="../mypage/index.html?user=${item.discord_user_id}" class="text-decoration-none text-dark fw-bold user-name">
                                             ${item.account_name || '名称未設定'}

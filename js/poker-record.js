@@ -1,4 +1,4 @@
-// ポーカー記録ページ用ロジック
+﻿// ポーカー記録ページ用ロジック
 let allProfiles = [];
 let allTeams = [];
 let pokerMemberMap = {}; // discord_user_id -> team_id (poker_profilesから)
@@ -408,10 +408,10 @@ function renderDropdownItems(idx, profiles) {
     }
     list.innerHTML = profiles.map(p => {
         const display = p.account_name || p.discord_user_id;
-        const avatar = p.avatar_url || 'https://via.placeholder.com/24';
+        const avatar = p.avatar_url || 'https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=24';
         return `
             <div class="dropdown-item-flex" onclick="selectPlayer(${idx}, '${p.discord_user_id}', '${(p.account_name || '').replace(/'/g, "\\'")}')">
-                <img src="${avatar}" class="dropdown-avatar" onerror="this.src='https://via.placeholder.com/24'">
+                <img src="${avatar}" class="dropdown-avatar" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=24'">
                 <span class="small">${display}</span>
             </div>`;
     }).join('');
@@ -428,7 +428,7 @@ function selectPlayer(idx, discordUserId, accountName) {
     input.style.display = 'none';
 
     const avatarImg = badgeEl.querySelector('.badge-avatar');
-    avatarImg.src = profile?.avatar_url || 'https://via.placeholder.com/24';
+    avatarImg.src = profile?.avatar_url || 'https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=24';
     badgeEl.querySelector('.name').textContent = accountName || discordUserId;
     badgeEl.style.display = 'flex';
 

@@ -1,4 +1,4 @@
-console.log('mahjong-record.js version: 2026-01-24-01');
+﻿console.log('mahjong-record.js version: 2026-01-24-01');
 // 麻雀スコア記録ページ用ロジック
 let allProfiles = [];
 let allTeams = [];
@@ -693,7 +693,7 @@ function renderDropdownItems(idx, profiles) {
     }
     list.innerHTML = profiles.map(p => {
         const display = p.account_name || p.discord_user_id;
-        const avatarUrl = p.avatar_url || 'https://via.placeholder.com/24';
+        const avatarUrl = p.avatar_url || 'https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=24';
         const badge = p.badges;
         const badgeRight = p.badges_right;
 
@@ -722,7 +722,7 @@ function renderDropdownItems(idx, profiles) {
 
         return `
             <div class="dropdown-item-flex" onclick="selectPlayer(${idx}, '${p.discord_user_id}', '${(p.account_name || '').replace(/'/g, "\\'")}')">
-                <img src="${avatarUrl}" class="dropdown-avatar" onerror="this.src='https://via.placeholder.com/24'">
+                <img src="${avatarUrl}" class="dropdown-avatar" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=24'">
                 ${badgeHtmlLeft}
                 <span class="small">${display}</span>
                 ${badgeHtmlRight}
@@ -744,7 +744,7 @@ function selectPlayer(idx, discordUserId, accountName) {
 
     // アバター設定
     const avatarImg = badgeContainer.querySelector('.badge-avatar');
-    avatarImg.src = (profile && profile.avatar_url) ? profile.avatar_url : 'https://via.placeholder.com/24';
+    avatarImg.src = (profile && profile.avatar_url) ? profile.avatar_url : 'https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=24';
 
     // 名前設定
     badgeContainer.querySelector('.name').textContent = accountName || discordUserId;
@@ -888,7 +888,7 @@ function refreshYakumanPlayerOptions() {
 
 function buildYakumanDropdownItem(player, rowId) {
     const profile = allProfiles.find(p => p.discord_user_id === player.id) || {};
-    const avatarUrl = profile.avatar_url || 'https://via.placeholder.com/24';
+    const avatarUrl = profile.avatar_url || 'https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=24';
     const badgeLeft = profile.badges;
     const badgeRight = profile.badges_right;
     let badgeHtmlLeft = '';
@@ -911,7 +911,7 @@ function buildYakumanDropdownItem(player, rowId) {
     }
     return `
         <div class="dropdown-item-flex" onclick="selectYakumanPlayer('${rowId}', '${player.id}', '${escapeHtml(player.name).replace(/'/g, "\\'")}')">
-            <img src="${avatarUrl}" class="dropdown-avatar" onerror="this.src='https://via.placeholder.com/24'">
+            <img src="${avatarUrl}" class="dropdown-avatar" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=24'">
             ${badgeHtmlLeft}
             <span class="small">${escapeHtml(player.name)}</span>
             ${badgeHtmlRight}
@@ -939,7 +939,7 @@ function selectYakumanPlayer(rowId, discordUserId, accountName) {
     if (hidden) hidden.value = discordUserId;
     if (display) {
         const profile = allProfiles.find(p => p.discord_user_id === discordUserId) || {};
-        const avatarUrl = profile.avatar_url || 'https://via.placeholder.com/24';
+        const avatarUrl = profile.avatar_url || 'https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=24';
         const badgeLeft = profile.badges;
         const badgeRight = profile.badges_right;
         let badgeHtmlLeft = '';
@@ -962,7 +962,7 @@ function selectYakumanPlayer(rowId, discordUserId, accountName) {
         }
         display.innerHTML = `
             <div class="d-flex align-items-center gap-1">
-                <img src="${avatarUrl}" class="dropdown-avatar" onerror="this.src='https://via.placeholder.com/24'">
+                <img src="${avatarUrl}" class="dropdown-avatar" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=24'">
                 ${badgeHtmlLeft}
                 <span class="small">${escapeHtml(accountName || discordUserId)}</span>
                 ${badgeHtmlRight}

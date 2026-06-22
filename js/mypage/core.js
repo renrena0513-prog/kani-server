@@ -1,4 +1,4 @@
-        let isViewMode = false;
+﻿        let isViewMode = false;
         let targetId = null;
         let allProfiles = []; // 全ユーザーのプロファイルリスト
         let rarityThresholds = []; // レアリティ境界データ
@@ -204,8 +204,8 @@
 
             // アバター（なりすまし中はDBから、そうでなければDiscord）
             const avatarUrl = impersonated
-                ? (profile?.avatar_url || 'https://via.placeholder.com/150')
-                : (discordUser.avatar_url || 'https://via.placeholder.com/150');
+                ? (profile?.avatar_url || 'https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=150')
+                : (discordUser.avatar_url || 'https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=150');
             document.getElementById('user-avatar').src = avatarUrl;
 
             // 名前（なりすまし中はなりすましユーザー名を優先）
@@ -388,7 +388,7 @@
             }
 
             if (profile) {
-                document.getElementById('user-avatar').src = profile.avatar_url || 'https://via.placeholder.com/150';
+                document.getElementById('user-avatar').src = profile.avatar_url || 'https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=150';
 
                 // 名前を設定
                 document.getElementById('user-name').textContent = profile.account_name || '名称未設定';

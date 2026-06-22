@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 
 <head>
@@ -556,7 +556,7 @@
 
                     if (ownerProfile && !ownerProfile.is_hidden) {
                         document.getElementById('badge-owner-name').textContent = ownerProfile.account_name || '名称未設定';
-                        document.getElementById('badge-owner-avatar').src = ownerProfile.avatar_url || 'https://via.placeholder.com/32';
+                        document.getElementById('badge-owner-avatar').src = ownerProfile.avatar_url || 'https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=32';
                         document.getElementById('badge-owner-link').href = `../mypage/index.html?user=${badge.discord_user_id}`;
                         document.getElementById('badge-owner-section').style.display = 'flex';
                     }
@@ -668,7 +668,7 @@
                 listEl.innerHTML = sortedOwners.map(o => {
                     const profile = o.profiles;
                     if (!profile) return '';
-                    const avatarUrl = profile.avatar_url || 'https://via.placeholder.com/48';
+                    const avatarUrl = profile.avatar_url || 'https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=48';
                     const name = profile.account_name || '名称未設定';
                     const badgeIcon = profile.badges;
                     const badgeIconRight = profile.badges_right;
@@ -723,7 +723,7 @@
 
                     return `
                         <a href="../mypage/index.html?user=${profile.discord_user_id}" class="owner-item text-decoration-none text-dark d-flex align-items-center" style="gap: 8px;">
-                            <img src="${avatarUrl}" alt="${name}" class="owner-avatar" onerror="this.src='https://via.placeholder.com/48'">
+                            <img src="${avatarUrl}" alt="${name}" class="owner-avatar" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=48'">
                             ${badgeHtmlLeft}
                             <span class="fw-bold fs-5">${name}</span>
                             ${badgeHtmlRight}

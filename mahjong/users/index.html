@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 
 <head>
@@ -546,7 +546,7 @@
         }
 
         function createUserCard(user) {
-            const avatarUrl = user.avatar_url || 'https://via.placeholder.com/48';
+            const avatarUrl = user.avatar_url || 'https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=48';
             const name = user.account_name || '名称未設定';
             const badge = user.badges;
             const badgeRight = user.badges_right;
@@ -575,7 +575,7 @@
 
             return `
 <a href="../../mypage/index.html?user=${user.discord_user_id}" class="user-card text-decoration-none" style="gap: 8px;">
-    <img src="${avatarUrl}" alt="${name}" class="user-avatar" onerror="this.src='https://via.placeholder.com/48'">
+    <img src="${avatarUrl}" alt="${name}" class="user-avatar" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=48'">
     ${badgeHtmlLeft}
     <span class="user-name">${name}</span>
     ${badgeHtmlRight}

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 
 <head>
@@ -1108,7 +1108,7 @@
 
             membersList.innerHTML = members.map(member => {
                 const isAdmin = member.discord_user_id === myTeam.creator_discord_id;
-                const avatarUrl = member.avatar_url || 'https://via.placeholder.com/48';
+                const avatarUrl = member.avatar_url || 'https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=48';
                 const name = member.account_name || '名称未設定';
                 const badge = member.badges;
                 const badgeRight = member.badges_right;
@@ -1142,7 +1142,7 @@
                 return `
                     <div class="member-card">
                         <a href="../../mypage/index.html?user=${member.discord_user_id}" class="d-flex align-items-center text-decoration-none text-dark flex-grow-1">
-                            <img src="${avatarUrl}" alt="${name}" class="member-avatar" onerror="this.src='https://via.placeholder.com/48'">
+                            <img src="${avatarUrl}" alt="${name}" class="member-avatar" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=48'">
                             ${badgeHtmlLeft}
                             <span class="member-name hover-underline">${name}</span>
                             ${badgeHtmlRight}
@@ -1170,11 +1170,11 @@
             }
 
             container.innerHTML = otherMembers.map(member => {
-                const avatarUrl = member.avatar_url || 'https://via.placeholder.com/48';
+                const avatarUrl = member.avatar_url || 'https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=48';
                 const name = member.account_name || '名称未設定';
                 return `
                     <div class="member-card member-select" onclick="selectNewLeader('${member.discord_user_id}', this)">
-                        <img src="${avatarUrl}" alt="${name}" class="member-avatar" onerror="this.src='https://via.placeholder.com/48'">
+                        <img src="${avatarUrl}" alt="${name}" class="member-avatar" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=48'">
                         <span class="member-name">${name}</span>
                     </div>
                 `;
@@ -1230,12 +1230,12 @@
 
             container.innerHTML = requests.map(req => {
                 const profile = profileMap[req.requester_discord_id] || {};
-                const avatarUrl = profile.avatar_url || 'https://via.placeholder.com/48';
+                const avatarUrl = profile.avatar_url || 'https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=48';
                 const name = profile.account_name || '名称未設定';
 
                 return `
                     <div class="request-card" id="join-request-${req.id}">
-                        <img src="${avatarUrl}" alt="${name}" class="member-avatar" onerror="this.src='https://via.placeholder.com/48'">
+                        <img src="${avatarUrl}" alt="${name}" class="member-avatar" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=48'">
                         <span class="member-name">${name}</span>
                         <div class="request-actions">
                             <button class="btn-approve" onclick="approveJoin('${req.id}', '${req.requester_discord_id}')">✓ 許可</button>
@@ -1271,12 +1271,12 @@
 
             container.innerHTML = requests.map(req => {
                 const profile = profileMap[req.requester_discord_id] || {};
-                const avatarUrl = profile.avatar_url || 'https://via.placeholder.com/48';
+                const avatarUrl = profile.avatar_url || 'https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=48';
                 const name = profile.account_name || '名称未設定';
 
                 return `
                     <div class="request-card leave-request-card" id="leave-request-${req.id}">
-                        <img src="${avatarUrl}" alt="${name}" class="member-avatar" onerror="this.src='https://via.placeholder.com/48'">
+                        <img src="${avatarUrl}" alt="${name}" class="member-avatar" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=48'">
                         <span class="member-name">${name}</span>
                         <div class="request-actions">
                             <button class="btn-approve" onclick="approveLeave('${req.id}', '${req.requester_discord_id}')">✓ 許可</button>
@@ -1461,7 +1461,7 @@
             teamMembers.forEach(m => {
                 memberScores[m.discord_user_id] = {
                     name: m.account_name || '名称未設定',
-                    avatar: m.avatar_url || 'https://via.placeholder.com/32',
+                    avatar: m.avatar_url || 'https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=32',
                     totalScore: 0,
                     games: 0,
                     yonmaCount: 0,
@@ -1525,7 +1525,7 @@
                                     <td data-label="メンバー">
                                         <div class="member-score-header">
                                             <span class="rank-badge-inline">順位${i + 1}</span>
-                                            <img src="${m.avatar}" class="rounded-circle" width="24" height="24" onerror="this.src='https://via.placeholder.com/24'">
+                                            <img src="${m.avatar}" class="rounded-circle" width="24" height="24" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=24'">
                                             <span class="member-name">${m.name}</span>
                                         </div>
                                         <div class="member-score-mobile-stats">
@@ -1850,7 +1850,7 @@
                         return (b.final_score || 0) - (a.final_score || 0);
                     }).map(p => ({
                         ...p,
-                        avatar_url: profileMap[p.discord_user_id] || 'https://via.placeholder.com/32'
+                        avatar_url: profileMap[p.discord_user_id] || 'https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=32'
                     }));
                     return { ...match, players: sortedPlayers };
                 });
@@ -1902,7 +1902,7 @@
                                             <span class="text-truncate">${p.team_name || ''}</span>
                                         </div>
                                         <div class="player-info-row">
-                                            <img src="${p.avatar_url}" class="rounded-circle" width="22" height="22" onerror="this.src='https://via.placeholder.com/22'">
+                                            <img src="${p.avatar_url}" class="rounded-circle" width="22" height="22" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=22'">
                                             <span class="rank-emoji">${rankEmoji}</span>
                                             <span class="player-name text-truncate" style="flex-grow: 1;">${p.account_name}</span>
                                             <span class="fw-bold ${scoreClass} ms-2" style="font-size: 0.95rem; min-width: 45px; text-align: right;">${scorePrefix}${Number(score).toLocaleString()}</span>
