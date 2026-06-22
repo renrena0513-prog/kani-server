@@ -807,13 +807,13 @@
                     </div>
 
                     <div class="d-grid gap-3">
-                        <!-- コインで購入 -->
+                        <!-- マネーで購入 -->
                         <button id="btn-buy-coins"
                             class="btn btn-outline-dark py-3 px-4 text-start position-relative border-2"
                             style="border-radius: 12px;">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <div class="fw-bold">💵 コインで購入</div>
+                                    <div class="fw-bold">💵 マネーで購入</div>
                                     <div class="small opacity-75">現在の所持: <span id="modal-user-coins">0</span></div>
                                 </div>
                                 <div class="fs-5 fw-bold text-primary">💵 <span id="modal-badge-price">0</span></div>
@@ -2343,7 +2343,7 @@
         }
 
         /**
-         * コインでの購入実行
+         * マネーでの購入実行
          */
         async function executePurchaseWithCoins() {
             if (!currentSelectedBadge) return;
@@ -2405,7 +2405,7 @@
                     details: {
                         badge_name: name,
                         is_mutant: data.is_mutant,
-                        method: isTicket ? `${ticketRarity}引換券` : 'コイン'
+                        method: isTicket ? `${ticketRarity}引換券` : 'マネー'
                     }
                 });
                 if (typeof cachedDailyPurchaseCount === 'number') {
@@ -2417,7 +2417,7 @@
 
                 // 権利者への売買還元
                 // 固定型: 20%, 変動型: 10%
-                // コイン購入・引換券購入ともに販売価格から計算
+                // マネー購入・引換券購入ともに販売価格から計算
                 const { data: badgeInfo } = await supabaseClient
                     .from('badges')
                     .select('discord_user_id, sales_type')
@@ -2453,7 +2453,7 @@
                                 details: {
                                     badge_name: name,
                                     buyer: currentUserId,
-                                    method: isTicket ? `${ticketRarity}引換券` : 'コイン'
+                                    method: isTicket ? `${ticketRarity}引換券` : 'マネー'
                                 }
                             });
                         }

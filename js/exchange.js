@@ -20,7 +20,7 @@
 
     const MATERIAL_DEFS = {
         badge: { label: 'バッジ', icon: '🏅' },
-        coins: { label: 'コイン', icon: '💵' },
+        coins: { label: 'マネー', icon: '💵' },
         gacha_tickets: { label: '祈願符', icon: '🎫' },
         mangan_tickets: { label: '満願符', icon: '🎴' }
     };
@@ -469,7 +469,7 @@
                 <div class="d-flex gap-2 align-items-center mb-1">
                     <select class="form-select form-select-sm mat-type" data-row="${rowId}">
                         <option value="badge">バッジ</option>
-                        <option value="coins">コイン</option>
+                        <option value="coins">マネー</option>
                         <option value="gacha_tickets">祈願符</option>
                         <option value="mangan_tickets">満願符</option>
                     </select>

@@ -187,7 +187,7 @@
             const discordUser = user.user_metadata;
             const impersonated = getImpersonatedUser();
 
-            // ユーザー情報の取得（バッジ情報・コイン・チーム情報を含む）
+            // ユーザー情報の取得（バッジ情報・マネー・チーム情報を含む）
             const { data: profile } = await supabaseClient
                 .from('profiles')
                 .select('account_name, avatar_url, coins, total_assets, gacha_tickets, exchange_tickets, tip, equipped_badge_id, equipped_badge_id_right, team_id, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name), teams!team_id(team_name, logo_badge:badges!logo_badge_id(image_url))')
@@ -287,7 +287,7 @@
 
 
 
-            // コイン表示の更新
+            // マネー表示の更新
             const coinsDisplay = document.getElementById('user-coins-display');
             const coinsValue = document.getElementById('user-coins-value');
             const totalAssetsValue = document.getElementById('total-assets-value');
@@ -440,7 +440,7 @@
                     }
                 }
 
-                // コイン表示の更新
+                // マネー表示の更新
                 const coins = profile?.coins || 0;
                 const coinsDisplay = document.getElementById('user-coins-display');
                 const coinsValue = document.getElementById('user-coins-value');

@@ -164,7 +164,7 @@
         </div>
     </div>
 
-    <!-- コイン送金金額入力モーダル -->
+    <!-- マネー送金金額入力モーダル -->
     <div class="modal fade" id="coinAmountModal" tabindex="-1" aria-labelledby="coinAmountModalLabel"
         aria-hidden="true">
         <div class="modal-dialog modal-sm">
@@ -176,7 +176,7 @@
                 <div class="modal-body">
                     <p id="coin-transfer-target-name" class="fw-bold text-center mb-3"></p>
                     <div class="mb-3">
-                        <label class="form-label">送金するコイン数</label>
+                        <label class="form-label">送金するマネー数</label>
                         <input type="number" id="coin-transfer-amount" class="form-control" placeholder="金額..." min="1">
                         <div class="form-text mt-2 text-center">あなたの所持金: 💵 <span id="my-coins-ref">0</span></div>
                     </div>

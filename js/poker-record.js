@@ -21,7 +21,7 @@ const POKER_CHIP_TABLE = {
     8: { 1: 220, 2: 140, 3: 110, 4:  50, 5:  40, 6:  30, 7:  20, 8:  10 },
 };
 
-// コイン報酬テーブル（人数 → 順位 → 固定コイン数）
+// マネー報酬テーブル（人数 → 順位 → 固定マネー数）
 const POKER_COIN_TABLE = {
     4: { 1: 1800, 2: 1400, 3:  600, 4:  200 },
     5: { 1: 2200, 2: 1800, 3: 1200, 4:  600, 5:  200 },
@@ -714,13 +714,13 @@ async function submitScores() {
                         chip_reward: chipReward,
                     }
                 });
-                console.log(`${player.account_name} 報酬: コイン=${coinReward}, チケット=${ticketReward}, チップ=${chipReward}`);
+                console.log(`${player.account_name} 報酬: マネー=${coinReward}, チケット=${ticketReward}, チップ=${chipReward}`);
             } catch (err) {
                 console.error(`報酬付与エラー (${player.account_name}):`, err);
             }
         }
 
-        // デイリーボーナス付与（各プレイヤーの本日初参加なら+10,000コイン）
+        // デイリーボーナス付与（各プレイヤーの本日初参加なら+10,000マネー）
         const bonusReceivers = [];
         for (const player of dataToInsert) {
             if (!player.discord_user_id) continue;
@@ -745,8 +745,8 @@ async function submitScores() {
         }
 
         await sendDiscordNotification(dataToInsert, playerCount, bonusReceivers, chipTable);
-        const bonusMsg = bonusReceivers.length > 0 ? `　🎁 初参加ボーナス +10,000コイン: ${bonusReceivers.join('、')}` : '';
-        showNotice('スコアを送信しました！コインが各プレイヤーに付与されました。' + bonusMsg, 'success');
+        const bonusMsg = bonusReceivers.length > 0 ? `　🎁 初参加ボーナス +10,000マネー: ${bonusReceivers.join('、')}` : '';
+        showNotice('スコアを送信しました！マネーが各プレイヤーに付与されました。' + bonusMsg, 'success');
         clearFormAfterSubmit();
         resetBtn();
     } catch (err) {
@@ -792,7 +792,7 @@ async function sendDiscordNotification(matchData, playerCount, bonusReceivers = 
     const fields = [...rankFields];
     if (bonusReceivers.length > 0) {
         fields.push({
-            name: '🎁 本日初参加ボーナス +10,000コイン',
+            name: '🎁 本日初参加ボーナス +10,000マネー',
             value: bonusReceivers.join('、'),
             inline: false
         });

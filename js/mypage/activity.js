@@ -170,7 +170,7 @@
                         amountStr = `<span class="text-secondary">${scoreFormatted} pts</span>`;
                     } else {
                         const isTicketOmikuji = log.action_type === 'omikuji' && log.details?.ticket_reward;
-                        // ガチャでコイン0の場合は祈願符（チケット）使用なので🎫-1表示
+                        // ガチャでマネー0の場合は祈願符（チケット）使用なので🎫-1表示
                         const isTicketGacha = log.action_type === 'gacha_draw' && log.amount === 0;
                         amountStr = isTicketGacha ? '🎫 -1' : (log.amount !== null && (!isTicketOmikuji || log.amount !== 0)) ? `💵 ${log.amount.toLocaleString()}` : '';
                     }

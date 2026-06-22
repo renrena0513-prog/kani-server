@@ -509,7 +509,7 @@
             <div class="balance-grid">
                 <div class="balance-card">
                     <div>
-                        <div class="label">コイン</div>
+                        <div class="label">マネー</div>
                         <div class="value" id="coin-count">-</div>
                     </div>
                     <div class="fs-3">💵</div>
@@ -564,9 +564,9 @@
                         <button class="draw-option-btn" data-payment="mangan_ticket" data-count="1"
                             onclick="setDrawOption('mangan_ticket', 1)">🎟️ 満願符 1枚</button>
                         <button class="draw-option-btn" data-payment="coin" data-count="1" id="coin-btn-1"
-                            onclick="setDrawOption('coin', 1)">💵 コイン 1回</button>
+                            onclick="setDrawOption('coin', 1)">💵 マネー 1回</button>
                         <button class="draw-option-btn" data-payment="coin" data-count="10" id="coin-btn-10"
-                            onclick="setDrawOption('coin', 10)">💵 コイン 10回</button>
+                            onclick="setDrawOption('coin', 10)">💵 マネー 10回</button>
                     </div>
                     <button id="draw-btn" class="gacha-btn gacha-main-btn" onclick="handleDraw()">
                         🙏 お賽銭を奉納する
@@ -955,7 +955,7 @@
                 if (currentGachaType === '妖怪') {
                     noteEl.textContent = '妖怪ガチャはチケット専用（祈願符 / 満願符）です';
                 } else {
-                    noteEl.textContent = 'じゃれ本ガチャはコイン専用です';
+                    noteEl.textContent = 'じゃれ本ガチャはマネー専用です';
                 }
             }
 
@@ -1055,14 +1055,14 @@
             } else {
                 if (note) note.classList.remove('emphasis');
                 if (!gachaCoinPrice || gachaCoinPrice < 1) {
-                    if (note) note.textContent = 'コイン価格が未設定です';
+                    if (note) note.textContent = 'マネー価格が未設定です';
                     return;
                 }
                 const price1 = gachaCoinPrice;
                 const price10 = gachaCoinPrice * 10;
-                if (coinBtn1) coinBtn1.textContent = `💵 コイン ${price1.toLocaleString()}枚 1回祈る`;
-                if (coinBtn10) coinBtn10.textContent = `💵 コイン ${price10.toLocaleString()}枚 10回祈る`;
-                if (note) note.textContent = `コイン${(currentDrawCount === 10 ? price10 : price1).toLocaleString()}枚で奉納できます。`;
+                if (coinBtn1) coinBtn1.textContent = `💵 マネー ${price1.toLocaleString()}枚 1回祈る`;
+                if (coinBtn10) coinBtn10.textContent = `💵 マネー ${price10.toLocaleString()}枚 10回祈る`;
+                if (note) note.textContent = `マネー${(currentDrawCount === 10 ? price10 : price1).toLocaleString()}枚で奉納できます。`;
             }
         }
 
@@ -1291,14 +1291,14 @@
             }
 
             if (currentGachaType === 'じゃれ本' && (!gachaCoinPrice || gachaCoinPrice < 1)) {
-                showNotice('コイン価格が未設定です', 'warning');
+                showNotice('マネー価格が未設定です', 'warning');
                 return;
             }
 
             const confirmLabel = (() => {
                 if (paymentType === 'coin') {
                     const price = gachaCoinPrice ? gachaCoinPrice * count : 0;
-                    return `コイン${price.toLocaleString()}枚を消費します。よろしいですか？`;
+                    return `マネー${price.toLocaleString()}枚を消費します。よろしいですか？`;
                 }
                 if (paymentType === 'mangan_ticket') {
                     return `満願符${count}枚を消費します。よろしいですか？`;

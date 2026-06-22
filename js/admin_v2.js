@@ -894,7 +894,7 @@ async function fetchUsers() {
                 <td data-label="所持金"><span class="badge bg-light text-dark border">💵 ${coins.toLocaleString()}</span></td>
                 <td data-label="操作">
                     <div class="d-flex gap-1 flex-wrap">
-                        <button class="btn btn-sm btn-outline-warning btn-coin" data-id="${escapeHtml(discordId)}" data-name="${escapeHtml(name)}" data-coins="${coins}">コイン</button>
+                        <button class="btn btn-sm btn-outline-warning btn-coin" data-id="${escapeHtml(discordId)}" data-name="${escapeHtml(name)}" data-coins="${coins}">マネー</button>
                         <button class="btn btn-sm btn-outline-primary btn-items" data-id="${escapeHtml(discordId)}" data-name="${escapeHtml(name)}">アイテム</button>
                         <button class="btn btn-sm btn-outline-secondary btn-impersonate" data-id="${escapeHtml(discordId)}" data-name="${escapeHtml(name)}" data-avatar="${escapeHtml(avatarUrl)}">なりすまし</button>
                         <button class="btn btn-sm ${user.is_hidden ? 'btn-success' : 'btn-outline-danger'} btn-toggle-hidden" data-id="${escapeHtml(discordId)}" data-name="${escapeHtml(name)}" data-hidden="${user.is_hidden ? '1' : '0'}">
@@ -1079,11 +1079,11 @@ async function saveUserCoins() {
             details: { context: 'admin_coin_adjustment', new_balance: newAmount }
         });
 
-        alert(`コインを更新しました（差額: ${difference >= 0 ? '+' : ''}${difference}）`);
+        alert(`マネーを更新しました（差額: ${difference >= 0 ? '+' : ''}${difference}）`);
         bootstrap.Modal.getInstance(document.getElementById('coinModal'))?.hide();
         fetchUsers();
     } catch (err) {
-        console.error('コイン更新エラー:', err);
+        console.error('マネー更新エラー:', err);
         alert('エラー: ' + err.message);
     } finally {
         toggleLoading(false);
@@ -2744,8 +2744,8 @@ async function fetchActivityLogs(page = 1) {
                 'badge_receive': { icon: '📥', label: 'バッジ受取' },
                 'royalty_receive': { icon: '💎', label: 'ロイヤリティ受取' },
                 'gacha_draw': { icon: '🎰', label: 'ガチャ' },
-                'coin_transfer': { icon: '💸', label: 'コイン送金' },
-                'coin_receive': { icon: '📩', label: 'コイン受取' },
+                'coin_transfer': { icon: '💸', label: 'マネー送金' },
+                'coin_receive': { icon: '📩', label: 'マネー受取' },
                 'transfer_send': { icon: '💸', label: '送金' },
                 'transfer_receive': { icon: '📩', label: '受取' },
                 'omikuji': { icon: '⛩️', label: 'おみくじ' },

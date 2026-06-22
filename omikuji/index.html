@@ -722,8 +722,8 @@
                 <button id="draw-button" class="jp-draw-btn" onclick="drawOmikuji()">🎋 おみくじを引く</button>
                 <div id="streak-info" style="margin-top:16px;"></div>
                 <div id="streak-hint" style="margin-top:20px; text-align:center; color:rgba(245,230,200,.35); font-size:.78rem; line-height:1.8; letter-spacing:.05em; font-family:'Noto Serif JP',serif;">
-                    🔥 連続で引くごとに +500コイン増加<br>
-                    2日目 +500 → 11日目 MAX +5,000コイン
+                    🔥 連続で引くごとに +500マネー増加<br>
+                    2日目 +500 → 11日目 MAX +5,000マネー
                 </div>
             </div>
 
@@ -778,7 +778,7 @@
                         <input type="text" class="form-control form-control-sm" id="ef-rank" placeholder="大吉">
                     </div>
                     <div class="col-3">
-                        <label class="form-label">コイン</label>
+                        <label class="form-label">マネー</label>
                         <input type="number" class="form-control form-control-sm" id="ef-reward" placeholder="1000">
                     </div>
                     <div class="col-3">
@@ -1052,8 +1052,8 @@
             const todayBonus = Math.min(streak, 10) * 500;
             const todayDay = streak + 1;
             const label = isMax
-                ? `🔥 連続<span class="streak-count">11日</span>達成！ 今回 +5,000コイン（MAX）`
-                : `🔥 連続<span class="streak-count">${todayDay}日目</span> 今回 +${todayBonus.toLocaleString()}コイン`;
+                ? `🔥 連続<span class="streak-count">11日</span>達成！ 今回 +5,000マネー（MAX）`
+                : `🔥 連続<span class="streak-count">${todayDay}日目</span> 今回 +${todayBonus.toLocaleString()}マネー`;
             return `<div class="${cls}">${label}</div>`;
         }
 
@@ -1205,8 +1205,8 @@
                 const streakBonusEl = document.getElementById('streak-bonus-line');
                 if (streakBonus > 0) {
                     const streakLabel = newStreak >= 11
-                        ? `🔥 連続11日達成！ ＋${streakBonus.toLocaleString()}コイン（MAX）`
-                        : `🔥 連続${newStreak}日ボーナス ＋${streakBonus.toLocaleString()}コイン`;
+                        ? `🔥 連続11日達成！ ＋${streakBonus.toLocaleString()}マネー（MAX）`
+                        : `🔥 連続${newStreak}日ボーナス ＋${streakBonus.toLocaleString()}マネー`;
                     streakBonusEl.innerHTML = `<span style="color:#ffb030;font-weight:700;">${streakLabel}</span>`;
                     streakBonusEl.style.display = 'block';
                 } else {

@@ -1,4 +1,4 @@
-// ポーカー記録管理（管理画面用）
+﻿// ポーカー記録管理（管理画面用）
 let pokerRecordsRaw = [];
 let pokerMatchGroups = {};
 let pokerAdminTeams = [];
@@ -69,10 +69,10 @@ function renderPokerRecords() {
 async function deletePokerMatch(matchId) {
     const players = pokerMatchGroups[matchId] || [];
     const names = players.sort((a, b) => a.rank - b.rank).map(p => `${p.rank}位: ${p.account_name}`).join('\n');
-    if (!confirm(`以下の試合記録を削除します。\n付与されたコインと活動ログも削除されます。\n\n${names}`)) return;
+    if (!confirm(`以下の試合記録を削除します。\n付与されたマネーと活動ログも削除されます。\n\n${names}`)) return;
 
     try {
-        // 1. この試合の活動ログを取得（付与コイン・チップ額を確認）
+        // 1. この試合の活動ログを取得（付与マネー・チップ額を確認）
         const { data: logs, error: logFetchErr } = await supabaseClient
             .from('activity_logs')
             .select('user_id, amount, details')
@@ -80,7 +80,7 @@ async function deletePokerMatch(matchId) {
             .eq('action_type', 'poker');
         if (logFetchErr) throw logFetchErr;
 
-        // 2. ユーザーごとの付与コイン・チップ合計を集計
+        // 2. ユーザーごとの付与マネー・チップ合計を集計
         const coinByUser = {};
         const chipByUser = {};
         (logs || []).forEach(log => {
@@ -94,7 +94,7 @@ async function deletePokerMatch(matchId) {
             }
         });
 
-        // 3. コイン・チップを引き戻す
+        // 3. マネー・チップを引き戻す
         const allUserIds = new Set([...Object.keys(coinByUser), ...Object.keys(chipByUser)]);
         for (const userId of allUserIds) {
             const { data: profile, error: profErr } = await supabaseClient
@@ -134,7 +134,7 @@ async function deletePokerMatch(matchId) {
         if (delCount === 0) throw new Error('RLSポリシーにより削除がブロックされました。Supabase ダッシュボードで poker_results テーブルに DELETE ポリシーを追加してください。');
 
         await fetchPokerRecords();
-        alert('削除しました。付与コインと活動ログも取り消しました。');
+        alert('削除しました。付与マネーと活動ログも取り消しました。');
     } catch (err) {
         alert('削除エラー: ' + err.message);
         console.error('deletePokerMatch error:', err);

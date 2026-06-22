@@ -1305,7 +1305,7 @@ async function submitScores() {
             throw error;
         }
 
-        // 報酬付与（コイン・チケット）とログ記録
+        // 報酬付与（マネー・チケット）とログ記録
         const ticketDropMap = {}; // 確率付与の祈願符 { discord_user_id: count }
         const ticketRankMap = {}; // 順位ボーナスの祈願符 { discord_user_id: count }
         const manganRewardsMap = {}; // Discord通知用: { discord_user_id: count }
@@ -1353,7 +1353,7 @@ async function submitScores() {
                 manganRewardsMap[player.discord_user_id] = manganReward;
             }
 
-            // 2. コイン報酬計算（チーム戦・個人戦共通）
+            // 2. マネー報酬計算（チーム戦・個人戦共通）
             let scoreBonus = 0;
             let rankBonus = 0;
             const baseReward = (mode === '三麻') ? 20 : 50;
@@ -1389,7 +1389,7 @@ async function submitScores() {
                     updated = true;
                 }
 
-                // コイン更新
+                // マネー更新
                 if (coinReward > 0) {
                     updates.coins = (profile?.coins || 0) + coinReward;
                     updates.total_assets = (profile?.total_assets || 0) + coinReward;
@@ -1419,12 +1419,12 @@ async function submitScores() {
                     }
                 }
 
-                console.log(`${player.account_name} への報酬: コイン=${coinReward}, チケット=${ticketReward}, 満願符=${manganReward}`);
+                console.log(`${player.account_name} への報酬: マネー=${coinReward}, チケット=${ticketReward}, 満願符=${manganReward}`);
 
-                // 活動ログ記録 (コインまたはチケットの変動がある場合)
+                // 活動ログ記録 (マネーまたはチケットの変動がある場合)
                 if (updated) {
                     await logActivity(player.discord_user_id, 'mahjong', {
-                        amount: coinReward, // メインの変動値としてコインを設定
+                        amount: coinReward, // メインの変動値としてマネーを設定
                         matchId: matchId,
                         details: {
                             rank: player.rank,
@@ -1444,7 +1444,7 @@ async function submitScores() {
             }
         }
 
-        showNotice('スコアを送信しました！コインが各プレイヤーに付与されました。', 'success');
+        showNotice('スコアを送信しました！マネーが各プレイヤーに付与されました。', 'success');
 
         // Discord通知を送信
         if (typeof DISCORD_WEBHOOK_URL !== 'undefined' && DISCORD_WEBHOOK_URL) {
@@ -1512,7 +1512,7 @@ async function sendDiscordNotification(matchData, isTobiOn, isYakitoriOn, ticket
         // ユーザーIDがある場合はメンション形式にする
         const nameDisplay = p.discord_user_id ? `<@${p.discord_user_id}>` : p.account_name;
 
-        // 報酬コインの計算（チーム戦・個人戦共通）
+        // 報酬マネーの計算（チーム戦・個人戦共通）
         let scoreBonus = 0;
         let rankBonus = 0;
         const baseReward = (mode === '三麻') ? 20 : 50;
