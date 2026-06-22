@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="list-build" content="2026-02-07-03">
+    <meta name="list-build" content="2026-06-22-01">
     <title>バッジ図鑑 - かに鯖</title>
     <link rel="icon" type="image/png" href="../images/favicon.png">
     <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
@@ -16,193 +16,84 @@
         :root {
             --deep-purple: #5a4a7a;
             --gold: #d4a574;
+            --gold-accent: #f8c93e;
             --font-title: 'Kosugi Maru', sans-serif;
+            --bg-page: #080c18;
+            --bg-card: #111827;
+            --bg-glass: rgba(255,255,255,0.04);
+            --border-subtle: rgba(255,255,255,0.08);
+            --text-primary: #e2e8f0;
+            --text-muted-dark: rgba(255,255,255,0.38);
         }
 
-        body {
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        html, body {
+            background: var(--bg-page);
+            color: var(--text-primary);
             min-height: 100vh;
         }
 
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse at 15% 40%, rgba(90,50,160,0.12) 0%, transparent 55%),
+                radial-gradient(ellipse at 85% 15%, rgba(20,60,140,0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 90%, rgba(10,30,80,0.2) 0%, transparent 60%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container { position: relative; z-index: 1; }
+
+        /* ── Header ── */
+        .page-header-wrap {
+            text-align: center;
+            padding: 36px 0 24px;
+        }
+
+        .page-header-title {
+            font-family: var(--font-title);
+            font-size: clamp(1.8rem, 5vw, 3rem);
+            font-weight: 900;
+            background: linear-gradient(135deg, #f8c93e 0%, #ffffff 50%, #a78bfa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 0 0 6px;
+            letter-spacing: -0.01em;
+            line-height: 1.1;
+        }
+
+        .page-header-sub {
+            color: var(--text-muted-dark);
+            font-size: 0.9rem;
+            letter-spacing: 0.04em;
+        }
+
+        /* ── Back button ── */
         .back-button {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            color: white;
+            color: rgba(255,255,255,0.6);
             text-decoration: none;
             font-weight: 600;
-            padding: 10px 20px;
+            padding: 8px 18px;
             border-radius: 30px;
-            background: rgba(255, 255, 255, 0.15);
-            transition: all 0.3s;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.25s;
+            font-size: 0.9rem;
         }
 
         .back-button:hover {
-            background: rgba(255, 255, 255, 0.25);
-            color: white;
-        }
-
-        .page-header {
+            background: rgba(255,255,255,0.12);
             color: #fff;
-            font-family: var(--font-title);
-            text-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-            margin-bottom: 30px;
+            border-color: rgba(255,255,255,0.2);
         }
 
-        .badge-list-card {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 24px;
-            padding: 30px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-            min-height: 500px;
-        }
-
-        .filter-controls {
-            background: #f8f9fa;
-            border-radius: 16px;
-            padding: 20px;
-            margin-bottom: 30px;
-            border: 1px solid #eee;
-        }
-
-        .category-tabs {
-            margin-bottom: 20px;
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .tab-btn {
-            background: white;
-            border: 1px solid #ddd;
-            padding: 8px 18px;
-            border-radius: 30px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: #555;
-            transition: all 0.2s;
-            cursor: pointer;
-        }
-
-        .tab-btn:hover {
-            border-color: var(--gold);
-            color: var(--gold);
-        }
-
-        .tab-btn.active {
-            background: var(--gold);
-            color: white;
-            border-color: var(--gold);
-            box-shadow: 0 4px 10px rgba(212, 165, 116, 0.3);
-        }
-
-        .badge-item-large {
-            background: #fff;
-            border-radius: 16px;
-            padding: 15px;
-            text-align: center;
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            border: 1px solid #eee;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-            text-decoration: none;
-            color: inherit;
-        }
-
-        .badge-item-large:hover {
-            transform: translateY(-5px);
-            border-color: var(--gold);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-        }
-
-        .badge-number-label {
-            font-size: 0.65rem;
-            font-weight: bold;
-            color: #bbb;
-            margin-bottom: 5px;
-        }
-
-        .badge-img-large {
-            width: 80px;
-            height: 80px;
-            object-fit: contain;
-            margin-bottom: 12px;
-        }
-
-        .badge-name-large {
-            font-family: var(--font-title);
-            font-size: 0.9rem;
-            font-weight: bold;
-            color: var(--deep-purple);
-            margin-bottom: 8px;
-            line-height: 1.2;
-            height: 2.4em;
-            overflow: hidden;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            line-clamp: 2;
-            -webkit-box-orient: vertical;
-        }
-
-        .badge-tag-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-            justify-content: center;
-            font-size: 0.7rem;
-            color: #6c757d;
-            margin-top: 4px;
-        }
-
-        .badge-tag {
-            background: #f1f3f5;
-            border-radius: 10px;
-            padding: 1px 6px;
-        }
-
-        .badge-tag-link {
-            text-decoration: none;
-            color: inherit;
-            cursor: pointer;
-        }
-
-        .badge-meta-row {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            flex-wrap: wrap;
-            margin-bottom: 6px;
-        }
-
-        .rarity-pill {
-            font-size: 0.6rem;
-            padding: 2px 10px;
-            border-radius: 20px;
-            color: white;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-
-        .badge-label-strong {
-            background: linear-gradient(135deg, #ffb300 0%, #ff6a00 100%);
-            color: #1b0e00;
-            border: 1px solid rgba(0, 0, 0, 0.15);
-            font-size: 0.55rem;
-            border-radius: 10px;
-            padding: 0.2rem 0.5rem;
-            font-weight: 700;
-            letter-spacing: 0.02em;
-            box-shadow: 0 4px 10px rgba(255, 122, 0, 0.35);
-            display: inline-flex;
-            align-items: center;
-            line-height: 1;
-        }
-
-        /* ナビゲーションドロップダウン */
+        /* ── Nav dropdown ── */
         .nav-dropdown {
             position: fixed;
             top: 20px;
@@ -213,11 +104,11 @@
         .record-button {
             background: linear-gradient(135deg, var(--gold) 0%, #b8892d 100%);
             color: white;
-            padding: 12px 24px;
+            padding: 11px 22px;
             border-radius: 25px;
             font-weight: bold;
-            font-size: 1.1rem;
-            box-shadow: 0 6px 20px rgba(212, 168, 83, 0.5);
+            font-size: 1rem;
+            box-shadow: 0 6px 20px rgba(212,168,83,0.5);
             transition: all 0.3s ease;
             display: flex;
             align-items: center;
@@ -226,116 +117,385 @@
             cursor: pointer;
         }
 
-        .search-input {
-            border-radius: 12px;
-            padding-left: 40px;
-            border: 1px solid #ddd;
+        /* ── Filter Panel ── */
+        .filter-controls {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-subtle);
+            border-radius: 18px;
+            padding: 18px 20px;
+            margin-bottom: 22px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
         }
 
-        .search-icon {
-            position: absolute;
-            left: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #aaa;
+        .filter-label {
+            font-size: 0.68rem;
+            color: var(--text-muted-dark);
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 5px;
         }
 
-        .filter-controls .form-select,
+        .filter-divider {
+            border-color: var(--border-subtle);
+            margin: 14px 0;
+        }
+
+        /* Inputs / Selects */
         .filter-controls .form-control,
+        .filter-controls .form-select,
         .filter-controls .creator-dropdown-btn {
-            border-radius: 12px;
-            border: 1px solid #d9dde3;
-            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
-            background: #fff;
-            min-height: 38px;
+            background: rgba(255,255,255,0.07) !important;
+            border: 1px solid rgba(255,255,255,0.12) !important;
+            color: var(--text-primary) !important;
+            border-radius: 10px !important;
+            min-height: 36px;
+            font-size: 0.85rem;
+        }
+
+        .filter-controls .form-control::placeholder {
+            color: rgba(255,255,255,0.25);
+        }
+
+        .filter-controls .form-control:focus,
+        .filter-controls .form-select:focus {
+            background: rgba(255,255,255,0.1) !important;
+            border-color: rgba(248,201,62,0.45) !important;
+            box-shadow: 0 0 0 3px rgba(248,201,62,0.08) !important;
+            color: #fff !important;
         }
 
         .filter-controls .form-select {
             appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='%236c757d'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 12px center;
-            background-size: 12px 12px;
-            padding-right: 34px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='%23aaa'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E") !important;
+            background-repeat: no-repeat !important;
+            background-position: right 10px center !important;
+            background-size: 12px 12px !important;
+            padding-right: 30px;
         }
 
-        .creator-dropdown-btn .bi-caret-down-fill {
-            color: #6c757d;
+        .filter-controls .form-select option {
+            background: #1a2235;
+            color: #e2e8f0;
         }
 
-        .filter-active {
-            background: #f6ead6 !important;
-            border-color: var(--gold) !important;
-        }
+        .search-input { padding-left: 38px !important; }
+        .search-icon { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.28); pointer-events: none; }
 
-        .filter-label {
-            font-size: 0.75rem;
-            color: #6c757d;
-            font-weight: 600;
-            letter-spacing: 0.02em;
-            margin-bottom: 4px;
-        }
-
-        .filter-row-top {
-            align-items: end;
-        }
-
-        .creator-dropdown {
-            position: relative;
-        }
+        /* Creator dropdown */
+        .creator-dropdown { position: relative; }
 
         .creator-dropdown-btn {
             width: 100%;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            padding: 6px 10px;
-            background: #fff;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 7px;
+            padding: 7px 10px;
+            background: rgba(255,255,255,0.07) !important;
+            border: 1px solid rgba(255,255,255,0.12) !important;
+            color: var(--text-primary) !important;
+            border-radius: 10px !important;
             font-size: 0.85rem;
-        }
-
-        .creator-avatar {
-            width: 22px;
-            height: 22px;
-            border-radius: 50%;
-            object-fit: cover;
-            display: none;
+            cursor: pointer;
         }
 
         .creator-menu {
             position: absolute;
-            top: calc(100% + 6px);
-            left: 0;
-            right: 0;
-            background: #fff;
-            border: 1px solid #ddd;
+            top: calc(100% + 5px);
+            left: 0; right: 0;
+            background: #1a2235;
+            border: 1px solid rgba(255,255,255,0.12);
             border-radius: 10px;
-            max-height: 280px;
+            max-height: 260px;
             overflow-y: auto;
             z-index: 2000;
             display: none;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.5);
         }
 
         .creator-item {
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 8px 10px;
+            padding: 8px 12px;
             cursor: pointer;
-            border-bottom: 1px solid #f1f1f1;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            color: var(--text-primary);
+            font-size: 0.85rem;
         }
 
-        .creator-item:hover {
-            background: #f8f9fa;
+        .creator-item:hover { background: rgba(255,255,255,0.07); }
+
+        .creator-avatar {
+            width: 20px; height: 20px;
+            border-radius: 50%;
+            object-fit: cover;
+            display: none;
         }
 
-        .rarity-unknown {
-            background: #495057;
+        .filter-active {
+            background: rgba(248,201,62,0.1) !important;
+            border-color: rgba(248,201,62,0.35) !important;
+        }
+
+        /* Badge count */
+        #badge-count-status {
+            background: rgba(255,255,255,0.08) !important;
+            color: rgba(255,255,255,0.55) !important;
+            font-size: 0.78rem;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        /* Reset / toggle btns */
+        .btn-outline-secondary {
+            border-color: rgba(255,255,255,0.18) !important;
+            color: rgba(255,255,255,0.55) !important;
+            border-radius: 8px !important;
+            font-size: 0.82rem;
+        }
+        .btn-outline-secondary:hover {
+            background: rgba(255,255,255,0.09) !important;
+            border-color: rgba(255,255,255,0.28) !important;
+            color: #fff !important;
+        }
+        .btn-primary {
+            background: var(--gold-accent) !important;
+            border-color: var(--gold-accent) !important;
+            color: #000 !important;
+            font-weight: 700 !important;
+            border-radius: 8px !important;
+            font-size: 0.82rem;
+        }
+
+        /* Rarity unknown in menu */
+        .rarity-unknown { background: #3a4050; color: #e2e8f0; }
+
+        /* ── Badge Card ── */
+        .badge-item-large {
+            background: linear-gradient(160deg, #16213a 0%, #0f172a 100%) !important;
+            border: 1.5px solid rgba(255,255,255,0.1) !important;
+            border-radius: 16px !important;
+            padding: 0 !important;
+            text-align: center;
+            transition: transform 0.28s cubic-bezier(0.175,0.885,0.32,1.275), box-shadow 0.28s ease, border-color 0.28s ease;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            text-decoration: none !important;
+            color: var(--text-primary) !important;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Subtle shimmer on hover */
+        .badge-item-large::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, transparent 60%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            border-radius: 14px;
+        }
+        .badge-item-large:hover::after { opacity: 1; }
+
+        .badge-item-large:hover {
+            transform: translateY(-7px) scale(1.025);
+            color: #fff !important;
+            z-index: 10;
+        }
+
+        /* Rarity border + glow per rarity class — override styles.css !important */
+        .badge-item-large.rarity-normal    { border-color: #9aa0a8 !important; }
+        .badge-item-large.rarity-fine      { border-color: #2FBF71 !important; box-shadow: 0 0 10px rgba(47,191,113,0.22) !important; }
+        .badge-item-large.rarity-rare      { border-color: #2D7FF9 !important; box-shadow: 0 0 12px rgba(45,127,249,0.28) !important; }
+        .badge-item-large.rarity-epic      { border-color: #8A5CFF !important; box-shadow: 0 0 14px rgba(138,92,255,0.32) !important; }
+        .badge-item-large.rarity-legendary { border-color: #D4AF37 !important; box-shadow: 0 0 14px rgba(212,175,55,0.35) !important; }
+        .badge-item-large.rarity-national  { border-color: #D4AF37 !important; box-shadow: 0 0 14px rgba(212,175,55,0.35) !important; }
+        .badge-item-large.rarity-treasure  { border-color: #0fba8a !important; box-shadow: 0 0 14px rgba(15,186,138,0.3) !important; }
+        .badge-item-large.rarity-mystic    { border-color: #2EE6D6 !important; box-shadow: 0 0 16px rgba(46,230,214,0.38) !important; }
+        .badge-item-large.rarity-hero      { border-color: #D7263D !important; box-shadow: 0 0 16px rgba(215,38,61,0.38) !important; }
+        .badge-item-large.rarity-legend    { border-color: #FFA500 !important; box-shadow: 0 0 18px rgba(255,165,0,0.42) !important; }
+        .badge-item-large.rarity-fantasy   { border-image: linear-gradient(135deg, #7C3AED, #06B6D4, #22C55E) 1 !important; box-shadow: 0 0 20px rgba(124,58,237,0.35) !important; }
+        .badge-item-large.rarity-mythic    { border-color: #F6D365 !important; box-shadow: 0 0 20px rgba(246,211,101,0.45), 0 0 40px rgba(246,211,101,0.15) !important; animation: mythicCardPulse 3s infinite alternate; }
+        .badge-item-large.rarity-transcend { border-color: rgba(255,255,255,0.7) !important; box-shadow: 0 0 20px rgba(255,255,255,0.2) !important; }
+        .badge-item-large.rarity-ex        { border-color: #00F5FF !important; box-shadow: 0 0 20px rgba(0,245,255,0.45), 0 0 40px rgba(0,245,255,0.15) !important; animation: exCardPulse 2s infinite; }
+
+        /* Hover glow */
+        .badge-item-large.rarity-fine:hover      { box-shadow: 0 10px 28px rgba(47,191,113,0.5) !important; }
+        .badge-item-large.rarity-rare:hover      { box-shadow: 0 10px 28px rgba(45,127,249,0.55) !important; }
+        .badge-item-large.rarity-epic:hover      { box-shadow: 0 10px 28px rgba(138,92,255,0.6) !important; }
+        .badge-item-large.rarity-legendary:hover { box-shadow: 0 10px 28px rgba(212,175,55,0.65) !important; }
+        .badge-item-large.rarity-national:hover  { box-shadow: 0 10px 28px rgba(212,175,55,0.65) !important; }
+        .badge-item-large.rarity-treasure:hover  { box-shadow: 0 10px 28px rgba(15,186,138,0.55) !important; }
+        .badge-item-large.rarity-mystic:hover    { box-shadow: 0 10px 28px rgba(46,230,214,0.65) !important; }
+        .badge-item-large.rarity-hero:hover      { box-shadow: 0 10px 28px rgba(215,38,61,0.65) !important; }
+        .badge-item-large.rarity-legend:hover    { box-shadow: 0 10px 30px rgba(255,165,0,0.7) !important; }
+        .badge-item-large.rarity-mythic:hover    { box-shadow: 0 10px 30px rgba(246,211,101,0.75), 0 0 60px rgba(246,211,101,0.25) !important; }
+        .badge-item-large.rarity-ex:hover        { box-shadow: 0 10px 30px rgba(0,245,255,0.75), 0 0 60px rgba(0,245,255,0.25) !important; }
+
+        @keyframes mythicCardPulse {
+            0%   { box-shadow: 0 0 18px rgba(246,211,101,0.4), 0 0 36px rgba(246,211,101,0.12) !important; }
+            100% { box-shadow: 0 0 28px rgba(246,211,101,0.7), 0 0 56px rgba(246,211,101,0.22) !important; }
+        }
+        @keyframes exCardPulse {
+            0%   { border-color: #00F5FF !important; box-shadow: 0 0 18px rgba(0,245,255,0.45), 0 0 36px rgba(0,245,255,0.15) !important; }
+            50%  { border-color: #ff00e4 !important; box-shadow: 0 0 18px rgba(255,0,228,0.45), 0 0 36px rgba(255,0,228,0.15) !important; }
+            100% { border-color: #00F5FF !important; box-shadow: 0 0 18px rgba(0,245,255,0.45), 0 0 36px rgba(0,245,255,0.15) !important; }
+        }
+
+        /* Card inner sections */
+        .badge-card-top {
+            padding: 10px 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-wrap: wrap;
+            justify-content: center;
+            min-height: 28px;
+        }
+
+        .badge-card-img-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 14px 12px 10px;
+            position: relative;
+            min-height: 90px;
+        }
+
+        .badge-img-large {
+            width: 72px;
+            height: 72px;
+            object-fit: contain;
+            filter: drop-shadow(0 3px 8px rgba(0,0,0,0.6));
+            transition: transform 0.3s ease, filter 0.3s ease;
+        }
+
+        .badge-item-large:hover .badge-img-large {
+            transform: scale(1.13) translateY(-2px);
+            filter: drop-shadow(0 6px 14px rgba(0,0,0,0.7));
+        }
+
+        .badge-card-footer {
+            padding: 6px 10px 12px;
+        }
+
+        .badge-number-label {
+            font-size: 0.58rem;
+            font-weight: 700;
+            color: rgba(255,255,255,0.22);
+            margin-bottom: 3px;
+            letter-spacing: 0.06em;
+        }
+
+        .badge-name-large {
+            font-family: var(--font-title);
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #dde4f0;
+            line-height: 1.3;
+            height: 2.6em;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        /* Rarity pill in card */
+        .rarity-pill {
+            font-size: 0.54rem !important;
+            padding: 2px 7px !important;
+            border-radius: 20px;
+            font-weight: 700 !important;
+            letter-spacing: 0.03em;
+            white-space: nowrap;
+            line-height: 1.5;
+        }
+
+        /* Label badge */
+        .badge-label-strong {
+            background: linear-gradient(135deg, #ffb300, #ff6a00);
             color: #fff;
+            font-size: 0.5rem;
+            border-radius: 8px;
+            padding: 2px 6px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            display: inline-flex;
+            align-items: center;
+            line-height: 1.5;
+            box-shadow: 0 2px 6px rgba(255,120,0,0.35);
         }
+
+        /* Tags */
+        .badge-tag-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+            justify-content: center;
+            font-size: 0.62rem;
+            color: rgba(255,255,255,0.32);
+            margin-top: 5px;
+        }
+
+        .badge-tag {
+            background: rgba(255,255,255,0.06);
+            border-radius: 5px;
+            padding: 1px 5px;
+        }
+
+        .badge-tag-link {
+            text-decoration: none;
+            color: inherit;
+            cursor: pointer;
+        }
+        .badge-tag:hover { background: rgba(255,255,255,0.12); }
+
+        /* Pagination */
+        .pagination .page-link {
+            background: rgba(255,255,255,0.06) !important;
+            border-color: rgba(255,255,255,0.1) !important;
+            color: rgba(255,255,255,0.6) !important;
+            border-radius: 8px !important;
+            margin: 0 2px;
+            font-size: 0.85rem;
+        }
+
+        .pagination .page-item.active .page-link {
+            background: var(--gold-accent) !important;
+            border-color: var(--gold-accent) !important;
+            color: #000 !important;
+            font-weight: 700 !important;
+        }
+
+        .pagination .page-link:hover {
+            background: rgba(255,255,255,0.14) !important;
+            color: #fff !important;
+        }
+
+        #badge-page-info {
+            color: var(--text-muted-dark);
+            font-size: 0.78rem;
+        }
+
+        /* Empty state */
+        .empty-state {
+            color: rgba(255,255,255,0.3);
+            padding: 60px 20px;
+            text-align: center;
+        }
+        .empty-state-icon { font-size: 3rem; margin-bottom: 12px; opacity: 0.4; }
+
+        /* Loading spinner */
+        .text-primary { color: var(--gold-accent) !important; }
     </style>
 </head>
 
@@ -351,136 +511,133 @@
         </ul>
     </div>
 
-    <div class="container py-5">
-        <div class="mb-4" id="back-to-shop-wrap" style="display:none;">
+    <div class="container py-3">
+
+        <!-- 戻るボタン（タグ/ラベル遷移時のみ表示） -->
+        <div class="mb-3" id="back-to-shop-wrap" style="display:none;">
             <a href="#" onclick="goBack(); return false;" class="back-button">
                 ← 戻る
             </a>
         </div>
-        <header class="text-center">
-            <h1 class="page-header display-4 fw-bold">📛 バッジ図鑑</h1>
-            <p class="text-white-50 mb-4">かに鯖で獲得・購入できるバッジの一覧です</p>
-        </header>
 
-        <div class="badge-list-card">
-            <!-- フィルタ・コントロール -->
-            <div class="filter-controls">
-                <div class="row g-3 filter-row-top">
-                    <!-- 検索 -->
-                    <div class="col-12 col-md-5">
-                        <div class="position-relative">
-                            <i class="bi bi-search search-icon"></i>
-                            <input type="text" id="search-box" class="form-control search-input"
-                                placeholder="バッジ名で検索..." oninput="filterAndRender()">
-                        </div>
-                    </div>
-                    <!-- ソート -->
-                    <div class="col-12 col-md-3">
-                        <div class="d-flex align-items-center gap-2">
-                            <label class="filter-label flex-shrink-0">並び替え</label>
-                            <select id="sort-select" class="form-select form-select-sm" onchange="filterAndRender()">
-                                <option value="price_asc">価格順（低→高）</option>
-                                <option value="price_desc">価格順（高→低）</option>
-                                <option value="circulation_asc">流通数順（低→高）</option>
-                                <option value="circulation_desc">流通数順（高→低）</option>
-                                <option value="id_asc">バッジID順（低→高）</option>
-                                <option value="id_desc">バッジID順（高→低）</option>
-                                <option value="name">名前順</option>
-                            </select>
-                        </div>
-                    </div>
-                    <!-- 表示統計 -->
-                    <div class="col-12 col-md-2 d-flex align-items-center justify-content-md-end">
-                        <span class="badge bg-secondary" id="badge-count-status">0 / 0 件</span>
-                    </div>
-                </div>
-
-                <hr class="my-3">
-
-                <!-- 追加フィルター -->
-                <div class="row g-3">
-                    <div class="col-12 col-md-3">
-                        <label class="filter-label">レアリティ</label>
-                        <div class="creator-dropdown">
-                            <button class="creator-dropdown-btn" type="button" id="rarity-filter-btn">
-                                <span id="rarity-filter-label">すべて</span>
-                                <i class="bi bi-caret-down-fill ms-auto"></i>
-                            </button>
-                            <input type="hidden" id="rarity-filter" value="">
-                            <div class="creator-menu" id="rarity-filter-menu"></div>
-                        </div>
-                    </div>
-                    <div class="col-12 col-md-3">
-                        <label class="filter-label">クリエイター</label>
-                        <div class="creator-dropdown">
-                            <button class="creator-dropdown-btn" type="button" id="creator-filter-btn">
-                                <img src="" class="creator-avatar" id="creator-filter-avatar" alt="">
-                                <span id="creator-filter-label">すべて</span>
-                                <i class="bi bi-caret-down-fill ms-auto"></i>
-                            </button>
-                            <input type="hidden" id="creator-filter" value="">
-                            <div class="creator-menu" id="creator-filter-menu"></div>
-                        </div>
-                    </div>
-                    <div class="col-12 col-md-3">
-                        <label class="filter-label">バッジタイプ</label>
-                        <select id="type-filter" class="form-select form-select-sm" onchange="filterAndRender()">
-                            <option value="">すべて</option>
-                        </select>
-                    </div>
-                    <div class="col-12 col-md-3">
-                        <label class="filter-label">ラベル</label>
-                        <select id="label-filter" class="form-select form-select-sm" onchange="filterAndRender()">
-                            <option value="">すべて</option>
-                        </select>
-                    </div>
-                    <div class="col-12 col-md-3">
-                        <label class="filter-label">タグ</label>
-                        <select id="tag-filter" class="form-select form-select-sm" onchange="filterAndRender()">
-                            <option value="">すべて</option>
-                        </select>
-                    </div>
-                    <div class="col-12 col-md-3">
-                        <label class="filter-label">入手方法</label>
-                        <select id="method-filter" class="form-select form-select-sm" onchange="filterAndRender()">
-                            <option value="">すべて</option>
-                            <option value="shop">ショップ販売中</option>
-                            <option value="gacha">ガチャ排出</option>
-                            <option value="not_for_sale">非売品</option>
-                        </select>
-                    </div>
-                    <div class="col-12 d-flex align-items-center gap-2">
-                        <button id="unowned-toggle" class="btn btn-outline-secondary btn-sm" type="button"
-                            onclick="toggleUnownedFilter()" style="display:none;">
-                            未所持のみ表示
-                        </button>
-                    </div>
-                </div>
-
-                <!-- 入手方法フィルター -->
-                <div class="row g-3 mt-1">
-                    <div class="col-12 col-md-3 d-flex align-items-end">
-                        <button class="btn btn-outline-secondary btn-sm w-100" type="button"
-                            onclick="resetAllFilters()">
-                            フィルターをリセット
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- グリッド -->
-            <div id="badge-list-grid" class="row g-3">
-                <div class="col-12 text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">読み込み中...</span>
-                    </div>
-                </div>
-            </div>
-            <nav aria-label="Page navigation" class="mt-3" id="badge-pagination-area" style="display:none;">
-                <div class="small text-muted text-center mb-2" id="badge-page-info"></div>
-                <ul class="pagination pagination-sm justify-content-center mb-0" id="badge-pagination"></ul>
-            </nav>
+        <!-- ヘッダー -->
+        <div class="page-header-wrap">
+            <h1 class="page-header-title">📛 バッジ図鑑</h1>
+            <p class="page-header-sub">かに鯖で獲得・購入できるバッジコレクション</p>
         </div>
+
+        <!-- フィルターパネル -->
+        <div class="filter-controls">
+            <!-- Row 1: 検索 / ソート / 件数 -->
+            <div class="row g-2 align-items-end">
+                <div class="col-12 col-md-5">
+                    <div class="position-relative">
+                        <i class="bi bi-search search-icon"></i>
+                        <input type="text" id="search-box" class="form-control search-input"
+                            placeholder="バッジ名で検索..." oninput="filterAndRender()">
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="filter-label mb-0 flex-shrink-0">並び替え</label>
+                        <select id="sort-select" class="form-select form-select-sm" onchange="filterAndRender()">
+                            <option value="price_asc">価格順（低→高）</option>
+                            <option value="price_desc">価格順（高→低）</option>
+                            <option value="circulation_asc">流通数順（低→高）</option>
+                            <option value="circulation_desc">流通数順（高→低）</option>
+                            <option value="id_asc">バッジID順（低→高）</option>
+                            <option value="id_desc">バッジID順（高→低）</option>
+                            <option value="name">名前順</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-md-3 d-flex align-items-center justify-content-md-end">
+                    <span class="badge" id="badge-count-status">0 / 0 件</span>
+                </div>
+            </div>
+
+            <hr class="filter-divider">
+
+            <!-- Row 2: 追加フィルター -->
+            <div class="row g-2">
+                <div class="col-6 col-md-3">
+                    <label class="filter-label">レアリティ</label>
+                    <div class="creator-dropdown">
+                        <button class="creator-dropdown-btn" type="button" id="rarity-filter-btn">
+                            <span id="rarity-filter-label">すべて</span>
+                            <i class="bi bi-caret-down-fill ms-auto" style="font-size:0.65rem; color: rgba(255,255,255,0.4);"></i>
+                        </button>
+                        <input type="hidden" id="rarity-filter" value="">
+                        <div class="creator-menu" id="rarity-filter-menu"></div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="filter-label">クリエイター</label>
+                    <div class="creator-dropdown">
+                        <button class="creator-dropdown-btn" type="button" id="creator-filter-btn">
+                            <img src="" class="creator-avatar" id="creator-filter-avatar" alt="">
+                            <span id="creator-filter-label">すべて</span>
+                            <i class="bi bi-caret-down-fill ms-auto" style="font-size:0.65rem; color: rgba(255,255,255,0.4);"></i>
+                        </button>
+                        <input type="hidden" id="creator-filter" value="">
+                        <div class="creator-menu" id="creator-filter-menu"></div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="filter-label">タイプ</label>
+                    <select id="type-filter" class="form-select form-select-sm" onchange="filterAndRender()">
+                        <option value="">すべて</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="filter-label">ラベル</label>
+                    <select id="label-filter" class="form-select form-select-sm" onchange="filterAndRender()">
+                        <option value="">すべて</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="filter-label">タグ</label>
+                    <select id="tag-filter" class="form-select form-select-sm" onchange="filterAndRender()">
+                        <option value="">すべて</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="filter-label">入手方法</label>
+                    <select id="method-filter" class="form-select form-select-sm" onchange="filterAndRender()">
+                        <option value="">すべて</option>
+                        <option value="shop">ショップ販売中</option>
+                        <option value="gacha">ガチャ排出</option>
+                        <option value="not_for_sale">非売品</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-9 d-flex align-items-end gap-2 flex-wrap">
+                    <button id="unowned-toggle" class="btn btn-outline-secondary btn-sm" type="button"
+                        onclick="toggleUnownedFilter()" style="display:none;">
+                        未所持のみ表示
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" type="button" onclick="resetAllFilters()">
+                        <i class="bi bi-x-circle me-1"></i>リセット
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- バッジグリッド -->
+        <div id="badge-list-grid" class="row g-3">
+            <div class="col-12 text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">読み込み中...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ページネーション -->
+        <nav aria-label="Page navigation" class="mt-4" id="badge-pagination-area" style="display:none;">
+            <div class="small text-center mb-2" id="badge-page-info"></div>
+            <ul class="pagination pagination-sm justify-content-center mb-0" id="badge-pagination"></ul>
+        </nav>
+
+        <div style="height: 40px;"></div>
     </div>
 
     <!-- Supabase & Scripts -->
@@ -491,7 +648,7 @@
     <script src="../js/badge-utils.js"></script>
     <script src="../js/navigation.js"></script>
     <script>
-        console.log('badge/list build 2026-02-07-03');
+        console.log('badge/list build 2026-06-22-01');
         document.addEventListener('DOMContentLoaded', function () {
             initAccordionNav('../');
         });
@@ -515,11 +672,10 @@
         const FILTER_URL_APPLIED_KEY = 'badge_list_url_applied_v1';
         let lastLoadedFilterState = null;
 
-        let cachedCirculationCounts = {}; // バッジごとの流通数
+        let cachedCirculationCounts = {};
 
         async function initBadgeList() {
             try {
-                // レアリティ閾値とバッジ情報の取得
                 const [badgesRes, thresholdsRes] = await Promise.all([
                     supabaseClient.from('badges').select('*').order('sort_order', { ascending: true }),
                     supabaseClient.from('rarity_thresholds').select('*').order('threshold_value', { ascending: true })
@@ -544,7 +700,7 @@
                 filterAndRender();
             } catch (err) {
                 console.error('Error fetching badges:', err);
-                document.getElementById('badge-list-grid').innerHTML = '<div class="col-12 text-center text-danger py-5">読み込みエラーが発生しました</div>';
+                document.getElementById('badge-list-grid').innerHTML = '<div class="col-12 empty-state"><div class="empty-state-icon">⚠️</div><p>読み込みエラーが発生しました</p></div>';
             }
         }
 
@@ -649,9 +805,7 @@
             let html = '';
             html += buildItem('‹', currentPage - 1, currentPage === 1);
             html += pages.map(p => {
-                if (p === '...') {
-                    return buildItem('…', 'ellipsis', true);
-                }
+                if (p === '...') return buildItem('…', 'ellipsis', true);
                 return buildItem(p, p, false, p === currentPage);
             }).join('');
             html += buildItem('›', currentPage + 1, currentPage === totalPages);
@@ -664,6 +818,7 @@
                     if (!Number.isNaN(nextPage)) {
                         currentPage = nextPage;
                         filterAndRender();
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
                     }
                 });
             });
@@ -697,18 +852,11 @@
             if (btn) btn.style.display = 'inline-block';
         }
 
-        // fail-safe: avoid ReferenceError if script order/cached build is stale
         if (typeof window.updateDynamicFilterOptions !== 'function') {
             window.updateDynamicFilterOptions = function () { };
         }
 
         function buildFilterOptions() {
-            const raritySelect = document.getElementById('rarity-filter');
-            const labelSelect = document.getElementById('label-filter');
-            const methodSelect = document.getElementById('method-filter');
-            if (raritySelect) {
-                // handled by custom menu
-            }
             if (typeof updateDynamicFilterOptions === 'function') {
                 updateDynamicFilterOptions(allBadges);
             }
@@ -804,10 +952,7 @@
                     }
                 }
                 if (creatorInput && !creatorInput.value) {
-                    if (creatorAvatar) {
-                        creatorAvatar.src = '';
-                        creatorAvatar.style.display = 'none';
-                    }
+                    if (creatorAvatar) { creatorAvatar.src = ''; creatorAvatar.style.display = 'none'; }
                     if (creatorLabel) creatorLabel.textContent = 'すべて';
                 }
                 if (type) type.value = state.type || '';
@@ -840,33 +985,21 @@
             filters.method = document.getElementById('method-filter')?.value || '';
             updateDynamicFilterOptions(allBadges);
 
-            // 1. フィルタリング
             let filtered = allBadges.filter(b => {
-                // 名前検索
                 if (searchVal && !b.name.toLowerCase().includes(searchVal)) return false;
-
-                // 入手方法フィルター
                 switch (filters.method) {
-                    case 'shop':
-                        if (!b.is_shop_listed) return false;
-                        break;
-                    case 'gacha':
-                        if (!b.is_gacha_eligible) return false;
-                        break;
+                    case 'shop':      if (!b.is_shop_listed) return false; break;
+                    case 'gacha':     if (!b.is_gacha_eligible) return false; break;
                     case 'not_for_sale':
                         if (b.is_shop_listed || b.is_gacha_eligible) return false;
                         if (b.sales_type === '限定品' || b.sales_type === '換金品') return false;
                         break;
-                    default:
-                        break;
                 }
-
                 if (filters.rarity) {
                     const circulationCount = cachedCirculationCounts[b.id] || 0;
                     const result = BadgeUtils.calculateBadgeValues(b, circulationCount, rarityThresholds);
                     if (result.rarityName !== filters.rarity) return false;
                 }
-
                 if (filters.creator && b.discord_user_id !== filters.creator) return false;
                 if (filters.type && b.sales_type !== filters.type) return false;
                 if (filters.label && (b.label || '').trim() !== filters.label) return false;
@@ -875,11 +1008,9 @@
                     if (!tags.includes(filters.tag)) return false;
                 }
                 if (filters.unownedOnly && ownedBadgeIds.size > 0 && ownedBadgeIds.has(b.id)) return false;
-
                 return true;
             });
 
-            // 各バッジに資産価値と動的レアリティ情報を付加（ソート用）
             filtered.forEach(b => {
                 const circulationCount = cachedCirculationCounts[b.id] || 0;
                 const result = BadgeUtils.calculateBadgeValues(b, circulationCount, rarityThresholds);
@@ -888,24 +1019,14 @@
                 b._starLevel = result.starLevel;
             });
 
-            // 2. ソート
             if (sortBy === 'number') {
                 filtered.sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
             } else if (sortBy === 'rarity') {
                 filtered.sort((a, b) => {
-                    // 1. fixed_rarity_name があるものは一番下にする
                     if (a.fixed_rarity_name && !b.fixed_rarity_name) return 1;
                     if (!a.fixed_rarity_name && b.fixed_rarity_name) return -1;
-
-                    // 2. ★レベルで比較（高い順）
                     if (b._starLevel !== a._starLevel) return b._starLevel - a._starLevel;
-
-                    // 3. 同じレアリティなら資産価値順（高い順）
-                    if ((b._assetValue || 0) !== (a._assetValue || 0)) {
-                        return (b._assetValue || 0) - (a._assetValue || 0);
-                    }
-
-                    // 4. まだ同じならナンバー順
+                    if ((b._assetValue || 0) !== (a._assetValue || 0)) return (b._assetValue || 0) - (a._assetValue || 0);
                     return (a.sort_order ?? 9999) - (b.sort_order ?? 9999);
                 });
             } else if (sortBy === 'price_asc') {
@@ -924,11 +1045,11 @@
                 filtered.sort((a, b) => a.name.localeCompare(b.name));
             }
 
-            // 3. 描画
             document.getElementById('badge-count-status').textContent = `${filtered.length} / ${allBadges.length} 件`;
 
             if (filtered.length === 0) {
-                grid.innerHTML = '<div class="col-12 text-center text-muted py-5">該当するバッジがありません</div>';
+                grid.innerHTML = '<div class="col-12 empty-state"><div class="empty-state-icon">🔍</div><p>該当するバッジがありません</p></div>';
+                renderPagination(0);
                 return;
             }
 
@@ -948,16 +1069,20 @@
                     : '';
                 return `
                     <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-                        <a href="./index.html?id=${badge.id}" class="badge-item-large badge-card ${rarityClass}" style="color: inherit;">
-                            <div class="badge-number-label" style="color: inherit; opacity: 0.6;">#${badge.sort_order ?? '???'}</div>
-                            <div class="badge-meta-row">
-                                <div class="rarity-pill" style="background: rgba(0,0,0,0.2);">${rarity}</div>
+                        <a href="./index.html?id=${badge.id}" class="badge-item-large badge-card ${rarityClass}">
+                            <div class="badge-card-top">
+                                <span class="rarity-pill ${rarityClass}">${rarity}</span>
                                 ${label ? `<span class="badge-label-strong badge-tag-link" role="button" tabindex="0"
                                     onclick="event.preventDefault(); event.stopPropagation(); window.location.href='./list.html?label=${encodeURIComponent(label)}';">${escapeHtml(label)}</span>` : ''}
                             </div>
-                            <img src="${badge.image_url}" class="badge-img-large" alt="${badge.name}" style="filter: drop-shadow(0 2px 5px rgba(0,0,0,0.2));">
-                            <div class="badge-name-large" style="color: inherit;">${badge.name}</div>
-                            ${tagHtml}
+                            <div class="badge-card-img-area">
+                                <img src="${badge.image_url}" class="badge-img-large" alt="${badge.name}" loading="lazy">
+                            </div>
+                            <div class="badge-card-footer">
+                                <div class="badge-number-label">#${badge.sort_order ?? '???'}</div>
+                                <div class="badge-name-large">${badge.name}</div>
+                                ${tagHtml}
+                            </div>
                         </a>
                     </div>
                 `;
@@ -1000,24 +1125,15 @@
         function getBadgeTags(badge) {
             if (!badge) return [];
             const tags = badge.tags;
-            if (Array.isArray(tags)) {
-                return tags.map(t => (t || '').trim()).filter(Boolean);
-            }
+            if (Array.isArray(tags)) return tags.map(t => (t || '').trim()).filter(Boolean);
             if (typeof tags === 'string') {
                 const trimmed = tags.trim();
                 if (!trimmed) return [];
                 try {
                     const parsed = JSON.parse(trimmed);
-                    if (Array.isArray(parsed)) {
-                        return parsed.map(t => (t || '').trim()).filter(Boolean);
-                    }
-                } catch (_) {
-                    // ignore JSON parse errors
-                }
-                return trimmed
-                    .split(/[,\s]+/g)
-                    .map(t => t.trim())
-                    .filter(Boolean);
+                    if (Array.isArray(parsed)) return parsed.map(t => (t || '').trim()).filter(Boolean);
+                } catch (_) {}
+                return trimmed.split(/[,\s]+/g).map(t => t.trim()).filter(Boolean);
             }
             return [];
         }
@@ -1032,23 +1148,18 @@
             if (!tagSelect) return;
             if (![...tagSelect.options].some(o => o.value === tag)) {
                 const opt = document.createElement('option');
-                opt.value = tag;
-                opt.textContent = tag;
+                opt.value = tag; opt.textContent = tag;
                 tagSelect.appendChild(opt);
             }
             tagSelect.value = tag;
             filters.tag = tag;
             currentPage = 1;
-            // タグ遷移時は、保存済みのクリエイターフィルタをクリアして混在を防ぐ
             const creatorInput = document.getElementById('creator-filter');
             const creatorLabel = document.getElementById('creator-filter-label');
             const creatorAvatar = document.getElementById('creator-filter-avatar');
             if (creatorInput) creatorInput.value = '';
             if (creatorLabel) creatorLabel.textContent = 'すべて';
-            if (creatorAvatar) {
-                creatorAvatar.src = '';
-                creatorAvatar.style.display = 'none';
-            }
+            if (creatorAvatar) { creatorAvatar.src = ''; creatorAvatar.style.display = 'none'; }
             filters.creator = '';
             markUrlApplied(`tag:${tag}`);
             saveFilterState();
@@ -1064,8 +1175,7 @@
             if (!labelSelect) return;
             if (![...labelSelect.options].some(o => o.value === label)) {
                 const opt = document.createElement('option');
-                opt.value = label;
-                opt.textContent = label;
+                opt.value = label; opt.textContent = label;
                 labelSelect.appendChild(opt);
             }
             labelSelect.value = label;
@@ -1076,10 +1186,7 @@
             const creatorAvatar = document.getElementById('creator-filter-avatar');
             if (creatorInput) creatorInput.value = '';
             if (creatorLabel) creatorLabel.textContent = 'すべて';
-            if (creatorAvatar) {
-                creatorAvatar.src = '';
-                creatorAvatar.style.display = 'none';
-            }
+            if (creatorAvatar) { creatorAvatar.src = ''; creatorAvatar.style.display = 'none'; }
             filters.creator = '';
             markUrlApplied(`label:${label}`);
             saveFilterState();
@@ -1091,58 +1198,47 @@
                 const raw = sessionStorage.getItem(FILTER_URL_APPLIED_KEY);
                 const info = raw ? JSON.parse(raw) : null;
                 if (!info || info.key !== urlKey) return false;
-                const lastAppliedAt = info.appliedAt || 0;
-                const lastUpdatedAt = lastLoadedFilterState.updatedAt || 0;
-                return lastUpdatedAt > lastAppliedAt;
-            } catch (_) {
-                return false;
-            }
+                return (lastLoadedFilterState.updatedAt || 0) > (info.appliedAt || 0);
+            } catch (_) { return false; }
         }
 
         function markUrlApplied(urlKey) {
             try {
-                sessionStorage.setItem(FILTER_URL_APPLIED_KEY, JSON.stringify({
-                    key: urlKey,
-                    appliedAt: Date.now()
-                }));
-            } catch (_) {
-                // noop
-            }
+                sessionStorage.setItem(FILTER_URL_APPLIED_KEY, JSON.stringify({ key: urlKey, appliedAt: Date.now() }));
+            } catch (_) {}
         }
 
         function resetAllFiltersForExternalNav() {
-            const search = document.getElementById('search-box');
-            const sort = document.getElementById('sort-select');
-            const rarityInput = document.getElementById('rarity-filter');
-            const rarityLabel = document.getElementById('rarity-filter-label');
-            const creatorInput = document.getElementById('creator-filter');
-            const creatorLabel = document.getElementById('creator-filter-label');
-            const creatorAvatar = document.getElementById('creator-filter-avatar');
-            const type = document.getElementById('type-filter');
-            const label = document.getElementById('label-filter');
-            const tag = document.getElementById('tag-filter');
-            const method = document.getElementById('method-filter');
-            const unownedBtn = document.getElementById('unowned-toggle');
-
-            if (search) search.value = '';
-            if (sort) sort.value = 'price_asc';
-            if (rarityInput) rarityInput.value = '';
-            if (rarityLabel) rarityLabel.textContent = 'すべて';
-            if (creatorInput) creatorInput.value = '';
-            if (creatorLabel) creatorLabel.textContent = 'すべて';
-            if (creatorAvatar) {
-                creatorAvatar.src = '';
-                creatorAvatar.style.display = 'none';
-            }
-            if (type) type.value = '';
-            if (label) label.value = '';
-            if (tag) tag.value = '';
-            if (method) method.value = '';
+            const els = {
+                search: document.getElementById('search-box'),
+                sort: document.getElementById('sort-select'),
+                rarityInput: document.getElementById('rarity-filter'),
+                rarityLabel: document.getElementById('rarity-filter-label'),
+                creatorInput: document.getElementById('creator-filter'),
+                creatorLabel: document.getElementById('creator-filter-label'),
+                creatorAvatar: document.getElementById('creator-filter-avatar'),
+                type: document.getElementById('type-filter'),
+                label: document.getElementById('label-filter'),
+                tag: document.getElementById('tag-filter'),
+                method: document.getElementById('method-filter'),
+                unownedBtn: document.getElementById('unowned-toggle'),
+            };
+            if (els.search) els.search.value = '';
+            if (els.sort) els.sort.value = 'price_asc';
+            if (els.rarityInput) els.rarityInput.value = '';
+            if (els.rarityLabel) els.rarityLabel.textContent = 'すべて';
+            if (els.creatorInput) els.creatorInput.value = '';
+            if (els.creatorLabel) els.creatorLabel.textContent = 'すべて';
+            if (els.creatorAvatar) { els.creatorAvatar.src = ''; els.creatorAvatar.style.display = 'none'; }
+            if (els.type) els.type.value = '';
+            if (els.label) els.label.value = '';
+            if (els.tag) els.tag.value = '';
+            if (els.method) els.method.value = '';
             filters.unownedOnly = false;
-            if (unownedBtn) {
-                unownedBtn.classList.remove('btn-primary');
-                unownedBtn.classList.add('btn-outline-secondary');
-                unownedBtn.textContent = '未所持のみ表示';
+            if (els.unownedBtn) {
+                els.unownedBtn.classList.remove('btn-primary');
+                els.unownedBtn.classList.add('btn-outline-secondary');
+                els.unownedBtn.textContent = '未所持のみ表示';
             }
             currentPage = 1;
         }
@@ -1150,27 +1246,16 @@
         function clearStaleCreatorFilter(hasRestored) {
             if (!hasRestored) return;
             const params = new URLSearchParams(window.location.search);
-            const hasTag = !!(params.get('tag') || '').trim();
-            if (hasTag) return;
-
+            if (!!(params.get('tag') || '').trim()) return;
             const ref = document.referrer || '';
             const sameOrigin = ref.includes(window.location.hostname);
-            const isReturnFromBadgePage = sameOrigin && (
-                ref.includes('/badge/list.html') ||
-                ref.includes('/badge/index.html')
-            );
-
-            if (isReturnFromBadgePage) return;
-
+            if (sameOrigin && (ref.includes('/badge/list.html') || ref.includes('/badge/index.html'))) return;
             const creatorInput = document.getElementById('creator-filter');
             const creatorLabel = document.getElementById('creator-filter-label');
             const creatorAvatar = document.getElementById('creator-filter-avatar');
             if (creatorInput) creatorInput.value = '';
             if (creatorLabel) creatorLabel.textContent = 'すべて';
-            if (creatorAvatar) {
-                creatorAvatar.src = '';
-                creatorAvatar.style.display = 'none';
-            }
+            if (creatorAvatar) { creatorAvatar.src = ''; creatorAvatar.style.display = 'none'; }
             filters.creator = '';
             saveFilterState();
         }
@@ -1192,11 +1277,8 @@
 
         function escapeHtml(value) {
             return String(value || '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         }
 
         function matchesMethodFilter(badge, method) {
@@ -1215,15 +1297,13 @@
             if (opts.searchVal && !b.name.toLowerCase().includes(opts.searchVal)) return false;
             if (excludeKey !== 'method' && opts.method && !matchesMethodFilter(b, opts.method)) return false;
             if (excludeKey !== 'rarity' && opts.rarity) {
-                const r = getRarityForBadge(b);
-                if (r !== opts.rarity) return false;
+                if (getRarityForBadge(b) !== opts.rarity) return false;
             }
             if (excludeKey !== 'creator' && opts.creator && b.discord_user_id !== opts.creator) return false;
             if (excludeKey !== 'type' && opts.type && b.sales_type !== opts.type) return false;
             if (excludeKey !== 'label' && opts.label && (b.label || '').trim() !== opts.label) return false;
             if (excludeKey !== 'tag' && opts.tag) {
-                const tags = getBadgeTags(b);
-                if (!tags.includes(opts.tag)) return false;
+                if (!getBadgeTags(b).includes(opts.tag)) return false;
             }
             if (excludeKey !== 'unownedOnly' && opts.unownedOnly && ownedBadgeIds.size > 0 && ownedBadgeIds.has(b.id)) return false;
             return true;
@@ -1237,97 +1317,55 @@
             const currentMethod = document.getElementById('method-filter')?.value || '';
             const baseOpts = {
                 searchVal,
-                rarity: filters.rarity,
-                creator: filters.creator,
-                type: filters.type,
-                label: filters.label,
-                tag: filters.tag,
-                method: filters.method,
+                rarity: filters.rarity, creator: filters.creator,
+                type: filters.type, label: filters.label,
+                tag: filters.tag, method: filters.method,
                 unownedOnly: filters.unownedOnly
             };
 
-            const baseForRarity = sourceBadges.filter(b => matchesFilters(b, baseOpts, 'rarity'));
-            const baseForCreator = sourceBadges.filter(b => matchesFilters(b, baseOpts, 'creator'));
-            const baseForType = sourceBadges.filter(b => matchesFilters(b, baseOpts, 'type'));
-            const baseForLabel = sourceBadges.filter(b => matchesFilters(b, baseOpts, 'label'));
-            const baseForTag = sourceBadges.filter(b => matchesFilters(b, baseOpts, 'tag'));
-            const baseForMethod = sourceBadges.filter(b => matchesFilters(b, baseOpts, 'method'));
+            const baseForRarity   = sourceBadges.filter(b => matchesFilters(b, baseOpts, 'rarity'));
+            const baseForCreator  = sourceBadges.filter(b => matchesFilters(b, baseOpts, 'creator'));
+            const baseForType     = sourceBadges.filter(b => matchesFilters(b, baseOpts, 'type'));
+            const baseForLabel    = sourceBadges.filter(b => matchesFilters(b, baseOpts, 'label'));
+            const baseForTag      = sourceBadges.filter(b => matchesFilters(b, baseOpts, 'tag'));
+            const baseForMethod   = sourceBadges.filter(b => matchesFilters(b, baseOpts, 'method'));
 
-            // レアリティメニュー
             const rarityCounts = {};
             baseForRarity.forEach(b => {
                 const r = getRarityForBadge(b) || '-';
                 rarityCounts[r] = (rarityCounts[r] || 0) + 1;
             });
             buildRarityMenuFromCounts(rarityCounts);
-
-            // クリエイター
             buildCreatorMenuFromBase(baseForCreator);
 
-            // タイプ
             const typeSelect = document.getElementById('type-filter');
             if (typeSelect) {
                 const counts = {};
-                baseForType.forEach(b => {
-                    if (!b.sales_type) return;
-                    counts[b.sales_type] = (counts[b.sales_type] || 0) + 1;
-                });
-                const options = Object.entries(counts)
-                    .filter(([, c]) => c > 0)
-                    .map(([t, c]) => `<option value="${t}">${t} (${c})</option>`)
-                    .join('');
-                typeSelect.innerHTML = `<option value="">すべて</option>${options}`;
-                if ([...typeSelect.options].some(o => o.value === currentType)) {
-                    typeSelect.value = currentType;
-                } else {
-                    typeSelect.value = '';
-                }
+                baseForType.forEach(b => { if (b.sales_type) counts[b.sales_type] = (counts[b.sales_type] || 0) + 1; });
+                typeSelect.innerHTML = `<option value="">すべて</option>${Object.entries(counts).filter(([,c]) => c > 0).map(([t,c]) => `<option value="${t}">${t} (${c})</option>`).join('')}`;
+                if ([...typeSelect.options].some(o => o.value === currentType)) typeSelect.value = currentType;
+                else typeSelect.value = '';
             }
 
-            // ラベル
             const labelSelect = document.getElementById('label-filter');
             if (labelSelect) {
                 const counts = {};
-                baseForLabel.forEach(b => {
-                    const label = (b.label || '').trim();
-                    if (!label) return;
-                    counts[label] = (counts[label] || 0) + 1;
-                });
-                const options = Object.entries(counts)
-                    .filter(([, c]) => c > 0)
-                    .map(([l, c]) => `<option value="${l}">${l} (${c})</option>`)
-                    .join('');
-                labelSelect.innerHTML = `<option value="">すべて</option>${options}`;
-                if ([...labelSelect.options].some(o => o.value === currentLabel)) {
-                    labelSelect.value = currentLabel;
-                } else {
-                    labelSelect.value = '';
-                }
+                baseForLabel.forEach(b => { const l = (b.label || '').trim(); if (l) counts[l] = (counts[l] || 0) + 1; });
+                labelSelect.innerHTML = `<option value="">すべて</option>${Object.entries(counts).filter(([,c]) => c > 0).map(([l,c]) => `<option value="${l}">${l} (${c})</option>`).join('')}`;
+                if ([...labelSelect.options].some(o => o.value === currentLabel)) labelSelect.value = currentLabel;
+                else labelSelect.value = '';
             }
 
-            // タグ
             const tagSelect = document.getElementById('tag-filter');
             if (tagSelect) {
                 const counts = {};
-                baseForTag.forEach(b => {
-                    getBadgeTags(b).forEach(tag => {
-                        counts[tag] = (counts[tag] || 0) + 1;
-                    });
-                });
-                const options = Object.entries(counts)
-                    .filter(([, c]) => c > 0)
-                    .sort((a, b) => a[0].localeCompare(b[0], 'ja'))
-                    .map(([t, c]) => `<option value="${t}">${t} (${c})</option>`)
-                    .join('');
+                baseForTag.forEach(b => getBadgeTags(b).forEach(tag => { counts[tag] = (counts[tag] || 0) + 1; }));
+                const options = Object.entries(counts).filter(([,c]) => c > 0).sort((a,b) => a[0].localeCompare(b[0],'ja')).map(([t,c]) => `<option value="${t}">${t} (${c})</option>`).join('');
                 tagSelect.innerHTML = `<option value="">すべて</option>${options}`;
-                if ([...tagSelect.options].some(o => o.value === currentTag)) {
-                    tagSelect.value = currentTag;
-                } else {
-                    tagSelect.value = '';
-                }
+                if ([...tagSelect.options].some(o => o.value === currentTag)) tagSelect.value = currentTag;
+                else tagSelect.value = '';
             }
 
-            // 入手方法
             const methodSelect = document.getElementById('method-filter');
             if (methodSelect) {
                 const counts = {
@@ -1340,11 +1378,8 @@
                 if (counts.gacha > 0) options.push(`<option value="gacha">ガチャ排出 (${counts.gacha})</option>`);
                 if (counts.not_for_sale > 0) options.push(`<option value="not_for_sale">非売品 (${counts.not_for_sale})</option>`);
                 methodSelect.innerHTML = `<option value="">すべて</option>${options.join('')}`;
-                if ([...methodSelect.options].some(o => o.value === currentMethod)) {
-                    methodSelect.value = currentMethod;
-                } else {
-                    methodSelect.value = '';
-                }
+                if ([...methodSelect.options].some(o => o.value === currentMethod)) methodSelect.value = currentMethod;
+                else methodSelect.value = '';
             }
         }
 
@@ -1353,18 +1388,13 @@
             const btn = document.getElementById('creator-filter-btn');
             if (!menu || !btn) return;
             const counts = {};
-            baseBadges.forEach(b => {
-                if (!b.discord_user_id) return;
-                counts[b.discord_user_id] = (counts[b.discord_user_id] || 0) + 1;
-            });
+            baseBadges.forEach(b => { if (b.discord_user_id) counts[b.discord_user_id] = (counts[b.discord_user_id] || 0) + 1; });
             const creatorIds = new Set(Object.keys(counts));
             const items = [{ id: '', name: 'すべて', avatar: '' }]
-                .concat(
-                    [...creatorIds].map(id => {
-                        const info = creatorMap.get(id) || { name: id, avatar: '' };
-                        return { id, name: info.name, avatar: info.avatar, count: counts[id] };
-                    }).sort((a, b) => a.name.localeCompare(b.name))
-                );
+                .concat([...creatorIds].map(id => {
+                    const info = creatorMap.get(id) || { name: id, avatar: '' };
+                    return { id, name: info.name, avatar: info.avatar, count: counts[id] };
+                }).sort((a, b) => a.name.localeCompare(b.name)));
             menu.innerHTML = items.map(item => `
                 <div class="creator-item" data-id="${item.id}" data-name="${item.name}" data-avatar="${item.avatar || ''}">
                     ${isValidAvatarUrl(item.avatar) ? `<img src="${item.avatar}" class="creator-avatar" style="display:block;">` : '<span class="creator-avatar" style="display:inline-block;"></span>'}
@@ -1379,14 +1409,8 @@
                 });
             });
             if (!btn.dataset.bound) {
-                btn.addEventListener('click', () => {
-                    menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-                });
-                document.addEventListener('click', (e) => {
-                    if (!menu.contains(e.target) && !btn.contains(e.target)) {
-                        menu.style.display = 'none';
-                    }
-                });
+                btn.addEventListener('click', () => { menu.style.display = menu.style.display === 'block' ? 'none' : 'block'; });
+                document.addEventListener('click', e => { if (!menu.contains(e.target) && !btn.contains(e.target)) menu.style.display = 'none'; });
                 btn.dataset.bound = '1';
             }
         }
@@ -1408,9 +1432,7 @@
                     return aIdx - bIdx;
                 });
             menu.innerHTML = items.map(item => {
-                if (item.value === '') {
-                    return `<div class="creator-item" data-value="" data-name="すべて"><span>すべて</span></div>`;
-                }
+                if (item.value === '') return `<div class="creator-item" data-value="" data-name="すべて"><span>すべて</span></div>`;
                 const cls = getRarityClass(item.name);
                 const displayName = cls ? item.name : '★???';
                 const badgeClass = cls ? cls : 'rarity-unknown';
@@ -1428,14 +1450,8 @@
                 });
             });
             if (!btn.dataset.bound) {
-                btn.addEventListener('click', () => {
-                    menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-                });
-                document.addEventListener('click', (e) => {
-                    if (!menu.contains(e.target) && !btn.contains(e.target)) {
-                        menu.style.display = 'none';
-                    }
-                });
+                btn.addEventListener('click', () => { menu.style.display = menu.style.display === 'block' ? 'none' : 'block'; });
+                document.addEventListener('click', e => { if (!menu.contains(e.target) && !btn.contains(e.target)) menu.style.display = 'none'; });
                 btn.dataset.bound = '1';
             }
         }

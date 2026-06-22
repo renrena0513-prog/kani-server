@@ -418,7 +418,7 @@
                                         </div>
                                         <span class="badge bg-dark" style="font-size:0.75rem; padding: 4px 8px;">×${count}</span>
                                     </div>
-                                    <div class="small text-muted mt-1" style="font-size: 0.7rem;">💵 ${fixedSellPrice.toLocaleString()} C</div>
+                                    <div class="small text-muted mt-1" style="font-size: 0.7rem;">💵 ${fixedSellPrice.toLocaleString()} M</div>
                                 </a>
                                 ${tagHtml}
                             </div>

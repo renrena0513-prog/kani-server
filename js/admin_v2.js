@@ -666,7 +666,7 @@ function calculateLiveScore() {
             rankBonus = yonmaRankBonus[p.rank] || 0;
         }
         const reward = 1 + scoreBonus + rankBonus;
-        p.card.querySelector('.player-reward-preview').textContent = reward.toLocaleString() + ' C';
+        p.card.querySelector('.player-reward-preview').textContent = reward.toLocaleString() + ' M';
     });
 }
 

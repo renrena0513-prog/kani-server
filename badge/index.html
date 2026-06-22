@@ -541,7 +541,7 @@
 
                 // 市場価値の表示
                 const marketValueEl = document.getElementById('market-value');
-                marketValueEl.textContent = (assetValue || 0).toLocaleString() + ' C';
+                marketValueEl.textContent = (assetValue || 0).toLocaleString() + ' M';
                 if (badge.sales_type === '変動型') {
                     marketValueEl.title = '変動型のため、所持ユーザー数により価値が変動します';
                 }
@@ -772,7 +772,7 @@
             // 市場価値更新（ミュータントは3倍）
             if (data.assetValue) {
                 const displayValue = showMutant ? data.assetValue * 3 : data.assetValue;
-                document.getElementById('market-value').textContent = displayValue.toLocaleString() + ' C';
+                document.getElementById('market-value').textContent = displayValue.toLocaleString() + ' M';
             }
 
             // オーラエフェクト切り替え
