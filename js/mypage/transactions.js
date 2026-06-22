@@ -1,4 +1,4 @@
-        let currentSelectMode = '';
+﻿        let currentSelectMode = '';
         async function openUserSelectModal(mode) {
             currentSelectMode = mode;
             const listEl = document.getElementById('transfer-user-list');
@@ -134,7 +134,7 @@
                 if (!data.ok) throw new Error(data.error || '送金に失敗しました');
 
                 bootstrap.Modal.getInstance(document.getElementById('coinAmountModal'))?.hide();
-                alert(`${selectedToUserName} さんに 🪙${amount.toLocaleString()} 送金しました。`);
+                alert(`${selectedToUserName} さんに 💵${amount.toLocaleString()} 送金しました。`);
                 // 活動ログ記録
                 if (typeof logActivity === 'function') {
                     const sender = allProfiles.find(p => p.discord_user_id === targetId);

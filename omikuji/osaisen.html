@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 
 <head>
@@ -512,7 +512,7 @@
                         <div class="label">コイン</div>
                         <div class="value" id="coin-count">-</div>
                     </div>
-                    <div class="fs-3">🪙</div>
+                    <div class="fs-3">💵</div>
                 </div>
                 <div class="balance-card">
                     <div>
@@ -542,7 +542,7 @@
 
             <div id="osaisen-box-area" class="osaisen-box-wrapper mx-auto mb-4"
                 style="position: relative; width: fit-content;">
-                <div id="coin" class="coin-animation">🪙</div>
+                <div id="coin" class="coin-animation">💵</div>
                 <div id="osaisen-box" class="gacha-hero" style="cursor: default; opacity: 0;">
                     <img id="gacha-hero-image" src="../images/妖怪シリーズバナー.png" alt="妖怪ガチャ">
                     <div id="gacha-hero-emoji" class="gacha-hero-emoji" style="display:none;">📘✨</div>
@@ -564,9 +564,9 @@
                         <button class="draw-option-btn" data-payment="mangan_ticket" data-count="1"
                             onclick="setDrawOption('mangan_ticket', 1)">🎟️ 満願符 1枚</button>
                         <button class="draw-option-btn" data-payment="coin" data-count="1" id="coin-btn-1"
-                            onclick="setDrawOption('coin', 1)">🪙 コイン 1回</button>
+                            onclick="setDrawOption('coin', 1)">💵 コイン 1回</button>
                         <button class="draw-option-btn" data-payment="coin" data-count="10" id="coin-btn-10"
-                            onclick="setDrawOption('coin', 10)">🪙 コイン 10回</button>
+                            onclick="setDrawOption('coin', 10)">💵 コイン 10回</button>
                     </div>
                     <button id="draw-btn" class="gacha-btn gacha-main-btn" onclick="handleDraw()">
                         🙏 お賽銭を奉納する
@@ -1060,8 +1060,8 @@
                 }
                 const price1 = gachaCoinPrice;
                 const price10 = gachaCoinPrice * 10;
-                if (coinBtn1) coinBtn1.textContent = `🪙 コイン ${price1.toLocaleString()}枚 1回祈る`;
-                if (coinBtn10) coinBtn10.textContent = `🪙 コイン ${price10.toLocaleString()}枚 10回祈る`;
+                if (coinBtn1) coinBtn1.textContent = `💵 コイン ${price1.toLocaleString()}枚 1回祈る`;
+                if (coinBtn10) coinBtn10.textContent = `💵 コイン ${price10.toLocaleString()}枚 10回祈る`;
                 if (note) note.textContent = `コイン${(currentDrawCount === 10 ? price10 : price1).toLocaleString()}枚で奉納できます。`;
             }
         }
@@ -1415,7 +1415,7 @@
                         updateTenSellButtonState();
                     });
                     if (idx === results.length - 1 && totalEl) {
-                        totalEl.textContent = `合計価値: 🪙 ${totalValue.toLocaleString()}`;
+                        totalEl.textContent = `合計価値: 💵 ${totalValue.toLocaleString()}`;
                     }
                 }, (idx + 1) * 1000);
             });
@@ -1454,7 +1454,7 @@
             headerEl.innerHTML = '<span class="fs-4 fw-bold">✨ 新しい縁を授かりました</span>';
             const value = rarityValueMap[rarity] || 0;
             const mutantLabel = result.is_mutant ? ' <span class="mutant-label">ミュータント</span>' : '';
-            msgEl.innerHTML = `新しいバッジを獲得しました！${mutantLabel}<br>価値: 🪙 ${value.toLocaleString()}`;
+            msgEl.innerHTML = `新しいバッジを獲得しました！${mutantLabel}<br>価値: 💵 ${value.toLocaleString()}`;
 
             const modal = new bootstrap.Modal(document.getElementById('resultModal'));
             modal.show();
@@ -1572,7 +1572,7 @@
                     badgeId: currentShopActionBadgeId || lastDrawnBadgeMeta?.badgeId || null,
                     details: { badge_name: currentShopActionBadgeName || lastDrawnBadgeMeta?.name || null, source: 'osaisen' }
                 });
-                showSellResult(`売却しました！ (🪙 +${data.sell_price.toLocaleString()})`);
+                showSellResult(`売却しました！ (💵 +${data.sell_price.toLocaleString()})`);
                 lastDrawnBadgeUuid = null;
                 lastDrawnBadgeMeta = null;
                 lastDrawnBadgeResult = null;
@@ -1614,7 +1614,7 @@
                         details: { badge_name: meta?.name || null, source: 'osaisen' }
                     });
                 }
-                showSellResult(`売却しました！ (🪙 +${total.toLocaleString()})`);
+                showSellResult(`売却しました！ (💵 +${total.toLocaleString()})`);
                 selected.forEach(uuid => {
                     const el = document.querySelector(`.ten-result-item[data-uuid="${uuid}"]`);
                     if (el) el.classList.remove('selected');
@@ -1673,8 +1673,8 @@
                                 ${rarityName}
                             </span>
                         </td>
-                        <td class="fw-bold">🪙 ${t.threshold_value.toLocaleString()}</td>
-                        <td class="text-muted">🪙 ${sellPrice.toLocaleString()}</td>
+                        <td class="fw-bold">💵 ${t.threshold_value.toLocaleString()}</td>
+                        <td class="text-muted">💵 ${sellPrice.toLocaleString()}</td>
                     </tr>
                 `;
             });
@@ -1913,8 +1913,8 @@
                                     <div class="d-flex align-items-center overflow-hidden">
                                         ${imgHtml}
                                         <div class="small">
-                                            <div class="text-muted">購入: 🪙${pPrice.toLocaleString()}</div>
-                                            <div class="text-danger fw-bold">売却: 🪙${Math.floor(sPrice).toLocaleString()}</div>
+                                            <div class="text-muted">購入: 💵${pPrice.toLocaleString()}</div>
+                                            <div class="text-danger fw-bold">売却: 💵${Math.floor(sPrice).toLocaleString()}</div>
                                         </div>
                                     </div>
                                     <button class="btn btn-sm btn-outline-danger rounded-pill ms-2 text-nowrap" style="font-size: 0.8rem; flex-shrink: 0;"
@@ -2020,7 +2020,7 @@
                 if (error) throw error;
                 if (!data.ok) throw new Error(data.error);
 
-                showNotice(`売却しました！ (🪙 +${data.sell_price.toLocaleString()})`, 'success');
+                showNotice(`売却しました！ (💵 +${data.sell_price.toLocaleString()})`, 'success');
 
                 if (typeof logActivity === 'function') {
                     await logActivity(currentUserId, 'badge_sell', {
@@ -2070,7 +2070,7 @@
 
             const badgeName = targets[0].badge_name || '';
             const total = targets.reduce((sum, item) => sum + (item.sell_price || 0), 0);
-            const confirmed = confirm(`「${badgeName}」を ${targets.length} 個一括売却しますか？（合計: 🪙${Math.floor(total).toLocaleString()}）`);
+            const confirmed = confirm(`「${badgeName}」を ${targets.length} 個一括売却しますか？（合計: 💵${Math.floor(total).toLocaleString()}）`);
             if (!confirmed) return;
 
             if (isBulkSellingConvertible) return;
@@ -2095,7 +2095,7 @@
                 }
 
                 if (successCount > 0) {
-                    showNotice(`「${badgeName}」を ${successCount} 個一括売却しました。（合計: 🪙${Math.floor(actualTotal).toLocaleString()}）`, 'success');
+                    showNotice(`「${badgeName}」を ${successCount} 個一括売却しました。（合計: 💵${Math.floor(actualTotal).toLocaleString()}）`, 'success');
                     if (typeof logActivity === 'function') {
                         await logActivity(currentUserId, 'badge_sell', {
                             amount: actualTotal,

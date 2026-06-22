@@ -1,4 +1,4 @@
-        // ============ バッジ譲渡・売却：バッジ選択モーダル ============
+﻿        // ============ バッジ譲渡・売却：バッジ選択モーダル ============
         // ============ バッジ譲渡・売却：バッジ選択モーダル ============
         async function openBadgeSelectionModal(mode) {
             const listEl = document.getElementById('action-badge-list');
@@ -102,7 +102,7 @@
                             <div class="flex-grow-1">
                                 <div class="user-select-name">${badge.name}${mutantLabel} <span class="badge bg-dark">×${count}</span></div>
                                 <div class="small text-muted" style="font-size: 0.75rem;">
-                                    売却: 🪙${sellPrice.toLocaleString()} C × ${count} = 🪙${totalSell.toLocaleString()} C
+                                    売却: 💵${sellPrice.toLocaleString()} C × ${count} = 💵${totalSell.toLocaleString()} C
                                 </div>
                             </div>
                             <div class="d-flex align-items-center gap-2">
@@ -149,9 +149,9 @@
                                 <div class="flex-grow-1">
                                     <div class="user-select-name">${badge.name} ${mutantLabel}</div>
                                     <div class="small text-muted" style="font-size: 0.75rem;">
-                                        購入: 🪙${buyPrice.toLocaleString()} | 
-                                        時価: 🪙${pValue.toLocaleString()} | 
-                                        売却: 🪙${pSell.toLocaleString()}
+                                        購入: 💵${buyPrice.toLocaleString()} | 
+                                        時価: 💵${pValue.toLocaleString()} | 
+                                        売却: 💵${pSell.toLocaleString()}
                                     </div>
                                 </div>
                                 <div class="text-primary fw-bold">選択</div>
@@ -164,9 +164,9 @@
                                 <div class="flex-grow-1">
                                     <div class="user-select-name">${badge.name} ${mutantLabel}</div>
                                     <div class="small text-muted" style="font-size: 0.75rem;">
-                                        購入: 🪙${buyPrice.toLocaleString()} | 
-                                        時価: 🪙${pValue.toLocaleString()} | 
-                                        売却: 🪙${pSell.toLocaleString()}
+                                        購入: 💵${buyPrice.toLocaleString()} | 
+                                        時価: 💵${pValue.toLocaleString()} | 
+                                        売却: 💵${pSell.toLocaleString()}
                                     </div>
                                 </div>
                                 <div class="text-danger fw-bold">売却</div>
@@ -203,13 +203,13 @@
             const sellRarityClass = sellRarityLabel ? getRarityClass(sellRarityLabel) : '';
 
             const isFree = pPrice <= 0;
-            const purchaseLabel = isFree ? '無料' : `${rarityLabel}🪙${pPrice.toLocaleString()}`;
+            const purchaseLabel = isFree ? '無料' : `${rarityLabel}💵${pPrice.toLocaleString()}`;
             const assetLabel = (salesType === '換金品')
-                ? `🪙${pVal.toLocaleString()}`
-                : `${rarityLabel}🪙${pVal.toLocaleString()}`;
+                ? `💵${pVal.toLocaleString()}`
+                : `${rarityLabel}💵${pVal.toLocaleString()}`;
             const sellLabel = (salesType === '換金品')
-                ? `🪙${sPrice.toLocaleString()}`
-                : `${sellRarityLabel}🪙${sPrice.toLocaleString()}`;
+                ? `💵${sPrice.toLocaleString()}`
+                : `${sellRarityLabel}💵${sPrice.toLocaleString()}`;
             const creatorAvatarHtml = creatorAvatar
                 ? `<img src="${creatorAvatar}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;">`
                 : '';
@@ -261,7 +261,7 @@
                 if (error) throw error;
                 if (!data.ok) throw new Error(data.error);
 
-                showNotice(`バッジを 🪙${data.sell_price.toLocaleString()} で売却しました。`, 'success');
+                showNotice(`バッジを 💵${data.sell_price.toLocaleString()} で売却しました。`, 'success');
                 // 活動ログ記録
                 if (typeof logActivity === 'function') {
                     await logActivity(targetId, 'badge_sell', {
@@ -312,7 +312,7 @@
             }
 
             const totalPrice = fixedPrice * count;
-            if (!confirm(`「${badgeName}${mutantLabel}」を ${count} 個売却しますか？（合計: 💰${totalPrice.toLocaleString()} C）`)) return;
+            if (!confirm(`「${badgeName}${mutantLabel}」を ${count} 個売却しますか？（合計: 💵${totalPrice.toLocaleString()} C）`)) return;
 
             if (isSellingConvertible) return;
             isSellingConvertible = true;
@@ -347,7 +347,7 @@
 
                 if (successCount > 0) {
                     const actualTotalPrice = fixedPrice * successCount;
-                    showNotice(`「${badgeName}${mutantLabel}」を ${successCount} 個売却しました。（合計: 💰${actualTotalPrice.toLocaleString()} C）`, 'success');
+                    showNotice(`「${badgeName}${mutantLabel}」を ${successCount} 個売却しました。（合計: 💵${actualTotalPrice.toLocaleString()} C）`, 'success');
 
                     // 活動ログ記録
                     if (typeof logActivity === 'function') {
@@ -393,9 +393,9 @@
 
             // 譲渡時にも詳細情報を表示するために詳細文字列を構築
             currentActionDetails =
-                `・購入額: 🪙 ${purchasedPrice.toLocaleString()} \n` +
-                `・現在価値: 🪙 ${pValue.toLocaleString()} \n` +
-                `・期待売却額: 🪙 ${pSell.toLocaleString()} \n` +
+                `・購入額: 💵 ${purchasedPrice.toLocaleString()} \n` +
+                `・現在価値: 💵 ${pValue.toLocaleString()} \n` +
+                `・期待売却額: 💵 ${pSell.toLocaleString()} \n` +
                 `--------------------------\n` +
                 `※譲渡するとあなたの手元からはなくなります。`;
 

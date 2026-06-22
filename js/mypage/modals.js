@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   function injectMypageModals() {
     const root = document.getElementById('mypage-modal-root');
     if (!root || root.dataset.injected === '1') return;
@@ -178,7 +178,7 @@
                     <div class="mb-3">
                         <label class="form-label">送金するコイン数</label>
                         <input type="number" id="coin-transfer-amount" class="form-control" placeholder="金額..." min="1">
-                        <div class="form-text mt-2 text-center">あなたの所持金: 🪙 <span id="my-coins-ref">0</span></div>
+                        <div class="form-text mt-2 text-center">あなたの所持金: 💵 <span id="my-coins-ref">0</span></div>
                     </div>
                 </div>
                 <div class="modal-footer">

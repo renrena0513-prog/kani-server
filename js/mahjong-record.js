@@ -1531,7 +1531,7 @@ async function sendDiscordNotification(matchData, isTobiOn, isYakitoriOn, ticket
         let ticketParts = [];
         if (ticketsDrop > 0) ticketParts.push(`🎫+${ticketsDrop}`);
         if (ticketsRank > 0) ticketParts.push(`🏆🎫+${ticketsRank}`);
-        const rewardText = `💰+${reward}${ticketParts.length ? ' ' + ticketParts.join(' ') : ''}${mangans > 0 ? ` 🧧+${mangans}` : ''}`;
+        const rewardText = `💵+${reward}${ticketParts.length ? ' ' + ticketParts.join(' ') : ''}${mangans > 0 ? ` 🧧+${mangans}` : ''}`;
         const yakumanList = yakumanMap[p.discord_user_id] || [];
         const yakumanText = yakumanList.length > 0
             ? `　　 💮🎍✨役満: ${yakumanList.join(' / ')}（🧧+${mode === '四麻' ? 2 : 1} 確定）\n`

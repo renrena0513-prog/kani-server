@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -674,7 +674,7 @@
             <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item" href="../badge/list.html">📛 バッジ一覧</a></li>
             <li><a class="dropdown-item" href="../badge/shop.html">🛒 バッジショップ</a></li>
-            <li><a class="dropdown-item" href="../ranking/index.html">💰 資産ランキング</a></li>
+            <li><a class="dropdown-item" href="../ranking/index.html">💵 資産ランキング</a></li>
             <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item" href="./index.html">🎋 おみくじ</a></li>
             <li class="admin-only" style="display:none;"><hr class="dropdown-divider"></li>
@@ -1194,7 +1194,7 @@
                 }
 
                 let rewardHtml = '';
-                if (coinReward !== 0) rewardHtml += `<span style="color:${coinReward>0?'#27ae60':'#e74c3c'}">🪙 ${coinReward>=0?'+':''}${coinReward.toLocaleString()}</span>`;
+                if (coinReward !== 0) rewardHtml += `<span style="color:${coinReward>0?'#27ae60':'#e74c3c'}">💵 ${coinReward>=0?'+':''}${coinReward.toLocaleString()}</span>`;
                 if (ticketReward !== 0) rewardHtml += ` <span style="color:#d4a574">🎫 ${ticketReward>=0?'+':''}${ticketReward}枚</span>`;
                 if (manganReward !== 0) rewardHtml += ` <span style="color:#d4a574">🧧 ${manganReward>=0?'+':''}${manganReward}枚</span>`;
                 if (badgeInfo) rewardHtml += ` <span style="color:#d4a853">🎖 隠しバッジ「${badgeInfo.name}」獲得！</span>`;
@@ -1286,7 +1286,7 @@
                 return `<div class="entry-row">
                     <div class="entry-rank">${s.rank}</div>
                     <div class="entry-details">
-                        🪙 ${(s.reward||0).toLocaleString()}　確率 ${pct}%${badge ? `　🎖 ${badge.name}` : ''}
+                        💵 ${(s.reward||0).toLocaleString()}　確率 ${pct}%${badge ? `　🎖 ${badge.name}` : ''}
                         <div style="color:#888;font-size:.78rem;">${(s.messages||[]).join(' / ')}</div>
                     </div>
                     <div class="entry-actions">

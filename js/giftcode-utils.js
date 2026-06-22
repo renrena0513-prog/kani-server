@@ -1,4 +1,4 @@
-// ギフトコード正規化ユーティリティ
+﻿// ギフトコード正規化ユーティリティ
 function normalizeGiftCode(input) {
     if (!input) return '';
     let value = String(input).normalize('NFKC');
@@ -12,7 +12,7 @@ function normalizeGiftCode(input) {
 
 function formatGiftRewards(coin, kiganfu, manganfu, badgeName, badgeImage) {
     const parts = [];
-    if (coin > 0) parts.push(`🪙${Number(coin).toLocaleString()}`);
+    if (coin > 0) parts.push(`💵${Number(coin).toLocaleString()}`);
     if (kiganfu > 0) parts.push(`🎟️祈願符${Number(kiganfu).toLocaleString()}枚`);
     if (manganfu > 0) parts.push(`🧧満願符${Number(manganfu).toLocaleString()}枚`);
     if (badgeName) {

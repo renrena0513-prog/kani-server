@@ -1,4 +1,4 @@
-console.log('admin_v2.js loaded - version 2026.01.11.04');
+﻿console.log('admin_v2.js loaded - version 2026.01.11.04');
 // 管理画面用ロジック（大会記録管理版）
 let recordModal;
 
@@ -891,7 +891,7 @@ async function fetchUsers() {
                 <td class="fw-bold" data-label="Discord名 / ニックネーム">${escapeHtml(name)}</td>
                 <td data-label="Discord ID">${escapeHtml(discordId)}</td>
                 <td data-label="最終更新">${escapeHtml(updatedAt)}</td>
-                <td data-label="所持金"><span class="badge bg-light text-dark border">🪙 ${coins.toLocaleString()}</span></td>
+                <td data-label="所持金"><span class="badge bg-light text-dark border">💵 ${coins.toLocaleString()}</span></td>
                 <td data-label="操作">
                     <div class="d-flex gap-1 flex-wrap">
                         <button class="btn btn-sm btn-outline-warning btn-coin" data-id="${escapeHtml(discordId)}" data-name="${escapeHtml(name)}" data-coins="${coins}">コイン</button>
@@ -2515,7 +2515,7 @@ function buildLogActionButtons() {
         transfer_send: '💸 送金',
         transfer_receive: '📩 受取',
         badge_purchase: '🛒 バッジ購入',
-        badge_sell: '💰 バッジ売却',
+        badge_sell: '💵 バッジ売却',
         badge_transfer: '🎁 バッジ譲渡',
         badge_receive: '📥 バッジ受取',
         royalty_receive: '💎 ロイヤリティ受取',
@@ -2739,7 +2739,7 @@ async function fetchActivityLogs(page = 1) {
             // アクションタイプのアイコンと日本語名
             const actionMap = {
                 'badge_purchase': { icon: '🛒', label: 'バッジ購入' },
-                'badge_sell': { icon: '💰', label: 'バッジ売却' },
+                'badge_sell': { icon: '💵', label: 'バッジ売却' },
                 'badge_transfer': { icon: '🎁', label: 'バッジ譲渡' },
                 'badge_receive': { icon: '📥', label: 'バッジ受取' },
                 'royalty_receive': { icon: '💎', label: 'ロイヤリティ受取' },

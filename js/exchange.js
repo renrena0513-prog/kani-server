@@ -1,4 +1,4 @@
-(async function () {
+﻿(async function () {
     initAccordionNav('../');
 
     const user = await getCurrentUser();
@@ -20,7 +20,7 @@
 
     const MATERIAL_DEFS = {
         badge: { label: 'バッジ', icon: '🏅' },
-        coins: { label: 'コイン', icon: '🪙' },
+        coins: { label: 'コイン', icon: '💵' },
         gacha_tickets: { label: '祈願符', icon: '🎫' },
         mangan_tickets: { label: '満願符', icon: '🎴' }
     };

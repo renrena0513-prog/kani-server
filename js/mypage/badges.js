@@ -1,4 +1,4 @@
-        // ============ バッジ管理機能 ============
+﻿        // ============ バッジ管理機能 ============
 
         // バッジデータのグローバル保存用
         let allBadgeGroups = [];
@@ -418,7 +418,7 @@
                                         </div>
                                         <span class="badge bg-dark" style="font-size:0.75rem; padding: 4px 8px;">×${count}</span>
                                     </div>
-                                    <div class="small text-muted mt-1" style="font-size: 0.7rem;">💰 ${fixedSellPrice.toLocaleString()} C</div>
+                                    <div class="small text-muted mt-1" style="font-size: 0.7rem;">💵 ${fixedSellPrice.toLocaleString()} C</div>
                                 </a>
                                 ${tagHtml}
                             </div>
@@ -969,7 +969,7 @@
                 section.style.display = 'block';
 
                 const totalRevenue = logs.reduce((sum, log) => sum + (log.amount || 0), 0);
-                document.getElementById('total-revenue').textContent = `🪙 ${totalRevenue.toLocaleString()}`;
+                document.getElementById('total-revenue').textContent = `💵 ${totalRevenue.toLocaleString()}`;
                 document.getElementById('revenue-count').textContent = logs.length;
 
             } catch (err) {

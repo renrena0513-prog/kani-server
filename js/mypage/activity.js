@@ -1,4 +1,4 @@
-        // ============ 最近の活動ログの読み込み ============
+﻿        // ============ 最近の活動ログの読み込み ============
         let activityPage = 0;
         const ACTIVITY_PER_PAGE = 10;
 
@@ -172,7 +172,7 @@
                         const isTicketOmikuji = log.action_type === 'omikuji' && log.details?.ticket_reward;
                         // ガチャでコイン0の場合は祈願符（チケット）使用なので🎫-1表示
                         const isTicketGacha = log.action_type === 'gacha_draw' && log.amount === 0;
-                        amountStr = isTicketGacha ? '🎫 -1' : (log.amount !== null && (!isTicketOmikuji || log.amount !== 0)) ? `🪙 ${log.amount.toLocaleString()}` : '';
+                        amountStr = isTicketGacha ? '🎫 -1' : (log.amount !== null && (!isTicketOmikuji || log.amount !== 0)) ? `💵 ${log.amount.toLocaleString()}` : '';
                     }
 
                     // 相手の情報を取得（基本は target_user_id。常に最新のプロフィールを参照）

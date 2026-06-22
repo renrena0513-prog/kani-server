@@ -1,4 +1,4 @@
-// ======= マイページ用：所持バッジ在庫モーダル（ショップUI流用） =======
+﻿// ======= マイページ用：所持バッジ在庫モーダル（ショップUI流用） =======
 let inventoryMode = 'sell'; // 'sell' or 'transfer'
 let currentShopActionUUID = null;
 let allInventoryBadges = [];
@@ -297,8 +297,8 @@ function filterAndRenderInventoryBadges() {
                             <div class="d-flex align-items-center overflow-hidden">
                                 ${imgHtml}
                                 <div class="small">
-                                    <div class="text-muted">購入: 🪙${pPrice.toLocaleString()}</div>
-                                    <div class="text-danger fw-bold">売却: 🪙${Math.floor(sPrice).toLocaleString()}</div>
+                                    <div class="text-muted">購入: 💵${pPrice.toLocaleString()}</div>
+                                    <div class="text-danger fw-bold">売却: 💵${Math.floor(sPrice).toLocaleString()}</div>
                                 </div>
                             </div>
                             <button class="btn btn-sm ${btnClass} rounded-pill ms-2 text-nowrap" style="font-size: 0.8rem; flex-shrink: 0;" onclick="${handler}">${btnLabel}</button>
@@ -752,7 +752,7 @@ async function confirmSellAllConvertibleFromMyPage(badgeId) {
 
     const badgeName = targets[0].badge_name || '';
     const total = targets.reduce((sum, item) => sum + (item.sell_price || 0), 0);
-    const confirmed = confirm(`「${badgeName}」を ${targets.length} 個一括売却しますか？（合計: 🪙${Math.floor(total).toLocaleString()}）`);
+    const confirmed = confirm(`「${badgeName}」を ${targets.length} 個一括売却しますか？（合計: 💵${Math.floor(total).toLocaleString()}）`);
     if (!confirmed) return;
 
     if (isBulkSellingConvertible) return;
@@ -776,7 +776,7 @@ async function confirmSellAllConvertibleFromMyPage(badgeId) {
         }
 
         if (successCount > 0) {
-            showNotice(`「${badgeName}」を ${successCount} 個一括売却しました。（合計: 🪙${Math.floor(actualTotal).toLocaleString()}）`, 'success');
+            showNotice(`「${badgeName}」を ${successCount} 個一括売却しました。（合計: 💵${Math.floor(actualTotal).toLocaleString()}）`, 'success');
             if (typeof logActivity === 'function') {
                 await logActivity(targetId, 'badge_sell', {
                     amount: actualTotal,
@@ -818,7 +818,7 @@ async function executeSellFromMyPage() {
         if (error) throw error;
         if (!data.ok) throw new Error(data.error);
 
-        showNotice(`売却しました！ (🪙 +${data.sell_price.toLocaleString()})`, 'success');
+        showNotice(`売却しました！ (💵 +${data.sell_price.toLocaleString()})`, 'success');
         if (typeof logActivity === 'function') {
             await logActivity(targetId, 'badge_sell', {
                 amount: data.sell_price,
@@ -867,8 +867,8 @@ function showBadgeTransferConfirm(toUserId, toUserName) {
         <p class="mb-2">「<span class="fw-bold">${name}</span>」を</p>
         <p class="mb-2"><span class="fw-bold">${toUserName}</span>さんに譲渡しますか？</p>
         <div class="alert alert-secondary d-inline-block text-start py-2 px-4">
-            <div>購入額: 🪙 ${buyPrice.toLocaleString()}</div>
-            <div class="fw-bold text-danger border-top border-secondary pt-1 mt-1">売却参考: 🪙 ${sellPrice.toLocaleString()}</div>
+            <div>購入額: 💵 ${buyPrice.toLocaleString()}</div>
+            <div class="fw-bold text-danger border-top border-secondary pt-1 mt-1">売却参考: 💵 ${sellPrice.toLocaleString()}</div>
             <div class="small text-end opacity-75 mt-1">損益: ${profitStr}</div>
         </div>
     `;

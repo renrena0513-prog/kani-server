@@ -1,4 +1,4 @@
-// ===== 上部固定ナビゲーションバー =====
+﻿// ===== 上部固定ナビゲーションバー =====
 
 /**
  * ナビゲーションバーのHTML生成
@@ -41,7 +41,7 @@ function generateTopNav(basePath = '../') {
             <div class="topnav-group" data-nav-group="fun">
                 <button class="topnav-link topnav-group-btn">🎉 おたのしみ <span class="tn-chevron">▾</span></button>
                 <div class="topnav-dropdown">
-                    <a class="topnav-dd-item" href="${basePath}ranking/index.html" data-page-path="/ranking">💰 資産ランキング</a>
+                    <a class="topnav-dd-item" href="${basePath}ranking/index.html" data-page-path="/ranking">💵 資産ランキング</a>
                     <a class="topnav-dd-item" href="${basePath}badge/list.html" data-page-path="/badge/list">📛 バッジ一覧</a>
                     <a class="topnav-dd-item" href="${basePath}badge/shop.html" data-page-path="/badge/shop">🛒 バッジショップ</a>
                     <a class="topnav-dd-item" href="${basePath}omikuji/index.html" data-page-path="/omikuji">🎋 おみくじ</a>
@@ -77,7 +77,7 @@ function generateTopNav(basePath = '../') {
         <a class="drawer-item drawer-sub" href="${basePath}poker/users/index.html" data-page-path="/poker/users" data-nav-group="poker">👥 ユーザー一覧</a>
         <a class="drawer-item drawer-sub" href="${basePath}poker/team/index.html" data-page-path="/poker/team" data-nav-group="poker">🏅 チーム管理</a>
         <div class="drawer-group-label" data-nav-group="fun">🎉 おたのしみ</div>
-        <a class="drawer-item drawer-sub" href="${basePath}ranking/index.html" data-page-path="/ranking" data-nav-group="fun">💰 資産ランキング</a>
+        <a class="drawer-item drawer-sub" href="${basePath}ranking/index.html" data-page-path="/ranking" data-nav-group="fun">💵 資産ランキング</a>
         <a class="drawer-item drawer-sub" href="${basePath}badge/list.html" data-page-path="/badge/list" data-nav-group="fun">📛 バッジ一覧</a>
         <a class="drawer-item drawer-sub" href="${basePath}badge/shop.html" data-page-path="/badge/shop" data-nav-group="fun">🛒 バッジショップ</a>
         <a class="drawer-item drawer-sub" href="${basePath}omikuji/index.html" data-page-path="/omikuji" data-nav-group="fun">🎋 おみくじ</a>

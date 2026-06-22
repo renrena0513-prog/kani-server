@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 
 <head>
@@ -663,7 +663,7 @@
             <h1 class="shop-header display-4 fw-bold">🛒 バッジショップ</h1>
             <div class="d-inline-flex align-items-center gap-3">
                 <div class="coins-display mb-0">
-                    <span>🪙</span>
+                    <span>💵</span>
                     <span id="user-coins">0</span>
                 </div>
                 <div class="daily-limit-badge" id="daily-purchase-limit">本日の残り 0個</div>
@@ -813,10 +813,10 @@
                             style="border-radius: 12px;">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <div class="fw-bold">🪙 コインで購入</div>
+                                    <div class="fw-bold">💵 コインで購入</div>
                                     <div class="small opacity-75">現在の所持: <span id="modal-user-coins">0</span></div>
                                 </div>
-                                <div class="fs-5 fw-bold text-primary">🪙 <span id="modal-badge-price">0</span></div>
+                                <div class="fs-5 fw-bold text-primary">💵 <span id="modal-badge-price">0</span></div>
                             </div>
                         </button>
 
@@ -1357,9 +1357,9 @@
                                         <span class="fw-bold text-truncate">${badge.name}</span>
                                     </div>
                                     <div class="rights-item-meta">
-                                        <div class="opacity-75">価格: 🪙${pBuy.toLocaleString()}</div>
-                                        <div class="opacity-75">販売利益: 🪙${profit.toLocaleString()}</div>
-                                        <div class="fw-bold">累計利益: 🪙${totalRoyalty.toLocaleString()}</div>
+                                        <div class="opacity-75">価格: 💵${pBuy.toLocaleString()}</div>
+                                        <div class="opacity-75">販売利益: 💵${profit.toLocaleString()}</div>
+                                        <div class="fw-bold">累計利益: 💵${totalRoyalty.toLocaleString()}</div>
                                         <div class="opacity-75">売れた: ${soldCount}個 | 所持: ${myCounts[badge.id] || 0}個</div>
                                     </div>
                                     <div class="mt-2 rights-action-row">
@@ -2083,14 +2083,14 @@
                                 <div class="w-100 px-2 small mb-2 text-start shop-item-pricing">
                                     ${badge.sales_type === '変動型' ? `
                                     <div class="d-flex justify-content-between opacity-75" style="font-size: 0.7rem;">
-                                        <span>初期価格: 🪙${badge.price.toLocaleString()}</span>
+                                        <span>初期価格: 💵${badge.price.toLocaleString()}</span>
                                     </div>
                                     <div class="d-flex justify-content-between opacity-75" style="font-size: 0.7rem;">
-                                        <span>資産価値: 🪙${badge.pValue.toLocaleString()}</span>
+                                        <span>資産価値: 💵${badge.pValue.toLocaleString()}</span>
                                     </div>
                                     ` : ''}
                                     <div class="d-flex justify-content-between fw-bold">
-                                        <span>販売価格: 🪙${badge.pBuy.toLocaleString()}</span>
+                                        <span>販売価格: 💵${badge.pBuy.toLocaleString()}</span>
                                     </div>
                                     <div class="d-flex justify-content-between mt-1 opacity-75" style="font-size: 0.7rem;">
                                         <span>流通: ${badge.circulationCount} 枚 | 残り: ${badge.remaining_count ?? '∞'} | 所持: ${(cachedMyCounts[badge.id] || 0)}</span>
@@ -2509,8 +2509,8 @@
                                 ${rarityName}
                             </span>
                         </td>
-                        <td class="fw-bold">🪙 ${t.threshold_value.toLocaleString()}</td>
-                        <td class="text-muted">🪙 ${sellPrice.toLocaleString()}</td>
+                        <td class="fw-bold">💵 ${t.threshold_value.toLocaleString()}</td>
+                        <td class="text-muted">💵 ${sellPrice.toLocaleString()}</td>
                     </tr>
                 `;
             });
@@ -2781,8 +2781,8 @@
                                     <div class="d-flex align-items-center overflow-hidden">
                                         ${imgHtml}
                                         <div class="small">
-                                            <div class="text-muted">購入: 🪙${pPrice.toLocaleString()}</div>
-                                            <div class="text-danger fw-bold">売却: 🪙${Math.floor(sPrice).toLocaleString()}</div>
+                                            <div class="text-muted">購入: 💵${pPrice.toLocaleString()}</div>
+                                            <div class="text-danger fw-bold">売却: 💵${Math.floor(sPrice).toLocaleString()}</div>
                                         </div>
                                     </div>
                                     <button class="btn btn-sm btn-outline-danger rounded-pill ms-2 text-nowrap" style="font-size: 0.8rem; flex-shrink: 0;"
@@ -2902,7 +2902,7 @@
                 if (error) throw error;
                 if (!data.ok) throw new Error(data.error);
 
-                showNotice(`売却しました！ (🪙 +${data.sell_price.toLocaleString()})`, 'success');
+                showNotice(`売却しました！ (💵 +${data.sell_price.toLocaleString()})`, 'success');
 
                 if (typeof logActivity === 'function') {
                     await logActivity(currentUserId, 'badge_sell', {
@@ -2959,7 +2959,7 @@
 
             const badgeName = targets[0].badge_name || '';
             const total = targets.reduce((sum, item) => sum + (item.sell_price || 0), 0);
-            const confirmed = confirm(`「${badgeName}」を ${targets.length} 個一括売却しますか？（合計: 🪙${Math.floor(total).toLocaleString()}）`);
+            const confirmed = confirm(`「${badgeName}」を ${targets.length} 個一括売却しますか？（合計: 💵${Math.floor(total).toLocaleString()}）`);
             if (!confirmed) return;
 
             if (isBulkSellingConvertible) return;
@@ -2984,7 +2984,7 @@
                 }
 
                 if (successCount > 0) {
-                    showNotice(`「${badgeName}」を ${successCount} 個一括売却しました。（合計: 🪙${Math.floor(actualTotal).toLocaleString()}）`, 'success');
+                    showNotice(`「${badgeName}」を ${successCount} 個一括売却しました。（合計: 💵${Math.floor(actualTotal).toLocaleString()}）`, 'success');
                     if (typeof logActivity === 'function') {
                         await logActivity(currentUserId, 'badge_sell', {
                             amount: actualTotal,

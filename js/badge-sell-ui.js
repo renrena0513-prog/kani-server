@@ -1,4 +1,4 @@
-// 共通：バッジ売却確認UI
+﻿// 共通：バッジ売却確認UI
 // 依存: getRarityClass (supabase-config.js), shopActionModal のDOM
 
 function buildSellConfirmContent(item) {
@@ -20,13 +20,13 @@ function buildSellConfirmContent(item) {
     const circulation = item.market_count || 0;
     const isConvertible = item.sales_type === '換金品';
 
-    const purchaseLabel = buyPrice <= 0 ? '無料' : `${rarityLabel}🪙${buyPrice.toLocaleString()}`;
+    const purchaseLabel = buyPrice <= 0 ? '無料' : `${rarityLabel}💵${buyPrice.toLocaleString()}`;
     const assetLabel = isConvertible
-        ? `🪙${marketValue.toLocaleString()}`
-        : `${rarityLabel}🪙${marketValue.toLocaleString()}`;
+        ? `💵${marketValue.toLocaleString()}`
+        : `${rarityLabel}💵${marketValue.toLocaleString()}`;
     const sellLabel = isConvertible
-        ? `🪙${sellPrice.toLocaleString()}`
-        : `${sellRarityLabel}🪙${sellPrice.toLocaleString()}`;
+        ? `💵${sellPrice.toLocaleString()}`
+        : `${sellRarityLabel}💵${sellPrice.toLocaleString()}`;
 
     const creatorAvatarHtml = creatorAvatar
         ? `<img src="${creatorAvatar}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;">`
@@ -35,13 +35,13 @@ function buildSellConfirmContent(item) {
 
     const purchaseLine = buyPrice <= 0
         ? '無料'
-        : `<span class="rarity-pill ${rarityClass}" style="background: rgba(0,0,0,0.2);">${rarityLabel}</span>🪙${buyPrice.toLocaleString()}`;
-    const assetLine = assetLabel.startsWith('🪙')
+        : `<span class="rarity-pill ${rarityClass}" style="background: rgba(0,0,0,0.2);">${rarityLabel}</span>💵${buyPrice.toLocaleString()}`;
+    const assetLine = assetLabel.startsWith('💵')
         ? assetLabel
-        : `<span class="rarity-pill ${rarityClass}" style="background: rgba(0,0,0,0.2);">${rarityLabel}</span>🪙${marketValue.toLocaleString()}`;
-    const sellLine = sellLabel.startsWith('🪙')
+        : `<span class="rarity-pill ${rarityClass}" style="background: rgba(0,0,0,0.2);">${rarityLabel}</span>💵${marketValue.toLocaleString()}`;
+    const sellLine = sellLabel.startsWith('💵')
         ? sellLabel
-        : `<span class="rarity-pill ${sellRarityClass}" style="background: rgba(0,0,0,0.2);">${sellRarityLabel}</span>🪙${sellPrice.toLocaleString()}`;
+        : `<span class="rarity-pill ${sellRarityClass}" style="background: rgba(0,0,0,0.2);">${sellRarityLabel}</span>💵${sellPrice.toLocaleString()}`;
 
     return `
         <h5 class="fw-bold mb-2">売却の確認</h5>
@@ -56,7 +56,7 @@ function buildSellConfirmContent(item) {
             <div class="sell-line">購入額：${purchaseLine}</div>
             <div class="sell-line">資産価値：${assetLine}</div>
             <div class="sell-line">売却額：${sellLine}</div>
-            <div class="fw-bold mt-2 ${profitClass}">損益：🪙${profitStr}</div>
+            <div class="fw-bold mt-2 ${profitClass}">損益：💵${profitStr}</div>
         </div>
     `;
 }

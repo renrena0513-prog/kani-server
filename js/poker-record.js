@@ -780,7 +780,7 @@ async function sendDiscordNotification(matchData, playerCount, bonusReceivers = 
         const chip = chipTable[p.rank] || 0;
         return {
             name: `${medal}　${p.rank}位`,
-            value: `${nameDisplay}${teamInfo}\n> **${scoreStr} pts** ・ 💰 +${reward} ・ 🪙 +${chip}`,
+            value: `${nameDisplay}${teamInfo}\n> **${scoreStr} pts** ・ 💵 +${reward} ・ 💵 +${chip}`,
             inline: false
         };
     });

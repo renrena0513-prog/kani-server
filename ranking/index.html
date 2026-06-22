@@ -261,7 +261,7 @@
 
     <div class="container py-5">
         <header class="text-center">
-            <h1 class="page-header display-4 fw-bold">💰 資産ランキング</h1>
+            <h1 class="page-header display-4 fw-bold">💵 資産ランキング</h1>
 
             <div class="d-flex justify-content-center mb-4">
                 <div class="btn-group ranking-tabs" role="group">
@@ -494,7 +494,7 @@
                     tbody.innerHTML = rankingData.map((item, index) => {
                         const rank = index + 1;
                         const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
-                        const displayStat = `🪙 ${item.revenue.toLocaleString()}`;
+                        const displayStat = `💵 ${item.revenue.toLocaleString()}`;
 
                         return `
                             <tr>
@@ -678,13 +678,13 @@
                                         ${currentMode === 'networth'
                             ? `
                                             <span class="meta-main">純資産: ${displayStat}</span>
-                                            <span>所持金: 🪙 ${item.coins.toLocaleString()}</span>
+                                            <span>所持金: 💵 ${item.coins.toLocaleString()}</span>
                                             <span>所持バッジ: 📛 ${item.badgeCount}個</span>
                                             <span>バッジ価値: 📈 ${item.badgeValue.toLocaleString()}</span>
                                         `
                             : `
                                             <span class="meta-main">累計資産: ${displayStat}</span>
-                                            <span>所持金: 🪙 ${item.coins.toLocaleString()}</span>
+                                            <span>所持金: 💵 ${item.coins.toLocaleString()}</span>
                                             <span>所持バッジ: 📛 ${item.badgeCount}個</span>
                                             <span>バッジ価値: 📈 ${item.badgeValue.toLocaleString()}</span>
                                         `}
@@ -692,7 +692,7 @@
                                 </div>
                             </td>
                             <td class="fw-bold" style="color: ${statColor}; font-size: 1.1rem;">${displayStat}</td>
-                            <td>🪙 ${item.coins.toLocaleString()}</td>
+                            <td>💵 ${item.coins.toLocaleString()}</td>
                             <td class="text-muted small">📛 ${item.badgeCount}個 / 📈 ${item.badgeValue.toLocaleString()}</td>
                         </tr>
                     `;
