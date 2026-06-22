@@ -277,7 +277,6 @@
             <li><a class="dropdown-item" href="../mypage/index.html">👤 マイページ</a></li>
             <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item" href="./index.html">🃏 ランキング</a></li>
-            <li><a class="dropdown-item" href="./chips.html">🪙 チップランキング</a></li>
             <li><a class="dropdown-item" href="./record.html">📝 記録する</a></li>
             <li><a class="dropdown-item" href="./users/index.html">👥 ユーザー一覧</a></li>
             <li><a class="dropdown-item" href="./team/index.html">🏅 チーム管理
@@ -335,6 +334,7 @@
                     <button class="sub-btn" onclick="setSub('count',this)">試合回数</button>
                     <button class="sub-btn" onclick="setSub('win',this)">優勝率</button>
                     <button class="sub-btn" onclick="setSub('plus',this)">入賞率</button>
+                    <button class="sub-btn" onclick="setSub('chip',this)">🪙 チップ</button>
                 </div>
             </div>
         </div>
@@ -366,6 +366,7 @@
     // ── 状態 ──
     let allResults = [];
     let profileMap = {};
+    let chipMap = {}; // discord_user_id -> chips
     let allTeamNames = new Set();
     let teamIconMap = {};
     let currentTour = 'all';
@@ -395,6 +396,10 @@
         allTeamNames = new Set((teams || []).map(t => t.team_name));
         teamIconMap = {};
         (teams || []).forEach(t => { if (t.icon_url) teamIconMap[t.team_name] = t.icon_url; });
+
+        const { data: pokerProfiles } = await supabaseClient.from('poker_profiles').select('discord_user_id,chips').gt('chips', 0);
+        chipMap = {};
+        (pokerProfiles || []).forEach(p => { chipMap[p.discord_user_id] = p.chips || 0; });
 
         buildTourFilter();
 
@@ -458,19 +463,32 @@
                 const p = profileMap[r.discord_user_id] || {};
                 map[key] = { id: r.discord_user_id, name: p.account_name || r.account_name,
                     avatar: p.avatar_url || null, team: r.team_name || '',
-                    score: 0, count: 0, wins: 0, positives: 0 };
+                    score: 0, count: 0, wins: 0, positives: 0,
+                    chips: chipMap[r.discord_user_id] || 0 };
             }
             map[key].score += Number(r.final_score);
             map[key].count++;
             if (Number(r.rank) === 1) map[key].wins++;
             if (Number(r.final_score) > 0) map[key].positives++;
         });
+        // chipモードはpoker_profilesの全員が対象（試合未参加でもchips>0なら表示）
+        if (currentSub === 'chip') {
+            Object.entries(chipMap).forEach(([uid, chips]) => {
+                if (!map[uid]) {
+                    const p = profileMap[uid] || {};
+                    map[uid] = { id: uid, name: p.account_name || uid,
+                        avatar: p.avatar_url || null, team: '',
+                        score: 0, count: 0, wins: 0, positives: 0, chips };
+                }
+            });
+        }
         const arr = Object.values(map);
         const sorters = {
             score:  (a,b) => b.score - a.score,
             count:  (a,b) => b.count - a.count || b.score - a.score,
             win:    (a,b) => (b.wins/b.count) - (a.wins/a.count) || b.count - a.count,
             plus:   (a,b) => (b.positives/b.count) - (a.positives/a.count) || b.count - a.count,
+            chip:   (a,b) => b.chips - a.chips,
         };
         return arr.sort(sorters[currentSub] || sorters.score);
     }
@@ -527,6 +545,7 @@
         if (currentSub === 'count') return { main: p.count + '試合', sub: sc(p.score) + 'pt' };
         if (currentSub === 'win')   return { main: pct(p.wins, p.count), sub: p.wins + '回優勝 / ' + p.count + '試合' };
         if (currentSub === 'plus')  return { main: pct(p.positives, p.count), sub: p.positives + '回入賞 / ' + p.count + '試合' };
+        if (currentSub === 'chip')  return { main: (p.chips || 0).toLocaleString() + ' chips', sub: p.count + '試合' };
         return { main: sc(p.score), sub: p.count + '試合' };
     }
 
@@ -534,6 +553,7 @@
         if (currentSub === 'count') return p.count;
         if (currentSub === 'win')   return p.count > 0 ? p.wins / p.count : 0;
         if (currentSub === 'plus')  return p.count > 0 ? p.positives / p.count : 0;
+        if (currentSub === 'chip')  return p.chips || 0;
         return p.score;
     }
 

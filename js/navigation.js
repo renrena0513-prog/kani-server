@@ -31,7 +31,6 @@ function generateTopNav(basePath = '../') {
                 <button class="topnav-link topnav-group-btn">🃏 ポーカー大会 <span class="tn-chevron">▾</span></button>
                 <div class="topnav-dropdown">
                     <a class="topnav-dd-item" href="${basePath}poker/index.html" data-page-path="/poker">📊 ランキング</a>
-                    <a class="topnav-dd-item" href="${basePath}poker/chips.html" data-page-path="/poker/chips">🪙 チップランキング</a>
                     <a class="topnav-dd-item" href="${basePath}poker/record.html" data-page-path="/poker/record">📝 記録する</a>
                     <a class="topnav-dd-item" href="${basePath}poker/users/index.html" data-page-path="/poker/users">👥 ユーザー一覧</a>
                     <a class="topnav-dd-item" href="${basePath}poker/team/index.html" data-page-path="/poker/team">🏅 チーム管理</a>
@@ -74,7 +73,6 @@ function generateTopNav(basePath = '../') {
         <a class="drawer-item drawer-sub" href="${basePath}mahjong/team/graph.html" data-page-path="/mahjong/team/graph" data-nav-group="mahjong">📈 グラフ</a>
         <div class="drawer-group-label" data-nav-group="poker">🃏 ポーカー大会</div>
         <a class="drawer-item drawer-sub" href="${basePath}poker/index.html" data-page-path="/poker" data-nav-group="poker">📊 ランキング</a>
-        <a class="drawer-item drawer-sub" href="${basePath}poker/chips.html" data-page-path="/poker/chips" data-nav-group="poker">🪙 チップランキング</a>
         <a class="drawer-item drawer-sub" href="${basePath}poker/record.html" data-page-path="/poker/record" data-nav-group="poker">📝 記録する</a>
         <a class="drawer-item drawer-sub" href="${basePath}poker/users/index.html" data-page-path="/poker/users" data-nav-group="poker">👥 ユーザー一覧</a>
         <a class="drawer-item drawer-sub" href="${basePath}poker/team/index.html" data-page-path="/poker/team" data-nav-group="poker">🏅 チーム管理</a>

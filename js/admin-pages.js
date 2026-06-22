@@ -12,7 +12,6 @@ const ALL_NAV_PAGES = [
     { name: '麻雀大会 - チーム管理',    path: '/mahjong/team' },
     { name: '麻雀大会 - チーム戦グラフ',path: '/mahjong/team/graph' },
     { name: 'ポーカー大会 - ランキング',path: '/poker' },
-    { name: 'ポーカー大会 - チップランキング', path: '/poker/chips' },
     { name: 'ポーカー大会 - 記録する',  path: '/poker/record' },
     { name: 'ポーカー大会 - ユーザー一覧', path: '/poker/users' },
     { name: 'ポーカー大会 - チーム管理', path: '/poker/team' },
