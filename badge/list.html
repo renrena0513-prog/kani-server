@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="list-build" content="2026-06-22-01">
+    <meta name="list-build" content="2026-06-23-01">
     <title>バッジ図鑑 - かに鯖</title>
     <link rel="icon" type="image/png" href="../images/favicon.png">
     <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
@@ -13,23 +13,28 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="../styles.css">
     <style>
+        /* ── Base ── */
         :root {
-            --deep-purple: #5a4a7a;
-            --gold: #d4a574;
-            --gold-accent: #f8c93e;
-            --font-title: 'Kosugi Maru', sans-serif;
+            --app-header-h: 50px;
+            --app-bottom-h: 62px;
             --bg-page: #080c18;
             --bg-card: #111827;
-            --bg-glass: rgba(255,255,255,0.04);
-            --border-subtle: rgba(255,255,255,0.08);
+            --bg-sheet: #141c2e;
+            --border-subtle: rgba(255,255,255,0.09);
             --text-primary: #e2e8f0;
-            --text-muted-dark: rgba(255,255,255,0.38);
+            --text-muted: rgba(255,255,255,0.4);
+            --gold: #f8c93e;
+            --font-title: 'Kosugi Maru', sans-serif;
         }
+
+        *, *::before, *::after { box-sizing: border-box; }
 
         html, body {
             background: var(--bg-page);
             color: var(--text-primary);
             min-height: 100vh;
+            margin: 0;
+            overscroll-behavior: none;
         }
 
         body::before {
@@ -38,606 +43,669 @@
             inset: 0;
             background:
                 radial-gradient(ellipse at 15% 40%, rgba(90,50,160,0.12) 0%, transparent 55%),
-                radial-gradient(ellipse at 85% 15%, rgba(20,60,140,0.15) 0%, transparent 50%),
-                radial-gradient(ellipse at 50% 90%, rgba(10,30,80,0.2) 0%, transparent 60%);
+                radial-gradient(ellipse at 85% 15%, rgba(20,60,140,0.15) 0%, transparent 50%);
             pointer-events: none;
             z-index: 0;
         }
 
-        .container { position: relative; z-index: 1; }
+        /* ── App Header ── */
+        #app-header {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: var(--app-header-h);
+            background: rgba(8,12,24,0.94);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            padding: 0 2px;
+            z-index: 200;
+        }
 
-        /* ── Header ── */
-        .page-header-wrap {
+        .app-header-btn {
+            width: 42px; height: 42px;
+            background: none; border: none;
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            cursor: pointer;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            transition: background 0.18s;
+        }
+        .app-header-btn:hover { background: rgba(255,255,255,0.08); }
+
+        .app-header-title {
+            flex: 1;
             text-align: center;
-            padding: 36px 0 24px;
-        }
-
-        .page-header-title {
             font-family: var(--font-title);
-            font-size: clamp(1.8rem, 5vw, 3rem);
-            font-weight: 900;
-            background: linear-gradient(135deg, #f8c93e 0%, #ffffff 50%, #a78bfa 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin: 0 0 6px;
-            letter-spacing: -0.01em;
-            line-height: 1.1;
+            font-size: 1.0rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        .page-header-sub {
-            color: var(--text-muted-dark);
-            font-size: 0.9rem;
-            letter-spacing: 0.04em;
+        /* Nav dropdown caret removal */
+        .dropdown-toggle::after { display: none !important; }
+
+        /* ── Search Bar (slide down) ── */
+        #app-search-bar {
+            position: fixed;
+            top: var(--app-header-h);
+            left: 0; right: 0;
+            z-index: 199;
+            transform: translateY(-100%);
+            transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+            background: rgba(10,15,30,0.97);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 8px 12px;
+        }
+        #app-search-bar.open { transform: translateY(0); }
+
+        .search-inner {
+            display: flex; align-items: center; gap: 8px;
+            position: relative;
+        }
+        .search-icon {
+            position: absolute; left: 11px;
+            color: var(--text-muted); font-size: 0.85rem;
+            pointer-events: none;
+        }
+        #search-box {
+            flex: 1;
+            background: rgba(255,255,255,0.08) !important;
+            border: 1px solid rgba(255,255,255,0.12) !important;
+            color: var(--text-primary) !important;
+            border-radius: 10px !important;
+            height: 36px; font-size: 0.9rem;
+            padding-left: 32px !important;
+        }
+        #search-box::placeholder { color: var(--text-muted); }
+        #search-box:focus {
+            background: rgba(255,255,255,0.11) !important;
+            border-color: rgba(248,201,62,0.4) !important;
+            box-shadow: none !important;
+            color: #fff !important;
+        }
+        .search-clear-btn {
+            background: none; border: none;
+            color: var(--text-muted); font-size: 1rem;
+            cursor: pointer; padding: 0; flex-shrink: 0;
+            display: none;
+        }
+        .search-clear-btn.visible { display: block; }
+
+        /* ── Main Content ── */
+        #app-content {
+            padding-top: var(--app-header-h);
+            padding-bottom: var(--app-bottom-h);
+            position: relative; z-index: 1;
+            min-height: 100vh;
+        }
+        #app-content.search-open {
+            padding-top: calc(var(--app-header-h) + 52px);
         }
 
         /* ── Back button ── */
         .back-button {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            color: rgba(255,255,255,0.6);
-            text-decoration: none;
-            font-weight: 600;
-            padding: 8px 18px;
-            border-radius: 30px;
+            display: inline-flex; align-items: center; gap: 6px;
+            color: rgba(255,255,255,0.6); text-decoration: none;
+            font-size: 0.85rem; font-weight: 600;
+            padding: 6px 14px; border-radius: 20px;
             background: rgba(255,255,255,0.06);
             border: 1px solid rgba(255,255,255,0.1);
-            transition: all 0.25s;
-            font-size: 0.9rem;
+            margin: 10px 12px 4px;
+            transition: all 0.2s;
+        }
+        .back-button:hover { background: rgba(255,255,255,0.11); color: #fff; }
+
+        /* ── Badge Grid ── */
+        #badge-list-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+            gap: 6px;
+            padding: 8px 10px 4px;
         }
 
-        .back-button:hover {
-            background: rgba(255,255,255,0.12);
-            color: #fff;
-            border-color: rgba(255,255,255,0.2);
-        }
-
-        /* ── Nav dropdown ── */
-        .nav-dropdown {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
-        }
-
-        .record-button {
-            background: linear-gradient(135deg, var(--gold) 0%, #b8892d 100%);
-            color: white;
-            padding: 11px 22px;
-            border-radius: 25px;
-            font-weight: bold;
-            font-size: 1rem;
-            box-shadow: 0 6px 20px rgba(212,168,83,0.5);
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            border: none;
+        /* ── Mini Card ── */
+        .badge-mini-card {
+            display: flex; flex-direction: column;
+            text-decoration: none; color: var(--text-primary);
             cursor: pointer;
+            transition: transform 0.18s;
+        }
+        .badge-mini-card:hover { transform: scale(1.06); }
+        .badge-mini-card:active { transform: scale(0.96); }
+
+        /* Rarity colors via CSS custom property inheritance */
+        .badge-mini-card[data-rc="rarity-normal"]    { --rc-color: #9aa0a8; --rc-glow: rgba(154,160,168,0.25); }
+        .badge-mini-card[data-rc="rarity-fine"]      { --rc-color: #2FBF71; --rc-glow: rgba(47,191,113,0.35); }
+        .badge-mini-card[data-rc="rarity-rare"]      { --rc-color: #2D7FF9; --rc-glow: rgba(45,127,249,0.4); }
+        .badge-mini-card[data-rc="rarity-epic"]      { --rc-color: #8A5CFF; --rc-glow: rgba(138,92,255,0.4); }
+        .badge-mini-card[data-rc="rarity-legendary"] { --rc-color: #D4AF37; --rc-glow: rgba(212,175,55,0.4); }
+        .badge-mini-card[data-rc="rarity-national"]  { --rc-color: #D4AF37; --rc-glow: rgba(212,175,55,0.4); }
+        .badge-mini-card[data-rc="rarity-treasure"]  { --rc-color: #0fba8a; --rc-glow: rgba(15,186,138,0.4); }
+        .badge-mini-card[data-rc="rarity-mystic"]    { --rc-color: #2EE6D6; --rc-glow: rgba(46,230,214,0.45); }
+        .badge-mini-card[data-rc="rarity-hero"]      { --rc-color: #D7263D; --rc-glow: rgba(215,38,61,0.4); }
+        .badge-mini-card[data-rc="rarity-legend"]    { --rc-color: #FFA500; --rc-glow: rgba(255,165,0,0.45); }
+        .badge-mini-card[data-rc="rarity-fantasy"]   { --rc-color: #a78bfa; --rc-glow: rgba(167,139,250,0.4); }
+        .badge-mini-card[data-rc="rarity-mythic"]    { --rc-color: #F6D365; --rc-glow: rgba(246,211,101,0.5); }
+        .badge-mini-card[data-rc="rarity-transcend"] { --rc-color: rgba(255,255,255,0.7); --rc-glow: rgba(255,255,255,0.2); }
+        .badge-mini-card[data-rc="rarity-ex"]        { --rc-color: #00F5FF; --rc-glow: rgba(0,245,255,0.5); }
+
+        .bmc-img-wrap {
+            aspect-ratio: 1;
+            background: var(--bg-card);
+            border-radius: 10px;
+            border: 2px solid var(--rc-color, rgba(255,255,255,0.12));
+            box-shadow: 0 2px 8px var(--rc-glow, transparent);
+            overflow: hidden; position: relative;
+            display: flex; align-items: center; justify-content: center;
+            transition: box-shadow 0.2s;
+        }
+        .badge-mini-card:hover .bmc-img-wrap {
+            box-shadow: 0 4px 16px var(--rc-glow, rgba(255,255,255,0.1));
         }
 
-        /* ── Filter Panel ── */
-        .filter-controls {
-            background: var(--bg-glass);
-            border: 1px solid var(--border-subtle);
-            border-radius: 18px;
-            padding: 18px 20px;
-            margin-bottom: 22px;
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+        .bmc-img {
+            width: 74%; height: 74%;
+            object-fit: contain;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
         }
 
-        .filter-label {
-            font-size: 0.68rem;
-            color: var(--text-muted-dark);
-            font-weight: 700;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            margin-bottom: 5px;
+        .bmc-rarity {
+            position: absolute; top: 3px; left: 3px;
+            font-size: 0.44rem !important;
+            padding: 1px 4px !important;
+            border-radius: 4px;
+            font-weight: 700 !important;
+            line-height: 1.5;
+            white-space: nowrap;
+            max-width: calc(100% - 6px);
+            overflow: hidden; text-overflow: ellipsis;
         }
 
-        .filter-divider {
-            border-color: var(--border-subtle);
-            margin: 14px 0;
+        .bmc-num {
+            position: absolute; bottom: 2px; right: 3px;
+            font-size: 0.42rem; color: rgba(255,255,255,0.22);
+            font-weight: 700; letter-spacing: 0.02em;
         }
 
-        /* Inputs / Selects */
-        .filter-controls .form-control,
-        .filter-controls .form-select,
-        .filter-controls .creator-dropdown-btn {
+        .bmc-label {
+            position: absolute; top: 3px; right: 3px;
+            background: linear-gradient(135deg, #ffb300, #ff6a00);
+            color: #fff; font-size: 0.38rem; border-radius: 3px;
+            padding: 1px 3px; font-weight: 700; line-height: 1.4;
+        }
+
+        .bmc-name {
+            font-family: var(--font-title);
+            font-size: 0.62rem; text-align: center;
+            margin-top: 4px; line-height: 1.3;
+            color: rgba(255,255,255,0.8);
+            display: -webkit-box;
+            -webkit-line-clamp: 2; line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden; word-break: break-all;
+            min-height: 1.6em;
+        }
+
+        /* ── Fixed Bottom Bar ── */
+        #app-bottom-bar {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: var(--app-bottom-h);
+            background: rgba(10,14,28,0.96);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-top: 1px solid var(--border-subtle);
+            display: flex; align-items: center;
+            padding: 0 14px; gap: 10px;
+            z-index: 200;
+        }
+
+        #badge-count-status {
+            flex: 1; font-size: 0.75rem;
+            color: var(--text-muted); font-weight: 600;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+
+        .bottom-actions { display: flex; gap: 8px; }
+
+        .bottom-btn {
+            display: flex; flex-direction: column; align-items: center; gap: 1px;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.11);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 0.65rem; font-weight: 700;
+            padding: 6px 16px; cursor: pointer;
+            transition: background 0.18s, border-color 0.18s;
+            min-width: 74px; letter-spacing: 0.02em;
+        }
+        .bottom-btn i { font-size: 1rem; }
+        .bottom-btn:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.18); }
+        .bottom-btn.active-filters {
+            background: rgba(248,201,62,0.12);
+            border-color: rgba(248,201,62,0.38);
+            color: var(--gold);
+        }
+
+        /* ── Bottom Sheet ── */
+        .bottom-sheet {
+            position: fixed; inset: 0;
+            z-index: 400; pointer-events: none;
+        }
+        .bottom-sheet.open { pointer-events: all; }
+
+        .sheet-overlay {
+            position: absolute; inset: 0;
+            background: rgba(0,0,0,0.6);
+            opacity: 0; transition: opacity 0.3s;
+        }
+        .bottom-sheet.open .sheet-overlay { opacity: 1; }
+
+        .sheet-panel {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            background: var(--bg-sheet);
+            border-radius: 20px 20px 0 0;
+            transform: translateY(100%);
+            transition: transform 0.35s cubic-bezier(0.32,0.72,0,1);
+            max-height: 82vh;
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+        .bottom-sheet.open .sheet-panel { transform: translateY(0); }
+
+        .sheet-handle {
+            width: 36px; height: 4px;
+            background: rgba(255,255,255,0.18); border-radius: 2px;
+            margin: 12px auto 6px; flex-shrink: 0;
+        }
+
+        .sheet-header {
+            display: flex; align-items: center;
+            padding: 4px 16px 12px;
+            border-bottom: 1px solid var(--border-subtle);
+            flex-shrink: 0;
+        }
+        .sheet-title {
+            flex: 1; font-family: var(--font-title);
+            font-size: 1rem; font-weight: 700;
+        }
+        .sheet-close-btn {
+            background: none; border: none;
+            color: var(--text-muted); font-size: 1rem;
+            cursor: pointer; padding: 4px; border-radius: 50%;
+            transition: color 0.2s;
+        }
+        .sheet-close-btn:hover { color: #fff; }
+
+        /* Sort options */
+        .sort-options { overflow-y: auto; padding: 6px 0; }
+        .sort-option {
+            display: flex; align-items: center; gap: 10px;
+            padding: 14px 20px; cursor: pointer;
+            font-size: 0.95rem;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            transition: background 0.15s;
+        }
+        .sort-option:hover { background: rgba(255,255,255,0.05); }
+        .sort-option span { flex: 1; }
+        .sort-check { opacity: 0; color: var(--gold); font-size: 1rem; }
+        .sort-option.active { color: var(--gold); }
+        .sort-option.active .sort-check { opacity: 1; }
+
+        /* Filter sheet */
+        .filter-sheet-body {
+            overflow-y: auto; flex: 1;
+            padding: 10px 16px 8px;
+        }
+        .filter-row { margin-bottom: 14px; }
+        .filter-row-label {
+            font-size: 0.68rem; font-weight: 700;
+            letter-spacing: 0.07em; text-transform: uppercase;
+            color: var(--text-muted); margin-bottom: 6px;
+        }
+
+        .filter-dropdown-btn {
+            width: 100%; display: flex; align-items: center; gap: 8px;
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text-primary); border-radius: 10px;
+            font-size: 0.85rem; cursor: pointer; text-align: left;
+            transition: background 0.18s;
+        }
+        .filter-dropdown-btn:hover { background: rgba(255,255,255,0.1); }
+
+        .creator-dropdown { position: relative; }
+        .creator-menu {
+            position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+            background: #1a2235;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 10px; max-height: 200px;
+            overflow-y: auto; z-index: 500; display: none;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+        }
+        .creator-item {
+            display: flex; align-items: center; gap: 8px;
+            padding: 9px 12px; cursor: pointer;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            color: var(--text-primary); font-size: 0.85rem;
+        }
+        .creator-item:hover { background: rgba(255,255,255,0.07); }
+        .creator-avatar {
+            width: 20px; height: 20px;
+            border-radius: 50%; object-fit: cover; display: none;
+        }
+
+        .filter-select {
+            width: 100%;
             background: rgba(255,255,255,0.07) !important;
-            border: 1px solid rgba(255,255,255,0.12) !important;
+            border: 1px solid rgba(255,255,255,0.1) !important;
             color: var(--text-primary) !important;
             border-radius: 10px !important;
-            min-height: 36px;
-            font-size: 0.85rem;
-        }
-
-        .filter-controls .form-control::placeholder {
-            color: rgba(255,255,255,0.25);
-        }
-
-        .filter-controls .form-control:focus,
-        .filter-controls .form-select:focus {
-            background: rgba(255,255,255,0.1) !important;
-            border-color: rgba(248,201,62,0.45) !important;
-            box-shadow: 0 0 0 3px rgba(248,201,62,0.08) !important;
-            color: #fff !important;
-        }
-
-        .filter-controls .form-select {
-            appearance: none;
+            padding: 8px 28px 8px 12px !important;
+            font-size: 0.85rem; appearance: none;
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='%23aaa'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E") !important;
             background-repeat: no-repeat !important;
             background-position: right 10px center !important;
             background-size: 12px 12px !important;
-            padding-right: 30px;
+            cursor: pointer;
+        }
+        .filter-select option { background: #1a2235; color: #e2e8f0; }
+        .filter-select:focus {
+            outline: none !important;
+            border-color: rgba(248,201,62,0.4) !important;
+            box-shadow: none !important;
         }
 
-        .filter-controls .form-select option {
-            background: #1a2235;
-            color: #e2e8f0;
-        }
-
-        .search-input { padding-left: 38px !important; }
-        .search-icon { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.28); pointer-events: none; }
-
-        /* Creator dropdown */
-        .creator-dropdown { position: relative; }
-
-        .creator-dropdown-btn {
+        #unowned-toggle {
             width: 100%;
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            padding: 7px 10px;
-            background: rgba(255,255,255,0.07) !important;
-            border: 1px solid rgba(255,255,255,0.12) !important;
-            color: var(--text-primary) !important;
-            border-radius: 10px !important;
-            font-size: 0.85rem;
-            cursor: pointer;
-        }
-
-        .creator-menu {
-            position: absolute;
-            top: calc(100% + 5px);
-            left: 0; right: 0;
-            background: #1a2235;
-            border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 10px;
-            max-height: 260px;
-            overflow-y: auto;
-            z-index: 2000;
-            display: none;
-            box-shadow: 0 12px 30px rgba(0,0,0,0.5);
-        }
-
-        .creator-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            cursor: pointer;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-            color: var(--text-primary);
-            font-size: 0.85rem;
-        }
-
-        .creator-item:hover { background: rgba(255,255,255,0.07); }
-
-        .creator-avatar {
-            width: 20px; height: 20px;
-            border-radius: 50%;
-            object-fit: cover;
-            display: none;
-        }
-
-        .filter-active {
-            background: rgba(248,201,62,0.1) !important;
-            border-color: rgba(248,201,62,0.35) !important;
-        }
-
-        /* Badge count */
-        #badge-count-status {
-            background: rgba(255,255,255,0.08) !important;
-            color: rgba(255,255,255,0.55) !important;
-            font-size: 0.78rem;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-weight: 600;
-        }
-
-        /* Reset / toggle btns */
-        .btn-outline-secondary {
-            border-color: rgba(255,255,255,0.18) !important;
-            color: rgba(255,255,255,0.55) !important;
-            border-radius: 8px !important;
-            font-size: 0.82rem;
-        }
-        .btn-outline-secondary:hover {
-            background: rgba(255,255,255,0.09) !important;
-            border-color: rgba(255,255,255,0.28) !important;
-            color: #fff !important;
-        }
-        .btn-primary {
-            background: var(--gold-accent) !important;
-            border-color: var(--gold-accent) !important;
-            color: #000 !important;
-            font-weight: 700 !important;
-            border-radius: 8px !important;
-            font-size: 0.82rem;
-        }
-
-        /* Rarity unknown in menu */
-        .rarity-unknown { background: #3a4050; color: #e2e8f0; }
-
-        /* ── Badge Card ── */
-        .badge-item-large {
-            background: linear-gradient(160deg, #16213a 0%, #0f172a 100%) !important;
-            border: 1.5px solid rgba(255,255,255,0.1) !important;
-            border-radius: 16px !important;
-            padding: 0 !important;
-            text-align: center;
-            transition: transform 0.28s cubic-bezier(0.175,0.885,0.32,1.275), box-shadow 0.28s ease, border-color 0.28s ease;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: stretch;
-            text-decoration: none !important;
-            color: var(--text-primary) !important;
-            overflow: hidden;
-            position: relative;
-        }
-
-        /* Subtle shimmer on hover */
-        .badge-item-large::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, transparent 60%);
-            opacity: 0;
-            transition: opacity 0.3s;
-            pointer-events: none;
-            border-radius: 14px;
-        }
-        .badge-item-large:hover::after { opacity: 1; }
-
-        .badge-item-large:hover {
-            transform: translateY(-7px) scale(1.025);
-            color: #fff !important;
-            z-index: 10;
-        }
-
-        /* Rarity border + glow per rarity class — override styles.css !important */
-        .badge-item-large.rarity-normal    { border-color: #9aa0a8 !important; }
-        .badge-item-large.rarity-fine      { border-color: #2FBF71 !important; box-shadow: 0 0 10px rgba(47,191,113,0.22) !important; }
-        .badge-item-large.rarity-rare      { border-color: #2D7FF9 !important; box-shadow: 0 0 12px rgba(45,127,249,0.28) !important; }
-        .badge-item-large.rarity-epic      { border-color: #8A5CFF !important; box-shadow: 0 0 14px rgba(138,92,255,0.32) !important; }
-        .badge-item-large.rarity-legendary { border-color: #D4AF37 !important; box-shadow: 0 0 14px rgba(212,175,55,0.35) !important; }
-        .badge-item-large.rarity-national  { border-color: #D4AF37 !important; box-shadow: 0 0 14px rgba(212,175,55,0.35) !important; }
-        .badge-item-large.rarity-treasure  { border-color: #0fba8a !important; box-shadow: 0 0 14px rgba(15,186,138,0.3) !important; }
-        .badge-item-large.rarity-mystic    { border-color: #2EE6D6 !important; box-shadow: 0 0 16px rgba(46,230,214,0.38) !important; }
-        .badge-item-large.rarity-hero      { border-color: #D7263D !important; box-shadow: 0 0 16px rgba(215,38,61,0.38) !important; }
-        .badge-item-large.rarity-legend    { border-color: #FFA500 !important; box-shadow: 0 0 18px rgba(255,165,0,0.42) !important; }
-        .badge-item-large.rarity-fantasy   { border-image: linear-gradient(135deg, #7C3AED, #06B6D4, #22C55E) 1 !important; box-shadow: 0 0 20px rgba(124,58,237,0.35) !important; }
-        .badge-item-large.rarity-mythic    { border-color: #F6D365 !important; box-shadow: 0 0 20px rgba(246,211,101,0.45), 0 0 40px rgba(246,211,101,0.15) !important; animation: mythicCardPulse 3s infinite alternate; }
-        .badge-item-large.rarity-transcend { border-color: rgba(255,255,255,0.7) !important; box-shadow: 0 0 20px rgba(255,255,255,0.2) !important; }
-        .badge-item-large.rarity-ex        { border-color: #00F5FF !important; box-shadow: 0 0 20px rgba(0,245,255,0.45), 0 0 40px rgba(0,245,255,0.15) !important; animation: exCardPulse 2s infinite; }
-
-        /* Hover glow */
-        .badge-item-large.rarity-fine:hover      { box-shadow: 0 10px 28px rgba(47,191,113,0.5) !important; }
-        .badge-item-large.rarity-rare:hover      { box-shadow: 0 10px 28px rgba(45,127,249,0.55) !important; }
-        .badge-item-large.rarity-epic:hover      { box-shadow: 0 10px 28px rgba(138,92,255,0.6) !important; }
-        .badge-item-large.rarity-legendary:hover { box-shadow: 0 10px 28px rgba(212,175,55,0.65) !important; }
-        .badge-item-large.rarity-national:hover  { box-shadow: 0 10px 28px rgba(212,175,55,0.65) !important; }
-        .badge-item-large.rarity-treasure:hover  { box-shadow: 0 10px 28px rgba(15,186,138,0.55) !important; }
-        .badge-item-large.rarity-mystic:hover    { box-shadow: 0 10px 28px rgba(46,230,214,0.65) !important; }
-        .badge-item-large.rarity-hero:hover      { box-shadow: 0 10px 28px rgba(215,38,61,0.65) !important; }
-        .badge-item-large.rarity-legend:hover    { box-shadow: 0 10px 30px rgba(255,165,0,0.7) !important; }
-        .badge-item-large.rarity-mythic:hover    { box-shadow: 0 10px 30px rgba(246,211,101,0.75), 0 0 60px rgba(246,211,101,0.25) !important; }
-        .badge-item-large.rarity-ex:hover        { box-shadow: 0 10px 30px rgba(0,245,255,0.75), 0 0 60px rgba(0,245,255,0.25) !important; }
-
-        @keyframes mythicCardPulse {
-            0%   { box-shadow: 0 0 18px rgba(246,211,101,0.4), 0 0 36px rgba(246,211,101,0.12) !important; }
-            100% { box-shadow: 0 0 28px rgba(246,211,101,0.7), 0 0 56px rgba(246,211,101,0.22) !important; }
-        }
-        @keyframes exCardPulse {
-            0%   { border-color: #00F5FF !important; box-shadow: 0 0 18px rgba(0,245,255,0.45), 0 0 36px rgba(0,245,255,0.15) !important; }
-            50%  { border-color: #ff00e4 !important; box-shadow: 0 0 18px rgba(255,0,228,0.45), 0 0 36px rgba(255,0,228,0.15) !important; }
-            100% { border-color: #00F5FF !important; box-shadow: 0 0 18px rgba(0,245,255,0.45), 0 0 36px rgba(0,245,255,0.15) !important; }
-        }
-
-        /* Card inner sections */
-        .badge-card-top {
-            padding: 10px 10px 0;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            flex-wrap: wrap;
-            justify-content: center;
-            min-height: 28px;
-        }
-
-        .badge-card-img-area {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 14px 12px 10px;
-            position: relative;
-            min-height: 90px;
-        }
-
-        .badge-img-large {
-            width: 72px;
-            height: 72px;
-            object-fit: contain;
-            filter: drop-shadow(0 3px 8px rgba(0,0,0,0.6));
-            transition: transform 0.3s ease, filter 0.3s ease;
-        }
-
-        .badge-item-large:hover .badge-img-large {
-            transform: scale(1.13) translateY(-2px);
-            filter: drop-shadow(0 6px 14px rgba(0,0,0,0.7));
-        }
-
-        .badge-card-footer {
-            padding: 6px 10px 12px;
-        }
-
-        .badge-number-label {
-            font-size: 0.58rem;
-            font-weight: 700;
-            color: rgba(255,255,255,0.22);
-            margin-bottom: 3px;
-            letter-spacing: 0.06em;
-        }
-
-        .badge-name-large {
-            font-family: var(--font-title);
-            font-size: 0.8rem;
-            font-weight: bold;
-            color: #dde4f0;
-            line-height: 1.3;
-            height: 2.6em;
-            overflow: hidden;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            line-clamp: 2;
-            -webkit-box-orient: vertical;
-        }
-
-        /* Rarity pill in card */
-        .rarity-pill {
-            font-size: 0.54rem !important;
-            padding: 2px 7px !important;
-            border-radius: 20px;
-            font-weight: 700 !important;
-            letter-spacing: 0.03em;
-            white-space: nowrap;
-            line-height: 1.5;
-        }
-
-        /* Label badge */
-        .badge-label-strong {
-            background: linear-gradient(135deg, #ffb300, #ff6a00);
-            color: #fff;
-            font-size: 0.5rem;
-            border-radius: 8px;
-            padding: 2px 6px;
-            font-weight: 700;
-            letter-spacing: 0.02em;
-            display: inline-flex;
-            align-items: center;
-            line-height: 1.5;
-            box-shadow: 0 2px 6px rgba(255,120,0,0.35);
-        }
-
-        /* Tags */
-        .badge-tag-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 3px;
-            justify-content: center;
-            font-size: 0.62rem;
-            color: rgba(255,255,255,0.32);
-            margin-top: 5px;
-        }
-
-        .badge-tag {
             background: rgba(255,255,255,0.06);
-            border-radius: 5px;
-            padding: 1px 5px;
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text-muted);
+            border-radius: 10px; padding: 9px 12px;
+            font-size: 0.85rem; font-weight: 600;
+            cursor: pointer; text-align: left; transition: all 0.2s;
+            display: none;
+        }
+        #unowned-toggle.btn-outline-secondary {
+            background: rgba(255,255,255,0.06);
+            border-color: rgba(255,255,255,0.1);
+            color: var(--text-muted);
+        }
+        #unowned-toggle.btn-primary {
+            background: rgba(248,201,62,0.14) !important;
+            border-color: rgba(248,201,62,0.4) !important;
+            color: var(--gold) !important;
         }
 
-        .badge-tag-link {
-            text-decoration: none;
-            color: inherit;
-            cursor: pointer;
+        .sheet-footer {
+            display: flex; gap: 10px;
+            padding: 12px 16px 20px;
+            border-top: 1px solid var(--border-subtle);
+            flex-shrink: 0;
         }
-        .badge-tag:hover { background: rgba(255,255,255,0.12); }
+        .btn-sheet-reset {
+            flex: 1; background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            color: var(--text-muted); border-radius: 12px;
+            padding: 11px; font-size: 0.9rem; font-weight: 700;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .btn-sheet-reset:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .btn-sheet-apply {
+            flex: 2; background: var(--gold); border: none;
+            color: #000; border-radius: 12px; padding: 11px;
+            font-size: 0.9rem; font-weight: 700;
+            cursor: pointer; transition: opacity 0.2s;
+        }
+        .btn-sheet-apply:hover { opacity: 0.85; }
 
-        /* Pagination */
+        /* ── Pagination ── */
         .pagination .page-link {
             background: rgba(255,255,255,0.06) !important;
             border-color: rgba(255,255,255,0.1) !important;
             color: rgba(255,255,255,0.6) !important;
             border-radius: 8px !important;
-            margin: 0 2px;
-            font-size: 0.85rem;
+            margin: 0 2px; font-size: 0.82rem;
         }
-
         .pagination .page-item.active .page-link {
-            background: var(--gold-accent) !important;
-            border-color: var(--gold-accent) !important;
-            color: #000 !important;
-            font-weight: 700 !important;
+            background: var(--gold) !important;
+            border-color: var(--gold) !important;
+            color: #000 !important; font-weight: 700 !important;
         }
-
         .pagination .page-link:hover {
-            background: rgba(255,255,255,0.14) !important;
-            color: #fff !important;
+            background: rgba(255,255,255,0.12) !important; color: #fff !important;
         }
+        #badge-page-info { color: var(--text-muted); font-size: 0.75rem; }
+        #badge-pagination-area { padding: 6px 10px; }
 
-        #badge-page-info {
-            color: var(--text-muted-dark);
-            font-size: 0.78rem;
+        /* ── States ── */
+        .grid-empty {
+            grid-column: 1 / -1; text-align: center;
+            color: var(--text-muted); padding: 60px 20px;
         }
+        .grid-empty-icon { font-size: 2.5rem; margin-bottom: 10px; opacity: 0.4; }
 
-        /* Empty state */
-        .empty-state {
-            color: rgba(255,255,255,0.3);
-            padding: 60px 20px;
-            text-align: center;
+        .grid-spinner {
+            grid-column: 1 / -1; text-align: center; padding: 60px 20px;
         }
-        .empty-state-icon { font-size: 3rem; margin-bottom: 12px; opacity: 0.4; }
+        .text-primary { color: var(--gold) !important; }
 
-        /* Loading spinner */
-        .text-primary { color: var(--gold-accent) !important; }
+        .rarity-unknown { background: #3a4050; color: #e2e8f0; }
     </style>
 </head>
 
 <body>
-    <!-- 右上のナビゲーションドロップダウン -->
-    <div class="nav-dropdown dropdown">
-        <button class="record-button dropdown-toggle" type="button" id="navDropdown" data-bs-toggle="dropdown"
-            aria-expanded="false">
-            📝 メニュー
+
+    <!-- ══ App Header ══ -->
+    <div id="app-header">
+        <button class="app-header-btn" id="app-back-btn" onclick="goBack()" title="戻る">
+            <i class="bi bi-chevron-left"></i>
         </button>
-        <ul class="dropdown-menu nav-dropdown-menu dropdown-menu-end" aria-labelledby="navDropdown">
-            <!-- JSでアコーディオンメニューに置き換えられます -->
-        </ul>
+        <span class="app-header-title">📛 バッジ図鑑</span>
+        <button class="app-header-btn" onclick="toggleSearchBar()" title="検索">
+            <i class="bi bi-search"></i>
+        </button>
+        <!-- ナビゲーションドロップダウン -->
+        <div class="dropdown">
+            <button class="app-header-btn dropdown-toggle" type="button" id="navDropdown"
+                data-bs-toggle="dropdown" aria-expanded="false" title="メニュー">
+                <i class="bi bi-list"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navDropdown"></ul>
+        </div>
     </div>
 
-    <div class="container py-3">
+    <!-- ══ Search Bar (slide down) ══ -->
+    <div id="app-search-bar">
+        <div class="search-inner">
+            <i class="bi bi-search search-icon"></i>
+            <input type="text" id="search-box" class="form-control" placeholder="バッジ名で検索..."
+                autocomplete="off" oninput="onSearchInput()">
+            <button class="search-clear-btn" id="search-clear-btn" onclick="clearSearch()" type="button">
+                <i class="bi bi-x-circle-fill"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- ══ Hidden filter state elements (IDs required by JS) ══ -->
+    <div id="hidden-filters" style="position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;" aria-hidden="true">
+        <select id="sort-select" tabindex="-1">
+            <option value="price_asc">価格順（低→高）</option>
+            <option value="price_desc">価格順（高→低）</option>
+            <option value="circulation_asc">流通数順（低→高）</option>
+            <option value="circulation_desc">流通数順（高→低）</option>
+            <option value="id_asc">バッジID順（低→高）</option>
+            <option value="id_desc">バッジID順（高→低）</option>
+            <option value="name">名前順</option>
+        </select>
+        <input type="hidden" id="rarity-filter" value="">
+        <input type="hidden" id="creator-filter" value="">
+    </div>
+
+    <!-- ══ Main Content ══ -->
+    <div id="app-content">
 
         <!-- 戻るボタン（タグ/ラベル遷移時のみ表示） -->
-        <div class="mb-3" id="back-to-shop-wrap" style="display:none;">
+        <div id="back-to-shop-wrap" style="display:none;">
             <a href="#" onclick="goBack(); return false;" class="back-button">
-                ← 戻る
+                <i class="bi bi-chevron-left"></i> 戻る
             </a>
         </div>
 
-        <!-- ヘッダー -->
-        <div class="page-header-wrap">
-            <h1 class="page-header-title">📛 バッジ図鑑</h1>
-            <p class="page-header-sub">かに鯖で獲得・購入できるバッジコレクション</p>
-        </div>
-
-        <!-- フィルターパネル -->
-        <div class="filter-controls">
-            <!-- Row 1: 検索 / ソート / 件数 -->
-            <div class="row g-2 align-items-end">
-                <div class="col-12 col-md-5">
-                    <div class="position-relative">
-                        <i class="bi bi-search search-icon"></i>
-                        <input type="text" id="search-box" class="form-control search-input"
-                            placeholder="バッジ名で検索..." oninput="filterAndRender()">
-                    </div>
-                </div>
-                <div class="col-12 col-md-4">
-                    <div class="d-flex align-items-center gap-2">
-                        <label class="filter-label mb-0 flex-shrink-0">並び替え</label>
-                        <select id="sort-select" class="form-select form-select-sm" onchange="filterAndRender()">
-                            <option value="price_asc">価格順（低→高）</option>
-                            <option value="price_desc">価格順（高→低）</option>
-                            <option value="circulation_asc">流通数順（低→高）</option>
-                            <option value="circulation_desc">流通数順（高→低）</option>
-                            <option value="id_asc">バッジID順（低→高）</option>
-                            <option value="id_desc">バッジID順（高→低）</option>
-                            <option value="name">名前順</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="col-12 col-md-3 d-flex align-items-center justify-content-md-end">
-                    <span class="badge" id="badge-count-status">0 / 0 件</span>
-                </div>
-            </div>
-
-            <hr class="filter-divider">
-
-            <!-- Row 2: 追加フィルター -->
-            <div class="row g-2">
-                <div class="col-6 col-md-3">
-                    <label class="filter-label">レアリティ</label>
-                    <div class="creator-dropdown">
-                        <button class="creator-dropdown-btn" type="button" id="rarity-filter-btn">
-                            <span id="rarity-filter-label">すべて</span>
-                            <i class="bi bi-caret-down-fill ms-auto" style="font-size:0.65rem; color: rgba(255,255,255,0.4);"></i>
-                        </button>
-                        <input type="hidden" id="rarity-filter" value="">
-                        <div class="creator-menu" id="rarity-filter-menu"></div>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <label class="filter-label">クリエイター</label>
-                    <div class="creator-dropdown">
-                        <button class="creator-dropdown-btn" type="button" id="creator-filter-btn">
-                            <img src="" class="creator-avatar" id="creator-filter-avatar" alt="">
-                            <span id="creator-filter-label">すべて</span>
-                            <i class="bi bi-caret-down-fill ms-auto" style="font-size:0.65rem; color: rgba(255,255,255,0.4);"></i>
-                        </button>
-                        <input type="hidden" id="creator-filter" value="">
-                        <div class="creator-menu" id="creator-filter-menu"></div>
-                    </div>
-                </div>
-                <div class="col-6 col-md-2">
-                    <label class="filter-label">タイプ</label>
-                    <select id="type-filter" class="form-select form-select-sm" onchange="filterAndRender()">
-                        <option value="">すべて</option>
-                    </select>
-                </div>
-                <div class="col-6 col-md-2">
-                    <label class="filter-label">ラベル</label>
-                    <select id="label-filter" class="form-select form-select-sm" onchange="filterAndRender()">
-                        <option value="">すべて</option>
-                    </select>
-                </div>
-                <div class="col-6 col-md-2">
-                    <label class="filter-label">タグ</label>
-                    <select id="tag-filter" class="form-select form-select-sm" onchange="filterAndRender()">
-                        <option value="">すべて</option>
-                    </select>
-                </div>
-                <div class="col-6 col-md-3">
-                    <label class="filter-label">入手方法</label>
-                    <select id="method-filter" class="form-select form-select-sm" onchange="filterAndRender()">
-                        <option value="">すべて</option>
-                        <option value="shop">ショップ販売中</option>
-                        <option value="gacha">ガチャ排出</option>
-                        <option value="not_for_sale">非売品</option>
-                    </select>
-                </div>
-                <div class="col-12 col-md-9 d-flex align-items-end gap-2 flex-wrap">
-                    <button id="unowned-toggle" class="btn btn-outline-secondary btn-sm" type="button"
-                        onclick="toggleUnownedFilter()" style="display:none;">
-                        未所持のみ表示
-                    </button>
-                    <button class="btn btn-outline-secondary btn-sm" type="button" onclick="resetAllFilters()">
-                        <i class="bi bi-x-circle me-1"></i>リセット
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- バッジグリッド -->
-        <div id="badge-list-grid" class="row g-3">
-            <div class="col-12 text-center py-5">
+        <!-- Badge Grid -->
+        <div id="badge-list-grid">
+            <div class="grid-spinner">
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">読み込み中...</span>
                 </div>
             </div>
         </div>
 
-        <!-- ページネーション -->
-        <nav aria-label="Page navigation" class="mt-4" id="badge-pagination-area" style="display:none;">
+        <!-- Pagination -->
+        <nav aria-label="Page navigation" id="badge-pagination-area" style="display:none;">
             <div class="small text-center mb-2" id="badge-page-info"></div>
             <ul class="pagination pagination-sm justify-content-center mb-0" id="badge-pagination"></ul>
         </nav>
 
-        <div style="height: 40px;"></div>
+    </div>
+
+    <!-- ══ Fixed Bottom Bar ══ -->
+    <div id="app-bottom-bar">
+        <span id="badge-count-status">読み込み中...</span>
+        <div class="bottom-actions">
+            <button class="bottom-btn" id="filter-btn" onclick="openFilterSheet()">
+                <i class="bi bi-sliders"></i>
+                絞り込み
+            </button>
+            <button class="bottom-btn" id="sort-btn" onclick="openSortSheet()">
+                <i class="bi bi-arrow-down-up"></i>
+                <span id="sort-label-text">並び替え</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ══ Sort Bottom Sheet ══ -->
+    <div id="sort-sheet" class="bottom-sheet" role="dialog" aria-modal="true" aria-label="並び替え">
+        <div class="sheet-overlay" onclick="closeSortSheet()"></div>
+        <div class="sheet-panel">
+            <div class="sheet-handle"></div>
+            <div class="sheet-header">
+                <span class="sheet-title">並び替え</span>
+                <button class="sheet-close-btn" onclick="closeSortSheet()"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="sort-options">
+                <div class="sort-option" data-sort="price_asc" onclick="setSortOption('price_asc')">
+                    <span>価格順（低→高）</span><i class="bi bi-check2 sort-check"></i>
+                </div>
+                <div class="sort-option" data-sort="price_desc" onclick="setSortOption('price_desc')">
+                    <span>価格順（高→低）</span><i class="bi bi-check2 sort-check"></i>
+                </div>
+                <div class="sort-option" data-sort="circulation_asc" onclick="setSortOption('circulation_asc')">
+                    <span>流通数順（低→高）</span><i class="bi bi-check2 sort-check"></i>
+                </div>
+                <div class="sort-option" data-sort="circulation_desc" onclick="setSortOption('circulation_desc')">
+                    <span>流通数順（高→低）</span><i class="bi bi-check2 sort-check"></i>
+                </div>
+                <div class="sort-option" data-sort="id_asc" onclick="setSortOption('id_asc')">
+                    <span>バッジID順（低→高）</span><i class="bi bi-check2 sort-check"></i>
+                </div>
+                <div class="sort-option" data-sort="id_desc" onclick="setSortOption('id_desc')">
+                    <span>バッジID順（高→低）</span><i class="bi bi-check2 sort-check"></i>
+                </div>
+                <div class="sort-option" data-sort="name" onclick="setSortOption('name')">
+                    <span>名前順</span><i class="bi bi-check2 sort-check"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ Filter Bottom Sheet ══ -->
+    <div id="filter-sheet" class="bottom-sheet" role="dialog" aria-modal="true" aria-label="絞り込み">
+        <div class="sheet-overlay" onclick="closeFilterSheet()"></div>
+        <div class="sheet-panel">
+            <div class="sheet-handle"></div>
+            <div class="sheet-header">
+                <span class="sheet-title">絞り込み</span>
+                <button class="sheet-close-btn" onclick="closeFilterSheet()"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="filter-sheet-body">
+
+                <div class="filter-row">
+                    <div class="filter-row-label">レアリティ</div>
+                    <div class="creator-dropdown">
+                        <button class="filter-dropdown-btn" type="button" id="rarity-filter-btn">
+                            <span id="rarity-filter-label">すべて</span>
+                            <i class="bi bi-caret-down-fill ms-auto" style="font-size:0.7rem;color:var(--text-muted);flex-shrink:0;"></i>
+                        </button>
+                        <div class="creator-menu" id="rarity-filter-menu"></div>
+                    </div>
+                </div>
+
+                <div class="filter-row">
+                    <div class="filter-row-label">クリエイター</div>
+                    <div class="creator-dropdown">
+                        <button class="filter-dropdown-btn" type="button" id="creator-filter-btn">
+                            <img src="" class="creator-avatar" id="creator-filter-avatar" alt="">
+                            <span id="creator-filter-label">すべて</span>
+                            <i class="bi bi-caret-down-fill ms-auto" style="font-size:0.7rem;color:var(--text-muted);flex-shrink:0;"></i>
+                        </button>
+                        <div class="creator-menu" id="creator-filter-menu"></div>
+                    </div>
+                </div>
+
+                <div class="filter-row">
+                    <div class="filter-row-label">タイプ</div>
+                    <select id="type-filter" class="filter-select" onchange="filterAndRender()">
+                        <option value="">すべて</option>
+                    </select>
+                </div>
+
+                <div class="filter-row">
+                    <div class="filter-row-label">ラベル</div>
+                    <select id="label-filter" class="filter-select" onchange="filterAndRender()">
+                        <option value="">すべて</option>
+                    </select>
+                </div>
+
+                <div class="filter-row">
+                    <div class="filter-row-label">タグ</div>
+                    <select id="tag-filter" class="filter-select" onchange="filterAndRender()">
+                        <option value="">すべて</option>
+                    </select>
+                </div>
+
+                <div class="filter-row">
+                    <div class="filter-row-label">入手方法</div>
+                    <select id="method-filter" class="filter-select" onchange="filterAndRender()">
+                        <option value="">すべて</option>
+                        <option value="shop">ショップ販売中</option>
+                        <option value="gacha">ガチャ排出</option>
+                        <option value="not_for_sale">非売品</option>
+                    </select>
+                </div>
+
+                <div class="filter-row">
+                    <button id="unowned-toggle" class="btn-outline-secondary" type="button"
+                        onclick="toggleUnownedFilter()">
+                        未所持のみ表示
+                    </button>
+                </div>
+
+            </div>
+            <div class="sheet-footer">
+                <button class="btn-sheet-reset" onclick="resetAllFilters()">リセット</button>
+                <button class="btn-sheet-apply" onclick="closeFilterSheet()">適用</button>
+            </div>
+        </div>
     </div>
 
     <!-- Supabase & Scripts -->
@@ -648,11 +716,87 @@
     <script src="../js/badge-utils.js"></script>
     <script src="../js/navigation.js"></script>
     <script>
-        console.log('badge/list build 2026-06-22-01');
+        console.log('badge/list build 2026-06-23-01');
         document.addEventListener('DOMContentLoaded', function () {
             initAccordionNav('../');
         });
 
+        /* ── Sheet / Search UI ── */
+        let _searchOpen = false;
+
+        function toggleSearchBar() {
+            _searchOpen = !_searchOpen;
+            document.getElementById('app-search-bar').classList.toggle('open', _searchOpen);
+            document.getElementById('app-content').classList.toggle('search-open', _searchOpen);
+            if (_searchOpen) {
+                setTimeout(() => document.getElementById('search-box').focus(), 300);
+            } else {
+                clearSearch();
+            }
+        }
+
+        function onSearchInput() {
+            const val = document.getElementById('search-box').value;
+            document.getElementById('search-clear-btn').classList.toggle('visible', val.length > 0);
+            filterAndRender();
+        }
+
+        function clearSearch() {
+            const box = document.getElementById('search-box');
+            if (box) box.value = '';
+            document.getElementById('search-clear-btn')?.classList.remove('visible');
+            filterAndRender();
+        }
+
+        function openSortSheet() {
+            updateSortSheetActive();
+            document.getElementById('sort-sheet').classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeSortSheet() {
+            document.getElementById('sort-sheet').classList.remove('open');
+            document.body.style.overflow = '';
+        }
+        function openFilterSheet() {
+            document.getElementById('filter-sheet').classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeFilterSheet() {
+            document.getElementById('filter-sheet').classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        const SORT_LABELS = {
+            price_asc: '価格↑', price_desc: '価格↓',
+            circulation_asc: '流通↑', circulation_desc: '流通↓',
+            id_asc: 'ID↑', id_desc: 'ID↓', name: '名前順'
+        };
+
+        function setSortOption(value) {
+            const sel = document.getElementById('sort-select');
+            if (sel) sel.value = value;
+            updateSortSheetActive();
+            const el = document.getElementById('sort-label-text');
+            if (el) el.textContent = SORT_LABELS[value] || '並び替え';
+            filterAndRender();
+            setTimeout(closeSortSheet, 180);
+        }
+
+        function updateSortSheetActive() {
+            const current = document.getElementById('sort-select')?.value || 'price_asc';
+            document.querySelectorAll('.sort-option').forEach(el => {
+                el.classList.toggle('active', el.dataset.sort === current);
+            });
+        }
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') {
+                closeSortSheet(); closeFilterSheet();
+                if (_searchOpen) toggleSearchBar();
+            }
+        });
+
+        /* ── Page state ── */
         let allBadges = [];
         let rarityThresholds = [];
         let rarityOrder = getRarityOrder();
@@ -660,18 +804,12 @@
         let ownedBadgeIds = new Set();
         let currentPage = 1;
         const filters = {
-            rarity: '',
-            creator: '',
-            type: '',
-            label: '',
-            tag: '',
-            method: '',
-            unownedOnly: false
+            rarity: '', creator: '', type: '',
+            label: '', tag: '', method: '', unownedOnly: false
         };
         const FILTER_STORAGE_KEY = 'badge_list_filters_v1';
         const FILTER_URL_APPLIED_KEY = 'badge_list_url_applied_v1';
         let lastLoadedFilterState = null;
-
         let cachedCirculationCounts = {};
 
         async function initBadgeList() {
@@ -700,7 +838,8 @@
                 filterAndRender();
             } catch (err) {
                 console.error('Error fetching badges:', err);
-                document.getElementById('badge-list-grid').innerHTML = '<div class="col-12 empty-state"><div class="empty-state-icon">⚠️</div><p>読み込みエラーが発生しました</p></div>';
+                document.getElementById('badge-list-grid').innerHTML =
+                    '<div class="grid-empty"><div class="grid-empty-icon">⚠️</div><p>読み込みエラーが発生しました</p></div>';
             }
         }
 
@@ -714,11 +853,9 @@
                     .select('badge_id')
                     .range(from, from + pageSize - 1);
                 if (error) throw error;
-
                 (data || []).forEach(item => {
                     counts[item.badge_id] = (counts[item.badge_id] || 0) + 1;
                 });
-
                 if (!data || data.length < pageSize) break;
                 from += pageSize;
             }
@@ -732,9 +869,7 @@
             for (const t of rarityThresholds) {
                 if (assetValue >= t.threshold_value) {
                     current = t.rarity_name;
-                } else {
-                    break;
-                }
+                } else { break; }
             }
             return current;
         }
@@ -759,7 +894,7 @@
         }
 
         function getPageSize() {
-            return window.innerWidth < 768 ? 20 : 48;
+            return window.innerWidth < 768 ? 40 : 80;
         }
 
         function renderPagination(total) {
@@ -849,7 +984,7 @@
                 .select('badge_id')
                 .eq('user_id', targetId);
             (data || []).forEach(r => ownedBadgeIds.add(r.badge_id));
-            if (btn) btn.style.display = 'inline-block';
+            if (btn) btn.style.display = 'block';
         }
 
         if (typeof window.updateDynamicFilterOptions !== 'function') {
@@ -936,7 +1071,18 @@
                 const method = document.getElementById('method-filter');
                 const unownedBtn = document.getElementById('unowned-toggle');
 
-                if (search) search.value = state.search || '';
+                if (search) {
+                    search.value = state.search || '';
+                    if (state.search) {
+                        // show search bar if there was a search
+                        if (!_searchOpen) {
+                            _searchOpen = true;
+                            document.getElementById('app-search-bar').classList.add('open');
+                            document.getElementById('app-content').classList.add('search-open');
+                        }
+                        document.getElementById('search-clear-btn')?.classList.toggle('visible', !!state.search);
+                    }
+                }
                 if (sort) sort.value = state.sort || 'price_asc';
                 if (rarityInput) rarityInput.value = state.rarity || '';
                 if (rarityLabel) rarityLabel.textContent = state.rarityLabel || (state.rarity ? state.rarity : 'すべて');
@@ -966,6 +1112,11 @@
                     unownedBtn.textContent = filters.unownedOnly ? '未所持のみ表示中' : '未所持のみ表示';
                 }
                 currentPage = Number(state.page) || 1;
+
+                // Restore sort button label
+                const sortLabelEl = document.getElementById('sort-label-text');
+                if (sortLabelEl) sortLabelEl.textContent = SORT_LABELS[state.sort] || '並び替え';
+
                 return true;
             } catch (err) {
                 console.warn('Failed to load filter state', err);
@@ -1047,8 +1198,12 @@
 
             document.getElementById('badge-count-status').textContent = `${filtered.length} / ${allBadges.length} 件`;
 
+            // Filter button active indicator
+            const hasActiveFilters = !!(filters.rarity || filters.creator || filters.type || filters.label || filters.tag || filters.method || filters.unownedOnly || searchVal);
+            document.getElementById('filter-btn')?.classList.toggle('active-filters', hasActiveFilters);
+
             if (filtered.length === 0) {
-                grid.innerHTML = '<div class="col-12 empty-state"><div class="empty-state-icon">🔍</div><p>該当するバッジがありません</p></div>';
+                grid.innerHTML = '<div class="grid-empty"><div class="grid-empty-icon">🔍</div><p>該当するバッジがありません</p></div>';
                 renderPagination(0);
                 return;
             }
@@ -1063,28 +1218,16 @@
                 const rarity = badge._rarity;
                 const rarityClass = getRarityClass(rarity);
                 const label = (badge.label || '').trim();
-                const tags = getBadgeTags(badge);
-                const tagHtml = tags.length
-                    ? `<div class="badge-tag-list">${tags.map(t => `<span class="badge-tag badge-tag-link" role="button" tabindex="0" onclick="event.preventDefault(); event.stopPropagation(); window.location.href='./list.html?tag=${encodeURIComponent(t)}';">#${escapeHtml(t)}</span>`).join('')}</div>`
-                    : '';
                 return `
-                    <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-                        <a href="./index.html?id=${badge.id}" class="badge-item-large badge-card ${rarityClass}">
-                            <div class="badge-card-top">
-                                <span class="rarity-pill ${rarityClass}">${rarity}</span>
-                                ${label ? `<span class="badge-label-strong badge-tag-link" role="button" tabindex="0"
-                                    onclick="event.preventDefault(); event.stopPropagation(); window.location.href='./list.html?label=${encodeURIComponent(label)}';">${escapeHtml(label)}</span>` : ''}
-                            </div>
-                            <div class="badge-card-img-area">
-                                <img src="${badge.image_url}" class="badge-img-large" alt="${badge.name}" loading="lazy">
-                            </div>
-                            <div class="badge-card-footer">
-                                <div class="badge-number-label">#${badge.sort_order ?? '???'}</div>
-                                <div class="badge-name-large">${badge.name}</div>
-                                ${tagHtml}
-                            </div>
-                        </a>
-                    </div>
+                    <a href="./index.html?id=${badge.id}" class="badge-mini-card" data-rc="${rarityClass}">
+                        <div class="bmc-img-wrap">
+                            <img src="${badge.image_url}" class="bmc-img" alt="${escapeHtml(badge.name)}" loading="lazy">
+                            <span class="bmc-rarity ${rarityClass}">${rarity}</span>
+                            ${label ? `<span class="bmc-label">${escapeHtml(label)}</span>` : ''}
+                            <span class="bmc-num">#${badge.sort_order ?? '???'}</span>
+                        </div>
+                        <div class="bmc-name">${escapeHtml(badge.name)}</div>
+                    </a>
                 `;
             }).join('');
 
@@ -1093,6 +1236,7 @@
 
         function resetAllFilters() {
             document.getElementById('search-box').value = '';
+            document.getElementById('search-clear-btn')?.classList.remove('visible');
             document.getElementById('sort-select').value = 'price_asc';
             document.getElementById('type-filter').value = '';
             document.getElementById('label-filter').value = '';
@@ -1110,6 +1254,8 @@
                 btn.classList.add('btn-outline-secondary');
                 btn.textContent = '未所持のみ表示';
             }
+            const sortLabelEl = document.getElementById('sort-label-text');
+            if (sortLabelEl) sortLabelEl.textContent = SORT_LABELS['price_asc'];
             currentPage = 1;
             filterAndRender();
         }
