@@ -305,15 +305,8 @@
             }
 
             // チップ（tip）表示
-            const tip = profile?.tip || 0;
-            if (tip > 0) {
-                const chipsEl = document.getElementById('user-chips-display');
-                const chipsVal = document.getElementById('user-chips-value');
-                if (chipsEl && chipsVal) {
-                    chipsVal.textContent = tip.toLocaleString();
-                    chipsEl.style.display = '';
-                }
-            }
+            const chipsVal = document.getElementById('user-chips-value');
+            if (chipsVal) chipsVal.textContent = (profile?.tip || 0).toLocaleString();
 
             // ニックネーム編集ボタンを表示
             const nicknameEditBtn = document.getElementById('nickname-edit-btn');
