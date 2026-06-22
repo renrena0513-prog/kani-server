@@ -744,7 +744,7 @@ async function submitScores() {
             }
         }
 
-        await sendDiscordNotification(dataToInsert, playerCount, bonusReceivers);
+        await sendDiscordNotification(dataToInsert, playerCount, bonusReceivers, chipTable);
         const bonusMsg = bonusReceivers.length > 0 ? `　🎁 初参加ボーナス +10,000コイン: ${bonusReceivers.join('、')}` : '';
         showNotice('スコアを送信しました！コインが各プレイヤーに付与されました。' + bonusMsg, 'success');
         clearFormAfterSubmit();
@@ -761,7 +761,7 @@ function clearFormAfterSubmit() {
     // 送信後もフォームの選択状態を保持する（何もしない）
 }
 
-async function sendDiscordNotification(matchData, playerCount, bonusReceivers = []) {
+async function sendDiscordNotification(matchData, playerCount, bonusReceivers = [], chipTable = {}) {
     if (!matchData || matchData.length === 0) return;
     if (typeof DISCORD_WEBHOOK_URL === 'undefined' || !DISCORD_WEBHOOK_URL) return;
 
@@ -777,9 +777,10 @@ async function sendDiscordNotification(matchData, playerCount, bonusReceivers = 
         const teamInfo = p.team_name ? `\n🏅 ${p.team_name}` : '';
         const scoreStr = (p.final_score > 0 ? '+' : '') + p.final_score;
         const reward = (coinTable[p.rank] || 0).toLocaleString();
+        const chip = chipTable[p.rank] || 0;
         return {
             name: `${medal}　${p.rank}位`,
-            value: `${nameDisplay}${teamInfo}\n> **${scoreStr} pts** ・ 💰 +${reward}`,
+            value: `${nameDisplay}${teamInfo}\n> **${scoreStr} pts** ・ 💰 +${reward} ・ 🪙 +${chip}`,
             inline: false
         };
     });
