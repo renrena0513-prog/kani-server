@@ -506,6 +506,9 @@
             <i class="bi bi-chevron-left"></i>
         </button>
         <span class="app-header-title">📛 バッジ図鑑</span>
+        <button class="app-header-btn" id="sort-dir-btn" onclick="toggleSortDir()" title="昇順/降順">
+            <i class="bi bi-sort-up"></i>
+        </button>
         <button class="app-header-btn" onclick="toggleSearchBar()" title="検索">
             <i class="bi bi-search"></i>
         </button>
@@ -540,7 +543,8 @@
             <option value="circulation_desc">流通数順（高→低）</option>
             <option value="id_asc">バッジID順（低→高）</option>
             <option value="id_desc">バッジID順（高→低）</option>
-            <option value="name">名前順</option>
+            <option value="name">名前順（昇順）</option>
+            <option value="name_desc">名前順（降順）</option>
         </select>
         <input type="hidden" id="rarity-filter" value="">
         <input type="hidden" id="creator-filter" value="">
@@ -598,25 +602,16 @@
                 <button class="sheet-close-btn" onclick="closeSortSheet()"><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="sort-options">
-                <div class="sort-option" data-sort="price_asc" onclick="setSortOption('price_asc')">
-                    <span>価格順（低→高）</span><i class="bi bi-check2 sort-check"></i>
+                <div class="sort-option" data-sort="price" onclick="setSortType('price')">
+                    <span>価格順</span><i class="bi bi-check2 sort-check"></i>
                 </div>
-                <div class="sort-option" data-sort="price_desc" onclick="setSortOption('price_desc')">
-                    <span>価格順（高→低）</span><i class="bi bi-check2 sort-check"></i>
+                <div class="sort-option" data-sort="circulation" onclick="setSortType('circulation')">
+                    <span>流通数順</span><i class="bi bi-check2 sort-check"></i>
                 </div>
-                <div class="sort-option" data-sort="circulation_asc" onclick="setSortOption('circulation_asc')">
-                    <span>流通数順（低→高）</span><i class="bi bi-check2 sort-check"></i>
+                <div class="sort-option" data-sort="id" onclick="setSortType('id')">
+                    <span>バッジID順</span><i class="bi bi-check2 sort-check"></i>
                 </div>
-                <div class="sort-option" data-sort="circulation_desc" onclick="setSortOption('circulation_desc')">
-                    <span>流通数順（高→低）</span><i class="bi bi-check2 sort-check"></i>
-                </div>
-                <div class="sort-option" data-sort="id_asc" onclick="setSortOption('id_asc')">
-                    <span>バッジID順（低→高）</span><i class="bi bi-check2 sort-check"></i>
-                </div>
-                <div class="sort-option" data-sort="id_desc" onclick="setSortOption('id_desc')">
-                    <span>バッジID順（高→低）</span><i class="bi bi-check2 sort-check"></i>
-                </div>
-                <div class="sort-option" data-sort="name" onclick="setSortOption('name')">
+                <div class="sort-option" data-sort="name" onclick="setSortType('name')">
                     <span>名前順</span><i class="bi bi-check2 sort-check"></i>
                 </div>
             </div>
@@ -761,26 +756,72 @@
             document.body.style.overflow = '';
         }
 
-        const SORT_LABELS = {
-            price_asc: '価格↑', price_desc: '価格↓',
-            circulation_asc: '流通↑', circulation_desc: '流通↓',
-            id_asc: 'ID↑', id_desc: 'ID↓', name: '名前順'
+        const SORT_TYPE_LABELS = {
+            price: '価格', circulation: '流通数', id: 'ID', name: '名前'
         };
 
-        function setSortOption(value) {
+        function getSortType(val) {
+            if (val.startsWith('price')) return 'price';
+            if (val.startsWith('circulation')) return 'circulation';
+            if (val.startsWith('id')) return 'id';
+            if (val.startsWith('name')) return 'name';
+            return 'price';
+        }
+
+        function getSortIsDesc(val) {
+            return val.endsWith('_desc') || val === 'name_desc';
+        }
+
+        function buildSortValue(type, desc) {
+            if (type === 'name') return desc ? 'name_desc' : 'name';
+            return desc ? `${type}_desc` : `${type}_asc`;
+        }
+
+        function setSortType(type) {
             const sel = document.getElementById('sort-select');
-            if (sel) sel.value = value;
+            if (!sel) return;
+            const isDesc = getSortIsDesc(sel.value);
+            sel.value = buildSortValue(type, isDesc);
             updateSortSheetActive();
-            const el = document.getElementById('sort-label-text');
-            if (el) el.textContent = SORT_LABELS[value] || '並び替え';
+            updateSortBtnLabel();
             filterAndRender();
             setTimeout(closeSortSheet, 180);
         }
 
+        function toggleSortDir() {
+            const sel = document.getElementById('sort-select');
+            if (!sel) return;
+            const type = getSortType(sel.value);
+            const isDesc = getSortIsDesc(sel.value);
+            sel.value = buildSortValue(type, !isDesc);
+            updateSortDirBtn();
+            updateSortBtnLabel();
+            filterAndRender();
+        }
+
+        function updateSortDirBtn() {
+            const val = document.getElementById('sort-select')?.value || 'price_asc';
+            const isDesc = getSortIsDesc(val);
+            const btn = document.getElementById('sort-dir-btn');
+            if (!btn) return;
+            btn.innerHTML = isDesc
+                ? '<i class="bi bi-sort-down"></i>'
+                : '<i class="bi bi-sort-up"></i>';
+            btn.title = isDesc ? '降順（タップで昇順）' : '昇順（タップで降順）';
+        }
+
+        function updateSortBtnLabel() {
+            const val = document.getElementById('sort-select')?.value || 'price_asc';
+            const type = getSortType(val);
+            const el = document.getElementById('sort-label-text');
+            if (el) el.textContent = SORT_TYPE_LABELS[type] || '並び替え';
+        }
+
         function updateSortSheetActive() {
-            const current = document.getElementById('sort-select')?.value || 'price_asc';
+            const val = document.getElementById('sort-select')?.value || 'price_asc';
+            const type = getSortType(val);
             document.querySelectorAll('.sort-option').forEach(el => {
-                el.classList.toggle('active', el.dataset.sort === current);
+                el.classList.toggle('active', el.dataset.sort === type);
             });
         }
 
@@ -1108,9 +1149,9 @@
                 }
                 currentPage = Number(state.page) || 1;
 
-                // Restore sort button label
-                const sortLabelEl = document.getElementById('sort-label-text');
-                if (sortLabelEl) sortLabelEl.textContent = SORT_LABELS[state.sort] || '並び替え';
+                // Restore sort button label and dir btn
+                updateSortBtnLabel();
+                updateSortDirBtn();
 
                 return true;
             } catch (err) {
@@ -1189,6 +1230,8 @@
                 filtered.sort((a, b) => (b.sort_order ?? 9999) - (a.sort_order ?? 9999));
             } else if (sortBy === 'name') {
                 filtered.sort((a, b) => a.name.localeCompare(b.name));
+            } else if (sortBy === 'name_desc') {
+                filtered.sort((a, b) => b.name.localeCompare(a.name));
             }
 
             document.getElementById('badge-count-status').textContent = `${filtered.length} / ${allBadges.length} 件`;
@@ -1196,6 +1239,10 @@
             // Filter button active indicator
             const hasActiveFilters = !!(filters.rarity || filters.creator || filters.type || filters.label || filters.tag || filters.method || filters.unownedOnly || searchVal);
             document.getElementById('filter-btn')?.classList.toggle('active-filters', hasActiveFilters);
+
+            // Sort dir + label sync
+            updateSortDirBtn();
+            updateSortBtnLabel();
 
             if (filtered.length === 0) {
                 grid.innerHTML = '<div class="grid-empty"><div class="grid-empty-icon">🔍</div><p>該当するバッジがありません</p></div>';
@@ -1249,8 +1296,8 @@
                 btn.classList.add('btn-outline-secondary');
                 btn.textContent = '未所持のみ表示';
             }
-            const sortLabelEl = document.getElementById('sort-label-text');
-            if (sortLabelEl) sortLabelEl.textContent = SORT_LABELS['price_asc'];
+            updateSortBtnLabel();
+            updateSortDirBtn();
             currentPage = 1;
             filterAndRender();
         }
