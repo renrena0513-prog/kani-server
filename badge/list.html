@@ -167,9 +167,9 @@
         /* ── Badge Grid ── */
         #badge-list-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
-            gap: 6px;
-            padding: 8px 10px 4px;
+            grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+            gap: 8px;
+            padding: 10px 10px 4px;
         }
 
         /* ── Mini Card ── */
@@ -213,46 +213,41 @@
         }
 
         .bmc-img {
-            width: 74%; height: 74%;
+            width: 82%; height: 82%;
             object-fit: contain;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+            filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
+            transition: transform 0.2s;
         }
+        .badge-mini-card:hover .bmc-img { transform: scale(1.08); }
 
-        .bmc-rarity {
-            position: absolute; top: 3px; left: 3px;
-            font-size: 0.44rem !important;
-            padding: 1px 4px !important;
-            border-radius: 4px;
-            font-weight: 700 !important;
-            line-height: 1.5;
-            white-space: nowrap;
-            max-width: calc(100% - 6px);
-            overflow: hidden; text-overflow: ellipsis;
+        /* レアリティテキストは非表示（枠色で判別） */
+        .bmc-rarity { display: none; }
+
+        /* ラベルは小さいドットのみ */
+        .bmc-label {
+            position: absolute; top: 4px; right: 4px;
+            width: 7px; height: 7px;
+            background: #ffb300;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.5);
         }
 
         .bmc-num {
-            position: absolute; bottom: 2px; right: 3px;
-            font-size: 0.42rem; color: rgba(255,255,255,0.22);
-            font-weight: 700; letter-spacing: 0.02em;
-        }
-
-        .bmc-label {
-            position: absolute; top: 3px; right: 3px;
-            background: linear-gradient(135deg, #ffb300, #ff6a00);
-            color: #fff; font-size: 0.38rem; border-radius: 3px;
-            padding: 1px 3px; font-weight: 700; line-height: 1.4;
+            position: absolute; bottom: 3px; right: 4px;
+            font-size: 0.46rem; color: rgba(255,255,255,0.28);
+            font-weight: 700; letter-spacing: 0.01em;
         }
 
         .bmc-name {
             font-family: var(--font-title);
-            font-size: 0.62rem; text-align: center;
-            margin-top: 4px; line-height: 1.3;
-            color: rgba(255,255,255,0.8);
+            font-size: 0.67rem; text-align: center;
+            margin-top: 5px; line-height: 1.3;
+            color: rgba(255,255,255,0.85);
             display: -webkit-box;
             -webkit-line-clamp: 2; line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden; word-break: break-all;
-            min-height: 1.6em;
+            min-height: 1.7em;
         }
 
         /* ── Fixed Bottom Bar ── */
