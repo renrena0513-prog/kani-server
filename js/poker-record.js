@@ -12,6 +12,15 @@ const POKER_UMA = {
     7: { 1:  7, 2:  5, 3:  2, 4:  0, 5: -2, 6: -5, 7: -7 },
     8: { 1:  8, 2:  6, 3:  3, 4:  1, 5: -1, 6: -3, 7: -6, 8: -8 },
 };
+// チップ付与テーブル（人数 → 順位 → チップ数）
+const POKER_CHIP_TABLE = {
+    4: { 1: 100, 2:  60, 3:  30, 4:  10 },
+    5: { 1: 130, 2:  80, 3:  50, 4:  20, 5:  10 },
+    6: { 1: 160, 2: 100, 3:  70, 4:  30, 5:  20, 6:  10 },
+    7: { 1: 190, 2: 120, 3:  90, 4:  40, 5:  30, 6:  20, 7:  10 },
+    8: { 1: 220, 2: 140, 3: 110, 4:  50, 5:  40, 6:  30, 7:  20, 8:  10 },
+};
+
 // コイン報酬テーブル（人数 → 順位 → 固定コイン数）
 const POKER_COIN_TABLE = {
     4: { 1: 1800, 2: 1400, 3:  600, 4:  200 },
@@ -657,6 +666,7 @@ async function submitScores() {
 
         // 報酬付与
         const coinTable = POKER_COIN_TABLE[playerCount] || {};
+        const chipTable = POKER_CHIP_TABLE[playerCount] || {};
         for (const player of dataToInsert) {
             if (!player.discord_user_id) continue;
 
@@ -666,6 +676,7 @@ async function submitScores() {
             if (player.rank === 1 && Math.random() < 0.80) ticketReward++;
 
             const coinReward = coinTable[player.rank] || 0;
+            const chipReward = chipTable[player.rank] || 0;
 
             try {
                 const { data: profile } = await supabaseClient
@@ -688,6 +699,20 @@ async function submitScores() {
                     if (updateErr) console.error(`プロフィール更新エラー (${player.account_name}):`, updateErr);
                 }
 
+                // チップ付与（poker_profiles）
+                if (chipReward > 0) {
+                    const { data: pp } = await supabaseClient
+                        .from('poker_profiles')
+                        .select('chips')
+                        .eq('discord_user_id', player.discord_user_id)
+                        .maybeSingle();
+                    if (pp !== null) {
+                        await supabaseClient.from('poker_profiles')
+                            .update({ chips: (pp?.chips || 0) + chipReward })
+                            .eq('discord_user_id', player.discord_user_id);
+                    }
+                }
+
                 await logActivity(player.discord_user_id, 'poker', {
                     amount: coinReward,
                     matchId: matchId,
@@ -697,9 +722,10 @@ async function submitScores() {
                         team: player.team_name,
                         coin_reward: coinReward,
                         ticket_reward: ticketReward,
+                        chip_reward: chipReward,
                     }
                 });
-                console.log(`${player.account_name} 報酬: コイン=${coinReward}, チケット=${ticketReward}`);
+                console.log(`${player.account_name} 報酬: コイン=${coinReward}, チケット=${ticketReward}, チップ=${chipReward}`);
             } catch (err) {
                 console.error(`報酬付与エラー (${player.account_name}):`, err);
             }

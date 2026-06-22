@@ -237,11 +237,11 @@
                 if (teamNameEl) teamNameEl.textContent = teamName;
             }
 
-            // ポーカーチームを取得して表示
+            // ポーカープロフィール（チーム・チップ）を取得して表示
             (async () => {
                 const { data: pokerProfile } = await supabaseClient
                     .from('poker_profiles')
-                    .select('team_id, poker_teams!team_id(team_name, icon_url)')
+                    .select('team_id, chips, poker_teams!team_id(team_name, icon_url)')
                     .eq('discord_user_id', targetId)
                     .maybeSingle();
                 const pokerTeam = pokerProfile?.poker_teams;
@@ -255,6 +255,14 @@
                         }
                         badgeEl.innerHTML = `${logoHtml}<span>${pokerTeam.team_name}</span>`;
                         el.style.display = '';
+                    }
+                }
+                if (pokerProfile && (pokerProfile.chips || 0) > 0) {
+                    const chipsEl = document.getElementById('user-chips-display');
+                    const chipsVal = document.getElementById('user-chips-value');
+                    if (chipsEl && chipsVal) {
+                        chipsVal.textContent = (pokerProfile.chips || 0).toLocaleString();
+                        chipsEl.style.display = '';
                     }
                 }
             })();

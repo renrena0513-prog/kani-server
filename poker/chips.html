@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>チップランキング | ポーカー大会</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700;900&family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../styles.css">
+    <style>
+        :root {
+            --blue1: #0a1628;
+            --blue2: #0d2f5c;
+            --blue3: #1a4d8c;
+            --gold: #d4a853;
+            --gold2: #f0c060;
+            --silver: #b0bec5;
+            --bronze: #cd7f32;
+            --chip: #4ade80;
+            --fn: 'Noto Serif JP', serif;
+            --fb: 'M PLUS Rounded 1c', sans-serif;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--fb);
+            background: var(--blue1);
+            min-height: 100vh;
+            color: white;
+            text-transform: none !important;
+            overflow-x: hidden;
+        }
+        h1,h2,h3,h4,h5,h6,.btn { text-transform: none !important; }
+
+        .bg-felt {
+            background:
+                radial-gradient(ellipse at 20% 10%, rgba(26,77,140,.5) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 90%, rgba(13,47,92,.6) 0%, transparent 60%),
+                linear-gradient(160deg, #0a1628 0%, #0d2447 40%, #0a1628 100%);
+            min-height: 100vh;
+        }
+
+        .page-hero {
+            position: relative; z-index: 1;
+            text-align: center;
+            padding: 36px 20px 32px;
+        }
+        .hero-eyebrow { font-size:.78rem; letter-spacing:.3em; color:var(--chip); margin-bottom:8px; }
+        .hero-title {
+            font-family: var(--fn);
+            font-size: clamp(2rem,6vw,3.4rem);
+            font-weight: 900;
+            background: linear-gradient(135deg,#fff 20%,#a8f5c0 60%,var(--chip) 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.1; margin-bottom: 6px;
+        }
+        .hero-sub { font-size:.85rem; color:rgba(255,255,255,.4); margin-top:10px; }
+
+        .main-wrap { position:relative; z-index:1; max-width:860px; margin:0 auto; padding:0 16px 80px; }
+
+        /* TOP3 */
+        .podium-list { display:flex; flex-direction:column; gap:12px; margin-bottom:28px; }
+        .podium-row {
+            display:flex; align-items:center; gap:14px;
+            border-radius:18px; padding:16px 20px;
+            position:relative; overflow:hidden;
+            transition:transform .2s; cursor:pointer; text-decoration:none; color:inherit;
+        }
+        .podium-row:hover { transform:translateX(4px); }
+        .podium-row.r1 { background:linear-gradient(90deg,rgba(212,168,83,.22) 0%,rgba(212,168,83,.07) 100%); border:1px solid rgba(212,168,83,.35); }
+        .podium-row.r2 { background:linear-gradient(90deg,rgba(176,190,197,.18) 0%,rgba(176,190,197,.05) 100%); border:1px solid rgba(176,190,197,.25); }
+        .podium-row.r3 { background:linear-gradient(90deg,rgba(205,127,50,.16) 0%,rgba(205,127,50,.04) 100%); border:1px solid rgba(205,127,50,.2); }
+        .podium-medal { font-size:2rem; min-width:40px; text-align:center; }
+        .podium-avatar { border-radius:50%; object-fit:cover; border:3px solid rgba(255,255,255,.2); flex-shrink:0; }
+        .r1 .podium-avatar { width:64px;height:64px;border-color:var(--gold); box-shadow:0 0 0 3px rgba(212,168,83,.25); }
+        .r2 .podium-avatar { width:56px;height:56px;border-color:var(--silver); }
+        .r3 .podium-avatar { width:50px;height:50px;border-color:var(--bronze); }
+        .podium-info { flex:1; min-width:0; }
+        .podium-name { font-weight:700; font-size:1.05rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .podium-sub { font-size:.75rem; color:rgba(255,255,255,.4); margin-top:2px; }
+        .podium-score { font-family:var(--fn); font-weight:900; text-align:right; }
+        .r1 .podium-score { font-size:1.9rem; color:var(--chip); }
+        .r2 .podium-score { font-size:1.6rem; color:#86efac; }
+        .r3 .podium-score { font-size:1.4rem; color:#bbf7d0; }
+        .chip-unit { font-size:.7em; color:rgba(255,255,255,.5); margin-left:2px; }
+
+        /* 4位以下 */
+        .rank-list { display:flex; flex-direction:column; gap:7px; }
+        .rank-row {
+            display:flex; align-items:center; gap:14px;
+            background:rgba(255,255,255,.05);
+            border:1px solid rgba(255,255,255,.08);
+            border-radius:14px; padding:12px 18px;
+            transition:all .18s; cursor:pointer; text-decoration:none; color:inherit;
+        }
+        .rank-row:hover { background:rgba(255,255,255,.09); transform:translateX(4px); }
+        .rank-no { font-family:var(--fn); font-weight:900; font-size:1rem; min-width:28px; text-align:center; color:rgba(255,255,255,.35); }
+        .rank-avatar { width:38px;height:38px;border-radius:50%;border:2px solid rgba(255,255,255,.12);flex-shrink:0; }
+        .rank-info { flex:1; min-width:0; }
+        .rank-name { font-weight:700; font-size:.9rem; white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+        .rank-team { font-size:.73rem; color:rgba(255,255,255,.38); margin-top:1px; }
+        .rank-score { font-family:var(--fn); font-weight:700; font-size:1.1rem; color:var(--chip); text-align:right; min-width:65px; }
+
+        .section-label {
+            display:flex; align-items:center; gap:10px;
+            margin:4px 0 16px;
+        }
+        .section-label span { font-size:.72rem; letter-spacing:.18em; color:rgba(255,255,255,.32); }
+        .section-label::before,.section-label::after { content:''; flex:1; height:1px; background:rgba(255,255,255,.09); }
+
+        .empty-state { text-align:center; padding:60px 20px; color:rgba(255,255,255,.3); font-size:.9rem; }
+
+        #loading-state { text-align:center; padding:80px 20px; position:relative; z-index:1; }
+        .spinner-ring {
+            width:48px; height:48px;
+            border:4px solid rgba(255,255,255,.1);
+            border-top-color:var(--chip);
+            border-radius:50%;
+            animation:spin .8s linear infinite;
+            margin:0 auto 14px;
+        }
+        @keyframes spin { to { transform:rotate(360deg); } }
+
+        @media (max-width:600px) {
+            .r1 .podium-avatar { width:52px;height:52px; }
+            .r2 .podium-avatar { width:46px;height:46px; }
+            .r3 .podium-avatar { width:42px;height:42px; }
+            .r1 .podium-score { font-size:1.5rem; }
+        }
+    </style>
+</head>
+<body class="bg-felt">
+
+    <div class="nav-dropdown dropdown" style="position:fixed;top:20px;right:20px;z-index:1000;">
+        <button class="btn dropdown-toggle" type="button" id="navDropdown" data-bs-toggle="dropdown"
+            style="background:linear-gradient(135deg,var(--gold) 0%,#b8892d 100%);color:white;padding:12px 24px;border-radius:25px;font-weight:bold;">
+            📝 メニュー
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navDropdown">
+            <li><a class="dropdown-item" href="../index.html">🏠 ホームに戻る</a></li>
+            <li><a class="dropdown-item" href="../mypage/index.html">👤 マイページ</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="./index.html">🃏 ランキング</a></li>
+            <li><a class="dropdown-item" href="./chips.html">🪙 チップランキング</a></li>
+            <li><a class="dropdown-item" href="./record.html">📝 記録する</a></li>
+            <li><a class="dropdown-item" href="./users/index.html">👥 ユーザー一覧</a></li>
+            <li><a class="dropdown-item" href="./team/index.html">🏅 チーム管理
+                <span id="team-notification-badge" class="notification-badge" style="display:none;">0</span></a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="../badge/list.html">📛 バッジ一覧</a></li>
+            <li><a class="dropdown-item" href="../badge/shop.html">🛒 バッジショップ</a></li>
+            <li><a class="dropdown-item" href="../ranking/index.html">💰 資産ランキング</a></li>
+            <li class="admin-only" style="display:none;"><hr class="dropdown-divider"></li>
+            <li class="admin-only" style="display:none;"><a class="dropdown-item" href="../admin/index.html">⚙️ 管理画面</a></li>
+        </ul>
+    </div>
+
+    <div class="page-hero">
+        <div class="hero-eyebrow">ポーカー大会</div>
+        <h1 class="hero-title">🪙 CHIP RANKING</h1>
+        <p class="hero-sub">参加するほど積み上がる個人チップランキング</p>
+    </div>
+
+    <div id="loading-state">
+        <div class="spinner-ring"></div>
+        <div style="color:rgba(255,255,255,.5);font-size:.9rem;">読み込み中...</div>
+    </div>
+
+    <div id="main-content" style="display:none;">
+        <div class="main-wrap">
+            <div class="podium-list" id="podium-list"></div>
+            <div class="section-label" id="rest-label" style="display:none;"><span>4位以下</span></div>
+            <div class="rank-list" id="rank-list"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabase-config.js"></script>
+    <script src="../js/auth-guard.js"></script>
+    <script src="../js/survey-modal.js"></script>
+    <script src="../js/navigation.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => { initAccordionNav('../'); });
+    document.addEventListener('DOMContentLoaded', loadChipRanking);
+
+    async function loadChipRanking() {
+        const { data: pokerProfiles, error } = await supabaseClient
+            .from('poker_profiles')
+            .select('discord_user_id, chips, team_id, poker_teams!team_id(team_name)')
+            .gt('chips', 0)
+            .order('chips', { ascending: false });
+
+        if (error) { console.error(error); return; }
+
+        const ids = (pokerProfiles || []).map(p => p.discord_user_id).filter(Boolean);
+        const profileMap = {};
+        if (ids.length > 0) {
+            const { data: profiles } = await supabaseClient
+                .from('profiles')
+                .select('discord_user_id, account_name, avatar_url')
+                .in('discord_user_id', ids);
+            (profiles || []).forEach(p => { profileMap[p.discord_user_id] = p; });
+        }
+
+        const ranked = (pokerProfiles || []).map(pp => {
+            const profile = profileMap[pp.discord_user_id] || {};
+            return {
+                discord_user_id: pp.discord_user_id,
+                account_name: profile.account_name || pp.discord_user_id,
+                avatar_url: profile.avatar_url || null,
+                team_name: pp.poker_teams?.team_name || null,
+                chips: pp.chips || 0,
+            };
+        });
+
+        document.getElementById('loading-state').style.display = 'none';
+        document.getElementById('main-content').style.display = '';
+        render(ranked);
+    }
+
+    function render(ranked) {
+        if (ranked.length === 0) {
+            document.getElementById('podium-list').innerHTML = '<div class="empty-state">まだチップを獲得したプレイヤーがいません</div>';
+            return;
+        }
+
+        const top3 = ranked.slice(0, 3);
+        const rest = ranked.slice(3);
+        const medals = ['🥇', '🥈', '🥉'];
+        const rClasses = ['r1', 'r2', 'r3'];
+
+        const podiumHtml = top3.map((p, i) => {
+            const avatar = p.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.account_name)}&background=1a4d8c&color=fff`;
+            const href = p.discord_user_id ? `../mypage/index.html?user=${p.discord_user_id}` : null;
+            const tag = href ? `a href="${href}"` : 'div';
+            const closeTag = href ? 'a' : 'div';
+            return `<${tag} class="podium-row ${rClasses[i]}">
+                <span class="podium-medal">${medals[i]}</span>
+                <img src="${avatar}" class="podium-avatar" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff'">
+                <div class="podium-info">
+                    <div class="podium-name">${p.account_name}</div>
+                    ${p.team_name ? `<div class="podium-sub">🏅 ${p.team_name}</div>` : ''}
+                </div>
+                <div>
+                    <div class="podium-score">${p.chips.toLocaleString()}<span class="chip-unit">chips</span></div>
+                </div>
+            </${closeTag}>`;
+        }).join('');
+
+        document.getElementById('podium-list').innerHTML = podiumHtml;
+
+        if (rest.length > 0) {
+            document.getElementById('rest-label').style.display = '';
+            document.getElementById('rank-list').innerHTML = rest.map((p, i) => {
+                const avatar = p.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.account_name)}&background=1a4d8c&color=fff`;
+                const href = p.discord_user_id ? `../mypage/index.html?user=${p.discord_user_id}` : null;
+                const tag = href ? `a href="${href}"` : 'div';
+                const closeTag = href ? 'a' : 'div';
+                return `<${tag} class="rank-row">
+                    <span class="rank-no">${i + 4}</span>
+                    <img src="${avatar}" class="rank-avatar" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff'">
+                    <div class="rank-info">
+                        <div class="rank-name">${p.account_name}</div>
+                        ${p.team_name ? `<div class="rank-team">🏅 ${p.team_name}</div>` : ''}
+                    </div>
+                    <div class="rank-score">${p.chips.toLocaleString()}<span style="font-size:.65em;color:rgba(255,255,255,.4);margin-left:2px;">chips</span></div>
+                </${closeTag}>`;
+            }).join('');
+        }
+    }
+    </script>
+</body>
+</html>
