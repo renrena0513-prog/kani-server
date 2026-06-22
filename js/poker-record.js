@@ -693,17 +693,13 @@ async function submitScores() {
                 if (ticketReward > 0) {
                     updates.gacha_tickets = (profile?.gacha_tickets || 0) + ticketReward;
                 }
+                if (chipReward > 0) {
+                    updates.tip = (profile?.tip || 0) + chipReward;
+                }
 
                 if (Object.keys(updates).length > 0) {
                     const { error: updateErr } = await supabaseClient.from('profiles').update(updates).eq('discord_user_id', player.discord_user_id);
                     if (updateErr) console.error(`プロフィール更新エラー (${player.account_name}):`, updateErr);
-                }
-
-                // チップ付与（profiles.tip）
-                if (chipReward > 0) {
-                    await supabaseClient.from('profiles')
-                        .update({ tip: (profile?.tip || 0) + chipReward })
-                        .eq('discord_user_id', player.discord_user_id);
                 }
 
                 await logActivity(player.discord_user_id, 'poker', {
@@ -811,7 +807,7 @@ async function sendDiscordNotification(matchData, playerCount, bonusReceivers = 
     };
 
     try {
-        await fetch(DISCORD_WEBHOOK_URL, {
+        const res = await fetch(DISCORD_WEBHOOK_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -819,7 +815,12 @@ async function sendDiscordNotification(matchData, playerCount, bonusReceivers = 
                 embeds: [embed]
             })
         });
-        console.log('Discord通知送信成功');
+        if (!res.ok) {
+            const body = await res.text();
+            console.error('Discord通知失敗:', res.status, body);
+        } else {
+            console.log('Discord通知送信成功');
+        }
     } catch (err) {
         console.error('Discord通知エラー:', err);
     }
