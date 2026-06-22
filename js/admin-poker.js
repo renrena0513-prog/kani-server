@@ -72,35 +72,47 @@ async function deletePokerMatch(matchId) {
     if (!confirm(`以下の試合記録を削除します。\n付与されたコインと活動ログも削除されます。\n\n${names}`)) return;
 
     try {
-        // 1. この試合の活動ログを取得（付与コイン額を確認）
+        // 1. この試合の活動ログを取得（付与コイン・チップ額を確認）
         const { data: logs, error: logFetchErr } = await supabaseClient
             .from('activity_logs')
-            .select('user_id, amount')
+            .select('user_id, amount, details')
             .eq('match_id', matchId)
             .eq('action_type', 'poker');
         if (logFetchErr) throw logFetchErr;
 
-        // 2. ユーザーごとの付与コイン合計を集計
+        // 2. ユーザーごとの付与コイン・チップ合計を集計
         const coinByUser = {};
+        const chipByUser = {};
         (logs || []).forEach(log => {
-            if (log.user_id && log.amount > 0) {
+            if (!log.user_id) return;
+            if (log.amount > 0) {
                 coinByUser[log.user_id] = (coinByUser[log.user_id] || 0) + log.amount;
+            }
+            const chipReward = log.details?.chip_reward || 0;
+            if (chipReward > 0) {
+                chipByUser[log.user_id] = (chipByUser[log.user_id] || 0) + chipReward;
             }
         });
 
-        // 3. コインを引き戻す
-        for (const [userId, amount] of Object.entries(coinByUser)) {
+        // 3. コイン・チップを引き戻す
+        const allUserIds = new Set([...Object.keys(coinByUser), ...Object.keys(chipByUser)]);
+        for (const userId of allUserIds) {
             const { data: profile, error: profErr } = await supabaseClient
                 .from('profiles')
-                .select('coins, total_assets')
+                .select('coins, total_assets, tip')
                 .eq('discord_user_id', userId)
                 .maybeSingle();
             if (profErr) throw profErr;
             if (profile) {
-                const { error: updErr } = await supabaseClient.from('profiles').update({
-                    coins: Math.max(0, (profile.coins || 0) - amount),
-                    total_assets: Math.max(0, (profile.total_assets || 0) - amount),
-                }).eq('discord_user_id', userId);
+                const updates = {};
+                if (coinByUser[userId]) {
+                    updates.coins = Math.max(0, (profile.coins || 0) - coinByUser[userId]);
+                    updates.total_assets = Math.max(0, (profile.total_assets || 0) - coinByUser[userId]);
+                }
+                if (chipByUser[userId]) {
+                    updates.tip = Math.max(0, (profile.tip || 0) - chipByUser[userId]);
+                }
+                const { error: updErr } = await supabaseClient.from('profiles').update(updates).eq('discord_user_id', userId);
                 if (updErr) throw updErr;
             }
         }
