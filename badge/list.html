@@ -167,12 +167,16 @@
         /* ── Badge Grid ── */
         #badge-list-grid {
             display: grid;
-            grid-template-columns: repeat(6, 1fr);
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
             gap: 24px 14px;
             padding: 16px 12px 4px;
         }
         @media (max-width: 639px) {
-            #badge-list-grid { gap: 14px 8px; padding: 12px 8px 4px; }
+            #badge-list-grid {
+                grid-template-columns: repeat(6, 1fr);
+                gap: 14px 8px;
+                padding: 12px 8px 4px;
+            }
         }
 
         /* ── Mini Card ── */
@@ -982,8 +986,17 @@
             filterAndRender();
         }
 
+        function getGridCols() {
+            if (window.innerWidth < 640) return 6;
+            const grid = document.getElementById('badge-list-grid');
+            if (!grid) return 8;
+            const cols = window.getComputedStyle(grid)
+                .getPropertyValue('grid-template-columns').split(' ').filter(Boolean).length;
+            return cols || 8;
+        }
         function getPageSize() {
-            return window.innerWidth < 640 ? 60 : 36; /* mobile:6col×10row / pc:6col×6row */
+            if (window.innerWidth < 640) return 60; /* mobile: 6col × 10row */
+            return getGridCols() * 6;               /* pc: auto-col × 6row */
         }
 
         function renderPagination(total) {
