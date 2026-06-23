@@ -162,7 +162,7 @@ function setupPlayerInputs(count) {
                         <label class="small text-muted">アカウント名</label>
                         <div class="custom-dropdown-container">
                             <input type="text" class="form-control form-control-sm player-account"
-                                   placeholder="選択または入力" onfocus="showDropdown(${i})" oninput="filterDropdown(${i})">
+                                   placeholder="タップして選択" readonly onclick="showDropdown(${i})" oninput="filterDropdown(${i})">
                             <div class="selected-player-badge" id="selected-badge-${i}" style="display:none;">
                                 <img src="" class="badge-avatar">
                                 <span class="name"></span>
@@ -402,8 +402,12 @@ function filterDropdown(idx) {
 
 function renderDropdownItems(idx, profiles) {
     const list = document.getElementById(`dropdown-list-${idx}`);
+    const directInputBtn = `
+        <div class="dropdown-item-flex" onclick="enableDirectInput(${idx})" style="border-top:1px solid rgba(255,255,255,0.15);margin-top:4px;">
+            <span style="font-size:.875rem;">✏️ 直接入力する</span>
+        </div>`;
     if (profiles.length === 0) {
-        list.innerHTML = '<div class="p-2 small text-muted">該当なし</div>';
+        list.innerHTML = '<div class="p-2 small text-muted">該当なし</div>' + directInputBtn;
         return;
     }
     list.innerHTML = profiles.map(p => {
@@ -414,7 +418,16 @@ function renderDropdownItems(idx, profiles) {
                 <img src="${avatar}" class="dropdown-avatar" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=24'">
                 <span class="small">${display}</span>
             </div>`;
-    }).join('');
+    }).join('') + directInputBtn;
+}
+
+function enableDirectInput(idx) {
+    const input = document.querySelector(`#player-row-${idx} .player-account`);
+    input.removeAttribute('readonly');
+    input.placeholder = '名前を入力';
+    input.value = '';
+    input.focus();
+    filterDropdown(idx);
 }
 
 function selectPlayer(idx, discordUserId, accountName) {
@@ -451,6 +464,8 @@ function clearPlayer(idx, clearTeamToo = true) {
     input.value = '';
     input.dataset.discordUserId = '';
     input.dataset.accountName = '';
+    input.setAttribute('readonly', true);
+    input.placeholder = 'タップして選択';
     input.style.display = 'block';
     badge.style.display = 'none';
     if (clearTeamToo) {
