@@ -199,10 +199,11 @@
         .badge-mini-card[data-rc="rarity-ex"]        { --rc-color: #00F5FF; --rc-glow: rgba(0,245,255,0.5); }
 
         .bmc-img-wrap {
-            aspect-ratio: 1;
-            background: var(--bg-card);
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            background: #1a2235;
             border-radius: 10px;
-            border: 2px solid var(--rc-color, rgba(255,255,255,0.12));
+            border: 2px solid var(--rc-color, rgba(255,255,255,0.22));
             box-shadow: 0 2px 8px var(--rc-glow, transparent);
             overflow: hidden; position: relative;
             display: flex; align-items: center; justify-content: center;
@@ -315,6 +316,21 @@
             display: flex; flex-direction: column; overflow: hidden;
         }
         .bottom-sheet.open .sheet-panel { transform: translateY(0); }
+
+        /* デスクトップではシートを中央寄せ・幅制限 */
+        @media (min-width: 768px) {
+            .sheet-panel {
+                left: 50%;
+                right: auto;
+                width: 100%;
+                max-width: 520px;
+                transform: translateX(-50%) translateY(100%);
+                border-radius: 20px 20px 0 0;
+            }
+            .bottom-sheet.open .sheet-panel {
+                transform: translateX(-50%) translateY(0);
+            }
+        }
 
         .sheet-handle {
             width: 36px; height: 4px;
