@@ -162,7 +162,7 @@ function setupPlayerInputs(count) {
                         <label class="small text-muted">アカウント名</label>
                         <div class="custom-dropdown-container">
                             <input type="text" class="form-control form-control-sm player-account"
-                                   placeholder="タップして選択" readonly onclick="showDropdown(${i})" oninput="filterDropdown(${i})">
+                                   placeholder="タップして選択" inputmode="none" onclick="showDropdown(${i})" oninput="filterDropdown(${i})">
                             <div class="selected-player-badge" id="selected-badge-${i}" style="display:none;">
                                 <img src="" class="badge-avatar">
                                 <span class="name"></span>
@@ -368,7 +368,7 @@ function showDropdown(idx) {
 
     // 2回目のタップ: ドロップダウンが既に開いていたらキーボードを出す
     if (list.style.display === 'block') {
-        input.removeAttribute('readonly');
+        input.inputMode = 'text';
         input.placeholder = '名前を入力';
         input.focus();
         return;
@@ -461,7 +461,7 @@ function clearPlayer(idx, clearTeamToo = true) {
     input.value = '';
     input.dataset.discordUserId = '';
     input.dataset.accountName = '';
-    input.setAttribute('readonly', true);
+    input.inputMode = 'none';
     input.placeholder = 'タップして選択';
     input.style.display = 'block';
     badge.style.display = 'none';
