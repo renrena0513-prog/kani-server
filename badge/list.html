@@ -201,31 +201,19 @@
         .bmc-img-wrap {
             width: 100%;
             aspect-ratio: 1 / 1;
-            background: #1a2235;
+            background: transparent;
             border-radius: 10px;
             overflow: hidden; position: relative;
             display: flex; align-items: center; justify-content: center;
         }
 
         .bmc-img {
-            width: 82%; height: 82%;
+            width: 100%; height: 100%;
             object-fit: contain;
             filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
             transition: transform 0.2s;
         }
         .badge-mini-card:hover .bmc-img { transform: scale(1.08); }
-
-        /* レアリティテキストは非表示（枠色で判別） */
-        .bmc-rarity { display: none; }
-
-        /* ラベルは小さいドットのみ */
-        .bmc-label {
-            position: absolute; top: 4px; right: 4px;
-            width: 7px; height: 7px;
-            background: #ffb300;
-            border-radius: 50%;
-            border: 1px solid rgba(255,255,255,0.5);
-        }
 
         .bmc-num {
             position: absolute; bottom: 3px; right: 4px;
@@ -1311,8 +1299,6 @@
                     <a href="./index.html?id=${badge.id}" class="badge-mini-card" data-rc="${rarityClass}">
                         <div class="bmc-img-wrap">
                             <img src="${badge.image_url}" class="bmc-img" alt="${escapeHtml(badge.name)}" loading="lazy">
-                            <span class="bmc-rarity ${rarityClass}">${rarity}</span>
-                            ${label ? `<span class="bmc-label">${escapeHtml(label)}</span>` : ''}
                             <span class="bmc-num">#${badge.sort_order ?? '???'}</span>
                         </div>
                         <div class="bmc-name">${escapeHtml(badge.name)}</div>
