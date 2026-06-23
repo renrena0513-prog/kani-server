@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="list-build" content="2026-06-23-01">
+    <meta name="list-build" content="2026-06-23-02">
     <title>バッジ図鑑 - かに鯖</title>
     <link rel="icon" type="image/png" href="../images/favicon.png">
     <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
@@ -356,20 +356,62 @@
         }
         .sheet-close-btn:hover { color: #fff; }
 
-        /* Sort options */
-        .sort-options { overflow-y: auto; padding: 6px 0; }
-        .sort-option {
-            display: flex; align-items: center; gap: 10px;
-            padding: 14px 20px; cursor: pointer;
-            font-size: 0.95rem;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
-            transition: background 0.15s;
+        /* ── Sort Popup ── */
+        #sort-overlay {
+            position: fixed; inset: 0; z-index: 299;
+            display: none;
         }
-        .sort-option:hover { background: rgba(255,255,255,0.05); }
-        .sort-option span { flex: 1; }
-        .sort-check { opacity: 0; color: var(--gold); font-size: 1rem; }
-        .sort-option.active { color: var(--gold); }
-        .sort-option.active .sort-check { opacity: 1; }
+        #sort-popup {
+            position: fixed;
+            bottom: calc(var(--app-bottom-h) + 10px);
+            right: 10px;
+            min-width: 210px;
+            background: #1d2840;
+            border: 1px solid rgba(255,255,255,0.13);
+            border-radius: 14px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.3);
+            overflow: hidden;
+            transform: translateY(10px) scale(0.95);
+            opacity: 0;
+            pointer-events: none;
+            transition: transform 0.22s cubic-bezier(0.34,1.4,0.64,1), opacity 0.18s;
+            transform-origin: bottom right;
+            z-index: 300;
+        }
+        #sort-popup.open {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+            pointer-events: all;
+        }
+        .sort-dir-row {
+            display: flex;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .sort-dir-tab {
+            flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
+            padding: 10px 8px;
+            background: none; border: none;
+            color: var(--text-muted);
+            font-size: 0.8rem; font-weight: 700;
+            cursor: pointer; transition: background 0.15s, color 0.15s;
+        }
+        .sort-dir-tab:first-child { border-right: 1px solid rgba(255,255,255,0.08); }
+        .sort-dir-tab.active { color: var(--gold); background: rgba(248,201,62,0.08); }
+        .sort-dir-tab i { font-size: 0.95rem; }
+        .sort-pop-item {
+            display: flex; align-items: center; gap: 8px;
+            padding: 12px 16px; cursor: pointer;
+            font-size: 0.9rem;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            color: var(--text-primary);
+            transition: background 0.12s;
+        }
+        .sort-pop-item:last-child { border-bottom: none; }
+        .sort-pop-item:hover { background: rgba(255,255,255,0.05); }
+        .sort-pop-item span { flex: 1; }
+        .sort-pop-check { opacity: 0; color: var(--gold); }
+        .sort-pop-item.active { color: var(--gold); }
+        .sort-pop-item.active .sort-pop-check { opacity: 1; }
 
         /* Filter sheet */
         .filter-sheet-body {
@@ -522,9 +564,6 @@
             <i class="bi bi-chevron-left"></i>
         </button>
         <span class="app-header-title">📛 バッジ図鑑</span>
-        <button class="app-header-btn" id="sort-dir-btn" onclick="toggleSortDir()" title="昇順/降順">
-            <i class="bi bi-sort-up"></i>
-        </button>
         <button class="app-header-btn" onclick="toggleSearchBar()" title="検索">
             <i class="bi bi-search"></i>
         </button>
@@ -601,36 +640,35 @@
                 <i class="bi bi-sliders"></i>
                 絞り込み
             </button>
-            <button class="bottom-btn" id="sort-btn" onclick="openSortSheet()">
+            <button class="bottom-btn" id="sort-btn" onclick="toggleSortPopup()">
                 <i class="bi bi-arrow-down-up"></i>
                 <span id="sort-label-text">並び替え</span>
             </button>
         </div>
     </div>
 
-    <!-- ══ Sort Bottom Sheet ══ -->
-    <div id="sort-sheet" class="bottom-sheet" role="dialog" aria-modal="true" aria-label="並び替え">
-        <div class="sheet-overlay" onclick="closeSortSheet()"></div>
-        <div class="sheet-panel">
-            <div class="sheet-handle"></div>
-            <div class="sheet-header">
-                <span class="sheet-title">並び替え</span>
-                <button class="sheet-close-btn" onclick="closeSortSheet()"><i class="bi bi-x-lg"></i></button>
-            </div>
-            <div class="sort-options">
-                <div class="sort-option" data-sort="price" onclick="setSortType('price')">
-                    <span>価格順</span><i class="bi bi-check2 sort-check"></i>
-                </div>
-                <div class="sort-option" data-sort="circulation" onclick="setSortType('circulation')">
-                    <span>流通数順</span><i class="bi bi-check2 sort-check"></i>
-                </div>
-                <div class="sort-option" data-sort="id" onclick="setSortType('id')">
-                    <span>バッジID順</span><i class="bi bi-check2 sort-check"></i>
-                </div>
-                <div class="sort-option" data-sort="name" onclick="setSortType('name')">
-                    <span>名前順</span><i class="bi bi-check2 sort-check"></i>
-                </div>
-            </div>
+    <!-- ══ Sort Popup (ボトムバー上のコンパクトポップアップ) ══ -->
+    <div id="sort-overlay" onclick="closeSortPopup()"></div>
+    <div id="sort-popup" role="menu" aria-label="並び替え">
+        <div class="sort-dir-row">
+            <button class="sort-dir-tab" id="sort-dir-asc" onclick="setSortDir(false)">
+                <i class="bi bi-sort-up"></i> 昇順
+            </button>
+            <button class="sort-dir-tab" id="sort-dir-desc" onclick="setSortDir(true)">
+                <i class="bi bi-sort-down"></i> 降順
+            </button>
+        </div>
+        <div class="sort-pop-item" data-sort="price" onclick="setSortType('price')">
+            <span>価格順</span><i class="bi bi-check2 sort-pop-check"></i>
+        </div>
+        <div class="sort-pop-item" data-sort="circulation" onclick="setSortType('circulation')">
+            <span>流通数順</span><i class="bi bi-check2 sort-pop-check"></i>
+        </div>
+        <div class="sort-pop-item" data-sort="id" onclick="setSortType('id')">
+            <span>バッジID順</span><i class="bi bi-check2 sort-pop-check"></i>
+        </div>
+        <div class="sort-pop-item" data-sort="name" onclick="setSortType('name')">
+            <span>名前順</span><i class="bi bi-check2 sort-pop-check"></i>
         </div>
     </div>
 
@@ -754,14 +792,19 @@
             filterAndRender();
         }
 
-        function openSortSheet() {
-            updateSortSheetActive();
-            document.getElementById('sort-sheet').classList.add('open');
-            document.body.style.overflow = 'hidden';
+        function openSortPopup() {
+            updateSortPopup();
+            document.getElementById('sort-popup').classList.add('open');
+            document.getElementById('sort-overlay').style.display = 'block';
         }
-        function closeSortSheet() {
-            document.getElementById('sort-sheet').classList.remove('open');
-            document.body.style.overflow = '';
+        function closeSortPopup() {
+            document.getElementById('sort-popup').classList.remove('open');
+            document.getElementById('sort-overlay').style.display = 'none';
+        }
+        function toggleSortPopup() {
+            const popup = document.getElementById('sort-popup');
+            if (popup.classList.contains('open')) closeSortPopup();
+            else openSortPopup();
         }
         function openFilterSheet() {
             document.getElementById('filter-sheet').classList.add('open');
@@ -798,52 +841,46 @@
             if (!sel) return;
             const isDesc = getSortIsDesc(sel.value);
             sel.value = buildSortValue(type, isDesc);
-            updateSortSheetActive();
+            updateSortPopup();
             updateSortBtnLabel();
             filterAndRender();
-            setTimeout(closeSortSheet, 180);
+            setTimeout(closeSortPopup, 160);
         }
 
-        function toggleSortDir() {
+        function setSortDir(isDesc) {
             const sel = document.getElementById('sort-select');
             if (!sel) return;
             const type = getSortType(sel.value);
-            const isDesc = getSortIsDesc(sel.value);
-            sel.value = buildSortValue(type, !isDesc);
-            updateSortDirBtn();
+            sel.value = buildSortValue(type, isDesc);
+            updateSortPopup();
             updateSortBtnLabel();
             filterAndRender();
-        }
-
-        function updateSortDirBtn() {
-            const val = document.getElementById('sort-select')?.value || 'price_asc';
-            const isDesc = getSortIsDesc(val);
-            const btn = document.getElementById('sort-dir-btn');
-            if (!btn) return;
-            btn.innerHTML = isDesc
-                ? '<i class="bi bi-sort-down"></i>'
-                : '<i class="bi bi-sort-up"></i>';
-            btn.title = isDesc ? '降順（タップで昇順）' : '昇順（タップで降順）';
         }
 
         function updateSortBtnLabel() {
             const val = document.getElementById('sort-select')?.value || 'price_asc';
             const type = getSortType(val);
+            const isDesc = getSortIsDesc(val);
             const el = document.getElementById('sort-label-text');
-            if (el) el.textContent = SORT_TYPE_LABELS[type] || '並び替え';
+            if (el) el.textContent = (SORT_TYPE_LABELS[type] || '並び替え') + (isDesc ? ' ↓' : ' ↑');
         }
 
-        function updateSortSheetActive() {
+        function updateSortPopup() {
             const val = document.getElementById('sort-select')?.value || 'price_asc';
             const type = getSortType(val);
-            document.querySelectorAll('.sort-option').forEach(el => {
+            const isDesc = getSortIsDesc(val);
+            document.querySelectorAll('.sort-pop-item').forEach(el => {
                 el.classList.toggle('active', el.dataset.sort === type);
             });
+            document.getElementById('sort-dir-asc')?.classList.toggle('active', !isDesc);
+            document.getElementById('sort-dir-desc')?.classList.toggle('active', isDesc);
         }
+
+        function updateSortDirBtn() { updateSortPopup(); }
 
         document.addEventListener('keydown', e => {
             if (e.key === 'Escape') {
-                closeSortSheet(); closeFilterSheet();
+                closeSortPopup(); closeFilterSheet();
                 if (_searchOpen) toggleSearchBar();
             }
         });
