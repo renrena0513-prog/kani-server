@@ -363,10 +363,20 @@ function getFilteredProfiles(idx) {
 }
 
 function showDropdown(idx) {
+    const list = document.getElementById(`dropdown-list-${idx}`);
+    const input = document.querySelector(`#player-row-${idx} .player-account`);
+
+    // 2回目のタップ: ドロップダウンが既に開いていたらキーボードを出す
+    if (list.style.display === 'block') {
+        input.removeAttribute('readonly');
+        input.placeholder = '名前を入力';
+        input.focus();
+        return;
+    }
+
     document.querySelectorAll('.custom-dropdown-list').forEach(l => l.style.display = 'none');
     document.querySelectorAll('.player-entry').forEach(e => { e.style.zIndex = ''; e.style.position = ''; });
 
-    const list = document.getElementById(`dropdown-list-${idx}`);
     const entry = document.getElementById(`player-row-${idx}`);
     entry.style.position = 'relative';
     entry.style.zIndex = '1000';
@@ -402,12 +412,8 @@ function filterDropdown(idx) {
 
 function renderDropdownItems(idx, profiles) {
     const list = document.getElementById(`dropdown-list-${idx}`);
-    const directInputBtn = `
-        <div class="dropdown-item-flex" onclick="enableDirectInput(${idx})" style="border-top:1px solid rgba(255,255,255,0.15);margin-top:4px;">
-            <span style="font-size:.875rem;">✏️ 直接入力する</span>
-        </div>`;
     if (profiles.length === 0) {
-        list.innerHTML = '<div class="p-2 small text-muted">該当なし</div>' + directInputBtn;
+        list.innerHTML = '<div class="p-2 small text-muted">該当なし</div>';
         return;
     }
     list.innerHTML = profiles.map(p => {
@@ -418,16 +424,7 @@ function renderDropdownItems(idx, profiles) {
                 <img src="${avatar}" class="dropdown-avatar" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=24'">
                 <span class="small">${display}</span>
             </div>`;
-    }).join('') + directInputBtn;
-}
-
-function enableDirectInput(idx) {
-    const input = document.querySelector(`#player-row-${idx} .player-account`);
-    input.removeAttribute('readonly');
-    input.placeholder = '名前を入力';
-    input.value = '';
-    input.focus();
-    filterDropdown(idx);
+    }).join('');
 }
 
 function selectPlayer(idx, discordUserId, accountName) {
