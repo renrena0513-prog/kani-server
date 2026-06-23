@@ -167,9 +167,12 @@
         /* ── Badge Grid ── */
         #badge-list-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-            gap: 16px;
-            padding: 14px 12px 4px;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 24px 14px;
+            padding: 16px 12px 4px;
+        }
+        @media (max-width: 639px) {
+            #badge-list-grid { gap: 14px 8px; padding: 12px 8px 4px; }
         }
 
         /* ── Mini Card ── */
@@ -874,6 +877,7 @@
         let creatorMap = new Map();
         let ownedBadgeIds = new Set();
         let currentPage = 1;
+        let lastPageSize = getPageSize();
         const filters = {
             rarity: '', creator: '', type: '',
             label: '', tag: '', method: '', unownedOnly: false
@@ -907,6 +911,20 @@
                 applyTagFromUrl(restored);
                 clearStaleCreatorFilter(restored);
                 filterAndRender();
+
+                let _resizeTimer;
+                window.addEventListener('resize', () => {
+                    clearTimeout(_resizeTimer);
+                    _resizeTimer = setTimeout(() => {
+                        const newSize = getPageSize();
+                        if (newSize !== lastPageSize) {
+                            const firstIdx = (currentPage - 1) * lastPageSize;
+                            currentPage = Math.floor(firstIdx / newSize) + 1;
+                            lastPageSize = newSize;
+                            filterAndRender();
+                        }
+                    }, 200);
+                });
             } catch (err) {
                 console.error('Error fetching badges:', err);
                 document.getElementById('badge-list-grid').innerHTML =
@@ -965,7 +983,7 @@
         }
 
         function getPageSize() {
-            return window.innerWidth < 768 ? 40 : 80;
+            return window.innerWidth < 640 ? 60 : 36; /* mobile:6col×10row / pc:6col×6row */
         }
 
         function renderPagination(total) {
