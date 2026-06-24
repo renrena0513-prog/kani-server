@@ -208,7 +208,7 @@
         .team-card.open .tc-members { display:block; }
         .tc-member-row { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,.05); }
         .tc-member-row:last-child { border-bottom:none; }
-        .tc-member-avatar { width:32px; height:32px; border-radius:50%; border:2px solid rgba(255,255,255,.15); flex-shrink:0; }
+        .tc-member-avatar { width:30px; height:30px; border-radius:50%; border:2px solid rgba(255,255,255,.15); flex-shrink:0; }
         .tc-member-name { flex:1; font-size:.88rem; font-weight:600; }
         .tc-member-score { font-family:var(--fn); font-size:.88rem; font-weight:700; }
         /* 決勝ライン区切り */
@@ -511,11 +511,12 @@
         rows.forEach(r => {
             if (!r.team_name || !allTeamNames.has(r.team_name)) return;
             const tn = r.team_name;
-            if (!map[tn]) map[tn] = { name: tn, score: 0, count: 0, wins: 0, positives: 0 };
+            if (!map[tn]) map[tn] = { name: tn, score: 0, count: 0, wins: 0, positives: 0, memberIds: new Set() };
             map[tn].score += Number(r.final_score);
             map[tn].count++;
             if (Number(r.rank) === 1) map[tn].wins++;
             if (Number(r.final_score) > 0) map[tn].positives++;
+            if (r.discord_user_id) map[tn].memberIds.add(r.discord_user_id);
             const uid = r.discord_user_id || r.account_name;
             if (!memberMap[tn]) memberMap[tn] = {};
             if (!memberMap[tn][uid]) {
@@ -531,9 +532,12 @@
             }
             memberMap[tn][uid].score += Number(r.final_score);
         });
-        allTeamNames.forEach(n => { if (!map[n]) map[n] = { name: n, score: 0, count: 0, wins: 0, positives: 0 }; });
+        allTeamNames.forEach(n => { if (!map[n]) map[n] = { name: n, score: 0, count: 0, wins: 0, positives: 0, memberIds: new Set() }; });
         const arr = Object.values(map).sort((a,b) => b.score - a.score);
-        arr.forEach(t => { t.members = Object.values(memberMap[t.name] || {}).sort((a,b) => b.score - a.score); });
+        arr.forEach(t => {
+            t.members = Object.values(memberMap[t.name] || {}).sort((a,b) => b.score - a.score);
+            t.chipSum = [...t.memberIds].reduce((s, uid) => s + (chipMap[uid] || 0), 0);
+        });
         return arr;
     }
 
@@ -564,7 +568,7 @@
         if (currentSub === 'count') return { main: p.count + '試合', sub: sc(p.score) + 'pt' };
         if (currentSub === 'win')   return { main: pct(p.wins, p.count), sub: p.wins + '回優勝 / ' + p.count + '試合' };
         if (currentSub === 'plus')  return { main: pct(p.positives, p.count), sub: p.positives + '回入賞 / ' + p.count + '試合' };
-        if (currentSub === 'chip')  return { main: (p.chips || 0).toLocaleString() + ' chips', sub: p.count + '試合' };
+        if (currentSub === 'chip')  return { main: '🪙' + (p.chips || 0).toLocaleString(), sub: p.count + '試合' };
         return { main: sc(p.score), sub: p.count + '試合' };
     }
 
@@ -708,6 +712,7 @@
                     <div class="tc-stat"><div class="tc-stat-label">試合数</div><div class="tc-stat-val">${t.count}</div></div>
                     <div class="tc-stat"><div class="tc-stat-label">優勝率</div><div class="tc-stat-val">${winRate}</div></div>
                     <div class="tc-stat"><div class="tc-stat-label">入賞率</div><div class="tc-stat-val">${posRate}</div></div>
+                    <div class="tc-stat"><div class="tc-stat-label">🪙 チップ</div><div class="tc-stat-val">${(t.chipSum||0).toLocaleString()}</div></div>
                 </div>
                 <div class="tc-members">${memberRows}</div>
             </div>`;
