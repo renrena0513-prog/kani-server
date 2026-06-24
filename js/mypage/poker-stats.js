@@ -91,30 +91,18 @@ function renderPokerStats() {
 
     const count = records.length;
     const total = records.reduce((s, r) => s + Number(r.final_score || 0), 0);
-    const avg = total / count;
-    const max = Math.max(...records.map(r => Number(r.final_score || 0)));
-    const r1 = records.filter(r => Number(r.rank) === 1).length;
+    const r1   = records.filter(r => Number(r.rank) === 1).length;
     const rPos = records.filter(r => Number(r.final_score || 0) > 0).length;
-    const rLast = records.filter(r => Number(r.rank) === Number(r.player_count || 4)).length;
-    const rankSum = records.reduce((s, r) => s + Number(r.rank || 0), 0);
-    const avgRank = rankSum / count;
-    const winRate = (r1 / count) * 100;
+    const winRate = (r1   / count) * 100;
     const posRate = (rPos / count) * 100;
-    const avoidRate = (1 - rLast / count) * 100;
 
     const fmt = n => n >= 0 ? `+${n.toFixed(1)}` : n.toFixed(1);
 
-    document.getElementById('poker-stat-games').textContent = count;
-    document.getElementById('poker-stat-total').textContent = fmt(total);
-    document.getElementById('poker-stat-avg').textContent = fmt(avg);
-    document.getElementById('poker-stat-max').textContent = fmt(max);
+    document.getElementById('poker-stat-games').textContent    = count;
+    document.getElementById('poker-stat-total').textContent    = fmt(total);
     document.getElementById('poker-stat-win-rate').textContent = `${winRate.toFixed(1)}%`;
     document.getElementById('poker-stat-pos-rate').textContent = `${posRate.toFixed(1)}%`;
-    document.getElementById('poker-stat-avoid').textContent = `${avoidRate.toFixed(1)}%`;
-    document.getElementById('poker-stat-avg-rank').textContent = avgRank.toFixed(2);
 
-    ['poker-stat-total', 'poker-stat-avg', 'poker-stat-max'].forEach(id => {
-        const el = document.getElementById(id);
-        el.style.color = parseFloat(el.textContent) >= 0 ? '#1e7e34' : '#b31d1d';
-    });
+    const totalEl = document.getElementById('poker-stat-total');
+    totalEl.style.color = total >= 0 ? '#1e7e34' : '#b31d1d';
 }
