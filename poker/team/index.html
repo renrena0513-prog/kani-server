@@ -472,12 +472,14 @@
     async function loadMemberScores() {
         const memberIds = teamMembers.map(m => m.discord_user_id);
         if (memberIds.length === 0) return;
-        const { data: results } = await supabaseClient
-            .from('poker_results')
-            .select('discord_user_id, final_score, rank, player_count')
-            .in('discord_user_id', memberIds);
+        const [{ data: results }, { data: chipProfiles }] = await Promise.all([
+            supabaseClient.from('poker_results').select('discord_user_id, final_score, rank, player_count').in('discord_user_id', memberIds),
+            supabaseClient.from('profiles').select('discord_user_id, tip').in('discord_user_id', memberIds)
+        ]);
+        const chipMap = {};
+        (chipProfiles || []).forEach(p => { chipMap[p.discord_user_id] = p.tip || 0; });
         const stats = {};
-        teamMembers.forEach(m => { stats[m.discord_user_id] = { ...m, score: 0, count: 0, wins: 0, positives: 0 }; });
+        teamMembers.forEach(m => { stats[m.discord_user_id] = { ...m, score: 0, count: 0, wins: 0, positives: 0, chips: chipMap[m.discord_user_id] || 0 }; });
         (results || []).forEach(r => {
             if (!stats[r.discord_user_id]) return;
             stats[r.discord_user_id].score += Number(r.final_score);
@@ -489,7 +491,7 @@
         const medals = ['🥇','🥈','🥉'];
         document.getElementById('member-scores').innerHTML = `
             <table class="member-score-table">
-                <thead><tr><th>#</th><th>メンバー</th><th>合計スコア</th><th>試合数</th><th>優勝率</th><th>入賞率</th></tr></thead>
+                <thead><tr><th>#</th><th>メンバー</th><th>合計スコア</th><th>🪙 チップ</th><th>試合数</th><th>優勝率</th><th>入賞率</th></tr></thead>
                 <tbody>${sorted.map((s, i) => {
                     const rc = i < 3 ? ` class="rank-${i+1}"` : '';
                     const medal = i < 3 ? medals[i] : i + 1;
@@ -498,7 +500,7 @@
                     const cls = sc >= 0 ? 'score-positive' : 'score-negative';
                     const wr  = s.count > 0 ? Math.round(s.wins/s.count*100)      + '%' : '-';
                     const pr  = s.count > 0 ? Math.round(s.positives/s.count*100) + '%' : '-';
-                    return `<tr${rc}><td>${medal}</td><td><img src="${avatar}" style="width:28px;height:28px;border-radius:50%;margin-right:8px;">${s.account_name}</td><td class="${cls}">${sc>=0?'+':''}${sc}</td><td>${s.count}</td><td>${wr}</td><td>${pr}</td></tr>`;
+                    return `<tr${rc}><td>${medal}</td><td><img src="${avatar}" style="width:28px;height:28px;border-radius:50%;margin-right:8px;">${s.account_name}</td><td class="${cls}">${sc>=0?'+':''}${sc}</td><td>${s.chips.toLocaleString()}</td><td>${s.count}</td><td>${wr}</td><td>${pr}</td></tr>`;
                 }).join('')}</tbody>
             </table>`;
     }
@@ -506,12 +508,29 @@
     async function loadTeamStats() {
         const memberIds = teamMembers.map(m => m.discord_user_id);
         if (memberIds.length === 0) return;
-        const { data: results } = await supabaseClient
-            .from('poker_results')
-            .select('discord_user_id, final_score, rank, player_count, tournament_type, event_datetime, account_name')
-            .in('discord_user_id', memberIds)
-            .order('event_datetime', { ascending: false });
+        const [{ data: results }, { data: chipProfiles }, { data: allTeamResults }] = await Promise.all([
+            supabaseClient
+                .from('poker_results')
+                .select('discord_user_id, final_score, rank, player_count, tournament_type, event_datetime, account_name')
+                .in('discord_user_id', memberIds)
+                .order('event_datetime', { ascending: false }),
+            supabaseClient.from('profiles').select('discord_user_id, tip').in('discord_user_id', memberIds),
+            supabaseClient.from('poker_results').select('team_name, final_score').not('team_name', 'is', null)
+        ]);
         const all = results || [];
+
+        // 合計チップ
+        const totalChips = (chipProfiles || []).reduce((s, p) => s + (p.tip || 0), 0);
+
+        // チーム順位（全チームスコア合計と比較）
+        const teamScoreMap = {};
+        (allTeamResults || []).forEach(r => {
+            if (!r.team_name) return;
+            teamScoreMap[r.team_name] = (teamScoreMap[r.team_name] || 0) + Number(r.final_score);
+        });
+        const myScore = teamScoreMap[myTeam.team_name] || 0;
+        const teamCount = Object.keys(teamScoreMap).length;
+        const teamRank = Object.values(teamScoreMap).filter(s => s > myScore).length + 1;
 
         // event_datetime をキーに卓単位で重複除去
         const tableMap = new Map();
@@ -532,6 +551,8 @@
             ['試合数',     cnt],
             ['優勝率',     wr],
             ['入賞率',     pr],
+            ['🪙 合計チップ', totalChips.toLocaleString()],
+            ['チーム順位',  teamCount > 0 ? `${teamRank}位 / ${teamCount}チーム` : '-'],
         ].map(([l,v])=>`<div class="col-6 col-md-4"><div class="stat-card-mini"><div class="stat-label-mini">${l}</div><div class="stat-value-mini">${v}</div></div></div>`).join('');
 
         const log = document.getElementById('team-battle-log');
