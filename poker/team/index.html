@@ -568,6 +568,15 @@
             .from('poker_results')
             .select('discord_user_id, account_name, rank, event_datetime')
             .in('event_datetime', eventDatetimes);
+
+        // 他チームプレイヤーのアバターも取得してavatarMapに追加
+        const nonTeamIds = [...new Set((tableAllResults || []).map(r => r.discord_user_id).filter(id => id && !avatarMap[id]))];
+        if (nonTeamIds.length > 0) {
+            const { data: otherProfiles } = await supabaseClient
+                .from('profiles').select('discord_user_id, avatar_url').in('discord_user_id', nonTeamIds);
+            (otherProfiles || []).forEach(p => { avatarMap[p.discord_user_id] = p.avatar_url || null; });
+        }
+
         const eventAllPlayersMap = new Map();
         (tableAllResults || []).forEach(r => {
             if (!eventAllPlayersMap.has(r.event_datetime)) eventAllPlayersMap.set(r.event_datetime, []);
