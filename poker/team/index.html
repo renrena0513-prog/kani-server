@@ -342,7 +342,7 @@
         const br = b.right ? `<img src="${b.right}" style="width:22px;height:22px;object-fit:contain;margin:0 2px;vertical-align:middle;">` : '';
         const href = uid ? `../../mypage/index.html?user=${uid}` : '#';
         const nameHtml = uid ? `<a href="${href}" style="color:inherit;text-decoration:none;">${name}</a>` : name;
-        return `<img src="${avSrc}" style="width:26px;height:26px;border-radius:50%;margin-right:4px;vertical-align:middle;" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1a4d8c&color=fff'">${bl}${nameHtml}${br}`;
+        return `<img src="${avSrc}" style="width:33px;height:33px;border-radius:50%;margin-right:4px;vertical-align:middle;" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1a4d8c&color=fff'">${bl}${nameHtml}${br}`;
     }
 
     document.addEventListener('DOMContentLoaded', initTeamPage);
