@@ -102,6 +102,8 @@ function capturePlayerStates() {
             discordUserId: input?.dataset.discordUserId || '',
             accountName: input?.dataset.accountName || '',
             avatarSrc: badge?.querySelector('.badge-avatar')?.src || '',
+            badgeLeftSrc: badge?.querySelector('.badge-eq-left')?.src || '',
+            badgeRightSrc: badge?.querySelector('.badge-eq-right')?.src || '',
             displayName: badge?.querySelector('.name')?.textContent || '',
             badgeVisible: badge?.style.display !== 'none',
             teamId: teamInput?.value || '',
@@ -124,6 +126,10 @@ function restorePlayerState(i, state) {
     }
     if (badge) {
         badge.querySelector('.badge-avatar').src = state.avatarSrc;
+        const eqL = badge.querySelector('.badge-eq-left');
+        const eqR = badge.querySelector('.badge-eq-right');
+        if (eqL) { eqL.src = state.badgeLeftSrc || ''; eqL.style.display = state.badgeLeftSrc ? '' : 'none'; }
+        if (eqR) { eqR.src = state.badgeRightSrc || ''; eqR.style.display = state.badgeRightSrc ? '' : 'none'; }
         badge.querySelector('.name').textContent = state.displayName;
         badge.style.display = 'flex';
     }
@@ -165,7 +171,9 @@ function setupPlayerInputs(count) {
                                    placeholder="タップして選択" inputmode="none" onclick="showDropdown(${i})" oninput="filterDropdown(${i})">
                             <div class="selected-player-badge" id="selected-badge-${i}" style="display:none;">
                                 <img src="" class="badge-avatar">
+                                <img src="" class="badge-eq-left" style="display:none;width:20px;height:20px;object-fit:contain;margin:0 2px;vertical-align:middle;">
                                 <span class="name"></span>
+                                <img src="" class="badge-eq-right" style="display:none;width:20px;height:20px;object-fit:contain;margin:0 2px;vertical-align:middle;">
                                 <span class="btn-clear" onclick="clearPlayer(${i})">×</span>
                             </div>
                             <div class="custom-dropdown-list" id="dropdown-list-${i}"></div>
@@ -439,6 +447,12 @@ function selectPlayer(idx, discordUserId, accountName) {
 
     const avatarImg = badgeEl.querySelector('.badge-avatar');
     avatarImg.src = profile?.avatar_url || 'https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=24';
+    const eqL = badgeEl.querySelector('.badge-eq-left');
+    const eqR = badgeEl.querySelector('.badge-eq-right');
+    const leftSrc  = profile?.badges?.image_url       || '';
+    const rightSrc = profile?.badges_right?.image_url || '';
+    if (eqL) { eqL.src = leftSrc;  eqL.style.display  = leftSrc  ? '' : 'none'; }
+    if (eqR) { eqR.src = rightSrc; eqR.style.display  = rightSrc ? '' : 'none'; }
     badgeEl.querySelector('.name').textContent = accountName || discordUserId;
     badgeEl.style.display = 'flex';
 

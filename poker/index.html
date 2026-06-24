@@ -388,7 +388,7 @@
         const ids = [...new Set(allResults.map(r => r.discord_user_id).filter(Boolean))];
         if (ids.length > 0) {
             const { data: profiles } = await supabaseClient
-                .from('profiles').select('discord_user_id,account_name,avatar_url').in('discord_user_id', ids);
+                .from('profiles').select('discord_user_id,account_name,avatar_url,badges!equipped_badge_id(image_url),badges_right:badges!equipped_badge_id_right(image_url)').in('discord_user_id', ids);
             (profiles || []).forEach(p => { profileMap[p.discord_user_id] = p; });
         }
 
@@ -455,6 +455,15 @@
         return allResults.filter(r => r.tournament_type === currentTour);
     }
 
+    function playerNameHtml(p) {
+        const avSrc = p.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=1a4d8c&color=fff`;
+        const bl = p.badge_left  ? `<img src="${p.badge_left}"  style="width:22px;height:22px;object-fit:contain;margin:0 2px;vertical-align:middle;">` : '';
+        const br = p.badge_right ? `<img src="${p.badge_right}" style="width:22px;height:22px;object-fit:contain;margin:0 2px;vertical-align:middle;">` : '';
+        const href = p.id ? `../mypage/index.html?user=${p.id}` : '#';
+        const nameLink = p.id ? `<a href="${href}" style="color:inherit;text-decoration:none;">${p.name}</a>` : p.name;
+        return `<img src="${avSrc}" style="width:26px;height:26px;border-radius:50%;margin-right:4px;vertical-align:middle;" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=1a4d8c&color=fff'">${bl}${nameLink}${br}`;
+    }
+
     function aggregateIndividual(rows) {
         const map = {};
         rows.forEach(r => {
@@ -463,6 +472,8 @@
                 const p = profileMap[r.discord_user_id] || {};
                 map[key] = { id: r.discord_user_id, name: p.account_name || r.account_name,
                     avatar: p.avatar_url || null, team: r.team_name || '',
+                    badge_left:  p.badges?.image_url       || null,
+                    badge_right: p.badges_right?.image_url || null,
                     score: 0, count: 0, wins: 0, positives: 0,
                     chips: chipMap[r.discord_user_id] || 0 };
             }
@@ -478,6 +489,8 @@
                     const p = profileMap[uid] || {};
                     map[uid] = { id: uid, name: p.account_name || uid,
                         avatar: p.avatar_url || null, team: '',
+                        badge_left:  p.badges?.image_url       || null,
+                        badge_right: p.badges_right?.image_url || null,
                         score: 0, count: 0, wins: 0, positives: 0, chips };
                 }
             });
@@ -590,7 +603,7 @@
                 <img src="${av(p.avatar,p.name)}" class="podium-avatar"
                     onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff'">
                 <div class="podium-info">
-                    <div class="podium-name">${p.name}</div>
+                    <div class="podium-name">${playerNameHtml(p)}</div>
                     <div class="podium-sub">${p.team || '　'}</div>
                 </div>
                 <div>
@@ -609,7 +622,7 @@
                 <img src="${av(p.avatar,p.name)}" class="rank-avatar"
                     onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff'">
                 <div class="rank-info">
-                    <div class="rank-name">${p.name}</div>
+                    <div class="rank-name">${playerNameHtml(p)}</div>
                     <div class="rank-team">${p.team || '　'}</div>
                 </div>
                 <div>

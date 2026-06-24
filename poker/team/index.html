@@ -418,13 +418,11 @@
 
         document.getElementById('members-list').innerHTML = teamMembers.map(m => {
             const isAdmin = m.discord_user_id === myTeam.creator_discord_id;
-            const avatar = m.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.account_name)}&background=1a4d8c&color=fff`;
             const kickBtn = (!isAdmin && isTeamAdmin)
                 ? `<button class="btn btn-outline-danger btn-sm ms-auto" onclick="kickMember('${m.discord_user_id}','${m.account_name.replace(/'/g,"\\'")}')">追放</button>`
                 : '';
             return `<div class="member-card">
-                <img src="${avatar}" class="member-avatar" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff'">
-                <span class="member-name">${m.account_name}</span>
+                ${playerNameCell(m.discord_user_id, m.account_name)}
                 ${isAdmin ? '<span class="member-role">👑 リーダー</span>' : ''}
                 ${kickBtn}
             </div>`;
