@@ -687,7 +687,7 @@
                     const nameHtml = m.id ? `<a href="${href}" style="color:inherit;text-decoration:none;">${m.name}</a>` : m.name;
                     const sc2 = m.score > 0 ? `+${m.score}` : String(m.score);
                     const mcls = m.score > 0 ? 'score-pos' : m.score < 0 ? 'score-neg' : 'score-zero';
-                    return `<div class="tc-member-row">${mavatar}${bl}<span class="tc-member-name">${nameHtml}</span>${br}<span class="tc-member-score ${mcls}">${sc2} pt</span></div>`;
+                    return `<div class="tc-member-row">${mavatar}<span class="tc-member-name">${bl}${nameHtml}${br}</span><span class="tc-member-score ${mcls}">${sc2} pt</span></div>`;
                 }).join('')
                 : '<div style="font-size:.8rem;color:rgba(255,255,255,.3);padding:6px 0;">記録なし</div>';
 
