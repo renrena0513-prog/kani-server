@@ -524,20 +524,43 @@
         });
         const sorted = Object.values(stats).sort((a, b) => b.score - a.score);
         const medals = ['🥇','🥈','🥉'];
-        document.getElementById('member-scores').innerHTML = `
-            <table class="member-score-table">
-                <thead><tr><th>#</th><th>メンバー</th><th>合計スコア</th><th>🪙 チップ</th><th>試合数</th><th>優勝率</th><th>入賞率</th></tr></thead>
-                <tbody>${sorted.map((s, i) => {
-                    const rc = i < 3 ? ` class="rank-${i+1}"` : '';
-                    const medal = i < 3 ? medals[i] : i + 1;
-                    const avatar = s.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.account_name||'?')}&background=1a4d8c&color=fff`;
-                    const sc = s.score;
-                    const cls = sc >= 0 ? 'score-positive' : 'score-negative';
-                    const wr  = s.count > 0 ? Math.round(s.wins/s.count*100)      + '%' : '-';
-                    const pr  = s.count > 0 ? Math.round(s.positives/s.count*100) + '%' : '-';
-                    return `<tr${rc}><td>${medal}</td><td>${playerNameCell(s.discord_user_id, s.account_name)}</td><td class="${cls}">${sc>=0?'+':''}${sc}</td><td>${s.chips.toLocaleString()}</td><td>${s.count}</td><td>${wr}</td><td>${pr}</td></tr>`;
-                }).join('')}</tbody>
-            </table>`;
+        const isMobile = window.innerWidth < 640;
+        if (isMobile) {
+            document.getElementById('member-scores').innerHTML = sorted.map((s, i) => {
+                const medal = i < 3 ? medals[i] : `${i+1}`;
+                const sc = s.score;
+                const cls = sc >= 0 ? 'score-positive' : 'score-negative';
+                const wr  = s.count > 0 ? Math.round(s.wins/s.count*100)      + '%' : '-';
+                const pr  = s.count > 0 ? Math.round(s.positives/s.count*100) + '%' : '-';
+                return `<div class="blog-card">
+                    <div class="blog-card-top">
+                        <span style="font-size:1rem;min-width:28px;flex-shrink:0;text-align:center;">${medal}</span>
+                        <span class="blog-card-player">${playerNameCell(s.discord_user_id, s.account_name)}</span>
+                        <span class="blog-card-score ${cls}">${sc>=0?'+':''}${sc}</span>
+                    </div>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:5px;padding-left:36px;font-size:0.78rem;color:rgba(255,255,255,0.55);">
+                        <span>🪙 ${s.chips.toLocaleString()}</span>
+                        <span>${s.count}試合</span>
+                        <span>優勝 ${wr}</span>
+                        <span>入賞 ${pr}</span>
+                    </div>
+                </div>`;
+            }).join('');
+        } else {
+            document.getElementById('member-scores').innerHTML = `
+                <table class="member-score-table">
+                    <thead><tr><th>#</th><th>メンバー</th><th>合計スコア</th><th>🪙 チップ</th><th>試合数</th><th>優勝率</th><th>入賞率</th></tr></thead>
+                    <tbody>${sorted.map((s, i) => {
+                        const rc = i < 3 ? ` class="rank-${i+1}"` : '';
+                        const medal = i < 3 ? medals[i] : i + 1;
+                        const sc = s.score;
+                        const cls = sc >= 0 ? 'score-positive' : 'score-negative';
+                        const wr  = s.count > 0 ? Math.round(s.wins/s.count*100)      + '%' : '-';
+                        const pr  = s.count > 0 ? Math.round(s.positives/s.count*100) + '%' : '-';
+                        return `<tr${rc}><td>${medal}</td><td>${playerNameCell(s.discord_user_id, s.account_name)}</td><td class="${cls}">${sc>=0?'+':''}${sc}</td><td>${s.chips.toLocaleString()}</td><td>${s.count}</td><td>${wr}</td><td>${pr}</td></tr>`;
+                    }).join('')}</tbody>
+                </table>`;
+        }
     }
 
     async function loadTeamStats() {
