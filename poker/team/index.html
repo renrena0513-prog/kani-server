@@ -593,7 +593,7 @@
             .select('discord_user_id, account_name, rank, event_datetime')
             .in('event_datetime', eventDatetimes);
 
-        // 他チームプレイヤーのアバターも取得してavatarMapに追加
+        // 他チームプレイヤーのアバターも取得して_globalAvatarMapに追加
         const nonTeamIds = [...new Set((tableAllResults || []).map(r => r.discord_user_id).filter(id => id && !_globalAvatarMap[id]))];
         if (nonTeamIds.length > 0) {
             const { data: otherProfiles } = await supabaseClient
@@ -613,7 +613,7 @@
         _blogFilter = null;
 
         const filterButtons = teamMembers.map(m => {
-            const av = avatarMap[m.discord_user_id] || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.account_name)}&background=1a4d8c&color=fff`;
+            const av = _globalAvatarMap[m.discord_user_id] || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.account_name)}&background=1a4d8c&color=fff`;
             return `<button class="blog-filter-btn" data-uid="${m.discord_user_id}" onclick="setBlogFilter('${m.discord_user_id}')">
                 <img src="${av}" style="width:22px;height:22px;border-radius:50%;vertical-align:middle;margin-right:4px;">${m.account_name}
             </button>`;
