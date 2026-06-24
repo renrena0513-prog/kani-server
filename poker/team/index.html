@@ -312,7 +312,28 @@
     let selectedNewLeader = null;
     let effectiveDiscordId = null;
     let selectedJoinTeamId = null;
-    let _blogAll = [], _blogAvatarMap = {}, _blogPlayersMap = new Map(), _blogFilter = null;
+    let _blogAll = [], _blogPlayersMap = new Map(), _blogFilter = null;
+    let _globalAvatarMap = {}, _globalBadgeMap = {};
+
+    function _updateProfileMaps(profiles) {
+        (profiles || []).forEach(p => {
+            if (p.avatar_url) _globalAvatarMap[p.discord_user_id] = p.avatar_url;
+            _globalBadgeMap[p.discord_user_id] = {
+                left:  p.badges?.image_url        || null,
+                right: p.badges_right?.image_url  || null,
+            };
+        });
+    }
+
+    function playerNameCell(uid, name) {
+        const avSrc = _globalAvatarMap[uid] || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1a4d8c&color=fff`;
+        const b = _globalBadgeMap[uid] || {};
+        const bl = b.left  ? `<img src="${b.left}"  style="width:22px;height:22px;object-fit:contain;margin:0 2px;vertical-align:middle;">` : '';
+        const br = b.right ? `<img src="${b.right}" style="width:22px;height:22px;object-fit:contain;margin:0 2px;vertical-align:middle;">` : '';
+        const href = uid ? `../../mypage/index.html?user=${uid}` : '#';
+        const nameHtml = uid ? `<a href="${href}" style="color:inherit;text-decoration:none;">${name}</a>` : name;
+        return `<img src="${avSrc}" style="width:26px;height:26px;border-radius:50%;margin-right:4px;vertical-align:middle;" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1a4d8c&color=fff'">${bl}${nameHtml}${br}`;
+    }
 
     document.addEventListener('DOMContentLoaded', initTeamPage);
 
@@ -383,9 +404,10 @@
         if (memberIds.length > 0) {
             const { data: profiles } = await supabaseClient
                 .from('profiles')
-                .select('discord_user_id, account_name, avatar_url')
+                .select('discord_user_id, account_name, avatar_url, badges!equipped_badge_id(image_url), badges_right:badges!equipped_badge_id_right(image_url)')
                 .in('discord_user_id', memberIds);
             (profiles || []).forEach(p => { profileMap[p.discord_user_id] = p; });
+            _updateProfileMaps(profiles);
         }
 
         teamMembers = memberIds.map(id => ({
@@ -478,10 +500,11 @@
         if (memberIds.length === 0) return;
         const [{ data: results }, { data: chipProfiles }] = await Promise.all([
             supabaseClient.from('poker_results').select('discord_user_id, final_score, rank, player_count').in('discord_user_id', memberIds),
-            supabaseClient.from('profiles').select('discord_user_id, tip').in('discord_user_id', memberIds)
+            supabaseClient.from('profiles').select('discord_user_id, tip, avatar_url, badges!equipped_badge_id(image_url), badges_right:badges!equipped_badge_id_right(image_url)').in('discord_user_id', memberIds)
         ]);
         const chipMap = {};
         (chipProfiles || []).forEach(p => { chipMap[p.discord_user_id] = p.tip || 0; });
+        _updateProfileMaps(chipProfiles);
         const stats = {};
         teamMembers.forEach(m => { stats[m.discord_user_id] = { ...m, score: 0, count: 0, wins: 0, positives: 0, chips: chipMap[m.discord_user_id] || 0 }; });
         (results || []).forEach(r => {
@@ -504,7 +527,7 @@
                     const cls = sc >= 0 ? 'score-positive' : 'score-negative';
                     const wr  = s.count > 0 ? Math.round(s.wins/s.count*100)      + '%' : '-';
                     const pr  = s.count > 0 ? Math.round(s.positives/s.count*100) + '%' : '-';
-                    return `<tr${rc}><td>${medal}</td><td><img src="${avatar}" style="width:28px;height:28px;border-radius:50%;margin-right:8px;">${s.account_name}</td><td class="${cls}">${sc>=0?'+':''}${sc}</td><td>${s.chips.toLocaleString()}</td><td>${s.count}</td><td>${wr}</td><td>${pr}</td></tr>`;
+                    return `<tr${rc}><td>${medal}</td><td>${playerNameCell(s.discord_user_id, s.account_name)}</td><td class="${cls}">${sc>=0?'+':''}${sc}</td><td>${s.chips.toLocaleString()}</td><td>${s.count}</td><td>${wr}</td><td>${pr}</td></tr>`;
                 }).join('')}</tbody>
             </table>`;
     }
@@ -518,17 +541,14 @@
                 .select('discord_user_id, final_score, rank, player_count, tournament_type, event_datetime, account_name')
                 .in('discord_user_id', memberIds)
                 .order('event_datetime', { ascending: false }),
-            supabaseClient.from('profiles').select('discord_user_id, tip, avatar_url').in('discord_user_id', memberIds),
+            supabaseClient.from('profiles').select('discord_user_id, tip, avatar_url, badges!equipped_badge_id(image_url), badges_right:badges!equipped_badge_id_right(image_url)').in('discord_user_id', memberIds),
             supabaseClient.from('poker_results').select('team_name, final_score').not('team_name', 'is', null)
         ]);
         const all = results || [];
 
-        // 合計チップ・アバターマップ
-        const avatarMap = {};
-        const totalChips = (chipProfiles || []).reduce((s, p) => {
-            avatarMap[p.discord_user_id] = p.avatar_url || null;
-            return s + (p.tip || 0);
-        }, 0);
+        // 合計チップ・グローバルマップ更新
+        _updateProfileMaps(chipProfiles);
+        const totalChips = (chipProfiles || []).reduce((s, p) => s + (p.tip || 0), 0);
 
         // チーム順位（全チームスコア合計と比較）
         const teamScoreMap = {};
@@ -577,8 +597,8 @@
         const nonTeamIds = [...new Set((tableAllResults || []).map(r => r.discord_user_id).filter(id => id && !avatarMap[id]))];
         if (nonTeamIds.length > 0) {
             const { data: otherProfiles } = await supabaseClient
-                .from('profiles').select('discord_user_id, avatar_url').in('discord_user_id', nonTeamIds);
-            (otherProfiles || []).forEach(p => { avatarMap[p.discord_user_id] = p.avatar_url || null; });
+                .from('profiles').select('discord_user_id, avatar_url, badges!equipped_badge_id(image_url), badges_right:badges!equipped_badge_id_right(image_url)').in('discord_user_id', nonTeamIds);
+            _updateProfileMaps(otherProfiles);
         }
 
         const eventAllPlayersMap = new Map();
@@ -589,7 +609,6 @@
 
         // モジュール変数に保存してフィルタ再描画に使えるようにする
         _blogAll = all;
-        _blogAvatarMap = avatarMap;
         _blogPlayersMap = eventAllPlayersMap;
         _blogFilter = null;
 
@@ -630,14 +649,12 @@
                 const sc = Number(r.final_score);
                 const cls = sc>=0?'score-positive':'score-negative';
                 const pc = r.player_count ? `${r.player_count}人` : '-';
-                const myAv = _blogAvatarMap[r.discord_user_id] || `https://ui-avatars.com/api/?name=${encodeURIComponent(r.account_name)}&background=1a4d8c&color=fff`;
-                const playerCell = `<img src="${myAv}" style="width:24px;height:24px;border-radius:50%;margin-right:6px;vertical-align:middle;" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(r.account_name)}&background=1a4d8c&color=fff'">${r.account_name}`;
                 const allPlayers = _blogPlayersMap.get(r.event_datetime) || [];
                 const iconsHtml = allPlayers.map(cr => {
-                    const av = _blogAvatarMap[cr.discord_user_id] || `https://ui-avatars.com/api/?name=${encodeURIComponent(cr.account_name)}&background=1a4d8c&color=fff`;
+                    const av = _globalAvatarMap[cr.discord_user_id] || `https://ui-avatars.com/api/?name=${encodeURIComponent(cr.account_name)}&background=1a4d8c&color=fff`;
                     return `<img src="${av}" title="${cr.account_name}" style="width:24px;height:24px;border-radius:50%;margin-right:2px;vertical-align:middle;" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(cr.account_name)}&background=1a4d8c&color=fff'">`;
                 }).join('');
-                return `<tr><td>${ds}</td><td>${playerCell}</td><td>${iconsHtml}</td><td>${pc}</td><td>${r.rank<=3?m2[r.rank]:''}${r.rank}位</td><td class="${cls}">${sc>=0?'+':''}${sc}</td></tr>`;
+                return `<tr><td>${ds}</td><td>${playerNameCell(r.discord_user_id, r.account_name)}</td><td>${iconsHtml}</td><td>${pc}</td><td>${r.rank<=3?m2[r.rank]:''}${r.rank}位</td><td class="${cls}">${sc>=0?'+':''}${sc}</td></tr>`;
             }).join('')
         }</tbody></table></div>`;
     }
