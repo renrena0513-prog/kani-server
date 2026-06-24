@@ -520,7 +520,14 @@
             if (!memberMap[tn]) memberMap[tn] = {};
             if (!memberMap[tn][uid]) {
                 const p = profileMap[r.discord_user_id] || {};
-                memberMap[tn][uid] = { name: p.account_name || r.account_name, avatar: p.avatar_url || null, score: 0 };
+                memberMap[tn][uid] = {
+                    id: r.discord_user_id || null,
+                    name: p.account_name || r.account_name || r.discord_user_id || uid,
+                    avatar: p.avatar_url || null,
+                    badge_left:  p.badges?.image_url       || null,
+                    badge_right: p.badges_right?.image_url || null,
+                    score: 0
+                };
             }
             memberMap[tn][uid].score += Number(r.final_score);
         });
@@ -674,9 +681,13 @@
                     const mavatar = m.avatar
                         ? `<img src="${m.avatar}" class="tc-member-avatar" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff'">`
                         : `<img src="https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=1a4d8c&color=fff" class="tc-member-avatar">`;
+                    const bl = m.badge_left  ? `<img src="${m.badge_left}"  style="width:20px;height:20px;object-fit:contain;margin:0 2px;vertical-align:middle;">` : '';
+                    const br = m.badge_right ? `<img src="${m.badge_right}" style="width:20px;height:20px;object-fit:contain;margin:0 2px;vertical-align:middle;">` : '';
+                    const href = m.id ? `../mypage/index.html?user=${m.id}` : '#';
+                    const nameHtml = m.id ? `<a href="${href}" style="color:inherit;text-decoration:none;">${m.name}</a>` : m.name;
                     const sc2 = m.score > 0 ? `+${m.score}` : String(m.score);
                     const mcls = m.score > 0 ? 'score-pos' : m.score < 0 ? 'score-neg' : 'score-zero';
-                    return `<div class="tc-member-row">${mavatar}<span class="tc-member-name">${m.name}</span><span class="tc-member-score ${mcls}">${sc2} pt</span></div>`;
+                    return `<div class="tc-member-row">${mavatar}${bl}<span class="tc-member-name">${nameHtml}</span>${br}<span class="tc-member-score ${mcls}">${sc2} pt</span></div>`;
                 }).join('')
                 : '<div style="font-size:.8rem;color:rgba(255,255,255,.3);padding:6px 0;">記録なし</div>';
 
