@@ -559,16 +559,22 @@
             ['🪙 合計チップ', totalChips.toLocaleString()],
         ].map(([l,v])=>`<div class="col-6 col-md-4"><div class="stat-card-mini"><div class="stat-label-mini">${l}</div><div class="stat-value-mini">${v}</div></div></div>`).join('');
 
-        // event_datetime → 同卓メンバーリスト
-        const eventMembersMap = new Map();
-        all.forEach(r => {
-            if (!eventMembersMap.has(r.event_datetime)) eventMembersMap.set(r.event_datetime, []);
-            eventMembersMap.get(r.event_datetime).push(r);
-        });
-
         const log = document.getElementById('team-battle-log');
         if (all.length === 0) { log.innerHTML = '<p class="text-muted">試合記録がありません</p>'; return; }
-        log.innerHTML = `<div style="overflow-x:auto;"><table class="member-score-table"><thead><tr><th>日時</th><th>同卓</th><th>卓人数</th><th>順位</th><th>スコア</th></tr></thead><tbody>${
+
+        // その卓の全プレイヤー取得
+        const eventDatetimes = [...new Set(all.map(r => r.event_datetime))];
+        const { data: tableAllResults } = await supabaseClient
+            .from('poker_results')
+            .select('discord_user_id, account_name, rank, event_datetime')
+            .in('event_datetime', eventDatetimes);
+        const eventAllPlayersMap = new Map();
+        (tableAllResults || []).forEach(r => {
+            if (!eventAllPlayersMap.has(r.event_datetime)) eventAllPlayersMap.set(r.event_datetime, []);
+            eventAllPlayersMap.get(r.event_datetime).push(r);
+        });
+
+        log.innerHTML = `<div style="overflow-x:auto;"><table class="member-score-table"><thead><tr><th>日時</th><th>プレイヤー</th><th>同卓</th><th>卓人数</th><th>順位</th><th>スコア</th></tr></thead><tbody>${
             all.slice(0,30).map(r => {
                 const d = new Date(r.event_datetime);
                 const ds = `${d.getMonth()+1}/${d.getDate()}`;
@@ -576,12 +582,14 @@
                 const cls = sc>=0?'score-positive':'score-negative';
                 const m2 = ['','🥇','🥈','🥉'];
                 const pc = r.player_count ? `${r.player_count}人` : '-';
-                const coPlayers = eventMembersMap.get(r.event_datetime) || [r];
-                const iconsHtml = coPlayers.map(cr => {
+                const myAv = avatarMap[r.discord_user_id] || `https://ui-avatars.com/api/?name=${encodeURIComponent(r.account_name)}&background=1a4d8c&color=fff`;
+                const playerCell = `<img src="${myAv}" style="width:24px;height:24px;border-radius:50%;margin-right:6px;vertical-align:middle;" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(r.account_name)}&background=1a4d8c&color=fff'">${r.account_name}`;
+                const allPlayers = eventAllPlayersMap.get(r.event_datetime) || [];
+                const iconsHtml = allPlayers.map(cr => {
                     const av = avatarMap[cr.discord_user_id] || `https://ui-avatars.com/api/?name=${encodeURIComponent(cr.account_name)}&background=1a4d8c&color=fff`;
-                    return `<img src="${av}" title="${cr.account_name}" style="width:26px;height:26px;border-radius:50%;margin-right:2px;vertical-align:middle;" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(cr.account_name)}&background=1a4d8c&color=fff'">`;
+                    return `<img src="${av}" title="${cr.account_name}" style="width:24px;height:24px;border-radius:50%;margin-right:2px;vertical-align:middle;" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(cr.account_name)}&background=1a4d8c&color=fff'">`;
                 }).join('');
-                return `<tr><td>${ds}</td><td>${iconsHtml}</td><td>${pc}</td><td>${r.rank<=3?m2[r.rank]:''}${r.rank}位</td><td class="${cls}">${sc>=0?'+':''}${sc}</td></tr>`;
+                return `<tr><td>${ds}</td><td>${playerCell}</td><td>${iconsHtml}</td><td>${pc}</td><td>${r.rank<=3?m2[r.rank]:''}${r.rank}位</td><td class="${cls}">${sc>=0?'+':''}${sc}</td></tr>`;
             }).join('')
         }</tbody></table></div>`;
     }
