@@ -512,33 +512,39 @@
             .in('discord_user_id', memberIds)
             .order('event_datetime', { ascending: false });
         const all = results || [];
+
+        // event_datetime をキーに卓単位で重複除去
+        const tableMap = new Map();
+        all.forEach(r => {
+            if (!tableMap.has(r.event_datetime)) tableMap.set(r.event_datetime, []);
+            tableMap.get(r.event_datetime).push(r);
+        });
+        const tables = Array.from(tableMap.values());
+
         const total = all.reduce((s, r) => s + Number(r.final_score), 0);
-        const cnt = all.length;
-        const avg = cnt > 0 ? (total/cnt).toFixed(1) : '-';
-        const r1  = all.filter(r => Number(r.rank) === 1).length;
-        const pos = all.filter(r => Number(r.final_score) > 0).length;
+        const cnt = tables.length;
+        const r1  = tables.filter(t => t.some(r => Number(r.rank) === 1)).length;
+        const pos = tables.filter(t => t.some(r => Number(r.final_score) > 0)).length;
         const wr  = cnt > 0 ? (r1/cnt*100).toFixed(1)  + '%' : '-';
         const pr  = cnt > 0 ? (pos/cnt*100).toFixed(1) + '%' : '-';
-        const ar  = cnt > 0 ? (all.reduce((s,r)=>s+Number(r.rank),0)/cnt).toFixed(2) : '-';
         document.getElementById('team-stats-grid').innerHTML = [
             ['合計スコア', total >= 0 ? '+'+total : total],
             ['試合数',     cnt],
-            ['平均スコア', avg],
             ['優勝率',     wr],
             ['入賞率',     pr],
-            ['平均順位',   ar],
         ].map(([l,v])=>`<div class="col-6 col-md-4"><div class="stat-card-mini"><div class="stat-label-mini">${l}</div><div class="stat-value-mini">${v}</div></div></div>`).join('');
 
         const log = document.getElementById('team-battle-log');
         if (all.length === 0) { log.innerHTML = '<p class="text-muted">試合記録がありません</p>'; return; }
-        log.innerHTML = `<div style="overflow-x:auto;"><table class="member-score-table"><thead><tr><th>日時</th><th>プレイヤー</th><th>大会</th><th>順位</th><th>スコア</th></tr></thead><tbody>${
+        log.innerHTML = `<div style="overflow-x:auto;"><table class="member-score-table"><thead><tr><th>日時</th><th>プレイヤー</th><th>大会</th><th>卓人数</th><th>順位</th><th>スコア</th></tr></thead><tbody>${
             all.slice(0,30).map(r => {
                 const d = new Date(r.event_datetime);
                 const ds = `${d.getMonth()+1}/${d.getDate()}`;
                 const sc = Number(r.final_score);
                 const cls = sc>=0?'score-positive':'score-negative';
                 const m2 = ['','🥇','🥈','🥉'];
-                return `<tr><td>${ds}</td><td>${r.account_name}</td><td style="font-size:0.8rem;">${r.tournament_type}</td><td>${r.rank<=3?m2[r.rank]:''}${r.rank}位</td><td class="${cls}">${sc>=0?'+':''}${sc}</td></tr>`;
+                const pc = r.player_count ? `${r.player_count}人` : '-';
+                return `<tr><td>${ds}</td><td>${r.account_name}</td><td style="font-size:0.8rem;">${r.tournament_type}</td><td>${pc}</td><td>${r.rank<=3?m2[r.rank]:''}${r.rank}位</td><td class="${cls}">${sc>=0?'+':''}${sc}</td></tr>`;
             }).join('')
         }</tbody></table></div>`;
     }
