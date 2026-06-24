@@ -514,13 +514,17 @@
                 .select('discord_user_id, final_score, rank, player_count, tournament_type, event_datetime, account_name')
                 .in('discord_user_id', memberIds)
                 .order('event_datetime', { ascending: false }),
-            supabaseClient.from('profiles').select('discord_user_id, tip').in('discord_user_id', memberIds),
+            supabaseClient.from('profiles').select('discord_user_id, tip, avatar_url').in('discord_user_id', memberIds),
             supabaseClient.from('poker_results').select('team_name, final_score').not('team_name', 'is', null)
         ]);
         const all = results || [];
 
-        // 合計チップ
-        const totalChips = (chipProfiles || []).reduce((s, p) => s + (p.tip || 0), 0);
+        // 合計チップ・アバターマップ
+        const avatarMap = {};
+        const totalChips = (chipProfiles || []).reduce((s, p) => {
+            avatarMap[p.discord_user_id] = p.avatar_url || null;
+            return s + (p.tip || 0);
+        }, 0);
 
         // チーム順位（全チームスコア合計と比較）
         const teamScoreMap = {};
@@ -552,7 +556,7 @@
             ['優勝率',     wr],
             ['入賞率',     pr],
             ['🪙 合計チップ', totalChips.toLocaleString()],
-            ['チーム順位',  teamCount > 0 ? `${teamRank}位 / ${teamCount}チーム` : '-'],
+            ['チーム順位',  teamCount > 0 ? `${teamRank}位` : '-'],
         ].map(([l,v])=>`<div class="col-6 col-md-4"><div class="stat-card-mini"><div class="stat-label-mini">${l}</div><div class="stat-value-mini">${v}</div></div></div>`).join('');
 
         const log = document.getElementById('team-battle-log');
@@ -565,7 +569,8 @@
                 const cls = sc>=0?'score-positive':'score-negative';
                 const m2 = ['','🥇','🥈','🥉'];
                 const pc = r.player_count ? `${r.player_count}人` : '-';
-                return `<tr><td>${ds}</td><td>${r.account_name}</td><td style="font-size:0.8rem;">${r.tournament_type}</td><td>${pc}</td><td>${r.rank<=3?m2[r.rank]:''}${r.rank}位</td><td class="${cls}">${sc>=0?'+':''}${sc}</td></tr>`;
+                const av = avatarMap[r.discord_user_id] || `https://ui-avatars.com/api/?name=${encodeURIComponent(r.account_name)}&background=1a4d8c&color=fff`;
+                return `<tr><td>${ds}</td><td><img src="${av}" style="width:24px;height:24px;border-radius:50%;margin-right:6px;vertical-align:middle;" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(r.account_name)}&background=1a4d8c&color=fff'">${r.account_name}</td><td style="font-size:0.8rem;">${r.tournament_type}</td><td>${pc}</td><td>${r.rank<=3?m2[r.rank]:''}${r.rank}位</td><td class="${cls}">${sc>=0?'+':''}${sc}</td></tr>`;
             }).join('')
         }</tbody></table></div>`;
     }
