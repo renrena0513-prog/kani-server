@@ -551,12 +551,12 @@
         const wr  = cnt > 0 ? (r1/cnt*100).toFixed(1)  + '%' : '-';
         const pr  = cnt > 0 ? (pos/cnt*100).toFixed(1) + '%' : '-';
         document.getElementById('team-stats-grid').innerHTML = [
+            ['チーム順位',  teamCount > 0 ? `${teamRank}位` : '-'],
             ['合計スコア', total >= 0 ? '+'+total : total],
             ['試合数',     cnt],
             ['優勝率',     wr],
             ['入賞率',     pr],
             ['🪙 合計チップ', totalChips.toLocaleString()],
-            ['チーム順位',  teamCount > 0 ? `${teamRank}位` : '-'],
         ].map(([l,v])=>`<div class="col-6 col-md-4"><div class="stat-card-mini"><div class="stat-label-mini">${l}</div><div class="stat-value-mini">${v}</div></div></div>`).join('');
 
         const log = document.getElementById('team-battle-log');
