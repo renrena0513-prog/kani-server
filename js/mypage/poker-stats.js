@@ -19,12 +19,12 @@ async function loadPokerStats() {
             .maybeSingle();
 
         const teamDisplay = document.getElementById('user-poker-team-display');
-        const teamName = document.getElementById('user-poker-team-name');
         if (teamDisplay && pokerProfile?.poker_teams?.team_name) {
             const icon = pokerProfile.poker_teams.icon_url
                 ? `<img src="${pokerProfile.poker_teams.icon_url}" style="width:18px;height:18px;object-fit:contain;border-radius:3px;margin-right:4px;vertical-align:middle;">`
                 : '🃏 ';
-            teamName.innerHTML = `${icon}${pokerProfile.poker_teams.team_name}`;
+            const badgeEl = teamDisplay.querySelector('.badge') || teamDisplay;
+            badgeEl.innerHTML = `${icon}${pokerProfile.poker_teams.team_name}`;
             teamDisplay.style.display = 'block';
         }
 
