@@ -367,6 +367,7 @@
     let allResults = [];
     let profileMap = {};
     let chipMap = {}; // discord_user_id -> chips
+    let mutantMap = {}; // discord_user_id -> { left: bool, right: bool }
     let allTeamNames = new Set();
     let teamIconMap = {};
     let currentTour = 'all';
@@ -388,8 +389,17 @@
         const ids = [...new Set(allResults.map(r => r.discord_user_id).filter(Boolean))];
         if (ids.length > 0) {
             const { data: profiles } = await supabaseClient
-                .from('profiles').select('discord_user_id,account_name,avatar_url,badges!equipped_badge_id(image_url),badges_right:badges!equipped_badge_id_right(image_url)').in('discord_user_id', ids);
+                .from('profiles').select('discord_user_id,account_name,avatar_url,equipped_badge_id,equipped_badge_id_right,badges!equipped_badge_id(image_url),badges_right:badges!equipped_badge_id_right(image_url)').in('discord_user_id', ids);
             (profiles || []).forEach(p => { profileMap[p.discord_user_id] = p; });
+            const { data: mutantData } = await supabaseClient.from('user_badges_new').select('user_id,badge_id').in('user_id', ids).eq('is_mutant', true);
+            const mutantSet = new Set((mutantData || []).map(ub => `${ub.user_id}:${ub.badge_id}`));
+            ids.forEach(uid => {
+                const p = profileMap[uid] || {};
+                mutantMap[uid] = {
+                    left:  p.equipped_badge_id       ? mutantSet.has(`${uid}:${p.equipped_badge_id}`)       : false,
+                    right: p.equipped_badge_id_right ? mutantSet.has(`${uid}:${p.equipped_badge_id_right}`) : false,
+                };
+            });
         }
 
         const { data: teams } = await supabaseClient.from('poker_teams').select('id,team_name,icon_url');
@@ -455,9 +465,17 @@
         return allResults.filter(r => r.tournament_type === currentTour);
     }
 
+    function _badgeHtml(src, isMutant) {
+        if (!src) return '';
+        return `<div class="mutant-badge-container mini${isMutant ? ' active' : ''}" style="display:inline-block;vertical-align:middle;margin:0 2px;">` +
+               `<img src="${src}" style="width:22px;height:22px;object-fit:contain;">` +
+               `<div class="mutant-badge-shine" style="display:${isMutant ? 'block' : 'none'};"></div></div>`;
+    }
+
     function playerNameHtml(p) {
-        const bl = p.badge_left  ? `<img src="${p.badge_left}"  style="width:22px;height:22px;object-fit:contain;margin:0 2px;vertical-align:middle;">` : '';
-        const br = p.badge_right ? `<img src="${p.badge_right}" style="width:22px;height:22px;object-fit:contain;margin:0 2px;vertical-align:middle;">` : '';
+        const m = mutantMap[p.id] || {};
+        const bl = _badgeHtml(p.badge_left,  m.left  || false);
+        const br = _badgeHtml(p.badge_right, m.right || false);
         const href = p.id ? `../mypage/index.html?user=${p.id}` : '#';
         const nameLink = p.id ? `<a href="${href}" style="color:inherit;text-decoration:none;">${p.name}</a>` : p.name;
         return `${bl}${nameLink}${br}`;
@@ -685,8 +703,9 @@
                     const mavatar = m.avatar
                         ? `<img src="${m.avatar}" class="tc-member-avatar" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff'">`
                         : `<img src="https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=1a4d8c&color=fff" class="tc-member-avatar">`;
-                    const bl = m.badge_left  ? `<img src="${m.badge_left}"  style="width:20px;height:20px;object-fit:contain;margin:0 2px;vertical-align:middle;">` : '';
-                    const br = m.badge_right ? `<img src="${m.badge_right}" style="width:20px;height:20px;object-fit:contain;margin:0 2px;vertical-align:middle;">` : '';
+                    const mm = mutantMap[m.id] || {};
+                    const bl = _badgeHtml(m.badge_left,  mm.left  || false);
+                    const br = _badgeHtml(m.badge_right, mm.right || false);
                     const href = m.id ? `../mypage/index.html?user=${m.id}` : '#';
                     const nameHtml = m.id ? `<a href="${href}" style="color:inherit;text-decoration:none;">${m.name}</a>` : m.name;
                     const sc2 = m.score > 0 ? `+${m.score}` : String(m.score);

@@ -109,11 +109,19 @@
             // 全サーバーメンバーのプロフィール取得
             const { data: allProfiles } = await supabaseClient
                 .from('profiles')
-                .select('discord_user_id, account_name, avatar_url, is_hidden, badges!equipped_badge_id(image_url), badges_right:badges!equipped_badge_id_right(image_url)')
+                .select('discord_user_id, account_name, avatar_url, is_hidden, equipped_badge_id, equipped_badge_id_right, badges!equipped_badge_id(image_url), badges_right:badges!equipped_badge_id_right(image_url)')
                 .order('account_name');
             const visibleProfiles = (allProfiles || []).filter(p => !p.is_hidden);
             const profileMap = {};
             visibleProfiles.forEach(p => { profileMap[p.discord_user_id] = p; });
+
+            const allIds = visibleProfiles.map(p => p.discord_user_id).filter(Boolean);
+            const mutantSet = new Set();
+            if (allIds.length > 0) {
+                const { data: mutantData } = await supabaseClient.from('user_badges_new').select('user_id,badge_id').in('user_id', allIds).eq('is_mutant', true);
+                (mutantData || []).forEach(ub => mutantSet.add(`${ub.user_id}:${ub.badge_id}`));
+            }
+            function isMutant(uid, badgeId) { return badgeId ? mutantSet.has(`${uid}:${badgeId}`) : false; }
 
             // スコア集計（poker_results）
             const { data: results } = await supabaseClient
@@ -137,6 +145,8 @@
                     avatar_url: profile.avatar_url || null,
                     badge_left:  profile.badges?.image_url       || null,
                     badge_right: profile.badges_right?.image_url || null,
+                    is_left_mutant:  isMutant(pp.discord_user_id, profile.equipped_badge_id),
+                    is_right_mutant: isMutant(pp.discord_user_id, profile.equipped_badge_id_right),
                     score: scoreMap[pp.discord_user_id] || 0,
                 });
             });
@@ -151,6 +161,8 @@
                     avatar_url: p.avatar_url || null,
                     badge_left:  p.badges?.image_url       || null,
                     badge_right: p.badges_right?.image_url || null,
+                    is_left_mutant:  isMutant(p.discord_user_id, p.equipped_badge_id),
+                    is_right_mutant: isMutant(p.discord_user_id, p.equipped_badge_id_right),
                     score: scoreMap[p.discord_user_id] || 0,
                 }));
 
@@ -218,10 +230,17 @@
         container.appendChild(accordion);
     }
 
+    function _badgeHtml(src, isMutant) {
+        if (!src) return '';
+        return `<div class="mutant-badge-container mini${isMutant ? ' active' : ''}" style="display:inline-block;vertical-align:middle;margin:0 2px;">` +
+               `<img src="${src}" style="width:22px;height:22px;object-fit:contain;">` +
+               `<div class="mutant-badge-shine" style="display:${isMutant ? 'block' : 'none'};"></div></div>`;
+    }
+
     function userCard(u, isLeader) {
         const avatar = u.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.account_name)}&background=1a4d8c&color=fff`;
-        const bl = u.badge_left  ? `<img src="${u.badge_left}"  style="width:22px;height:22px;object-fit:contain;margin:0 2px;vertical-align:middle;">` : '';
-        const br = u.badge_right ? `<img src="${u.badge_right}" style="width:22px;height:22px;object-fit:contain;margin:0 2px;vertical-align:middle;">` : '';
+        const bl = _badgeHtml(u.badge_left,  u.is_left_mutant  || false);
+        const br = _badgeHtml(u.badge_right, u.is_right_mutant || false);
         const sc = u.score;
         const scoreCls = sc > 0 ? 'score-pos' : sc < 0 ? 'score-neg' : '';
         const scoreStr = sc > 0 ? `+${sc}` : `${sc}`;

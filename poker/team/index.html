@@ -323,23 +323,42 @@
     let effectiveDiscordId = null;
     let selectedJoinTeamId = null;
     let _blogAll = [], _blogPlayersMap = new Map(), _blogFilter = null;
-    let _globalAvatarMap = {}, _globalBadgeMap = {};
+    let _globalAvatarMap = {}, _globalBadgeMap = {}, _globalMutantMap = {};
 
     function _updateProfileMaps(profiles) {
         (profiles || []).forEach(p => {
             if (p.avatar_url) _globalAvatarMap[p.discord_user_id] = p.avatar_url;
             _globalBadgeMap[p.discord_user_id] = {
-                left:  p.badges?.image_url        || null,
-                right: p.badges_right?.image_url  || null,
+                left:     p.badges?.image_url        || null,
+                right:    p.badges_right?.image_url  || null,
+                left_id:  p.equipped_badge_id        || null,
+                right_id: p.equipped_badge_id_right  || null,
             };
         });
+    }
+
+    function _updateMutantFromBadges(mutantData) {
+        (mutantData || []).forEach(ub => {
+            const b = _globalBadgeMap[ub.user_id] || {};
+            if (!_globalMutantMap[ub.user_id]) _globalMutantMap[ub.user_id] = {};
+            if (b.left_id  && ub.badge_id === b.left_id)  _globalMutantMap[ub.user_id].left  = true;
+            if (b.right_id && ub.badge_id === b.right_id) _globalMutantMap[ub.user_id].right = true;
+        });
+    }
+
+    function _badgeHtml(src, isMutant) {
+        if (!src) return '';
+        return `<div class="mutant-badge-container mini${isMutant ? ' active' : ''}" style="display:inline-block;vertical-align:middle;margin:0 2px;">` +
+               `<img src="${src}" style="width:22px;height:22px;object-fit:contain;">` +
+               `<div class="mutant-badge-shine" style="display:${isMutant ? 'block' : 'none'};"></div></div>`;
     }
 
     function playerNameCell(uid, name) {
         const avSrc = _globalAvatarMap[uid] || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1a4d8c&color=fff`;
         const b = _globalBadgeMap[uid] || {};
-        const bl = b.left  ? `<img src="${b.left}"  style="width:22px;height:22px;object-fit:contain;margin:0 2px;vertical-align:middle;">` : '';
-        const br = b.right ? `<img src="${b.right}" style="width:22px;height:22px;object-fit:contain;margin:0 2px;vertical-align:middle;">` : '';
+        const m = _globalMutantMap[uid] || {};
+        const bl = _badgeHtml(b.left,  m.left  || false);
+        const br = _badgeHtml(b.right, m.right || false);
         const href = uid ? `../../mypage/index.html?user=${uid}` : '#';
         const nameHtml = uid ? `<a href="${href}" style="color:inherit;text-decoration:none;">${name}</a>` : name;
         return `<img src="${avSrc}" style="width:33px;height:33px;border-radius:50%;margin-right:4px;vertical-align:middle;" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1a4d8c&color=fff'">${bl}${nameHtml}${br}`;
@@ -414,10 +433,12 @@
         if (memberIds.length > 0) {
             const { data: profiles } = await supabaseClient
                 .from('profiles')
-                .select('discord_user_id, account_name, avatar_url, badges!equipped_badge_id(image_url), badges_right:badges!equipped_badge_id_right(image_url)')
+                .select('discord_user_id, account_name, avatar_url, equipped_badge_id, equipped_badge_id_right, badges!equipped_badge_id(image_url), badges_right:badges!equipped_badge_id_right(image_url)')
                 .in('discord_user_id', memberIds);
             (profiles || []).forEach(p => { profileMap[p.discord_user_id] = p; });
             _updateProfileMaps(profiles);
+            const { data: _mutant0 } = await supabaseClient.from('user_badges_new').select('user_id,badge_id').in('user_id', memberIds).eq('is_mutant', true);
+            _updateMutantFromBadges(_mutant0);
         }
 
         teamMembers = memberIds.map(id => ({
@@ -508,11 +529,13 @@
         if (memberIds.length === 0) return;
         const [{ data: results }, { data: chipProfiles }] = await Promise.all([
             supabaseClient.from('poker_results').select('discord_user_id, final_score, rank, player_count').in('discord_user_id', memberIds),
-            supabaseClient.from('profiles').select('discord_user_id, tip, avatar_url, badges!equipped_badge_id(image_url), badges_right:badges!equipped_badge_id_right(image_url)').in('discord_user_id', memberIds)
+            supabaseClient.from('profiles').select('discord_user_id, tip, avatar_url, equipped_badge_id, equipped_badge_id_right, badges!equipped_badge_id(image_url), badges_right:badges!equipped_badge_id_right(image_url)').in('discord_user_id', memberIds)
         ]);
         const chipMap = {};
         (chipProfiles || []).forEach(p => { chipMap[p.discord_user_id] = p.tip || 0; });
         _updateProfileMaps(chipProfiles);
+        const { data: _mutant1 } = await supabaseClient.from('user_badges_new').select('user_id,badge_id').in('user_id', memberIds).eq('is_mutant', true);
+        _updateMutantFromBadges(_mutant1);
         const stats = {};
         teamMembers.forEach(m => { stats[m.discord_user_id] = { ...m, score: 0, count: 0, wins: 0, positives: 0, chips: chipMap[m.discord_user_id] || 0 }; });
         (results || []).forEach(r => {
@@ -572,13 +595,15 @@
                 .select('discord_user_id, final_score, rank, player_count, tournament_type, event_datetime, account_name')
                 .in('discord_user_id', memberIds)
                 .order('event_datetime', { ascending: false }),
-            supabaseClient.from('profiles').select('discord_user_id, tip, avatar_url, badges!equipped_badge_id(image_url), badges_right:badges!equipped_badge_id_right(image_url)').in('discord_user_id', memberIds),
+            supabaseClient.from('profiles').select('discord_user_id, tip, avatar_url, equipped_badge_id, equipped_badge_id_right, badges!equipped_badge_id(image_url), badges_right:badges!equipped_badge_id_right(image_url)').in('discord_user_id', memberIds),
             supabaseClient.from('poker_results').select('team_name, final_score').not('team_name', 'is', null)
         ]);
         const all = results || [];
 
         // 合計チップ・グローバルマップ更新
         _updateProfileMaps(chipProfiles);
+        const { data: _mutant2 } = await supabaseClient.from('user_badges_new').select('user_id,badge_id').in('user_id', memberIds).eq('is_mutant', true);
+        _updateMutantFromBadges(_mutant2);
         const totalChips = (chipProfiles || []).reduce((s, p) => s + (p.tip || 0), 0);
 
         // チーム順位（全チームスコア合計と比較）
@@ -628,8 +653,10 @@
         const nonTeamIds = [...new Set((tableAllResults || []).map(r => r.discord_user_id).filter(id => id && !_globalAvatarMap[id]))];
         if (nonTeamIds.length > 0) {
             const { data: otherProfiles } = await supabaseClient
-                .from('profiles').select('discord_user_id, avatar_url, badges!equipped_badge_id(image_url), badges_right:badges!equipped_badge_id_right(image_url)').in('discord_user_id', nonTeamIds);
+                .from('profiles').select('discord_user_id, avatar_url, equipped_badge_id, equipped_badge_id_right, badges!equipped_badge_id(image_url), badges_right:badges!equipped_badge_id_right(image_url)').in('discord_user_id', nonTeamIds);
             _updateProfileMaps(otherProfiles);
+            const { data: _mutant3 } = await supabaseClient.from('user_badges_new').select('user_id,badge_id').in('user_id', nonTeamIds).eq('is_mutant', true);
+            _updateMutantFromBadges(_mutant3);
         }
 
         const eventAllPlayersMap = new Map();
