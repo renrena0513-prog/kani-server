@@ -28,13 +28,25 @@ async function loadPokerStats() {
             teamDisplay.style.display = 'block';
         }
 
-        const { data, error } = await supabaseClient
-            .from('poker_results')
-            .select('final_score, rank, player_count, match_mode, tournament_type')
-            .eq('discord_user_id', targetDiscordId);
+        const [{ data, error }, { data: profileData }] = await Promise.all([
+            supabaseClient
+                .from('poker_results')
+                .select('final_score, rank, player_count, match_mode, tournament_type')
+                .eq('discord_user_id', targetDiscordId),
+            supabaseClient
+                .from('profiles')
+                .select('tip')
+                .eq('discord_user_id', targetDiscordId)
+                .maybeSingle(),
+        ]);
         if (error) throw error;
 
-        pokerRecordsAll = (data || []).filter(r => r.match_mode !== 'チーム戦');
+        pokerRecordsAll = data || [];
+        const chipCount = profileData?.tip || 0;
+
+        // チップ表示
+        const chipEl = document.getElementById('poker-stat-chips');
+        if (chipEl) chipEl.textContent = chipCount.toLocaleString();
 
         // 大会セレクト更新
         const sel = document.getElementById('poker-tournament-select');
@@ -82,10 +94,12 @@ function renderPokerStats() {
     const avg = total / count;
     const max = Math.max(...records.map(r => Number(r.final_score || 0)));
     const r1 = records.filter(r => Number(r.rank) === 1).length;
+    const rPos = records.filter(r => Number(r.final_score || 0) > 0).length;
     const rLast = records.filter(r => Number(r.rank) === Number(r.player_count || 4)).length;
     const rankSum = records.reduce((s, r) => s + Number(r.rank || 0), 0);
     const avgRank = rankSum / count;
     const winRate = (r1 / count) * 100;
+    const posRate = (rPos / count) * 100;
     const avoidRate = (1 - rLast / count) * 100;
 
     const fmt = n => n >= 0 ? `+${n.toFixed(1)}` : n.toFixed(1);
@@ -95,6 +109,7 @@ function renderPokerStats() {
     document.getElementById('poker-stat-avg').textContent = fmt(avg);
     document.getElementById('poker-stat-max').textContent = fmt(max);
     document.getElementById('poker-stat-win-rate').textContent = `${winRate.toFixed(1)}%`;
+    document.getElementById('poker-stat-pos-rate').textContent = `${posRate.toFixed(1)}%`;
     document.getElementById('poker-stat-avoid').textContent = `${avoidRate.toFixed(1)}%`;
     document.getElementById('poker-stat-avg-rank').textContent = avgRank.toFixed(2);
 

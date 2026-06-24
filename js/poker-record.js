@@ -705,27 +705,14 @@ async function submitScores() {
             const chipReward = chipTable[player.rank] || 0;
 
             try {
-                const { data: profile } = await supabaseClient
-                    .from('profiles')
-                    .select('coins, total_assets, gacha_tickets, tip')
-                    .eq('discord_user_id', player.discord_user_id)
-                    .single();
-
-                const updates = {};
-                if (coinReward > 0) {
-                    updates.coins = (profile?.coins || 0) + coinReward;
-                    updates.total_assets = (profile?.total_assets || 0) + coinReward;
-                }
-                if (ticketReward > 0) {
-                    updates.gacha_tickets = (profile?.gacha_tickets || 0) + ticketReward;
-                }
-                if (chipReward > 0) {
-                    updates.tip = (profile?.tip || 0) + chipReward;
-                }
-
-                if (Object.keys(updates).length > 0) {
-                    const { error: updateErr } = await supabaseClient.from('profiles').update(updates).eq('discord_user_id', player.discord_user_id);
-                    if (updateErr) console.error(`プロフィール更新エラー (${player.account_name}):`, updateErr);
+                if (coinReward > 0 || ticketReward > 0 || chipReward > 0) {
+                    const { error: rewardErr } = await supabaseClient.rpc('award_poker_rewards', {
+                        p_discord_user_id: player.discord_user_id,
+                        p_coins:   coinReward,
+                        p_tickets: ticketReward,
+                        p_chips:   chipReward,
+                    });
+                    if (rewardErr) console.error(`報酬付与エラー (${player.account_name}):`, rewardErr);
                 }
 
                 await logActivity(player.discord_user_id, 'poker', {
@@ -752,13 +739,12 @@ async function submitScores() {
             if (!player.discord_user_id) continue;
             if (!firstTimeTodaySet.has(player.discord_user_id)) continue;
             try {
-                const { data: prof } = await supabaseClient
-                    .from('profiles').select('coins, total_assets')
-                    .eq('discord_user_id', player.discord_user_id).single();
-                await supabaseClient.from('profiles').update({
-                    coins: (prof?.coins || 0) + 10000,
-                    total_assets: (prof?.total_assets || 0) + 10000
-                }).eq('discord_user_id', player.discord_user_id);
+                await supabaseClient.rpc('award_poker_rewards', {
+                    p_discord_user_id: player.discord_user_id,
+                    p_coins:   10000,
+                    p_tickets: 0,
+                    p_chips:   0,
+                });
                 await logActivity(player.discord_user_id, 'poker', {
                     amount: 10000,
                     matchId: matchId,

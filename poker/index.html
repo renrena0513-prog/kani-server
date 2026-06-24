@@ -210,6 +210,7 @@
         .tc-member-row:last-child { border-bottom:none; }
         .tc-member-avatar { width:30px; height:30px; border-radius:50%; border:2px solid rgba(255,255,255,.15); flex-shrink:0; }
         .tc-member-name { flex:1; font-size:.88rem; font-weight:600; }
+        .tc-member-chip { font-size:.8rem; color:#d4a853; white-space:nowrap; flex-shrink:0; margin-right:8px; }
         .tc-member-score { font-family:var(--fn); font-size:.88rem; font-weight:700; }
         /* 決勝ライン区切り */
         .finalist-sep { display:flex; align-items:center; gap:10px; margin:6px 0; }
@@ -545,7 +546,8 @@
                     avatar: p.avatar_url || null,
                     badge_left:  p.badges?.image_url       || null,
                     badge_right: p.badges_right?.image_url || null,
-                    score: 0
+                    score: 0,
+                    chips: chipMap[r.discord_user_id] || 0,
                 };
             }
             memberMap[tn][uid].score += Number(r.final_score);
@@ -710,7 +712,8 @@
                     const nameHtml = m.id ? `<a href="${href}" style="color:inherit;text-decoration:none;">${m.name}</a>` : m.name;
                     const sc2 = m.score > 0 ? `+${m.score}` : String(m.score);
                     const mcls = m.score > 0 ? 'score-pos' : m.score < 0 ? 'score-neg' : 'score-zero';
-                    return `<div class="tc-member-row">${mavatar}<span class="tc-member-name">${bl}${nameHtml}${br}</span><span class="tc-member-score ${mcls}">${sc2} pt</span></div>`;
+                    const chipHtml = m.chips > 0 ? `<span class="tc-member-chip">🪙${m.chips.toLocaleString()}</span>` : '';
+                    return `<div class="tc-member-row">${mavatar}<span class="tc-member-name">${bl}${nameHtml}${br}</span>${chipHtml}<span class="tc-member-score ${mcls}">${sc2} pt</span></div>`;
                 }).join('')
                 : '<div style="font-size:.8rem;color:rgba(255,255,255,.3);padding:6px 0;">記録なし</div>';
 
