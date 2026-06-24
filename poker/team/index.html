@@ -594,7 +594,7 @@
             .in('event_datetime', eventDatetimes);
 
         // 他チームプレイヤーのアバターも取得してavatarMapに追加
-        const nonTeamIds = [...new Set((tableAllResults || []).map(r => r.discord_user_id).filter(id => id && !avatarMap[id]))];
+        const nonTeamIds = [...new Set((tableAllResults || []).map(r => r.discord_user_id).filter(id => id && !_globalAvatarMap[id]))];
         if (nonTeamIds.length > 0) {
             const { data: otherProfiles } = await supabaseClient
                 .from('profiles').select('discord_user_id, avatar_url, badges!equipped_badge_id(image_url), badges_right:badges!equipped_badge_id_right(image_url)').in('discord_user_id', nonTeamIds);
