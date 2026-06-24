@@ -533,7 +533,7 @@
             memberMap[tn][uid].score += Number(r.final_score);
         });
         allTeamNames.forEach(n => { if (!map[n]) map[n] = { name: n, score: 0, count: 0, wins: 0, positives: 0, memberIds: new Set() }; });
-        const arr = Object.values(map).sort((a,b) => b.score - a.score);
+        const arr = Object.values(map).filter(t => t.count > 0).sort((a,b) => b.score - a.score);
         arr.forEach(t => {
             t.members = Object.values(memberMap[t.name] || {}).sort((a,b) => b.score - a.score);
             t.chipSum = [...t.memberIds].reduce((s, uid) => s + (chipMap[uid] || 0), 0);

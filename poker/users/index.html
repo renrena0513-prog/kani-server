@@ -109,7 +109,7 @@
             // 全サーバーメンバーのプロフィール取得
             const { data: allProfiles } = await supabaseClient
                 .from('profiles')
-                .select('discord_user_id, account_name, avatar_url, is_hidden')
+                .select('discord_user_id, account_name, avatar_url, is_hidden, badges!equipped_badge_id(image_url), badges_right:badges!equipped_badge_id_right(image_url)')
                 .order('account_name');
             const visibleProfiles = (allProfiles || []).filter(p => !p.is_hidden);
             const profileMap = {};
@@ -135,6 +135,8 @@
                     discord_user_id: pp.discord_user_id,
                     account_name: profile.account_name || pp.discord_user_id,
                     avatar_url: profile.avatar_url || null,
+                    badge_left:  profile.badges?.image_url       || null,
+                    badge_right: profile.badges_right?.image_url || null,
                     score: scoreMap[pp.discord_user_id] || 0,
                 });
             });
@@ -147,6 +149,8 @@
                     discord_user_id: p.discord_user_id,
                     account_name: p.account_name || p.discord_user_id,
                     avatar_url: p.avatar_url || null,
+                    badge_left:  p.badges?.image_url       || null,
+                    badge_right: p.badges_right?.image_url || null,
                     score: scoreMap[p.discord_user_id] || 0,
                 }));
 
@@ -216,6 +220,8 @@
 
     function userCard(u, isLeader) {
         const avatar = u.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.account_name)}&background=1a4d8c&color=fff`;
+        const bl = u.badge_left  ? `<img src="${u.badge_left}"  style="width:22px;height:22px;object-fit:contain;margin:0 2px;vertical-align:middle;">` : '';
+        const br = u.badge_right ? `<img src="${u.badge_right}" style="width:22px;height:22px;object-fit:contain;margin:0 2px;vertical-align:middle;">` : '';
         const sc = u.score;
         const scoreCls = sc > 0 ? 'score-pos' : sc < 0 ? 'score-neg' : '';
         const scoreStr = sc > 0 ? `+${sc}` : `${sc}`;
@@ -224,7 +230,7 @@
         const closeTag = href ? 'a' : 'div';
         return `<${tag} class="user-card" style="${href ? 'text-decoration:none;' : ''}">
             <img src="${avatar}" class="user-avatar" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff'">
-            <span class="user-name">${u.account_name}</span>
+            ${bl}<span class="user-name">${u.account_name}</span>${br}
             ${isLeader ? '<span class="leader-badge">👑 リーダー</span>' : ''}
             <span class="user-score ${scoreCls}">${sc !== 0 ? scoreStr + ' pts' : '-'}</span>
         </${closeTag}>`;
