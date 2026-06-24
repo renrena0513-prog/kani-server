@@ -24,6 +24,9 @@
         .content-card { background: rgba(255,255,255,0.1); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.18); border-radius: 24px; padding: 30px; box-shadow: 0 8px 32px rgba(0,0,0,0.25); margin-bottom: 25px; }
         .section-title { font-family: var(--font-title); color: #fff; border-bottom: 2px solid rgba(212,168,83,0.7); padding-bottom: 10px; margin-bottom: 20px; font-size: 1.2rem; font-weight: 700; }
         .btn-blue { background: linear-gradient(135deg, var(--primary-blue), var(--deep-blue)); color: white; border: 1px solid rgba(255,255,255,0.2); padding: 12px 28px; border-radius: 20px; font-weight: 700; cursor: pointer; transition: all 0.3s; }
+        .blog-filter-btn { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.15); padding: 5px 12px; border-radius: 20px; font-size: 0.82rem; cursor: pointer; transition: all 0.2s; }
+        .blog-filter-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+        .blog-filter-btn.active { background: rgba(212,168,83,0.25); color: var(--gold); border-color: rgba(212,168,83,0.5); font-weight: 700; }
         .btn-blue:hover { opacity: 0.85; transform: translateY(-1px); color: white; }
         .btn-danger-outline { background: transparent; color: #f87171; border: 2px solid #f87171; padding: 10px 20px; border-radius: 10px; transition: all 0.3s; cursor: pointer; font-weight: 600; }
         .btn-danger-outline:hover { background: rgba(248,113,113,0.2); }
@@ -309,6 +312,7 @@
     let selectedNewLeader = null;
     let effectiveDiscordId = null;
     let selectedJoinTeamId = null;
+    let _blogAll = [], _blogAvatarMap = {}, _blogPlayersMap = new Map(), _blogFilter = null;
 
     document.addEventListener('DOMContentLoaded', initTeamPage);
 
@@ -583,19 +587,54 @@
             eventAllPlayersMap.get(r.event_datetime).push(r);
         });
 
-        log.innerHTML = `<div style="overflow-x:auto;"><table class="member-score-table"><thead><tr><th>日時</th><th>プレイヤー</th><th>同卓</th><th>卓人数</th><th>順位</th><th>スコア</th></tr></thead><tbody>${
-            all.slice(0,30).map(r => {
+        // モジュール変数に保存してフィルタ再描画に使えるようにする
+        _blogAll = all;
+        _blogAvatarMap = avatarMap;
+        _blogPlayersMap = eventAllPlayersMap;
+        _blogFilter = null;
+
+        const filterButtons = teamMembers.map(m => {
+            const av = avatarMap[m.discord_user_id] || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.account_name)}&background=1a4d8c&color=fff`;
+            return `<button class="blog-filter-btn" data-uid="${m.discord_user_id}" onclick="setBlogFilter('${m.discord_user_id}')">
+                <img src="${av}" style="width:22px;height:22px;border-radius:50%;vertical-align:middle;margin-right:4px;">${m.account_name}
+            </button>`;
+        }).join('');
+
+        log.innerHTML = `
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
+                <button class="blog-filter-btn active" data-uid="" onclick="setBlogFilter(null)">全員</button>
+                ${filterButtons}
+            </div>
+            <div id="battle-log-table-wrap"></div>`;
+        renderBattleLog();
+    }
+
+    function setBlogFilter(uid) {
+        _blogFilter = uid || null;
+        document.querySelectorAll('.blog-filter-btn').forEach(b => {
+            b.classList.toggle('active', (b.dataset.uid || null) === _blogFilter);
+        });
+        renderBattleLog();
+    }
+
+    function renderBattleLog() {
+        const wrap = document.getElementById('battle-log-table-wrap');
+        if (!wrap) return;
+        const rows = (_blogFilter ? _blogAll.filter(r => r.discord_user_id === _blogFilter) : _blogAll).slice(0, 30);
+        if (rows.length === 0) { wrap.innerHTML = '<p class="text-muted">試合記録がありません</p>'; return; }
+        const m2 = ['','🥇','🥈','🥉'];
+        wrap.innerHTML = `<div style="overflow-x:auto;"><table class="member-score-table"><thead><tr><th>日時</th><th>プレイヤー</th><th>同卓</th><th>卓人数</th><th>順位</th><th>スコア</th></tr></thead><tbody>${
+            rows.map(r => {
                 const d = new Date(r.event_datetime);
                 const ds = `${d.getMonth()+1}/${d.getDate()}`;
                 const sc = Number(r.final_score);
                 const cls = sc>=0?'score-positive':'score-negative';
-                const m2 = ['','🥇','🥈','🥉'];
                 const pc = r.player_count ? `${r.player_count}人` : '-';
-                const myAv = avatarMap[r.discord_user_id] || `https://ui-avatars.com/api/?name=${encodeURIComponent(r.account_name)}&background=1a4d8c&color=fff`;
+                const myAv = _blogAvatarMap[r.discord_user_id] || `https://ui-avatars.com/api/?name=${encodeURIComponent(r.account_name)}&background=1a4d8c&color=fff`;
                 const playerCell = `<img src="${myAv}" style="width:24px;height:24px;border-radius:50%;margin-right:6px;vertical-align:middle;" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(r.account_name)}&background=1a4d8c&color=fff'">${r.account_name}`;
-                const allPlayers = eventAllPlayersMap.get(r.event_datetime) || [];
+                const allPlayers = _blogPlayersMap.get(r.event_datetime) || [];
                 const iconsHtml = allPlayers.map(cr => {
-                    const av = avatarMap[cr.discord_user_id] || `https://ui-avatars.com/api/?name=${encodeURIComponent(cr.account_name)}&background=1a4d8c&color=fff`;
+                    const av = _blogAvatarMap[cr.discord_user_id] || `https://ui-avatars.com/api/?name=${encodeURIComponent(cr.account_name)}&background=1a4d8c&color=fff`;
                     return `<img src="${av}" title="${cr.account_name}" style="width:24px;height:24px;border-radius:50%;margin-right:2px;vertical-align:middle;" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(cr.account_name)}&background=1a4d8c&color=fff'">`;
                 }).join('');
                 return `<tr><td>${ds}</td><td>${playerCell}</td><td>${iconsHtml}</td><td>${pc}</td><td>${r.rank<=3?m2[r.rank]:''}${r.rank}位</td><td class="${cls}">${sc>=0?'+':''}${sc}</td></tr>`;
