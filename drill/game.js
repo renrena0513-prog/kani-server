@@ -98,6 +98,7 @@ const G = {
   treasures: new Set(),  // 'x,y'
   treasureRare: new Set(),
   otherPlayers: new Map(), // userId -> {x,y}
+  drills: [],            // 所持ドリル一覧
   mineTarget: null,      // {x,y}
   mineTimer: null,
   mineHP: {},            // 'x,y' -> remaining hp
@@ -264,12 +265,14 @@ async function loadAll() {
       .insert({ user_id: uid, drill_id: 'beginner', durability: null, equipped: true })
       .select().single();
     equipped = nd;
+    if (nd) drills.push(nd);
   }
   if (equipped) {
     G.equippedDrillRowId = equipped.id;
     G.equippedDrillId = equipped.drill_id;
     G.drillDur = equipped.durability;
   }
+  G.drills = drills;
 
   // 許可証
   G.permits = new Set((permRes.data || []).map(r => r.permit_id));
@@ -341,10 +344,9 @@ async function move(dx, dy) {
 
   const key = `${nx},${ny}`;
   const isDug = G.dugCells.has(key) || ny === 0;
-  const isUp = dy < 0;
 
-  if (!isDug && !isUp) {
-    // 隣接マスなら採掘開始
+  if (!isDug) {
+    // 隣接マス（上下左右すべて）採掘開始
     if (Math.abs(dx) + Math.abs(dy) === 1) startMine(nx, ny);
     return;
   }
@@ -449,6 +451,7 @@ function stopMine(release = true) {
 
 async function breakDrill() {
   await supabaseClient.from('drill_player_drills').delete().eq('id', G.equippedDrillRowId);
+  G.drills = G.drills.filter(d => d.id !== G.equippedDrillRowId);
   G.equippedDrillRowId = null;
   G.equippedDrillId = 'beginner';
   G.drillDur = null;
@@ -559,10 +562,11 @@ async function buyItem(shopId) {
   await supabaseClient.from('profiles').update({ drill_gold: G.drillGold }).eq('id', G.userId);
 
   if (item.type === 'drill') {
-    await supabaseClient.from('drill_player_drills').insert({
+    const { data: nd } = await supabaseClient.from('drill_player_drills').insert({
       user_id: G.userId, drill_id: item.drillId,
       durability: DRILLS[item.drillId].dur, equipped: false,
-    });
+    }).select().single();
+    if (nd) G.drills.push(nd);
     log(`✅ ${item.name}を購入`);
   } else {
     await upsertInv(item.itemId, 1);
@@ -628,9 +632,10 @@ async function doCraft(type, id) {
       if ((G.inventory[m] || 0) < q) { log('⚠️ 素材不足'); return; }
     }
     for (const [m, q] of Object.entries(d.recipe)) await upsertInv(m, -q);
-    await supabaseClient.from('drill_player_drills').insert({
+    const { data: nd } = await supabaseClient.from('drill_player_drills').insert({
       user_id: G.userId, drill_id: id, durability: d.dur, equipped: false,
-    });
+    }).select().single();
+    if (nd) G.drills.push(nd);
     log(`✅ ${d.name}を作成`);
   }
   showCraft();
@@ -662,6 +667,54 @@ function showBag() {
   }
   html += `<button class="btn-modal-close" onclick="closeModal()">閉じる</button>`;
   openModal(html);
+}
+
+// ============================================================
+// ドリル管理
+// ============================================================
+
+function showDrills() {
+  let html = `<div class="modal-title">⛏️ ドリル管理</div>`;
+
+  if (G.drills.length === 0) {
+    html += `<div style="font-size:.85rem;opacity:.5;padding:8px 0;">ドリルがありません</div>`;
+  } else {
+    for (const d of G.drills) {
+      const info = DRILLS[d.drill_id] || {};
+      const isEquipped = d.id === G.equippedDrillRowId;
+      const durStr = d.durability === null ? '∞' : d.durability;
+      html += `<div class="modal-row">
+        <div>
+          <div class="modal-row-label">${info.name || d.drill_id}${isEquipped ? ' ✅' : ''}</div>
+          <div class="modal-row-sub">威力: ${info.power ?? '-'} / 耐久: ${durStr}</div>
+        </div>
+        ${isEquipped
+          ? `<span style="font-size:.75rem;opacity:.5;">装備中</span>`
+          : `<button class="btn-modal-action" onclick="equipDrill('${d.id}')">装備</button>`}
+      </div>`;
+    }
+  }
+  html += `<button class="btn-modal-close" onclick="closeModal()">閉じる</button>`;
+  openModal(html);
+}
+
+async function equipDrill(rowId) {
+  const d = G.drills.find(x => x.id === rowId);
+  if (!d) return;
+
+  await supabaseClient.from('drill_player_drills')
+    .update({ equipped: false }).eq('user_id', G.userId);
+  await supabaseClient.from('drill_player_drills')
+    .update({ equipped: true }).eq('id', rowId);
+
+  G.drills.forEach(x => { x.equipped = (x.id === rowId); });
+  G.equippedDrillRowId = rowId;
+  G.equippedDrillId = d.drill_id;
+  G.drillDur = d.durability;
+
+  log(`⛏️ ${DRILLS[d.drill_id]?.name || d.drill_id} を装備`);
+  renderSide();
+  showDrills();
 }
 
 // ============================================================
@@ -896,22 +949,21 @@ function handleClick(wx, wy) {
 
 function setupInput() {
   // モバイルアクションボタン
-  document.getElementById('btn-return')?.addEventListener('click', () => {
-    if (G.py === 0) { returnSurface(false); } else { showBag(); }
-  });
+  const returnFn = () => { if (G.py === 0) returnSurface(false); else showBag(); };
+  document.getElementById('btn-return')?.addEventListener('click', returnFn);
   document.getElementById('btn-bag')?.addEventListener('click', showBag);
   document.getElementById('btn-shop')?.addEventListener('click', showShop);
   document.getElementById('btn-craft')?.addEventListener('click', showCraft);
   document.getElementById('btn-sell')?.addEventListener('click', showSell);
+  document.getElementById('btn-drills')?.addEventListener('click', showDrills);
 
   // PC 左パネルボタン
-  document.getElementById('btn-return-pc')?.addEventListener('click', () => {
-    if (G.py === 0) { returnSurface(false); } else { showBag(); }
-  });
+  document.getElementById('btn-return-pc')?.addEventListener('click', returnFn);
   document.getElementById('btn-bag-pc')?.addEventListener('click', showBag);
   document.getElementById('btn-shop-pc')?.addEventListener('click', showShop);
   document.getElementById('btn-craft-pc')?.addEventListener('click', showCraft);
   document.getElementById('btn-sell-pc')?.addEventListener('click', showSell);
+  document.getElementById('btn-drills-pc')?.addEventListener('click', showDrills);
 
   // キーボード
   document.addEventListener('keydown', e => {
@@ -928,19 +980,17 @@ function setupInput() {
     }
   });
 
-  // スワイプ
-  let tx = 0, ty = 0;
+  // タッチ方向入力（マップを×字で4分割: 中心からの相対位置で上下左右判定）
   const vp = document.getElementById('map-viewport');
-  vp?.addEventListener('touchstart', e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }, { passive: true });
-  vp?.addEventListener('touchend', e => {
-    const dx = e.changedTouches[0].clientX - tx;
-    const dy = e.changedTouches[0].clientY - ty;
-    if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
-    // 採掘中のスワイプはキャンセル（耐久は前回tickで保存済み）
+  vp?.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const rect = vp.getBoundingClientRect();
+    const relX = e.touches[0].clientX - rect.left - rect.width / 2;
+    const relY = e.touches[0].clientY - rect.top - rect.height / 2;
     if (G.mineTarget) { stopMine(); render(); return; }
-    if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 1 : -1, 0);
-    else move(0, dy > 0 ? 1 : -1);
-  }, { passive: true });
+    if (Math.abs(relX) > Math.abs(relY)) move(relX > 0 ? 1 : -1, 0);
+    else move(0, relY > 0 ? 1 : -1);
+  }, { passive: false });
 
   // オーバーレイ外クリックで閉じる
   document.getElementById('modal-overlay')?.addEventListener('click', e => {
