@@ -22,6 +22,7 @@ const ALL_NAV_PAGES = [
     { name: 'お賽銭箱',                 path: '/omikuji/osaisen' },
     { name: 'ギフトコード',             path: '/giftcode' },
     { name: '交換所',                   path: '/exchange' },
+    { name: 'ほりほりドリル',           path: '/drill' },
 ];
 
 // 未登録ページを一括追加
