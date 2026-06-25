@@ -728,6 +728,12 @@
                                     onclick="fetchPageSettings()">🚧
                                     ページ管理</button>
                             </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="drill-stats-tab" data-bs-toggle="pill"
+                                    data-bs-target="#drill-stats-pane" type="button" role="tab"
+                                    onclick="fetchDrillStats()">⛏️
+                                    ドリル統計</button>
+                            </li>
                         </ul>
                     </div>
 
@@ -1112,6 +1118,35 @@
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- ドリル統計タブ -->
+                    <div class="tab-pane fade" id="drill-stats-pane" role="tabpanel" tabindex="0">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h2 class="mb-0" style="font-family: var(--font-title); color: var(--deep-gray);">⛏️ ほりほりドリル統計</h2>
+                            <button onclick="fetchDrillStats()" class="btn btn-outline-primary btn-sm">🔄 更新</button>
+                        </div>
+                        <div class="alert alert-info border-0 shadow-sm mb-3" style="font-size:.85rem;">
+                            <strong>倉庫推定価値</strong>は売却単価基準（土1・石3・銅15・鉄50・銀200・金500 G）で計算。リュック内は含まず。
+                        </div>
+                        <div class="table-responsive bg-white rounded shadow-sm border">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>アカウント名</th>
+                                        <th>所持金</th>
+                                        <th>現在位置</th>
+                                        <th class="text-center">リュック</th>
+                                        <th>倉庫推定価値</th>
+                                        <th>装備ドリル</th>
+                                        <th>許可証</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="drill-stats-body">
+                                    <tr><td colspan="7" class="text-center text-muted py-4">タブをクリックして読み込み</td></tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
@@ -1785,6 +1820,7 @@
         <script src="../js/admin_v2.js?v=20260111_04"></script>
         <script src="../js/admin-pages.js"></script>
         <script src="../js/admin-poker.js"></script>
+        <script src="../js/admin-drill.js"></script>
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 initAccordionNav('../');
