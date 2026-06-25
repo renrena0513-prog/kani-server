@@ -1020,6 +1020,13 @@ async function initDrillGame() {
   if (!user) { window.location.href = '../login/index.html'; return; }
   G.userId = user.id;
 
+  // 管理者リンクを表示
+  const discordId = user.user_metadata?.provider_id;
+  if (typeof ADMIN_DISCORD_IDS !== 'undefined' && ADMIN_DISCORD_IDS.includes(discordId)) {
+    const adminLink = document.getElementById('drill-admin-link');
+    if (adminLink) adminLink.style.display = 'inline';
+  }
+
   await ensureSeed();
   genTreasures(G.seed);
   await loadAll();
