@@ -264,9 +264,14 @@ html, body {
     #panel-right { flex: 0 0 180px; }
 }
 
-/* ===== モバイル：全幅・余白なし ===== */
+/* ===== モバイル：固定ボトムバー方式 ===== */
 @media (max-width: 819px) {
-    #game-wrap { padding: 4px 0; gap: 6px; }
+    /* ボタンバー固定分（56px）を引いた高さ */
+    #game-wrap {
+        padding: 4px 0 0;
+        gap: 6px;
+        height: calc(100dvh - 56px - 56px);
+    }
 
     #top-bar {
         max-width: none;
@@ -274,32 +279,61 @@ html, body {
         border-radius: 8px;
     }
 
+    /* マップが残り全高を占有 */
     #map-viewport {
+        flex: 1;
         width: 100%;
         border-radius: 0;
         border-left: none;
         border-right: none;
+        overflow: hidden;
     }
 
     #map-grid {
         display: grid;
         grid-template-columns: repeat(9, 1fr);
-        grid-template-rows: repeat(15, calc(100vw / 9));
+        grid-template-rows: repeat(15, 1fr);
         width: 100%;
+        height: 100%;
     }
 
     .mc {
         width: auto;
-        height: calc(100vw / 9);
-        font-size: clamp(10px, 3.5vw, 16px);
+        height: auto;
+        font-size: clamp(9px, 3vw, 15px);
     }
 
-    .mc-player { font-size: clamp(14px, 4.5vw, 22px); }
-    .mc-treasure::after { font-size: clamp(12px, 4vw, 20px); }
+    .mc-player { font-size: clamp(13px, 4vw, 20px); }
+    .mc-treasure::after { font-size: clamp(11px, 3.5vw, 18px); }
 
+    /* ===== 固定ボトムバー ===== */
     #action-btns {
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        height: 56px;
         max-width: none;
-        width: calc(100% - 16px);
-        padding: 0;
+        width: 100%;
+        padding: 6px 10px;
+        padding-bottom: max(6px, env(safe-area-inset-bottom));
+        background: rgba(5, 5, 16, 0.96);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-top: 1px solid rgba(255,255,255,.14);
+        z-index: 500;
+        display: flex;
+        flex-wrap: nowrap;
+        justify-content: space-between;
+        gap: 4px;
+    }
+
+    #action-btns .act-btn {
+        flex: 1;
+        min-width: 0;
+        padding: 5px 2px;
+        font-size: clamp(0.58rem, 1.9vw, 0.72rem);
+        border-radius: 8px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 }
