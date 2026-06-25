@@ -1,0 +1,301 @@
+/* ほりほりドリル */
+
+body {
+    background: linear-gradient(180deg, #0d2f5c 0%, #1a1a2e 100%);
+    min-height: 100vh;
+    color: #fff;
+}
+
+/* ===== レイアウト ===== */
+#game-wrap {
+    display: flex;
+    gap: 12px;
+    padding: 8px;
+    max-width: 1200px;
+    margin: 0 auto;
+    min-height: calc(100dvh - 56px);
+    box-sizing: border-box;
+}
+
+.side-panel {
+    display: none;
+    width: 180px;
+    flex-shrink: 0;
+    flex-direction: column;
+    gap: 8px;
+}
+
+#game-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+/* ===== 上部バー ===== */
+#top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    max-width: 340px;
+    background: rgba(255,255,255,.08);
+    border-radius: 10px;
+    padding: 6px 14px;
+    font-size: .78rem;
+    gap: 8px;
+}
+
+/* ===== マップ ===== */
+#map-viewport {
+    position: relative;
+    border: 2px solid rgba(255,255,255,.15);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #050510;
+    touch-action: none;
+}
+
+#map-grid {
+    display: grid;
+    grid-template-columns: repeat(9, 36px);
+    grid-template-rows: repeat(15, 36px);
+    user-select: none;
+}
+
+.mc {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    box-sizing: border-box;
+    border: 1px solid rgba(0,0,0,.18);
+}
+
+/* マス種別 */
+.mc-void   { background: #040408; cursor: default; }
+.mc-dug    { background: #12112a; }
+.mc-surf   { background: #1a3a1a; }  /* 地上（y=0） */
+.mc-player { background: #12112a; font-size: 18px; z-index: 2; }
+.mc-other  { background: #12112a; font-size: 16px; }
+.mc-lock   { opacity: .65; }
+.mc-mining { outline: 2px solid rgba(255,255,255,.8); outline-offset: -2px; }
+
+/* 採掘プログレスバー */
+.mine-bar {
+    position: absolute;
+    bottom: 0; left: 0;
+    height: 4px;
+    background: #fff;
+    transition: width .18s linear;
+    z-index: 3;
+}
+
+/* マス素材色（CSS変数で管理） */
+.mc-dirt    { background: #5c3d11; }
+.mc-stone   { background: #4a4a5a; }
+.mc-copper  { background: #7a4520; }
+.mc-iron    { background: #5a606a; }
+.mc-silver  { background: #7a8090; }
+.mc-gold    { background: #7a6010; }
+.mc-treasure { background: #6a5000; }
+.mc-treasure::after { content: '📦'; font-size: 18px; }
+
+/* ===== Dパッド ===== */
+#mobile-ctrl {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+#dpad {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+}
+
+.dpad-row {
+    display: flex;
+    gap: 3px;
+}
+
+.dpad-btn {
+    width: 54px;
+    height: 54px;
+    border: none;
+    border-radius: 12px;
+    background: rgba(255,255,255,.12);
+    color: #fff;
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition: background .1s;
+}
+.dpad-btn:active { background: rgba(255,255,255,.3); }
+.dpad-center { background: rgba(255,80,80,.2); }
+.dpad-center:active { background: rgba(255,80,80,.45); }
+
+/* ===== アクションボタン ===== */
+#action-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+}
+
+.act-btn {
+    padding: 9px 14px;
+    border: none;
+    border-radius: 10px;
+    background: rgba(212,168,83,.55);
+    color: #fff;
+    font-size: .82rem;
+    font-weight: 600;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition: background .1s;
+}
+.act-btn:active { background: rgba(212,168,83,.9); }
+
+/* ===== モバイルログ ===== */
+#log-mobile {
+    width: 100%;
+    max-width: 340px;
+    background: rgba(0,0,0,.25);
+    border-radius: 8px;
+    padding: 6px 10px;
+    max-height: 80px;
+    overflow: hidden;
+}
+
+#log-mobile-inner div {
+    font-size: .72rem;
+    color: rgba(255,255,255,.75);
+    line-height: 1.5;
+}
+
+/* ===== サイドパネル ===== */
+.panel-box {
+    background: rgba(255,255,255,.06);
+    border-radius: 10px;
+    padding: 10px;
+}
+
+.panel-title {
+    font-size: .78rem;
+    font-weight: 700;
+    color: rgba(255,255,255,.6);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    margin-bottom: 6px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid rgba(255,255,255,.1);
+}
+
+#log-disp {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+#log-disp div, #backpack-disp div, #drill-info div, #status-info div {
+    font-size: .78rem;
+    color: rgba(255,255,255,.8);
+    padding: 2px 0;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+}
+
+/* ===== モーダル ===== */
+#modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.65);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+#modal-inner {
+    background: #0d2447;
+    border: 1px solid rgba(255,255,255,.15);
+    border-radius: 16px;
+    padding: 20px;
+    width: min(92vw, 440px);
+    max-height: 80vh;
+    overflow-y: auto;
+    color: #fff;
+}
+
+.modal-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255,255,255,.2);
+}
+
+.modal-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 0;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    gap: 8px;
+}
+
+.modal-row-label { font-size: .88rem; }
+.modal-row-sub { font-size: .72rem; color: rgba(255,255,255,.5); margin-top: 2px; }
+
+.btn-modal-action {
+    padding: 6px 14px;
+    border: none;
+    border-radius: 8px;
+    background: #d4a853;
+    color: #fff;
+    font-size: .8rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.btn-modal-action:disabled {
+    background: rgba(255,255,255,.15);
+    cursor: not-allowed;
+}
+
+.btn-modal-close {
+    display: block;
+    width: 100%;
+    margin-top: 14px;
+    padding: 9px;
+    border: none;
+    border-radius: 10px;
+    background: rgba(255,255,255,.1);
+    color: #fff;
+    font-size: .88rem;
+    cursor: pointer;
+}
+
+/* ===== PC レイアウト ===== */
+@media (min-width: 820px) {
+    .side-panel { display: flex; }
+    #mobile-ctrl { display: none; }
+    #log-mobile { display: none; }
+    #panel-right { flex: 0 0 180px; }
+}

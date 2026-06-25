@@ -48,6 +48,7 @@ function generateTopNav(basePath = '../') {
                     <a class="topnav-dd-item" href="${basePath}omikuji/osaisen.html" data-page-path="/omikuji/osaisen">🧧 お賽銭箱</a>
                     <a class="topnav-dd-item" href="${basePath}giftcode/index.html" data-page-path="/giftcode">🎁 ギフトコード</a>
                     <a class="topnav-dd-item" href="${basePath}exchange/index.html" data-page-path="/exchange">🔄 交換所</a>
+                    <a class="topnav-dd-item" href="${basePath}drill/index.html" data-page-path="/drill">⛏️ ほりほりドリル</a>
                 </div>
             </div>
 
@@ -84,6 +85,7 @@ function generateTopNav(basePath = '../') {
         <a class="drawer-item drawer-sub" href="${basePath}omikuji/osaisen.html" data-page-path="/omikuji/osaisen" data-nav-group="fun">🧧 お賽銭箱</a>
         <a class="drawer-item drawer-sub" href="${basePath}giftcode/index.html" data-page-path="/giftcode" data-nav-group="fun">🎁 ギフトコード</a>
         <a class="drawer-item drawer-sub" href="${basePath}exchange/index.html" data-page-path="/exchange" data-nav-group="fun">🔄 交換所</a>
+        <a class="drawer-item drawer-sub" href="${basePath}drill/index.html" data-page-path="/drill" data-nav-group="fun">⛏️ ほりほりドリル</a>
         <a class="drawer-item admin-only" href="${basePath}admin/index.html" style="display:none;">⚙️ 管理画面</a>
     </div>
     <div id="topnav-overlay"></div>
