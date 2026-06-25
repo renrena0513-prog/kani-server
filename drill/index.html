@@ -21,6 +21,13 @@
             <div class="panel-title">📊 ステータス</div>
             <div id="status-info"></div>
         </div>
+        <div class="panel-box pc-action-btns">
+            <button class="act-btn" id="btn-sell-pc">💰 売却</button>
+            <button class="act-btn" id="btn-shop-pc">🛒 ショップ</button>
+            <button class="act-btn" id="btn-craft-pc">🔨 クラフト</button>
+            <button class="act-btn" id="btn-bag-pc">🎒 リュック</button>
+            <button class="act-btn" id="btn-return-pc">↩️ 帰還</button>
+        </div>
     </aside>
 
     <!-- 中央：マップ＋操作 -->
@@ -33,31 +40,15 @@
 
         <div id="map-viewport">
             <div id="map-grid"></div>
-            <div id="mining-overlay"></div>
         </div>
 
-        <!-- モバイル操作 -->
-        <div id="mobile-ctrl">
-            <div id="dpad">
-                <button class="dpad-btn" id="btn-up">▲</button>
-                <div class="dpad-row">
-                    <button class="dpad-btn" id="btn-left">◀</button>
-                    <button class="dpad-btn dpad-center" id="btn-stop" title="採掘停止">■</button>
-                    <button class="dpad-btn" id="btn-right">▶</button>
-                </div>
-                <button class="dpad-btn" id="btn-down">▼</button>
-            </div>
-            <div id="action-btns">
-                <button class="act-btn" id="btn-return">↩️ 帰還</button>
-                <button class="act-btn" id="btn-bag">🎒 リュック</button>
-                <button class="act-btn" id="btn-shop">🛒 ショップ</button>
-                <button class="act-btn" id="btn-craft">🔨 クラフト</button>
-            </div>
-        </div>
-
-        <!-- ログ（モバイル） -->
-        <div id="log-mobile">
-            <div id="log-mobile-inner"></div>
+        <!-- アクションボタン（モバイル） -->
+        <div id="action-btns">
+            <button class="act-btn" id="btn-sell">💰 売却</button>
+            <button class="act-btn" id="btn-bag">🎒 リュック</button>
+            <button class="act-btn" id="btn-shop">🛒 ショップ</button>
+            <button class="act-btn" id="btn-craft">🔨 クラフト</button>
+            <button class="act-btn" id="btn-return">↩️ 帰還</button>
         </div>
     </main>
 

@@ -72,6 +72,10 @@ const PERMITS = {
   permit_200: { name:'200m入坑許可証', yMin:200, recipe:{iron:1000,silver:300} },
 };
 
+const SELL_PRICES = {
+  dirt: 1, stone: 3, copper: 15, iron: 50, silver: 200, gold: 500,
+};
+
 // ============================================================
 // ゲーム状態
 // ============================================================
@@ -158,6 +162,23 @@ function genTreasures(seed) {
   }
   G.treasures = set;
   G.treasureRare = rare;
+}
+
+// ============================================================
+// 視界判定（霧）
+// ============================================================
+
+function isVisible(wx, wy) {
+  if (wy === 0) return true;
+  if (G.dugCells.has(`${wx},${wy}`)) return true;
+  // 掘削済みまたは地上に隣接しているマスのみ表示
+  const adj = [[0,-1],[0,1],[-1,0],[1,0]];
+  for (const [dx, dy] of adj) {
+    const nx = wx + dx, ny = wy + dy;
+    if (ny === 0) return true;
+    if (G.dugCells.has(`${nx},${ny}`)) return true;
+  }
+  return false;
 }
 
 // ============================================================
@@ -644,6 +665,54 @@ function showBag() {
 }
 
 // ============================================================
+// 素材売却
+// ============================================================
+
+function showSell() {
+  if (G.py !== 0) { log('⚠️ 売却は地上のみ'); return; }
+
+  const sellable = Object.entries(G.inventory)
+    .filter(([k, v]) => v > 0 && SELL_PRICES[k])
+    .sort((a, b) => (SELL_PRICES[b[0]] || 0) - (SELL_PRICES[a[0]] || 0));
+
+  let html = `<div class="modal-title">💰 素材売却</div>
+    <div style="font-size:.82rem;margin-bottom:10px;">所持金: 💰 ${G.drillGold}G</div>`;
+
+  if (sellable.length === 0) {
+    html += `<div style="font-size:.85rem;opacity:.5;padding:10px 0;">売却できる素材がありません<br><span style="font-size:.75rem;">（帰還して素材を確定してください）</span></div>`;
+  } else {
+    for (const [item, qty] of sellable) {
+      const price = SELL_PRICES[item];
+      html += `<div class="modal-row">
+        <div>
+          <div class="modal-row-label">${MATS[item]?.name || item} ×${qty}</div>
+          <div class="modal-row-sub">1個 ${price}G → 合計 ${price * qty}G</div>
+        </div>
+        <button class="btn-modal-action" onclick="doSell('${item}',${qty})">全売却</button>
+      </div>`;
+    }
+  }
+  html += `<button class="btn-modal-close" onclick="closeModal()">閉じる</button>`;
+  openModal(html);
+}
+
+async function doSell(itemId, qty) {
+  const price = SELL_PRICES[itemId];
+  if (!price) return;
+  const actual = Math.min(qty, G.inventory[itemId] || 0);
+  if (actual <= 0) return;
+
+  const earned = price * actual;
+  await upsertInv(itemId, -actual);
+  G.drillGold += earned;
+  await supabaseClient.from('profiles').update({ drill_gold: G.drillGold }).eq('id', G.userId);
+
+  log(`💰 ${MATS[itemId]?.name || itemId} ×${actual} → ${earned}G`);
+  renderSide();
+  showSell();
+}
+
+// ============================================================
 // モーダルユーティリティ
 // ============================================================
 
@@ -731,6 +800,11 @@ function renderMap() {
 function buildCell(wx, wy) {
   if (wx < 0 || wx >= MAP_W || wy < 0 || wy >= MAP_H) {
     return `<div class="mc mc-void"></div>`;
+  }
+
+  // 霧：視界外は暗闇
+  if (!isVisible(wx, wy)) {
+    return `<div class="mc mc-fog"></div>`;
   }
 
   const isPlayer = wx === G.px && wy === G.py;
@@ -821,17 +895,23 @@ function handleClick(wx, wy) {
 }
 
 function setupInput() {
-  document.getElementById('btn-up')?.addEventListener('click', () => move(0, -1));
-  document.getElementById('btn-down')?.addEventListener('click', () => move(0, 1));
-  document.getElementById('btn-left')?.addEventListener('click', () => move(-1, 0));
-  document.getElementById('btn-right')?.addEventListener('click', () => move(1, 0));
-  document.getElementById('btn-stop')?.addEventListener('click', () => stopMine());
+  // モバイルアクションボタン
   document.getElementById('btn-return')?.addEventListener('click', () => {
     if (G.py === 0) { returnSurface(false); } else { showBag(); }
   });
   document.getElementById('btn-bag')?.addEventListener('click', showBag);
   document.getElementById('btn-shop')?.addEventListener('click', showShop);
   document.getElementById('btn-craft')?.addEventListener('click', showCraft);
+  document.getElementById('btn-sell')?.addEventListener('click', showSell);
+
+  // PC 左パネルボタン
+  document.getElementById('btn-return-pc')?.addEventListener('click', () => {
+    if (G.py === 0) { returnSurface(false); } else { showBag(); }
+  });
+  document.getElementById('btn-bag-pc')?.addEventListener('click', showBag);
+  document.getElementById('btn-shop-pc')?.addEventListener('click', showShop);
+  document.getElementById('btn-craft-pc')?.addEventListener('click', showCraft);
+  document.getElementById('btn-sell-pc')?.addEventListener('click', showSell);
 
   // キーボード
   document.addEventListener('keydown', e => {
@@ -856,6 +936,8 @@ function setupInput() {
     const dx = e.changedTouches[0].clientX - tx;
     const dy = e.changedTouches[0].clientY - ty;
     if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
+    // 採掘中のスワイプはキャンセル（耐久は前回tickで保存済み）
+    if (G.mineTarget) { stopMine(); render(); return; }
     if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 1 : -1, 0);
     else move(0, dy > 0 ? 1 : -1);
   }, { passive: true });
