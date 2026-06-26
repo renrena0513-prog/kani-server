@@ -76,6 +76,45 @@ const SELL_PRICES = {
   dirt: 1, stone: 3, copper: 15, iron: 50, silver: 200, gold: 500,
 };
 
+// 体力
+let BASE_HP = 1000;
+
+// ブロック破壊イベント（各層の確率テーブル）
+// type: nothing / gold / damage / pitfall / combat
+let EVENTS = [
+  // 第1層 0-99m
+  [
+    { type:'nothing', weight:80 },
+    { type:'gold',    weight:10, min:5,   max:20  },
+    { type:'damage',  weight:5,  min:10,  max:30  },
+    { type:'pitfall', weight:3  },
+    { type:'combat',  weight:2  },
+  ],
+  // 第2層 100-199m
+  [
+    { type:'nothing', weight:70 },
+    { type:'gold',    weight:10, min:20,  max:80  },
+    { type:'damage',  weight:8,  min:20,  max:60  },
+    { type:'pitfall', weight:8  },
+    { type:'combat',  weight:4  },
+  ],
+  // 第3層 200-299m
+  [
+    { type:'nothing', weight:60 },
+    { type:'gold',    weight:10, min:50,  max:200 },
+    { type:'damage',  weight:12, min:50,  max:100 },
+    { type:'pitfall', weight:12 },
+    { type:'combat',  weight:6  },
+  ],
+];
+
+// 呪いダメージ（上移動1マスごと、各層）
+let CURSE = [
+  { min:1,  max:10 }, // 第1層
+  { min:3,  max:20 }, // 第2層
+  { min:8,  max:40 }, // 第3層
+];
+
 // ============================================================
 // ゲーム状態
 // ============================================================
@@ -106,6 +145,9 @@ const G = {
   mineTimer: null,
   mineHP: {},            // 'x,y' -> remaining hp
   logs: [],
+  hp: 1000,             // 現在HP
+  maxHp: 1000,          // 最大HP
+  droppedItems: new Map(), // 'x,y' -> [{id, items:[{item_id,quantity}]}]
 };
 
 // ============================================================
@@ -258,6 +300,13 @@ async function loadGameConfig() {
         if (PERMITS[id] && v.recipe) PERMITS[id].recipe = v.recipe;
       }
     }
+    if (cfg.events && Array.isArray(cfg.events)) {
+      cfg.events.forEach((layer, i) => { if (Array.isArray(layer)) EVENTS[i] = layer; });
+    }
+    if (cfg.curse && Array.isArray(cfg.curse)) {
+      cfg.curse.forEach((c, i) => { if (c) CURSE[i] = c; });
+    }
+    if (cfg.baseHp != null) BASE_HP = cfg.baseHp;
   } catch {}
 }
 
@@ -287,7 +336,7 @@ async function loadAll() {
   const uid = G.userId;
   const date = G.mapDate;
 
-  const [dugRes, lockRes, posRes, bpRes, invRes, drillRes, permRes, profRes, othRes] =
+  const [dugRes, lockRes, posRes, bpRes, invRes, drillRes, permRes, profRes, othRes, dropRes] =
     await Promise.all([
       supabaseClient.from('drill_dug_cells').select('x,y').eq('map_date', date),
       supabaseClient.from('drill_dig_locks').select('x,y,locked_by,expires_at')
@@ -297,8 +346,9 @@ async function loadAll() {
       supabaseClient.from('drill_inventory').select('item_id,quantity').eq('user_id', uid),
       supabaseClient.from('drill_player_drills').select('*').eq('user_id', uid),
       supabaseClient.from('drill_player_permits').select('permit_id').eq('user_id', uid),
-      supabaseClient.from('profiles').select('drill_gold').eq('id', uid).maybeSingle(),
+      supabaseClient.from('profiles').select('drill_gold,drill_hp').eq('id', uid).maybeSingle(),
       supabaseClient.from('drill_player_positions').select('user_id,x,y,avatar_url').eq('map_date', date).neq('user_id', uid),
+      supabaseClient.from('drill_dropped_items').select('id,pos_x,pos_y,items').eq('map_date', date),
     ]);
 
   G.dugCells = new Set((dugRes.data || []).map(r => `${r.x},${r.y}`));
@@ -346,12 +396,21 @@ async function loadAll() {
   // 許可証
   G.permits = new Set((permRes.data || []).map(r => r.permit_id));
 
-  // ゴールド
+  // ゴールド・HP
   G.drillGold = profRes.data?.drill_gold || 0;
+  G.hp = profRes.data?.drill_hp ?? G.maxHp;
 
   // 他プレイヤー
   G.otherPlayers = new Map();
   (othRes.data || []).forEach(r => G.otherPlayers.set(r.user_id, { x: r.x, y: r.y, avatarUrl: r.avatar_url || null }));
+
+  // 落下アイテム（今日のマップのみ）
+  G.droppedItems = new Map();
+  (dropRes.data || []).forEach(r => {
+    const key = `${r.pos_x},${r.pos_y}`;
+    if (!G.droppedItems.has(key)) G.droppedItems.set(key, []);
+    G.droppedItems.get(key).push({ id: r.id, items: r.items || [] });
+  });
 }
 
 // ============================================================
@@ -364,6 +423,10 @@ async function savePos() {
     avatar_url: G.avatarUrl,
     updated_at: new Date().toISOString(),
   });
+}
+
+async function saveHp() {
+  await supabaseClient.from('profiles').update({ drill_hp: G.hp }).eq('id', G.userId);
 }
 
 async function saveBpItem(itemId, qty) {
@@ -431,6 +494,22 @@ async function move(dx, dy) {
 
   G.px = nx; G.py = ny;
   if (ny === START_Y) G.surfaceMode = true;
+
+  // 呪い：地下で上移動するたびにダメージ
+  if (dy < 0 && ny > START_Y) {
+    const li = Math.min(CURSE.length - 1, Math.floor(ny / 100));
+    const c  = CURSE[li];
+    const dmg = Math.floor(Math.random() * (c.max - c.min + 1)) + c.min;
+    G.hp = Math.max(0, G.hp - dmg);
+    await saveHp();
+    log(`👻 呪い (第${li+1}層): -${dmg}HP（残り ${G.hp}）`);
+    if (G.hp <= 0) { await handleDeath(); return; }
+    renderSide();
+  }
+
+  // 落下アイテム回収
+  if (!G.surfaceMode) await collectDroppedItems(nx, ny);
+
   await savePos();
   render();
 }
@@ -521,6 +600,9 @@ async function finishMine(x, y, mat) {
     log(`✅ ${MATS[mat].name}を採掘`);
   }
   render();
+
+  // ブロック破壊イベント（宝箱は除外）
+  if (mat !== 'treasure') await triggerBlockEvent(x, y);
 }
 
 function stopMine(release = true) {
@@ -537,6 +619,122 @@ async function breakDrill() {
   G.equippedDrillId = 'beginner';
   G.drillDur = null;
   log('⚠️ ドリルが壊れました！初心者ドリルに切り替え');
+}
+
+// ============================================================
+// イベントシステム
+// ============================================================
+
+function pickEvent(layerIdx) {
+  const evs = EVENTS[Math.min(layerIdx, EVENTS.length - 1)];
+  const total = evs.reduce((s, e) => s + e.weight, 0);
+  let r = Math.random() * total;
+  for (const ev of evs) { r -= ev.weight; if (r <= 0) return ev; }
+  return evs[evs.length - 1];
+}
+
+async function triggerBlockEvent(x, y) {
+  const li  = Math.min(EVENTS.length - 1, Math.floor(y / 100));
+  const ev  = pickEvent(li);
+  if (ev.type === 'nothing') return;
+
+  if (ev.type === 'gold') {
+    const amount = Math.floor(Math.random() * (ev.max - ev.min + 1)) + ev.min;
+    G.drillGold += amount;
+    await supabaseClient.from('profiles').update({ drill_gold: G.drillGold }).eq('id', G.userId);
+    log(`✨ イベント: お金発見！ +${amount}G`);
+    renderSide();
+    renderMap();
+
+  } else if (ev.type === 'damage') {
+    const dmg = Math.floor(Math.random() * (ev.max - ev.min + 1)) + ev.min;
+    G.hp = Math.max(0, G.hp - dmg);
+    await saveHp();
+    log(`💥 イベント: ダメージ！ -${dmg}HP（残り ${G.hp}）`);
+    renderSide();
+    if (G.hp <= 0) await handleDeath();
+
+  } else if (ev.type === 'pitfall') {
+    log('🕳️ イベント: 落とし穴！');
+    await teleportPitfall();
+
+  } else if (ev.type === 'combat') {
+    log('⚔️ イベント: 敵と遭遇！（戦闘システムは近日実装予定）');
+  }
+}
+
+async function teleportPitfall() {
+  const FALL = 30;
+  const newY = Math.min(MAP_H - 1, G.py + FALL);
+  const newX = Math.floor(Math.random() * MAP_W);
+  const key  = `${newX},${newY}`;
+
+  // 転移先にブロックがあれば無音で消去（ドロップなし、イベントなし）
+  if (!G.dugCells.has(key) && cellMat(newX, newY)) {
+    const { error } = await supabaseClient.from('drill_dug_cells')
+      .insert({ map_date: G.mapDate, x: newX, y: newY, dug_by: G.userId });
+    if (!error) G.dugCells.add(key);
+  }
+
+  G.px = newX; G.py = newY;
+  await savePos();
+  log(`🕳️ ${FALL}m落下！ → (${newX}, ${newY}m)`);
+  render();
+}
+
+async function handleDeath() {
+  stopMine();
+  closeModal();
+  G.hp = 0;
+  renderSide();
+
+  // リュックをその場に落とす
+  const bpItems = Object.entries(G.backpack).filter(([, v]) => v > 0);
+  if (bpItems.length > 0) {
+    const items = bpItems.map(([item_id, quantity]) => ({ item_id, quantity }));
+    const { data: drop } = await supabaseClient.from('drill_dropped_items').insert({
+      map_date: G.mapDate, pos_x: G.px, pos_y: G.py,
+      dropper_user_id: G.userId, items,
+    }).select().single();
+    if (drop) {
+      const dkey = `${G.px},${G.py}`;
+      if (!G.droppedItems.has(dkey)) G.droppedItems.set(dkey, []);
+      G.droppedItems.get(dkey).push({ id: drop.id, items });
+    }
+    G.backpack = {};
+    await supabaseClient.from('drill_backpack').delete().eq('user_id', G.userId);
+  }
+
+  const lostMsg = bpItems.length > 0
+    ? `リュック内 ${bpItems.length}種のアイテムをその場に落とした！`
+    : '手ぶらで地上へ戻った';
+  log(`💀 HP が尽きた！${lostMsg}`);
+
+  // HP全回復して地上へ
+  G.hp = G.maxHp;
+  await saveHp();
+  G.px = START_X; G.py = START_Y;
+  G.surfaceMode = true;
+  await savePos();
+  render();
+}
+
+async function collectDroppedItems(x, y) {
+  const key  = `${x},${y}`;
+  const drops = G.droppedItems.get(key);
+  if (!drops || drops.length === 0) return;
+
+  for (const drop of drops) {
+    for (const { item_id, quantity } of drop.items) {
+      G.backpack[item_id] = (G.backpack[item_id] || 0) + quantity;
+      await saveBpItem(item_id, G.backpack[item_id]);
+    }
+    await supabaseClient.from('drill_dropped_items').delete().eq('id', drop.id);
+    const names = drop.items.map(i => `${ITEM_NAMES[i.item_id]||i.item_id}×${i.quantity}`).join(', ');
+    log(`📦 落とし物を回収！ ${names}`);
+  }
+  G.droppedItems.delete(key);
+  renderSide();
 }
 
 // ============================================================
@@ -890,6 +1088,29 @@ function setupRealtime() {
       renderMap();
     })
     .on('postgres_changes', {
+      event: 'INSERT', schema: 'public', table: 'drill_dropped_items',
+      filter: `map_date=eq.${G.mapDate}`,
+    }, ({ new: r }) => {
+      if (!r || r.dropper_user_id === G.userId) return;
+      const key = `${r.pos_x},${r.pos_y}`;
+      if (!G.droppedItems.has(key)) G.droppedItems.set(key, []);
+      G.droppedItems.get(key).push({ id: r.id, items: r.items || [] });
+      renderMap();
+    })
+    .on('postgres_changes', {
+      event: 'DELETE', schema: 'public', table: 'drill_dropped_items',
+    }, ({ old: r }) => {
+      if (!r) return;
+      const key = `${r.pos_x},${r.pos_y}`;
+      const list = G.droppedItems.get(key);
+      if (list) {
+        const idx = list.findIndex(d => d.id === r.id);
+        if (idx >= 0) list.splice(idx, 1);
+        if (list.length === 0) G.droppedItems.delete(key);
+      }
+      renderMap();
+    })
+    .on('postgres_changes', {
       event: '*', schema: 'public', table: 'drill_player_positions',
     }, ({ new: r }) => {
       if (!r) return;
@@ -1046,13 +1267,16 @@ function buildCell(wx, wy) {
 
   if (isDug) {
     const base = wy === 0 ? 'mc-surf' : 'mc-dug';
-    let otherHtml = '';
+    let inner = '';
     if (isOther) {
-      otherHtml = otherAt.avatarUrl
+      inner += otherAt.avatarUrl
         ? `<img class="player-icon other-icon" src="${otherAt.avatarUrl}" alt="" />`
         : `<div class="player-icon other-icon">🧑</div>`;
     }
-    return `<div class="mc ${base}">${otherHtml}</div>`;
+    if (G.droppedItems?.has(`${wx},${wy}`)) {
+      inner += `<div class="player-icon other-icon" style="font-size:.85rem;" title="落とし物あり">📦</div>`;
+    }
+    return `<div class="mc ${base}">${inner}</div>`;
   }
 
   // 許可証バリア（境界行を強調表示）
@@ -1089,6 +1313,15 @@ function renderSide() {
     <div>耐久: ${durStr}</div>
   `);
 
+  // HP表示
+  const hpPct   = Math.max(0, Math.round((G.hp / G.maxHp) * 100));
+  const hpColor = hpPct > 50 ? '#6bde9b' : hpPct > 20 ? '#ffc107' : '#ff5555';
+  const hpBar   = `<div class="mob-dur-wrap" style="min-width:90px;">
+    <span style="font-size:.72rem;opacity:.7;">❤️ HP</span>
+    <div class="mob-dur-bar"><div class="mob-dur-fill" style="width:${hpPct}%;background:${hpColor};"></div></div>
+    <span style="color:${hpColor};font-size:.78rem;">${G.hp}</span>
+  </div>`;
+
   // モバイル用ドリルバー
   let durHtml;
   if (G.drillDur === null) {
@@ -1106,6 +1339,7 @@ function renderSide() {
     <span>⛏️ ${drill.name}</span>
     <span style="opacity:.7;">威力 ${drill.power}</span>
     <div class="mob-dur-wrap">${durHtml}</div>
+    ${hpBar}
     <span style="color:#ffcc44;visibility:${G.mineTarget ? 'visible' : 'hidden'};">⛏️掘削中</span>
   `);
 
@@ -1115,7 +1349,13 @@ function renderSide() {
     <div>📍 ${G.px}, ${G.py}</div>
     <div>第${lyr}層</div>
     <div>💰 ${G.drillGold}G</div>
-    ${G.mineTarget ? '<div>⛏️ 掘削中...</div>' : ''}
+    <div style="margin-top:4px;">
+      <div style="font-size:.75rem;opacity:.65;margin-bottom:2px;">❤️ HP ${G.hp} / ${G.maxHp}</div>
+      <div style="height:6px;background:rgba(255,255,255,.15);border-radius:3px;overflow:hidden;">
+        <div style="width:${hpPct}%;height:100%;background:${hpColor};transition:width .3s;"></div>
+      </div>
+    </div>
+    ${G.mineTarget ? '<div style="margin-top:4px;">⛏️ 掘削中...</div>' : ''}
   `);
 
   // リュック
@@ -1240,6 +1480,8 @@ async function initDrillGame() {
   }
 
   await loadGameConfig();
+  G.maxHp = BASE_HP;  // loadGameConfig後にBASE_HPが確定するので here
+  G.hp = G.maxHp;
   await loadStartX();
   await ensureSeed();
   genTreasures(G.seed);
