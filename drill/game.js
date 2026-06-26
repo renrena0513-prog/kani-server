@@ -100,6 +100,7 @@ const G = {
   treasures: new Set(),  // 'x,y'
   treasureRare: new Set(),
   otherPlayers: new Map(), // userId -> {x,y}
+  isAdmin: false,
   drills: [],            // 所持ドリル一覧
   mineTarget: null,      // {x,y}
   mineTimer: null,
@@ -205,6 +206,57 @@ async function loadStartX() {
     if (data?.setting_value != null) {
       const v = parseInt(data.setting_value, 10);
       if (!isNaN(v) && v >= 0 && v < MAP_W) START_X = v;
+    }
+  } catch {}
+}
+
+async function loadGameConfig() {
+  try {
+    const { data } = await supabaseClient
+      .from('drill_page_settings')
+      .select('setting_value')
+      .eq('setting_key', 'game_config')
+      .maybeSingle();
+    if (!data?.setting_value) return;
+    const cfg = JSON.parse(data.setting_value);
+
+    if (cfg.mats) {
+      for (const [id, v] of Object.entries(cfg.mats)) {
+        if (MATS[id] && v.hp != null) MATS[id].hp = v.hp;
+      }
+    }
+    if (cfg.drills) {
+      for (const [id, v] of Object.entries(cfg.drills)) {
+        if (DRILLS[id]) {
+          if (v.power != null)  DRILLS[id].power  = v.power;
+          if ('dur'    in v)    DRILLS[id].dur     = v.dur;
+          if ('cost'   in v)    DRILLS[id].cost    = v.cost;
+          if ('recipe' in v)    DRILLS[id].recipe  = v.recipe;
+        }
+      }
+    }
+    // layerWeights は %形式で保存 → 累積確率に変換
+    if (cfg.layerWeights) {
+      cfg.layerWeights.forEach((layer, i) => {
+        if (i >= LAYER_W.length) return;
+        let cum = 0;
+        LAYER_W[i] = layer.map(([mat, pct]) => {
+          cum += (pct || 0) / 100;
+          return [mat, Math.round(cum * 100000) / 100000];
+        });
+      });
+    }
+    if (cfg.shop) {
+      cfg.shop.forEach(s => {
+        const item = SHOP_ITEMS.find(x => x.id === s.id);
+        if (item && s.cost != null) item.cost = s.cost;
+      });
+    }
+    if (cfg.sellPrices) Object.assign(SELL_PRICES, cfg.sellPrices);
+    if (cfg.permits) {
+      for (const [id, v] of Object.entries(cfg.permits)) {
+        if (PERMITS[id] && v.recipe) PERMITS[id].recipe = v.recipe;
+      }
     }
   } catch {}
 }
@@ -905,6 +957,7 @@ function renderSurfaceHome() {
     </div>
     <div class="sh-dive-wrap">
       <button class="sh-dive-btn" onclick="startDive()">⛏️&ensp;地下に潜る</button>
+      ${G.isAdmin ? `<a href="admin.html" style="display:block;margin-top:10px;text-align:center;font-size:.75rem;color:rgba(255,255,255,.4);text-decoration:none;">⚙️ 管理画面</a>` : ''}
     </div>
   `;
 }
@@ -1181,13 +1234,12 @@ async function initDrillGame() {
   G.userId = user.id;
   G.avatarUrl = user.user_metadata?.avatar_url || null;
 
-  // 管理者リンクを表示
   const discordId = user.user_metadata?.provider_id;
   if (typeof ADMIN_DISCORD_IDS !== 'undefined' && ADMIN_DISCORD_IDS.includes(discordId)) {
-    const adminLink = document.getElementById('drill-admin-link');
-    if (adminLink) adminLink.style.display = 'inline';
+    G.isAdmin = true;
   }
 
+  await loadGameConfig();
   await loadStartX();
   await ensureSeed();
   genTreasures(G.seed);

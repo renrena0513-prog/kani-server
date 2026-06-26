@@ -91,6 +91,20 @@
             transition: color .15s;
         }
         .back-link:hover { color: #fff; }
+        /* ゲームパラメータ設定 */
+        .cfg-input {
+            background: rgba(255,255,255,.12);
+            border: 1px solid rgba(255,255,255,.22);
+            border-radius: 6px;
+            color: #fff;
+            padding: 4px 8px;
+            font-size: .82rem;
+            font-family: inherit;
+        }
+        .cfg-input:focus { outline: 1px solid rgba(212,168,83,.7); background: rgba(255,255,255,.18); }
+        .cfg-tab-btn { background: rgba(212,168,83,.25) !important; font-weight: normal; }
+        .cfg-tab-btn.active { background: rgba(212,168,83,.65) !important; font-weight: 700; }
+        code { background:rgba(255,255,255,.1); border-radius:4px; padding:1px 6px; font-size:.78rem; color:#a8d4ff; }
         #access-denied {
             display: none;
             text-align: center;
@@ -112,7 +126,7 @@
     <div id="admin-content" style="display:none;">
         <a href="index.html" class="back-link">← ほりほりドリルに戻る</a>
 
-        <!-- ゲーム設定 -->
+        <!-- ゲーム設定（開始X座標） -->
         <div class="admin-card">
             <div class="admin-title">⚙️ ゲーム設定</div>
             <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
@@ -127,6 +141,31 @@
             </div>
         </div>
 
+        <!-- ゲームパラメータ設定 -->
+        <div class="admin-card">
+            <div class="admin-title">🎮 ゲームパラメータ設定</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
+                <button class="btn-refresh cfg-tab-btn active" onclick="showCfgTab('mats',this)">ブロック</button>
+                <button class="btn-refresh cfg-tab-btn" onclick="showCfgTab('drills',this)">ドリル</button>
+                <button class="btn-refresh cfg-tab-btn" onclick="showCfgTab('layers',this)">生成重み</button>
+                <button class="btn-refresh cfg-tab-btn" onclick="showCfgTab('shop',this)">ショップ</button>
+                <button class="btn-refresh cfg-tab-btn" onclick="showCfgTab('sell',this)">売却価格</button>
+                <button class="btn-refresh cfg-tab-btn" onclick="showCfgTab('permits',this)">許可証</button>
+            </div>
+            <div id="cfg-tab-mats" class="cfg-section"></div>
+            <div id="cfg-tab-drills" class="cfg-section" style="display:none;"></div>
+            <div id="cfg-tab-layers" class="cfg-section" style="display:none;"></div>
+            <div id="cfg-tab-shop" class="cfg-section" style="display:none;"></div>
+            <div id="cfg-tab-sell" class="cfg-section" style="display:none;"></div>
+            <div id="cfg-tab-permits" class="cfg-section" style="display:none;"></div>
+            <div style="margin-top:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                <button class="btn-refresh" onclick="saveGameConfig()">💾 保存</button>
+                <button class="btn-refresh" style="background:rgba(255,255,255,.15);" onclick="resetGameConfig()">↩️ デフォルトに戻す</button>
+                <span id="config-save-msg" style="font-size:.8rem;opacity:.65;"></span>
+            </div>
+        </div>
+
+        <!-- プレイヤー統計 -->
         <div class="admin-card">
             <div class="admin-title" style="display:flex;justify-content:space-between;align-items:center;">
                 <span>⛏️ ほりほりドリル プレイヤー統計</span>
@@ -148,14 +187,23 @@
                             <th>倉庫推定価値</th>
                             <th>装備ドリル</th>
                             <th>許可証</th>
+                            <th>詳細</th>
                         </tr>
                     </thead>
                     <tbody id="drill-stats-body">
-                        <tr><td colspan="7" class="muted" style="text-align:center;padding:32px;">読み込み中...</td></tr>
+                        <tr><td colspan="8" class="muted" style="text-align:center;padding:32px;">読み込み中...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- プレイヤー所持品モーダル -->
+<div id="inv-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9999;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:#0d2447;border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:24px;width:min(90vw,500px);max-height:80vh;overflow-y:auto;color:#fff;">
+        <div id="inv-modal-body"></div>
+        <button class="btn-refresh" style="width:100%;margin-top:16px;" onclick="closeInvModal()">✕ 閉じる</button>
     </div>
 </div>
 
@@ -182,6 +230,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('admin-content').style.display = 'block';
     loadDrillSettings();
+    loadGameConfigAdmin();
     fetchDrillStats();
 });
 </script>
