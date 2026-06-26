@@ -849,7 +849,6 @@ function setupRealtime() {
         stopMine();
         G.px = r.x; G.py = r.y;
         G.surfaceMode = (r.y === START_Y);
-        log('📱 別端末から位置を同期しました');
         render();
         return;
       }
