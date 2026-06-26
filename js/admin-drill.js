@@ -439,63 +439,179 @@ async function resetGameConfig() {
 }
 
 // ============================================================
-// プレイヤー所持品モーダル
+// プレイヤー所持品モーダル（閲覧＋編集）
 // ============================================================
 
 const ITEM_NAME_MAP = {
   dirt: '土', stone: '石', copper: '銅', iron: '鉄',
   silver: '銀', gold: '金', return_stone: '帰還石',
 };
+const ALL_ITEM_IDS  = ['dirt','stone','copper','iron','silver','gold','return_stone'];
+const STORAGE_ITEMS = ['dirt','stone','copper','iron','silver','gold']; // 倉庫に入るもの
+
+let invModalUserId = null;
+let invModalName   = null;
 
 async function showInventory(userId, name) {
+  invModalUserId = userId;
+  invModalName   = name;
   const modal = document.getElementById('inv-modal');
   const body  = document.getElementById('inv-modal-body');
   body.innerHTML = '<div style="text-align:center;padding:24px;opacity:.5;">読み込み中...</div>';
   modal.style.display = 'flex';
+  await reloadInvModal();
+}
 
-  const [bpRes, invRes, drillRes] = await Promise.all([
-    supabaseClient.from('drill_backpack').select('item_id,quantity').eq('user_id', userId),
-    supabaseClient.from('drill_inventory').select('item_id,quantity').eq('user_id', userId),
-    supabaseClient.from('drill_player_drills').select('drill_id,durability,equipped').eq('user_id', userId),
-  ]);
+async function reloadInvModal() {
+  const body = document.getElementById('inv-modal-body');
+  try {
+    const { data, error } = await supabaseClient.rpc('admin_get_player_items', {
+      p_user_id: invModalUserId,
+    });
+    if (error) throw error;
+    renderInvModal(data || {});
+  } catch (e) {
+    body.innerHTML = `<div style="color:#ff6b6b;padding:12px;">エラー: ${escDrill(e.message)}</div>`;
+  }
+}
 
-  const bp  = (bpRes.data  || []).filter(r => (r.quantity || 0) > 0);
-  const inv = (invRes.data || []).filter(r => (r.quantity || 0) > 0);
-  const drl = drillRes.data || [];
+function renderInvModal(d) {
+  const body = document.getElementById('inv-modal-body');
+  const bp   = (d.backpack  || []).filter(r => r.quantity > 0);
+  const inv  = (d.inventory || []).filter(r => r.quantity > 0);
+  const drl  = d.drills  || [];
+  const gold = d.gold ?? 0;
 
-  const tbl = (rows, heads) =>
-    `<table class="drill-table" style="width:100%;margin-top:6px;">
-      <tr>${heads.map(h => `<th>${h}</th>`).join('')}</tr>${rows}
-    </table>`;
+  const numInput = (id, val, opts = '') =>
+    `<input class="cfg-input" type="number" id="${id}" value="${val}" ${opts} style="width:80px;">`;
 
-  const itemRow = r =>
-    `<tr><td>${escDrill(ITEM_NAME_MAP[r.item_id] || r.item_id)}</td><td>${r.quantity.toLocaleString()}</td></tr>`;
+  const saveBtn = (onclick) =>
+    `<button class="inv-save-btn" onclick="${onclick}">✓</button>`;
 
-  const section = (icon, label, content) =>
-    `<div style="margin-bottom:16px;">
-      <div style="font-size:.78rem;font-weight:700;opacity:.55;margin-bottom:4px;">${icon} ${label}</div>
-      ${content}
+  const delBtn = (onclick) =>
+    `<button class="inv-del-btn" onclick="${onclick}">✕</button>`;
+
+  const drillOpts = DRILL_IDS.map(id =>
+    `<option value="${id}">${escDrill(DRILL_LABEL[id] || id)}</option>`).join('');
+  const itemOpts = ALL_ITEM_IDS.map(id =>
+    `<option value="${id}">${escDrill(ITEM_NAME_MAP[id] || id)}</option>`).join('');
+  const storageOpts = STORAGE_ITEMS.map(id =>
+    `<option value="${id}">${escDrill(ITEM_NAME_MAP[id] || id)}</option>`).join('');
+
+  const addRow = (selId, selOpts, qtyId, onclick) => `
+    <div style="display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap;padding-top:8px;border-top:1px solid rgba(255,255,255,.08);">
+      <select class="cfg-input" id="${selId}" style="flex:1;min-width:100px;">${selOpts}</select>
+      ${numInput(qtyId, 1, 'min="1"')}
+      <button class="inv-save-btn" onclick="${onclick}">＋ 追加</button>
     </div>`;
 
-  const empty = '<div class="muted" style="font-size:.85rem;padding:4px 0;">空</div>';
+  let html = `
+    <div style="font-size:1rem;font-weight:700;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.15);">
+      ✏️ ${escDrill(invModalName)} の所持品編集
+    </div>
 
-  let html = `<div style="font-size:1.05rem;font-weight:700;margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.15);">
-    📦 ${escDrill(name)} の所持品</div>`;
+    <!-- 所持金 -->
+    <div style="margin-bottom:18px;">
+      <div class="inv-section-title">💰 所持金</div>
+      <div style="display:flex;gap:6px;align-items:center;margin-top:6px;">
+        ${numInput('inv-gold', gold, 'min="0" style="width:110px;"')}
+        ${saveBtn("invSave('gold','gold',document.getElementById('inv-gold').value)")}
+      </div>
+    </div>
 
-  html += section('⛏️', 'ドリル', drl.length === 0 ? empty :
-    tbl(drl.map(r => `<tr>
-      <td>${escDrill(DRILL_LABEL[r.drill_id] || r.drill_id)}</td>
-      <td>${r.durability ?? '∞'}</td>
-      <td>${r.equipped ? '<span style="color:#6bde9b;">装備中</span>' : ''}</td>
-    </tr>`).join(''), ['ドリル', '耐久', '']));
+    <!-- ドリル -->
+    <div style="margin-bottom:18px;">
+      <div class="inv-section-title">⛏️ ドリル</div>
+      ${drl.length === 0 ? '<div class="inv-empty">なし</div>' : `
+      <table class="drill-table" style="width:100%;margin-top:6px;">
+        <tr><th>ドリル</th><th>耐久（-1=∞）</th><th></th><th></th></tr>
+        ${drl.map(r => {
+          const iid = 'inv-d-' + r.drill_id;
+          return `<tr>
+            <td style="font-size:.82rem;">${escDrill(DRILL_LABEL[r.drill_id] || r.drill_id)}
+              ${r.equipped ? '<span style="color:#6bde9b;font-size:.7rem;margin-left:4px;">装備</span>' : ''}
+            </td>
+            <td>${numInput(iid, r.durability ?? -1, '')}</td>
+            <td>${saveBtn(`invSave('drill','${r.drill_id}',document.getElementById('${iid}').value)`)}</td>
+            <td>${delBtn(`invDelDrill('${r.drill_id}')`)}</td>
+          </tr>`;
+        }).join('')}
+      </table>`}
+      <div style="display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap;padding-top:8px;border-top:1px solid rgba(255,255,255,.08);">
+        <select class="cfg-input" id="inv-give-id" style="flex:1;min-width:100px;">${drillOpts}</select>
+        ${numInput('inv-give-dur', -1, 'placeholder="-1=∞"')}
+        <button class="inv-save-btn" onclick="invGiveDrill()">⛏️ 与える</button>
+      </div>
+    </div>
 
-  html += section('🎒', 'リュック', bp.length === 0 ? empty :
-    tbl(bp.map(itemRow).join(''), ['アイテム', '数量']));
+    <!-- リュック -->
+    <div style="margin-bottom:18px;">
+      <div class="inv-section-title">🎒 リュック</div>
+      ${bp.length === 0 ? '<div class="inv-empty">空</div>' : `
+      <table class="drill-table" style="width:100%;margin-top:6px;">
+        <tr><th>アイテム</th><th>数量（0=削除）</th><th></th></tr>
+        ${bp.map(r => {
+          const iid = 'inv-bp-' + r.item_id;
+          return `<tr>
+            <td style="font-size:.82rem;">${escDrill(ITEM_NAME_MAP[r.item_id] || r.item_id)}</td>
+            <td>${numInput(iid, r.quantity, 'min="0"')}</td>
+            <td>${saveBtn(`invSave('backpack','${r.item_id}',document.getElementById('${iid}').value)`)}</td>
+          </tr>`;
+        }).join('')}
+      </table>`}
+      ${addRow('inv-add-bp-id', itemOpts, 'inv-add-bp-qty', "invAddItem('backpack')")}
+    </div>
 
-  html += section('📦', '倉庫', inv.length === 0 ? empty :
-    tbl(inv.map(itemRow).join(''), ['アイテム', '数量']));
-
+    <!-- 倉庫 -->
+    <div style="margin-bottom:4px;">
+      <div class="inv-section-title">📦 倉庫</div>
+      ${inv.length === 0 ? '<div class="inv-empty">空</div>' : `
+      <table class="drill-table" style="width:100%;margin-top:6px;">
+        <tr><th>アイテム</th><th>数量（0=削除）</th><th></th></tr>
+        ${inv.map(r => {
+          const iid = 'inv-inv-' + r.item_id;
+          return `<tr>
+            <td style="font-size:.82rem;">${escDrill(ITEM_NAME_MAP[r.item_id] || r.item_id)}</td>
+            <td>${numInput(iid, r.quantity, 'min="0"')}</td>
+            <td>${saveBtn(`invSave('inventory','${r.item_id}',document.getElementById('${iid}').value)`)}</td>
+          </tr>`;
+        }).join('')}
+      </table>`}
+      ${addRow('inv-add-inv-id', storageOpts, 'inv-add-inv-qty', "invAddItem('inventory')")}
+    </div>
+  `;
   body.innerHTML = html;
+}
+
+async function invSave(type, itemId, valueStr) {
+  const value = parseInt(valueStr);
+  if (isNaN(value)) return;
+  const { error } = await supabaseClient.rpc('admin_set_player_item', {
+    p_user_id: invModalUserId, p_type: type, p_item_id: itemId, p_quantity: value,
+  });
+  if (error) { alert('エラー: ' + error.message); return; }
+  await reloadInvModal();
+}
+
+async function invGiveDrill() {
+  const drillId = document.getElementById('inv-give-id')?.value;
+  const dur     = parseInt(document.getElementById('inv-give-dur')?.value ?? '-1');
+  if (!drillId) return;
+  await invSave('give_drill', drillId, isNaN(dur) ? -1 : dur);
+}
+
+async function invDelDrill(drillId) {
+  if (!confirm(`${DRILL_LABEL[drillId] || drillId} を削除しますか？`)) return;
+  await invSave('delete_drill', drillId, 0);
+}
+
+async function invAddItem(type) {
+  const selId  = type === 'backpack' ? 'inv-add-bp-id'  : 'inv-add-inv-id';
+  const qtyId  = type === 'backpack' ? 'inv-add-bp-qty' : 'inv-add-inv-qty';
+  const itemId = document.getElementById(selId)?.value;
+  const qty    = parseInt(document.getElementById(qtyId)?.value || '0');
+  if (!itemId || qty <= 0) return;
+  await invSave(type, itemId, qty);
 }
 
 function closeInvModal() {
