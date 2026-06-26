@@ -172,6 +172,38 @@ const DEFAULT_GAME_CONFIG = {
     permit_100: { name: '100m入坑許可証', recipe: { stone: 1000, copper: 300 } },
     permit_200: { name: '200m入坑許可証', recipe: { iron: 1000,  silver: 300 } },
   },
+  baseHp: 1000,
+  events: [
+    // 第1層 0-99m
+    [
+      { type: 'nothing', weight: 80 },
+      { type: 'gold',    weight: 10, min: 5,   max: 20  },
+      { type: 'damage',  weight: 5,  min: 10,  max: 30  },
+      { type: 'pitfall', weight: 3  },
+      { type: 'combat',  weight: 2  },
+    ],
+    // 第2層 100-199m
+    [
+      { type: 'nothing', weight: 70 },
+      { type: 'gold',    weight: 10, min: 20,  max: 80  },
+      { type: 'damage',  weight: 8,  min: 20,  max: 60  },
+      { type: 'pitfall', weight: 8  },
+      { type: 'combat',  weight: 4  },
+    ],
+    // 第3層 200-299m
+    [
+      { type: 'nothing', weight: 60 },
+      { type: 'gold',    weight: 10, min: 50,  max: 200 },
+      { type: 'damage',  weight: 12, min: 50,  max: 100 },
+      { type: 'pitfall', weight: 12 },
+      { type: 'combat',  weight: 6  },
+    ],
+  ],
+  curse: [
+    { min: 1, max: 10 }, // 第1層
+    { min: 3, max: 20 }, // 第2層
+    { min: 8, max: 40 }, // 第3層
+  ],
 };
 
 let gameConfig = null;
@@ -235,6 +267,7 @@ function renderConfigEditor() {
   renderShopTab();
   renderSellTab();
   renderPermitsTab();
+  renderEventsTab();
   // 最初のタブをアクティブに
   const firstBtn = document.querySelector('.cfg-tab-btn');
   if (firstBtn) showCfgTab('mats', firstBtn);
@@ -411,6 +444,92 @@ function renderPermitsTab() {
   document.getElementById('cfg-tab-permits').innerHTML = `<div style="margin-top:4px;">${blocks}</div>`;
 }
 
+function renderEventsTab() {
+  const events = gameConfig.events ?? DEFAULT_GAME_CONFIG.events;
+  const curse  = gameConfig.curse  ?? DEFAULT_GAME_CONFIG.curse;
+  const baseHp = gameConfig.baseHp ?? DEFAULT_GAME_CONFIG.baseHp;
+
+  const EV_LABEL = {
+    nothing: 'なし',
+    gold:    'お金ドロップ',
+    damage:  'ダメージ',
+    pitfall: '落とし穴',
+    combat:  '戦闘',
+  };
+  const LAYER_NAME = ['第1層 (0〜99m)', '第2層 (100〜199m)', '第3層 (200〜299m)'];
+
+  let html = `
+    <div class="info-box" style="margin-bottom:14px;">
+      重みは合計100推奨（内部で正規化されるので合計が違っても動作します）。<br>
+      上移動時の許可証チェックなし・落とし穴は常に30m下へ転移。
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+      <label style="font-size:.85rem;">❤️ 基礎HP</label>
+      ${cfgNum('cfg-basehp', baseHp, 'min="1" style="width:90px;"')}
+    </div>`;
+
+  events.forEach((layer, li) => {
+    const c     = curse[li] ?? { min: 0, max: 0 };
+    const total = layer.reduce((s, e) => s + (e.weight || 0), 0);
+    const col   = Math.abs(total - 100) < 0.5 ? '#6bde9b' : '#ff6b6b';
+
+    html += `
+    <div style="margin-bottom:24px;">
+      <div style="font-size:.88rem;font-weight:700;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.1);">
+        ${LAYER_NAME[li] ?? `第${li+1}層`}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:.82rem;flex-wrap:wrap;">
+        <span>👻 呪いダメージ（上移動1マスごと）</span>
+        ${cfgNum(`cfg-curse-${li}-min`, c.min, `min="0" style="width:68px;" placeholder="min"`)}
+        <span style="opacity:.45;">〜</span>
+        ${cfgNum(`cfg-curse-${li}-max`, c.max, `min="0" style="width:68px;" placeholder="max"`)}
+      </div>
+      <table class="drill-table">
+        <tr><th>イベント</th><th>重み</th><th>追加パラメータ（min〜max）</th></tr>`;
+
+    for (const ev of layer) {
+      let extra = '';
+      if (ev.type === 'gold' || ev.type === 'damage') {
+        const label = ev.type === 'gold' ? 'G' : 'HP';
+        extra = `
+          ${cfgNum(`cfg-ev-${li}-${ev.type}-min`, ev.min ?? 0, `min="0" style="width:68px;" placeholder="min"`)}
+          <span style="opacity:.45;font-size:.78rem;">〜</span>
+          ${cfgNum(`cfg-ev-${li}-${ev.type}-max`, ev.max ?? 0, `min="0" style="width:68px;" placeholder="max"`)}
+          <span style="opacity:.55;font-size:.78rem;">${label}</span>`;
+      }
+      html += `<tr>
+        <td style="white-space:nowrap;">${EV_LABEL[ev.type] ?? ev.type}</td>
+        <td>
+          ${cfgNum(`cfg-ev-${li}-${ev.type}-weight`, ev.weight, `min="0" step="0.1" style="width:68px;"
+            oninput="updateEvTotal(${li})"`)}</td>
+        <td style="font-size:.82rem;">${extra}</td>
+      </tr>`;
+    }
+
+    html += `
+        <tr>
+          <td colspan="3" style="text-align:right;font-size:.76rem;opacity:.65;padding-top:4px;">
+            合計: <span id="ev-total-${li}" style="color:${col};">${total}</span>
+          </td>
+        </tr>
+      </table>
+    </div>`;
+  });
+
+  document.getElementById('cfg-tab-events').innerHTML = html;
+}
+
+function updateEvTotal(li) {
+  const evs = (gameConfig.events ?? DEFAULT_GAME_CONFIG.events)[li] || [];
+  let total = 0;
+  evs.forEach(ev => {
+    const w = document.getElementById(`cfg-ev-${li}-${ev.type}-weight`);
+    total += parseFloat(w?.value || 0);
+  });
+  const el = document.getElementById(`ev-total-${li}`);
+  if (el) { el.textContent = total.toFixed(1); el.style.color = Math.abs(total - 100) < 0.5 ? '#6bde9b' : '#ff6b6b'; }
+}
+
 function collectConfig() {
   const gc = gameConfig;
 
@@ -476,6 +595,35 @@ function collectConfig() {
       });
       gc.permits[id].recipe = Object.keys(recipe).length > 0 ? recipe : null;
     }
+  });
+
+  // BASE HP
+  const bhEl = document.getElementById('cfg-basehp');
+  if (bhEl) gc.baseHp = parseInt(bhEl.value) || 1000;
+
+  // EVENTS
+  const defEvs = DEFAULT_GAME_CONFIG.events;
+  if (!gc.events) gc.events = JSON.parse(JSON.stringify(defEvs));
+  gc.events.forEach((layer, li) => {
+    layer.forEach(ev => {
+      const wEl = document.getElementById(`cfg-ev-${li}-${ev.type}-weight`);
+      if (wEl) ev.weight = parseFloat(wEl.value) || 0;
+      if (ev.type === 'gold' || ev.type === 'damage') {
+        const minEl = document.getElementById(`cfg-ev-${li}-${ev.type}-min`);
+        const maxEl = document.getElementById(`cfg-ev-${li}-${ev.type}-max`);
+        if (minEl) ev.min = parseInt(minEl.value) || 0;
+        if (maxEl) ev.max = parseInt(maxEl.value) || 0;
+      }
+    });
+  });
+
+  // CURSE
+  if (!gc.curse) gc.curse = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.curse));
+  gc.curse.forEach((c, li) => {
+    const minEl = document.getElementById(`cfg-curse-${li}-min`);
+    const maxEl = document.getElementById(`cfg-curse-${li}-max`);
+    if (minEl) c.min = parseInt(minEl.value) || 0;
+    if (maxEl) c.max = parseInt(maxEl.value) || 0;
   });
 }
 

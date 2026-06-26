@@ -484,12 +484,14 @@ async function move(dx, dy) {
     return;
   }
 
-  // 許可証チェック
-  if (ny >= 100 && ny < 200 && !G.permits.has('permit_100')) {
-    log('⚠️ 100m入坑許可証が必要です'); return;
-  }
-  if (ny >= 200 && !G.permits.has('permit_200')) {
-    log('⚠️ 200m入坑許可証が必要です'); return;
+  // 許可証チェック（上移動は不要）
+  if (dy >= 0) {
+    if (ny >= 100 && ny < 200 && !G.permits.has('permit_100')) {
+      log('⚠️ 100m入坑許可証が必要です'); return;
+    }
+    if (ny >= 200 && !G.permits.has('permit_200')) {
+      log('⚠️ 200m入坑許可証が必要です'); return;
+    }
   }
 
   G.px = nx; G.py = ny;
