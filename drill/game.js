@@ -431,6 +431,8 @@ async function mineTick() {
   }
 
   if (G.mineHP[key] <= 0) {
+    G.mineHP[key] = 0;  // 100%表示してから破壊
+    renderMap();
     await finishMine(x, y, mat);
   } else {
     renderMap();
@@ -438,6 +440,7 @@ async function mineTick() {
 }
 
 async function finishMine(x, y, mat) {
+  if (!G.mineTarget) return;
   clearInterval(G.mineTimer);
   G.mineTimer = null;
   const key = `${x},${y}`;
@@ -1061,8 +1064,9 @@ function setupInput() {
   document.getElementById('btn-bag-pc')?.addEventListener('click', showBag);
   document.getElementById('btn-return-pc')?.addEventListener('click', showBag);
 
-  // キーボード
+  // キーボード（リピートは無視して1押し1歩）
   document.addEventListener('keydown', e => {
+    if (e.repeat) return;
     if (document.getElementById('modal-overlay').style.display !== 'none') {
       if (e.key === 'Escape') closeModal();
       return;
