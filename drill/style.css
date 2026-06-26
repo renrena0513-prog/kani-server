@@ -130,11 +130,16 @@ html, body {
 .player-icon {
     width: 22px;
     height: 22px;
-    background: radial-gradient(circle at 35% 30%, #ffe566, #ff8c00);
-    border: 2.5px solid rgba(255,255,255,.9);
+    background: radial-gradient(circle at 35% 30%, #ffe566, #e06000);
+    border: 2px solid rgba(255,255,255,.9);
     border-radius: 50%;
-    box-shadow: 0 0 8px rgba(255,180,0,.7);
+    box-shadow: 0 0 10px rgba(255,180,0,.8), 0 0 4px rgba(255,255,255,.3);
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    line-height: 1;
 }
 
 /* ===== 地上ホーム画面 ===== */
@@ -440,6 +445,7 @@ html, body {
     .player-icon {
         width: clamp(14px, 4.5vw, 22px);
         height: clamp(14px, 4.5vw, 22px);
+        font-size: clamp(7px, 2.5vw, 11px);
     }
     .mc-treasure::after { font-size: clamp(11px, 3.5vw, 18px); }
 

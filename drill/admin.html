@@ -112,6 +112,21 @@
     <div id="admin-content" style="display:none;">
         <a href="index.html" class="back-link">← ほりほりドリルに戻る</a>
 
+        <!-- ゲーム設定 -->
+        <div class="admin-card">
+            <div class="admin-title">⚙️ ゲーム設定</div>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                <label style="font-size:.9rem;">開始X座標 (0–255)</label>
+                <input id="setting-start-x" type="number" min="0" max="255" value="128"
+                    style="width:90px;padding:6px 10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;color:#fff;font-size:.9rem;">
+                <button class="btn-refresh" onclick="saveStartX()">保存</button>
+                <span id="setting-save-msg" style="font-size:.8rem;opacity:.6;"></span>
+            </div>
+            <div style="font-size:.76rem;opacity:.5;margin-top:8px;">
+                変更は翌日のマップから反映されます（新規プレイヤーの初期位置に影響）
+            </div>
+        </div>
+
         <div class="admin-card">
             <div class="admin-title" style="display:flex;justify-content:space-between;align-items:center;">
                 <span>⛏️ ほりほりドリル プレイヤー統計</span>
@@ -166,6 +181,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     document.getElementById('admin-content').style.display = 'block';
+    loadDrillSettings();
     fetchDrillStats();
 });
 </script>

@@ -8,7 +8,7 @@ const MAP_W = 256;
 const MAP_H = 300;
 const VP_W = 9;   // ビューポート幅
 const VP_H = 15;  // ビューポート高さ
-const START_X = 128;
+let START_X = 128; // 管理画面から変更可
 const START_Y = 0;
 const MINE_TICK_MS = 500;
 const LOCK_TTL_MS = 4000;
@@ -86,6 +86,7 @@ const G = {
   seed: 0,
   px: START_X,
   py: START_Y,
+  surfaceMode: true,     // true=地上ホーム表示, false=マップ表示
   backpack: {},
   inventory: {},
   drillGold: 0,
@@ -193,6 +194,20 @@ function gameDate() {
   return jst.toISOString().slice(0, 10);
 }
 
+async function loadStartX() {
+  try {
+    const { data } = await supabaseClient
+      .from('drill_page_settings')
+      .select('setting_value')
+      .eq('setting_key', 'start_x')
+      .maybeSingle();
+    if (data?.setting_value != null) {
+      const v = parseInt(data.setting_value, 10);
+      if (!isNaN(v) && v >= 0 && v < MAP_W) START_X = v;
+    }
+  } catch {}
+}
+
 async function ensureSeed() {
   G.mapDate = gameDate();
   const { data } = await supabaseClient
@@ -246,6 +261,7 @@ async function loadAll() {
     G.px = START_X; G.py = START_Y;
     await savePos();
   }
+  G.surfaceMode = (G.py === START_Y);
 
   // リュック
   G.backpack = {};
@@ -360,6 +376,7 @@ async function move(dx, dy) {
   }
 
   G.px = nx; G.py = ny;
+  if (ny === START_Y) G.surfaceMode = true;
   await savePos();
   render();
 }
@@ -527,6 +544,7 @@ async function returnSurface(useStone = false) {
   await supabaseClient.from('drill_backpack').delete().eq('user_id', G.userId);
 
   G.px = START_X; G.py = START_Y;
+  G.surfaceMode = true;
   await savePos();
   log(`↩️ 帰還完了！${items.length > 0 ? `${items.length}種類の素材を確定` : '手ぶら'}`);
   render();
@@ -829,16 +847,15 @@ function render() {
 }
 
 function renderView() {
-  const underground = G.py > 0 || G.mineTarget !== null;
   const sh = document.getElementById('surface-home');
   const gw = document.getElementById('game-wrap');
-  if (sh) sh.style.display = underground ? 'none' : 'flex';
-  if (gw) gw.style.display = underground ? '' : 'none';
+  if (sh) sh.style.display = G.surfaceMode ? 'flex' : 'none';
+  if (gw) gw.style.display = G.surfaceMode ? 'none' : '';
 }
 
 function renderSurfaceHome() {
   const el = document.getElementById('surface-home');
-  if (!el || el.style.display === 'none') return;
+  if (!el || !G.surfaceMode) return;
 
   const drill = DRILLS[G.equippedDrillId] || DRILLS.beginner;
   const durStr = G.drillDur === null ? '∞' : G.drillDur;
@@ -871,6 +888,8 @@ function renderSurfaceHome() {
 }
 
 function startDive() {
+  G.surfaceMode = false;
+  render(); // 先にマップ表示に切り替え
   move(0, 1);
 }
 
@@ -909,7 +928,7 @@ function buildCell(wx, wy) {
   }
 
   const isPlayer = wx === G.px && wy === G.py;
-  if (isPlayer) return `<div class="mc mc-player"><div class="player-icon"></div></div>`;
+  if (isPlayer) return `<div class="mc mc-player"><div class="player-icon">⛏️</div></div>`;
 
   const isOther = [...G.otherPlayers.values()].some(p => p.x === wx && p.y === wy);
   const key = `${wx},${wy}`;
@@ -1076,6 +1095,7 @@ async function initDrillGame() {
     if (adminLink) adminLink.style.display = 'inline';
   }
 
+  await loadStartX();
   await ensureSeed();
   genTreasures(G.seed);
   await loadAll();

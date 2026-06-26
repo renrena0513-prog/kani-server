@@ -1,5 +1,36 @@
 // ほりほりドリル 管理者統計
 
+async function loadDrillSettings() {
+  try {
+    const { data } = await supabaseClient
+      .from('drill_page_settings')
+      .select('setting_value')
+      .eq('setting_key', 'start_x')
+      .maybeSingle();
+    if (data?.setting_value != null) {
+      const el = document.getElementById('setting-start-x');
+      if (el) el.value = data.setting_value;
+    }
+  } catch {}
+}
+
+async function saveStartX() {
+  const el = document.getElementById('setting-start-x');
+  const msg = document.getElementById('setting-save-msg');
+  if (!el) return;
+  const v = parseInt(el.value, 10);
+  if (isNaN(v) || v < 0 || v > 255) { if (msg) { msg.textContent = '❌ 0〜255 の値を入力してください'; } return; }
+  try {
+    const { error } = await supabaseClient
+      .from('drill_page_settings')
+      .upsert({ setting_key: 'start_x', setting_value: String(v) });
+    if (error) throw error;
+    if (msg) { msg.textContent = '✅ 保存しました'; setTimeout(() => { msg.textContent = ''; }, 3000); }
+  } catch (e) {
+    if (msg) msg.textContent = `❌ ${e.message}`;
+  }
+}
+
 const DRILL_LABEL = {
   beginner:    '初心者ドリル',
   apprentice:  '見習いのドリル',
