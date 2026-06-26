@@ -888,8 +888,35 @@ function renderSurfaceHome() {
 }
 
 function startDive() {
+  showDiveModal();
+}
+
+function showDiveModal() {
+  const x = G.px;
+  openModal(`
+    <div class="modal-title">⛏️ 潜る場所を選ぶ</div>
+    <div style="text-align:center;font-size:2.4rem;font-weight:700;color:#d4a853;margin:14px 0 4px;letter-spacing:.04em;" id="dive-x-disp">${x}</div>
+    <div style="font-size:.72rem;opacity:.45;text-align:center;margin-bottom:14px;">X 座標</div>
+    <input type="range" min="0" max="255" value="${x}" id="dive-x-slider"
+      style="width:100%;accent-color:#d4a853;height:6px;margin-bottom:6px;cursor:pointer;"
+      oninput="document.getElementById('dive-x-disp').textContent=this.value">
+    <div style="display:flex;justify-content:space-between;font-size:.7rem;opacity:.4;margin-bottom:20px;">
+      <span>0</span><span>128</span><span>255</span>
+    </div>
+    <button class="btn-modal-action" style="width:100%;font-size:1rem;padding:12px;" onclick="confirmDive()">⛏️ ここから潜る</button>
+    <button class="btn-modal-close" onclick="closeModal()">キャンセル</button>
+  `);
+}
+
+async function confirmDive() {
+  const slider = document.getElementById('dive-x-slider');
+  if (!slider) return;
+  const x = Math.min(MAP_W - 1, Math.max(0, parseInt(slider.value, 10)));
+  closeModal();
+  G.px = x;
+  await savePos();
   G.surfaceMode = false;
-  render(); // 先にマップ表示に切り替え
+  render();
   move(0, 1);
 }
 
