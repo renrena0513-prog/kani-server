@@ -965,7 +965,7 @@ function buildCell(wx, wy) {
 
   if (isDug) {
     const base = wy === 0 ? 'mc-surf' : 'mc-dug';
-    return `<div class="mc ${base}" onclick="handleClick(${wx},${wy})">${isOther ? '🧑' : ''}</div>`;
+    return `<div class="mc ${base}">${isOther ? '🧑' : ''}</div>`;
   }
 
   // 許可証バリア（境界行を強調表示）
@@ -989,7 +989,7 @@ function buildCell(wx, wy) {
   const mineCls = isMining ? ' mc-mining' : '';
   const lockIcon = isLocked && !isMining ? '🔒' : '';
 
-  return `<div class="mc ${m.cls}${lockCls}${mineCls}" onclick="handleClick(${wx},${wy})" title="${m.name}">${lockIcon}${extra}</div>`;
+  return `<div class="mc ${m.cls}${lockCls}${mineCls}" title="${m.name}">${lockIcon}${extra}</div>`;
 }
 
 function renderSide() {
@@ -1045,8 +1045,9 @@ function log(msg) {
 
 function handleClick(wx, wy) {
   const dx = wx - G.px, dy = wy - G.py;
-  if (Math.abs(dx) + Math.abs(dy) !== 1) return;
-  move(dx, dy);
+  if (dx === 0 && dy === 0) return;
+  if (Math.abs(dx) >= Math.abs(dy)) move(dx > 0 ? 1 : -1, 0);
+  else move(0, dy > 0 ? 1 : -1);
 }
 
 function setupInput() {
@@ -1067,16 +1068,25 @@ function setupInput() {
       return;
     }
     switch (e.key) {
-      case 'ArrowUp': case 'w': e.preventDefault(); move(0, -1); break;
-      case 'ArrowDown': case 's': e.preventDefault(); move(0, 1); break;
-      case 'ArrowLeft': case 'a': e.preventDefault(); move(-1, 0); break;
-      case 'ArrowRight': case 'd': e.preventDefault(); move(1, 0); break;
+      case 'ArrowUp': case 'w': case 'W': e.preventDefault(); move(0, -1); break;
+      case 'ArrowDown': case 's': case 'S': e.preventDefault(); move(0, 1); break;
+      case 'ArrowLeft': case 'a': case 'A': e.preventDefault(); move(-1, 0); break;
+      case 'ArrowRight': case 'd': case 'D': e.preventDefault(); move(1, 0); break;
       case 'Escape': stopMine(); break;
     }
   });
 
-  // タッチ方向入力（マップを×字で4分割: 中心からの相対位置で上下左右判定）
+  // PC マウスクリック（viewport全体で拾い、クリック先へ1歩進む）
   const vp = document.getElementById('map-viewport');
+  vp?.addEventListener('click', e => {
+    if (G.surfaceMode) return;
+    const rect = vp.getBoundingClientRect();
+    const vx = Math.floor((e.clientX - rect.left) / (rect.width  / VP_W));
+    const vy = Math.floor((e.clientY - rect.top)  / (rect.height / VP_H));
+    handleClick(G.px - ((VP_W - 1) >> 1) + vx, G.py - ((VP_H - 1) >> 1) + vy);
+  });
+
+  // タッチ方向入力（マップを×字で4分割: 中心からの相対位置で上下左右判定）
   vp?.addEventListener('touchstart', e => {
     e.preventDefault();
     const rect = vp.getBoundingClientRect();
