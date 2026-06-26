@@ -1037,7 +1037,6 @@ function renderSide() {
   `);
 
   // モバイル用ドリルバー
-  const miningBadge = G.mineTarget ? '<span style="color:#ffcc44;">⛏️掘削中</span>' : '';
   let durHtml;
   if (G.drillDur === null) {
     durHtml = `<span style="opacity:.6;">耐久 ∞</span>`;
@@ -1054,7 +1053,7 @@ function renderSide() {
     <span>⛏️ ${drill.name}</span>
     <span style="opacity:.7;">威力 ${drill.power}</span>
     <div class="mob-dur-wrap">${durHtml}</div>
-    ${miningBadge}
+    <span style="color:#ffcc44;visibility:${G.mineTarget ? 'visible' : 'hidden'};">⛏️掘削中</span>
   `);
 
   // ステータス
