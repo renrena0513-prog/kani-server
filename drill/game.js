@@ -348,7 +348,7 @@ async function loadAll() {
       supabaseClient.from('drill_player_permits').select('permit_id').eq('user_id', uid),
       supabaseClient.from('profiles').select('drill_gold,drill_hp').eq('id', uid).maybeSingle(),
       supabaseClient.from('drill_player_positions').select('user_id,x,y,avatar_url').eq('map_date', date).neq('user_id', uid),
-      supabaseClient.from('drill_dropped_items').select('id,pos_x,pos_y,items').eq('map_date', date),
+      supabaseClient.from('drill_dropped_items').select('id,pos_x,pos_y,items,dropper_name,cause_of_death,dropped_at').eq('map_date', date),
     ]);
 
   G.dugCells = new Set((dugRes.data || []).map(r => `${r.x},${r.y}`));
@@ -409,7 +409,12 @@ async function loadAll() {
   (dropRes.data || []).forEach(r => {
     const key = `${r.pos_x},${r.pos_y}`;
     if (!G.droppedItems.has(key)) G.droppedItems.set(key, []);
-    G.droppedItems.get(key).push({ id: r.id, items: r.items || [] });
+    G.droppedItems.get(key).push({
+      id: r.id, items: r.items || [],
+      dropper_name: r.dropper_name || '???',
+      cause_of_death: r.cause_of_death || '不明',
+      dropped_at: r.dropped_at,
+    });
   });
 }
 
@@ -505,7 +510,7 @@ async function move(dx, dy) {
     G.hp = Math.max(0, G.hp - dmg);
     await saveHp();
     log(`👻 呪い (第${li+1}層): -${dmg}HP（残り ${G.hp}）`);
-    if (G.hp <= 0) { await handleDeath(); return; }
+    if (G.hp <= 0) { await handleDeath('呪い'); return; }
     renderSide();
   }
 
@@ -645,8 +650,8 @@ async function triggerBlockEvent(x, y) {
     G.drillGold += amount;
     await supabaseClient.from('profiles').update({ drill_gold: G.drillGold }).eq('id', G.userId);
     log(`✨ イベント: お金発見！ +${amount}G`);
-    renderSide();
-    renderMap();
+    renderSide(); renderMap();
+    showEventModal('💰', `<span style="color:#f0c060;font-size:1.5rem;font-weight:700;">+${amount}G</span><br><span style="opacity:.75;">お金を発見！</span>`);
 
   } else if (ev.type === 'damage') {
     const dmg = Math.floor(Math.random() * (ev.max - ev.min + 1)) + ev.min;
@@ -654,14 +659,19 @@ async function triggerBlockEvent(x, y) {
     await saveHp();
     log(`💥 イベント: ダメージ！ -${dmg}HP（残り ${G.hp}）`);
     renderSide();
-    if (G.hp <= 0) await handleDeath();
+    if (G.hp <= 0) {
+      await handleDeath('ダメージイベント');
+    } else {
+      showEventModal('💥', `<span style="color:#ff5555;font-size:1.4rem;font-weight:700;">-${dmg}HP</span><br><span style="opacity:.75;">ダメージを受けた！</span><br><span style="font-size:.8rem;opacity:.55;">残りHP: ${G.hp} / ${G.maxHp}</span>`);
+    }
 
   } else if (ev.type === 'pitfall') {
     log('🕳️ イベント: 落とし穴！');
-    await teleportPitfall();
+    showEventModal('🕳️', '<span style="font-size:1rem;font-weight:700;">落とし穴！</span><br><span style="opacity:.7;font-size:.9rem;">30m落下します...</span>', () => teleportPitfall());
 
   } else if (ev.type === 'combat') {
     log('⚔️ イベント: 敵と遭遇！（戦闘システムは近日実装予定）');
+    showEventModal('⚔️', '<span style="font-size:1rem;font-weight:700;">敵と遭遇！</span><br><span style="opacity:.65;font-size:.85rem;">戦闘システムは近日実装予定</span>');
   }
 }
 
@@ -684,7 +694,7 @@ async function teleportPitfall() {
   render();
 }
 
-async function handleDeath() {
+async function handleDeath(cause = '不明') {
   stopMine();
   closeModal();
   G.hp = 0;
@@ -696,21 +706,44 @@ async function handleDeath() {
     const items = bpItems.map(([item_id, quantity]) => ({ item_id, quantity }));
     const { data: drop } = await supabaseClient.from('drill_dropped_items').insert({
       map_date: G.mapDate, pos_x: G.px, pos_y: G.py,
-      dropper_user_id: G.userId, items,
+      dropper_user_id: G.userId,
+      dropper_name: G.displayName || '名無し',
+      cause_of_death: cause,
+      items,
     }).select().single();
     if (drop) {
       const dkey = `${G.px},${G.py}`;
       if (!G.droppedItems.has(dkey)) G.droppedItems.set(dkey, []);
-      G.droppedItems.get(dkey).push({ id: drop.id, items });
+      G.droppedItems.get(dkey).push({
+        id: drop.id, items,
+        dropper_name: G.displayName || '名無し',
+        cause_of_death: cause,
+        dropped_at: drop.dropped_at,
+      });
     }
     G.backpack = {};
     await supabaseClient.from('drill_backpack').delete().eq('user_id', G.userId);
   }
 
   const lostMsg = bpItems.length > 0
-    ? `リュック内 ${bpItems.length}種のアイテムをその場に落とした！`
-    : '手ぶらで地上へ戻った';
-  log(`💀 HP が尽きた！${lostMsg}`);
+    ? `${bpItems.length}種のアイテムをその場に落とした`
+    : '何も落とさなかった';
+  log(`💀 HP が尽きた！死因: ${cause}。${lostMsg}`);
+
+  // 死亡画面を表示してユーザーが閉じるまで待機
+  await new Promise(resolve => {
+    document.getElementById('modal-inner').innerHTML = `
+      <div style="text-align:center;padding:10px 0 20px;">
+        <div style="font-size:3.5rem;margin-bottom:14px;">💀</div>
+        <div style="font-size:1.15rem;font-weight:700;color:#ff5555;margin-bottom:14px;">力尽きた...</div>
+        <div style="font-size:.85rem;opacity:.7;margin-bottom:4px;">死因: ${escHtml(cause)}</div>
+        <div style="font-size:.85rem;opacity:.7;">${lostMsg}</div>
+      </div>
+      <button class="btn-modal-close" id="death-ok-btn">地上へ戻る ↩️</button>`;
+    document.getElementById('modal-overlay').style.display = 'flex';
+    document.getElementById('death-ok-btn').addEventListener('click', resolve, { once: true });
+  });
+  closeModal();
 
   // HP全回復して地上へ
   G.hp = G.maxHp;
@@ -722,21 +755,10 @@ async function handleDeath() {
 }
 
 async function collectDroppedItems(x, y) {
-  const key  = `${x},${y}`;
+  const key   = `${x},${y}`;
   const drops = G.droppedItems.get(key);
   if (!drops || drops.length === 0) return;
-
-  for (const drop of drops) {
-    for (const { item_id, quantity } of drop.items) {
-      G.backpack[item_id] = (G.backpack[item_id] || 0) + quantity;
-      await saveBpItem(item_id, G.backpack[item_id]);
-    }
-    await supabaseClient.from('drill_dropped_items').delete().eq('id', drop.id);
-    const names = drop.items.map(i => `${ITEM_NAMES[i.item_id]||i.item_id}×${i.quantity}`).join(', ');
-    log(`📦 落とし物を回収！ ${names}`);
-  }
-  G.droppedItems.delete(key);
-  renderSide();
+  showDropModal(x, y, drops[0]);
 }
 
 // ============================================================
@@ -1048,6 +1070,125 @@ async function doSell(itemId, qty) {
 }
 
 // ============================================================
+// イベント・落下アイテムUI
+// ============================================================
+
+function escHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c =>
+    ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c]);
+}
+
+function showEventModal(icon, body, afterClose) {
+  const inner = document.getElementById('modal-inner');
+  if (!inner) return;
+  inner.innerHTML = `
+    <div style="text-align:center;padding:20px 0 18px;">
+      <div style="font-size:3.5rem;margin-bottom:14px;">${icon}</div>
+      <div style="font-size:.95rem;line-height:1.75;">${body}</div>
+    </div>
+    <button class="btn-modal-close" id="ev-ok-btn">OK</button>`;
+  document.getElementById('modal-overlay').style.display = 'flex';
+  document.getElementById('ev-ok-btn').addEventListener('click', () => {
+    closeModal();
+    if (afterClose) afterClose();
+  }, { once: true });
+}
+
+let _currentDrop = null;
+
+function showDropModal(x, y, drop) {
+  _currentDrop = { x, y, drop };
+  const at = drop.dropped_at ? new Date(drop.dropped_at) : null;
+  const dateStr = at
+    ? `${at.getMonth()+1}月${at.getDate()}日 ${String(at.getHours()).padStart(2,'0')}:${String(at.getMinutes()).padStart(2,'0')}`
+    : '';
+
+  const itemRows = (drop.items || []).map((item, i) => {
+    const name = ITEM_NAMES[item.item_id] || item.item_id;
+    return `<div class="modal-row" style="align-items:center;gap:8px;">
+      <div style="flex:1;">
+        <div class="modal-row-label">${escHtml(name)}</div>
+        <div class="modal-row-sub">${item.quantity}個</div>
+      </div>
+      <input type="number" id="dc-qty-${i}" min="0" max="${item.quantity}" value="${item.quantity}"
+        style="width:72px;padding:4px 6px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);
+               border-radius:6px;color:#fff;font-size:.85rem;text-align:right;">
+    </div>`;
+  }).join('');
+
+  openModal(`
+    <div class="modal-title">📦 ${escHtml(drop.dropper_name || '???')}のリュックサック</div>
+    <div style="font-size:.75rem;opacity:.6;margin-bottom:14px;">
+      死亡 ${escHtml(dateStr)}&ensp;死因 ${escHtml(drop.cause_of_death || '不明')}
+    </div>
+    <div style="font-size:.78rem;font-weight:600;opacity:.55;margin-bottom:8px;">持ち物</div>
+    <div style="max-height:38vh;overflow-y:auto;">${itemRows}</div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="btn-modal-action" style="flex:1;" onclick="takeSelected()">選択した分をとる</button>
+      <button class="btn-modal-action" style="flex:1;" onclick="takeAll()">全部取る</button>
+    </div>
+    <button class="btn-modal-close" style="margin-top:8px;" onclick="closeModal()">閉じる</button>
+  `);
+}
+
+async function takeSelected() {
+  if (!_currentDrop) return;
+  const { x, y, drop } = _currentDrop;
+  const toCollect = (drop.items || [])
+    .map((item, i) => ({
+      item_id: item.item_id,
+      quantity: Math.min(Math.max(0, parseInt(document.getElementById(`dc-qty-${i}`)?.value || '0')), item.quantity),
+    }))
+    .filter(i => i.quantity > 0);
+  if (toCollect.length === 0) { closeModal(); _currentDrop = null; return; }
+  await doDropCollect(x, y, drop, toCollect);
+}
+
+async function takeAll() {
+  if (!_currentDrop) return;
+  const { x, y, drop } = _currentDrop;
+  await doDropCollect(x, y, drop, (drop.items || []).map(i => ({ ...i })));
+}
+
+async function doDropCollect(x, y, drop, toCollect) {
+  closeModal();
+  _currentDrop = null;
+
+  for (const { item_id, quantity } of toCollect) {
+    G.backpack[item_id] = (G.backpack[item_id] || 0) + quantity;
+    await saveBpItem(item_id, G.backpack[item_id]);
+  }
+
+  const takenMap = {};
+  toCollect.forEach(i => { takenMap[i.item_id] = (takenMap[i.item_id] || 0) + i.quantity; });
+  const remaining = (drop.items || [])
+    .map(i => ({ item_id: i.item_id, quantity: i.quantity - (takenMap[i.item_id] || 0) }))
+    .filter(i => i.quantity > 0);
+
+  const key = `${x},${y}`;
+  if (remaining.length === 0) {
+    await supabaseClient.from('drill_dropped_items').delete().eq('id', drop.id);
+    const list = G.droppedItems.get(key);
+    if (list) {
+      const idx = list.findIndex(d => d.id === drop.id);
+      if (idx >= 0) list.splice(idx, 1);
+      if (list.length === 0) G.droppedItems.delete(key);
+    }
+  } else {
+    await supabaseClient.from('drill_dropped_items').update({ items: remaining }).eq('id', drop.id);
+    const list = G.droppedItems.get(key);
+    if (list) { const d = list.find(d => d.id === drop.id); if (d) d.items = remaining; }
+  }
+
+  const names = toCollect.map(i => `${ITEM_NAMES[i.item_id]||i.item_id}×${i.quantity}`).join(', ');
+  log(`📦 落とし物を回収！ ${names}`);
+  renderSide(); renderMap();
+
+  const nextDrops = G.droppedItems.get(key);
+  if (nextDrops && nextDrops.length > 0) showDropModal(x, y, nextDrops[0]);
+}
+
+// ============================================================
 // モーダルユーティリティ
 // ============================================================
 
@@ -1096,7 +1237,25 @@ function setupRealtime() {
       if (!r || r.dropper_user_id === G.userId) return;
       const key = `${r.pos_x},${r.pos_y}`;
       if (!G.droppedItems.has(key)) G.droppedItems.set(key, []);
-      G.droppedItems.get(key).push({ id: r.id, items: r.items || [] });
+      G.droppedItems.get(key).push({
+        id: r.id, items: r.items || [],
+        dropper_name: r.dropper_name || '???',
+        cause_of_death: r.cause_of_death || '不明',
+        dropped_at: r.dropped_at,
+      });
+      renderMap();
+    })
+    .on('postgres_changes', {
+      event: 'UPDATE', schema: 'public', table: 'drill_dropped_items',
+    }, ({ new: r }) => {
+      if (!r) return;
+      const key = `${r.pos_x},${r.pos_y}`;
+      const list = G.droppedItems.get(key);
+      if (list) { const d = list.find(x => x.id === r.id); if (d) d.items = r.items || []; }
+      if (_currentDrop?.drop?.id === r.id) {
+        _currentDrop.drop.items = r.items || [];
+        showDropModal(_currentDrop.x, _currentDrop.y, _currentDrop.drop);
+      }
       renderMap();
     })
     .on('postgres_changes', {
@@ -1110,6 +1269,7 @@ function setupRealtime() {
         if (idx >= 0) list.splice(idx, 1);
         if (list.length === 0) G.droppedItems.delete(key);
       }
+      if (_currentDrop?.drop?.id === r.id) { closeModal(); _currentDrop = null; }
       renderMap();
     })
     .on('postgres_changes', {
@@ -1475,6 +1635,7 @@ async function initDrillGame() {
   if (!user) { window.location.href = '../login/index.html'; return; }
   G.userId = user.id;
   G.avatarUrl = user.user_metadata?.avatar_url || null;
+  G.displayName = user.user_metadata?.name || user.user_metadata?.full_name || '名無し';
 
   const discordId = user.user_metadata?.provider_id;
   if (typeof ADMIN_DISCORD_IDS !== 'undefined' && ADMIN_DISCORD_IDS.includes(discordId)) {
