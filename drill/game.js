@@ -82,6 +82,7 @@ const SELL_PRICES = {
 
 const G = {
   userId: null,
+  avatarUrl: null,
   mapDate: null,
   seed: 0,
   px: START_X,
@@ -447,10 +448,17 @@ async function finishMine(x, y, mat) {
   delete G.mineHP[key];
   G.mineTarget = null;
 
-  await supabaseClient.from('drill_dug_cells')
+  const { error: dugErr } = await supabaseClient.from('drill_dug_cells')
     .insert({ map_date: G.mapDate, x, y, dug_by: G.userId });
   G.dugCells.add(key);
   await releaseLock(x, y);
+
+  if (dugErr) {
+    // 別端末が先に採掘済み → アイテム付与しない
+    log('⚠️ 別端末と採掘が競合しました（アイテムなし）');
+    render();
+    return;
+  }
 
   if (mat === 'treasure') {
     await openTreasure(x, y);
@@ -831,8 +839,19 @@ function setupRealtime() {
     .on('postgres_changes', {
       event: '*', schema: 'public', table: 'drill_player_positions',
     }, ({ new: r }) => {
-      if (r && r.user_id !== G.userId && r.map_date === G.mapDate)
-        G.otherPlayers.set(r.user_id, { x: r.x, y: r.y });
+      if (!r) return;
+      if (r.user_id !== G.userId) {
+        if (r.map_date === G.mapDate)
+          G.otherPlayers.set(r.user_id, { x: r.x, y: r.y });
+      } else if (r.map_date === G.mapDate && (r.x !== G.px || r.y !== G.py)) {
+        // 別端末が同アカウントで操作 → 強制同期
+        stopMine();
+        G.px = r.x; G.py = r.y;
+        G.surfaceMode = (r.y === START_Y);
+        log('📱 別端末から位置を同期しました');
+        render();
+        return;
+      }
       renderMap();
     })
     .subscribe();
@@ -958,7 +977,12 @@ function buildCell(wx, wy) {
   }
 
   const isPlayer = wx === G.px && wy === G.py;
-  if (isPlayer) return `<div class="mc mc-player"><div class="player-icon">⛏️</div></div>`;
+  if (isPlayer) {
+    const icon = G.avatarUrl
+      ? `<img class="player-icon" src="${G.avatarUrl}" alt="" />`
+      : `<div class="player-icon">⛏️</div>`;
+    return `<div class="mc mc-player">${icon}</div>`;
+  }
 
   const isOther = [...G.otherPlayers.values()].some(p => p.x === wx && p.y === wy);
   const key = `${wx},${wy}`;
@@ -1128,6 +1152,7 @@ async function initDrillGame() {
   const { data: { user } } = await supabaseClient.auth.getUser();
   if (!user) { window.location.href = '../login/index.html'; return; }
   G.userId = user.id;
+  G.avatarUrl = user.user_metadata?.avatar_url || null;
 
   // 管理者リンクを表示
   const discordId = user.user_metadata?.provider_id;
