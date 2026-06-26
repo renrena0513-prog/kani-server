@@ -246,7 +246,7 @@ async function loadAll() {
       supabaseClient.from('drill_player_drills').select('*').eq('user_id', uid),
       supabaseClient.from('drill_player_permits').select('permit_id').eq('user_id', uid),
       supabaseClient.from('profiles').select('drill_gold').eq('id', uid).maybeSingle(),
-      supabaseClient.from('drill_player_positions').select('user_id,x,y').eq('map_date', date).neq('user_id', uid),
+      supabaseClient.from('drill_player_positions').select('user_id,x,y,avatar_url').eq('map_date', date).neq('user_id', uid),
     ]);
 
   G.dugCells = new Set((dugRes.data || []).map(r => `${r.x},${r.y}`));
@@ -299,7 +299,7 @@ async function loadAll() {
 
   // 他プレイヤー
   G.otherPlayers = new Map();
-  (othRes.data || []).forEach(r => G.otherPlayers.set(r.user_id, { x: r.x, y: r.y }));
+  (othRes.data || []).forEach(r => G.otherPlayers.set(r.user_id, { x: r.x, y: r.y, avatarUrl: r.avatar_url || null }));
 }
 
 // ============================================================
@@ -309,6 +309,7 @@ async function loadAll() {
 async function savePos() {
   await supabaseClient.from('drill_player_positions').upsert({
     user_id: G.userId, map_date: G.mapDate, x: G.px, y: G.py,
+    avatar_url: G.avatarUrl,
     updated_at: new Date().toISOString(),
   });
 }
@@ -842,7 +843,7 @@ function setupRealtime() {
       if (!r) return;
       if (r.user_id !== G.userId) {
         if (r.map_date === G.mapDate)
-          G.otherPlayers.set(r.user_id, { x: r.x, y: r.y });
+          G.otherPlayers.set(r.user_id, { x: r.x, y: r.y, avatarUrl: r.avatar_url || null });
       } else if (r.map_date === G.mapDate && (r.x !== G.px || r.y !== G.py)) {
         // 別端末が同アカウントで操作 → 強制同期
         stopMine();
@@ -984,7 +985,8 @@ function buildCell(wx, wy) {
     return `<div class="mc mc-player">${icon}</div>`;
   }
 
-  const isOther = [...G.otherPlayers.values()].some(p => p.x === wx && p.y === wy);
+  const otherAt = [...G.otherPlayers.values()].find(p => p.x === wx && p.y === wy);
+  const isOther = !!otherAt;
   const key = `${wx},${wy}`;
   const isDug = G.dugCells.has(key) || wy === 0;
   const isLocked = G.digLocks.has(key) && G.digLocks.get(key).by !== G.userId;
@@ -992,7 +994,13 @@ function buildCell(wx, wy) {
 
   if (isDug) {
     const base = wy === 0 ? 'mc-surf' : 'mc-dug';
-    return `<div class="mc ${base}">${isOther ? '🧑' : ''}</div>`;
+    let otherHtml = '';
+    if (isOther) {
+      otherHtml = otherAt.avatarUrl
+        ? `<img class="player-icon other-icon" src="${otherAt.avatarUrl}" alt="" />`
+        : `<div class="player-icon other-icon">🧑</div>`;
+    }
+    return `<div class="mc ${base}">${otherHtml}</div>`;
   }
 
   // 許可証バリア（境界行を強調表示）
