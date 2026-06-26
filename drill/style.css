@@ -260,6 +260,42 @@ html, body {
 
 .sh-dive-btn:active { opacity: .85; }
 
+/* ===== モバイル用ドリル情報バー ===== */
+#mob-drill-bar {
+    display: none;
+    width: 100%;
+    max-width: 340px;
+    background: rgba(255,255,255,.06);
+    border-radius: 10px;
+    padding: 5px 14px;
+    font-size: .72rem;
+    color: rgba(255,255,255,.85);
+    gap: 10px;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.mob-dur-wrap {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: auto;
+}
+
+.mob-dur-bar {
+    width: 48px;
+    height: 4px;
+    background: rgba(255,255,255,.15);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.mob-dur-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width .3s, background .3s;
+}
+
 /* ===== アクションボタン（モバイル） ===== */
 #action-btns {
     display: flex;
@@ -422,6 +458,12 @@ html, body {
         max-width: none;
         width: calc(100% - 16px);
         border-radius: 8px;
+    }
+
+    #mob-drill-bar {
+        display: flex;
+        max-width: none;
+        width: calc(100% - 16px);
     }
 
     /* マップが残り全高を占有 */

@@ -1036,6 +1036,27 @@ function renderSide() {
     <div>耐久: ${durStr}</div>
   `);
 
+  // モバイル用ドリルバー
+  const miningBadge = G.mineTarget ? '<span style="color:#ffcc44;">⛏️掘削中</span>' : '';
+  let durHtml;
+  if (G.drillDur === null) {
+    durHtml = `<span style="opacity:.6;">耐久 ∞</span>`;
+  } else {
+    const pct = Math.max(0, Math.round((G.drillDur / (drill.dur || 1)) * 100));
+    const color = pct > 50 ? '#6bde9b' : pct > 20 ? '#ffc107' : '#ff5555';
+    durHtml = `
+      <span>耐久</span>
+      <div class="mob-dur-bar"><div class="mob-dur-fill" style="width:${pct}%;background:${color};"></div></div>
+      <span style="color:${color};">${G.drillDur}</span>
+    `;
+  }
+  setHTML('mob-drill-bar', `
+    <span>⛏️ ${drill.name}</span>
+    <span style="opacity:.7;">威力 ${drill.power}</span>
+    <div class="mob-dur-wrap">${durHtml}</div>
+    ${miningBadge}
+  `);
+
   // ステータス
   const lyr = Math.floor(G.py / 100) + 1;
   setHTML('status-info', `
