@@ -661,7 +661,7 @@ function showBag() {
   }
 
   if (G.py === 0) {
-    html += `<button class="btn-modal-action" style="width:100%;margin-top:10px;" onclick="returnSurface(false)">↩️ 帰還して確定</button>`;
+    html += `<button class="btn-modal-action" style="width:100%;margin-top:10px;" onclick="returnSurface(false)">📦 倉庫に確定</button>`;
   } else {
     html += `<button class="btn-modal-action" style="width:100%;margin-top:10px;" onclick="returnSurface(true)">🪨 帰還石で即帰還</button>`;
   }
@@ -822,8 +822,56 @@ function setupRealtime() {
 // ============================================================
 
 function render() {
+  renderView();
+  renderSurfaceHome();
   renderMap();
   renderSide();
+}
+
+function renderView() {
+  const underground = G.py > 0 || G.mineTarget !== null;
+  const sh = document.getElementById('surface-home');
+  const gw = document.getElementById('game-wrap');
+  if (sh) sh.style.display = underground ? 'none' : 'flex';
+  if (gw) gw.style.display = underground ? '' : 'none';
+}
+
+function renderSurfaceHome() {
+  const el = document.getElementById('surface-home');
+  if (!el || el.style.display === 'none') return;
+
+  const drill = DRILLS[G.equippedDrillId] || DRILLS.beginner;
+  const durStr = G.drillDur === null ? '∞' : G.drillDur;
+  const bpKeys = Object.keys(G.backpack).filter(k => G.backpack[k] > 0);
+  const bpAlert = bpKeys.length > 0
+    ? `<div class="sh-bp-alert">⚠️ リュックに未確定アイテムあり（${bpKeys.length}種）— リュックから倉庫に確定できます</div>`
+    : '';
+
+  el.innerHTML = `
+    <div class="sh-card">
+      <div class="sh-title">⛏️ ほりほりドリル</div>
+      <div class="sh-stats">
+        <span>💰 ${G.drillGold}G</span>
+        <span>📍 地上 (0m)</span>
+      </div>
+      <div class="sh-drill-info">装備: ${drill.name} ／ 耐久: ${durStr}</div>
+      ${bpAlert}
+    </div>
+    <div class="sh-menu">
+      <button class="sh-btn" onclick="showShop()">🛒&ensp;ショップ</button>
+      <button class="sh-btn" onclick="showSell()">💰&ensp;素材売却</button>
+      <button class="sh-btn" onclick="showCraft()">🔨&ensp;クラフト</button>
+      <button class="sh-btn" onclick="showDrills()">⛏️&ensp;ドリル管理</button>
+      <button class="sh-btn" onclick="showBag()">🎒&ensp;リュック${bpKeys.length > 0 ? `<span class="sh-badge">${bpKeys.length}</span>` : ''}</button>
+    </div>
+    <div class="sh-dive-wrap">
+      <button class="sh-dive-btn" onclick="startDive()">⛏️&ensp;地下に潜る</button>
+    </div>
+  `;
+}
+
+function startDive() {
+  move(0, 1);
 }
 
 function renderMap() {
@@ -861,7 +909,7 @@ function buildCell(wx, wy) {
   }
 
   const isPlayer = wx === G.px && wy === G.py;
-  if (isPlayer) return `<div class="mc mc-player">👤</div>`;
+  if (isPlayer) return `<div class="mc mc-player"><div class="player-icon"></div></div>`;
 
   const isOther = [...G.otherPlayers.values()].some(p => p.x === wx && p.y === wy);
   const key = `${wx},${wy}`;
@@ -872,6 +920,14 @@ function buildCell(wx, wy) {
   if (isDug) {
     const base = wy === 0 ? 'mc-surf' : 'mc-dug';
     return `<div class="mc ${base}" onclick="handleClick(${wx},${wy})">${isOther ? '🧑' : ''}</div>`;
+  }
+
+  // 許可証バリア（境界行を強調表示）
+  if (wy === 100 && !G.permits.has('permit_100')) {
+    return `<div class="mc mc-barrier" title="100m立入禁止 — 許可証が必要">🚧</div>`;
+  }
+  if (wy === 200 && !G.permits.has('permit_200')) {
+    return `<div class="mc mc-barrier" title="200m立入禁止 — 許可証が必要">🚧</div>`;
   }
 
   const mat = cellMat(wx, wy);
@@ -948,22 +1004,15 @@ function handleClick(wx, wy) {
 }
 
 function setupInput() {
-  // モバイルアクションボタン
-  const returnFn = () => { if (G.py === 0) returnSurface(false); else showBag(); };
-  document.getElementById('btn-return')?.addEventListener('click', returnFn);
-  document.getElementById('btn-bag')?.addEventListener('click', showBag);
-  document.getElementById('btn-shop')?.addEventListener('click', showShop);
-  document.getElementById('btn-craft')?.addEventListener('click', showCraft);
-  document.getElementById('btn-sell')?.addEventListener('click', showSell);
+  // モバイルアクションボタン（地下専用: ドリル・リュック・帰還）
   document.getElementById('btn-drills')?.addEventListener('click', showDrills);
+  document.getElementById('btn-bag')?.addEventListener('click', showBag);
+  document.getElementById('btn-return')?.addEventListener('click', showBag);
 
   // PC 左パネルボタン
-  document.getElementById('btn-return-pc')?.addEventListener('click', returnFn);
-  document.getElementById('btn-bag-pc')?.addEventListener('click', showBag);
-  document.getElementById('btn-shop-pc')?.addEventListener('click', showShop);
-  document.getElementById('btn-craft-pc')?.addEventListener('click', showCraft);
-  document.getElementById('btn-sell-pc')?.addEventListener('click', showSell);
   document.getElementById('btn-drills-pc')?.addEventListener('click', showDrills);
+  document.getElementById('btn-bag-pc')?.addEventListener('click', showBag);
+  document.getElementById('btn-return-pc')?.addEventListener('click', showBag);
 
   // キーボード
   document.addEventListener('keydown', e => {

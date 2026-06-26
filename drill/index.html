@@ -10,7 +10,10 @@
 </head>
 <body>
 
-<div id="game-wrap">
+<!-- 地上ホーム画面（JS が内容を生成） -->
+<div id="surface-home" style="display:none;"></div>
+
+<div id="game-wrap" style="display:none;">
     <!-- PC: 左パネル -->
     <aside class="side-panel" id="panel-left">
         <div class="panel-box">
@@ -23,9 +26,6 @@
         </div>
         <div class="panel-box pc-action-btns">
             <button class="act-btn" id="btn-drills-pc">⛏️ ドリル</button>
-            <button class="act-btn" id="btn-sell-pc">💰 売却</button>
-            <button class="act-btn" id="btn-shop-pc">🛒 ショップ</button>
-            <button class="act-btn" id="btn-craft-pc">🔨 クラフト</button>
             <button class="act-btn" id="btn-bag-pc">🎒 リュック</button>
             <button class="act-btn" id="btn-return-pc">↩️ 帰還</button>
         </div>
@@ -44,13 +44,10 @@
             <div id="map-grid"></div>
         </div>
 
-        <!-- アクションボタン（モバイル） -->
+        <!-- アクションボタン（モバイル・地下専用） -->
         <div id="action-btns">
             <button class="act-btn" id="btn-drills">⛏️ ドリル</button>
-            <button class="act-btn" id="btn-sell">💰 売却</button>
             <button class="act-btn" id="btn-bag">🎒 リュック</button>
-            <button class="act-btn" id="btn-shop">🛒 ショップ</button>
-            <button class="act-btn" id="btn-craft">🔨 クラフト</button>
             <button class="act-btn" id="btn-return">↩️ 帰還</button>
         </div>
     </main>
