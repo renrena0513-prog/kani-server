@@ -176,28 +176,33 @@ const DEFAULT_GAME_CONFIG = {
 
 let gameConfig = null;
 
-const MAT_IDS   = ['dirt','stone','copper','iron','silver','gold','treasure'];
-const MAT_NAMES = { dirt:'土', stone:'石', copper:'銅', iron:'鉄', silver:'銀', gold:'金', treasure:'宝箱' };
-const DRILL_IDS = ['beginner','apprentice','stone_drill','copper_drill','journeyman',
-                   'iron_drill','mass_drill','veteran','silver_drill','allpurpose'];
+const MAT_IDS        = ['dirt','stone','copper','iron','silver','gold','treasure'];
+const MAT_NAMES      = { dirt:'土', stone:'石', copper:'銅', iron:'鉄', silver:'銀', gold:'金', treasure:'宝箱' };
+const DRILL_IDS      = ['beginner','apprentice','stone_drill','copper_drill','journeyman',
+                        'iron_drill','mass_drill','veteran','silver_drill','allpurpose'];
+const RECIPE_MAT_IDS = ['dirt','stone','copper','iron','silver','gold'];
 
 function cfgNum(id, val, opts = '') {
   return `<input class="cfg-input" type="number" id="${id}" value="${escDrill(String(val ?? ''))}" ${opts}>`;
 }
-function cfgTxt(id, val, opts = '') {
-  return `<input class="cfg-input" type="text" id="${id}" value="${escDrill(String(val ?? ''))}" ${opts}>`;
-}
-function recipeToStr(r) {
-  return r ? Object.entries(r).map(([k, v]) => `${k}:${v}`).join(',') : '';
-}
-function parseRecipe(str) {
-  if (!str?.trim()) return null;
-  const obj = {};
-  str.split(',').forEach(part => {
-    const [mat, qty] = part.trim().split(':');
-    if (mat && qty) obj[mat.trim()] = parseInt(qty) || 0;
-  });
-  return Object.keys(obj).length ? obj : null;
+
+// レシピ行を追加（ドリル・許可証共通）
+function addRecipeDom(recipeId) {
+  const container = document.getElementById('recipe-rows-' + recipeId);
+  if (!container) return;
+  container.querySelectorAll('.recipe-placeholder').forEach(el => el.remove());
+  const matOpts = RECIPE_MAT_IDS.map(id =>
+    `<option value="${id}">${MAT_NAMES[id]}</option>`
+  ).join('');
+  const row = document.createElement('div');
+  row.className = 'recipe-row';
+  row.style.cssText = 'display:flex;gap:6px;align-items:center;margin-bottom:6px;';
+  row.innerHTML = `
+    <select class="cfg-input rmat-${recipeId}" style="flex:1;">${matOpts}</select>
+    <span style="opacity:.45;font-size:.8rem;">×</span>
+    <input class="cfg-input rqty-${recipeId}" type="number" value="1" min="1" style="width:70px;">
+    <button class="inv-del-btn" onclick="this.parentElement.remove()">✕</button>`;
+  container.appendChild(row);
 }
 
 function showCfgTab(name, btn) {
@@ -254,27 +259,59 @@ function renderMatsTab() {
 
 function renderDrillsTab() {
   const cfg = gameConfig.drills ?? {};
-  const rows = DRILL_IDS.map(id => {
+
+  const matOptsFor = (selected) => RECIPE_MAT_IDS.map(id =>
+    `<option value="${id}" ${id === selected ? 'selected' : ''}>${MAT_NAMES[id]}</option>`
+  ).join('');
+
+  const statsRows = DRILL_IDS.map(id => {
     const def = DEFAULT_GAME_CONFIG.drills[id];
     const d   = { ...def, ...(cfg[id] ?? {}) };
     return `<tr>
       <td style="white-space:nowrap;">${escDrill(def.name)}</td>
-      <td>${cfgNum('cfg-drill-power-'  + id, d.power,        'min="1" style="width:64px;"')}</td>
-      <td>${cfgNum('cfg-drill-dur-'    + id, d.dur   ?? '',   'min="0" placeholder="∞" style="width:80px;"')}</td>
-      <td>${cfgNum('cfg-drill-cost-'   + id, d.cost  ?? '',   'min="0" placeholder="—" style="width:80px;"')}</td>
-      <td>${cfgTxt('cfg-drill-recipe-' + id, recipeToStr(d.recipe), 'placeholder="stone:50" style="width:180px;"')}</td>
+      <td>${cfgNum('cfg-drill-power-'+id, d.power,      'min="1" style="width:64px;"')}</td>
+      <td>${cfgNum('cfg-drill-dur-'  +id, d.dur ?? '',  'min="0" placeholder="∞" style="width:80px;"')}</td>
+      <td>${cfgNum('cfg-drill-cost-' +id, d.cost ?? '', 'min="0" placeholder="—" style="width:80px;"')}</td>
     </tr>`;
   }).join('');
+
+  const recipeBlocks = DRILL_IDS.map(id => {
+    const def     = DEFAULT_GAME_CONFIG.drills[id];
+    const d       = { ...def, ...(cfg[id] ?? {}) };
+    const entries = Object.entries(d.recipe || {});
+
+    const rows = entries.length > 0
+      ? entries.map(([mat, qty]) => `
+          <div class="recipe-row" style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+            <select class="cfg-input rmat-${id}" style="flex:1;">${matOptsFor(mat)}</select>
+            <span style="opacity:.45;font-size:.8rem;">×</span>
+            <input class="cfg-input rqty-${id}" type="number" value="${qty}" min="1" style="width:70px;">
+            <button class="inv-del-btn" onclick="this.parentElement.remove()">✕</button>
+          </div>`).join('')
+      : `<div class="recipe-placeholder inv-empty" style="margin-bottom:6px;">なし（クラフト不可）</div>`;
+
+    return `<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:12px;">
+      <div style="font-size:.82rem;font-weight:700;margin-bottom:8px;color:rgba(255,255,255,.8);">${escDrill(def.name)}</div>
+      <div id="recipe-rows-${id}">${rows}</div>
+      <button class="inv-save-btn" style="padding:2px 10px;font-size:.75rem;" onclick="addRecipeDom('${id}')">＋ 素材追加</button>
+    </div>`;
+  }).join('');
+
   document.getElementById('cfg-tab-drills').innerHTML = `
-    <div class="info-box" style="margin-bottom:10px;">
-      レシピ形式: <code>素材:数量,素材:数量</code> 例: <code>stone:50</code> / <code>stone:20,copper:20,iron:20</code><br>
+    <div class="info-box" style="margin-bottom:12px;">
       耐久・購入Gは空欄=なし（∞ / ショップ非売品）
     </div>
     <div style="overflow-x:auto;">
-    <table class="drill-table">
-      <tr><th>ドリル</th><th>威力</th><th>最大耐久</th><th>購入G</th><th>クラフトレシピ</th></tr>
-      ${rows}
-    </table></div>`;
+    <table class="drill-table" style="margin-bottom:20px;">
+      <tr><th>ドリル</th><th>威力</th><th>最大耐久</th><th>購入G</th></tr>
+      ${statsRows}
+    </table></div>
+    <div style="font-weight:700;font-size:.85rem;color:rgba(255,255,255,.65);margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.12);">
+      🔨 クラフトレシピ
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;">
+      ${recipeBlocks}
+    </div>`;
 }
 
 function renderLayersTab() {
@@ -344,20 +381,34 @@ function renderSellTab() {
 }
 
 function renderPermitsTab() {
-  const cfg  = gameConfig.permits ?? {};
-  const rows = Object.entries(DEFAULT_GAME_CONFIG.permits).map(([id, def]) => {
-    const p = { ...def, ...(cfg[id] ?? {}) };
-    return `<tr>
-      <td style="white-space:nowrap;">${escDrill(def.name)}</td>
-      <td>${cfgTxt('cfg-permit-' + id, recipeToStr(p.recipe), 'placeholder="stone:1000,copper:300" style="width:220px;"')}</td>
-    </tr>`;
+  const cfg = gameConfig.permits ?? {};
+
+  const matOptsFor = (selected) => RECIPE_MAT_IDS.map(id =>
+    `<option value="${id}" ${id === selected ? 'selected' : ''}>${MAT_NAMES[id]}</option>`
+  ).join('');
+
+  const blocks = Object.entries(DEFAULT_GAME_CONFIG.permits).map(([id, def]) => {
+    const p       = { ...def, ...(cfg[id] ?? {}) };
+    const entries = Object.entries(p.recipe || {});
+
+    const rows = entries.length > 0
+      ? entries.map(([mat, qty]) => `
+          <div class="recipe-row" style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+            <select class="cfg-input rmat-${id}" style="flex:1;">${matOptsFor(mat)}</select>
+            <span style="opacity:.45;font-size:.8rem;">×</span>
+            <input class="cfg-input rqty-${id}" type="number" value="${qty}" min="1" style="width:70px;">
+            <button class="inv-del-btn" onclick="this.parentElement.remove()">✕</button>
+          </div>`).join('')
+      : `<div class="recipe-placeholder inv-empty" style="margin-bottom:6px;">なし</div>`;
+
+    return `<div style="margin-bottom:20px;">
+      <div style="font-size:.9rem;font-weight:700;margin-bottom:10px;">${escDrill(def.name)}</div>
+      <div id="recipe-rows-${id}">${rows}</div>
+      <button class="inv-save-btn" style="padding:2px 10px;font-size:.75rem;" onclick="addRecipeDom('${id}')">＋ 素材追加</button>
+    </div>`;
   }).join('');
-  document.getElementById('cfg-tab-permits').innerHTML = `
-    <div class="info-box" style="margin-bottom:10px;">レシピ形式: <code>素材:数量,素材:数量</code></div>
-    <table class="drill-table" style="max-width:600px;">
-      <tr><th>許可証</th><th>クラフトレシピ</th></tr>
-      ${rows}
-    </table>`;
+
+  document.getElementById('cfg-tab-permits').innerHTML = `<div style="margin-top:4px;">${blocks}</div>`;
 }
 
 function collectConfig() {
@@ -371,16 +422,23 @@ function collectConfig() {
 
   // DRILLS
   DRILL_IDS.forEach(id => {
-    const pw  = document.getElementById('cfg-drill-power-'  + id);
-    const dur = document.getElementById('cfg-drill-dur-'    + id);
-    const cst = document.getElementById('cfg-drill-cost-'   + id);
-    const rec = document.getElementById('cfg-drill-recipe-' + id);
+    const pw  = document.getElementById('cfg-drill-power-' + id);
+    const dur = document.getElementById('cfg-drill-dur-'   + id);
+    const cst = document.getElementById('cfg-drill-cost-'  + id);
     if (!gc.drills) gc.drills = {};
     if (!gc.drills[id]) gc.drills[id] = { ...DEFAULT_GAME_CONFIG.drills[id] };
-    if (pw)  gc.drills[id].power  = parseInt(pw.value) || 1;
-    if (dur) gc.drills[id].dur    = dur.value.trim() === '' ? null : (parseInt(dur.value) || null);
-    if (cst) gc.drills[id].cost   = cst.value.trim() === '' ? null : (parseInt(cst.value) || null);
-    if (rec) gc.drills[id].recipe = parseRecipe(rec.value);
+    if (pw)  gc.drills[id].power = parseInt(pw.value) || 1;
+    if (dur) gc.drills[id].dur   = dur.value.trim() === '' ? null : (parseInt(dur.value) || null);
+    if (cst) gc.drills[id].cost  = cst.value.trim() === '' ? null : (parseInt(cst.value) || null);
+    if (document.getElementById('recipe-rows-' + id)) {
+      const recipe = {};
+      document.querySelectorAll(`.rmat-${id}`).forEach((matEl, i) => {
+        const mat = matEl.value;
+        const qty = parseInt(document.querySelectorAll(`.rqty-${id}`)[i]?.value || '0');
+        if (mat && qty > 0) recipe[mat] = qty;
+      });
+      gc.drills[id].recipe = Object.keys(recipe).length > 0 ? recipe : null;
+    }
   });
 
   // LAYER WEIGHTS (percentage format)
@@ -407,11 +465,16 @@ function collectConfig() {
 
   // PERMITS
   Object.keys(DEFAULT_GAME_CONFIG.permits).forEach(id => {
-    const el = document.getElementById('cfg-permit-' + id);
-    if (el) {
-      if (!gc.permits) gc.permits = {};
-      if (!gc.permits[id]) gc.permits[id] = { ...DEFAULT_GAME_CONFIG.permits[id] };
-      gc.permits[id].recipe = parseRecipe(el.value);
+    if (!gc.permits) gc.permits = {};
+    if (!gc.permits[id]) gc.permits[id] = { ...DEFAULT_GAME_CONFIG.permits[id] };
+    if (document.getElementById('recipe-rows-' + id)) {
+      const recipe = {};
+      document.querySelectorAll(`.rmat-${id}`).forEach((matEl, i) => {
+        const mat = matEl.value;
+        const qty = parseInt(document.querySelectorAll(`.rqty-${id}`)[i]?.value || '0');
+        if (mat && qty > 0) recipe[mat] = qty;
+      });
+      gc.permits[id].recipe = Object.keys(recipe).length > 0 ? recipe : null;
     }
   });
 }
