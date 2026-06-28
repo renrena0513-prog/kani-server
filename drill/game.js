@@ -1110,9 +1110,13 @@ function showShop() {
   // ドリル
   for (const item of SHOP_ITEMS) {
     const canBuy = G.drillGold >= item.cost;
+    const drillDef = item.type === 'drill' ? (DRILLS[item.drillId] ?? {}) : {};
+    const statsStr = item.type === 'drill'
+      ? `<span style="color:rgba(255,200,80,.8);">発掘力 ${drillDef.power ?? '?'}</span> ／ 耐久 ${drillDef.dur ?? '∞'}`
+      : '';
     html += `<div class="modal-row">
       <div><div class="modal-row-label">${item.name}</div>
-      <div class="modal-row-sub">${item.cost}G</div></div>
+      <div class="modal-row-sub">${item.cost}G${statsStr ? '　' + statsStr : ''}</div></div>
       <button class="btn-modal-action" onclick="buyShopDrill('${item.id}')" ${canBuy?'':'disabled'}>購入</button>
     </div>`;
   }
@@ -1287,8 +1291,10 @@ function showCraft() {
     if (!d.recipe) continue;
     const can = Object.entries(d.recipe).every(([m, q]) => (G.inventory[m] || 0) >= q);
     const recipe = Object.entries(d.recipe).map(([m, q]) => `${MATS[m]?.name||m}×${q}`).join(', ');
+    const statsStr = `<span style="color:rgba(255,200,80,.8);">発掘力 ${d.power ?? '?'}</span> ／ 耐久 ${d.dur ?? '∞'}`;
     html += `<div class="modal-row">
       <div><div class="modal-row-label">${d.name}</div>
+      <div class="modal-row-sub">${statsStr}</div>
       <div class="modal-row-sub">${recipe}</div></div>
       <button class="btn-modal-action" onclick="confirmCraft('drill','${did}')" ${can?'':'disabled'}>作成</button>
     </div>`;
