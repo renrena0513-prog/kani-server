@@ -261,6 +261,10 @@ const DEFAULT_GAME_CONFIG = {
     },
   },
   treasureSlots: Array.from({length: 30}, () => ({ wood: 1 })),
+  items: {
+    return_stone: { name: '帰還石',     weight: 10, cost: null, effectText: '地上に帰還する',    imageUrl: null },
+    potion:       { name: 'ポーション', weight: 10, cost: 100,  effectText: '体力を100回復する', imageUrl: null },
+  },
 };
 
 let gameConfig = null;
@@ -316,6 +320,7 @@ async function loadGameConfigAdmin() {
   }
   if (!gameConfig.monsters)       gameConfig.monsters       = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.monsters));
   if (!gameConfig.cards)         gameConfig.cards          = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.cards));
+  if (!gameConfig.items)         gameConfig.items          = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.items));
   if (!gameConfig.treasureTypes) gameConfig.treasureTypes  = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.treasureTypes));
   if (!gameConfig.treasureSlots || gameConfig.treasureSlots.length < 30)
     gameConfig.treasureSlots = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.treasureSlots));
@@ -361,6 +366,7 @@ function renderConfigEditor() {
   renderEventsTab();
   renderMonstersTab();
   renderCardsTab();
+  renderItemsTab();
   renderTreasureTab();
   // 最初のタブをアクティブに
   const firstBtn = document.querySelector('.cfg-tab-btn');
@@ -863,9 +869,10 @@ function collectConfig() {
     if (maxEl) c.max = parseInt(maxEl.value) || 0;
   });
 
-  // MONSTERS / CARDS / TREASURE
+  // MONSTERS / CARDS / ITEMS / TREASURE
   collectMonstersConfig();
   collectCardsConfig();
+  collectItemsConfig();
   collectTreasureConfig();
 }
 
@@ -1315,6 +1322,100 @@ async function uploadCardImage(id, input) {
 function clearCardImage(id) {
   if (gameConfig.cards?.[id]) gameConfig.cards[id].imageUrl = null;
   renderCardsTab();
+}
+
+// ============================================================
+// アイテム設定タブ
+// ============================================================
+
+function renderItemsTab() {
+  const el = document.getElementById('cfg-tab-items');
+  if (!el) return;
+  const items = gameConfig.items ?? {};
+
+  let html = `<div class="info-box" style="margin-bottom:14px;">
+    アイテムの定義を設定します。値段が0のアイテムはショップに表示されません。
+  </div>`;
+
+  for (const [id, def] of Object.entries(items)) {
+    const imgPreview = def.imageUrl
+      ? `<img src="${escDrill(def.imageUrl)}" style="width:32px;height:32px;object-fit:contain;vertical-align:middle;cursor:pointer;border-radius:4px;" onclick="clearItemImage('${id}')" title="クリックで削除">`
+      : `<span style="opacity:.4;font-size:.75rem;">画像なし</span>`;
+
+    html += `<div style="border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:12px;margin-bottom:12px;">
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
+        <input type="text" id="cfg-item-name-${id}" value="${escDrill(def.name ?? id)}" style="width:120px;" placeholder="名前">
+        <label style="cursor:pointer;font-size:.8rem;padding:4px 8px;background:rgba(255,255,255,.1);border-radius:4px;">
+          📷 画像
+          <input type="file" accept="image/*" style="display:none;" onchange="uploadItemImage('${id}',this)">
+        </label>
+        ${imgPreview}
+        <button class="btn-refresh" style="margin-left:auto;background:rgba(255,100,100,.2);" onclick="deleteItem('${id}')">🗑️ 削除</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.8rem;">
+        <label>効果テキスト
+          <input type="text" id="cfg-item-effect-${id}" value="${escDrill(def.effectText ?? '')}" style="width:100%;margin-top:2px;" placeholder="説明文">
+        </label>
+        <label>重量
+          <input type="number" id="cfg-item-weight-${id}" value="${def.weight ?? 1}" min="0" style="width:100%;margin-top:2px;">
+        </label>
+        <label>値段（0=非売品）
+          <input type="number" id="cfg-item-cost-${id}" value="${def.cost ?? 0}" min="0" style="width:100%;margin-top:2px;">
+        </label>
+      </div>
+    </div>`;
+  }
+
+  html += `<button class="btn-refresh" onclick="addItem()">＋ アイテムを追加</button>`;
+  el.innerHTML = html;
+}
+
+function collectItemsConfig() {
+  const gc = gameConfig;
+  if (!gc.items) gc.items = {};
+  for (const [id, def] of Object.entries(gc.items)) {
+    const nameEl   = document.getElementById(`cfg-item-name-${id}`);
+    const effectEl = document.getElementById(`cfg-item-effect-${id}`);
+    const weightEl = document.getElementById(`cfg-item-weight-${id}`);
+    const costEl   = document.getElementById(`cfg-item-cost-${id}`);
+    if (nameEl)   def.name       = nameEl.value   || def.name;
+    if (effectEl) def.effectText = effectEl.value;
+    if (weightEl) def.weight     = parseInt(weightEl.value) || 1;
+    if (costEl)   def.cost       = parseInt(costEl.value)   || 0;
+  }
+}
+
+function addItem() {
+  collectItemsConfig();
+  const id = 'item_' + Date.now();
+  if (!gameConfig.items) gameConfig.items = {};
+  gameConfig.items[id] = { name: '新アイテム', weight: 10, cost: 0, effectText: '', imageUrl: null };
+  renderItemsTab();
+}
+
+function deleteItem(id) {
+  collectItemsConfig();
+  if (!confirm(`「${gameConfig.items?.[id]?.name || id}」を削除しますか？`)) return;
+  delete gameConfig.items[id];
+  renderItemsTab();
+}
+
+async function uploadItemImage(id, input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  try {
+    collectItemsConfig();
+    const url = await uploadDrillImage('items/' + id, file);
+    if (gameConfig.items?.[id]) gameConfig.items[id].imageUrl = url;
+    renderItemsTab();
+  } catch (e) {
+    alert('アップロードエラー: ' + e.message);
+  }
+}
+
+function clearItemImage(id) {
+  if (gameConfig.items?.[id]) gameConfig.items[id].imageUrl = null;
+  renderItemsTab();
 }
 
 // ============================================================
