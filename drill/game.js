@@ -84,7 +84,7 @@ function itemWeight(id) { return ITEM_WEIGHTS[id] ?? 1; }
 let BASE_HP = 1000;
 
 // ブロック破壊イベント（各層の確率テーブル）
-// type: nothing / gold / damage / pitfall / combat
+// type: nothing / gold / damage / pitfall
 let EVENTS = [
   // 第1層 0-99m
   [
@@ -92,7 +92,6 @@ let EVENTS = [
     { type:'gold',    weight:10, min:5,   max:20  },
     { type:'damage',  weight:5,  min:10,  max:30  },
     { type:'pitfall', weight:3  },
-    { type:'combat',  weight:2  },
   ],
   // 第2層 100-199m
   [
@@ -100,7 +99,6 @@ let EVENTS = [
     { type:'gold',    weight:10, min:20,  max:80  },
     { type:'damage',  weight:8,  min:20,  max:60  },
     { type:'pitfall', weight:8  },
-    { type:'combat',  weight:4  },
   ],
   // 第3層 200-299m
   [
@@ -108,8 +106,14 @@ let EVENTS = [
     { type:'gold',    weight:10, min:50,  max:200 },
     { type:'damage',  weight:12, min:50,  max:100 },
     { type:'pitfall', weight:12 },
-    { type:'combat',  weight:6  },
   ],
+];
+
+// 移動エンカウント確率（各層、1マス移動ごとの %）
+let ENCOUNTER = [
+  { chance: 2 },  // 第1層 0-99m
+  { chance: 4 },  // 第2層 100-199m
+  { chance: 6 },  // 第3層 200-299m
 ];
 
 // 呪いダメージ（上移動1マスごと、各層）
@@ -344,6 +348,9 @@ async function loadGameConfig() {
     }
     if (cfg.events && Array.isArray(cfg.events)) {
       cfg.events.forEach((layer, i) => { if (Array.isArray(layer)) EVENTS[i] = layer; });
+    }
+    if (cfg.encounter && Array.isArray(cfg.encounter)) {
+      cfg.encounter.forEach((e, i) => { if (e?.chance != null) ENCOUNTER[i] = e; });
     }
     if (cfg.curse && Array.isArray(cfg.curse)) {
       cfg.curse.forEach((c, i) => { if (c) CURSE[i] = c; });
@@ -615,9 +622,9 @@ async function move(dx, dy) {
 
   // エンカウントチェック（地下の掘り済みマスのみ・戦闘中は除外）
   if (!C.active && !G.surfaceMode && ny > START_Y) {
-    const li = Math.min(EVENTS.length - 1, Math.floor(ny / 100));
-    const ev = pickEvent(li);
-    if (ev.type === 'combat') {
+    const li  = Math.min(ENCOUNTER.length - 1, Math.floor(ny / 100));
+    const enc = ENCOUNTER[li];
+    if (enc && Math.random() * 100 < enc.chance) {
       log('⚔️ 敵と遭遇！');
       const monsterId = pickCombatMonster(li);
       if (monsterId) await startCombat(monsterId, nx, ny);

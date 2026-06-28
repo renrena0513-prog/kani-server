@@ -180,7 +180,6 @@ const DEFAULT_GAME_CONFIG = {
       { type: 'gold',    weight: 10, min: 5,   max: 20  },
       { type: 'damage',  weight: 5,  min: 10,  max: 30  },
       { type: 'pitfall', weight: 3  },
-      { type: 'combat',  weight: 2  },
     ],
     // 第2層 100-199m
     [
@@ -188,7 +187,6 @@ const DEFAULT_GAME_CONFIG = {
       { type: 'gold',    weight: 10, min: 20,  max: 80  },
       { type: 'damage',  weight: 8,  min: 20,  max: 60  },
       { type: 'pitfall', weight: 8  },
-      { type: 'combat',  weight: 4  },
     ],
     // 第3層 200-299m
     [
@@ -196,8 +194,12 @@ const DEFAULT_GAME_CONFIG = {
       { type: 'gold',    weight: 10, min: 50,  max: 200 },
       { type: 'damage',  weight: 12, min: 50,  max: 100 },
       { type: 'pitfall', weight: 12 },
-      { type: 'combat',  weight: 6  },
     ],
+  ],
+  encounter: [
+    { chance: 2 },  // 第1層 0-99m
+    { chance: 4 },  // 第2層 100-199m
+    { chance: 6 },  // 第3層 200-299m
   ],
   curse: [
     { min: 1, max: 10 }, // 第1層
@@ -472,16 +474,16 @@ function renderPermitsTab() {
 }
 
 function renderEventsTab() {
-  const events = gameConfig.events ?? DEFAULT_GAME_CONFIG.events;
-  const curse  = gameConfig.curse  ?? DEFAULT_GAME_CONFIG.curse;
-  const baseHp = gameConfig.baseHp ?? DEFAULT_GAME_CONFIG.baseHp;
+  const events    = gameConfig.events    ?? DEFAULT_GAME_CONFIG.events;
+  const encounter = gameConfig.encounter ?? DEFAULT_GAME_CONFIG.encounter;
+  const curse     = gameConfig.curse     ?? DEFAULT_GAME_CONFIG.curse;
+  const baseHp    = gameConfig.baseHp    ?? DEFAULT_GAME_CONFIG.baseHp;
 
   const EV_LABEL = {
     nothing: 'なし',
     gold:    'お金ドロップ',
     damage:  'ダメージ',
     pitfall: '落とし穴',
-    combat:  '戦闘',
   };
   const LAYER_NAME = ['第1層 (0〜99m)', '第2層 (100〜199m)', '第3層 (200〜299m)'];
 
@@ -490,9 +492,25 @@ function renderEventsTab() {
       重みは合計100推奨（内部で正規化されるので合計が違っても動作します）。<br>
       上移動時の許可証チェックなし・落とし穴は常に30m下へ転移。
     </div>
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
       <label style="font-size:.85rem;">❤️ 基礎HP</label>
       ${cfgNum('cfg-basehp', baseHp, 'min="1" style="width:90px;"')}
+    </div>
+
+    <div style="font-size:.88rem;font-weight:700;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.1);">
+      ⚔️ 移動エンカウント確率（1マス移動ごと）
+    </div>
+    <table class="drill-table" style="margin-bottom:24px;">
+      <tr><th>層</th><th>確率 (%)</th></tr>
+      ${encounter.map((e, i) => `
+      <tr>
+        <td style="white-space:nowrap;">${LAYER_NAME[i] ?? `第${i+1}層`}</td>
+        <td>${cfgNum(`cfg-enc-${i}-chance`, e.chance ?? 0, `min="0" max="100" step="0.1" style="width:80px;"`)}</td>
+      </tr>`).join('')}
+    </table>
+
+    <div style="font-size:.88rem;font-weight:700;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.1);">
+      🧱 ブロック破壊イベント
     </div>`;
 
   events.forEach((layer, li) => {
@@ -642,6 +660,13 @@ function collectConfig() {
         if (maxEl) ev.max = parseInt(maxEl.value) || 0;
       }
     });
+  });
+
+  // ENCOUNTER
+  if (!gc.encounter) gc.encounter = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.encounter));
+  gc.encounter.forEach((e, i) => {
+    const el = document.getElementById(`cfg-enc-${i}-chance`);
+    if (el) e.chance = parseFloat(el.value) || 0;
   });
 
   // CURSE
