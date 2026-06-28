@@ -1558,21 +1558,9 @@ function showInventory(tab = 'bag_mats') {
     const subTabBar = `<div style="display:flex;gap:6px;margin-bottom:10px;">
       ${subBtn('wh','mats','📦 素材')}
       ${subBtn('wh','items','💊 アイテム')}
-      ${subBtn('wh','drills','⛏️ ドリル')}
     </div>`;
     let body = '';
-    if (innerTab === 'mats') {
-      body = mats.length === 0
-        ? `<div style="font-size:.85rem;opacity:.5;padding:14px 0;text-align:center;">素材がありません</div>`
-        : mats.map(([item, qty]) => {
-            const price = SELL_PRICES[item];
-            const valStr = price ? `<span style="font-size:.72rem;color:rgba(255,200,80,.8);">💰${price}G/個</span>` : '';
-            return `<div class="modal-row">
-              <div><div class="modal-row-label">${MATS[item]?.name || item}</div>${valStr}</div>
-              <div style="font-size:.95rem;font-weight:700;">×${qty}</div>
-            </div>`;
-          }).join('');
-    } else if (innerTab === 'items') {
+    if (innerTab === 'items') {
       const invItems = Object.entries(G.inventory).filter(([id, v]) => v > 0 && !isMaterial(id));
       body = invItems.length === 0
         ? `<div style="font-size:.85rem;opacity:.5;padding:14px 0;text-align:center;">アイテムがありません</div>`
@@ -1591,31 +1579,14 @@ function showInventory(tab = 'bag_mats') {
             </div>`;
           }).join('');
     } else {
-      body = G.drills.length === 0
-        ? `<div style="font-size:.85rem;opacity:.5;padding:14px 0;text-align:center;">ドリルがありません</div>`
-        : G.drills.map(d => {
-            const def = DRILLS[d.drill_id] || {};
-            const isEquipped = d.id === G.equippedDrillRowId;
-            const durMax = def.dur ?? null;
-            const durVal = d.durability ?? durMax;
-            const durPct = durMax ? Math.max(0, Math.round((durVal / durMax) * 100)) : null;
-            const durColor = durPct === null ? '#aaa' : durPct > 50 ? '#4caf50' : durPct > 20 ? '#ff9800' : '#f44336';
-            const durBar = durMax
-              ? `<div style="margin-top:4px;height:4px;background:rgba(255,255,255,.15);border-radius:2px;overflow:hidden;">
-                   <div style="height:100%;width:${durPct}%;background:${durColor};border-radius:2px;"></div>
-                 </div>` : '';
+      body = mats.length === 0
+        ? `<div style="font-size:.85rem;opacity:.5;padding:14px 0;text-align:center;">素材がありません</div>`
+        : mats.map(([item, qty]) => {
+            const price = SELL_PRICES[item];
+            const valStr = price ? `<span style="font-size:.72rem;color:rgba(255,200,80,.8);">💰${price}G/個</span>` : '';
             return `<div class="modal-row">
-              <div style="flex:1;min-width:0;">
-                <div class="modal-row-label">${def.name || d.drill_id}${isEquipped ? ' <span style="font-size:.7rem;color:#d4a853;">装備中</span>' : ''}</div>
-                ${durBar}
-              </div>
-              <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
-                <button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;background:rgba(100,160,255,.5);" onclick="showDrillDetail('${d.id}')">詳細</button>
-                ${isEquipped
-                  ? `<span style="font-size:.72rem;opacity:.4;">装備中</span>`
-                  : `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;" onclick="equipDrill('${d.id}').then(()=>showInventory('wh_drills'))">装備</button>
-                     ${G.py > 0 && d.drill_id !== 'beginner' ? `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;background:rgba(200,60,60,.7);" onclick="dropDrillFromWarehouse('${d.id}')">落とす</button>` : ''}`}
-              </div>
+              <div><div class="modal-row-label">${MATS[item]?.name || item}</div>${valStr}</div>
+              <div style="font-size:.95rem;font-weight:700;">×${qty}</div>
             </div>`;
           }).join('');
     }
