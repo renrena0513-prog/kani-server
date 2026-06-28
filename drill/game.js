@@ -1142,14 +1142,14 @@ async function returnSurface(useStone = false) {
 function showShop(tab = 'drill') {
   if (G.py !== 0) { log('⚠️ ショップは地上のみ'); return; }
 
-  const tabs = ['drill','item','card'];
-  const tabLabels = { drill:'⛏️ ドリル', item:'💊 アイテム', card:'🃏 カード' };
+  const tabs = ['drill','item','card','sell'];
+  const tabLabels = { drill:'⛏️ ドリル', item:'💊 アイテム', card:'🃏 カード', sell:'💰 売却' };
 
   const tabBar = tabs.map(t => `
     <button onclick="showShop('${t}')"
       style="flex:1;padding:6px 0;border:none;border-bottom:2px solid ${t===tab?'rgba(255,200,80,.9)':'transparent'};
              background:none;color:${t===tab?'rgba(255,200,80,.9)':'rgba(255,255,255,.55)'};
-             font-size:.82rem;cursor:pointer;">${tabLabels[t]}</button>`).join('');
+             font-size:.75rem;cursor:pointer;">${tabLabels[t]}</button>`).join('');
 
   let body = '';
 
@@ -1198,12 +1198,43 @@ function showShop(tab = 'drill') {
     } else {
       body = `<div style="opacity:.45;font-size:.82rem;padding:12px 0;">販売中のカードはありません</div>`;
     }
+
+  } else if (tab === 'sell') {
+    const sellable = Object.entries(G.inventory)
+      .filter(([k, v]) => v > 0 && SELL_PRICES[k])
+      .sort((a, b) => (SELL_PRICES[b[0]] || 0) - (SELL_PRICES[a[0]] || 0));
+    if (sellable.length === 0) {
+      body = `<div style="font-size:.85rem;opacity:.5;padding:10px 0;">売却できる素材がありません<br><span style="font-size:.75rem;">（帰還して素材を確定してください）</span></div>`;
+    } else {
+      body = `<div style="font-size:.72rem;opacity:.5;margin-bottom:10px;">売却する個数を選んでください（初期値: 0個）</div>`;
+      for (const [item, qty] of sellable) {
+        const price = SELL_PRICES[item];
+        body += `<div class="modal-row" style="flex-wrap:nowrap;gap:6px;align-items:center;">
+          <div style="flex:1;min-width:0;">
+            <div class="modal-row-label">${MATS[item]?.name || item}</div>
+            <div class="modal-row-sub">所持 ${qty}個 ／ 1個 ${price}G</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;flex-shrink:0;">
+            <input id="sell-qty-${item}" type="number" min="0" max="${qty}" value="0"
+              style="width:58px;padding:4px 6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:6px;color:#fff;font-size:.82rem;text-align:center;"
+              oninput="updateSellTotal()">
+            <button class="btn-modal-action" style="font-size:.7rem;padding:4px 9px;white-space:nowrap;" onclick="setSellMax('${item}',${qty})">MAX</button>
+          </div>
+        </div>`;
+      }
+      body += `
+        <div style="margin-top:14px;padding:10px 12px;background:rgba(255,255,255,.06);border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:.82rem;opacity:.7;">売却合計</span>
+          <span id="sell-total-disp" style="font-size:1.05rem;font-weight:700;color:#d4a853;">0G</span>
+        </div>
+        <button class="btn-modal-action" id="sell-go-btn" style="width:100%;margin-top:10px;opacity:.35;cursor:default;" disabled onclick="showSellConfirm()">💰 売却する</button>`;
+    }
   }
 
   const html = `<div class="modal-title">🛒 ショップ</div>
     <div style="font-size:.82rem;margin-bottom:10px;">所持金: 💰 ${G.drillGold}G</div>
     <div style="display:flex;border-bottom:1px solid rgba(255,255,255,.15);margin-bottom:10px;">${tabBar}</div>
-    ${body}
+    <div style="min-height:220px;">${body}</div>
     <button class="btn-modal-close" onclick="closeModal()">閉じる</button>`;
   openModal(html);
 }
@@ -1433,84 +1464,173 @@ async function doCraft(type, id) {
 // リュックモーダル
 // ============================================================
 
-function showBag(tab = 'mats') {
-  const w = bpWeight();
-  const wPct = Math.min(100, Math.round((w / G.maxBpWeight) * 100));
-  const wColor = wPct >= 100 ? '#ff5555' : wPct > 70 ? '#ffc107' : '#6bde9b';
+function showInventory(tab = 'bag_mats') {
+  const isBag = tab.startsWith('bag_');
+  const innerTab = tab.slice(tab.indexOf('_') + 1);
   const underground = G.py > 0;
 
-  const tabBtn = (t, label) =>
-    `<button onclick="showBag('${t}')" style="flex:1;padding:6px 0;border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;
-      background:${tab===t?'#d4a853':'rgba(255,255,255,.1)'};color:#fff;">${label}</button>`;
+  const topTabBtn = (s, label) => {
+    const active = isBag ? s === 'bag' : s === 'wh';
+    return `<button onclick="showInventory('${s}_mats')"
+      style="flex:1;padding:6px 0;border:none;border-bottom:2px solid ${active?'rgba(255,200,80,.9)':'transparent'};
+             background:none;color:${active?'rgba(255,200,80,.9)':'rgba(255,255,255,.55)'};
+             font-size:.82rem;cursor:pointer;">${label}</button>`;
+  };
 
-  let body = '';
+  const topTabBar = `<div style="display:flex;border-bottom:1px solid rgba(255,255,255,.15);margin-bottom:12px;">
+    ${topTabBtn('bag','🎒 リュック')}
+    ${topTabBtn('wh','🏪 倉庫')}
+  </div>`;
 
-  if (tab === 'mats') {
-    const mats = Object.entries(G.backpack).filter(([id, v]) => v > 0 && isMaterial(id));
-    if (mats.length === 0) {
-      body = `<div style="font-size:.85rem;color:rgba(255,255,255,.5);padding:10px 0;">素材なし</div>`;
-    } else {
-      body = mats.map(([item, qty]) => {
-        const discardBtn = underground
-          ? `<button class="btn-modal-action" style="background:rgba(200,60,60,.7);font-size:.72rem;padding:4px 10px;" onclick="showDiscardItem('${item}',${qty})">落とす</button>`
-          : '';
-        return `<div class="modal-row">
-          <span class="modal-row-label">${getItemName(item)}</span>
-          <div style="display:flex;align-items:center;gap:6px;"><span>×${qty}</span>${discardBtn}</div>
-        </div>`;
-      }).join('');
-    }
-  } else {
-    const gameItems = Object.entries(G.backpack).filter(([id, v]) => v > 0 && !isMaterial(id));
-    if (gameItems.length === 0) {
-      body = `<div style="font-size:.85rem;color:rgba(255,255,255,.5);padding:10px 0;">アイテムなし</div>`;
-    } else {
-      body = gameItems.map(([id, qty]) => {
-        const def = ITEMS[id] ?? {};
-        const img = def.imageUrl ? `<img src="${escHtml(def.imageUrl)}" style="width:24px;height:24px;object-fit:contain;vertical-align:middle;margin-right:4px;">` : '';
-        const useBtn = underground ? `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;" onclick="useItem('${id}')">使用</button>` : '';
-        const depositBtn = !underground ? `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;background:rgba(80,180,120,.7);" onclick="depositItem('${id}')">倉庫へ</button>` : '';
-        const dropBtn = underground ? `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;background:rgba(200,60,60,.7);" onclick="showDiscardItem('${id}',${qty},'items')">落とす</button>` : '';
-        return `<div class="modal-row">
-          <div>
-            <div class="modal-row-label">${img}${escHtml(def.name || id)}</div>
-            ${def.effectText ? `<div class="modal-row-sub">${escHtml(def.effectText)}</div>` : ''}
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span>×${qty}</span>
-            ${useBtn}${depositBtn}${dropBtn}
-          </div>
-        </div>`;
-      }).join('');
-    }
-  }
+  const subBtn = (prefix, t, label) =>
+    `<button onclick="showInventory('${prefix}_${t}')"
+      style="flex:1;padding:5px 0;border:none;border-radius:8px;font-size:.78rem;cursor:pointer;
+             background:${innerTab===t?'#d4a853':'rgba(255,255,255,.1)'};color:#fff;">${label}</button>`;
 
-  let html = `<div class="modal-title">🎒 リュック</div>
-    <div style="margin-bottom:10px;">
+  let content = '';
+  let footer = '';
+
+  if (isBag) {
+    const w = bpWeight();
+    const wPct = Math.min(100, Math.round((w / G.maxBpWeight) * 100));
+    const wColor = wPct >= 100 ? '#ff5555' : wPct > 70 ? '#ffc107' : '#6bde9b';
+    const weightBar = `<div style="margin-bottom:10px;">
       <div style="display:flex;justify-content:space-between;font-size:.78rem;margin-bottom:4px;">
         <span style="opacity:.7;">容量</span>
         <span style="color:${wColor};font-weight:700;">${w} / ${G.maxBpWeight}</span>
       </div>
       <div style="height:6px;background:rgba(255,255,255,.15);border-radius:3px;overflow:hidden;">
-        <div style="width:${wPct}%;height:100%;background:${wColor};transition:width .3s;border-radius:3px;"></div>
+        <div style="width:${wPct}%;height:100%;background:${wColor};border-radius:3px;"></div>
       </div>
-    </div>
-    <div style="display:flex;gap:6px;margin-bottom:12px;">
-      ${tabBtn('mats','📦 素材')}
-      ${tabBtn('items','💊 アイテム')}
-    </div>
-    ${body}`;
-
-  if (G.py === 0) {
-    html += `<button class="btn-modal-action" style="width:100%;margin-top:10px;" onclick="returnSurface(false)">📦 素材を倉庫に確定</button>`;
-  } else {
-    if ((G.backpack['return_stone'] || 0) > 0) {
-      html += `<button class="btn-modal-action" style="width:100%;margin-top:10px;" onclick="useItem('return_stone')">🪨 帰還石で帰還</button>`;
+    </div>`;
+    const subTabBar = `<div style="display:flex;gap:6px;margin-bottom:10px;">
+      ${subBtn('bag','mats','📦 素材')}
+      ${subBtn('bag','items','💊 アイテム')}
+    </div>`;
+    let body = '';
+    if (innerTab === 'mats') {
+      const mats = Object.entries(G.backpack).filter(([id, v]) => v > 0 && isMaterial(id));
+      body = mats.length === 0
+        ? `<div style="font-size:.85rem;color:rgba(255,255,255,.5);padding:10px 0;">素材なし</div>`
+        : mats.map(([item, qty]) => {
+            const dropBtn = underground ? `<button class="btn-modal-action" style="background:rgba(200,60,60,.7);font-size:.72rem;padding:4px 10px;" onclick="showDiscardItem('${item}',${qty})">落とす</button>` : '';
+            return `<div class="modal-row">
+              <span class="modal-row-label">${getItemName(item)}</span>
+              <div style="display:flex;align-items:center;gap:6px;"><span>×${qty}</span>${dropBtn}</div>
+            </div>`;
+          }).join('');
+    } else {
+      const gameItems = Object.entries(G.backpack).filter(([id, v]) => v > 0 && !isMaterial(id));
+      body = gameItems.length === 0
+        ? `<div style="font-size:.85rem;color:rgba(255,255,255,.5);padding:10px 0;">アイテムなし</div>`
+        : gameItems.map(([id, qty]) => {
+            const def = ITEMS[id] ?? {};
+            const img = def.imageUrl ? `<img src="${escHtml(def.imageUrl)}" style="width:24px;height:24px;object-fit:contain;vertical-align:middle;margin-right:4px;">` : '';
+            const useBtn = underground ? `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;" onclick="useItem('${id}')">使用</button>` : '';
+            const depositBtn = !underground ? `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;background:rgba(80,180,120,.7);" onclick="depositItem('${id}')">倉庫へ</button>` : '';
+            const dropBtn = underground ? `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;background:rgba(200,60,60,.7);" onclick="showDiscardItem('${id}',${qty},'items')">落とす</button>` : '';
+            return `<div class="modal-row">
+              <div>
+                <div class="modal-row-label">${img}${escHtml(def.name || id)}</div>
+                ${def.effectText ? `<div class="modal-row-sub">${escHtml(def.effectText)}</div>` : ''}
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span>×${qty}</span>${useBtn}${depositBtn}${dropBtn}
+              </div>
+            </div>`;
+          }).join('');
     }
+    if (!underground) {
+      footer = `<button class="btn-modal-action" style="width:100%;margin-top:10px;" onclick="returnSurface(false)">📦 素材を倉庫に確定</button>`;
+    } else if ((G.backpack['return_stone'] || 0) > 0) {
+      footer = `<button class="btn-modal-action" style="width:100%;margin-top:10px;" onclick="useItem('return_stone')">🪨 帰還石で帰還</button>`;
+    }
+    content = weightBar + subTabBar + `<div style="min-height:160px;">${body}</div>`;
+
+  } else {
+    const mats = Object.entries(G.inventory)
+      .filter(([id, v]) => v > 0 && isMaterial(id))
+      .sort((a, b) => {
+        const order = ['gold','silver','iron','copper','stone','dirt'];
+        return (order.indexOf(a[0]) === -1 ? 99 : order.indexOf(a[0])) -
+               (order.indexOf(b[0]) === -1 ? 99 : order.indexOf(b[0]));
+      });
+    const subTabBar = `<div style="display:flex;gap:6px;margin-bottom:10px;">
+      ${subBtn('wh','mats','📦 素材')}
+      ${subBtn('wh','items','💊 アイテム')}
+      ${subBtn('wh','drills','⛏️ ドリル')}
+    </div>`;
+    let body = '';
+    if (innerTab === 'mats') {
+      body = mats.length === 0
+        ? `<div style="font-size:.85rem;opacity:.5;padding:14px 0;text-align:center;">素材がありません</div>`
+        : mats.map(([item, qty]) => {
+            const price = SELL_PRICES[item];
+            const valStr = price ? `<span style="font-size:.72rem;color:rgba(255,200,80,.8);">💰${price}G/個</span>` : '';
+            return `<div class="modal-row">
+              <div><div class="modal-row-label">${MATS[item]?.name || item}</div>${valStr}</div>
+              <div style="font-size:.95rem;font-weight:700;">×${qty}</div>
+            </div>`;
+          }).join('');
+    } else if (innerTab === 'items') {
+      const invItems = Object.entries(G.inventory).filter(([id, v]) => v > 0 && !isMaterial(id));
+      body = invItems.length === 0
+        ? `<div style="font-size:.85rem;opacity:.5;padding:14px 0;text-align:center;">アイテムがありません</div>`
+        : invItems.map(([id, qty]) => {
+            const def = ITEMS[id] ?? {};
+            const img = def.imageUrl ? `<img src="${escHtml(def.imageUrl)}" style="width:24px;height:24px;object-fit:contain;vertical-align:middle;margin-right:4px;">` : '';
+            return `<div class="modal-row">
+              <div>
+                <div class="modal-row-label">${img}${escHtml(def.name || id)}</div>
+                ${def.effectText ? `<div class="modal-row-sub">${escHtml(def.effectText)}</div>` : ''}
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span>×${qty}</span>
+                <button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;" onclick="showWithdrawDialog('${id}',${qty})">取り出す</button>
+              </div>
+            </div>`;
+          }).join('');
+    } else {
+      body = G.drills.length === 0
+        ? `<div style="font-size:.85rem;opacity:.5;padding:14px 0;text-align:center;">ドリルがありません</div>`
+        : G.drills.map(d => {
+            const def = DRILLS[d.drill_id] || {};
+            const isEquipped = d.id === G.equippedDrillRowId;
+            const durMax = def.dur ?? null;
+            const durVal = d.durability ?? durMax;
+            const durPct = durMax ? Math.max(0, Math.round((durVal / durMax) * 100)) : null;
+            const durColor = durPct === null ? '#aaa' : durPct > 50 ? '#4caf50' : durPct > 20 ? '#ff9800' : '#f44336';
+            const durBar = durMax
+              ? `<div style="margin-top:4px;height:4px;background:rgba(255,255,255,.15);border-radius:2px;overflow:hidden;">
+                   <div style="height:100%;width:${durPct}%;background:${durColor};border-radius:2px;"></div>
+                 </div>` : '';
+            return `<div class="modal-row">
+              <div style="flex:1;min-width:0;">
+                <div class="modal-row-label">${def.name || d.drill_id}${isEquipped ? ' <span style="font-size:.7rem;color:#d4a853;">装備中</span>' : ''}</div>
+                ${durBar}
+              </div>
+              <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
+                <button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;background:rgba(100,160,255,.5);" onclick="showDrillDetail('${d.id}')">詳細</button>
+                ${isEquipped
+                  ? `<span style="font-size:.72rem;opacity:.4;">装備中</span>`
+                  : `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;" onclick="equipDrill('${d.id}').then(()=>showInventory('wh_drills'))">装備</button>
+                     ${G.py > 0 && d.drill_id !== 'beginner' ? `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;background:rgba(200,60,60,.7);" onclick="dropDrillFromWarehouse('${d.id}')">落とす</button>` : ''}`}
+              </div>
+            </div>`;
+          }).join('');
+    }
+    content = subTabBar + `<div style="min-height:160px;">${body}</div>`;
   }
-  html += `<button class="btn-modal-close" onclick="closeModal()">閉じる</button>`;
+
+  const html = `<div class="modal-title">📦 アイテム</div>
+    ${topTabBar}
+    ${content}
+    ${footer}
+    <button class="btn-modal-close" onclick="closeModal()">閉じる</button>`;
   openModal(html);
 }
+
+function showBag(tab = 'mats') { showInventory('bag_' + tab); }
 
 function showBagFullModal() {
   if (!_pendingMaterial) return;
@@ -1821,46 +1941,7 @@ function showLogModal() {
 // 素材売却
 // ============================================================
 
-function showSell() {
-  if (G.py !== 0) { log('⚠️ 売却は地上のみ'); return; }
-  _pendingSell = null;
-
-  const sellable = Object.entries(G.inventory)
-    .filter(([k, v]) => v > 0 && SELL_PRICES[k])
-    .sort((a, b) => (SELL_PRICES[b[0]] || 0) - (SELL_PRICES[a[0]] || 0));
-
-  let html = `<div class="modal-title">💰 素材売却</div>
-    <div style="font-size:.82rem;margin-bottom:12px;opacity:.8;">所持金: 💰 ${G.drillGold.toLocaleString()}G</div>`;
-
-  if (sellable.length === 0) {
-    html += `<div style="font-size:.85rem;opacity:.5;padding:10px 0;">売却できる素材がありません<br><span style="font-size:.75rem;">（帰還して素材を確定してください）</span></div>`;
-  } else {
-    html += `<div style="font-size:.72rem;opacity:.5;margin-bottom:10px;">売却する個数を選んでください（初期値: 0個）</div>`;
-    for (const [item, qty] of sellable) {
-      const price = SELL_PRICES[item];
-      html += `<div class="modal-row" style="flex-wrap:nowrap;gap:6px;align-items:center;">
-        <div style="flex:1;min-width:0;">
-          <div class="modal-row-label">${MATS[item]?.name || item}</div>
-          <div class="modal-row-sub">所持 ${qty}個 ／ 1個 ${price}G</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:5px;flex-shrink:0;">
-          <input id="sell-qty-${item}" type="number" min="0" max="${qty}" value="0"
-            style="width:58px;padding:4px 6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:6px;color:#fff;font-size:.82rem;text-align:center;"
-            oninput="updateSellTotal()">
-          <button class="btn-modal-action" style="font-size:.7rem;padding:4px 9px;white-space:nowrap;" onclick="setSellMax('${item}',${qty})">MAX</button>
-        </div>
-      </div>`;
-    }
-    html += `
-      <div style="margin-top:14px;padding:10px 12px;background:rgba(255,255,255,.06);border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
-        <span style="font-size:.82rem;opacity:.7;">売却合計</span>
-        <span id="sell-total-disp" style="font-size:1.05rem;font-weight:700;color:#d4a853;">0G</span>
-      </div>
-      <button class="btn-modal-action" id="sell-go-btn" style="width:100%;margin-top:10px;opacity:.35;cursor:default;" disabled onclick="showSellConfirm()">💰 売却する</button>`;
-  }
-  html += `<button class="btn-modal-close" onclick="closeModal()">閉じる</button>`;
-  openModal(html);
-}
+function showSell() { showShop('sell'); }
 
 function setSellMax(itemId, maxQty) {
   const input = document.getElementById(`sell-qty-${itemId}`);
@@ -1950,102 +2031,7 @@ async function doSellAll() {
 // 倉庫
 // ============================================================
 
-function showWarehouse(tab = 'mats') {
-  const mats = Object.entries(G.inventory)
-    .filter(([id, v]) => v > 0 && isMaterial(id))
-    .sort((a, b) => {
-      const order = ['gold','silver','iron','copper','stone','dirt'];
-      return (order.indexOf(a[0]) === -1 ? 99 : order.indexOf(a[0])) -
-             (order.indexOf(b[0]) === -1 ? 99 : order.indexOf(b[0]));
-    });
-
-  const tabBtn = (t, label) =>
-    `<button onclick="showWarehouse('${t}')" style="flex:1;padding:6px 0;border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;
-      background:${tab===t ? '#d4a853' : 'rgba(255,255,255,.1)'};color:#fff;">${label}</button>`;
-
-  let body = '';
-
-  if (tab === 'mats') {
-    if (mats.length === 0) {
-      body = `<div style="font-size:.85rem;opacity:.5;padding:14px 0;text-align:center;">素材がありません</div>`;
-    } else {
-      body = mats.map(([item, qty]) => {
-        const price = SELL_PRICES[item];
-        const valStr = price ? `<span style="font-size:.72rem;color:rgba(255,200,80,.8);">💰${price}G/個</span>` : '';
-        return `<div class="modal-row">
-          <div>
-            <div class="modal-row-label">${MATS[item]?.name || item}</div>
-            ${valStr}
-          </div>
-          <div style="font-size:.95rem;font-weight:700;">×${qty}</div>
-        </div>`;
-      }).join('');
-    }
-  } else if (tab === 'items') {
-    const invItems = Object.entries(G.inventory).filter(([id, v]) => v > 0 && !isMaterial(id));
-    if (invItems.length === 0) {
-      body = `<div style="font-size:.85rem;opacity:.5;padding:14px 0;text-align:center;">アイテムがありません</div>`;
-    } else {
-      body = invItems.map(([id, qty]) => {
-        const def = ITEMS[id] ?? {};
-        const img = def.imageUrl ? `<img src="${escHtml(def.imageUrl)}" style="width:24px;height:24px;object-fit:contain;vertical-align:middle;margin-right:4px;">` : '';
-        return `<div class="modal-row">
-          <div>
-            <div class="modal-row-label">${img}${escHtml(def.name || id)}</div>
-            ${def.effectText ? `<div class="modal-row-sub">${escHtml(def.effectText)}</div>` : ''}
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span>×${qty}</span>
-            <button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;" onclick="showWithdrawDialog('${id}',${qty})">取り出す</button>
-          </div>
-        </div>`;
-      }).join('');
-    }
-  } else {
-    // drills tab
-    if (G.drills.length === 0) {
-      body = `<div style="font-size:.85rem;opacity:.5;padding:14px 0;text-align:center;">ドリルがありません</div>`;
-    } else {
-      body = G.drills.map(d => {
-        const def = DRILLS[d.drill_id] || {};
-        const isEquipped = d.id === G.equippedDrillRowId;
-        const durMax = def.dur ?? null;
-        const durVal = d.durability ?? durMax;
-        const durPct = durMax ? Math.max(0, Math.round((durVal / durMax) * 100)) : null;
-        const durColor = durPct === null ? '#aaa' : durPct > 50 ? '#4caf50' : durPct > 20 ? '#ff9800' : '#f44336';
-        const durDisp = durVal === null ? '∞' : `${durVal} / ${durMax}`;
-        const durBar = durMax
-          ? `<div style="margin-top:4px;height:4px;background:rgba(255,255,255,.15);border-radius:2px;overflow:hidden;">
-               <div style="height:100%;width:${durPct}%;background:${durColor};border-radius:2px;transition:width .3s;"></div>
-             </div>`
-          : '';
-        return `<div class="modal-row">
-          <div style="flex:1;min-width:0;">
-            <div class="modal-row-label">${def.name || d.drill_id}${isEquipped ? ' <span style="font-size:.7rem;color:#d4a853;">装備中</span>' : ''}</div>
-          </div>
-          <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
-            <button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;background:rgba(100,160,255,.5);" onclick="showDrillDetail('${d.id}')">詳細</button>
-            ${isEquipped
-              ? `<span style="font-size:.72rem;opacity:.4;">装備中</span>`
-              : `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;" onclick="equipDrill('${d.id}').then(()=>showWarehouse('drills'))">装備</button>
-                 ${G.py > 0 && d.drill_id !== 'beginner' ? `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;background:rgba(200,60,60,.7);" onclick="dropDrillFromWarehouse('${d.id}')">落とす</button>` : ''}`}
-          </div>
-        </div>`;
-      }).join('');
-    }
-  }
-
-  const html = `
-    <div class="modal-title">🏪 倉庫</div>
-    <div style="display:flex;gap:6px;margin-bottom:12px;">
-      ${tabBtn('mats','📦 素材')}
-      ${tabBtn('items','💊 アイテム')}
-      ${tabBtn('drills','⛏️ ドリル')}
-    </div>
-    ${body}
-    <button class="btn-modal-close" onclick="closeModal()">閉じる</button>`;
-  openModal(html);
-}
+function showWarehouse(tab = 'mats') { showInventory('wh_' + tab); }
 
 // ============================================================
 // イベント・落下アイテムUI
@@ -3148,10 +3134,8 @@ function renderSurfaceHome() {
     </div>
     <div class="sh-menu">
       <button class="sh-btn" onclick="showShop()">🛒&ensp;ショップ</button>
-      <button class="sh-btn" onclick="showSell()">💰&ensp;素材売却</button>
       <button class="sh-btn" onclick="showCraft()">🔨&ensp;クラフト</button>
-      <button class="sh-btn" onclick="showWarehouse()">📦&ensp;倉庫</button>
-      <button class="sh-btn" onclick="showBag()">🎒&ensp;リュック${bpKeys.length > 0 ? `<span class="sh-badge">${bpKeys.length}</span>` : ''}</button>
+      <button class="sh-btn" onclick="showInventory()">📦&ensp;アイテム${bpKeys.length > 0 ? `<span class="sh-badge">${bpKeys.length}</span>` : ''}</button>
       <a class="sh-btn" href="../market/index.html" style="text-decoration:none;text-align:center;">🏪&ensp;マーケット</a>
       <a class="sh-btn" href="formation.html" style="text-decoration:none;text-align:center;">⚔️&ensp;編成</a>
     </div>
@@ -3457,13 +3441,13 @@ function handleClick(wx, wy) {
 function setupInput() {
   // モバイルアクションボタン（地下専用: アイテム・リュック・ログ）
   document.getElementById('btn-items')?.addEventListener('click', showItems);
-  document.getElementById('btn-bag')?.addEventListener('click', showBag);
+  document.getElementById('btn-bag')?.addEventListener('click', () => showInventory('bag_mats'));
   document.getElementById('btn-log')?.addEventListener('click', showLogModal);
 
   // PC 左パネルボタン
   document.getElementById('btn-drills-pc')?.addEventListener('click', showDrills);
-  document.getElementById('btn-bag-pc')?.addEventListener('click', showBag);
-  document.getElementById('btn-return-pc')?.addEventListener('click', showBag);
+  document.getElementById('btn-bag-pc')?.addEventListener('click', () => showInventory('bag_mats'));
+  document.getElementById('btn-return-pc')?.addEventListener('click', () => showInventory('bag_mats'));
 
   // キーボード（リピートは無視して1押し1歩）
   document.addEventListener('keydown', e => {
