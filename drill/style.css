@@ -72,6 +72,7 @@ html, body {
 }
 
 .mc {
+    position: relative;
     width: 54px;
     height: 54px;
     display: flex;
@@ -454,6 +455,30 @@ html, body {
     color: #fff;
     font-size: .88rem;
     cursor: pointer;
+}
+
+/* ===== マップ上モンスターアイコン ===== */
+.cell-monster-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80%;
+    height: 80%;
+    object-fit: contain;
+    image-rendering: pixelated;
+    font-size: 1.6rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    filter: drop-shadow(0 0 4px rgba(255,80,80,.8));
+    animation: monster-pulse 1.4s ease-in-out infinite;
+}
+@keyframes monster-pulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); }
+    50%       { transform: translate(-50%, -50%) scale(1.12); }
 }
 
 /* ===== 戦闘モーダル ===== */

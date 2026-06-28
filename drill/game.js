@@ -182,7 +182,11 @@ let _hpDirty = false;      // 呪いダメージでHP変化した際のフラグ
 const C = {
   active: false, monster: null, monsterHp: 0,
   hand: [], deck: [], discard: [], logs: [], nextAction: null,
+  // マルチプレイヤー
+  sessionId: null, cx: null, cy: null,
+  participants: [], currentRound: 1, myActedRound: 0,
 };
+let _combatChannel = null; // 戦闘Realtimeチャンネル
 
 let _draggedCardIdx = null;
 let _touchCardIdx   = null;
@@ -482,6 +486,9 @@ async function loadAll() {
       locked_until: r.locked_until || null,
     });
   });
+
+  // アクティブ戦闘セッションを読み込む
+  await loadActiveCombatSessions();
 }
 
 // ============================================================
@@ -558,6 +565,14 @@ async function move(dx, dy) {
   if (nx < 0 || nx >= MAP_W || ny < 0 || ny >= MAP_H) return;
 
   const isDug = G.dugCells.has(`${nx},${ny}`) || ny === 0;
+
+  // モンスターセルへの移動 → 参加プロンプト
+  const combatHere = G.activeCombats?.get(`${nx},${ny}`);
+  if (combatHere && combatHere.id !== C.sessionId) {
+    await showJoinCombatPrompt(combatHere, nx, ny);
+    return;
+  }
+
   if (!isDug) {
     if (Math.abs(dx) + Math.abs(dy) === 1) startMine(nx, ny);
     return;
@@ -766,7 +781,7 @@ async function triggerBlockEvent(x, y) {
     log('⚔️ 敵と遭遇！');
     const combatLi = Math.min(EVENTS.length - 1, Math.floor(y / 100));
     const monsterId = pickCombatMonster(combatLi);
-    if (monsterId) await startCombat(monsterId);
+    if (monsterId) await startCombat(monsterId, x, y);
   }
 }
 
@@ -1733,13 +1748,18 @@ function saveCombatState() {
   if (!C.active) return;
   try {
     localStorage.setItem(COMBAT_STORAGE_KEY, JSON.stringify({
-      monster:    C.monster,
-      monsterHp:  C.monsterHp,
-      hand:       C.hand,
-      deck:       C.deck,
-      discard:    C.discard,
-      logs:       C.logs,
-      nextAction: C.nextAction,
+      monster:      C.monster,
+      monsterHp:    C.monsterHp,
+      hand:         C.hand,
+      deck:         C.deck,
+      discard:      C.discard,
+      logs:         C.logs,
+      nextAction:   C.nextAction,
+      sessionId:    C.sessionId,
+      cx:           C.cx,
+      cy:           C.cy,
+      currentRound: C.currentRound,
+      myActedRound: C.myActedRound,
     }));
   } catch {}
 }
@@ -1754,63 +1774,165 @@ function restoreCombatState() {
     if (!raw) return;
     const s = JSON.parse(raw);
     if (!s?.monster) { clearCombatState(); return; }
-    C.active     = true;
-    C.monster    = s.monster;
-    C.monsterHp  = s.monsterHp ?? s.monster.maxHp;
-    C.hand       = s.hand    ?? [];
-    C.deck       = s.deck    ?? [];
-    C.discard    = s.discard ?? [];
-    C.logs       = s.logs    ?? [];
-    C.nextAction = s.nextAction ?? null;
+    C.active       = true;
+    C.monster      = s.monster;
+    C.monsterHp    = s.monsterHp ?? s.monster.maxHp;
+    C.hand         = s.hand    ?? [];
+    C.deck         = s.deck    ?? [];
+    C.discard      = s.discard ?? [];
+    C.logs         = s.logs    ?? [];
+    C.nextAction   = s.nextAction ?? null;
+    C.sessionId    = s.sessionId  ?? null;
+    C.cx           = s.cx ?? null;
+    C.cy           = s.cy ?? null;
+    C.currentRound = s.currentRound ?? 1;
+    C.myActedRound = s.myActedRound ?? 0;
+    C.participants = [];
     if (C.hand.length === 0) drawCombatCards(3);
     C.logs.unshift('🔄 戦闘を再開しました');
+    if (C.sessionId) {
+      setupCombatRealtime(C.sessionId);
+      refreshCombatParticipants(C.sessionId);
+      supabaseClient.from('drill_combat_sessions').select('*')
+        .eq('id', C.sessionId).single()
+        .then(({ data }) => { if (data) syncCombatFromDb(data); });
+    }
     showCombatModal();
   } catch { clearCombatState(); }
 }
 
-async function startCombat(monsterId) {
+async function startCombat(monsterId, cx, cy) {
   const def = MONSTERS[monsterId];
   if (!def) return;
 
-  C.active     = true;
-  C.monster    = { ...def };
-  C.monsterHp  = def.maxHp;
-  C.deck       = shuffleArray(buildPlayerDeck());
-  C.hand       = [];
-  C.discard    = [];
-  C.logs       = [`⚔️ ${def.name}が現れた！`];
-  C.nextAction = getMonsterNextAction();
+  C.active       = true;
+  C.monster      = { ...def };
+  C.monsterHp    = def.maxHp;
+  C.deck         = shuffleArray(buildPlayerDeck());
+  C.hand         = [];
+  C.discard      = [];
+  C.logs         = [`⚔️ ${def.name}が現れた！`];
+  C.nextAction   = getMonsterNextAction();
+  C.sessionId    = null;
+  C.cx           = cx ?? G.px;
+  C.cy           = cy ?? G.py;
+  C.currentRound = 1;
+  C.myActedRound = 0;
+  C.participants = [];
 
   drawCombatCards(3);
+
+  // DBにセッション作成・参加
+  try {
+    const nextAct = getMonsterNextAction();
+    const { data: sessData, error: sessErr } = await supabaseClient
+      .from('drill_combat_sessions')
+      .insert({
+        map_date: G.mapDate, cx: C.cx, cy: C.cy,
+        monster_def: def, monster_hp: def.maxHp, status: 'active',
+        next_action: nextAct,
+      })
+      .select('id').single();
+    if (!sessErr && sessData) {
+      C.sessionId = sessData.id;
+      await supabaseClient.rpc('drill_join_combat', {
+        p_session_id:   C.sessionId,
+        p_user_id:      G.userId,
+        p_display_name: G.displayName || '名無し',
+        p_avatar_url:   G.avatarUrl,
+        p_hp: G.hp, p_max_hp: G.maxHp,
+        p_hand: C.hand, p_deck: C.deck, p_discard: C.discard,
+      });
+      setupCombatRealtime(C.sessionId);
+      if (!G.activeCombats) G.activeCombats = new Map();
+      G.activeCombats.set(`${C.cx},${C.cy}`,
+        { id: C.sessionId, monster_def: def, monster_hp: def.maxHp });
+      renderMap();
+    }
+  } catch {}
+
   showCombatModal();
 }
 
 async function playCard(cardIdx) {
   if (!C.active || cardIdx < 0 || cardIdx >= C.hand.length) return;
+  if (C.sessionId && C.myActedRound >= C.currentRound) return; // 既に行動済み
 
   const cardId  = C.hand[cardIdx];
   const cardDef = CARDS[cardId];
   if (!cardDef) return;
 
-  // カード効果
-  if (cardDef.damage > 0) {
-    C.monsterHp = Math.max(0, C.monsterHp - cardDef.damage);
-    combatAddLog(`⚔️ ${cardDef.name}！ ${C.monster.name}に ${cardDef.damage} ダメージ`);
-  }
+  const damage = cardDef.damage || 0;
+  if (damage > 0) combatAddLog(`⚔️ ${cardDef.name}！ ${C.monster.name}に ${damage} ダメージ`);
 
   // 手札全捨て
   C.discard.push(...C.hand);
   C.hand = [];
 
-  // モンスター死亡チェック
+  // ── マルチプレイヤー（DBセッションあり）──
+  if (C.sessionId) {
+    C.myActedRound = C.currentRound;
+    showCombatModal(); // 「待機中」表示
+
+    const { data, error } = await supabaseClient.rpc('drill_submit_action', {
+      p_session_id: C.sessionId, p_user_id: G.userId,
+      p_damage:     damage,
+      p_new_hand:   [], p_new_deck: C.deck, p_new_discard: C.discard,
+    });
+
+    if (error || !data?.ok) {
+      combatAddLog('❌ エラーが発生しました');
+      showCombatModal();
+      return;
+    }
+
+    if (data.result === 'monster_dead') {
+      C.monsterHp = 0;
+      combatAddLog(`✨ ${C.monster.name}を倒した！`);
+      if (C.sessionId) G.activeCombats?.delete(`${C.cx},${C.cy}`);
+      showCombatModal();
+      await endCombat(true);
+      return;
+    }
+
+    if (data.result === 'round_end' || data.result === 'party_dead') {
+      C.monsterHp    = data.monster_hp;
+      C.currentRound = C.currentRound + 1;
+      C.myActedRound = C.currentRound - 1;
+      C.nextAction   = data.next_action ?? getMonsterNextAction();
+      const act = data.monster_action;
+      if (act) {
+        combatAddLog(`👾 ${C.monster.name}: ${act.name}`);
+        const dmg = data.monster_damage || 0;
+        if (dmg > 0) {
+          G.hp = Math.max(0, G.hp - dmg);
+          combatAddLog(`💥 ${dmg} ダメージを受けた！（残り HP: ${G.hp}）`);
+          await saveHp();
+          renderSide();
+        }
+      }
+      if (data.result === 'party_dead' || G.hp <= 0) {
+        if (C.sessionId) G.activeCombats?.delete(`${C.cx},${C.cy}`);
+        showCombatModal();
+        await endCombat(false);
+        return;
+      }
+      drawCombatCards(3);
+      showCombatModal();
+      return;
+    }
+    // result === 'waiting': 他プレイヤーを待つ（Realtimeで更新）
+    return;
+  }
+
+  // ── ソロ（セッションなし）──
+  C.monsterHp = Math.max(0, C.monsterHp - damage);
   if (C.monsterHp <= 0) {
     combatAddLog(`✨ ${C.monster.name}を倒した！`);
     showCombatModal();
     await endCombat(true);
     return;
   }
-
-  // モンスターの行動
   const action = C.nextAction;
   if (action) {
     combatAddLog(`👾 ${C.monster.name}: ${action.name}`);
@@ -1821,15 +1943,11 @@ async function playCard(cardIdx) {
       renderSide();
     }
   }
-
-  // プレイヤー死亡チェック
   if (G.hp <= 0) {
     showCombatModal();
     await endCombat(false);
     return;
   }
-
-  // 次ターン
   drawCombatCards(3);
   C.nextAction = getMonsterNextAction();
   showCombatModal();
@@ -1839,6 +1957,11 @@ async function endCombat(win) {
   C.active = false;
   clearCombatState();
   const monName = C.monster?.name || '???';
+  if (_combatChannel) { supabaseClient.removeChannel(_combatChannel); _combatChannel = null; }
+  if (C.sessionId) {
+    G.activeCombats?.delete(`${C.cx},${C.cy}`);
+    renderMap();
+  }
 
   if (win) {
     await new Promise(resolve => {
@@ -1914,6 +2037,42 @@ function showCombatModal() {
 
   const inner = document.getElementById('modal-inner');
   inner.classList.add('combat-modal');
+  // 参加者リスト（マルチ時）
+  const otherParticipants = C.participants.filter(p => p.user_id !== G.userId);
+  const allParticipants = [
+    { user_id: G.userId, display_name: G.displayName || 'あなた',
+      avatar_url: G.avatarUrl, hp: G.hp, max_hp: G.maxHp,
+      acted_round: C.myActedRound },
+    ...otherParticipants,
+  ];
+  const participantsHtml = allParticipants.map(p => {
+    const hpPct   = Math.max(0, Math.round((p.hp / p.max_hp) * 100));
+    const hpColor = hpPct > 50 ? '#6bde9b' : hpPct > 20 ? '#ffc107' : '#ff5555';
+    const acted   = C.sessionId && p.acted_round >= C.currentRound;
+    const avHtml  = p.avatar_url
+      ? `<img src="${p.avatar_url}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid ${acted ? '#ffc107' : 'rgba(107,222,155,.5)'};">`
+      : `<div style="font-size:1.6rem;flex-shrink:0;">⛏️</div>`;
+    return `<div style="display:flex;align-items:center;gap:8px;">
+      ${avHtml}
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:.78rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+          ${escHtml(p.display_name)}${acted ? ' <span style="color:#ffc107;font-size:.68rem;">✓行動済</span>' : ''}
+        </div>
+        <div style="font-size:.7rem;color:${hpColor};">HP ${p.hp} / ${p.max_hp}</div>
+        <div style="height:4px;background:rgba(255,255,255,.12);border-radius:2px;overflow:hidden;margin-top:2px;">
+          <div style="width:${hpPct}%;height:100%;background:${hpColor};border-radius:2px;transition:width .3s;"></div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const isWaiting = C.sessionId && C.myActedRound >= C.currentRound;
+  const dropZoneHtml = isWaiting
+    ? `<div style="min-height:58px;border:2px dashed rgba(255,193,7,.3);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:.82rem;color:rgba(255,193,7,.6);margin-top:10px;">
+        ⏳ 他プレイヤーの行動を待っています...
+       </div>`
+    : `<div id="combat-drop-zone" ondragover="event.preventDefault()" ondrop="combatDrop(event)">カードをここにドロップ</div>`;
+
   inner.innerHTML = `
     <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
       <button onclick="showCombatLog()" style="padding:4px 12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:8px;color:rgba(255,255,255,.75);cursor:pointer;font-size:.78rem;">📜 戦闘ログ</button>
@@ -1929,23 +2088,12 @@ function showCombatModal() {
       ${actionHtml}
     </div>
 
-    <div style="text-align:center;font-size:.7rem;color:rgba(255,255,255,.28);letter-spacing:.12em;margin-bottom:12px;">⚔️ ─── VS ─── ⚔️</div>
+    <div style="text-align:center;font-size:.7rem;color:rgba(255,255,255,.28);letter-spacing:.12em;margin-bottom:10px;">⚔️ ─── VS ─── ⚔️</div>
 
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
-      ${avatarHtml}
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:.85rem;font-weight:700;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(G.displayName || 'あなた')}</div>
-        <div style="font-size:.74rem;color:${pHpColor};margin-bottom:4px;">HP ${G.hp} / ${G.maxHp}</div>
-        <div style="height:6px;background:rgba(255,255,255,.12);border-radius:3px;overflow:hidden;">
-          <div style="width:${pHpPct}%;height:100%;background:${pHpColor};border-radius:3px;transition:width .3s;"></div>
-        </div>
-      </div>
-    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;">${participantsHtml}</div>
 
-    <div id="combat-drop-zone"
-      ondragover="event.preventDefault()"
-      ondrop="combatDrop(event)">カードをここにドロップ</div>
-    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px;">${cardHtml}</div>
+    ${dropZoneHtml}
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px;">${isWaiting ? '' : cardHtml}</div>
   `;
 }
 
@@ -1967,6 +2115,190 @@ function showCombatLog() {
       <button onclick="document.getElementById('combat-log-overlay').remove()" style="margin-top:14px;padding:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:8px;color:#fff;cursor:pointer;font-size:.85rem;width:100%;">✕ 閉じる</button>
     </div>`;
   document.body.appendChild(overlay);
+}
+
+// ============================================================
+// マルチプレイヤー戦闘: Realtime・参加管理
+// ============================================================
+
+function setupCombatRealtime(sessionId) {
+  if (_combatChannel) { supabaseClient.removeChannel(_combatChannel); _combatChannel = null; }
+  _combatChannel = supabaseClient.channel('combat_' + sessionId)
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public',
+        table: 'drill_combat_sessions', filter: `id=eq.${sessionId}` },
+      async payload => { if (C.active && C.sessionId === sessionId) await syncCombatFromDb(payload.new); })
+    .on('postgres_changes', { event: 'INSERT', schema: 'public',
+        table: 'drill_combat_participants', filter: `session_id=eq.${sessionId}` },
+      async () => { if (C.active) await refreshCombatParticipants(sessionId); })
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public',
+        table: 'drill_combat_participants', filter: `session_id=eq.${sessionId}` },
+      async payload => {
+        if (!C.active) return;
+        if (payload.new.user_id === G.userId) {
+          // 自分のHP同期（モンスター全体攻撃後）
+          const newHp = payload.new.hp;
+          if (newHp !== G.hp) {
+            G.hp = newHp;
+            renderSide();
+            if (G.hp <= 0 && C.active) { await endCombat(false); return; }
+          }
+        }
+        await refreshCombatParticipants(sessionId);
+      })
+    .subscribe();
+}
+
+async function syncCombatFromDb(row) {
+  if (!C.active) return;
+  C.monsterHp    = row.monster_hp;
+  C.currentRound = row.round_num;
+  if (row.next_action) C.nextAction = row.next_action;
+  if (row.logs?.length) C.logs = row.logs;
+  if (row.status === 'ended') {
+    G.activeCombats?.delete(`${C.cx},${C.cy}`);
+    renderMap();
+    if (C.monsterHp <= 0) { await endCombat(true); }
+    else                   { await endCombat(false); }
+    return;
+  }
+  // 自分がまだ行動済みでなければ手札を補充してモーダル更新
+  if (C.myActedRound < C.currentRound && C.hand.length === 0) drawCombatCards(3);
+  showCombatModal();
+}
+
+async function refreshCombatParticipants(sessionId) {
+  const { data } = await supabaseClient
+    .from('drill_combat_participants')
+    .select('user_id, display_name, avatar_url, hp, max_hp, acted_round')
+    .eq('session_id', sessionId);
+  if (data) { C.participants = data; if (C.active) showCombatModal(); }
+}
+
+async function loadActiveCombatSessions() {
+  if (!G.mapDate) return;
+  G.activeCombats = new Map();
+  const { data } = await supabaseClient
+    .from('drill_combat_sessions')
+    .select('id, cx, cy, monster_def, monster_hp')
+    .eq('map_date', G.mapDate)
+    .eq('status', 'active');
+  (data || []).forEach(s => G.activeCombats.set(`${s.cx},${s.cy}`, s));
+}
+
+function setupGlobalCombatRealtime() {
+  supabaseClient.channel('global_combat_' + G.mapDate)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public',
+        table: 'drill_combat_sessions', filter: `map_date=eq.${G.mapDate}` },
+      payload => {
+        const s = payload.new;
+        G.activeCombats?.set(`${s.cx},${s.cy}`, s);
+        renderMap();
+      })
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public',
+        table: 'drill_combat_sessions', filter: `map_date=eq.${G.mapDate}` },
+      payload => {
+        const s = payload.new;
+        if (s.status === 'ended') G.activeCombats?.delete(`${s.cx},${s.cy}`);
+        else G.activeCombats?.set(`${s.cx},${s.cy}`, s);
+        renderMap();
+      })
+    .subscribe();
+}
+
+async function showJoinCombatPrompt(session, cx, cy) {
+  const monDef = session.monster_def ?? {};
+  const { data: parts } = await supabaseClient
+    .from('drill_combat_participants')
+    .select('user_id, display_name, avatar_url, hp, max_hp')
+    .eq('session_id', session.id);
+  const partCount = parts?.length ?? 0;
+  const isFull = partCount >= 3;
+
+  const partListHtml = (parts || []).map(p => `
+    <div style="display:flex;align-items:center;gap:6px;font-size:.8rem;margin-bottom:4px;">
+      ${p.avatar_url ? `<img src="${p.avatar_url}" style="width:22px;height:22px;border-radius:50%;">` : '👤'}
+      <span>${escHtml(p.display_name)}</span>
+      <span style="color:#6bde9b;font-size:.72rem;opacity:.8;">HP ${p.hp}/${p.max_hp}</span>
+    </div>`).join('');
+
+  return new Promise(resolve => {
+    const ov = document.getElementById('modal-overlay');
+    ov.style.display = 'flex';
+    ov.dataset.combatModal = '1';
+    document.getElementById('modal-inner').innerHTML = `
+      <div style="text-align:center;margin-bottom:14px;">
+        ${monDef.imageUrl
+          ? `<img src="${monDef.imageUrl}" style="width:80px;height:80px;object-fit:contain;border-radius:8px;">`
+          : `<div style="font-size:3.5rem;line-height:1;">${monDef.icon || '👾'}</div>`}
+        <div style="font-weight:700;font-size:1rem;margin-top:8px;">${escHtml(monDef.name || '???')}</div>
+        <div style="font-size:.78rem;color:#ff8866;margin-top:4px;">HP ${session.monster_hp} / ${monDef.maxHp ?? '?'}</div>
+      </div>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:.75rem;opacity:.55;margin-bottom:6px;">参加中 (${partCount}/3)</div>
+        ${partListHtml}
+      </div>
+      ${isFull
+        ? `<div style="text-align:center;font-size:.85rem;color:rgba(255,255,255,.45);padding:8px 0;">満員です</div>
+           <button class="btn-modal-close" onclick="document.getElementById('modal-overlay').style.display='none';document.getElementById('modal-overlay').dataset.combatModal=''" style="width:100%;margin-top:8px;">閉じる</button>`
+        : `<div style="display:flex;gap:10px;margin-top:4px;">
+             <button id="join-combat-yes" class="btn-modal-close" style="flex:1;background:rgba(212,168,83,.5);">⚔️ 参加する</button>
+             <button id="join-combat-no"  class="btn-modal-close" style="flex:1;">見送る</button>
+           </div>`}
+    `;
+    document.getElementById('join-combat-no')?.addEventListener('click', () => {
+      document.getElementById('modal-overlay').style.display = 'none';
+      document.getElementById('modal-overlay').dataset.combatModal = '';
+      resolve(false);
+    }, { once: true });
+    document.getElementById('join-combat-yes')?.addEventListener('click', async () => {
+      document.getElementById('modal-overlay').style.display = 'none';
+      document.getElementById('modal-overlay').dataset.combatModal = '';
+      resolve(true);
+      await joinExistingCombat(session, cx, cy);
+    }, { once: true });
+  });
+}
+
+async function joinExistingCombat(session, cx, cy) {
+  const { data: fullSession } = await supabaseClient
+    .from('drill_combat_sessions').select('*').eq('id', session.id).single();
+  if (!fullSession || fullSession.status !== 'active') {
+    log('⚔️ その戦闘はすでに終了しています'); return;
+  }
+  const monDef = fullSession.monster_def;
+  const deck = shuffleArray(buildPlayerDeck());
+  const hand = [];
+  for (let i = 0; i < 3 && deck.length > 0; i++) hand.push(deck.pop());
+
+  const { data, error } = await supabaseClient.rpc('drill_join_combat', {
+    p_session_id:   fullSession.id,
+    p_user_id:      G.userId,
+    p_display_name: G.displayName || '名無し',
+    p_avatar_url:   G.avatarUrl,
+    p_hp: G.hp, p_max_hp: G.maxHp,
+    p_hand: hand, p_deck: deck, p_discard: [],
+  });
+  if (error || !data?.ok) {
+    log('⚔️ 参加できませんでした: ' + (data?.error || error?.message)); return;
+  }
+  log('⚔️ 戦闘に参加しました！');
+  C.active       = true;
+  C.sessionId    = fullSession.id;
+  C.cx           = cx;
+  C.cy           = cy;
+  C.monster      = { ...monDef };
+  C.monsterHp    = fullSession.monster_hp;
+  C.deck         = deck;
+  C.hand         = hand;
+  C.discard      = [];
+  C.logs         = (fullSession.logs || []).slice();
+  C.currentRound = data.round_num;
+  C.myActedRound = data.round_num - 1;
+  C.nextAction   = data.next_action ?? getMonsterNextAction();
+  C.participants = [];
+  setupCombatRealtime(fullSession.id);
+  await refreshCombatParticipants(fullSession.id);
+  showCombatModal();
 }
 
 // ドラッグ＆ドロップ（デスクトップ）
@@ -2176,6 +2508,8 @@ function setupRealtime() {
       }
     })
     .subscribe();
+
+  setupGlobalCombatRealtime();
 }
 
 // 別端末の位置を適用し、全状態をバックグラウンドで再ロード
@@ -2340,6 +2674,14 @@ function buildCell(wx, wy, vx = 0, vy = 0) {
   if (isDug) {
     const base = wy === 0 ? 'mc-surf' : 'mc-dug';
     let inner = '';
+    // モンスターオーバーレイ
+    const combatAtCell = G.activeCombats?.get(key);
+    if (combatAtCell) {
+      const mDef = combatAtCell.monster_def ?? {};
+      inner += mDef.imageUrl
+        ? `<img class="cell-monster-icon" src="${mDef.imageUrl}" alt="${escHtml(mDef.name||'')}" title="${escHtml(mDef.name||'モンスター')}">`
+        : `<div class="cell-monster-icon" title="${escHtml(mDef.name||'モンスター')}">${mDef.icon || '👾'}</div>`;
+    }
     if (isOther) {
       inner += otherAt.avatarUrl
         ? `<img class="player-icon other-icon" src="${otherAt.avatarUrl}" alt="" />`
