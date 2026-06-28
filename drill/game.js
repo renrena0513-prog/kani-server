@@ -594,7 +594,10 @@ async function move(dx, dy) {
   // ── 即座に位置更新・描画（DB保存を待たない）──
   _lastMoveTime = Date.now();
   G.px = nx; G.py = ny;
-  if (ny === START_Y) G.surfaceMode = true;
+  if (ny === START_Y) {
+    G.surfaceMode = true;
+    if (G.hp < G.maxHp) { G.hp = G.maxHp; _hpDirty = true; }
+  }
 
   // 呪い：ローカルにHP即適用（死亡のみ await）
   // 許可証なしで該当層にいる場合はダメージ10倍
