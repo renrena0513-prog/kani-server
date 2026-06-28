@@ -1393,7 +1393,7 @@ function showBag(tab = 'mats') {
     } else {
       body = mats.map(([item, qty]) => {
         const discardBtn = underground
-          ? `<button class="btn-modal-action" style="background:rgba(200,60,60,.7);font-size:.72rem;padding:4px 10px;" onclick="showDiscardItem('${item}',${qty})">捨てる</button>`
+          ? `<button class="btn-modal-action" style="background:rgba(200,60,60,.7);font-size:.72rem;padding:4px 10px;" onclick="showDiscardItem('${item}',${qty})">落とす</button>`
           : '';
         return `<div class="modal-row">
           <span class="modal-row-label">${getItemName(item)}</span>
@@ -1467,7 +1467,7 @@ function showBagFullModal() {
         <div class="modal-row-sub">×${qty}　重量${w}/個</div>
       </div>
       <button class="btn-modal-action" style="background:rgba(200,60,60,.7);font-size:.72rem;padding:4px 10px;flex-shrink:0;"
-        onclick="discardForPendingMat('${id}')">1個捨てる</button>
+        onclick="discardForPendingMat('${id}')">1個落とす</button>
     </div>`;
   }).join('');
 
@@ -1475,11 +1475,11 @@ function showBagFullModal() {
     <div class="modal-title">⚠️ リュックが満杯</div>
     <div style="font-size:.84rem;margin-bottom:12px;line-height:1.6;">
       <strong>${matName}</strong>を採掘しましたが、リュックに空きがありません。<br>
-      アイテムを1個捨てて受け取りますか？
+      アイテムを1個落として受け取りますか？
     </div>
     ${itemsHtml || '<div style="opacity:.5;font-size:.82rem;">リュックに何もありません</div>'}
     <button class="btn-modal-close" style="width:100%;margin-top:10px;background:rgba(100,100,100,.4);"
-      onclick="closeModal();_pendingMaterial=null;">捨てずに閉じる（素材ロスト）</button>
+      onclick="dropPendingMaterial()">落とさず閉じる（素材を足元にドロップ）</button>
   `);
 }
 
@@ -1490,6 +1490,8 @@ async function discardForPendingMat(id) {
   const newQty = Math.max(0, (G.backpack[id] || 0) - 1);
   G.backpack[id] = newQty;
   await saveBpItem(id, newQty);
+  await dropAtCurrentPos([{ item_id: id, quantity: 1 }]);
+  log(`📦 ${getItemName(id)} ×1 を落とした`);
 
   if (bpWeight() + itemWeight(mat) <= G.maxBpWeight) {
     _pendingMaterial = null;
@@ -1500,23 +1502,66 @@ async function discardForPendingMat(id) {
     render();
     await triggerBlockEvent(x, y);
   } else {
-    // まだ空きが足りない場合はモーダルを更新
     showBagFullModal();
   }
 }
 
+async function dropPendingMaterial() {
+  if (!_pendingMaterial) { closeModal(); return; }
+  const { mat } = _pendingMaterial;
+  _pendingMaterial = null;
+  await dropAtCurrentPos([{ item_id: mat, quantity: 1 }]);
+  log(`📦 ${MATS[mat]?.name || mat} ×1 を足元に落とした`);
+  closeModal();
+  renderMap();
+}
+
+// 足元にアイテムをドロップする共通ヘルパー
+async function dropAtCurrentPos(itemsToAdd) {
+  const dkey = `${G.px},${G.py}`;
+  const existing = (G.droppedItems.get(dkey) || []).find(d => !isDropLocked(d) && d.cause_of_death !== 'treasure');
+  if (existing) {
+    const merged = [...existing.items];
+    for (const { item_id, quantity } of itemsToAdd) {
+      const idx = merged.findIndex(i => i.item_id === item_id);
+      if (idx >= 0) merged[idx] = { item_id, quantity: merged[idx].quantity + quantity };
+      else merged.push({ item_id, quantity });
+    }
+    await supabaseClient.from('drill_dropped_items').update({ items: merged }).eq('id', existing.id);
+    existing.items = merged;
+  } else {
+    const { data: drop } = await supabaseClient.from('drill_dropped_items').insert({
+      map_date: G.mapDate, pos_x: G.px, pos_y: G.py,
+      dropper_user_id: G.userId,
+      dropper_name: G.displayName || '名無し',
+      cause_of_death: '投棄',
+      items: itemsToAdd,
+    }).select().single();
+    if (drop) {
+      if (!G.droppedItems.has(dkey)) G.droppedItems.set(dkey, []);
+      G.droppedItems.get(dkey).push({
+        id: drop.id, items: itemsToAdd,
+        dropper_name: G.displayName || '名無し',
+        cause_of_death: '投棄',
+        dropped_at: drop.dropped_at,
+        locked_by: null, locked_until: null,
+      });
+    }
+  }
+}
+
 function showDiscardItem(itemId, maxQty) {
-  const name = escHtml(ITEM_NAMES[itemId] || itemId);
+  const name = escHtml(getItemName(itemId));
   openModal(`
-    <div class="modal-title">🗑️ ${name}を捨てる</div>
-    <div style="font-size:.83rem;opacity:.65;margin-bottom:14px;line-height:1.6;">現在の場所にアイテムが落ちます。<br>他のプレイヤーが拾えます。</div>
+    <div class="modal-title">📦 ${name}を落とす</div>
+    <div style="font-size:.83rem;opacity:.65;margin-bottom:14px;line-height:1.6;">現在の場所に落とします。<br>他のプレイヤーが拾えます。</div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
       <span style="flex:1;font-size:.9rem;">${name}</span>
       <input id="discard-qty" type="number" min="1" max="${maxQty}" value="1"
         style="width:72px;padding:5px 8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:6px;color:#fff;font-size:.9rem;text-align:center;">
       <span style="opacity:.5;font-size:.82rem;">/ ${maxQty}</span>
     </div>
-    <button class="btn-modal-action" style="width:100%;background:rgba(210,50,50,.75);" onclick="doDiscardItem('${escHtml(itemId)}',${maxQty})">🗑️ 捨てる</button>
+    <button class="btn-modal-action" style="width:100%;background:rgba(210,50,50,.75);" onclick="doDiscardItem('${escHtml(itemId)}',${maxQty})">📦 落とす</button>
     <button class="btn-modal-close" onclick="showBag('mats')">← 戻る</button>
   `);
 }
@@ -1529,40 +1574,9 @@ async function doDiscardItem(itemId, maxQty) {
 
   G.backpack[itemId] = (G.backpack[itemId] || 0) - actual;
   await saveBpItem(itemId, G.backpack[itemId]);
+  await dropAtCurrentPos([{ item_id: itemId, quantity: actual }]);
 
-  // 同位置にロックされていない既存ドロップがあればマージ
-  const dkey = `${G.px},${G.py}`;
-  const existing = (G.droppedItems.get(dkey) || []).find(d => !isDropLocked(d));
-  if (existing) {
-    const merged = [...existing.items];
-    const idx = merged.findIndex(i => i.item_id === itemId);
-    if (idx >= 0) merged[idx] = { item_id: itemId, quantity: merged[idx].quantity + actual };
-    else merged.push({ item_id: itemId, quantity: actual });
-    await supabaseClient.from('drill_dropped_items').update({ items: merged }).eq('id', existing.id);
-    existing.items = merged;
-  } else {
-    // 新規ドロップ作成
-    const newItems = [{ item_id: itemId, quantity: actual }];
-    const { data: drop } = await supabaseClient.from('drill_dropped_items').insert({
-      map_date: G.mapDate, pos_x: G.px, pos_y: G.py,
-      dropper_user_id: G.userId,
-      dropper_name: G.displayName || '名無し',
-      cause_of_death: '投棄',
-      items: newItems,
-    }).select().single();
-    if (drop) {
-      if (!G.droppedItems.has(dkey)) G.droppedItems.set(dkey, []);
-      G.droppedItems.get(dkey).push({
-        id: drop.id, items: newItems,
-        dropper_name: G.displayName || '名無し',
-        cause_of_death: '投棄',
-        dropped_at: drop.dropped_at,
-        locked_by: null, locked_until: null,
-      });
-    }
-  }
-
-  log(`🗑️ ${getItemName(itemId)} ×${actual} を捨てた`);
+  log(`📦 ${getItemName(itemId)} ×${actual} を落とした`);
   renderSide(); renderMap();
   showBag('mats');
 }
