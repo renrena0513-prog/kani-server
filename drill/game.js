@@ -1607,6 +1607,7 @@ async function dropDrillAtCurrentPos(items) {
 async function dropDrillFromWarehouse(rowId) {
   const d = G.drills.find(x => x.id === rowId);
   if (!d) return;
+  if (d.drill_id === 'beginner') { log('⚠️ 初心者ドリルは落とせません'); return; }
   if (d.id === G.equippedDrillRowId) { log('⚠️ 装備中のドリルは落とせません'); return; }
   await supabaseClient.from('drill_player_drills').delete().eq('id', rowId);
   G.drills = G.drills.filter(x => x.id !== rowId);
@@ -1640,7 +1641,7 @@ function showDrills() {
           ? `<span style="font-size:.75rem;opacity:.5;">装備中</span>`
           : `<div style="display:flex;gap:6px;">
                <button class="btn-modal-action" onclick="equipDrill('${d.id}').then(showDrills)">装備</button>
-               <button class="btn-modal-action" style="background:rgba(200,60,60,.7);" onclick="dropDrillFromWarehouse('${d.id}')">落とす</button>
+               ${d.drill_id !== 'beginner' ? `<button class="btn-modal-action" style="background:rgba(200,60,60,.7);" onclick="dropDrillFromWarehouse('${d.id}')">落とす</button>` : ''}
              </div>`}
       </div>`;
     }
@@ -1966,7 +1967,7 @@ function showWarehouse(tab = 'mats') {
             ${isEquipped
               ? `<span style="font-size:.72rem;opacity:.4;">装備中</span>`
               : `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;" onclick="equipDrill('${d.id}').then(()=>showWarehouse('drills'))">装備</button>
-                 <button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;background:rgba(200,60,60,.7);" onclick="dropDrillFromWarehouse('${d.id}')">落とす</button>`}
+                 ${d.drill_id !== 'beginner' ? `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;background:rgba(200,60,60,.7);" onclick="dropDrillFromWarehouse('${d.id}')">落とす</button>` : ''}`}
           </div>
         </div>`;
       }).join('');
