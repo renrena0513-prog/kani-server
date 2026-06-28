@@ -227,6 +227,19 @@ const DEFAULT_GAME_CONFIG = {
       damage: 50,
     },
   },
+  treasureTypes: {
+    wood: {
+      name: '木の宝箱',
+      imageUrl: null,
+      loot: [
+        { type: 'gold', min: 50, max: 200, weight: 40 },
+        { type: 'item', itemId: 'stone',  qty: 30, weight: 30 },
+        { type: 'item', itemId: 'copper', qty: 10, weight: 20 },
+        { type: 'item', itemId: 'iron',   qty: 5,  weight: 10 },
+      ],
+    },
+  },
+  treasureSlots: Array.from({length: 30}, () => ({ wood: 1 })),
 };
 
 let gameConfig = null;
@@ -280,8 +293,11 @@ async function loadGameConfigAdmin() {
   } catch {
     gameConfig = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG));
   }
-  if (!gameConfig.monsters)  gameConfig.monsters  = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.monsters));
-  if (!gameConfig.cards)     gameConfig.cards     = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.cards));
+  if (!gameConfig.monsters)       gameConfig.monsters       = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.monsters));
+  if (!gameConfig.cards)         gameConfig.cards          = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.cards));
+  if (!gameConfig.treasureTypes) gameConfig.treasureTypes  = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.treasureTypes));
+  if (!gameConfig.treasureSlots || gameConfig.treasureSlots.length < 30)
+    gameConfig.treasureSlots = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.treasureSlots));
   if (!gameConfig.encounter) gameConfig.encounter = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.encounter));
   // encounter 旧3スロット → 30スロットにマイグレーション
   if (gameConfig.encounter.length < 30) {
@@ -324,6 +340,7 @@ function renderConfigEditor() {
   renderEventsTab();
   renderMonstersTab();
   renderCardsTab();
+  renderTreasureTab();
   // 最初のタブをアクティブに
   const firstBtn = document.querySelector('.cfg-tab-btn');
   if (firstBtn) showCfgTab('mats', firstBtn);
@@ -825,9 +842,10 @@ function collectConfig() {
     if (maxEl) c.max = parseInt(maxEl.value) || 0;
   });
 
-  // MONSTERS / CARDS
+  // MONSTERS / CARDS / TREASURE
   collectMonstersConfig();
   collectCardsConfig();
+  collectTreasureConfig();
 }
 
 async function saveGameConfig() {
@@ -1276,6 +1294,213 @@ async function uploadCardImage(id, input) {
 function clearCardImage(id) {
   if (gameConfig.cards?.[id]) gameConfig.cards[id].imageUrl = null;
   renderCardsTab();
+}
+
+// ============================================================
+// 宝箱設定タブ
+// ============================================================
+
+function renderTreasureTab() {
+  const el = document.getElementById('cfg-tab-treasure');
+  if (!el) return;
+  const types = gameConfig.treasureTypes ?? {};
+  const slots = gameConfig.treasureSlots ?? Array.from({length: 30}, () => ({}));
+  const typeIds = Object.keys(types);
+
+  const ITEM_OPT_IDS = ['dirt','stone','copper','iron','silver','gold'];
+
+  // Section 1: chest type definitions
+  let html = `<div class="info-box" style="margin-bottom:14px;">
+    宝箱の種類と中身のルーテーブルを設定します。中身はランダムで1つ選ばれます（重みで確率を調整）。
+  </div>`;
+
+  for (const [id, def] of Object.entries(types)) {
+    const loot = def.loot ?? [];
+    const lootRows = loot.map((l, li) => {
+      const isGold = l.type === 'gold';
+      const itemOpts = ITEM_OPT_IDS.map(m =>
+        `<option value="${m}"${m === l.itemId ? ' selected' : ''}>${m}</option>`
+      ).join('');
+      const content = isGold
+        ? `最小&nbsp;<input type="number" id="cfg-chest-loot-min-${id}-${li}" value="${l.min??0}" style="width:50px;">&nbsp;最大&nbsp;<input type="number" id="cfg-chest-loot-max-${id}-${li}" value="${l.max??100}" style="width:50px;">`
+        : `<select id="cfg-chest-loot-item-${id}-${li}">${itemOpts}</select>&nbsp;×<input type="number" id="cfg-chest-loot-qty-${id}-${li}" value="${l.qty??1}" min="1" style="width:45px;">`;
+      return `<tr>
+        <td style="padding:2px 4px;">
+          <select id="cfg-chest-loot-type-${id}-${li}" onchange="onChestLootTypeChange('${id}',${li})">
+            <option value="gold"${isGold?' selected':''}>お金</option>
+            <option value="item"${!isGold?' selected':''}>アイテム</option>
+          </select>
+        </td>
+        <td style="padding:2px 4px;">${content}</td>
+        <td style="padding:2px 4px;"><input type="number" id="cfg-chest-loot-weight-${id}-${li}" value="${l.weight??1}" min="0" style="width:50px;"></td>
+        <td style="padding:2px 4px;"><button class="btn-refresh" onclick="delChestLoot('${id}',${li})">✕</button></td>
+      </tr>`;
+    }).join('');
+
+    const imgPreview = def.imageUrl
+      ? `<img src="${escDrill(def.imageUrl)}" style="width:32px;height:32px;object-fit:contain;vertical-align:middle;cursor:pointer;border-radius:4px;" onclick="clearChestImage('${id}')" title="クリックで削除">`
+      : `<span style="opacity:.4;font-size:.75rem;">画像なし</span>`;
+
+    html += `<div style="border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:12px;margin-bottom:12px;">
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
+        <input type="text" id="cfg-chest-name-${id}" value="${escDrill(def.name??id)}" style="width:130px;">
+        <label style="cursor:pointer;font-size:.8rem;padding:4px 8px;background:rgba(255,255,255,.1);border-radius:4px;">
+          📷 画像
+          <input type="file" accept="image/*" style="display:none;" onchange="uploadChestImage('${id}',this)">
+        </label>
+        ${imgPreview}
+        <button class="btn-refresh" style="margin-left:auto;background:rgba(255,100,100,.2);" onclick="deleteChestType('${id}')">🗑️ 削除</button>
+      </div>
+      <table style="font-size:.8rem;border-collapse:collapse;width:100%;">
+        <thead><tr style="opacity:.6;">
+          <th style="text-align:left;padding:2px 4px;">種類</th>
+          <th style="text-align:left;padding:2px 4px;">内容</th>
+          <th style="text-align:left;padding:2px 4px;">重み</th>
+          <th></th>
+        </tr></thead>
+        <tbody>${lootRows || '<tr><td colspan="4" style="opacity:.4;padding:4px;">エントリなし</td></tr>'}</tbody>
+      </table>
+      <button class="btn-refresh" style="margin-top:8px;" onclick="addChestLoot('${id}')">+ 追加</button>
+    </div>`;
+  }
+
+  html += `<button class="btn-refresh" onclick="addChestType()">+ 宝箱を追加</button>`;
+
+  // Section 2: placement table
+  html += `<div style="margin-top:24px;">
+    <div style="font-weight:600;margin-bottom:6px;">宝箱の配置（10Mごと）</div>
+    <div class="info-box" style="margin-bottom:10px;">各深度スロットに生成する宝箱の個数を設定します。</div>`;
+
+  if (typeIds.length === 0) {
+    html += `<p style="opacity:.5;font-size:.85rem;">先に宝箱の種類を追加してください。</p>`;
+  } else {
+    html += `<table style="font-size:.78rem;border-collapse:collapse;">
+      <thead><tr>
+        <th style="padding:3px 10px;text-align:left;">深度</th>
+        ${typeIds.map(id => `<th style="padding:3px 10px;">${escDrill(types[id]?.name??id)}</th>`).join('')}
+      </tr></thead>
+      <tbody>`;
+    for (let s = 0; s < 30; s++) {
+      const rowSlot = slots[s] ?? {};
+      html += `<tr style="${s%2===0?'background:rgba(255,255,255,.03)':''}">
+        <td style="padding:2px 10px;">${s*10}~${s*10+9}m</td>
+        ${typeIds.map(id => `<td style="padding:2px 6px;text-align:center;">
+          <input type="number" id="cfg-slot-${s}-${id}" value="${rowSlot[id]??0}" min="0" style="width:42px;">
+        </td>`).join('')}
+      </tr>`;
+    }
+    html += `</tbody></table>`;
+  }
+
+  html += `</div>`;
+  el.innerHTML = html;
+}
+
+function collectTreasureConfig() {
+  const gc = gameConfig;
+  if (!gc.treasureTypes) gc.treasureTypes = {};
+
+  for (const [id, def] of Object.entries(gc.treasureTypes)) {
+    const nameEl = document.getElementById(`cfg-chest-name-${id}`);
+    if (nameEl) def.name = nameEl.value || def.name;
+
+    (def.loot ?? []).forEach((l, li) => {
+      const typeEl   = document.getElementById(`cfg-chest-loot-type-${id}-${li}`);
+      const weightEl = document.getElementById(`cfg-chest-loot-weight-${id}-${li}`);
+      if (typeEl)   l.type   = typeEl.value;
+      if (weightEl) l.weight = parseFloat(weightEl.value) || 1;
+      if (l.type === 'gold') {
+        const minEl = document.getElementById(`cfg-chest-loot-min-${id}-${li}`);
+        const maxEl = document.getElementById(`cfg-chest-loot-max-${id}-${li}`);
+        if (minEl) l.min = parseInt(minEl.value) || 0;
+        if (maxEl) l.max = parseInt(maxEl.value) || 0;
+      } else {
+        const itemEl = document.getElementById(`cfg-chest-loot-item-${id}-${li}`);
+        const qtyEl  = document.getElementById(`cfg-chest-loot-qty-${id}-${li}`);
+        if (itemEl) l.itemId = itemEl.value;
+        if (qtyEl)  l.qty    = parseInt(qtyEl.value) || 1;
+      }
+    });
+  }
+
+  if (!gc.treasureSlots || gc.treasureSlots.length < 30)
+    gc.treasureSlots = Array.from({length: 30}, () => ({}));
+
+  const typeIds = Object.keys(gc.treasureTypes);
+  for (let s = 0; s < 30; s++) {
+    const slot = {};
+    for (const id of typeIds) {
+      const el = document.getElementById(`cfg-slot-${s}-${id}`);
+      if (el) slot[id] = parseInt(el.value) || 0;
+    }
+    gc.treasureSlots[s] = slot;
+  }
+}
+
+function addChestType() {
+  collectTreasureConfig();
+  const id = 'chest_' + Date.now();
+  if (!gameConfig.treasureTypes) gameConfig.treasureTypes = {};
+  gameConfig.treasureTypes[id] = {
+    name: '新しい宝箱',
+    imageUrl: null,
+    loot: [{ type: 'gold', min: 10, max: 100, weight: 50 }],
+  };
+  renderTreasureTab();
+}
+
+function deleteChestType(id) {
+  collectTreasureConfig();
+  if (!confirm(`「${gameConfig.treasureTypes?.[id]?.name || id}」を削除しますか？`)) return;
+  delete gameConfig.treasureTypes[id];
+  if (gameConfig.treasureSlots) gameConfig.treasureSlots.forEach(slot => delete slot[id]);
+  renderTreasureTab();
+}
+
+function addChestLoot(id) {
+  collectTreasureConfig();
+  const def = gameConfig.treasureTypes?.[id];
+  if (!def) return;
+  if (!def.loot) def.loot = [];
+  def.loot.push({ type: 'gold', min: 10, max: 100, weight: 10 });
+  renderTreasureTab();
+}
+
+function delChestLoot(id, li) {
+  collectTreasureConfig();
+  const def = gameConfig.treasureTypes?.[id];
+  if (!def?.loot) return;
+  def.loot.splice(li, 1);
+  renderTreasureTab();
+}
+
+function onChestLootTypeChange(id, li) {
+  collectTreasureConfig();
+  const l = gameConfig.treasureTypes?.[id]?.loot?.[li];
+  if (!l) return;
+  const selEl = document.getElementById(`cfg-chest-loot-type-${id}-${li}`);
+  if (selEl) l.type = selEl.value;
+  if (l.type === 'item' && !l.itemId) { l.itemId = 'stone'; l.qty = 1; delete l.min; delete l.max; }
+  if (l.type === 'gold' && l.min == null) { l.min = 10; l.max = 100; delete l.itemId; delete l.qty; }
+  renderTreasureTab();
+}
+
+async function uploadChestImage(id, input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  try {
+    collectTreasureConfig();
+    const url = await uploadDrillImage('chests/' + id, file);
+    if (gameConfig.treasureTypes?.[id]) gameConfig.treasureTypes[id].imageUrl = url;
+    renderTreasureTab();
+  } catch (e) {
+    alert('アップロードエラー: ' + e.message);
+  }
+}
+
+function clearChestImage(id) {
+  if (gameConfig.treasureTypes?.[id]) gameConfig.treasureTypes[id].imageUrl = null;
+  renderTreasureTab();
 }
 
 // ============================================================

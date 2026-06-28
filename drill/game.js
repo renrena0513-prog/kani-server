@@ -47,12 +47,21 @@ let LAYER_W = Array.from({length: 30}, (_, i) =>
   _LW_BASE[Math.min(2, Math.floor(i / 10))].map(e => [...e])
 );
 
-// 宝箱生成設定
-const TREASURE_CFG = [
-  { yStart:0,   yEnd:99,  normal:10, rare:1 },
-  { yStart:100, yEnd:199, normal:15, rare:1 },
-  { yStart:200, yEnd:299, normal:20, rare:2 },
-];
+// 宝箱種類設定
+let TREASURE_TYPES = {
+  wood: {
+    name: '木の宝箱',
+    imageUrl: null,
+    loot: [
+      { type: 'gold', min: 50, max: 200, weight: 40 },
+      { type: 'item', itemId: 'stone',  qty: 30, weight: 30 },
+      { type: 'item', itemId: 'copper', qty: 10, weight: 20 },
+      { type: 'item', itemId: 'iron',   qty: 5,  weight: 10 },
+    ],
+  },
+};
+// 宝箱配置設定: 10Mごと30スロット。{ typeId: count, ... }
+let TREASURE_SLOTS = Array.from({length: 30}, () => ({ wood: 1 }));
 
 const DRILLS = {
   beginner:    { name:'初心者ドリル',    power:1,   dur:null,  cost:null, recipe:null },
@@ -167,8 +176,7 @@ const G = {
   permits: new Set(),
   dugCells: new Set(),   // 'x,y'
   digLocks: new Map(),   // 'x,y' -> {by, exp}
-  treasures: new Set(),  // 'x,y'
-  treasureRare: new Set(),
+  treasureMap: new Map(), // 'x,y' -> typeId
   otherPlayers: new Map(), // userId -> {x,y}
   isAdmin: false,
   drills: [],            // 所持ドリル一覧
@@ -234,33 +242,32 @@ function pickW(rng, table) {
 
 function cellMat(x, y) {
   if (x < 0 || x >= MAP_W || y < 0 || y >= MAP_H) return null;
-  if (G.treasures.has(`${x},${y}`)) return 'treasure';
+  if (G.treasureMap.has(`${x},${y}`)) return 'treasure';
   if (y === 0) return null; // 地上行はマスなし
   const slot = Math.min(LAYER_W.length - 1, Math.floor(y / 10));
   return pickW(cellRng(G.seed, x, y), LAYER_W[slot]);
 }
 
 function genTreasures(seed) {
-  const set = new Set();
-  const rare = new Set();
-  for (const cfg of TREASURE_CFG) {
-    const rng = mkRng((seed ^ (cfg.yStart * 999983)) >>> 0);
-    for (let i = 0; i < cfg.normal + cfg.rare; i++) {
-      let att = 0;
-      while (att++ < 5000) {
-        const x = Math.floor(rng() * MAP_W);
-        const y = cfg.yStart + 1 + Math.floor(rng() * (cfg.yEnd - cfg.yStart));
-        const k = `${x},${y}`;
-        if (!set.has(k)) {
-          set.add(k);
-          if (i >= cfg.normal) rare.add(k);
-          break;
+  const map = new Map();
+  TREASURE_SLOTS.forEach((slot, s) => {
+    const yStart = s * 10 + 1;
+    const yEnd   = s * 10 + 9;
+    for (const [typeId, count] of Object.entries(slot)) {
+      if (!count || count <= 0) continue;
+      const rng = mkRng((seed ^ ((s * 7919 + typeId.length * 997) & 0xFFFFFFFF)) >>> 0);
+      for (let i = 0; i < count; i++) {
+        let att = 0;
+        while (att++ < 5000) {
+          const x = Math.floor(rng() * MAP_W);
+          const y = yStart + Math.floor(rng() * (yEnd - yStart + 1));
+          const k = `${x},${y}`;
+          if (!map.has(k)) { map.set(k, typeId); break; }
         }
       }
     }
-  }
-  G.treasures = set;
-  G.treasureRare = rare;
+  });
+  G.treasureMap = map;
 }
 
 // ============================================================
@@ -409,6 +416,25 @@ async function loadGameConfig() {
           imageUrl: v.imageUrl ?? null,
           damage: v.damage ?? CARDS[id]?.damage ?? 0,
         };
+      }
+    }
+    if (cfg.treasureTypes) {
+      TREASURE_TYPES = {};
+      for (const [id, v] of Object.entries(cfg.treasureTypes)) {
+        TREASURE_TYPES[id] = {
+          name: v.name ?? '宝箱',
+          imageUrl: v.imageUrl ?? null,
+          loot: Array.isArray(v.loot) ? v.loot : [],
+        };
+      }
+    }
+    if (cfg.treasureSlots && Array.isArray(cfg.treasureSlots) && cfg.treasureSlots.length > 0) {
+      if (cfg.treasureSlots.length >= 30) {
+        TREASURE_SLOTS = cfg.treasureSlots;
+      } else {
+        TREASURE_SLOTS = Array.from({length: 30}, (_, i) =>
+          cfg.treasureSlots[Math.min(cfg.treasureSlots.length - 1, Math.floor(i / 10))] ?? {}
+        );
       }
     }
   } catch {}
@@ -933,44 +959,37 @@ async function collectDroppedItems(x, y) {
 
 async function openTreasure(x, y) {
   const key = `${x},${y}`;
-  const isRare = G.treasureRare.has(key);
-  const layer = Math.min(2, Math.floor(y / 100));
+  const typeId  = G.treasureMap.get(key);
+  const typeDef = TREASURE_TYPES[typeId];
+  if (!typeDef) { log('⚠️ 宝箱の設定が見つかりません'); return; }
+
+  const loot = typeDef.loot ?? [];
+  if (loot.length === 0) { log(`🎁 ${typeDef.name} → 中身が空だった…`); return; }
+
   const rng = cellRng(G.seed + 99, x, y);
   const r = rng();
 
-  const LOOT = [
-    // layer 0
-    [
-      [[0.45,'stone',50],[0.73,'copper',20],[0.88,'return_stone',1],[0.95,'drill_apprentice',1],[1.00,'return_stone',3]],
-      [[0.5,'drill_stone',1],[1.0,'return_stone',5]],
-    ],
-    // layer 1
-    [
-      [[0.32,'copper',50],[0.70,'iron',30],[0.85,'return_stone',1],[0.95,'drill_copper',1],[1.00,'return_stone',3]],
-      [[0.5,'drill_iron',1],[1.0,'return_stone',5]],
-    ],
-    // layer 2
-    [
-      [[0.32,'iron',60],[0.57,'silver',40],[0.80,'gold',20],[0.92,'drill_silver',1],[1.00,'return_stone',5]],
-      [[0.5,'drill_silver',1],[1.0,'return_stone',10]],
-    ],
-  ];
+  const total = loot.reduce((s, l) => s + (l.weight ?? 1), 0);
+  let pick = r * total;
+  let chosen = loot[loot.length - 1];
+  for (const l of loot) { pick -= (l.weight ?? 1); if (pick <= 0) { chosen = l; break; } }
 
-  const table = LOOT[layer][isRare ? 1 : 0];
-  let loot = table[table.length - 1];
-  for (const [cum, item, qty] of table) { if (r < cum) { loot = [cum, item, qty]; break; } }
-  const [, item, qty] = loot;
-
-  const canFit = Math.floor((G.maxBpWeight - bpWeight()) / itemWeight(item));
-  const actual = Math.min(qty, canFit);
-  if (actual <= 0) {
-    log(`⚠️ リュックが満杯！宝箱の中身が入りません`);
-    return;
+  if (chosen.type === 'gold') {
+    const amount = Math.floor(Math.random() * ((chosen.max ?? 100) - (chosen.min ?? 0) + 1)) + (chosen.min ?? 0);
+    G.drillGold += amount;
+    await supabaseClient.from('profiles').update({ drill_gold: G.drillGold }).eq('discord_user_id', G.discordId);
+    log(`🎁 ${typeDef.name} → 💰 ${amount}G`);
+  } else if (chosen.type === 'item') {
+    const itemId = chosen.itemId;
+    const qty    = chosen.qty ?? 1;
+    const canFit = Math.floor((G.maxBpWeight - bpWeight()) / itemWeight(itemId));
+    const actual = Math.min(qty, canFit);
+    if (actual <= 0) { log('⚠️ リュックが満杯！宝箱の中身が入りません'); return; }
+    if (actual < qty) log(`⚠️ 容量不足で ${qty - actual} 個入りませんでした`);
+    G.backpack[itemId] = (G.backpack[itemId] || 0) + actual;
+    await saveBpItem(itemId, G.backpack[itemId]);
+    log(`🎁 ${typeDef.name} → ${ITEM_NAMES[itemId] || itemId} ×${actual}`);
   }
-  if (actual < qty) log(`⚠️ 容量不足で ${qty - actual} 個入りませんでした`);
-  G.backpack[item] = (G.backpack[item] || 0) + actual;
-  await saveBpItem(item, G.backpack[item]);
-  log(`🎁 ${isRare ? 'レア' : ''}宝箱 → ${ITEM_NAMES[item] || item} ×${actual}`);
 }
 
 // ============================================================
@@ -2780,6 +2799,16 @@ function buildCell(wx, wy, vx = 0, vy = 0, otherByPos = null) {
   const lockCls = isLocked ? ' mc-lock' : '';
   const mineCls = isMining ? ' mc-mining' : '';
   const lockIcon = isLocked && !isMining ? '🔒' : '';
+
+  if (mat === 'treasure') {
+    const typeId  = G.treasureMap.get(key);
+    const typeDef = TREASURE_TYPES[typeId] ?? {};
+    const chestName = typeDef.name ?? '宝箱';
+    const imgEl = typeDef.imageUrl
+      ? `<img class="cell-chest-icon" src="${typeDef.imageUrl}" alt="">`
+      : '';
+    return `<div class="mc mc-treasure${lockCls}${mineCls}" title="${escHtml(chestName)}">${lockIcon}${extra}${imgEl}</div>`;
+  }
 
   return `<div class="mc ${m.cls}${lockCls}${mineCls}" title="${m.name}">${lockIcon}${extra}</div>`;
 }

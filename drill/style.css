@@ -112,7 +112,15 @@ html, body {
 .mc-silver  { background: #7a8090 url('./img/silver.png')  center/cover no-repeat; image-rendering: pixelated; }
 .mc-gold    { background: #7a6010 url('./img/gold.png')    center/cover no-repeat; image-rendering: pixelated; }
 .mc-treasure { background: #6a5000; }
-.mc-treasure::after { content: '📦'; font-size: 18px; }
+.mc-treasure:not(:has(.cell-chest-icon))::after { content: '📦'; font-size: 18px; }
+.cell-chest-icon {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80%; height: 80%;
+    object-fit: contain;
+    image-rendering: pixelated;
+}
 
 /* 進行不可バリア（100m / 200m 境界） */
 .mc-barrier {
@@ -633,7 +641,7 @@ html, body {
         height: clamp(18px, 5.5vw, 42px);
         font-size: clamp(9px, 3vw, 13px);
     }
-    .mc-treasure::after { font-size: clamp(11px, 3.5vw, 18px); }
+    .mc-treasure:not(:has(.cell-chest-icon))::after { font-size: clamp(11px, 3.5vw, 18px); }
 
     /* ===== 固定ボトムバー ===== */
     #action-btns {
