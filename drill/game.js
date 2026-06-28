@@ -1713,7 +1713,8 @@ function shuffleArray(arr) {
 }
 
 function drawCombatCards(n = 3) {
-  for (let i = 0; i < n; i++) {
+  const toDraw = Math.max(0, n - C.hand.length); // 手札がすでにある分は引かない
+  for (let i = 0; i < toDraw; i++) {
     if (C.deck.length === 0) {
       if (C.discard.length === 0) break;
       C.deck = shuffleArray(C.discard);
