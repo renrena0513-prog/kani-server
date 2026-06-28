@@ -265,22 +265,32 @@
 // アイテム定義（drill/game.js と同期）
 // ============================================================
 const ITEM_INFO = {
-  dirt:             { name: '土',             icon: '🟫' },
-  stone:            { name: '石',             icon: '🪨' },
-  copper:           { name: '銅',             icon: '🔶' },
-  iron:             { name: '鉄',             icon: '⚙️' },
-  silver:           { name: '銀',             icon: '🥈' },
-  gold:             { name: '金',             icon: '🥇' },
-  return_stone:     { name: '帰還石',         icon: '💎' },
-  drill_apprentice: { name: '見習いのドリル', icon: '⛏️' },
-  drill_stone:      { name: '石ドリル',       icon: '⛏️' },
-  drill_copper:     { name: '銅ドリル',       icon: '⛏️' },
-  drill_iron:       { name: '鉄ドリル',       icon: '⛏️' },
-  drill_silver:     { name: '銀のドリル',     icon: '⛏️' },
+  // 素材
+  dirt:          { name: '土',             icon: '🟫' },
+  stone:         { name: '石',             icon: '🪨' },
+  copper:        { name: '銅',             icon: '🔶' },
+  iron:          { name: '鉄',             icon: '⚙️' },
+  silver:        { name: '銀',             icon: '🥈' },
+  gold:          { name: '金',             icon: '🥇' },
+  // アイテム
+  return_stone:  { name: '帰還石',         icon: '💎' },
+  potion:        { name: 'ポーション',     icon: '🧪' },
+  // ドリル
+  beginner:      { name: '初心者ドリル',   icon: '⛏️', maxDur: null },
+  apprentice:    { name: '見習いのドリル', icon: '⛏️', maxDur: 300  },
+  stone_drill:   { name: '石ドリル',       icon: '⛏️', maxDur: 1000 },
+  copper_drill:  { name: '銅ドリル',       icon: '⛏️', maxDur: 2000 },
+  journeyman:    { name: '一人前のドリル', icon: '⛏️', maxDur: 3000 },
+  iron_drill:    { name: '鉄ドリル',       icon: '⛏️', maxDur: 4000 },
+  mass_drill:    { name: '量産型ドリル',   icon: '⛏️', maxDur: 3000 },
+  veteran:       { name: '熟練のドリル',   icon: '⛏️', maxDur: 10000},
+  silver_drill:  { name: '銀のドリル',     icon: '⛏️', maxDur: 20000},
+  allpurpose:    { name: '万能ドリル',     icon: '⛏️', maxDur: 50000},
 };
 
 function itemName(id) { return ITEM_INFO[id]?.name ?? id; }
 function itemIcon(id) { return ITEM_INFO[id]?.icon ?? '📦'; }
+function isDrill(id)  { return ITEM_INFO[id]?.maxDur !== undefined; }
 
 // ============================================================
 // 状態
@@ -289,6 +299,7 @@ let _userId = null;
 let _discordId = null;
 let _myGold = 0;
 let _myInventory = []; // { item_id, quantity, source }
+let _myDrills = [];    // { item_id, quantity:1, source:'drill', drill_row_id, durability, max_dur }
 let _listings = [];
 let _currentTab = 'all';
 let _buyTarget = null; // { listing }
@@ -321,9 +332,10 @@ async function loadMyGold() {
 }
 
 async function loadInventory() {
-  const [invRes, bpRes] = await Promise.all([
+  const [invRes, bpRes, drillRes] = await Promise.all([
     supabaseClient.from('drill_inventory').select('item_id,quantity').eq('user_id', _userId),
     supabaseClient.from('drill_backpack').select('item_id,quantity').eq('user_id', _userId),
+    supabaseClient.from('drill_player_drills').select('id,drill_id,durability,equipped').eq('user_id', _userId).eq('equipped', false),
   ]);
   const merged = {};
   for (const r of invRes.data || []) {
@@ -332,13 +344,22 @@ async function loadInventory() {
   for (const r of bpRes.data || []) {
     if (merged[r.item_id]) {
       merged[r.item_id].quantity += r.quantity;
-      // 同じアイテムが両方にある場合はinventoryを優先
     } else {
       merged[r.item_id] = { item_id: r.item_id, quantity: r.quantity, source: 'backpack' };
     }
   }
   _myInventory = Object.values(merged).filter(i => i.quantity > 0)
     .sort((a,b) => (itemName(a.item_id) < itemName(b.item_id) ? -1 : 1));
+
+  // ドリルを1個ずつ個別エントリとして追加
+  _myDrills = (drillRes.data || []).map(d => ({
+    item_id: d.drill_id,
+    quantity: 1,
+    source: 'drill',
+    drill_row_id: d.id,
+    durability: d.durability,
+    max_dur: ITEM_INFO[d.drill_id]?.maxDur ?? null,
+  }));
 }
 
 async function loadListings() {
@@ -400,13 +421,36 @@ function buildCard(l) {
 
   const ownBadge = isOwn ? '<span style="font-size:.7rem;color:#6bde9b;margin-left:6px;">出品中</span>' : '';
 
+  // ドリルの場合は耐久バー表示
+  let drillDurBar = '';
+  if (l.source === 'drill' && l.item_data) {
+    const d = typeof l.item_data === 'string' ? JSON.parse(l.item_data) : l.item_data;
+    if (d.durability !== null && d.max_dur) {
+      const pct = Math.max(0, Math.round(d.durability / d.max_dur * 100));
+      const col = pct > 50 ? '#4caf50' : pct > 20 ? '#ff9800' : '#f44336';
+      drillDurBar = `<div style="margin-top:6px;">
+        <div style="display:flex;justify-content:space-between;font-size:.72rem;color:rgba(255,255,255,.55);margin-bottom:3px;">
+          <span>耐久</span><span>${d.durability.toLocaleString()} / ${d.max_dur.toLocaleString()}</span>
+        </div>
+        <div style="height:5px;background:rgba(255,255,255,.15);border-radius:3px;overflow:hidden;">
+          <div style="height:100%;width:${pct}%;background:${col};border-radius:3px;"></div>
+        </div>
+      </div>`;
+    }
+  }
+
+  const qtyLine = l.source === 'drill'
+    ? ''
+    : `<div class="mkt-card-qty">残り ${l.remaining_qty.toLocaleString()} / ${l.total_qty.toLocaleString()} 個</div>`;
+
   return `
     <div class="mkt-card${isOwn ? ' own' : ''}">
       <div class="mkt-card-item">
         <div class="mkt-card-icon">${escHtml(icon)}</div>
-        <div>
+        <div style="flex:1;min-width:0;">
           <div class="mkt-card-name">${escHtml(l.item_name)}${ownBadge}</div>
-          <div class="mkt-card-qty">残り ${l.remaining_qty.toLocaleString()} / ${l.total_qty.toLocaleString()} 個</div>
+          ${qtyLine}
+          ${drillDurBar}
         </div>
       </div>
       <div class="mkt-card-price">
@@ -502,6 +546,19 @@ function openListModal() {
     opt.textContent = `${itemIcon(inv.item_id)} ${itemName(inv.item_id)} (${inv.quantity.toLocaleString()}個)`;
     sel.appendChild(opt);
   }
+  // ドリル（未装備・1個ずつ）
+  if (_myDrills.length > 0) {
+    const grp = document.createElement('optgroup');
+    grp.label = '⛏️ ドリル';
+    for (const d of _myDrills) {
+      const opt = document.createElement('option');
+      const durStr = d.durability !== null ? `耐久${d.durability}/${d.max_dur ?? '∞'}` : '耐久∞';
+      opt.value = JSON.stringify({ item_id: d.item_id, max: 1, source: 'drill', drill_row_id: d.drill_row_id, durability: d.durability, max_dur: d.max_dur });
+      opt.textContent = `${itemIcon(d.item_id)} ${itemName(d.item_id)} [${durStr}]`;
+      grp.appendChild(opt);
+    }
+    sel.appendChild(grp);
+  }
   document.getElementById('lm-max').textContent = 0;
   document.getElementById('lm-qty').value = 1;
   document.getElementById('lm-price').value = 10;
@@ -515,10 +572,20 @@ function updateListPreview() {
     ['lp-qty','lp-price','lp-total','lp-earn'].forEach(id => { document.getElementById(id).textContent = '-'; });
     return;
   }
-  const { max } = JSON.parse(selVal);
+  const parsed = JSON.parse(selVal);
+  const { max, source } = parsed;
   document.getElementById('lm-max').textContent = max;
 
-  const qty   = Math.max(1, Math.min(parseInt(document.getElementById('lm-qty').value) || 1, max));
+  // ドリルは数量固定1
+  const qtyEl = document.getElementById('lm-qty');
+  if (source === 'drill') {
+    qtyEl.value = 1;
+    qtyEl.disabled = true;
+  } else {
+    qtyEl.disabled = false;
+  }
+
+  const qty   = source === 'drill' ? 1 : Math.max(1, Math.min(parseInt(qtyEl.value) || 1, max));
   const price = Math.max(1, parseInt(document.getElementById('lm-price').value) || 1);
   const total = qty * price;
   const earn  = Math.floor(total * 0.8);
@@ -531,15 +598,26 @@ function updateListPreview() {
 
 function closeListModal() {
   document.getElementById('list-modal').classList.remove('open');
+  document.getElementById('lm-qty').disabled = false;
 }
 
 async function confirmList() {
   const selVal = document.getElementById('lm-item').value;
   if (!selVal) { alert('アイテムを選択してください'); return; }
 
-  const { item_id, max, source } = JSON.parse(selVal);
-  const qty   = Math.max(1, Math.min(parseInt(document.getElementById('lm-qty').value) || 1, max));
+  const parsed = JSON.parse(selVal);
+  const { item_id, max, source, drill_row_id, durability, max_dur } = parsed;
+  const qty   = source === 'drill' ? 1 : Math.max(1, Math.min(parseInt(document.getElementById('lm-qty').value) || 1, max));
   const price = Math.max(1, parseInt(document.getElementById('lm-price').value) || 1);
+
+  const itemData = source === 'drill'
+    ? { drill_row_id, durability, max_dur }
+    : {};
+
+  // ドリルの場合は耐久値を名前に付加して表示
+  const displayName = source === 'drill' && durability !== null
+    ? `${itemName(item_id)} [耐久${durability}/${max_dur ?? '∞'}]`
+    : itemName(item_id);
 
   const { data: userData } = await supabaseClient.auth.getUser();
   const sellerName   = userData?.user?.user_metadata?.name || userData?.user?.user_metadata?.full_name || '名無し';
@@ -554,11 +632,12 @@ async function confirmList() {
     p_seller_name:       sellerName,
     p_seller_avatar:     sellerAvatar,
     p_item_id:           item_id,
-    p_item_name:         itemName(item_id),
+    p_item_name:         displayName,
     p_item_icon:         itemIcon(item_id),
     p_quantity:          qty,
     p_price_per_unit:    price,
     p_source:            source,
+    p_item_data:         itemData,
   });
 
   btn.disabled = false; btn.textContent = '出品する';
