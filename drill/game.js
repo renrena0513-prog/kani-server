@@ -77,9 +77,10 @@ const DRILLS = {
 };
 
 const SHOP_ITEMS = [
-  { id:'apprentice', name:'見習いのドリル', cost:100,   type:'drill', drillId:'apprentice' },
-  { id:'journeyman', name:'一人前のドリル', cost:2000,  type:'drill', drillId:'journeyman' },
-  { id:'veteran',    name:'熟練のドリル',   cost:10000, type:'drill', drillId:'veteran' },
+  { id:'apprentice',   name:'見習いのドリル',   cost:100,   type:'drill', drillId:'apprentice' },
+  { id:'journeyman',   name:'一人前のドリル',   cost:2000,  type:'drill', drillId:'journeyman' },
+  { id:'veteran',      name:'熟練のドリル',     cost:10000, type:'drill', drillId:'veteran' },
+  { id:'drill_attack', name:'ドリルアタック',   cost:100,   type:'card',  cardId:'drill_attack' },
 ];
 
 const PERMITS = {
@@ -194,6 +195,7 @@ const G = {
   isAdmin: false,
   drills: [],            // 所持ドリル一覧
   playerDeckSlots: ['attack','attack','attack','attack','attack','attack','attack','attack','attack','attack'],
+  ownedCards: ['attack'],
   mineTarget: null,      // {x,y}
   mineTimer: null,
   mineHP: {},            // 'x,y' -> remaining hp
@@ -554,12 +556,13 @@ async function loadAll() {
   // 許可証
   G.permits = new Set((permRes.data || []).map(r => r.permit_id));
 
-  // デッキ
-  if (deckRes.data?.slots) {
-    G.playerDeckSlots = deckRes.data.slots;
+  // デッキ・所持カード
+  if (deckRes.data) {
+    G.playerDeckSlots = deckRes.data.slots ?? G.playerDeckSlots;
+    G.ownedCards = deckRes.data.owned_cards ?? G.ownedCards;
   } else {
     // 初回：デフォルトデッキをDBに保存
-    await supabaseClient.from('drill_player_deck').upsert({ user_id: uid, slots: G.playerDeckSlots });
+    await supabaseClient.from('drill_player_deck').upsert({ user_id: uid, slots: G.playerDeckSlots, owned_cards: G.ownedCards });
   }
 
   // ゴールド・HP
@@ -1142,17 +1145,22 @@ function showShop() {
   let html = `<div class="modal-title">🛒 ショップ</div>
     <div style="font-size:.82rem;margin-bottom:10px;">所持金: 💰 ${G.drillGold}G</div>`;
 
-  // ドリル
   for (const item of SHOP_ITEMS) {
     const canBuy = G.drillGold >= item.cost;
     const drillDef = item.type === 'drill' ? (DRILLS[item.drillId] ?? {}) : {};
+    const cardDef  = item.type === 'card'  ? (CARDS[item.cardId]   ?? {}) : {};
     const statsStr = item.type === 'drill'
       ? `<span style="color:rgba(255,200,80,.8);">発掘力 ${drillDef.power ?? '?'}</span> ／ 耐久 ${drillDef.dur ?? '∞'}`
-      : '';
+      : item.type === 'card'
+        ? `${cardDef.icon ?? ''} ${cardDef.desc ?? ''}`
+        : '';
+    const alreadyOwned = item.type === 'card' && G.ownedCards.includes(item.cardId);
     html += `<div class="modal-row">
       <div><div class="modal-row-label">${item.name}</div>
       <div class="modal-row-sub">${item.cost}G${statsStr ? '　' + statsStr : ''}</div></div>
-      <button class="btn-modal-action" onclick="buyShopDrill('${item.id}')" ${canBuy?'':'disabled'}>購入</button>
+      ${alreadyOwned
+        ? `<span style="font-size:.75rem;opacity:.45;">所持済み</span>`
+        : `<button class="btn-modal-action" onclick="buyShopDrill('${item.id}')" ${canBuy?'':'disabled'}>購入</button>`}
     </div>`;
   }
 
@@ -1187,6 +1195,11 @@ async function buyShopDrill(shopId) {
       durability: DRILLS[item.drillId].dur, equipped: false,
     }).select().single();
     if (nd) G.drills.push(nd);
+    log(`✅ ${item.name}を購入`);
+  } else if (item.type === 'card') {
+    if (G.ownedCards.includes(item.cardId)) { log('⚠️ すでに所持しています'); showShop(); return; }
+    G.ownedCards.push(item.cardId);
+    await supabaseClient.from('drill_player_deck').upsert({ user_id: G.userId, owned_cards: G.ownedCards });
     log(`✅ ${item.name}を購入`);
   } else {
     await upsertInv(item.itemId, 1);

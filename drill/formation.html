@@ -201,6 +201,7 @@ let discordId = null;
 let playerDrills = [];
 let equippedDrillRowId = null;
 let deckSlots = ['attack','attack','attack','attack','attack','attack','attack','attack','attack','attack'];
+let ownedCards = ['attack']; // 所持カード種一覧
 let unequippedPool = []; // 未装備カードのインスタンスプール
 
 // ドラッグ状態
@@ -250,15 +251,16 @@ async function loadData() {
   const eq = playerDrills.find(d => d.equipped) || playerDrills[0];
   equippedDrillRowId = eq?.id || null;
 
-  if (deckRes.data?.slots) {
-    deckSlots = deckRes.data.slots;
+  if (deckRes.data) {
+    deckSlots  = deckRes.data.slots       ?? deckSlots;
+    ownedCards = deckRes.data.owned_cards ?? ownedCards;
   }
   initPool();
 }
 
 function initPool() {
   const inDeck = new Set(deckSlots.filter(Boolean));
-  unequippedPool = Object.keys(CARDS_DEF).filter(id => !inDeck.has(id));
+  unequippedPool = ownedCards.filter(id => !inDeck.has(id));
 }
 
 // ============================================================
