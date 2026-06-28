@@ -1170,8 +1170,8 @@ async function buyGameItem(id) {
   await supabaseClient.from('profiles').update({ drill_gold: G.drillGold }).eq('discord_user_id', G.discordId);
   G.backpack[id] = (G.backpack[id] || 0) + 1;
   await saveBpItem(id, G.backpack[id]);
-  log(`✅ ${def.name}を購入`);
-  showShop();
+  const img = def.imageUrl ? `<img src="${escHtml(def.imageUrl)}" style="width:40px;height:40px;object-fit:contain;display:block;margin:0 auto 8px;">` : '🛍️';
+  showEventModal(img, `<strong>${escHtml(def.name)}</strong>を購入しました！<br><span style="color:#f0c060;font-size:.85rem;">-${def.cost} G</span>`, () => showShop());
 }
 
 // ============================================================
@@ -1203,6 +1203,17 @@ async function useItem(id) {
   }
 
   log(`🎒 ${def.name}を使用`);
+}
+
+async function depositItem(id) {
+  const def = ITEMS[id] ?? {};
+  const qty = G.backpack[id] || 0;
+  if (qty <= 0) return;
+  await upsertInv(id, qty);
+  G.backpack[id] = 0;
+  await saveBpItem(id, 0);
+  log(`📦 ${def.name || id} ×${qty} を倉庫に預けた`);
+  showBag('items');
 }
 
 async function withdrawItem(id, qty) {
@@ -1326,6 +1337,7 @@ function showBag(tab = 'mats') {
         const def = ITEMS[id] ?? {};
         const img = def.imageUrl ? `<img src="${escHtml(def.imageUrl)}" style="width:24px;height:24px;object-fit:contain;vertical-align:middle;margin-right:4px;">` : '';
         const useBtn = `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;" onclick="useItem('${id}')">使用</button>`;
+        const depositBtn = `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;background:rgba(80,180,120,.7);" onclick="depositItem('${id}')">倉庫へ</button>`;
         return `<div class="modal-row">
           <div>
             <div class="modal-row-label">${img}${escHtml(def.name || id)}</div>
@@ -1333,7 +1345,7 @@ function showBag(tab = 'mats') {
           </div>
           <div style="display:flex;align-items:center;gap:6px;">
             <span>×${qty}</span>
-            ${useBtn}
+            ${useBtn}${depositBtn}
           </div>
         </div>`;
       }).join('');
