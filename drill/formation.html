@@ -201,7 +201,7 @@ let discordId = null;
 let playerDrills = [];
 let equippedDrillRowId = null;
 let deckSlots = ['attack','attack','attack','attack','attack','attack','attack','attack','attack','attack'];
-let ownedCards = ['attack']; // 所持カード種一覧
+let ownedCards = { attack: 10 }; // 所持カード枚数マップ
 let unequippedPool = []; // 未装備カードのインスタンスプール
 
 // ドラッグ状態
@@ -259,9 +259,14 @@ async function loadData() {
 }
 
 function initPool() {
-  const inDeck = new Set(deckSlots.filter(Boolean));
-  // 'attack' はデフォルトフィラーとして無限扱い。プールには出さない
-  unequippedPool = ownedCards.filter(id => id !== 'attack' && !inDeck.has(id));
+  const deckCounts = {};
+  deckSlots.forEach(id => { if (id && id !== 'attack') deckCounts[id] = (deckCounts[id] || 0) + 1; });
+  unequippedPool = [];
+  for (const [id, count] of Object.entries(ownedCards)) {
+    if (id === 'attack') continue;
+    const remaining = Math.max(0, count - (deckCounts[id] || 0));
+    for (let i = 0; i < remaining; i++) unequippedPool.push(id);
+  }
 }
 
 // ============================================================
@@ -413,6 +418,10 @@ function handleDrop(targetSlotIndex) {
     const cardId = dragSource.cardId;
     const poolIdx = unequippedPool.indexOf(cardId);
     if (poolIdx === -1) { dragSource = null; return; }
+
+    // 同カード最大2枚制限
+    const deckCount = deckSlots.filter(s => s === cardId).length;
+    if (deckCount >= 2) { dragSource = null; return; }
 
     const oldCard = deckSlots[targetSlotIndex];
     unequippedPool.splice(poolIdx, 1);

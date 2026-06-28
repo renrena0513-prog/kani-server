@@ -195,7 +195,7 @@ const G = {
   isAdmin: false,
   drills: [],            // 所持ドリル一覧
   playerDeckSlots: ['attack','attack','attack','attack','attack','attack','attack','attack','attack','attack'],
-  ownedCards: ['attack'],
+  ownedCards: { attack: 10 },
   mineTarget: null,      // {x,y}
   mineTimer: null,
   mineHP: {},            // 'x,y' -> remaining hp
@@ -1186,13 +1186,11 @@ function showShop(tab = 'drill') {
       for (const item of cardItems) {
         const def = CARDS[item.cardId] ?? {};
         const canBuy = G.drillGold >= item.cost;
-        const alreadyOwned = G.ownedCards.includes(item.cardId);
+        const ownedCount = G.ownedCards[item.cardId] || 0;
         body += `<div class="modal-row">
           <div><div class="modal-row-label">${item.name}</div>
-          <div class="modal-row-sub">${item.cost}G　${def.icon ?? ''} ${def.desc ?? ''}</div></div>
-          ${alreadyOwned
-            ? `<span style="font-size:.75rem;opacity:.45;">所持済み</span>`
-            : `<button class="btn-modal-action" onclick="buyShopDrill('${item.id}')" ${canBuy?'':'disabled'}>購入</button>`}
+          <div class="modal-row-sub">${item.cost}G　${def.icon ?? ''} ${def.desc ?? ''}${ownedCount > 0 ? `　<span style="opacity:.55;">所持: ${ownedCount}枚</span>` : ''}</div></div>
+          <button class="btn-modal-action" onclick="buyShopDrill('${item.id}')" ${canBuy?'':'disabled'}>購入</button>
         </div>`;
       }
     } else {
@@ -1243,14 +1241,12 @@ async function buyShopDrill(shopId) {
   const item = SHOP_ITEMS.find(i => i.id === shopId);
   if (!item || G.drillGold < item.cost) { log('⚠️ 所持金不足'); return; }
 
-  // カードは所持チェックをゴールド引き落とし前に行う
   if (item.type === 'card') {
-    if (G.ownedCards.includes(item.cardId)) { log('⚠️ すでに所持しています'); showShop('card'); return; }
     G.drillGold -= item.cost;
     await supabaseClient.from('profiles').update({ drill_gold: G.drillGold }).eq('discord_user_id', G.discordId);
-    G.ownedCards.push(item.cardId);
+    G.ownedCards[item.cardId] = (G.ownedCards[item.cardId] || 0) + 1;
     await supabaseClient.from('drill_player_deck').upsert({ user_id: G.userId, owned_cards: G.ownedCards });
-    log(`✅ ${item.name}を購入`);
+    log(`✅ ${item.name}を購入（${G.ownedCards[item.cardId]}枚目）`);
     showShop('card');
     return;
   }
