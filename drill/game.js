@@ -993,24 +993,34 @@ async function collectDroppedItems(x, y) {
 // 宝箱を即時開封（採掘なし）
 async function collectTreasure(x, y) {
   const key = `${x},${y}`;
-  if (G.dugCells.has(key)) return;
+
+  if (G.dugCells.has(key)) {
+    // 開封済み — 残りアイテムがあれば再表示
+    const drops = G.droppedItems.get(key);
+    const td = drops?.find(d => d.cause_of_death === 'treasure' && !isDropLocked(d));
+    if (td) {
+      const got = await acquireDropLock(td.id);
+      if (got) showDropModal(x, y, td);
+    }
+    return;
+  }
+
   if (G.digLocks.has(key) && G.digLocks.get(key).by !== G.userId) {
     log('⚠️ 他のプレイヤーが開封中です');
     return;
   }
+
   const { error } = await supabaseClient.from('drill_dug_cells')
     .insert({ map_date: G.mapDate, x, y, dug_by: G.userId });
   G.dugCells.add(key);
-  if (error) {
-    scheduleRender();
-    return;
-  }
+  if (error) { scheduleRender(); return; }
+
   await openTreasure(x, y);
   scheduleRender();
 }
 
 async function openTreasure(x, y) {
-  const key = `${x},${y}`;
+  const key     = `${x},${y}`;
   const typeId  = G.treasureMap.get(key);
   const typeDef = TREASURE_TYPES[typeId];
   if (!typeDef) { log('⚠️ 宝箱の設定が見つかりません'); return; }
@@ -1021,39 +1031,44 @@ async function openTreasure(x, y) {
 
   const loot = typeDef.loot ?? [];
   if (loot.length === 0) {
-    showEventModal(chestIcon, `<span style="font-weight:700;">${escHtml(typeDef.name)}</span><br><span style="opacity:.7;">中身が空だった…</span>`);
+    showEventModal(chestIcon, `<strong>${escHtml(typeDef.name)}</strong><br><span style="opacity:.7;">中身が空だった…</span>`);
     return;
   }
 
   const rng = cellRng(G.seed + 99, x, y);
-  const r = rng();
+  const r   = rng();
   const total = loot.reduce((s, l) => s + (l.weight ?? 1), 0);
   let pick = r * total;
   let chosen = loot[loot.length - 1];
   for (const l of loot) { pick -= (l.weight ?? 1); if (pick <= 0) { chosen = l; break; } }
-
-  const chestTitle = `<span style="opacity:.7;font-size:.85rem;">${escHtml(typeDef.name)}</span><br>`;
 
   if (chosen.type === 'gold') {
     const amount = Math.floor(Math.random() * ((chosen.max ?? 100) - (chosen.min ?? 0) + 1)) + (chosen.min ?? 0);
     G.drillGold += amount;
     await supabaseClient.from('profiles').update({ drill_gold: G.drillGold }).eq('discord_user_id', G.discordId);
     log(`🎁 ${typeDef.name} → 💰 ${amount}G`);
-    showEventModal(chestIcon, `${chestTitle}<span style="color:#f0c060;font-size:1.6rem;font-weight:700;">💰 ${amount}G</span>`);
-  } else if (chosen.type === 'item') {
-    const itemId = chosen.itemId;
-    const qty    = chosen.qty ?? 1;
-    const canFit = Math.floor((G.maxBpWeight - bpWeight()) / itemWeight(itemId));
-    const actual = Math.min(qty, canFit);
-    if (actual <= 0) {
-      showEventModal(chestIcon, `${chestTitle}<span style="color:#ff6b6b;">リュックが満杯！<br>中身が入りません</span>`);
-      return;
+    showEventModal(chestIcon, `<span style="opacity:.7;font-size:.85rem;">${escHtml(typeDef.name)}</span><br><span style="color:#f0c060;font-size:1.6rem;font-weight:700;">💰 ${amount}G</span>`);
+    return;
+  }
+
+  if (chosen.type === 'item') {
+    const items = [{ item_id: chosen.itemId, quantity: chosen.qty ?? 1 }];
+    const { data: drop } = await supabaseClient.from('drill_dropped_items').insert({
+      map_date: G.mapDate, pos_x: x, pos_y: y,
+      items,
+      dropper_user_id: G.userId,
+      dropper_name: typeDef.name,
+      cause_of_death: 'treasure',
+      dropped_at: new Date().toISOString(),
+    }).select().single();
+
+    if (drop) {
+      if (!G.droppedItems.has(key)) G.droppedItems.set(key, []);
+      const entry = { id: drop.id, items, dropper_name: typeDef.name, cause_of_death: 'treasure', dropped_at: drop.dropped_at };
+      G.droppedItems.get(key).push(entry);
+      const got = await acquireDropLock(drop.id);
+      if (got) showDropModal(x, y, entry);
     }
-    if (actual < qty) log(`⚠️ 容量不足で ${qty - actual} 個入りませんでした`);
-    G.backpack[itemId] = (G.backpack[itemId] || 0) + actual;
-    await saveBpItem(itemId, G.backpack[itemId]);
-    log(`🎁 ${typeDef.name} → ${ITEM_NAMES[itemId] || itemId} ×${actual}`);
-    showEventModal(chestIcon, `${chestTitle}<span style="font-size:1.3rem;font-weight:700;">${escHtml(ITEM_NAMES[itemId] || itemId)} ×${actual}</span>`);
   }
 }
 
@@ -1996,13 +2011,18 @@ function showDropModal(x, y, drop) {
     </div>`;
   }).join('');
 
-  const isDiscard = drop.cause_of_death === '投棄';
-  const modalTitle = isDiscard
-    ? `📦 ${escHtml(drop.dropper_name || '???')}が落としたアイテム`
-    : `📦 ${escHtml(drop.dropper_name || '???')}のリュックサック`;
-  const subInfo = isDiscard
-    ? `<div style="font-size:.75rem;opacity:.6;margin-bottom:14px;">${escHtml(dateStr)}</div>`
-    : `<div style="font-size:.75rem;opacity:.6;margin-bottom:14px;">死亡 ${escHtml(dateStr)}&ensp;死因 ${escHtml(drop.cause_of_death || '不明')}</div>`;
+  const isTreasure = drop.cause_of_death === 'treasure';
+  const isDiscard  = drop.cause_of_death === '投棄';
+  const modalTitle = isTreasure
+    ? `🎁 ${escHtml(drop.dropper_name || '宝箱')}の中身`
+    : isDiscard
+      ? `📦 ${escHtml(drop.dropper_name || '???')}が落としたアイテム`
+      : `📦 ${escHtml(drop.dropper_name || '???')}のリュックサック`;
+  const subInfo = isTreasure
+    ? ''
+    : isDiscard
+      ? `<div style="font-size:.75rem;opacity:.6;margin-bottom:14px;">${escHtml(dateStr)}</div>`
+      : `<div style="font-size:.75rem;opacity:.6;margin-bottom:14px;">死亡 ${escHtml(dateStr)}&ensp;死因 ${escHtml(drop.cause_of_death || '不明')}</div>`;
 
   openModal(`
     <div class="modal-title">${modalTitle}</div>
@@ -3112,6 +3132,17 @@ function buildCell(wx, wy, vx = 0, vy = 0, otherByPos = null) {
   const isMining = G.mineTarget?.x === wx && G.mineTarget?.y === wy;
 
   if (isDug) {
+    // 宝箱が開封済みでも残りアイテムがあれば宝箱として描画
+    const hasTreasureDrop = wy > 0 && G.treasureMap?.has(key) &&
+      G.droppedItems?.get(key)?.some(d => d.cause_of_death === 'treasure');
+    if (hasTreasureDrop) {
+      const typeId  = G.treasureMap.get(key);
+      const typeDef = TREASURE_TYPES[typeId] ?? {};
+      const chestName = typeDef.name ?? '宝箱';
+      const imgEl = typeDef.imageUrl ? `<img class="cell-chest-icon" src="${typeDef.imageUrl}" alt="">` : '';
+      return `<div class="mc mc-treasure" style="${layerBg}" title="${escHtml(chestName)}（残りあり）">${imgEl}</div>`;
+    }
+
     const base = wy === 0 ? 'mc-surf' : 'mc-dug';
     let inner = '';
     // モンスターオーバーレイ
