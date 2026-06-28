@@ -530,11 +530,19 @@ function renderEventsTab() {
       <div style="font-size:.88rem;font-weight:700;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.1);">
         ${LAYER_NAME[li] ?? `第${li+1}層`}
       </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:.82rem;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:.82rem;flex-wrap:wrap;">
         <span>👻 呪いダメージ（上移動1マスごと）</span>
-        ${cfgNum(`cfg-curse-${li}-min`, c.min, `min="0" style="width:68px;" placeholder="min"`)}
+        ${cfgNum(`cfg-curse-${li}-min`, c.min, `min="0" style="width:68px;" placeholder="min" oninput="updateCurseAvg(${li})"`)}
         <span style="opacity:.45;">〜</span>
-        ${cfgNum(`cfg-curse-${li}-max`, c.max, `min="0" style="width:68px;" placeholder="max"`)}
+        ${cfgNum(`cfg-curse-${li}-max`, c.max, `min="0" style="width:68px;" placeholder="max" oninput="updateCurseAvg(${li})"`)}
+      </div>
+      <div style="font-size:.78rem;margin-bottom:10px;display:flex;gap:14px;flex-wrap:wrap;">
+        <span style="color:rgba(255,255,255,.5);">平均:
+          <span id="curse-avg-${li}" style="color:#6bde9b;font-weight:700;">${((c.min + c.max) / 2).toFixed(1)}</span> HP
+        </span>
+        ${li > 0 ? `<span style="color:rgba(180,100,255,.7);">許可証なし(×10):
+          <span id="curse-avg10-${li}" style="color:#c87fff;font-weight:700;">${((c.min + c.max) / 2 * 10).toFixed(1)}</span> HP
+        </span>` : ''}
       </div>
       <table class="drill-table">
         <tr><th>イベント</th><th>重み</th><th>追加パラメータ（min〜max）</th></tr>`;
@@ -569,6 +577,17 @@ function renderEventsTab() {
   });
 
   document.getElementById('cfg-tab-events').innerHTML = html;
+}
+
+function updateCurseAvg(li) {
+  const minEl = document.getElementById(`cfg-curse-${li}-min`);
+  const maxEl = document.getElementById(`cfg-curse-${li}-max`);
+  if (!minEl || !maxEl) return;
+  const avg = ((parseFloat(minEl.value) || 0) + (parseFloat(maxEl.value) || 0)) / 2;
+  const avgEl   = document.getElementById(`curse-avg-${li}`);
+  const avg10El = document.getElementById(`curse-avg10-${li}`);
+  if (avgEl)   avgEl.textContent   = avg.toFixed(1);
+  if (avg10El) avg10El.textContent = (avg * 10).toFixed(1);
 }
 
 function updateEvTotal(li) {
