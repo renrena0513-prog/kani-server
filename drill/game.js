@@ -508,7 +508,7 @@ async function loadAll() {
       supabaseClient.from('profiles').select('drill_gold,drill_hp').eq('discord_user_id', G.discordId).maybeSingle(),
       supabaseClient.from('drill_player_positions').select('user_id,x,y,avatar_url').eq('map_date', date).neq('user_id', uid),
       supabaseClient.from('drill_dropped_items').select('id,pos_x,pos_y,items,dropper_name,cause_of_death,dropped_at,locked_by,locked_until').eq('map_date', date),
-      supabaseClient.from('drill_player_deck').select('slots').eq('user_id', uid).maybeSingle(),
+      supabaseClient.from('drill_player_deck').select('slots,owned_cards').eq('user_id', uid).maybeSingle(),
     ]);
 
   G.dugCells = new Set((dugRes.data || []).map(r => `${r.x},${r.y}`));

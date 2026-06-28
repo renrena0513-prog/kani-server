@@ -224,19 +224,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function loadConfig() {
-  const { data } = await supabaseClient.from('drill_game_config')
-    .select('config_json').eq('id', 1).maybeSingle();
-  const cfg = data?.config_json || {};
+  const { data } = await supabaseClient.from('drill_page_settings')
+    .select('setting_value').eq('setting_key', 'game_config').maybeSingle();
+  const cfg = data?.setting_value ? JSON.parse(data.setting_value) : {};
   CARDS_DEF = { ...DEFAULT_CARDS };
   if (cfg.cards) {
     for (const [id, v] of Object.entries(cfg.cards)) {
-      CARDS_DEF[id] = { ...DEFAULT_CARDS[id], ...v };
+      CARDS_DEF[id] = { ...(DEFAULT_CARDS[id] ?? {}), ...v };
     }
   }
   DRILLS_DEF = { ...DEFAULT_DRILLS };
   if (cfg.drills) {
     for (const [id, v] of Object.entries(cfg.drills)) {
-      DRILLS_DEF[id] = { ...DEFAULT_DRILLS[id], ...v };
+      DRILLS_DEF[id] = { ...(DEFAULT_DRILLS[id] ?? {}), ...v };
     }
   }
 }
@@ -325,12 +325,20 @@ function renderCards() {
   renderUnequipped();
 }
 
+function cardVisual(c, small = false) {
+  if (c.imageUrl) {
+    const sz = small ? '36px' : '44px';
+    return `<img src="${c.imageUrl}" style="width:${sz};height:${sz};object-fit:contain;border-radius:4px;">`;
+  }
+  return `<div class="card-icon">${c.icon || '❓'}</div>`;
+}
+
 function cardHTML(cardId, slotNum) {
   const c = CARDS_DEF[cardId];
   if (!c) return `<div class="card-slot-num">${slotNum}</div><span style="opacity:.3;">?</span>`;
   return `
     <div class="card-slot-num">${slotNum}</div>
-    <div class="card-icon">${c.icon || '❓'}</div>
+    ${cardVisual(c)}
     <div class="card-name">${c.name}</div>
     <div class="card-dmg">${c.damage ?? 0}</div>`;
 }
@@ -380,7 +388,7 @@ function renderUnequipped() {
     card.className = 'unequipped-card';
     card.dataset.cardId = cardId;
     card.innerHTML = `
-      <div class="card-icon">${c.icon || '❓'}</div>
+      ${cardVisual(c)}
       <div class="card-name">${c.name}</div>
       <div class="card-dmg">${c.damage ?? 0}</div>
       ${count > 1 ? `<div style="font-size:.58rem;opacity:.55;">×${count}</div>` : ''}`;
