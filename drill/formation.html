@@ -201,6 +201,7 @@ let discordId = null;
 let playerDrills = [];
 let equippedDrillRowId = null;
 let deckSlots = ['attack','attack','attack','attack','attack','attack','attack','attack','attack','attack'];
+let unequippedPool = []; // 未装備カードのインスタンスプール
 
 // ドラッグ状態
 let dragSource = null; // { type:'slot'|'unequipped', slotIndex?:number, cardId?:string }
@@ -252,6 +253,12 @@ async function loadData() {
   if (deckRes.data?.slots) {
     deckSlots = deckRes.data.slots;
   }
+  initPool();
+}
+
+function initPool() {
+  const inDeck = new Set(deckSlots.filter(Boolean));
+  unequippedPool = Object.keys(CARDS_DEF).filter(id => !inDeck.has(id));
 }
 
 // ============================================================
@@ -346,9 +353,13 @@ function renderEquipped() {
     slot.addEventListener('dragend', () => slot.classList.remove('dragging'));
     slot.draggable = true;
 
-    // タップで削除（スロットを空にする）
+    // タップでスロットを空に → カードをプールに戻す
     slot.addEventListener('click', () => {
-      if (cardId) { deckSlots[i] = null; renderCards(); }
+      if (cardId) {
+        deckSlots[i] = null;
+        unequippedPool.push(cardId);
+        renderCards();
+      }
     });
 
     grid.appendChild(slot);
@@ -359,17 +370,16 @@ function renderUnequipped() {
   const grid = document.getElementById('unequipped-grid');
   grid.innerHTML = '';
 
-  // 全カード種のうち、未装備のもの（デッキに入っていない種類）を表示
-  const allCards = Object.keys(CARDS_DEF);
-  const equippedSet = new Set(deckSlots.filter(Boolean));
-
-  const unequipped = allCards.filter(id => !equippedSet.has(id));
-  if (unequipped.length === 0) {
-    grid.innerHTML = '<div style="opacity:.4;font-size:.8rem;grid-column:1/-1;padding:10px 0;">すべて装備済み</div>';
+  if (unequippedPool.length === 0) {
+    grid.innerHTML = '<div style="opacity:.4;font-size:.8rem;grid-column:1/-1;padding:10px 0;">未装備のカードなし</div>';
     return;
   }
 
-  for (const cardId of unequipped) {
+  // 同じカードが複数あれば枚数表示
+  const counts = {};
+  for (const id of unequippedPool) counts[id] = (counts[id] || 0) + 1;
+
+  for (const [cardId, count] of Object.entries(counts)) {
     const c = CARDS_DEF[cardId];
     if (!c) continue;
     const card = document.createElement('div');
@@ -378,7 +388,8 @@ function renderUnequipped() {
     card.innerHTML = `
       <div class="card-icon">${c.icon || '❓'}</div>
       <div class="card-name">${c.name}</div>
-      <div class="card-dmg">${c.damage ?? 0}</div>`;
+      <div class="card-dmg">${c.damage ?? 0}</div>
+      ${count > 1 ? `<div style="font-size:.58rem;opacity:.55;">×${count}</div>` : ''}`;
 
     card.draggable = true;
     card.addEventListener('dragstart', () => {
@@ -386,7 +397,6 @@ function renderUnequipped() {
       card.classList.add('dragging');
     });
     card.addEventListener('dragend', () => card.classList.remove('dragging'));
-
     grid.appendChild(card);
   }
 }
@@ -395,8 +405,15 @@ function handleDrop(targetSlotIndex) {
   if (!dragSource) return;
 
   if (dragSource.type === 'unequipped') {
-    // 未装備カードをスロットに配置
-    deckSlots[targetSlotIndex] = dragSource.cardId;
+    const cardId = dragSource.cardId;
+    const poolIdx = unequippedPool.indexOf(cardId);
+    if (poolIdx === -1) { dragSource = null; return; }
+
+    const oldCard = deckSlots[targetSlotIndex];
+    unequippedPool.splice(poolIdx, 1);      // プールから取り出す
+    deckSlots[targetSlotIndex] = cardId;
+    if (oldCard) unequippedPool.push(oldCard); // 元のカードをプールへ
+
   } else if (dragSource.type === 'slot') {
     // スロット同士を入れ替え
     const from = dragSource.slotIndex;
