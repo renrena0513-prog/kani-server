@@ -133,10 +133,20 @@
     /* タブ表示切り替え */
     #tab-drills, #tab-cards { display: none; }
     #tab-drills.active, #tab-cards.active { display: block; }
+
+    /* トースト通知 */
+    #fm-toast {
+      position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+      background: rgba(30,30,40,.92); color: #fff; padding: .5rem 1.1rem;
+      border-radius: 2rem; font-size: .85rem; pointer-events: none;
+      opacity: 0; transition: opacity .25s; z-index: 9999; white-space: nowrap;
+    }
+    #fm-toast.show { opacity: 1; }
   </style>
 </head>
 <body>
 
+<div id="fm-toast"></div>
 <div class="fm-wrap">
   <a href="index.html" class="fm-back">← ゲームに戻る</a>
   <div class="fm-title">⚔️ 編成</div>
@@ -411,6 +421,15 @@ function renderUnequipped() {
   }
 }
 
+let _toastTimer = null;
+function showToast(msg) {
+  const el = document.getElementById('fm-toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
 function handleDrop(targetSlotIndex) {
   if (!dragSource) return;
 
@@ -421,7 +440,7 @@ function handleDrop(targetSlotIndex) {
 
     // 同カード最大2枚制限
     const deckCount = deckSlots.filter(s => s === cardId).length;
-    if (deckCount >= 2) { dragSource = null; return; }
+    if (deckCount >= 2) { showToast('⚠️ 同じカードは最大2枚までです'); dragSource = null; return; }
 
     const oldCard = deckSlots[targetSlotIndex];
     unequippedPool.splice(poolIdx, 1);
