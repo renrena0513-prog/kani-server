@@ -204,6 +204,29 @@ const DEFAULT_GAME_CONFIG = {
     { min: 3, max: 20 }, // 第2層
     { min: 8, max: 40 }, // 第3層
   ],
+  monsters: {
+    test_slime: {
+      name: 'テストスライム',
+      icon: '💚',
+      imageUrl: null,
+      maxHp: 200,
+      layerWeights: [40, 0, 0],
+      actions: [
+        { name: 'たいあたり',          damage: 30, weight: 1 },
+        { name: 'ぷるぷるふるえている', damage: 0,  weight: 1 },
+        { name: 'からみつく',          damage: 50, weight: 1 },
+      ],
+    },
+  },
+  cards: {
+    attack: {
+      name: '攻撃',
+      desc: '50ダメージ',
+      icon: '⚔️',
+      imageUrl: null,
+      damage: 50,
+    },
+  },
 };
 
 let gameConfig = null;
@@ -257,6 +280,8 @@ async function loadGameConfigAdmin() {
   } catch {
     gameConfig = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG));
   }
+  if (!gameConfig.monsters) gameConfig.monsters = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.monsters));
+  if (!gameConfig.cards)    gameConfig.cards    = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.cards));
   renderConfigEditor();
 }
 
@@ -268,6 +293,8 @@ function renderConfigEditor() {
   renderSellTab();
   renderPermitsTab();
   renderEventsTab();
+  renderMonstersTab();
+  renderCardsTab();
   // 最初のタブをアクティブに
   const firstBtn = document.querySelector('.cfg-tab-btn');
   if (firstBtn) showCfgTab('mats', firstBtn);
@@ -625,6 +652,10 @@ function collectConfig() {
     if (minEl) c.min = parseInt(minEl.value) || 0;
     if (maxEl) c.max = parseInt(maxEl.value) || 0;
   });
+
+  // MONSTERS / CARDS
+  collectMonstersConfig();
+  collectCardsConfig();
 }
 
 async function saveGameConfig() {
@@ -827,4 +858,271 @@ async function invAddItem(type) {
 
 function closeInvModal() {
   document.getElementById('inv-modal').style.display = 'none';
+}
+
+// ============================================================
+// モンスター設定タブ
+// ============================================================
+
+function renderMonstersTab() {
+  const monsters = gameConfig.monsters ?? {};
+  let html = `<div class="info-box" style="margin-bottom:14px;">
+    各モンスターの名前・体力・行動・出現率を設定します。出現率の重みは0=出現しない。
+  </div>`;
+
+  for (const [id, mon] of Object.entries(monsters)) {
+    const lw  = mon.layerWeights ?? [0, 0, 0];
+    const acts = mon.actions ?? [];
+
+    const imgPreview = mon.imageUrl
+      ? `<img src="${escDrill(mon.imageUrl)}" style="width:48px;height:48px;object-fit:contain;border-radius:6px;background:rgba(255,255,255,.08);">`
+      : `<div style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);border-radius:6px;font-size:2rem;">${escDrill(mon.icon || '👾')}</div>`;
+
+    const actionRows = acts.map((act, ai) => `<tr>
+      <td><input class="cfg-input mon-act-name-${id}" type="text" value="${escDrill(act.name)}" style="width:100%;min-width:110px;"></td>
+      <td><input class="cfg-input mon-act-dmg-${id}"  type="number" value="${act.damage}" min="0" style="width:68px;"></td>
+      <td><input class="cfg-input mon-act-wt-${id}"   type="number" value="${act.weight}" min="0" step="0.1" style="width:58px;"></td>
+      <td><button class="inv-del-btn" onclick="delMonsterAction('${id}',${ai})">✕</button></td>
+    </tr>`).join('');
+
+    html += `
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:16px;margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          ${imgPreview}
+          <div>
+            <div style="font-size:.72rem;opacity:.45;margin-bottom:3px;">ID: ${escDrill(id)}</div>
+            <input class="cfg-input mon-name-${id}" type="text" value="${escDrill(mon.name)}" placeholder="名前" style="width:160px;">
+          </div>
+        </div>
+        <button class="inv-del-btn" onclick="deleteMonster('${id}')">🗑️ 削除</button>
+      </div>
+
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;align-items:flex-end;">
+        <label style="font-size:.82rem;">HP<br>
+          <input class="cfg-input mon-hp-${id}" type="number" value="${mon.maxHp}" min="1" style="width:90px;">
+        </label>
+        <label style="font-size:.82rem;">アイコン絵文字<br>
+          <input class="cfg-input mon-icon-${id}" type="text" value="${escDrill(mon.icon ?? '')}" placeholder="👾" style="width:70px;">
+        </label>
+        <div style="font-size:.82rem;">画像<br>
+          <label class="inv-save-btn" style="cursor:pointer;display:inline-block;padding:3px 10px;">
+            📁 選択<input type="file" accept="image/*" style="display:none;" onchange="uploadMonsterImage('${id}',this)">
+          </label>
+          ${mon.imageUrl ? `<button class="inv-del-btn" onclick="clearMonsterImage('${id}')">✕</button>` : ''}
+        </div>
+      </div>
+
+      <div style="font-size:.82rem;font-weight:700;margin-bottom:8px;opacity:.7;">出現率（層ごとの重み）</div>
+      <div style="display:flex;gap:14px;margin-bottom:14px;flex-wrap:wrap;">
+        ${[0, 1, 2].map(li => `<label style="font-size:.82rem;">第${li + 1}層<br>
+          <input class="cfg-input mon-lw-${id}" type="number" value="${lw[li] ?? 0}" min="0" style="width:68px;" data-layer="${li}">
+        </label>`).join('')}
+      </div>
+
+      <div style="font-size:.82rem;font-weight:700;margin-bottom:8px;opacity:.7;">行動パターン</div>
+      <table class="drill-table" style="margin-bottom:8px;">
+        <tr><th>行動名</th><th>ダメージ</th><th>重み</th><th></th></tr>
+        ${actionRows || '<tr><td colspan="4" style="opacity:.4;font-size:.8rem;padding:6px;">なし</td></tr>'}
+      </table>
+      <button class="inv-save-btn" style="padding:2px 10px;font-size:.75rem;" onclick="addMonsterAction('${id}')">＋ 行動追加</button>
+    </div>`;
+  }
+
+  html += `<button class="btn-refresh" onclick="addMonster()">＋ モンスター追加</button>`;
+  document.getElementById('cfg-tab-monsters').innerHTML = html;
+}
+
+function collectMonstersConfig() {
+  const monsters = gameConfig.monsters ?? {};
+  for (const [id, mon] of Object.entries(monsters)) {
+    const nameEl = document.querySelector(`.mon-name-${id}`);
+    const hpEl   = document.querySelector(`.mon-hp-${id}`);
+    const iconEl = document.querySelector(`.mon-icon-${id}`);
+    if (nameEl) mon.name  = nameEl.value;
+    if (hpEl)   mon.maxHp = parseInt(hpEl.value) || 100;
+    if (iconEl) mon.icon  = iconEl.value;
+
+    const lwEls = document.querySelectorAll(`.mon-lw-${id}`);
+    if (lwEls.length > 0)
+      mon.layerWeights = Array.from(lwEls).map(el => parseFloat(el.value) || 0);
+
+    const nameEls = document.querySelectorAll(`.mon-act-name-${id}`);
+    const dmgEls  = document.querySelectorAll(`.mon-act-dmg-${id}`);
+    const wtEls   = document.querySelectorAll(`.mon-act-wt-${id}`);
+    mon.actions = Array.from(nameEls).map((el, i) => ({
+      name:   el.value,
+      damage: parseInt(dmgEls[i]?.value) || 0,
+      weight: parseFloat(wtEls[i]?.value) || 1,
+    }));
+  }
+  gameConfig.monsters = monsters;
+}
+
+function addMonster() {
+  collectMonstersConfig();
+  const id = 'monster_' + Date.now();
+  if (!gameConfig.monsters) gameConfig.monsters = {};
+  gameConfig.monsters[id] = {
+    name: '新モンスター', icon: '👾', imageUrl: null,
+    maxHp: 100, layerWeights: [0, 0, 0],
+    actions: [{ name: '攻撃', damage: 10, weight: 1 }],
+  };
+  renderMonstersTab();
+}
+
+function deleteMonster(id) {
+  collectMonstersConfig();
+  if (!confirm(`「${gameConfig.monsters?.[id]?.name || id}」を削除しますか？`)) return;
+  delete gameConfig.monsters[id];
+  renderMonstersTab();
+}
+
+function addMonsterAction(id) {
+  collectMonstersConfig();
+  if (!gameConfig.monsters?.[id]) return;
+  gameConfig.monsters[id].actions.push({ name: '行動名', damage: 0, weight: 1 });
+  renderMonstersTab();
+}
+
+function delMonsterAction(id, idx) {
+  collectMonstersConfig();
+  if (!gameConfig.monsters?.[id]) return;
+  gameConfig.monsters[id].actions.splice(idx, 1);
+  renderMonstersTab();
+}
+
+async function uploadMonsterImage(id, input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  try {
+    collectMonstersConfig();
+    const url = await uploadDrillImage('monsters/' + id, file);
+    if (gameConfig.monsters?.[id]) gameConfig.monsters[id].imageUrl = url;
+    renderMonstersTab();
+  } catch (e) {
+    alert('アップロードエラー: ' + e.message);
+  }
+}
+
+function clearMonsterImage(id) {
+  if (gameConfig.monsters?.[id]) gameConfig.monsters[id].imageUrl = null;
+  renderMonstersTab();
+}
+
+// ============================================================
+// カード設定タブ
+// ============================================================
+
+function renderCardsTab() {
+  const cards = gameConfig.cards ?? {};
+  let html = `<div class="info-box" style="margin-bottom:14px;">
+    プレイヤーのデッキに入るカードの設定です。
+  </div>`;
+
+  for (const [id, card] of Object.entries(cards)) {
+    const imgPreview = card.imageUrl
+      ? `<img src="${escDrill(card.imageUrl)}" style="width:48px;height:48px;object-fit:contain;border-radius:6px;background:rgba(255,255,255,.08);">`
+      : `<div style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);border-radius:6px;font-size:2rem;">${escDrill(card.icon || '❓')}</div>`;
+
+    html += `
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:16px;margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          ${imgPreview}
+          <div>
+            <div style="font-size:.72rem;opacity:.45;margin-bottom:3px;">ID: ${escDrill(id)}</div>
+            <input class="cfg-input card-name-${id}" type="text" value="${escDrill(card.name)}" placeholder="カード名" style="width:160px;">
+          </div>
+        </div>
+        <button class="inv-del-btn" onclick="deleteCard('${id}')">🗑️ 削除</button>
+      </div>
+
+      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;">
+        <label style="font-size:.82rem;">説明<br>
+          <input class="cfg-input card-desc-${id}" type="text" value="${escDrill(card.desc ?? '')}" placeholder="説明文" style="width:200px;">
+        </label>
+        <label style="font-size:.82rem;">ダメージ<br>
+          <input class="cfg-input card-dmg-${id}" type="number" value="${card.damage ?? 0}" min="0" style="width:80px;">
+        </label>
+        <label style="font-size:.82rem;">アイコン絵文字<br>
+          <input class="cfg-input card-icon-${id}" type="text" value="${escDrill(card.icon ?? '')}" placeholder="⚔️" style="width:70px;">
+        </label>
+        <div style="font-size:.82rem;">画像<br>
+          <label class="inv-save-btn" style="cursor:pointer;display:inline-block;padding:3px 10px;">
+            📁 選択<input type="file" accept="image/*" style="display:none;" onchange="uploadCardImage('${id}',this)">
+          </label>
+          ${card.imageUrl ? `<button class="inv-del-btn" onclick="clearCardImage('${id}')">✕</button>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  html += `<button class="btn-refresh" onclick="addCard()">＋ カード追加</button>`;
+  document.getElementById('cfg-tab-cards').innerHTML = html;
+}
+
+function collectCardsConfig() {
+  const cards = gameConfig.cards ?? {};
+  for (const [id, card] of Object.entries(cards)) {
+    const nameEl = document.querySelector(`.card-name-${id}`);
+    const descEl = document.querySelector(`.card-desc-${id}`);
+    const dmgEl  = document.querySelector(`.card-dmg-${id}`);
+    const iconEl = document.querySelector(`.card-icon-${id}`);
+    if (nameEl) card.name   = nameEl.value;
+    if (descEl) card.desc   = descEl.value;
+    if (dmgEl)  card.damage = parseInt(dmgEl.value) || 0;
+    if (iconEl) card.icon   = iconEl.value;
+  }
+  gameConfig.cards = cards;
+}
+
+function addCard() {
+  collectCardsConfig();
+  const id = 'card_' + Date.now();
+  if (!gameConfig.cards) gameConfig.cards = {};
+  gameConfig.cards[id] = { name: '新カード', desc: '', icon: '❓', imageUrl: null, damage: 0 };
+  renderCardsTab();
+}
+
+function deleteCard(id) {
+  collectCardsConfig();
+  if (!confirm(`「${gameConfig.cards?.[id]?.name || id}」を削除しますか？`)) return;
+  delete gameConfig.cards[id];
+  renderCardsTab();
+}
+
+async function uploadCardImage(id, input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  try {
+    collectCardsConfig();
+    const url = await uploadDrillImage('cards/' + id, file);
+    if (gameConfig.cards?.[id]) gameConfig.cards[id].imageUrl = url;
+    renderCardsTab();
+  } catch (e) {
+    alert('アップロードエラー: ' + e.message);
+  }
+}
+
+function clearCardImage(id) {
+  if (gameConfig.cards?.[id]) gameConfig.cards[id].imageUrl = null;
+  renderCardsTab();
+}
+
+// ============================================================
+// 画像アップロード（Supabase Storage: drill-images バケット）
+// ============================================================
+
+async function uploadDrillImage(path, file) {
+  const ext  = file.name.split('.').pop();
+  const name = path + '_' + Date.now() + '.' + ext;
+  const { data, error } = await supabaseClient.storage
+    .from('drill-images')
+    .upload(name, file, { upsert: true });
+  if (error) throw error;
+  const { data: { publicUrl } } = supabaseClient.storage
+    .from('drill-images')
+    .getPublicUrl(data.path);
+  return publicUrl;
 }

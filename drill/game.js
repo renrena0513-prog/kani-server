@@ -120,18 +120,19 @@ let CURSE = [
 ];
 
 // カード定義（拡張用）
-const CARDS = {
-  attack: { id:'attack', name:'攻撃', desc:'50ダメージ', icon:'⚔️', damage:50 },
+let CARDS = {
+  attack: { id:'attack', name:'攻撃', desc:'50ダメージ', icon:'⚔️', imageUrl:null, damage:50 },
 };
 
 // モンスター定義
-const MONSTERS = {
+let MONSTERS = {
   test_slime: {
-    name:'テストスライム', icon:'💚', maxHp:200,
+    name:'テストスライム', icon:'💚', imageUrl:null, maxHp:200,
+    layerWeights: [40, 0, 0],
     actions: [
-      { name:'たいあたり',          desc:'ダメージ 30', damage:30 },
-      { name:'ぷるぷるふるえている', desc:'なにもしない', damage:0  },
-      { name:'からみつく',          desc:'ダメージ 50', damage:50 },
+      { name:'たいあたり',          damage:30, weight:1 },
+      { name:'ぷるぷるふるえている', damage:0,  weight:1 },
+      { name:'からみつく',          damage:50, weight:1 },
     ],
   },
 };
@@ -344,6 +345,32 @@ async function loadGameConfig() {
       cfg.curse.forEach((c, i) => { if (c) CURSE[i] = c; });
     }
     if (cfg.baseHp != null) BASE_HP = cfg.baseHp;
+    if (cfg.monsters) {
+      for (const [id, v] of Object.entries(cfg.monsters)) {
+        MONSTERS[id] = {
+          name: v.name ?? MONSTERS[id]?.name ?? id,
+          icon: v.icon ?? MONSTERS[id]?.icon ?? '👾',
+          imageUrl: v.imageUrl ?? null,
+          maxHp: v.maxHp ?? MONSTERS[id]?.maxHp ?? 100,
+          layerWeights: v.layerWeights ?? MONSTERS[id]?.layerWeights ?? [0,0,0],
+          actions: (v.actions ?? MONSTERS[id]?.actions ?? []).map(a => ({
+            name: a.name ?? '', damage: a.damage ?? 0, weight: a.weight ?? 1,
+          })),
+        };
+      }
+    }
+    if (cfg.cards) {
+      for (const [id, v] of Object.entries(cfg.cards)) {
+        CARDS[id] = {
+          id,
+          name: v.name ?? CARDS[id]?.name ?? id,
+          desc: v.desc ?? CARDS[id]?.desc ?? '',
+          icon: v.icon ?? CARDS[id]?.icon ?? '❓',
+          imageUrl: v.imageUrl ?? null,
+          damage: v.damage ?? CARDS[id]?.damage ?? 0,
+        };
+      }
+    }
   } catch {}
 }
 
@@ -737,7 +764,9 @@ async function triggerBlockEvent(x, y) {
 
   } else if (ev.type === 'combat') {
     log('⚔️ 敵と遭遇！');
-    await startCombat('test_slime');
+    const combatLi = Math.min(EVENTS.length - 1, Math.floor(y / 100));
+    const monsterId = pickCombatMonster(combatLi);
+    if (monsterId) await startCombat(monsterId);
   }
 }
 
@@ -1676,7 +1705,21 @@ function drawCombatCards(n = 3) {
 function getMonsterNextAction() {
   const acts = C.monster?.actions;
   if (!acts || acts.length === 0) return null;
-  return acts[Math.floor(Math.random() * acts.length)];
+  const total = acts.reduce((s, a) => s + (a.weight ?? 1), 0);
+  let r = Math.random() * total;
+  for (const act of acts) { r -= (act.weight ?? 1); if (r <= 0) return act; }
+  return acts[acts.length - 1];
+}
+
+function pickCombatMonster(layerIdx) {
+  const eligible = Object.entries(MONSTERS)
+    .map(([id, m]) => ({ id, w: m.layerWeights?.[layerIdx] ?? 0 }))
+    .filter(x => x.w > 0);
+  if (eligible.length === 0) return Object.keys(MONSTERS)[0] ?? null;
+  const total = eligible.reduce((s, x) => s + x.w, 0);
+  let r = Math.random() * total;
+  for (const { id, w } of eligible) { r -= w; if (r <= 0) return id; }
+  return eligible[eligible.length - 1].id;
 }
 
 function combatAddLog(msg) {
@@ -1801,13 +1844,16 @@ function showCombatModal() {
 
   const cardHtml = C.hand.map((cardId, i) => {
     const def = CARDS[cardId] || {};
+    const cardIconHtml = def.imageUrl
+      ? `<img class="combat-card-img" src="${def.imageUrl}" onerror="this.outerHTML='<div class=\\'combat-card-icon\\'>${def.icon || '❓'}</div>'">`
+      : `<div class="combat-card-icon">${def.icon || '❓'}</div>`;
     return `<div class="combat-card" draggable="true"
       ondragstart="combatDragStart(event,${i})"
       ondragend="combatDragEnd(event)"
       ontouchstart="combatTouchStart(event,${i})"
       ontouchmove="combatTouchMove(event)"
       ontouchend="combatTouchEnd(event)">
-      <div class="combat-card-icon">${def.icon || '❓'}</div>
+      ${cardIconHtml}
       <div class="combat-card-name">${escHtml(def.name || cardId)}</div>
       <div class="combat-card-desc">${escHtml(def.desc || '')}</div>
     </div>`;
@@ -1819,7 +1865,9 @@ function showCombatModal() {
 
   document.getElementById('modal-inner').innerHTML = `
     <div style="text-align:center;margin-bottom:8px;">
-      <div style="font-size:2.8rem;line-height:1;">${mon.icon}</div>
+      ${mon.imageUrl
+        ? `<img src="${mon.imageUrl}" style="width:64px;height:64px;object-fit:contain;image-rendering:pixelated;" onerror="this.outerHTML='<div style=\\'font-size:2.8rem;line-height:1;\\'>${mon.icon || '👾'}</div>'">`
+        : `<div style="font-size:2.8rem;line-height:1;">${mon.icon || '👾'}</div>`}
       <div style="font-weight:700;font-size:.95rem;margin-top:4px;">${escHtml(mon.name)}</div>
       <div style="font-size:.72rem;color:${mHpColor};margin:2px 0;">HP ${C.monsterHp} / ${mon.maxHp}</div>
       <div style="height:6px;background:rgba(255,255,255,.15);border-radius:3px;overflow:hidden;margin:0 24px 4px;">
