@@ -2572,8 +2572,9 @@ function renderSurfaceHome() {
       <button class="sh-btn" onclick="showShop()">🛒&ensp;ショップ</button>
       <button class="sh-btn" onclick="showSell()">💰&ensp;素材売却</button>
       <button class="sh-btn" onclick="showCraft()">🔨&ensp;クラフト</button>
-      <button class="sh-btn" onclick="showWarehouse()">🏪&ensp;倉庫</button>
+      <button class="sh-btn" onclick="showWarehouse()">📦&ensp;倉庫</button>
       <button class="sh-btn" onclick="showBag()">🎒&ensp;リュック${bpKeys.length > 0 ? `<span class="sh-badge">${bpKeys.length}</span>` : ''}</button>
+      <a class="sh-btn" href="../market/index.html" style="text-decoration:none;text-align:center;">🏪&ensp;マーケット</a>
     </div>
     <div class="sh-dive-wrap">
       <button class="sh-dive-btn" onclick="startDive()">⛏️&ensp;地下に潜る</button>
