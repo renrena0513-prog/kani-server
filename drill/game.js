@@ -1727,6 +1727,47 @@ function combatAddLog(msg) {
   if (C.logs.length > 20) C.logs.pop();
 }
 
+const COMBAT_STORAGE_KEY = 'drill_combat_v1';
+
+function saveCombatState() {
+  if (!C.active) return;
+  try {
+    localStorage.setItem(COMBAT_STORAGE_KEY, JSON.stringify({
+      monster:    C.monster,
+      monsterHp:  C.monsterHp,
+      hand:       C.hand,
+      deck:       C.deck,
+      discard:    C.discard,
+      logs:       C.logs,
+      nextAction: C.nextAction,
+    }));
+  } catch {}
+}
+
+function clearCombatState() {
+  localStorage.removeItem(COMBAT_STORAGE_KEY);
+}
+
+function restoreCombatState() {
+  try {
+    const raw = localStorage.getItem(COMBAT_STORAGE_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    if (!s?.monster) { clearCombatState(); return; }
+    C.active     = true;
+    C.monster    = s.monster;
+    C.monsterHp  = s.monsterHp ?? s.monster.maxHp;
+    C.hand       = s.hand    ?? [];
+    C.deck       = s.deck    ?? [];
+    C.discard    = s.discard ?? [];
+    C.logs       = s.logs    ?? [];
+    C.nextAction = s.nextAction ?? null;
+    if (C.hand.length === 0) drawCombatCards(3);
+    C.logs.unshift('🔄 戦闘を再開しました');
+    showCombatModal();
+  } catch { clearCombatState(); }
+}
+
 async function startCombat(monsterId) {
   const def = MONSTERS[monsterId];
   if (!def) return;
@@ -1796,6 +1837,7 @@ async function playCard(cardIdx) {
 
 async function endCombat(win) {
   C.active = false;
+  clearCombatState();
   const monName = C.monster?.name || '???';
 
   if (win) {
@@ -1823,6 +1865,7 @@ async function endCombat(win) {
 }
 
 function showCombatModal() {
+  saveCombatState();
   const mon = C.monster;
   if (!mon) return;
 
@@ -2530,6 +2573,8 @@ async function handleMapReset() {
   const oldX = G.px, oldY = G.py;
   stopMine();
   closeModal();
+  clearCombatState();
+  C.active = false;
   log('🌅 マップがリセットされました。新しいマップへ移行中...');
 
   await ensureSeed();
@@ -2602,6 +2647,7 @@ async function initDrillGame() {
   setupInput();
   setupRealtime();
   render();
+  restoreCombatState();
   log('⛏️ ほりほりドリルへようこそ！');
   setInterval(periodicCleanup, 15000);
   setInterval(periodicStateSync, 10000);
