@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>編成 | ほりほりドリル</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    body {
+      background: linear-gradient(180deg, #0d2f5c 0%, #1a1a2e 100%);
+      min-height: 100dvh;
+      color: #fff;
+      padding-bottom: 40px;
+    }
+    .fm-wrap { max-width: 500px; margin: 0 auto; padding: 16px; }
+    .fm-back {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: rgba(255,255,255,.6); text-decoration: none;
+      font-size: .85rem; margin-bottom: 16px;
+      transition: color .15s;
+    }
+    .fm-back:hover { color: #fff; }
+    .fm-title { font-size: 1.3rem; font-weight: 700; margin-bottom: 16px; }
+
+    /* タブ */
+    .fm-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+    .fm-tab {
+      flex: 1; padding: 10px; border: none; border-radius: 10px;
+      background: rgba(255,255,255,.08); color: rgba(255,255,255,.55);
+      font-size: .88rem; font-weight: 600; cursor: pointer; transition: all .15s;
+    }
+    .fm-tab.active { background: rgba(212,168,83,.65); color: #fff; }
+
+    /* セクション */
+    .fm-section { margin-bottom: 24px; }
+    .fm-section-title {
+      font-size: .78rem; font-weight: 700; opacity: .5;
+      letter-spacing: .05em; margin-bottom: 10px; text-transform: uppercase;
+    }
+
+    /* ドリル行 */
+    .drill-row {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 10px; padding: 12px 14px; margin-bottom: 8px;
+    }
+    .drill-row-info { flex: 1; min-width: 0; }
+    .drill-row-name { font-size: .9rem; font-weight: 600; }
+    .drill-row-sub { font-size: .75rem; opacity: .55; margin-top: 2px; }
+    .drill-dur-bar {
+      height: 4px; background: rgba(255,255,255,.12);
+      border-radius: 2px; overflow: hidden; margin-top: 5px;
+    }
+    .drill-dur-fill { height: 100%; border-radius: 2px; transition: width .3s; }
+    .btn-fm {
+      padding: 6px 14px; border: none; border-radius: 8px;
+      background: rgba(212,168,83,.55); color: #fff;
+      font-size: .8rem; font-weight: 600; cursor: pointer;
+      white-space: nowrap; transition: background .15s;
+    }
+    .btn-fm:hover { background: rgba(212,168,83,.85); }
+    .btn-fm.equipped { background: rgba(80,180,120,.4); cursor: default; }
+    .btn-fm.danger { background: rgba(200,60,60,.55); }
+    .btn-fm.danger:hover { background: rgba(200,60,60,.85); }
+
+    /* カード グリッド */
+    .card-grid {
+      display: grid; grid-template-columns: repeat(5, 1fr);
+      gap: 8px; margin-bottom: 8px;
+    }
+    .card-slot {
+      aspect-ratio: 3/4;
+      background: rgba(255,255,255,.06);
+      border: 2px dashed rgba(255,255,255,.18);
+      border-radius: 10px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      font-size: .65rem; gap: 4px; cursor: pointer;
+      transition: border-color .15s, background .15s;
+      position: relative; overflow: hidden;
+      user-select: none;
+    }
+    .card-slot.has-card {
+      border-style: solid;
+      border-color: rgba(212,168,83,.5);
+      background: rgba(212,168,83,.1);
+    }
+    .card-slot.has-card:hover { background: rgba(212,168,83,.2); }
+    .card-slot.drag-over {
+      border-color: #fff;
+      background: rgba(255,255,255,.15);
+    }
+    .card-slot.dragging { opacity: .4; }
+    .card-icon { font-size: 1.4rem; line-height: 1; }
+    .card-name { font-size: .62rem; font-weight: 600; text-align: center; padding: 0 4px; }
+    .card-dmg { font-size: .6rem; color: #f0c060; }
+    .card-slot-num {
+      position: absolute; top: 3px; left: 5px;
+      font-size: .55rem; opacity: .35; font-weight: 700;
+    }
+
+    /* 未装備カード */
+    .unequipped-grid {
+      display: grid; grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+    .unequipped-card {
+      aspect-ratio: 3/4;
+      background: rgba(255,255,255,.06);
+      border: 2px solid rgba(255,255,255,.15);
+      border-radius: 10px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      font-size: .65rem; gap: 4px; cursor: grab;
+      transition: border-color .15s, background .15s;
+      user-select: none;
+    }
+    .unequipped-card:hover { border-color: rgba(255,255,255,.4); background: rgba(255,255,255,.1); }
+    .unequipped-card.dragging { opacity: .4; cursor: grabbing; }
+
+    /* 保存ボタン */
+    .btn-save {
+      width: 100%; padding: 13px; border: none; border-radius: 12px;
+      background: rgba(80,180,120,.7); color: #fff;
+      font-size: .95rem; font-weight: 700; cursor: pointer;
+      margin-top: 8px; transition: background .15s;
+    }
+    .btn-save:hover { background: rgba(80,180,120,1); }
+    .save-msg { text-align: center; font-size: .8rem; opacity: .6; margin-top: 8px; min-height: 20px; }
+
+    /* タブ表示切り替え */
+    #tab-drills, #tab-cards { display: none; }
+    #tab-drills.active, #tab-cards.active { display: block; }
+  </style>
+</head>
+<body>
+
+<div class="fm-wrap">
+  <a href="index.html" class="fm-back">← ゲームに戻る</a>
+  <div class="fm-title">⚔️ 編成</div>
+
+  <div class="fm-tabs">
+    <button class="fm-tab active" onclick="switchTab('drills',this)">⛏️ ドリル</button>
+    <button class="fm-tab" onclick="switchTab('cards',this)">🃏 カード</button>
+  </div>
+
+  <div id="tab-drills" class="active">
+    <div id="drills-content"><div style="opacity:.5;text-align:center;padding:40px 0;">読み込み中...</div></div>
+  </div>
+
+  <div id="tab-cards">
+    <div class="fm-section">
+      <div class="fm-section-title">装備中 (10枚)</div>
+      <div class="card-grid" id="equipped-grid"></div>
+    </div>
+    <div class="fm-section">
+      <div class="fm-section-title">未装備</div>
+      <div class="unequipped-grid" id="unequipped-grid"></div>
+    </div>
+    <button class="btn-save" onclick="saveDeck()">💾 デッキを保存</button>
+    <div class="save-msg" id="save-msg"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/supabase-config.js"></script>
+<script src="../js/auth-guard.js"></script>
+<script src="../js/navigation.js"></script>
+<script>
+// ============================================================
+// カード・ドリル定義（game.jsと同期が必要な場合はここで管理）
+// ============================================================
+let CARDS_DEF = {};  // admin設定から読み込む
+let DRILLS_DEF = {}; // admin設定から読み込む
+
+const DEFAULT_CARDS = {
+  attack:       { name:'攻撃',         desc:'50ダメージ',  icon:'⚔️', damage:50  },
+  drill_attack: { name:'ドリルアタック', desc:'100ダメージ', icon:'⛏️', damage:100 },
+};
+const DEFAULT_DRILLS = {
+  beginner:    { name:'初心者ドリル',    power:1,   dur:null  },
+  apprentice:  { name:'見習いのドリル',  power:2,   dur:500   },
+  stone_drill: { name:'石ドリル',        power:5,   dur:1000  },
+  copper_drill:{ name:'銅ドリル',        power:12,  dur:2000  },
+  journeyman:  { name:'熟練ドリル',      power:18,  dur:3000  },
+  iron_drill:  { name:'鉄ドリル',        power:30,  dur:5000  },
+  mass_drill:  { name:'大型ドリル',      power:45,  dur:8000  },
+  veteran:     { name:'ベテランドリル',  power:60,  dur:12000 },
+  silver_drill:{ name:'銀ドリル',        power:80,  dur:18000 },
+  allpurpose:  { name:'万能ドリル',      power:100, dur:50000 },
+};
+
+// ============================================================
+// 状態
+// ============================================================
+let userId = null;
+let discordId = null;
+let playerDrills = [];
+let equippedDrillRowId = null;
+let deckSlots = ['attack','attack','attack','attack','attack','attack','attack','attack','attack','attack'];
+
+// ドラッグ状態
+let dragSource = null; // { type:'slot'|'unequipped', slotIndex?:number, cardId?:string }
+
+// ============================================================
+// 初期化
+// ============================================================
+document.addEventListener('DOMContentLoaded', async () => {
+  initAccordionNav('../');
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) { window.location.href = '../login/index.html'; return; }
+  userId = user.id;
+  discordId = user.user_metadata?.provider_id;
+
+  await loadConfig();
+  await loadData();
+  renderDrills();
+  renderCards();
+});
+
+async function loadConfig() {
+  const { data } = await supabaseClient.from('drill_game_config')
+    .select('config_json').eq('id', 1).maybeSingle();
+  const cfg = data?.config_json || {};
+  CARDS_DEF = { ...DEFAULT_CARDS };
+  if (cfg.cards) {
+    for (const [id, v] of Object.entries(cfg.cards)) {
+      CARDS_DEF[id] = { ...DEFAULT_CARDS[id], ...v };
+    }
+  }
+  DRILLS_DEF = { ...DEFAULT_DRILLS };
+  if (cfg.drills) {
+    for (const [id, v] of Object.entries(cfg.drills)) {
+      DRILLS_DEF[id] = { ...DEFAULT_DRILLS[id], ...v };
+    }
+  }
+}
+
+async function loadData() {
+  const [drillRes, deckRes] = await Promise.all([
+    supabaseClient.from('drill_player_drills').select('*').eq('user_id', userId),
+    supabaseClient.from('drill_player_deck').select('slots').eq('user_id', userId).maybeSingle(),
+  ]);
+
+  playerDrills = drillRes.data || [];
+  const eq = playerDrills.find(d => d.equipped) || playerDrills[0];
+  equippedDrillRowId = eq?.id || null;
+
+  if (deckRes.data?.slots) {
+    deckSlots = deckRes.data.slots;
+  }
+}
+
+// ============================================================
+// タブ切り替え
+// ============================================================
+function switchTab(tab, btn) {
+  document.querySelectorAll('.fm-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-drills').classList.toggle('active', tab === 'drills');
+  document.getElementById('tab-cards').classList.toggle('active', tab === 'cards');
+}
+
+// ============================================================
+// ドリルタブ
+// ============================================================
+function renderDrills() {
+  const el = document.getElementById('drills-content');
+  if (playerDrills.length === 0) {
+    el.innerHTML = '<div style="opacity:.5;text-align:center;padding:30px 0;">ドリルがありません</div>';
+    return;
+  }
+
+  el.innerHTML = playerDrills.map(d => {
+    const def = DRILLS_DEF[d.drill_id] || {};
+    const isEq = d.id === equippedDrillRowId;
+    const durMax = def.dur ?? null;
+    const durVal = d.durability ?? durMax;
+    const durPct = durMax ? Math.max(0, Math.round((durVal / durMax) * 100)) : null;
+    const durColor = durPct === null ? '#aaa' : durPct > 50 ? '#4caf50' : durPct > 20 ? '#ff9800' : '#f44336';
+    const durDisp = durVal === null ? '∞' : `${durVal} / ${durMax}`;
+    const durBar = durMax ? `
+      <div class="drill-dur-bar">
+        <div class="drill-dur-fill" style="width:${durPct}%;background:${durColor};"></div>
+      </div>` : '';
+
+    return `<div class="drill-row">
+      <div class="drill-row-info">
+        <div class="drill-row-name">${def.name || d.drill_id}${isEq ? ' <span style="font-size:.72rem;color:#d4a853;">装備中</span>' : ''}</div>
+        <div class="drill-row-sub">威力 ${def.power ?? '?'} ／ 耐久 ${durDisp}</div>
+        ${durBar}
+      </div>
+      ${isEq
+        ? `<button class="btn-fm equipped" disabled>装備中</button>`
+        : `<button class="btn-fm" onclick="equipDrill('${d.id}')">装備</button>`}
+    </div>`;
+  }).join('');
+}
+
+async function equipDrill(rowId) {
+  await supabaseClient.from('drill_player_drills').update({ equipped: false }).eq('user_id', userId);
+  await supabaseClient.from('drill_player_drills').update({ equipped: true }).eq('id', rowId);
+  playerDrills.forEach(d => { d.equipped = (d.id === rowId); });
+  equippedDrillRowId = rowId;
+  renderDrills();
+}
+
+// ============================================================
+// カードタブ
+// ============================================================
+function renderCards() {
+  renderEquipped();
+  renderUnequipped();
+}
+
+function cardHTML(cardId, slotNum) {
+  const c = CARDS_DEF[cardId];
+  if (!c) return `<div class="card-slot-num">${slotNum}</div><span style="opacity:.3;">?</span>`;
+  return `
+    <div class="card-slot-num">${slotNum}</div>
+    <div class="card-icon">${c.icon || '❓'}</div>
+    <div class="card-name">${c.name}</div>
+    <div class="card-dmg">${c.damage ?? 0}</div>`;
+}
+
+function renderEquipped() {
+  const grid = document.getElementById('equipped-grid');
+  grid.innerHTML = '';
+  for (let i = 0; i < 10; i++) {
+    const cardId = deckSlots[i];
+    const slot = document.createElement('div');
+    slot.className = 'card-slot' + (cardId ? ' has-card' : '');
+    slot.dataset.slotIndex = i;
+    slot.innerHTML = cardId ? cardHTML(cardId, i + 1) : `<div class="card-slot-num">${i+1}</div><span style="font-size:.7rem;opacity:.25;">空</span>`;
+
+    slot.addEventListener('dragover', e => { e.preventDefault(); slot.classList.add('drag-over'); });
+    slot.addEventListener('dragleave', () => slot.classList.remove('drag-over'));
+    slot.addEventListener('drop', e => { e.preventDefault(); slot.classList.remove('drag-over'); handleDrop(i); });
+    slot.addEventListener('dragstart', () => {
+      dragSource = { type: 'slot', slotIndex: i };
+      slot.classList.add('dragging');
+    });
+    slot.addEventListener('dragend', () => slot.classList.remove('dragging'));
+    slot.draggable = true;
+
+    // タップで削除（スロットを空にする）
+    slot.addEventListener('click', () => {
+      if (cardId) { deckSlots[i] = null; renderCards(); }
+    });
+
+    grid.appendChild(slot);
+  }
+}
+
+function renderUnequipped() {
+  const grid = document.getElementById('unequipped-grid');
+  grid.innerHTML = '';
+
+  // 全カード種のうち、未装備のもの（デッキに入っていない種類）を表示
+  const allCards = Object.keys(CARDS_DEF);
+  const equippedSet = new Set(deckSlots.filter(Boolean));
+
+  const unequipped = allCards.filter(id => !equippedSet.has(id));
+  if (unequipped.length === 0) {
+    grid.innerHTML = '<div style="opacity:.4;font-size:.8rem;grid-column:1/-1;padding:10px 0;">すべて装備済み</div>';
+    return;
+  }
+
+  for (const cardId of unequipped) {
+    const c = CARDS_DEF[cardId];
+    if (!c) continue;
+    const card = document.createElement('div');
+    card.className = 'unequipped-card';
+    card.dataset.cardId = cardId;
+    card.innerHTML = `
+      <div class="card-icon">${c.icon || '❓'}</div>
+      <div class="card-name">${c.name}</div>
+      <div class="card-dmg">${c.damage ?? 0}</div>`;
+
+    card.draggable = true;
+    card.addEventListener('dragstart', () => {
+      dragSource = { type: 'unequipped', cardId };
+      card.classList.add('dragging');
+    });
+    card.addEventListener('dragend', () => card.classList.remove('dragging'));
+
+    grid.appendChild(card);
+  }
+}
+
+function handleDrop(targetSlotIndex) {
+  if (!dragSource) return;
+
+  if (dragSource.type === 'unequipped') {
+    // 未装備カードをスロットに配置
+    deckSlots[targetSlotIndex] = dragSource.cardId;
+  } else if (dragSource.type === 'slot') {
+    // スロット同士を入れ替え
+    const from = dragSource.slotIndex;
+    const tmp = deckSlots[from];
+    deckSlots[from] = deckSlots[targetSlotIndex];
+    deckSlots[targetSlotIndex] = tmp;
+  }
+
+  dragSource = null;
+  renderCards();
+}
+
+// ============================================================
+// 保存
+// ============================================================
+async function saveDeck() {
+  const msg = document.getElementById('save-msg');
+  msg.textContent = '保存中...';
+  const { error } = await supabaseClient.from('drill_player_deck')
+    .upsert({ user_id: userId, slots: deckSlots });
+  msg.textContent = error ? '⚠️ 保存に失敗しました' : '✅ 保存しました';
+  setTimeout(() => { msg.textContent = ''; }, 2500);
+}
+</script>
+</body>
+</html>

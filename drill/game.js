@@ -150,7 +150,8 @@ let CURSE = [
 
 // カード定義（拡張用）
 let CARDS = {
-  attack: { id:'attack', name:'攻撃', desc:'50ダメージ', icon:'⚔️', imageUrl:null, damage:50 },
+  attack:       { id:'attack',       name:'攻撃',         desc:'50ダメージ',   icon:'⚔️', imageUrl:null, damage:50  },
+  drill_attack: { id:'drill_attack', name:'ドリルアタック', desc:'100ダメージ',  icon:'⛏️', imageUrl:null, damage:100 },
 };
 
 // モンスター定義
@@ -192,6 +193,7 @@ const G = {
   otherPlayers: new Map(), // userId -> {x,y}
   isAdmin: false,
   drills: [],            // 所持ドリル一覧
+  playerDeckSlots: ['attack','attack','attack','attack','attack','attack','attack','attack','attack','attack'],
   mineTarget: null,      // {x,y}
   mineTimer: null,
   mineHP: {},            // 'x,y' -> remaining hp
@@ -491,7 +493,7 @@ async function loadAll() {
   const uid = G.userId;
   const date = G.mapDate;
 
-  const [dugRes, lockRes, posRes, bpRes, invRes, drillRes, permRes, profRes, othRes, dropRes] =
+  const [dugRes, lockRes, posRes, bpRes, invRes, drillRes, permRes, profRes, othRes, dropRes, deckRes] =
     await Promise.all([
       supabaseClient.from('drill_dug_cells').select('x,y').eq('map_date', date),
       supabaseClient.from('drill_dig_locks').select('x,y,locked_by,expires_at')
@@ -504,6 +506,7 @@ async function loadAll() {
       supabaseClient.from('profiles').select('drill_gold,drill_hp').eq('discord_user_id', G.discordId).maybeSingle(),
       supabaseClient.from('drill_player_positions').select('user_id,x,y,avatar_url').eq('map_date', date).neq('user_id', uid),
       supabaseClient.from('drill_dropped_items').select('id,pos_x,pos_y,items,dropper_name,cause_of_death,dropped_at,locked_by,locked_until').eq('map_date', date),
+      supabaseClient.from('drill_player_deck').select('slots').eq('user_id', uid).maybeSingle(),
     ]);
 
   G.dugCells = new Set((dugRes.data || []).map(r => `${r.x},${r.y}`));
@@ -550,6 +553,14 @@ async function loadAll() {
 
   // 許可証
   G.permits = new Set((permRes.data || []).map(r => r.permit_id));
+
+  // デッキ
+  if (deckRes.data?.slots) {
+    G.playerDeckSlots = deckRes.data.slots;
+  } else {
+    // 初回：デフォルトデッキをDBに保存
+    await supabaseClient.from('drill_player_deck').upsert({ user_id: uid, slots: G.playerDeckSlots });
+  }
 
   // ゴールド・HP
   G.drillGold = profRes.data?.drill_gold || 0;
@@ -2205,7 +2216,7 @@ async function doDropCollect(x, y, drop, toCollect) {
 // ============================================================
 
 function buildPlayerDeck() {
-  return Array.from({ length: 10 }, () => 'attack');
+  return [...G.playerDeckSlots].filter(id => CARDS[id]);
 }
 
 function shuffleArray(arr) {
@@ -3103,6 +3114,7 @@ function renderSurfaceHome() {
       <button class="sh-btn" onclick="showWarehouse()">📦&ensp;倉庫</button>
       <button class="sh-btn" onclick="showBag()">🎒&ensp;リュック${bpKeys.length > 0 ? `<span class="sh-badge">${bpKeys.length}</span>` : ''}</button>
       <a class="sh-btn" href="../market/index.html" style="text-decoration:none;text-align:center;">🏪&ensp;マーケット</a>
+      <a class="sh-btn" href="formation.html" style="text-decoration:none;text-align:center;">⚔️&ensp;編成</a>
     </div>
     <div class="sh-dive-wrap">
       <button class="sh-dive-btn" onclick="startDive()">⛏️&ensp;地下に潜る</button>

@@ -247,6 +247,13 @@ const DEFAULT_GAME_CONFIG = {
       imageUrl: null,
       damage: 50,
     },
+    drill_attack: {
+      name: 'ドリルアタック',
+      desc: '100ダメージ',
+      icon: '⛏️',
+      imageUrl: null,
+      damage: 100,
+    },
   },
   treasureTypes: {
     wood: {
