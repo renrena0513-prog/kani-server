@@ -1649,7 +1649,7 @@ function showDrills() {
           ? `<span style="font-size:.75rem;opacity:.5;">装備中</span>`
           : `<div style="display:flex;gap:6px;">
                <button class="btn-modal-action" onclick="equipDrill('${d.id}').then(showDrills)">装備</button>
-               ${d.drill_id !== 'beginner' ? `<button class="btn-modal-action" style="background:rgba(200,60,60,.7);" onclick="dropDrillFromWarehouse('${d.id}')">落とす</button>` : ''}
+               ${G.py > 0 && d.drill_id !== 'beginner' ? `<button class="btn-modal-action" style="background:rgba(200,60,60,.7);" onclick="dropDrillFromWarehouse('${d.id}')">落とす</button>` : ''}
              </div>`}
       </div>`;
     }
@@ -1741,7 +1741,7 @@ function showItems() {
           ? `<span style="font-size:.75rem;opacity:.5;">装備中</span>`
           : `<div style="display:flex;gap:6px;">
                <button class="btn-modal-action" onclick="equipDrill('${d.id}').then(showItems)">装備</button>
-               ${d.drill_id !== 'beginner' ? `<button class="btn-modal-action" style="background:rgba(200,60,60,.7);" onclick="dropDrillFromWarehouse('${d.id}')">落とす</button>` : ''}
+               ${G.py > 0 && d.drill_id !== 'beginner' ? `<button class="btn-modal-action" style="background:rgba(200,60,60,.7);" onclick="dropDrillFromWarehouse('${d.id}')">落とす</button>` : ''}
              </div>`}
       </div>`;
     }
@@ -1978,7 +1978,7 @@ function showWarehouse(tab = 'mats') {
             ${isEquipped
               ? `<span style="font-size:.72rem;opacity:.4;">装備中</span>`
               : `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;" onclick="equipDrill('${d.id}').then(()=>showWarehouse('drills'))">装備</button>
-                 ${d.drill_id !== 'beginner' ? `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;background:rgba(200,60,60,.7);" onclick="dropDrillFromWarehouse('${d.id}')">落とす</button>` : ''}`}
+                 ${G.py > 0 && d.drill_id !== 'beginner' ? `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;background:rgba(200,60,60,.7);" onclick="dropDrillFromWarehouse('${d.id}')">落とす</button>` : ''}`}
           </div>
         </div>`;
       }).join('');
