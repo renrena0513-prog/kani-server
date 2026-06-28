@@ -188,6 +188,18 @@
             </div>
         </div>
 
+        <!-- マップ強制再生成 -->
+        <div class="admin-card">
+            <div class="admin-title">🗺️ マップ強制再生成（テスト用）</div>
+            <div class="info-box" style="border-color:rgba(255,100,100,.4);background:rgba(255,80,80,.08);">
+                ⚠️ 現在の掘削データ・位置情報・ドロップ品・戦闘セッションをすべて削除し、新しいシードでマップを再生成します。<strong>全プレイヤーが影響を受けます。</strong>
+            </div>
+            <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                <button class="btn-refresh" style="background:rgba(200,50,50,.5);" onclick="forceMapRegen()">🔄 今すぐマップ再生成</button>
+                <span id="map-regen-msg" style="font-size:.8rem;opacity:.65;"></span>
+            </div>
+        </div>
+
         <!-- プレイヤー統計 -->
         <div class="admin-card">
             <div class="admin-title" style="display:flex;justify-content:space-between;align-items:center;">

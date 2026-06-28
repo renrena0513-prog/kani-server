@@ -39,6 +39,37 @@ async function saveStartX() {
 // ユーティリティ
 // ============================================================
 
+function gameDateAdmin() {
+  const now = new Date();
+  const jst = new Date(now.getTime() + 9 * 3600000);
+  if (jst.getUTCHours() < 5) jst.setUTCDate(jst.getUTCDate() - 1);
+  return jst.toISOString().slice(0, 10);
+}
+
+async function forceMapRegen() {
+  if (!confirm('現在のマップデータ（掘削・位置・ドロップ・戦闘）をすべて削除し、新しいシードで再生成します。\n全プレイヤーに影響します。続行しますか？')) return;
+  const msg = document.getElementById('map-regen-msg');
+  if (msg) msg.textContent = '⏳ 処理中...';
+  try {
+    const date = gameDateAdmin();
+    const seed = Math.floor(Math.random() * 2147483647);
+    const steps = [
+      supabaseClient.from('drill_maps').upsert({ map_date: date, seed }),
+      supabaseClient.from('drill_dug_cells').delete().eq('map_date', date),
+      supabaseClient.from('drill_dig_locks').delete().eq('map_date', date),
+      supabaseClient.from('drill_player_positions').delete().eq('map_date', date),
+      supabaseClient.from('drill_dropped_items').delete().eq('map_date', date),
+      supabaseClient.from('drill_combat_sessions').delete().eq('map_date', date),
+    ];
+    const results = await Promise.all(steps);
+    const err = results.find(r => r.error);
+    if (err) throw err.error;
+    if (msg) { msg.textContent = `✅ 再生成完了（シード: ${seed}）`; setTimeout(() => msg.textContent = '', 5000); }
+  } catch (e) {
+    if (msg) msg.textContent = `❌ エラー: ${e.message}`;
+  }
+}
+
 function escDrill(str) {
   return String(str ?? '').replace(/[&<>"']/g, c =>
     ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
