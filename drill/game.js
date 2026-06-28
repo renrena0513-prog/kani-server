@@ -1243,6 +1243,18 @@ async function buyShopDrill(shopId) {
   const item = SHOP_ITEMS.find(i => i.id === shopId);
   if (!item || G.drillGold < item.cost) { log('⚠️ 所持金不足'); return; }
 
+  // カードは所持チェックをゴールド引き落とし前に行う
+  if (item.type === 'card') {
+    if (G.ownedCards.includes(item.cardId)) { log('⚠️ すでに所持しています'); showShop('card'); return; }
+    G.drillGold -= item.cost;
+    await supabaseClient.from('profiles').update({ drill_gold: G.drillGold }).eq('discord_user_id', G.discordId);
+    G.ownedCards.push(item.cardId);
+    await supabaseClient.from('drill_player_deck').upsert({ user_id: G.userId, owned_cards: G.ownedCards });
+    log(`✅ ${item.name}を購入`);
+    showShop('card');
+    return;
+  }
+
   G.drillGold -= item.cost;
   await supabaseClient.from('profiles').update({ drill_gold: G.drillGold }).eq('discord_user_id', G.discordId);
 
@@ -1253,16 +1265,12 @@ async function buyShopDrill(shopId) {
     }).select().single();
     if (nd) G.drills.push(nd);
     log(`✅ ${item.name}を購入`);
-  } else if (item.type === 'card') {
-    if (G.ownedCards.includes(item.cardId)) { log('⚠️ すでに所持しています'); showShop(); return; }
-    G.ownedCards.push(item.cardId);
-    await supabaseClient.from('drill_player_deck').upsert({ user_id: G.userId, owned_cards: G.ownedCards });
-    log(`✅ ${item.name}を購入`);
+    showShop('drill');
   } else {
     await upsertInv(item.itemId, 1);
     log(`✅ ${item.name}を購入`);
+    showShop('item');
   }
-  showShop();
 }
 
 // 後方互換：旧 buyItem 呼び出しが残っていた場合の対応
