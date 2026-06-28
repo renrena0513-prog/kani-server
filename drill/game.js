@@ -30,6 +30,13 @@ const ITEM_NAMES = {
   drill_copper: '銅ドリル', drill_iron: '鉄ドリル', drill_silver: '銀のドリル',
 };
 
+// 層ごとの掘削済みマス背景色
+const LAYER_BG = [
+  '#15100a', // 第1層 0-99m   (暗褐色)
+  '#1a0808', // 第2層 100-199m (暗赤)
+  '#0a0818', // 第3層 200-299m (深紫)
+];
+
 // 層ごとの素材重み [素材, 累積確率]
 const LAYER_W = [
   // 第1層 0-99m
@@ -2700,12 +2707,15 @@ function buildCell(wx, wy, vx = 0, vy = 0, otherByPos = null) {
     return `<div class="mc mc-fog"></div>`;
   }
 
+  // 層ごとの背景色（地下のみ）
+  const layerBg = wy > 0 ? LAYER_BG[Math.min(LAYER_BG.length - 1, Math.floor(wy / 100))] : '';
+
   const isPlayer = wx === G.px && wy === G.py;
   if (isPlayer) {
     const icon = G.avatarUrl
       ? `<img class="player-icon" src="${G.avatarUrl}" alt="" />`
       : `<div class="player-icon">⛏️</div>`;
-    return `<div class="mc mc-player">${icon}</div>`;
+    return `<div class="mc mc-player" style="background:${layerBg}">${icon}</div>`;
   }
 
   const key = `${wx},${wy}`;
@@ -2734,17 +2744,9 @@ function buildCell(wx, wy, vx = 0, vy = 0, otherByPos = null) {
     if (G.droppedItems?.has(`${wx},${wy}`)) {
       inner += `<div class="player-icon other-icon" style="font-size:.85rem;" title="落とし物あり">📦</div>`;
     }
-    // 地表行も一枚絵の最下行として sky style を適用
-    const surfStyle = wy === 0 ? ` style="${skyStyle}"` : '';
-    return `<div class="mc ${base}"${surfStyle}>${inner}</div>`;
-  }
-
-  // 許可証バリア（境界行を強調表示）
-  if (wy === 100 && !G.permits.has('permit_100')) {
-    return `<div class="mc mc-barrier" title="100m立入禁止 — 許可証が必要">🚧</div>`;
-  }
-  if (wy === 200 && !G.permits.has('permit_200')) {
-    return `<div class="mc mc-barrier" title="200m立入禁止 — 許可証が必要">🚧</div>`;
+    // 地表行は sky style、地下は層別背景色
+    const cellStyle = wy === 0 ? ` style="${skyStyle}"` : ` style="background:${layerBg}"`;
+    return `<div class="mc ${base}"${cellStyle}>${inner}</div>`;
   }
 
   const mat = cellMat(wx, wy);
