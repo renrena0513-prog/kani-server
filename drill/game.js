@@ -222,6 +222,7 @@ let _combatChannel = null; // 戦闘Realtimeチャンネル
 let _draggedCardIdx = null;
 let _touchCardIdx   = null;
 let _touchGhost     = null;
+let _pendingMaterial = null; // { mat, x, y } — リュック満杯時に保留中の素材
 
 // ============================================================
 // 乱数（mulberry32）
@@ -812,8 +813,8 @@ async function finishMine(x, y, mat) {
     await openTreasure(x, y);
   } else {
     if (bpWeight() + itemWeight(mat) > G.maxBpWeight) {
-      log('⚠️ リュックが満杯！採掘できません');
-      stopMine();
+      _pendingMaterial = { mat, x, y };
+      showBagFullModal();
       render();
       return;
     }
@@ -1434,6 +1435,59 @@ function showBag(tab = 'mats') {
   }
   html += `<button class="btn-modal-close" onclick="closeModal()">閉じる</button>`;
   openModal(html);
+}
+
+function showBagFullModal() {
+  if (!_pendingMaterial) return;
+  const { mat } = _pendingMaterial;
+  const matName = escHtml(MATS[mat]?.name || mat);
+  const bpEntries = Object.entries(G.backpack).filter(([, v]) => v > 0);
+
+  const itemsHtml = bpEntries.map(([id, qty]) => {
+    const name = escHtml(getItemName(id));
+    const w = itemWeight(id);
+    return `<div class="modal-row">
+      <div>
+        <div class="modal-row-label">${name}</div>
+        <div class="modal-row-sub">×${qty}　重量${w}/個</div>
+      </div>
+      <button class="btn-modal-action" style="background:rgba(200,60,60,.7);font-size:.72rem;padding:4px 10px;flex-shrink:0;"
+        onclick="discardForPendingMat('${id}')">1個捨てる</button>
+    </div>`;
+  }).join('');
+
+  openModal(`
+    <div class="modal-title">⚠️ リュックが満杯</div>
+    <div style="font-size:.84rem;margin-bottom:12px;line-height:1.6;">
+      <strong>${matName}</strong>を採掘しましたが、リュックに空きがありません。<br>
+      アイテムを1個捨てて受け取りますか？
+    </div>
+    ${itemsHtml || '<div style="opacity:.5;font-size:.82rem;">リュックに何もありません</div>'}
+    <button class="btn-modal-close" style="width:100%;margin-top:10px;background:rgba(100,100,100,.4);"
+      onclick="closeModal();_pendingMaterial=null;">捨てずに閉じる（素材ロスト）</button>
+  `);
+}
+
+async function discardForPendingMat(id) {
+  if (!_pendingMaterial) { closeModal(); return; }
+  const { mat, x, y } = _pendingMaterial;
+
+  const newQty = Math.max(0, (G.backpack[id] || 0) - 1);
+  G.backpack[id] = newQty;
+  await saveBpItem(id, newQty);
+
+  if (bpWeight() + itemWeight(mat) <= G.maxBpWeight) {
+    _pendingMaterial = null;
+    G.backpack[mat] = (G.backpack[mat] || 0) + 1;
+    await saveBpItem(mat, G.backpack[mat]);
+    log(`✅ ${MATS[mat].name}を採掘`);
+    closeModal();
+    render();
+    await triggerBlockEvent(x, y);
+  } else {
+    // まだ空きが足りない場合はモーダルを更新
+    showBagFullModal();
+  }
 }
 
 function showDiscardItem(itemId, maxQty) {
