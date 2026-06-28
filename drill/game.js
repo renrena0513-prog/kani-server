@@ -1244,7 +1244,7 @@ function showWithdrawDialog(id, maxQty) {
     ${limit > 0 ? `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
       <label style="font-size:.85rem;">個数</label>
-      <input id="withdraw-qty" type="number" min="1" max="${limit}" value="${limit}"
+      <input id="withdraw-qty" type="number" min="1" max="${limit}" value="1"
         style="width:80px;padding:4px 8px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:6px;color:#fff;font-size:.9rem;">
       <span style="font-size:.82rem;opacity:.6;">/ ${maxQty}</span>
     </div>
