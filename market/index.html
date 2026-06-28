@@ -160,6 +160,18 @@
       color: rgba(255,255,255,.7); cursor: pointer; font-size: .88rem;
     }
 
+    .lm-item-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 10px; border-radius: 8px;
+      background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
+      cursor: pointer; transition: background .12s, border-color .12s;
+    }
+    .lm-item-row:hover { background: rgba(255,255,255,.12); }
+    .lm-item-row.selected {
+      background: rgba(212,168,83,.25);
+      border-color: rgba(212,168,83,.6);
+    }
+
     .mkt-empty {
       grid-column: 1 / -1; text-align: center;
       padding: 48px 20px; color: rgba(255,255,255,.35); font-size: .95rem;
@@ -238,12 +250,17 @@
   <div class="mkt-modal">
     <div class="mkt-modal-title">🏷️ 出品する</div>
     <div class="mkt-field">
-      <label>アイテム</label>
-      <select class="mkt-input" id="lm-item" onchange="updateListPreview()">
-        <option value="">選択してください</option>
-      </select>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;" id="lm-cat-tabs">
+        <button class="mkt-tab active" style="padding:4px 12px;font-size:.8rem;" onclick="setListCat('all',this)">すべて</button>
+        <button class="mkt-tab" style="padding:4px 12px;font-size:.8rem;" onclick="setListCat('mats',this)">📦 素材</button>
+        <button class="mkt-tab" style="padding:4px 12px;font-size:.8rem;" onclick="setListCat('items',this)">💊 アイテム</button>
+        <button class="mkt-tab" style="padding:4px 12px;font-size:.8rem;" onclick="setListCat('drills',this)">⛏️ ドリル</button>
+      </div>
     </div>
-    <div class="mkt-field">
+    <div class="mkt-field" style="margin-bottom:10px;">
+      <div id="lm-item-list" style="max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:3px;"></div>
+    </div>
+    <div class="mkt-field" id="lm-qty-field" style="display:none;">
       <label>個数（最大 <span id="lm-max">0</span> 個）</label>
       <input class="mkt-input" type="number" id="lm-qty" min="1" value="1" oninput="updateListPreview()">
     </div>
@@ -310,7 +327,9 @@ let _myDrills = [];    // { item_id, quantity:1, source:'drill', drill_row_id, d
 let _listings = [];
 let _currentTab = 'all';
 let _filterType  = 'all'; // 'all' | 'mats' | 'items' | 'drills'
-let _buyTarget = null; // { listing }
+let _buyTarget = null;    // { listing }
+let _listCat = 'all';     // 出品モーダルのカテゴリフィルター
+let _listSelected = null; // 選択中アイテムのJSON文字列
 
 const MAT_IDS = new Set(['dirt','stone','copper','iron','silver','gold']);
 function listingCategory(l) {
@@ -562,75 +581,114 @@ function openListModal() {
   const myActive = _listings.filter(l => l.seller_user_id === _userId && l.status === 'active');
   if (myActive.length >= 3) { alert('出品できるのは同時に3つまでです'); return; }
 
-  // アイテム選択肢を構築
-  const sel = document.getElementById('lm-item');
-  sel.innerHTML = '<option value="">選択してください</option>';
-  for (const inv of _myInventory) {
-    const opt = document.createElement('option');
-    opt.value = JSON.stringify({ item_id: inv.item_id, max: inv.quantity, source: inv.source });
-    opt.textContent = `${itemIcon(inv.item_id)} ${itemName(inv.item_id)} (${inv.quantity.toLocaleString()}個)`;
-    sel.appendChild(opt);
-  }
-  // ドリル（未装備・1個ずつ）
-  if (_myDrills.length > 0) {
-    const grp = document.createElement('optgroup');
-    grp.label = '⛏️ ドリル';
-    for (const d of _myDrills) {
-      const opt = document.createElement('option');
-      const durStr = d.durability !== null ? `耐久${d.durability}/${d.max_dur ?? '∞'}` : '耐久∞';
-      opt.value = JSON.stringify({ item_id: d.item_id, max: 1, source: 'drill', drill_row_id: d.drill_row_id, durability: d.durability, max_dur: d.max_dur });
-      opt.textContent = `${itemIcon(d.item_id)} ${itemName(d.item_id)} [${durStr}]`;
-      grp.appendChild(opt);
-    }
-    sel.appendChild(grp);
-  }
-  document.getElementById('lm-max').textContent = 0;
+  _listSelected = null;
+  _listCat = 'all';
+  document.querySelectorAll('#lm-cat-tabs .mkt-tab').forEach((b, i) => b.classList.toggle('active', i === 0));
   document.getElementById('lm-qty').value = 1;
+  document.getElementById('lm-qty').disabled = false;
   document.getElementById('lm-price').value = 10;
+  renderListItems();
   updateListPreview();
   document.getElementById('list-modal').classList.add('open');
 }
 
+function setListCat(cat, el) {
+  _listCat = cat;
+  _listSelected = null;
+  document.querySelectorAll('#lm-cat-tabs .mkt-tab').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderListItems();
+  updateListPreview();
+}
+
+function renderListItems() {
+  const container = document.getElementById('lm-item-list');
+  const allItems = [
+    ..._myInventory.map(inv => ({
+      val: JSON.stringify({ item_id: inv.item_id, max: inv.quantity, source: inv.source }),
+      icon: itemIcon(inv.item_id),
+      label: itemName(inv.item_id),
+      sub: 'x' + inv.quantity.toLocaleString(),
+      cat: MAT_IDS.has(inv.item_id) ? 'mats' : 'items',
+    })),
+    ..._myDrills.map(d => {
+      const durStr = d.durability !== null ? ('耐久' + d.durability + '/' + (d.max_dur ?? 'inf')) : '耐久inf';
+      return {
+        val: JSON.stringify({ item_id: d.item_id, max: 1, source: 'drill', drill_row_id: d.drill_row_id, durability: d.durability, max_dur: d.max_dur }),
+        icon: itemIcon(d.item_id),
+        label: itemName(d.item_id),
+        sub: durStr,
+        cat: 'drills',
+      };
+    }),
+  ];
+
+  const filtered = _listCat === 'all' ? allItems : allItems.filter(i => i.cat === _listCat);
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<div style="font-size:.82rem;color:rgba(255,255,255,.35);padding:10px;text-align:center;">該当アイテムなし</div>';
+    return;
+  }
+
+  container.innerHTML = filtered.map(item => {
+    const isSelected = _listSelected === item.val;
+    const selAttr = item.val.replace(/"/g, '&quot;');
+    return '<div class="lm-item-row' + (isSelected ? ' selected' : '') + '" onclick="selectListItem(\'' + encodeURIComponent(item.val) + '\')">'
+      + '<span style="font-size:1.1rem;line-height:1;">' + item.icon + '</span>'
+      + '<span style="flex:1;font-size:.88rem;font-weight:600;">' + escHtml(item.label) + '</span>'
+      + '<span style="font-size:.78rem;color:rgba(255,255,255,.55);">' + escHtml(item.sub) + '</span>'
+      + '</div>';
+  }).join('');
+}
+
+function selectListItem(encoded) {
+  _listSelected = decodeURIComponent(encoded);
+  const parsed = JSON.parse(_listSelected);
+  const qtyEl = document.getElementById('lm-qty');
+  if (parsed.source === 'drill') {
+    qtyEl.value = 1;
+    qtyEl.disabled = true;
+    document.getElementById('lm-qty-field').style.display = 'none';
+  } else {
+    qtyEl.disabled = false;
+    qtyEl.value = 1;
+    document.getElementById('lm-qty-field').style.display = '';
+  }
+  renderListItems();
+  updateListPreview();
+}
+
 function updateListPreview() {
-  const selVal = document.getElementById('lm-item').value;
-  if (!selVal) {
+  if (!_listSelected) {
     ['lp-qty','lp-price','lp-total','lp-earn'].forEach(id => { document.getElementById(id).textContent = '-'; });
     return;
   }
-  const parsed = JSON.parse(selVal);
+  const parsed = JSON.parse(_listSelected);
   const { max, source } = parsed;
   document.getElementById('lm-max').textContent = max;
 
-  // ドリルは数量固定1
   const qtyEl = document.getElementById('lm-qty');
-  if (source === 'drill') {
-    qtyEl.value = 1;
-    qtyEl.disabled = true;
-  } else {
-    qtyEl.disabled = false;
-  }
-
   const qty   = source === 'drill' ? 1 : Math.max(1, Math.min(parseInt(qtyEl.value) || 1, max));
   const price = Math.max(1, parseInt(document.getElementById('lm-price').value) || 1);
   const total = qty * price;
   const earn  = Math.floor(total * 0.8);
 
-  document.getElementById('lp-qty').textContent   = `${qty.toLocaleString()} 個`;
-  document.getElementById('lp-price').textContent  = `${price.toLocaleString()} G / 個`;
-  document.getElementById('lp-total').textContent  = `${total.toLocaleString()} G`;
-  document.getElementById('lp-earn').textContent   = `${earn.toLocaleString()} G`;
+  document.getElementById('lp-qty').textContent   = qty.toLocaleString() + ' 個';
+  document.getElementById('lp-price').textContent  = price.toLocaleString() + ' G / 個';
+  document.getElementById('lp-total').textContent  = total.toLocaleString() + ' G';
+  document.getElementById('lp-earn').textContent   = earn.toLocaleString() + ' G';
 }
 
 function closeListModal() {
   document.getElementById('list-modal').classList.remove('open');
   document.getElementById('lm-qty').disabled = false;
+  document.getElementById('lm-qty-field').style.display = '';
+  _listSelected = null;
 }
 
 async function confirmList() {
-  const selVal = document.getElementById('lm-item').value;
-  if (!selVal) { alert('アイテムを選択してください'); return; }
-
-  const parsed = JSON.parse(selVal);
+  if (!_listSelected) { alert('アイテムを選択してください'); return; }
+  const parsed = JSON.parse(_listSelected);
   const { item_id, max, source, drill_row_id, durability, max_dur } = parsed;
   const qty   = source === 'drill' ? 1 : Math.max(1, Math.min(parseInt(document.getElementById('lm-qty').value) || 1, max));
   const price = Math.max(1, parseInt(document.getElementById('lm-price').value) || 1);
