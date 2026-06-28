@@ -52,19 +52,9 @@ async function forceMapRegen() {
   if (msg) msg.textContent = '⏳ 処理中...';
   try {
     const date = gameDateAdmin();
-    const seed = Math.floor(Math.random() * 2147483647);
-    const steps = [
-      supabaseClient.from('drill_maps').upsert({ map_date: date, seed }),
-      supabaseClient.from('drill_dug_cells').delete().eq('map_date', date),
-      supabaseClient.from('drill_dig_locks').delete().eq('map_date', date),
-      supabaseClient.from('drill_player_positions').delete().eq('map_date', date),
-      supabaseClient.from('drill_dropped_items').delete().eq('map_date', date),
-      supabaseClient.from('drill_combat_sessions').delete().eq('map_date', date),
-    ];
-    const results = await Promise.all(steps);
-    const err = results.find(r => r.error);
-    if (err) throw err.error;
-    if (msg) { msg.textContent = `✅ 再生成完了（シード: ${seed}）`; setTimeout(() => msg.textContent = '', 5000); }
+    const { error } = await supabaseClient.rpc('admin_force_map_regen', { target_date: date });
+    if (error) throw error;
+    if (msg) { msg.textContent = '✅ 再生成完了'; setTimeout(() => msg.textContent = '', 5000); }
   } catch (e) {
     if (msg) msg.textContent = `❌ エラー: ${e.message}`;
   }
