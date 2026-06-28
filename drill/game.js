@@ -30,11 +30,11 @@ const ITEM_NAMES = {
   drill_copper: '銅ドリル', drill_iron: '鉄ドリル', drill_silver: '銀のドリル',
 };
 
-// 層ごとの掘削済みマス背景スタイル（background プロパティ値 + 追加CSS）
+// 層ごとの掘削済みマス背景定義
 const LAYER_BG = [
-  `background:#15100a url('./img/bg_layer1.png') center/cover no-repeat;image-rendering:pixelated`, // 第1層 0-99m
-  `background:#1a0808`, // 第2層 100-199m
-  `background:#0a0818`, // 第3層 200-299m
+  { color: '#15100a', image: `./img/bg_layer1.png` }, // 第1層 0-99m
+  { color: '#1a0808' },                                // 第2層 100-199m
+  { color: '#0a0818' },                                // 第3層 200-299m
 ];
 
 // 10Mごとの素材重み（30スロット: 0-9m, 10-19m, ..., 290-299m）
@@ -2783,8 +2783,18 @@ function buildCell(wx, wy, vx = 0, vy = 0, otherByPos = null) {
     return `<div class="mc mc-fog"></div>`;
   }
 
-  // 層ごとの背景色（地下のみ）
-  const layerBg = wy > 0 ? LAYER_BG[Math.min(LAYER_BG.length - 1, Math.floor(wy / 100))] : '';
+  // 層ごとの背景（地下のみ）。画像ありの場合は地上と同様にVP全体で一枚展開
+  let layerBg = '';
+  if (wy > 0) {
+    const lyr = LAYER_BG[Math.min(LAYER_BG.length - 1, Math.floor(wy / 100))];
+    if (lyr.image) {
+      const bgX = VP_W > 1 ? `${vx / (VP_W - 1) * 100}%` : '0%';
+      const bgY = VP_H > 1 ? `${vy / (VP_H - 1) * 100}%` : '0%';
+      layerBg = `background:${lyr.color} url('${lyr.image}') ${bgX} ${bgY} / ${VP_W * 100}% ${VP_H * 100}% no-repeat;image-rendering:pixelated`;
+    } else {
+      layerBg = `background:${lyr.color}`;
+    }
+  }
 
   const isPlayer = wx === G.px && wy === G.py;
   if (isPlayer) {
