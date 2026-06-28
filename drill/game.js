@@ -975,7 +975,6 @@ async function collectTreasure(x, y) {
     .insert({ map_date: G.mapDate, x, y, dug_by: G.userId });
   G.dugCells.add(key);
   if (error) {
-    log('⚠️ 宝箱は既に他のプレイヤーに開封されていました');
     scheduleRender();
     return;
   }
