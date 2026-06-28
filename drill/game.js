@@ -76,6 +76,10 @@ const SELL_PRICES = {
   dirt: 1, stone: 3, copper: 15, iron: 50, silver: 200, gold: 500,
 };
 
+// アイテム重量（デフォルト1）
+const ITEM_WEIGHTS = {};
+function itemWeight(id) { return ITEM_WEIGHTS[id] ?? 1; }
+
 // 体力
 let BASE_HP = 1000;
 
@@ -115,12 +119,30 @@ let CURSE = [
   { min:8,  max:40 }, // 第3層
 ];
 
+// カード定義（拡張用）
+const CARDS = {
+  attack: { id:'attack', name:'攻撃', desc:'50ダメージ', icon:'⚔️', damage:50 },
+};
+
+// モンスター定義
+const MONSTERS = {
+  test_slime: {
+    name:'テストスライム', icon:'💚', maxHp:200,
+    actions: [
+      { name:'たいあたり',          desc:'ダメージ 30', damage:30 },
+      { name:'ぷるぷるふるえている', desc:'なにもしない', damage:0  },
+      { name:'からみつく',          desc:'ダメージ 50', damage:50 },
+    ],
+  },
+};
+
 // ============================================================
 // ゲーム状態
 // ============================================================
 
 const G = {
   userId: null,
+  discordId: null,
   avatarUrl: null,
   mapDate: null,
   seed: 0,
@@ -148,7 +170,22 @@ const G = {
   hp: 1000,             // 現在HP
   maxHp: 1000,          // 最大HP
   droppedItems: new Map(), // 'x,y' -> [{id, items:[{item_id,quantity}]}]
+  maxBpWeight: 100,
 };
+
+let _drillChannel = null; // Realtimeチャンネル参照（Broadcastに使用）
+let _moveSaveTimer = null; // 移動後のDB保存デバウンス用
+let _hpDirty = false;      // 呪いダメージでHP変化した際のフラグ
+
+// 戦闘状態
+const C = {
+  active: false, monster: null, monsterHp: 0,
+  hand: [], deck: [], discard: [], logs: [], nextAction: null,
+};
+
+let _draggedCardIdx = null;
+let _touchCardIdx   = null;
+let _touchGhost     = null;
 
 // ============================================================
 // 乱数（mulberry32）
@@ -346,9 +383,9 @@ async function loadAll() {
       supabaseClient.from('drill_inventory').select('item_id,quantity').eq('user_id', uid),
       supabaseClient.from('drill_player_drills').select('*').eq('user_id', uid),
       supabaseClient.from('drill_player_permits').select('permit_id').eq('user_id', uid),
-      supabaseClient.from('profiles').select('drill_gold,drill_hp').eq('id', uid).maybeSingle(),
+      supabaseClient.from('profiles').select('drill_gold,drill_hp').eq('discord_user_id', G.discordId).maybeSingle(),
       supabaseClient.from('drill_player_positions').select('user_id,x,y,avatar_url').eq('map_date', date).neq('user_id', uid),
-      supabaseClient.from('drill_dropped_items').select('id,pos_x,pos_y,items,dropper_name,cause_of_death,dropped_at').eq('map_date', date),
+      supabaseClient.from('drill_dropped_items').select('id,pos_x,pos_y,items,dropper_name,cause_of_death,dropped_at,locked_by,locked_until').eq('map_date', date),
     ]);
 
   G.dugCells = new Set((dugRes.data || []).map(r => `${r.x},${r.y}`));
@@ -412,8 +449,10 @@ async function loadAll() {
     G.droppedItems.get(key).push({
       id: r.id, items: r.items || [],
       dropper_name: r.dropper_name || '???',
-      cause_of_death: r.cause_of_death || '不明',
+      cause_of_death: r.cause_of_death || null,
       dropped_at: r.dropped_at,
+      locked_by: r.locked_by || null,
+      locked_until: r.locked_until || null,
     });
   });
 }
@@ -428,10 +467,21 @@ async function savePos() {
     avatar_url: G.avatarUrl,
     updated_at: new Date().toISOString(),
   });
+  // Broadcastで全端末に即時配信
+  _drillChannel?.send({
+    type: 'broadcast', event: 'pos',
+    payload: { uid: G.userId, x: G.px, y: G.py, date: G.mapDate, av: G.avatarUrl },
+  }).catch(() => {});
 }
 
 async function saveHp() {
-  await supabaseClient.from('profiles').update({ drill_hp: G.hp }).eq('id', G.userId);
+  await supabaseClient.from('profiles').update({ drill_hp: G.hp }).eq('discord_user_id', G.discordId);
+}
+
+function bpWeight() {
+  let w = 0;
+  for (const [id, qty] of Object.entries(G.backpack)) w += itemWeight(id) * (qty || 0);
+  return w;
 }
 
 async function saveBpItem(itemId, qty) {
@@ -480,11 +530,8 @@ async function move(dx, dy) {
   const nx = G.px + dx, ny = G.py + dy;
   if (nx < 0 || nx >= MAP_W || ny < 0 || ny >= MAP_H) return;
 
-  const key = `${nx},${ny}`;
-  const isDug = G.dugCells.has(key) || ny === 0;
-
+  const isDug = G.dugCells.has(`${nx},${ny}`) || ny === 0;
   if (!isDug) {
-    // 隣接マス（上下左右すべて）採掘開始
     if (Math.abs(dx) + Math.abs(dy) === 1) startMine(nx, ny);
     return;
   }
@@ -499,26 +546,37 @@ async function move(dx, dy) {
     }
   }
 
+  // ── 即座に位置更新・描画（DB保存を待たない）──
   G.px = nx; G.py = ny;
   if (ny === START_Y) G.surfaceMode = true;
 
-  // 呪い：地下で上移動するたびにダメージ
+  // 呪い：ローカルにHP即適用（死亡のみ await）
   if (dy < 0 && ny > START_Y) {
     const li = Math.min(CURSE.length - 1, Math.floor(ny / 100));
     const c  = CURSE[li];
     const dmg = Math.floor(Math.random() * (c.max - c.min + 1)) + c.min;
     G.hp = Math.max(0, G.hp - dmg);
-    await saveHp();
-    log(`👻 呪い (第${li+1}層): -${dmg}HP（残り ${G.hp}）`);
-    if (G.hp <= 0) { await handleDeath('呪い'); return; }
+    _hpDirty = true;
     renderSide();
+    if (G.hp <= 0) {
+      clearTimeout(_moveSaveTimer);
+      _hpDirty = false;
+      await handleDeath('呪い');
+      return;
+    }
   }
 
-  // 落下アイテム回収
-  if (!G.surfaceMode) await collectDroppedItems(nx, ny);
-
-  await savePos();
   render();
+
+  // 落下アイテム確認（移動をブロックしない、モーダル表示中はスキップ）
+  if (!G.surfaceMode && !_lockedDropId) collectDroppedItems(nx, ny).catch(() => {});
+
+  // ── DB保存はデバウンス：連打中は最後の位置だけ書き込む ──
+  clearTimeout(_moveSaveTimer);
+  _moveSaveTimer = setTimeout(async () => {
+    if (_hpDirty) { _hpDirty = false; saveHp().catch(() => {}); }
+    await savePos();
+  }, 200);
 }
 
 // ============================================================
@@ -553,14 +611,16 @@ async function mineTick() {
   if (!mat) { stopMine(); return; }
 
   const drill = DRILLS[G.equippedDrillId] || DRILLS.beginner;
-  G.mineHP[key] = (G.mineHP[key] ?? MATS[mat].hp) - drill.power;
+  const prevHP = G.mineHP[key] ?? MATS[mat].hp;
+  const dmg = Math.min(drill.power, prevHP);  // 実際に与えたダメージ
+  G.mineHP[key] = prevHP - dmg;
 
   // ロック延長
   acquireLock(x, y);
 
-  // ドリル耐久消費（1ティックで power 分消費）
+  // ドリル耐久消費（実ダメージ分のみ）
   if (G.drillDur !== null) {
-    G.drillDur -= drill.power;
+    G.drillDur -= dmg;
     if (G.drillDur <= 0) {
       await breakDrill();
       stopMine();
@@ -602,6 +662,12 @@ async function finishMine(x, y, mat) {
   if (mat === 'treasure') {
     await openTreasure(x, y);
   } else {
+    if (bpWeight() + itemWeight(mat) > G.maxBpWeight) {
+      log('⚠️ リュックが満杯！採掘できません');
+      stopMine();
+      render();
+      return;
+    }
     G.backpack[mat] = (G.backpack[mat] || 0) + 1;
     await saveBpItem(mat, G.backpack[mat]);
     log(`✅ ${MATS[mat].name}を採掘`);
@@ -648,7 +714,7 @@ async function triggerBlockEvent(x, y) {
   if (ev.type === 'gold') {
     const amount = Math.floor(Math.random() * (ev.max - ev.min + 1)) + ev.min;
     G.drillGold += amount;
-    await supabaseClient.from('profiles').update({ drill_gold: G.drillGold }).eq('id', G.userId);
+    await supabaseClient.from('profiles').update({ drill_gold: G.drillGold }).eq('discord_user_id', G.discordId);
     log(`✨ イベント: お金発見！ +${amount}G`);
     renderSide(); renderMap();
     showEventModal('💰', `<span style="color:#f0c060;font-size:1.5rem;font-weight:700;">+${amount}G</span><br><span style="opacity:.75;">お金を発見！</span>`);
@@ -670,8 +736,8 @@ async function triggerBlockEvent(x, y) {
     showEventModal('🕳️', '<span style="font-size:1rem;font-weight:700;">落とし穴！</span><br><span style="opacity:.7;font-size:.9rem;">30m落下します...</span>', () => teleportPitfall());
 
   } else if (ev.type === 'combat') {
-    log('⚔️ イベント: 敵と遭遇！（戦闘システムは近日実装予定）');
-    showEventModal('⚔️', '<span style="font-size:1rem;font-weight:700;">敵と遭遇！</span><br><span style="opacity:.65;font-size:.85rem;">戦闘システムは近日実装予定</span>');
+    log('⚔️ 敵と遭遇！');
+    await startCombat('test_slime');
   }
 }
 
@@ -758,7 +824,17 @@ async function collectDroppedItems(x, y) {
   const key   = `${x},${y}`;
   const drops = G.droppedItems.get(key);
   if (!drops || drops.length === 0) return;
-  showDropModal(x, y, drops[0]);
+  const drop = drops[0];
+  if (isDropLocked(drop)) {
+    log('🔒 他のプレイヤーが確認中です...');
+    return;
+  }
+  const got = await acquireDropLock(drop.id);
+  if (!got) {
+    log('🔒 他のプレイヤーが確認中です...');
+    return;
+  }
+  showDropModal(x, y, drop);
 }
 
 // ============================================================
@@ -795,9 +871,16 @@ async function openTreasure(x, y) {
   for (const [cum, item, qty] of table) { if (r < cum) { loot = [cum, item, qty]; break; } }
   const [, item, qty] = loot;
 
-  G.backpack[item] = (G.backpack[item] || 0) + qty;
+  const canFit = Math.floor((G.maxBpWeight - bpWeight()) / itemWeight(item));
+  const actual = Math.min(qty, canFit);
+  if (actual <= 0) {
+    log(`⚠️ リュックが満杯！宝箱の中身が入りません`);
+    return;
+  }
+  if (actual < qty) log(`⚠️ 容量不足で ${qty - actual} 個入りませんでした`);
+  G.backpack[item] = (G.backpack[item] || 0) + actual;
   await saveBpItem(item, G.backpack[item]);
-  log(`🎁 ${isRare ? 'レア' : ''}宝箱 → ${ITEM_NAMES[item] || item} ×${qty}`);
+  log(`🎁 ${isRare ? 'レア' : ''}宝箱 → ${ITEM_NAMES[item] || item} ×${actual}`);
 }
 
 // ============================================================
@@ -832,7 +915,12 @@ async function returnSurface(useStone = false) {
   G.px = START_X; G.py = START_Y;
   G.surfaceMode = true;
   await savePos();
-  log(`↩️ 帰還完了！${items.length > 0 ? `${items.length}種類の素材を確定` : '手ぶら'}`);
+
+  // 地上帰還でHP全回復
+  G.hp = G.maxHp;
+  await saveHp();
+
+  log(`↩️ 帰還完了！${items.length > 0 ? `${items.length}種類の素材を確定` : '手ぶら'}（HP全回復）`);
   render();
 }
 
@@ -863,7 +951,7 @@ async function buyItem(shopId) {
   if (!item || G.drillGold < item.cost) { log('⚠️ 所持金不足'); return; }
 
   G.drillGold -= item.cost;
-  await supabaseClient.from('profiles').update({ drill_gold: G.drillGold }).eq('id', G.userId);
+  await supabaseClient.from('profiles').update({ drill_gold: G.drillGold }).eq('discord_user_id', G.discordId);
 
   if (item.type === 'drill') {
     const { data: nd } = await supabaseClient.from('drill_player_drills').insert({
@@ -951,15 +1039,35 @@ async function doCraft(type, id) {
 
 function showBag() {
   const items = Object.entries(G.backpack).filter(([, v]) => v > 0);
-  let html = `<div class="modal-title">🎒 リュック</div>`;
+  const w = bpWeight();
+  const wPct = Math.min(100, Math.round((w / G.maxBpWeight) * 100));
+  const wColor = wPct >= 100 ? '#ff5555' : wPct > 70 ? '#ffc107' : '#6bde9b';
+  const underground = G.py > 0;
+
+  let html = `<div class="modal-title">🎒 リュック</div>
+    <div style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;font-size:.78rem;margin-bottom:4px;">
+        <span style="opacity:.7;">容量</span>
+        <span style="color:${wColor};font-weight:700;">${w} / ${G.maxBpWeight}</span>
+      </div>
+      <div style="height:6px;background:rgba(255,255,255,.15);border-radius:3px;overflow:hidden;">
+        <div style="width:${wPct}%;height:100%;background:${wColor};transition:width .3s;border-radius:3px;"></div>
+      </div>
+    </div>`;
 
   if (items.length === 0) {
     html += `<div style="font-size:.85rem;color:rgba(255,255,255,.5);">空です</div>`;
   } else {
     for (const [item, qty] of items) {
+      const discardBtn = underground
+        ? `<button class="btn-modal-action" style="background:rgba(200,60,60,.7);font-size:.72rem;padding:4px 10px;" onclick="showDiscardItem('${item}',${qty})">捨てる</button>`
+        : '';
       html += `<div class="modal-row">
         <span class="modal-row-label">${ITEM_NAMES[item]||item}</span>
-        <span>×${qty}</span>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span>×${qty}</span>
+          ${discardBtn}
+        </div>
       </div>`;
     }
   }
@@ -971,6 +1079,68 @@ function showBag() {
   }
   html += `<button class="btn-modal-close" onclick="closeModal()">閉じる</button>`;
   openModal(html);
+}
+
+function showDiscardItem(itemId, maxQty) {
+  const name = escHtml(ITEM_NAMES[itemId] || itemId);
+  openModal(`
+    <div class="modal-title">🗑️ ${name}を捨てる</div>
+    <div style="font-size:.83rem;opacity:.65;margin-bottom:14px;line-height:1.6;">現在の場所にアイテムが落ちます。<br>他のプレイヤーが拾えます。</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+      <span style="flex:1;font-size:.9rem;">${name}</span>
+      <input id="discard-qty" type="number" min="1" max="${maxQty}" value="1"
+        style="width:72px;padding:5px 8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:6px;color:#fff;font-size:.9rem;text-align:center;">
+      <span style="opacity:.5;font-size:.82rem;">/ ${maxQty}</span>
+    </div>
+    <button class="btn-modal-action" style="width:100%;background:rgba(210,50,50,.75);" onclick="doDiscardItem('${escHtml(itemId)}',${maxQty})">🗑️ 捨てる</button>
+    <button class="btn-modal-close" onclick="showBag()">← 戻る</button>
+  `);
+}
+
+async function doDiscardItem(itemId, maxQty) {
+  const input = document.getElementById('discard-qty');
+  const qty = input ? Math.min(maxQty, Math.max(1, parseInt(input.value, 10) || 1)) : 1;
+  const actual = Math.min(qty, G.backpack[itemId] || 0);
+  if (actual <= 0) { showBag(); return; }
+
+  G.backpack[itemId] = (G.backpack[itemId] || 0) - actual;
+  await saveBpItem(itemId, G.backpack[itemId]);
+
+  // 同位置にロックされていない既存ドロップがあればマージ
+  const dkey = `${G.px},${G.py}`;
+  const existing = (G.droppedItems.get(dkey) || []).find(d => !isDropLocked(d));
+  if (existing) {
+    const merged = [...existing.items];
+    const idx = merged.findIndex(i => i.item_id === itemId);
+    if (idx >= 0) merged[idx] = { item_id: itemId, quantity: merged[idx].quantity + actual };
+    else merged.push({ item_id: itemId, quantity: actual });
+    await supabaseClient.from('drill_dropped_items').update({ items: merged }).eq('id', existing.id);
+    existing.items = merged;
+  } else {
+    // 新規ドロップ作成
+    const newItems = [{ item_id: itemId, quantity: actual }];
+    const { data: drop } = await supabaseClient.from('drill_dropped_items').insert({
+      map_date: G.mapDate, pos_x: G.px, pos_y: G.py,
+      dropper_user_id: G.userId,
+      dropper_name: G.displayName || '名無し',
+      cause_of_death: '投棄',
+      items: newItems,
+    }).select().single();
+    if (drop) {
+      if (!G.droppedItems.has(dkey)) G.droppedItems.set(dkey, []);
+      G.droppedItems.get(dkey).push({
+        id: drop.id, items: newItems,
+        dropper_name: G.displayName || '名無し',
+        cause_of_death: '投棄',
+        dropped_at: drop.dropped_at,
+        locked_by: null, locked_until: null,
+      });
+    }
+  }
+
+  log(`🗑️ ${ITEM_NAMES[itemId]||itemId} ×${actual} を捨てた`);
+  renderSide(); renderMap();
+  showBag();
 }
 
 // ============================================================
@@ -994,7 +1164,7 @@ function showDrills() {
         </div>
         ${isEquipped
           ? `<span style="font-size:.75rem;opacity:.5;">装備中</span>`
-          : `<button class="btn-modal-action" onclick="equipDrill('${d.id}')">装備</button>`}
+          : `<button class="btn-modal-action" onclick="equipDrill('${d.id}').then(showDrills)">装備</button>`}
       </div>`;
     }
   }
@@ -1018,7 +1188,79 @@ async function equipDrill(rowId) {
 
   log(`⛏️ ${DRILLS[d.drill_id]?.name || d.drill_id} を装備`);
   renderSide();
-  showDrills();
+}
+
+// ============================================================
+// アイテムモーダル（モバイル統合UI）
+// ============================================================
+
+function showItems() {
+  let html = `<div class="modal-title">🧳 アイテム</div>`;
+
+  // ── ドリル ──
+  html += `<div class="items-section-label">⛏️ ドリル</div>`;
+  if (G.drills.length === 0) {
+    html += `<div style="font-size:.85rem;opacity:.5;padding:6px 0;">ドリルがありません</div>`;
+  } else {
+    for (const d of G.drills) {
+      const info = DRILLS[d.drill_id] || {};
+      const isEq  = d.id === G.equippedDrillRowId;
+      const dur   = d.durability === null ? '∞' : d.durability;
+      html += `<div class="modal-row">
+        <div>
+          <div class="modal-row-label">${info.name || d.drill_id}${isEq ? ' ✅' : ''}</div>
+          <div class="modal-row-sub">威力: ${info.power ?? '-'} ／ 耐久: ${dur}</div>
+        </div>
+        ${isEq
+          ? `<span style="font-size:.75rem;opacity:.5;">装備中</span>`
+          : `<button class="btn-modal-action" onclick="equipDrill('${d.id}').then(showItems)">装備</button>`}
+      </div>`;
+    }
+  }
+
+  // ── 持ちもの ──
+  html += `<div class="items-section-label" style="margin-top:10px;">💊 持ちもの</div>`;
+  let hasItem = false;
+
+  // 帰還石
+  const bpStone  = G.backpack['return_stone']  || 0;
+  const invStone = G.inventory['return_stone'] || 0;
+  const totalStone = bpStone + invStone;
+  if (totalStone > 0) {
+    hasItem = true;
+    html += `<div class="modal-row">
+      <div>
+        <div class="modal-row-label">帰還石</div>
+        <div class="modal-row-sub">リュック: ${bpStone} ／ 倉庫: ${invStone}</div>
+      </div>
+      <button class="btn-modal-action" onclick="returnSurface(true)" ${G.py > 0 ? '' : 'disabled'}>使用</button>
+    </div>`;
+  }
+
+  // ── 将来の回復アイテム等はここに追加 ──
+
+  if (!hasItem) {
+    html += `<div style="font-size:.82rem;opacity:.45;padding:6px 0;">使えるアイテムなし</div>`;
+  }
+
+  html += `<button class="btn-modal-close" onclick="closeModal()">閉じる</button>`;
+  openModal(html);
+}
+
+// ============================================================
+// ログモーダル（モバイル用）
+// ============================================================
+
+function showLogModal() {
+  const rows = G.logs.length === 0
+    ? `<div style="font-size:.82rem;opacity:.45;">ログはまだありません</div>`
+    : G.logs.map(l => `<div class="log-modal-row">${l}</div>`).join('');
+
+  openModal(`
+    <div class="modal-title">📜 ログ</div>
+    <div style="max-height:62vh;overflow-y:auto;">${rows}</div>
+    <button class="btn-modal-close" onclick="closeModal()">閉じる</button>
+  `);
 }
 
 // ============================================================
@@ -1027,46 +1269,205 @@ async function equipDrill(rowId) {
 
 function showSell() {
   if (G.py !== 0) { log('⚠️ 売却は地上のみ'); return; }
+  _pendingSell = null;
 
   const sellable = Object.entries(G.inventory)
     .filter(([k, v]) => v > 0 && SELL_PRICES[k])
     .sort((a, b) => (SELL_PRICES[b[0]] || 0) - (SELL_PRICES[a[0]] || 0));
 
   let html = `<div class="modal-title">💰 素材売却</div>
-    <div style="font-size:.82rem;margin-bottom:10px;">所持金: 💰 ${G.drillGold}G</div>`;
+    <div style="font-size:.82rem;margin-bottom:12px;opacity:.8;">所持金: 💰 ${G.drillGold.toLocaleString()}G</div>`;
 
   if (sellable.length === 0) {
     html += `<div style="font-size:.85rem;opacity:.5;padding:10px 0;">売却できる素材がありません<br><span style="font-size:.75rem;">（帰還して素材を確定してください）</span></div>`;
   } else {
+    html += `<div style="font-size:.72rem;opacity:.5;margin-bottom:10px;">売却する個数を選んでください（初期値: 0個）</div>`;
     for (const [item, qty] of sellable) {
       const price = SELL_PRICES[item];
-      html += `<div class="modal-row">
-        <div>
-          <div class="modal-row-label">${MATS[item]?.name || item} ×${qty}</div>
-          <div class="modal-row-sub">1個 ${price}G → 合計 ${price * qty}G</div>
+      html += `<div class="modal-row" style="flex-wrap:nowrap;gap:6px;align-items:center;">
+        <div style="flex:1;min-width:0;">
+          <div class="modal-row-label">${MATS[item]?.name || item}</div>
+          <div class="modal-row-sub">所持 ${qty}個 ／ 1個 ${price}G</div>
         </div>
-        <button class="btn-modal-action" onclick="doSell('${item}',${qty})">全売却</button>
+        <div style="display:flex;align-items:center;gap:5px;flex-shrink:0;">
+          <input id="sell-qty-${item}" type="number" min="0" max="${qty}" value="0"
+            style="width:58px;padding:4px 6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:6px;color:#fff;font-size:.82rem;text-align:center;"
+            oninput="updateSellTotal()">
+          <button class="btn-modal-action" style="font-size:.7rem;padding:4px 9px;white-space:nowrap;" onclick="setSellMax('${item}',${qty})">MAX</button>
+        </div>
       </div>`;
     }
+    html += `
+      <div style="margin-top:14px;padding:10px 12px;background:rgba(255,255,255,.06);border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:.82rem;opacity:.7;">売却合計</span>
+        <span id="sell-total-disp" style="font-size:1.05rem;font-weight:700;color:#d4a853;">0G</span>
+      </div>
+      <button class="btn-modal-action" id="sell-go-btn" style="width:100%;margin-top:10px;opacity:.35;cursor:default;" disabled onclick="showSellConfirm()">💰 売却する</button>`;
   }
   html += `<button class="btn-modal-close" onclick="closeModal()">閉じる</button>`;
   openModal(html);
 }
 
-async function doSell(itemId, qty) {
-  const price = SELL_PRICES[itemId];
-  if (!price) return;
-  const actual = Math.min(qty, G.inventory[itemId] || 0);
-  if (actual <= 0) return;
+function setSellMax(itemId, maxQty) {
+  const input = document.getElementById(`sell-qty-${itemId}`);
+  if (input) { input.value = maxQty; updateSellTotal(); }
+}
 
-  const earned = price * actual;
-  await upsertInv(itemId, -actual);
-  G.drillGold += earned;
-  await supabaseClient.from('profiles').update({ drill_gold: G.drillGold }).eq('id', G.userId);
+function updateSellTotal() {
+  let total = 0;
+  document.querySelectorAll('[id^="sell-qty-"]').forEach(input => {
+    const itemId = input.id.slice(9); // 'sell-qty-'.length = 9
+    const qty = Math.min(G.inventory[itemId] || 0, Math.max(0, parseInt(input.value, 10) || 0));
+    total += qty * (SELL_PRICES[itemId] || 0);
+  });
+  const disp = document.getElementById('sell-total-disp');
+  if (disp) disp.textContent = `${total.toLocaleString()}G`;
+  const btn = document.getElementById('sell-go-btn');
+  if (btn) {
+    btn.disabled = total <= 0;
+    btn.style.opacity = total > 0 ? '1' : '.35';
+    btn.style.cursor = total > 0 ? 'pointer' : 'default';
+  }
+}
 
-  log(`💰 ${MATS[itemId]?.name || itemId} ×${actual} → ${earned}G`);
+function showSellConfirm() {
+  const toSell = [];
+  let total = 0;
+  document.querySelectorAll('[id^="sell-qty-"]').forEach(input => {
+    const itemId = input.id.slice(9);
+    const maxQty = G.inventory[itemId] || 0;
+    const qty = Math.min(maxQty, Math.max(0, parseInt(input.value, 10) || 0));
+    if (qty > 0) {
+      toSell.push({ item: itemId, qty, price: SELL_PRICES[itemId] || 0 });
+      total += qty * (SELL_PRICES[itemId] || 0);
+    }
+  });
+  if (toSell.length === 0 || total <= 0) return;
+  _pendingSell = toSell;
+
+  const rows = toSell.map(({ item, qty, price }) =>
+    `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06);">
+      <span style="font-size:.85rem;">${MATS[item]?.name || item} ×${qty}</span>
+      <span style="font-size:.85rem;color:#d4a853;">${(price * qty).toLocaleString()}G</span>
+    </div>`
+  ).join('');
+
+  openModal(`
+    <div class="modal-title">💰 売却確認</div>
+    <div style="max-height:36vh;overflow-y:auto;margin-bottom:12px;">${rows}</div>
+    <div style="padding:12px 14px;background:rgba(212,168,83,.12);border:1px solid rgba(212,168,83,.4);border-radius:10px;margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:.85rem;opacity:.8;">受取金額</span>
+        <span style="font-size:1.25rem;font-weight:700;color:#d4a853;">💰 ${total.toLocaleString()}G</span>
+      </div>
+      <div style="font-size:.75rem;color:rgba(255,160,60,.9);">⚠️ この操作は取り消せません</div>
+    </div>
+    <button class="btn-modal-action" style="width:100%;margin-bottom:8px;font-size:.95rem;padding:11px;" onclick="doSellAll()">✅ 確認して売却</button>
+    <button class="btn-modal-close" onclick="showSell()">← キャンセルして戻る</button>
+  `);
+}
+
+async function doSellAll() {
+  const toSell = _pendingSell;
+  _pendingSell = null;
+  if (!toSell || toSell.length === 0) return;
+  closeModal();
+
+  let totalEarned = 0;
+  for (const { item, qty } of toSell) {
+    const price = SELL_PRICES[item];
+    if (!price) continue;
+    const actual = Math.min(qty, G.inventory[item] || 0);
+    if (actual <= 0) continue;
+    await upsertInv(item, -actual);
+    totalEarned += price * actual;
+    log(`💰 ${MATS[item]?.name || item} ×${actual} → ${(price * actual).toLocaleString()}G`);
+  }
+  if (totalEarned > 0) {
+    G.drillGold += totalEarned;
+    await supabaseClient.from('profiles').update({ drill_gold: G.drillGold }).eq('discord_user_id', G.discordId);
+    log(`💰 合計 ${totalEarned.toLocaleString()}G 受け取り（所持金: ${G.drillGold.toLocaleString()}G）`);
+  }
   renderSide();
   showSell();
+}
+
+// ============================================================
+// 倉庫
+// ============================================================
+
+function showWarehouse(tab = 'mats') {
+  const mats = Object.entries(G.inventory)
+    .filter(([, v]) => v > 0)
+    .sort((a, b) => {
+      const order = ['gold','silver','iron','copper','stone','dirt'];
+      return (order.indexOf(a[0]) === -1 ? 99 : order.indexOf(a[0])) -
+             (order.indexOf(b[0]) === -1 ? 99 : order.indexOf(b[0]));
+    });
+
+  const tabBtn = (t, label) =>
+    `<button onclick="showWarehouse('${t}')" style="flex:1;padding:6px 0;border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;
+      background:${tab===t ? '#d4a853' : 'rgba(255,255,255,.1)'};color:#fff;">${label}</button>`;
+
+  let body = '';
+
+  if (tab === 'mats') {
+    if (mats.length === 0) {
+      body = `<div style="font-size:.85rem;opacity:.5;padding:14px 0;text-align:center;">素材がありません</div>`;
+    } else {
+      body = mats.map(([item, qty]) => {
+        const price = SELL_PRICES[item];
+        const valStr = price ? `<span style="font-size:.72rem;color:rgba(255,200,80,.8);">💰${price}G/個</span>` : '';
+        return `<div class="modal-row">
+          <div>
+            <div class="modal-row-label">${MATS[item]?.name || item}</div>
+            ${valStr}
+          </div>
+          <div style="font-size:.95rem;font-weight:700;">×${qty}</div>
+        </div>`;
+      }).join('');
+    }
+  } else {
+    // drills tab
+    if (G.drills.length === 0) {
+      body = `<div style="font-size:.85rem;opacity:.5;padding:14px 0;text-align:center;">ドリルがありません</div>`;
+    } else {
+      body = G.drills.map(d => {
+        const def = DRILLS[d.drill_id] || {};
+        const isEquipped = d.id === G.equippedDrillRowId;
+        const durMax = def.dur ?? null;
+        const durVal = d.durability ?? durMax;
+        const durPct = durMax ? Math.max(0, Math.round((durVal / durMax) * 100)) : null;
+        const durColor = durPct === null ? '#aaa' : durPct > 50 ? '#4caf50' : durPct > 20 ? '#ff9800' : '#f44336';
+        const durDisp = durVal === null ? '∞' : `${durVal} / ${durMax}`;
+        const durBar = durMax
+          ? `<div style="margin-top:4px;height:4px;background:rgba(255,255,255,.15);border-radius:2px;overflow:hidden;">
+               <div style="height:100%;width:${durPct}%;background:${durColor};border-radius:2px;transition:width .3s;"></div>
+             </div>`
+          : '';
+        return `<div class="modal-row" style="align-items:flex-start;">
+          <div style="flex:1;min-width:0;">
+            <div class="modal-row-label">${def.name || d.drill_id}${isEquipped ? ' <span style="font-size:.7rem;color:#d4a853;">装備中</span>' : ''}</div>
+            <div class="modal-row-sub">発掘力 ${def.power ?? '?'} ／ 耐久 ${durDisp}</div>
+            ${durBar}
+          </div>
+          ${isEquipped
+            ? `<span style="font-size:.72rem;opacity:.4;align-self:center;">装備中</span>`
+            : `<button class="btn-modal-action" onclick="equipDrill('${d.id}').then(()=>showWarehouse('drills'))">装備</button>`}
+        </div>`;
+      }).join('');
+    }
+  }
+
+  const html = `
+    <div class="modal-title">🏪 倉庫</div>
+    <div style="display:flex;gap:6px;margin-bottom:12px;">
+      ${tabBtn('mats','📦 素材')}
+      ${tabBtn('drills','⛏️ ドリル')}
+    </div>
+    ${body}
+    <button class="btn-modal-close" onclick="closeModal()">閉じる</button>`;
+  openModal(html);
 }
 
 // ============================================================
@@ -1086,15 +1487,48 @@ function showEventModal(icon, body, afterClose) {
       <div style="font-size:3.5rem;margin-bottom:14px;">${icon}</div>
       <div style="font-size:.95rem;line-height:1.75;">${body}</div>
     </div>
-    <button class="btn-modal-close" id="ev-ok-btn">OK</button>`;
-  document.getElementById('modal-overlay').style.display = 'flex';
-  document.getElementById('ev-ok-btn').addEventListener('click', () => {
-    closeModal();
-    if (afterClose) afterClose();
-  }, { once: true });
+    <button class="btn-modal-close" id="ev-ok-btn" disabled style="opacity:.35;cursor:default;">OK</button>`;
+  const overlay = document.getElementById('modal-overlay');
+  overlay.style.display = 'flex';
+  overlay.dataset.eventModal = '1';
+  // 誤タップ防止：一定時間後にのみOKを有効化
+  setTimeout(() => {
+    const btn = document.getElementById('ev-ok-btn');
+    if (!btn) return;
+    btn.disabled = false;
+    btn.style.opacity = '';
+    btn.style.cursor = '';
+    btn.addEventListener('click', () => {
+      overlay.dataset.eventModal = '';
+      closeModal();
+      if (afterClose) afterClose();
+    }, { once: true });
+  }, 800);
 }
 
 let _currentDrop = null;
+let _pendingSell = null;
+let _lockedDropId = null;
+
+function isDropLocked(drop) {
+  if (!drop.locked_by || drop.locked_by === G.userId) return false;
+  return drop.locked_until && new Date(drop.locked_until) > new Date();
+}
+
+async function acquireDropLock(dropId) {
+  const { data } = await supabaseClient.rpc('try_lock_drop', {
+    p_drop_id: dropId, p_user_id: G.userId,
+  });
+  if (data) _lockedDropId = dropId;
+  return !!data;
+}
+
+async function releaseDropLock() {
+  if (!_lockedDropId) return;
+  const id = _lockedDropId;
+  _lockedDropId = null;
+  await supabaseClient.rpc('release_drop_lock', { p_drop_id: id, p_user_id: G.userId });
+}
 
 function showDropModal(x, y, drop) {
   _currentDrop = { x, y, drop };
@@ -1116,11 +1550,17 @@ function showDropModal(x, y, drop) {
     </div>`;
   }).join('');
 
+  const isDiscard = drop.cause_of_death === '投棄';
+  const modalTitle = isDiscard
+    ? `📦 ${escHtml(drop.dropper_name || '???')}が落としたアイテム`
+    : `📦 ${escHtml(drop.dropper_name || '???')}のリュックサック`;
+  const subInfo = isDiscard
+    ? `<div style="font-size:.75rem;opacity:.6;margin-bottom:14px;">${escHtml(dateStr)}</div>`
+    : `<div style="font-size:.75rem;opacity:.6;margin-bottom:14px;">死亡 ${escHtml(dateStr)}&ensp;死因 ${escHtml(drop.cause_of_death || '不明')}</div>`;
+
   openModal(`
-    <div class="modal-title">📦 ${escHtml(drop.dropper_name || '???')}のリュックサック</div>
-    <div style="font-size:.75rem;opacity:.6;margin-bottom:14px;">
-      死亡 ${escHtml(dateStr)}&ensp;死因 ${escHtml(drop.cause_of_death || '不明')}
-    </div>
+    <div class="modal-title">${modalTitle}</div>
+    ${subInfo}
     <div style="font-size:.78rem;font-weight:600;opacity:.55;margin-bottom:8px;">持ち物</div>
     <div style="max-height:38vh;overflow-y:auto;">${itemRows}</div>
     <div style="display:flex;gap:8px;margin-top:14px;">
@@ -1151,16 +1591,33 @@ async function takeAll() {
 }
 
 async function doDropCollect(x, y, drop, toCollect) {
+  // ロック解放：変数クリア後にDB側もRPCで解放（削除前に解放）
+  const dropIdToUnlock = _lockedDropId;
+  _lockedDropId = null;
+  if (dropIdToUnlock) {
+    await supabaseClient.rpc('release_drop_lock', { p_drop_id: dropIdToUnlock, p_user_id: G.userId });
+  }
   closeModal();
   _currentDrop = null;
 
-  for (const { item_id, quantity } of toCollect) {
+  // 容量チェック：入る分だけ回収
+  let cap = G.maxBpWeight - bpWeight();
+  const fitted = [];
+  for (const item of toCollect) {
+    const w = itemWeight(item.item_id);
+    const canTake = w > 0 ? Math.min(item.quantity, Math.floor(cap / w)) : item.quantity;
+    if (canTake > 0) { fitted.push({ ...item, quantity: canTake }); cap -= w * canTake; }
+  }
+  if (fitted.length === 0) { log('⚠️ リュックが満杯で回収できません'); renderSide(); return; }
+  const skipped = toCollect.reduce((s, i) => s + i.quantity, 0) - fitted.reduce((s, i) => s + i.quantity, 0);
+  if (skipped > 0) log(`⚠️ 容量不足で ${skipped} 個は回収できませんでした`);
+
+  for (const { item_id, quantity } of fitted) {
     G.backpack[item_id] = (G.backpack[item_id] || 0) + quantity;
     await saveBpItem(item_id, G.backpack[item_id]);
   }
-
   const takenMap = {};
-  toCollect.forEach(i => { takenMap[i.item_id] = (takenMap[i.item_id] || 0) + i.quantity; });
+  fitted.forEach(i => { takenMap[i.item_id] = (takenMap[i.item_id] || 0) + i.quantity; });
   const remaining = (drop.items || [])
     .map(i => ({ item_id: i.item_id, quantity: i.quantity - (takenMap[i.item_id] || 0) }))
     .filter(i => i.quantity > 0);
@@ -1180,12 +1637,275 @@ async function doDropCollect(x, y, drop, toCollect) {
     if (list) { const d = list.find(d => d.id === drop.id); if (d) d.items = remaining; }
   }
 
-  const names = toCollect.map(i => `${ITEM_NAMES[i.item_id]||i.item_id}×${i.quantity}`).join(', ');
+  const names = fitted.map(i => `${ITEM_NAMES[i.item_id]||i.item_id}×${i.quantity}`).join(', ');
   log(`📦 落とし物を回収！ ${names}`);
   renderSide(); renderMap();
 
   const nextDrops = G.droppedItems.get(key);
   if (nextDrops && nextDrops.length > 0) showDropModal(x, y, nextDrops[0]);
+}
+
+// ============================================================
+// 戦闘システム
+// ============================================================
+
+function buildPlayerDeck() {
+  return Array.from({ length: 10 }, () => 'attack');
+}
+
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function drawCombatCards(n = 3) {
+  for (let i = 0; i < n; i++) {
+    if (C.deck.length === 0) {
+      if (C.discard.length === 0) break;
+      C.deck = shuffleArray(C.discard);
+      C.discard = [];
+    }
+    C.hand.push(C.deck.pop());
+  }
+}
+
+function getMonsterNextAction() {
+  const acts = C.monster?.actions;
+  if (!acts || acts.length === 0) return null;
+  return acts[Math.floor(Math.random() * acts.length)];
+}
+
+function combatAddLog(msg) {
+  C.logs.unshift(msg);
+  if (C.logs.length > 20) C.logs.pop();
+}
+
+async function startCombat(monsterId) {
+  const def = MONSTERS[monsterId];
+  if (!def) return;
+
+  C.active     = true;
+  C.monster    = { ...def };
+  C.monsterHp  = def.maxHp;
+  C.deck       = shuffleArray(buildPlayerDeck());
+  C.hand       = [];
+  C.discard    = [];
+  C.logs       = [`⚔️ ${def.name}が現れた！`];
+  C.nextAction = getMonsterNextAction();
+
+  drawCombatCards(3);
+  showCombatModal();
+}
+
+async function playCard(cardIdx) {
+  if (!C.active || cardIdx < 0 || cardIdx >= C.hand.length) return;
+
+  const cardId  = C.hand[cardIdx];
+  const cardDef = CARDS[cardId];
+  if (!cardDef) return;
+
+  // カード効果
+  if (cardDef.damage > 0) {
+    C.monsterHp = Math.max(0, C.monsterHp - cardDef.damage);
+    combatAddLog(`⚔️ ${cardDef.name}！ ${C.monster.name}に ${cardDef.damage} ダメージ`);
+  }
+
+  // 手札全捨て
+  C.discard.push(...C.hand);
+  C.hand = [];
+
+  // モンスター死亡チェック
+  if (C.monsterHp <= 0) {
+    combatAddLog(`✨ ${C.monster.name}を倒した！`);
+    showCombatModal();
+    await endCombat(true);
+    return;
+  }
+
+  // モンスターの行動
+  const action = C.nextAction;
+  if (action) {
+    combatAddLog(`👾 ${C.monster.name}: ${action.name}`);
+    if (action.damage > 0) {
+      G.hp = Math.max(0, G.hp - action.damage);
+      combatAddLog(`💥 ${action.damage} ダメージを受けた！（残り HP: ${G.hp}）`);
+      await saveHp();
+      renderSide();
+    }
+  }
+
+  // プレイヤー死亡チェック
+  if (G.hp <= 0) {
+    showCombatModal();
+    await endCombat(false);
+    return;
+  }
+
+  // 次ターン
+  drawCombatCards(3);
+  C.nextAction = getMonsterNextAction();
+  showCombatModal();
+}
+
+async function endCombat(win) {
+  C.active = false;
+  const monName = C.monster?.name || '???';
+
+  if (win) {
+    await new Promise(resolve => {
+      document.getElementById('modal-inner').innerHTML = `
+        <div style="text-align:center;padding:24px 0 18px;">
+          <div style="font-size:3rem;margin-bottom:12px;">🎉</div>
+          <div style="font-size:1.1rem;font-weight:700;color:#6bde9b;">${escHtml(monName)}を倒した！</div>
+        </div>
+        <button class="btn-modal-close" id="combat-end-btn">閉じる</button>`;
+      document.getElementById('combat-end-btn').addEventListener('click', resolve, { once: true });
+    });
+    document.getElementById('modal-overlay').dataset.combatModal = '';
+    closeModal();
+    log(`⚔️ ${monName}を倒した！`);
+  } else {
+    document.getElementById('modal-overlay').dataset.combatModal = '';
+    closeModal();
+    await handleDeath(`${monName}との戦闘`);
+  }
+}
+
+function showCombatModal() {
+  const mon = C.monster;
+  if (!mon) return;
+
+  const mHpPct   = Math.max(0, Math.round((C.monsterHp / mon.maxHp) * 100));
+  const mHpColor = mHpPct > 50 ? '#6bde9b' : mHpPct > 20 ? '#ffc107' : '#ff5555';
+  const pHpPct   = Math.max(0, Math.round((G.hp / G.maxHp) * 100));
+  const pHpColor = pHpPct > 50 ? '#6bde9b' : pHpPct > 20 ? '#ffc107' : '#ff5555';
+
+  const actionHtml = C.nextAction
+    ? `<div style="font-size:.72rem;margin-top:6px;padding:4px 10px;
+        background:rgba(255,100,50,.15);border:1px solid rgba(255,100,50,.3);
+        border-radius:6px;display:inline-block;">
+        次の行動: <strong>${escHtml(C.nextAction.name)}</strong>
+        ${C.nextAction.damage > 0
+          ? `<span style="color:#ff8866;"> (-${C.nextAction.damage}HP)</span>`
+          : `<span style="color:rgba(255,255,255,.45);"> (なし)</span>`}
+       </div>`
+    : '';
+
+  const logHtml = C.logs.slice(0, 5).map(l =>
+    `<div style="font-size:.72rem;padding:2px 0;color:rgba(255,255,255,.75);line-height:1.4;">${escHtml(l)}</div>`
+  ).join('');
+
+  const cardHtml = C.hand.map((cardId, i) => {
+    const def = CARDS[cardId] || {};
+    return `<div class="combat-card" draggable="true"
+      ondragstart="combatDragStart(event,${i})"
+      ondragend="combatDragEnd(event)"
+      ontouchstart="combatTouchStart(event,${i})"
+      ontouchmove="combatTouchMove(event)"
+      ontouchend="combatTouchEnd(event)">
+      <div class="combat-card-icon">${def.icon || '❓'}</div>
+      <div class="combat-card-name">${escHtml(def.name || cardId)}</div>
+      <div class="combat-card-desc">${escHtml(def.desc || '')}</div>
+    </div>`;
+  }).join('');
+
+  const ov = document.getElementById('modal-overlay');
+  ov.style.display  = 'flex';
+  ov.dataset.combatModal = '1';
+
+  document.getElementById('modal-inner').innerHTML = `
+    <div style="text-align:center;margin-bottom:8px;">
+      <div style="font-size:2.8rem;line-height:1;">${mon.icon}</div>
+      <div style="font-weight:700;font-size:.95rem;margin-top:4px;">${escHtml(mon.name)}</div>
+      <div style="font-size:.72rem;color:${mHpColor};margin:2px 0;">HP ${C.monsterHp} / ${mon.maxHp}</div>
+      <div style="height:6px;background:rgba(255,255,255,.15);border-radius:3px;overflow:hidden;margin:0 24px 4px;">
+        <div style="width:${mHpPct}%;height:100%;background:${mHpColor};transition:width .3s;border-radius:3px;"></div>
+      </div>
+      ${actionHtml}
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+      <span style="font-size:.7rem;color:rgba(255,255,255,.45);">❤️ ${G.hp} / ${G.maxHp}</span>
+      <div style="flex:1;height:4px;background:rgba(255,255,255,.12);border-radius:2px;overflow:hidden;">
+        <div style="width:${pHpPct}%;height:100%;background:${pHpColor};border-radius:2px;transition:width .3s;"></div>
+      </div>
+    </div>
+    <div style="min-height:56px;max-height:80px;overflow-y:auto;background:rgba(0,0,0,.25);border-radius:8px;padding:5px 8px;margin-bottom:8px;">${logHtml}</div>
+    <div id="combat-drop-zone"
+      ondragover="event.preventDefault()"
+      ondrop="combatDrop(event)">カードをここにドロップ</div>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px;">${cardHtml}</div>
+  `;
+}
+
+// ドラッグ＆ドロップ（デスクトップ）
+function combatDragStart(e, idx) {
+  _draggedCardIdx = idx;
+  e.dataTransfer.effectAllowed = 'move';
+  document.getElementById('combat-drop-zone')?.classList.add('combat-drop-zone--active');
+}
+
+function combatDragEnd(e) {
+  _draggedCardIdx = null;
+  document.getElementById('combat-drop-zone')?.classList.remove('combat-drop-zone--active');
+}
+
+function combatDrop(e) {
+  e.preventDefault();
+  document.getElementById('combat-drop-zone')?.classList.remove('combat-drop-zone--active');
+  if (_draggedCardIdx !== null) {
+    const idx = _draggedCardIdx;
+    _draggedCardIdx = null;
+    playCard(idx);
+  }
+}
+
+// タッチドラッグ（モバイル）
+function combatTouchStart(e, idx) {
+  _touchCardIdx = idx;
+  const rect = e.currentTarget.getBoundingClientRect();
+  _touchGhost = e.currentTarget.cloneNode(true);
+  Object.assign(_touchGhost.style, {
+    position: 'fixed', zIndex: '99999', opacity: '.85', pointerEvents: 'none',
+    width: rect.width + 'px', height: rect.height + 'px',
+    left: rect.left + 'px', top: rect.top + 'px',
+    transform: 'scale(1.1)', transition: 'none',
+  });
+  document.body.appendChild(_touchGhost);
+}
+
+function combatTouchMove(e) {
+  e.preventDefault();
+  if (!_touchGhost) return;
+  const t = e.touches[0];
+  _touchGhost.style.left = (t.clientX - _touchGhost.offsetWidth  / 2) + 'px';
+  _touchGhost.style.top  = (t.clientY - _touchGhost.offsetHeight / 2) + 'px';
+  const zone = document.getElementById('combat-drop-zone');
+  if (zone) {
+    const zr = zone.getBoundingClientRect();
+    const over = t.clientX >= zr.left && t.clientX <= zr.right &&
+                 t.clientY >= zr.top  && t.clientY <= zr.bottom;
+    zone.classList.toggle('combat-drop-zone--active', over);
+  }
+}
+
+function combatTouchEnd(e) {
+  if (_touchGhost) { _touchGhost.remove(); _touchGhost = null; }
+  document.getElementById('combat-drop-zone')?.classList.remove('combat-drop-zone--active');
+  if (_touchCardIdx === null) return;
+  const idx = _touchCardIdx;
+  _touchCardIdx = null;
+  const zone = document.getElementById('combat-drop-zone');
+  if (!zone) return;
+  const t = e.changedTouches[0];
+  const zr = zone.getBoundingClientRect();
+  if (t.clientX >= zr.left && t.clientX <= zr.right &&
+      t.clientY >= zr.top  && t.clientY <= zr.bottom) {
+    playCard(idx);
+  }
 }
 
 // ============================================================
@@ -1198,6 +1918,7 @@ function openModal(html) {
 }
 
 function closeModal() {
+  releaseDropLock(); // ドロップロック解放（保持中のみ）
   document.getElementById('modal-overlay').style.display = 'none';
 }
 
@@ -1206,42 +1927,43 @@ function closeModal() {
 // ============================================================
 
 function setupRealtime() {
-  supabaseClient.channel('drill_rt')
+  // filter なしで全変更を受信し、クライアント側で map_date を判定（filter 付きは不安定なため）
+  _drillChannel = supabaseClient.channel('drill_rt', {
+    config: { broadcast: { self: false } },
+  })
     .on('postgres_changes', {
       event: 'INSERT', schema: 'public', table: 'drill_dug_cells',
-      filter: `map_date=eq.${G.mapDate}`,
     }, ({ new: r }) => {
+      if (!r || r.map_date !== G.mapDate) return;
       G.dugCells.add(`${r.x},${r.y}`);
       G.digLocks.delete(`${r.x},${r.y}`);
       renderMap();
     })
     .on('postgres_changes', {
-      event: 'INSERT', schema: 'public', table: 'drill_dig_locks',
-      filter: `map_date=eq.${G.mapDate}`,
-    }, ({ new: r }) => {
-      if (r.locked_by !== G.userId)
-        G.digLocks.set(`${r.x},${r.y}`, { by: r.locked_by, exp: r.expires_at });
-      renderMap();
-    })
-    .on('postgres_changes', {
-      event: 'DELETE', schema: 'public', table: 'drill_dig_locks',
-    }, ({ old: r }) => {
-      if (G.digLocks.get(`${r.x},${r.y}`)?.by !== G.userId)
-        G.digLocks.delete(`${r.x},${r.y}`);
+      event: '*', schema: 'public', table: 'drill_dig_locks',
+    }, ({ new: r, old: o, eventType }) => {
+      if (eventType === 'DELETE') {
+        const key = o ? `${o.x},${o.y}` : null;
+        if (key && G.digLocks.get(key)?.by !== G.userId) G.digLocks.delete(key);
+      } else if (r && r.map_date === G.mapDate) {
+        if (r.locked_by !== G.userId)
+          G.digLocks.set(`${r.x},${r.y}`, { by: r.locked_by, exp: r.expires_at });
+      }
       renderMap();
     })
     .on('postgres_changes', {
       event: 'INSERT', schema: 'public', table: 'drill_dropped_items',
-      filter: `map_date=eq.${G.mapDate}`,
     }, ({ new: r }) => {
-      if (!r || r.dropper_user_id === G.userId) return;
+      if (!r || r.map_date !== G.mapDate || r.dropper_user_id === G.userId) return;
       const key = `${r.pos_x},${r.pos_y}`;
       if (!G.droppedItems.has(key)) G.droppedItems.set(key, []);
       G.droppedItems.get(key).push({
         id: r.id, items: r.items || [],
         dropper_name: r.dropper_name || '???',
-        cause_of_death: r.cause_of_death || '不明',
+        cause_of_death: r.cause_of_death || null,
         dropped_at: r.dropped_at,
+        locked_by: r.locked_by || null,
+        locked_until: r.locked_until || null,
       });
       renderMap();
     })
@@ -1251,10 +1973,16 @@ function setupRealtime() {
       if (!r) return;
       const key = `${r.pos_x},${r.pos_y}`;
       const list = G.droppedItems.get(key);
-      if (list) { const d = list.find(x => x.id === r.id); if (d) d.items = r.items || []; }
+      if (list) {
+        const d = list.find(x => x.id === r.id);
+        if (d) {
+          d.items = r.items || [];
+          d.locked_by = r.locked_by || null;
+          d.locked_until = r.locked_until || null;
+        }
+      }
       if (_currentDrop?.drop?.id === r.id) {
         _currentDrop.drop.items = r.items || [];
-        showDropModal(_currentDrop.x, _currentDrop.y, _currentDrop.drop);
       }
       renderMap();
     })
@@ -1262,12 +1990,24 @@ function setupRealtime() {
       event: 'DELETE', schema: 'public', table: 'drill_dropped_items',
     }, ({ old: r }) => {
       if (!r) return;
-      const key = `${r.pos_x},${r.pos_y}`;
-      const list = G.droppedItems.get(key);
-      if (list) {
-        const idx = list.findIndex(d => d.id === r.id);
-        if (idx >= 0) list.splice(idx, 1);
-        if (list.length === 0) G.droppedItems.delete(key);
+      // REPLICA IDENTITY FULL があれば pos_x/pos_y が取れる。なければ全スキャン
+      const key = (r.pos_x != null && r.pos_y != null) ? `${r.pos_x},${r.pos_y}` : null;
+      if (key) {
+        const list = G.droppedItems.get(key);
+        if (list) {
+          const idx = list.findIndex(d => d.id === r.id);
+          if (idx >= 0) list.splice(idx, 1);
+          if (list.length === 0) G.droppedItems.delete(key);
+        }
+      } else {
+        for (const [k, list] of G.droppedItems) {
+          const idx = list.findIndex(d => d.id === r.id);
+          if (idx >= 0) {
+            list.splice(idx, 1);
+            if (list.length === 0) G.droppedItems.delete(k);
+            break;
+          }
+        }
       }
       if (_currentDrop?.drop?.id === r.id) { closeModal(); _currentDrop = null; }
       renderMap();
@@ -1275,21 +2015,48 @@ function setupRealtime() {
     .on('postgres_changes', {
       event: '*', schema: 'public', table: 'drill_player_positions',
     }, ({ new: r }) => {
-      if (!r) return;
+      if (!r || r.map_date !== G.mapDate) return;
       if (r.user_id !== G.userId) {
-        if (r.map_date === G.mapDate)
-          G.otherPlayers.set(r.user_id, { x: r.x, y: r.y, avatarUrl: r.avatar_url || null });
-      } else if (r.map_date === G.mapDate && (r.x !== G.px || r.y !== G.py)) {
-        // 別端末が同アカウントで操作 → 強制同期
-        stopMine();
-        G.px = r.x; G.py = r.y;
-        G.surfaceMode = (r.y === START_Y);
-        render();
-        return;
+        G.otherPlayers.set(r.user_id, { x: r.x, y: r.y, avatarUrl: r.avatar_url || null });
+        renderMap();
+      } else if (r.x !== G.px || r.y !== G.py) {
+        _applyRemotePos(r.x, r.y);
       }
-      renderMap();
+    })
+    .on('broadcast', { event: 'pos' }, ({ payload: p }) => {
+      if (!p || p.date !== G.mapDate) return;
+      if (p.uid !== G.userId) {
+        G.otherPlayers.set(p.uid, { x: p.x, y: p.y, avatarUrl: p.av || G.otherPlayers.get(p.uid)?.avatarUrl || null });
+        renderMap();
+      } else if (p.x !== G.px || p.y !== G.py) {
+        _applyRemotePos(p.x, p.y);
+      }
+    })
+    .subscribe((status, err) => {
+      if (err) console.warn('[DrillRT]', status, err);
+    });
+
+  // ページ停止を即時検知して追い出す
+  supabaseClient.channel('page_access_rt')
+    .on('postgres_changes', {
+      event: 'UPDATE', schema: 'public', table: 'page_settings',
+    }, ({ new: r }) => {
+      if (!r) return;
+      const path = (r.path || '').replace(/\/$/, '');
+      if (path === '/drill' && r.is_active === false && !G.isAdmin) {
+        window.location.href = '/';
+      }
     })
     .subscribe();
+}
+
+// 別端末の位置を適用し、全状態をバックグラウンドで再ロード
+function _applyRemotePos(x, y) {
+  stopMine();
+  G.px = x; G.py = y;
+  G.surfaceMode = (y === START_Y);
+  render();
+  loadAll().then(render).catch(console.error);
 }
 
 // ============================================================
@@ -1317,8 +2084,9 @@ function renderSurfaceHome() {
   const drill = DRILLS[G.equippedDrillId] || DRILLS.beginner;
   const durStr = G.drillDur === null ? '∞' : G.drillDur;
   const bpKeys = Object.keys(G.backpack).filter(k => G.backpack[k] > 0);
+  const surfBw = bpWeight();
   const bpAlert = bpKeys.length > 0
-    ? `<div class="sh-bp-alert">⚠️ リュックに未確定アイテムあり（${bpKeys.length}種）— リュックから倉庫に確定できます</div>`
+    ? `<div class="sh-bp-alert">⚠️ リュックに未確定アイテムあり（${bpKeys.length}種・${surfBw}/${G.maxBpWeight}）— リュックから倉庫に確定できます</div>`
     : '';
 
   el.innerHTML = `
@@ -1335,7 +2103,7 @@ function renderSurfaceHome() {
       <button class="sh-btn" onclick="showShop()">🛒&ensp;ショップ</button>
       <button class="sh-btn" onclick="showSell()">💰&ensp;素材売却</button>
       <button class="sh-btn" onclick="showCraft()">🔨&ensp;クラフト</button>
-      <button class="sh-btn" onclick="showDrills()">⛏️&ensp;ドリル管理</button>
+      <button class="sh-btn" onclick="showWarehouse()">🏪&ensp;倉庫</button>
       <button class="sh-btn" onclick="showBag()">🎒&ensp;リュック${bpKeys.length > 0 ? `<span class="sh-badge">${bpKeys.length}</span>` : ''}</button>
     </div>
     <div class="sh-dive-wrap">
@@ -1390,7 +2158,7 @@ function renderMap() {
     for (let vx = 0; vx < VP_W; vx++) {
       const wx = G.px - halfW + vx;
       const wy = G.py - halfH + vy;
-      cells.push(buildCell(wx, wy));
+      cells.push(buildCell(wx, wy, vx, vy));
     }
   }
 
@@ -1402,9 +2170,23 @@ function renderMap() {
   document.getElementById('gold-disp').textContent = `💰 ${G.drillGold}G`;
 }
 
-function buildCell(wx, wy) {
-  if (wx < 0 || wx >= MAP_W || wy < 0 || wy >= MAP_H) {
+function buildCell(wx, wy, vx = 0, vy = 0) {
+  // 地図外（横・下）は void
+  if (wx < 0 || wx >= MAP_W || wy >= MAP_H) {
     return `<div class="mc mc-void"></div>`;
+  }
+
+  // 地上背景の一枚絵スタイル（空エリア + 地表行で共用）
+  const halfH_c = (VP_H - 1) >> 1;
+  const vySurf  = halfH_c - G.py;            // ビューポート内での地表行インデックス
+  const skyN    = Math.max(1, vySurf + 1);   // 空エリア行数（地表含む）
+  const bgX     = `${vx / (VP_W - 1) * 100}%`;
+  const bgY     = skyN > 1 ? `${vy / (skyN - 1) * 100}%` : '100%';
+  const skyStyle = `background:#1a3a1a url('./img/surface.png') ${bgX} ${bgY} / ${VP_W * 100}% ${skyN * 100}% no-repeat;image-rendering:pixelated;`;
+
+  // 地上より上（空エリア）
+  if (wy < 0) {
+    return `<div class="mc" style="${skyStyle}"></div>`;
   }
 
   // 霧：視界外は暗闇
@@ -1438,7 +2220,9 @@ function buildCell(wx, wy) {
     if (G.droppedItems?.has(`${wx},${wy}`)) {
       inner += `<div class="player-icon other-icon" style="font-size:.85rem;" title="落とし物あり">📦</div>`;
     }
-    return `<div class="mc ${base}">${inner}</div>`;
+    // 地表行も一枚絵の最下行として sky style を適用
+    const surfStyle = wy === 0 ? ` style="${skyStyle}"` : '';
+    return `<div class="mc ${base}"${surfStyle}>${inner}</div>`;
   }
 
   // 許可証バリア（境界行を強調表示）
@@ -1497,11 +2281,20 @@ function renderSide() {
       <span style="color:${color};">${G.drillDur}</span>
     `;
   }
+  const mbw = bpWeight();
+  const mbwPct = Math.min(100, Math.round((mbw / G.maxBpWeight) * 100));
+  const mbwColor = mbwPct >= 100 ? '#ff5555' : mbwPct > 70 ? '#ffc107' : '#6bde9b';
+  const bpBar = `<div class="mob-dur-wrap" style="min-width:70px;">
+    <span style="font-size:.68rem;opacity:.6;">🎒</span>
+    <div class="mob-dur-bar"><div class="mob-dur-fill" style="width:${mbwPct}%;background:${mbwColor};"></div></div>
+    <span style="color:${mbwColor};font-size:.72rem;">${mbw}</span>
+  </div>`;
   setHTML('mob-drill-bar', `
     <span>⛏️ ${drill.name}</span>
     <span style="opacity:.7;">威力 ${drill.power}</span>
     <div class="mob-dur-wrap">${durHtml}</div>
     ${hpBar}
+    ${bpBar}
     <span style="color:#ffcc44;visibility:${G.mineTarget ? 'visible' : 'hidden'};">⛏️掘削中</span>
   `);
 
@@ -1522,9 +2315,21 @@ function renderSide() {
 
   // リュック
   const bpItems = Object.entries(G.backpack).filter(([, v]) => v > 0);
-  setHTML('backpack-disp', bpItems.length === 0
-    ? '<div style="opacity:.5;">空</div>'
-    : bpItems.map(([k, v]) => `<div>${ITEM_NAMES[k]||k}: ${v}</div>`).join(''));
+  const bw = bpWeight();
+  const bwPct = Math.min(100, Math.round((bw / G.maxBpWeight) * 100));
+  const bwColor = bwPct >= 100 ? '#ff5555' : bwPct > 70 ? '#ffc107' : '#6bde9b';
+  setHTML('backpack-disp', `
+    <div style="margin-bottom:5px;">
+      <div style="display:flex;justify-content:space-between;font-size:.7rem;margin-bottom:2px;">
+        <span style="opacity:.55;">容量</span>
+        <span style="color:${bwColor};">${bw}/${G.maxBpWeight}</span>
+      </div>
+      <div style="height:4px;background:rgba(255,255,255,.15);border-radius:2px;overflow:hidden;">
+        <div style="width:${bwPct}%;height:100%;background:${bwColor};border-radius:2px;"></div>
+      </div>
+    </div>
+    ${bpItems.length === 0 ? '<div style="opacity:.5;font-size:.78rem;">空</div>' : bpItems.map(([k, v]) => `<div>${ITEM_NAMES[k]||k}: ${v}</div>`).join('')}
+  `);
 }
 
 function setHTML(id, html) {
@@ -1560,10 +2365,10 @@ function handleClick(wx, wy) {
 }
 
 function setupInput() {
-  // モバイルアクションボタン（地下専用: ドリル・リュック・帰還）
-  document.getElementById('btn-drills')?.addEventListener('click', showDrills);
+  // モバイルアクションボタン（地下専用: アイテム・リュック・ログ）
+  document.getElementById('btn-items')?.addEventListener('click', showItems);
   document.getElementById('btn-bag')?.addEventListener('click', showBag);
-  document.getElementById('btn-return')?.addEventListener('click', showBag);
+  document.getElementById('btn-log')?.addEventListener('click', showLogModal);
 
   // PC 左パネルボタン
   document.getElementById('btn-drills-pc')?.addEventListener('click', showDrills);
@@ -1574,7 +2379,8 @@ function setupInput() {
   document.addEventListener('keydown', e => {
     if (e.repeat) return;
     if (document.getElementById('modal-overlay').style.display !== 'none') {
-      if (e.key === 'Escape') closeModal();
+      const ov = document.getElementById('modal-overlay');
+      if (e.key === 'Escape' && !ov.dataset.eventModal && !ov.dataset.combatModal) closeModal();
       return;
     }
     switch (e.key) {
@@ -1590,10 +2396,18 @@ function setupInput() {
   const vp = document.getElementById('map-viewport');
   vp?.addEventListener('click', e => {
     if (G.surfaceMode) return;
+    if (G.mineTarget) { stopMine(); render(); return; }
     const rect = vp.getBoundingClientRect();
     const vx = Math.floor((e.clientX - rect.left) / (rect.width  / VP_W));
     const vy = Math.floor((e.clientY - rect.top)  / (rect.height / VP_H));
     handleClick(G.px - ((VP_W - 1) >> 1) + vx, G.py - ((VP_H - 1) >> 1) + vy);
+  });
+
+  // タブ復帰・アプリ再表示時に最新状態を強制取得（別端末操作への追従）
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && G.userId) {
+      loadAll().then(render).catch(console.error);
+    }
   });
 
   // タッチ方向入力（マップを×字で4分割: 中心からの相対位置で上下左右判定）
@@ -1607,9 +2421,10 @@ function setupInput() {
     else move(0, relY > 0 ? 1 : -1);
   }, { passive: false });
 
-  // オーバーレイ外クリックで閉じる
+  // オーバーレイ外クリックで閉じる（イベント・戦闘モーダル中は無視）
   document.getElementById('modal-overlay')?.addEventListener('click', e => {
-    if (e.target === document.getElementById('modal-overlay')) closeModal();
+    const ov = document.getElementById('modal-overlay');
+    if (e.target === ov && !ov.dataset.eventModal && !ov.dataset.combatModal) closeModal();
   });
 }
 
@@ -1626,6 +2441,56 @@ function periodicCleanup() {
   }
 }
 
+async function handleMapReset() {
+  const oldX = G.px, oldY = G.py;
+  stopMine();
+  closeModal();
+  log('🌅 マップがリセットされました。新しいマップへ移行中...');
+
+  await ensureSeed();
+  genTreasures(G.seed);
+
+  if (oldY > 0) {
+    // 旧位置のブロックを新マップで消去（競合失敗は無視）
+    await supabaseClient.from('drill_dug_cells')
+      .insert({ map_date: G.mapDate, x: oldX, y: oldY, dug_by: G.userId });
+    // 位置を新マップ日付で先に保存（loadAll が正しく拾えるよう）
+    await supabaseClient.from('drill_player_positions').upsert({
+      user_id: G.userId, map_date: G.mapDate, x: oldX, y: oldY,
+      avatar_url: G.avatarUrl, updated_at: new Date().toISOString(),
+    });
+  }
+
+  await loadAll();
+  log('✅ 新しいマップへ移行しました');
+  render();
+}
+
+// HP・ゴールド・リュックを10秒ごとにDBから再取得（Realtime取りこぼし補完）
+async function periodicStateSync() {
+  if (gameDate() !== G.mapDate) { await handleMapReset(); return; }
+  if (G.surfaceMode) return;
+  try {
+    const [profRes, bpRes] = await Promise.all([
+      supabaseClient.from('profiles').select('drill_gold,drill_hp').eq('discord_user_id', G.discordId).single(),
+      supabaseClient.from('drill_backpack').select('item_id,quantity').eq('user_id', G.userId),
+    ]);
+    let changed = false;
+    if (profRes.data) {
+      const p = profRes.data;
+      if (p.drill_gold != null && p.drill_gold !== G.drillGold) { G.drillGold = p.drill_gold; changed = true; }
+      if (p.drill_hp   != null && p.drill_hp   !== G.hp)        { G.hp        = p.drill_hp;   changed = true; }
+    }
+    if (bpRes.data) {
+      const bp = {};
+      for (const r of bpRes.data) if ((r.quantity ?? 0) > 0) bp[r.item_id] = r.quantity;
+      const bpStr = JSON.stringify(bp);
+      if (bpStr !== JSON.stringify(G.backpack)) { G.backpack = bp; changed = true; }
+    }
+    if (changed) renderSide();
+  } catch (e) { /* ignore */ }
+}
+
 // ============================================================
 // 初期化
 // ============================================================
@@ -1634,11 +2499,11 @@ async function initDrillGame() {
   const { data: { user } } = await supabaseClient.auth.getUser();
   if (!user) { window.location.href = '../login/index.html'; return; }
   G.userId = user.id;
+  G.discordId = user.user_metadata?.provider_id || null;
   G.avatarUrl = user.user_metadata?.avatar_url || null;
   G.displayName = user.user_metadata?.name || user.user_metadata?.full_name || '名無し';
 
-  const discordId = user.user_metadata?.provider_id;
-  if (typeof ADMIN_DISCORD_IDS !== 'undefined' && ADMIN_DISCORD_IDS.includes(discordId)) {
+  if (typeof ADMIN_DISCORD_IDS !== 'undefined' && ADMIN_DISCORD_IDS.includes(G.discordId)) {
     G.isAdmin = true;
   }
 
@@ -1654,4 +2519,5 @@ async function initDrillGame() {
   render();
   log('⛏️ ほりほりドリルへようこそ！');
   setInterval(periodicCleanup, 15000);
+  setInterval(periodicStateSync, 10000);
 }
