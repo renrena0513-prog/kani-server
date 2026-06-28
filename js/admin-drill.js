@@ -168,7 +168,6 @@ const DEFAULT_GAME_CONFIG = {
     { id: 'apprentice',   name: '見習いのドリル', cost: 100   },
     { id: 'journeyman',   name: '一人前のドリル', cost: 2000  },
     { id: 'veteran',      name: '熟練のドリル',   cost: 10000 },
-    { id: 'return_stone', name: '帰還石',          cost: 50    },
   ],
   sellPrices: { dirt: 1, stone: 3, copper: 15, iron: 50, silver: 200, gold: 500 },
   permits: {

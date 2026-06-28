@@ -71,7 +71,6 @@ const SHOP_ITEMS = [
   { id:'apprentice', name:'見習いのドリル', cost:100,   type:'drill', drillId:'apprentice' },
   { id:'journeyman', name:'一人前のドリル', cost:2000,  type:'drill', drillId:'journeyman' },
   { id:'veteran',    name:'熟練のドリル',   cost:10000, type:'drill', drillId:'veteran' },
-  { id:'return_stone', name:'帰還石',        cost:50,    type:'item',  itemId:'return_stone' },
 ];
 
 const PERMITS = {
