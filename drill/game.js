@@ -1139,46 +1139,72 @@ async function returnSurface(useStone = false) {
 // ショップ
 // ============================================================
 
-function showShop() {
+function showShop(tab = 'drill') {
   if (G.py !== 0) { log('⚠️ ショップは地上のみ'); return; }
 
-  let html = `<div class="modal-title">🛒 ショップ</div>
-    <div style="font-size:.82rem;margin-bottom:10px;">所持金: 💰 ${G.drillGold}G</div>`;
+  const tabs = ['drill','item','card'];
+  const tabLabels = { drill:'⛏️ ドリル', item:'💊 アイテム', card:'🃏 カード' };
 
-  for (const item of SHOP_ITEMS) {
-    const canBuy = G.drillGold >= item.cost;
-    const drillDef = item.type === 'drill' ? (DRILLS[item.drillId] ?? {}) : {};
-    const cardDef  = item.type === 'card'  ? (CARDS[item.cardId]   ?? {}) : {};
-    const statsStr = item.type === 'drill'
-      ? `<span style="color:rgba(255,200,80,.8);">発掘力 ${drillDef.power ?? '?'}</span> ／ 耐久 ${drillDef.dur ?? '∞'}`
-      : item.type === 'card'
-        ? `${cardDef.icon ?? ''} ${cardDef.desc ?? ''}`
-        : '';
-    const alreadyOwned = item.type === 'card' && G.ownedCards.includes(item.cardId);
-    html += `<div class="modal-row">
-      <div><div class="modal-row-label">${item.name}</div>
-      <div class="modal-row-sub">${item.cost}G${statsStr ? '　' + statsStr : ''}</div></div>
-      ${alreadyOwned
-        ? `<span style="font-size:.75rem;opacity:.45;">所持済み</span>`
-        : `<button class="btn-modal-action" onclick="buyShopDrill('${item.id}')" ${canBuy?'':'disabled'}>購入</button>`}
-    </div>`;
-  }
+  const tabBar = tabs.map(t => `
+    <button onclick="showShop('${t}')"
+      style="flex:1;padding:6px 0;border:none;border-bottom:2px solid ${t===tab?'rgba(255,200,80,.9)':'transparent'};
+             background:none;color:${t===tab?'rgba(255,200,80,.9)':'rgba(255,255,255,.55)'};
+             font-size:.82rem;cursor:pointer;">${tabLabels[t]}</button>`).join('');
 
-  // アイテム（cost > 0 のもの）
-  const shopItems = Object.entries(ITEMS).filter(([, def]) => def.cost > 0);
-  if (shopItems.length > 0) {
-    html += `<div style="opacity:.5;font-size:.75rem;margin:8px 0 4px;padding:4px 0;border-top:1px solid rgba(255,255,255,.1);">💊 アイテム</div>`;
-    for (const [id, def] of shopItems) {
-      const canBuy = G.drillGold >= def.cost;
-      html += `<div class="modal-row">
-        <div><div class="modal-row-label">${escHtml(def.name)}</div>
-        <div class="modal-row-sub">${def.cost}G${def.effectText ? ' ／ ' + escHtml(def.effectText) : ''}</div></div>
-        <button class="btn-modal-action" onclick="buyGameItem('${id}')" ${canBuy?'':'disabled'}>購入</button>
+  let body = '';
+
+  if (tab === 'drill') {
+    for (const item of SHOP_ITEMS.filter(i => i.type === 'drill')) {
+      const def = DRILLS[item.drillId] ?? {};
+      const canBuy = G.drillGold >= item.cost;
+      const stats = `<span style="color:rgba(255,200,80,.8);">発掘力 ${def.power ?? '?'}</span> ／ 耐久 ${def.dur ?? '∞'}`;
+      body += `<div class="modal-row">
+        <div><div class="modal-row-label">${item.name}</div>
+        <div class="modal-row-sub">${item.cost}G　${stats}</div></div>
+        <button class="btn-modal-action" onclick="buyShopDrill('${item.id}')" ${canBuy?'':'disabled'}>購入</button>
       </div>`;
+    }
+
+  } else if (tab === 'item') {
+    const shopItems = Object.entries(ITEMS).filter(([, def]) => def.cost > 0);
+    if (shopItems.length) {
+      for (const [id, def] of shopItems) {
+        const canBuy = G.drillGold >= def.cost;
+        body += `<div class="modal-row">
+          <div><div class="modal-row-label">${escHtml(def.name)}</div>
+          <div class="modal-row-sub">${def.cost}G${def.effectText ? ' ／ ' + escHtml(def.effectText) : ''}</div></div>
+          <button class="btn-modal-action" onclick="buyGameItem('${id}')" ${canBuy?'':'disabled'}>購入</button>
+        </div>`;
+      }
+    } else {
+      body = `<div style="opacity:.45;font-size:.82rem;padding:12px 0;">販売中のアイテムはありません</div>`;
+    }
+
+  } else if (tab === 'card') {
+    const cardItems = SHOP_ITEMS.filter(i => i.type === 'card');
+    if (cardItems.length) {
+      for (const item of cardItems) {
+        const def = CARDS[item.cardId] ?? {};
+        const canBuy = G.drillGold >= item.cost;
+        const alreadyOwned = G.ownedCards.includes(item.cardId);
+        body += `<div class="modal-row">
+          <div><div class="modal-row-label">${item.name}</div>
+          <div class="modal-row-sub">${item.cost}G　${def.icon ?? ''} ${def.desc ?? ''}</div></div>
+          ${alreadyOwned
+            ? `<span style="font-size:.75rem;opacity:.45;">所持済み</span>`
+            : `<button class="btn-modal-action" onclick="buyShopDrill('${item.id}')" ${canBuy?'':'disabled'}>購入</button>`}
+        </div>`;
+      }
+    } else {
+      body = `<div style="opacity:.45;font-size:.82rem;padding:12px 0;">販売中のカードはありません</div>`;
     }
   }
 
-  html += `<button class="btn-modal-close" onclick="closeModal()">閉じる</button>`;
+  const html = `<div class="modal-title">🛒 ショップ</div>
+    <div style="font-size:.82rem;margin-bottom:10px;">所持金: 💰 ${G.drillGold}G</div>
+    <div style="display:flex;border-bottom:1px solid rgba(255,255,255,.15);margin-bottom:10px;">${tabBar}</div>
+    ${body}
+    <button class="btn-modal-close" onclick="closeModal()">閉じる</button>`;
   openModal(html);
 }
 
