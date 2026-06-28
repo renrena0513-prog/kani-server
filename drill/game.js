@@ -1256,6 +1256,7 @@ async function confirmWithdraw(id, maxQty) {
 }
 
 async function depositItem(id) {
+  if (G.py > 0) { log('⚠️ 倉庫は地上でのみ利用できます'); return; }
   const def = ITEMS[id] ?? {};
   const qty = G.backpack[id] || 0;
   if (qty <= 0) return;
@@ -1410,7 +1411,8 @@ function showBag(tab = 'mats') {
         const def = ITEMS[id] ?? {};
         const img = def.imageUrl ? `<img src="${escHtml(def.imageUrl)}" style="width:24px;height:24px;object-fit:contain;vertical-align:middle;margin-right:4px;">` : '';
         const useBtn = underground ? `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;" onclick="useItem('${id}')">使用</button>` : '';
-        const depositBtn = `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;background:rgba(80,180,120,.7);" onclick="depositItem('${id}')">倉庫へ</button>`;
+        const depositBtn = !underground ? `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;background:rgba(80,180,120,.7);" onclick="depositItem('${id}')">倉庫へ</button>` : '';
+        const dropBtn = underground ? `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;background:rgba(200,60,60,.7);" onclick="showDiscardItem('${id}',${qty},'items')">落とす</button>` : '';
         return `<div class="modal-row">
           <div>
             <div class="modal-row-label">${img}${escHtml(def.name || id)}</div>
@@ -1418,7 +1420,7 @@ function showBag(tab = 'mats') {
           </div>
           <div style="display:flex;align-items:center;gap:6px;">
             <span>×${qty}</span>
-            ${useBtn}${depositBtn}
+            ${useBtn}${depositBtn}${dropBtn}
           </div>
         </div>`;
       }).join('');
@@ -1550,7 +1552,7 @@ async function dropAtCurrentPos(itemsToAdd) {
   }
 }
 
-function showDiscardItem(itemId, maxQty) {
+function showDiscardItem(itemId, maxQty, backTab = 'mats') {
   const name = escHtml(getItemName(itemId));
   openModal(`
     <div class="modal-title">📦 ${name}を落とす</div>
@@ -1561,16 +1563,16 @@ function showDiscardItem(itemId, maxQty) {
         style="width:72px;padding:5px 8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:6px;color:#fff;font-size:.9rem;text-align:center;">
       <span style="opacity:.5;font-size:.82rem;">/ ${maxQty}</span>
     </div>
-    <button class="btn-modal-action" style="width:100%;background:rgba(210,50,50,.75);" onclick="doDiscardItem('${escHtml(itemId)}',${maxQty})">📦 落とす</button>
-    <button class="btn-modal-close" onclick="showBag('mats')">← 戻る</button>
+    <button class="btn-modal-action" style="width:100%;background:rgba(210,50,50,.75);" onclick="doDiscardItem('${escHtml(itemId)}',${maxQty},'${backTab}')">📦 落とす</button>
+    <button class="btn-modal-close" onclick="showBag('${backTab}')">← 戻る</button>
   `);
 }
 
-async function doDiscardItem(itemId, maxQty) {
+async function doDiscardItem(itemId, maxQty, backTab = 'mats') {
   const input = document.getElementById('discard-qty');
   const qty = input ? Math.min(maxQty, Math.max(1, parseInt(input.value, 10) || 1)) : 1;
   const actual = Math.min(qty, G.backpack[itemId] || 0);
-  if (actual <= 0) { showBag('mats'); return; }
+  if (actual <= 0) { showBag(backTab); return; }
 
   G.backpack[itemId] = (G.backpack[itemId] || 0) - actual;
   await saveBpItem(itemId, G.backpack[itemId]);
@@ -1578,7 +1580,41 @@ async function doDiscardItem(itemId, maxQty) {
 
   log(`📦 ${getItemName(itemId)} ×${actual} を落とした`);
   renderSide(); renderMap();
-  showBag('mats');
+  showBag(backTab);
+}
+
+async function dropDrillAtCurrentPos(items) {
+  const { data: drop } = await supabaseClient.from('drill_dropped_items').insert({
+    map_date: G.mapDate, pos_x: G.px, pos_y: G.py,
+    dropper_user_id: G.userId,
+    dropper_name: G.displayName || '名無し',
+    cause_of_death: '投棄',
+    items,
+  }).select().single();
+  if (drop) {
+    const dkey = `${G.px},${G.py}`;
+    if (!G.droppedItems.has(dkey)) G.droppedItems.set(dkey, []);
+    G.droppedItems.get(dkey).push({
+      id: drop.id, items,
+      dropper_name: G.displayName || '名無し',
+      cause_of_death: '投棄',
+      dropped_at: drop.dropped_at,
+      locked_by: null, locked_until: null,
+    });
+  }
+}
+
+async function dropDrillFromWarehouse(rowId) {
+  const d = G.drills.find(x => x.id === rowId);
+  if (!d) return;
+  if (d.id === G.equippedDrillRowId) { log('⚠️ 装備中のドリルは落とせません'); return; }
+  await supabaseClient.from('drill_player_drills').delete().eq('id', rowId);
+  G.drills = G.drills.filter(x => x.id !== rowId);
+  const dur = d.durability ?? DRILLS[d.drill_id]?.dur;
+  await dropDrillAtCurrentPos([{ item_id: d.drill_id, quantity: 1, durability: dur }]);
+  log(`📦 ${DRILLS[d.drill_id]?.name || d.drill_id} を落とした`);
+  renderSide(); renderMap();
+  showWarehouse('drills');
 }
 
 // ============================================================
@@ -1926,7 +1962,8 @@ function showWarehouse(tab = 'mats') {
             <button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;background:rgba(100,160,255,.5);" onclick="showDrillDetail('${d.id}')">詳細</button>
             ${isEquipped
               ? `<span style="font-size:.72rem;opacity:.4;">装備中</span>`
-              : `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;" onclick="equipDrill('${d.id}').then(()=>showWarehouse('drills'))">装備</button>`}
+              : `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;" onclick="equipDrill('${d.id}').then(()=>showWarehouse('drills'))">装備</button>
+                 <button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;background:rgba(200,60,60,.7);" onclick="dropDrillFromWarehouse('${d.id}')">落とす</button>`}
           </div>
         </div>`;
       }).join('');
@@ -2080,27 +2117,50 @@ async function doDropCollect(x, y, drop, toCollect) {
   closeModal();
   _currentDrop = null;
 
-  // 容量チェック：入る分だけ回収
+  // ドリルと通常アイテムを分離（ドリルは容量制限なしでdrill_player_drillsへ）
+  const drillItems = toCollect.filter(i => DRILLS[i.item_id]);
+  const regularItems = toCollect.filter(i => !DRILLS[i.item_id]);
+
+  // 容量チェック：通常アイテムのみ
   let cap = G.maxBpWeight - bpWeight();
   const fitted = [];
-  for (const item of toCollect) {
+  for (const item of regularItems) {
     const w = itemWeight(item.item_id);
     const canTake = w > 0 ? Math.min(item.quantity, Math.floor(cap / w)) : item.quantity;
     if (canTake > 0) { fitted.push({ ...item, quantity: canTake }); cap -= w * canTake; }
   }
-  if (fitted.length === 0) { log('⚠️ リュックが満杯で回収できません'); renderSide(); return; }
-  const skipped = toCollect.reduce((s, i) => s + i.quantity, 0) - fitted.reduce((s, i) => s + i.quantity, 0);
+  if (fitted.length === 0 && drillItems.length === 0) { log('⚠️ リュックが満杯で回収できません'); renderSide(); return; }
+  const skipped = regularItems.reduce((s, i) => s + i.quantity, 0) - fitted.reduce((s, i) => s + i.quantity, 0);
   if (skipped > 0) log(`⚠️ 容量不足で ${skipped} 個は回収できませんでした`);
 
   for (const { item_id, quantity } of fitted) {
     G.backpack[item_id] = (G.backpack[item_id] || 0) + quantity;
     await saveBpItem(item_id, G.backpack[item_id]);
   }
+
+  // ドリル回収：drill_player_drillsに追加（耐久値を保持）
+  for (const { item_id, quantity, durability } of drillItems) {
+    const def = DRILLS[item_id] || {};
+    for (let i = 0; i < quantity; i++) {
+      const { data: nd } = await supabaseClient.from('drill_player_drills').insert({
+        user_id: G.userId, drill_id: item_id,
+        durability: durability ?? def.dur,
+        equipped: false,
+      }).select().single();
+      if (nd) G.drills.push(nd);
+    }
+  }
+
+  const allFitted = [...fitted, ...drillItems];
   const takenMap = {};
-  fitted.forEach(i => { takenMap[i.item_id] = (takenMap[i.item_id] || 0) + i.quantity; });
+  allFitted.forEach(i => { takenMap[i.item_id] = (takenMap[i.item_id] || 0) + i.quantity; });
   const remaining = (drop.items || [])
-    .map(i => ({ item_id: i.item_id, quantity: i.quantity - (takenMap[i.item_id] || 0) }))
-    .filter(i => i.quantity > 0);
+    .map(i => {
+      const leftQty = i.quantity - (takenMap[i.item_id] || 0);
+      if (leftQty <= 0) return null;
+      return i.durability !== undefined ? { item_id: i.item_id, quantity: leftQty, durability: i.durability } : { item_id: i.item_id, quantity: leftQty };
+    })
+    .filter(Boolean);
 
   const key = `${x},${y}`;
   if (remaining.length === 0) {
@@ -2117,7 +2177,7 @@ async function doDropCollect(x, y, drop, toCollect) {
     if (list) { const d = list.find(d => d.id === drop.id); if (d) d.items = remaining; }
   }
 
-  const names = fitted.map(i => `${ITEM_NAMES[i.item_id]||i.item_id}×${i.quantity}`).join(', ');
+  const names = allFitted.map(i => `${DRILLS[i.item_id]?.name || ITEM_NAMES[i.item_id] || i.item_id}×${i.quantity}`).join(', ');
   log(`📦 落とし物を回収！ ${names}`);
   renderSide(); renderMap();
 
