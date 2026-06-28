@@ -1247,7 +1247,8 @@ async function buyShopDrill(shopId) {
     G.ownedCards[item.cardId] = (G.ownedCards[item.cardId] || 0) + 1;
     await supabaseClient.from('drill_player_deck').upsert({ user_id: G.userId, owned_cards: G.ownedCards });
     log(`✅ ${item.name}を購入（${G.ownedCards[item.cardId]}枚目）`);
-    showShop('card');
+    const cardIcon = (CARDS[item.cardId] ?? {}).icon ?? '🃏';
+    showEventModal(cardIcon, `<strong>${escHtml(item.name)}</strong>を購入しました！<br><span style="color:#f0c060;font-size:.85rem;">-${item.cost} G</span>`, () => showShop('card'));
     return;
   }
 
@@ -1261,7 +1262,7 @@ async function buyShopDrill(shopId) {
     }).select().single();
     if (nd) G.drills.push(nd);
     log(`✅ ${item.name}を購入`);
-    showShop('drill');
+    showEventModal('⛏️', `<strong>${escHtml(item.name)}</strong>を購入しました！<br><span style="color:#f0c060;font-size:.85rem;">-${item.cost} G</span>`, () => showShop('drill'));
   } else {
     await upsertInv(item.itemId, 1);
     log(`✅ ${item.name}を購入`);
