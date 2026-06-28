@@ -199,11 +199,7 @@ const DEFAULT_GAME_CONFIG = {
       { type: 'pitfall', weight: 12 },
     ],
   ],
-  encounter: [
-    { chance: 2 },  // 第1層 0-99m
-    { chance: 4 },  // 第2層 100-199m
-    { chance: 6 },  // 第3層 200-299m
-  ],
+  encounter: Array.from({length: 30}, (_, i) => ({ chance: [2, 4, 6][Math.min(2, Math.floor(i / 10))] })),
   curse: [
     { min: 1, max: 10 }, // 第1層
     { min: 3, max: 20 }, // 第2層
@@ -215,7 +211,7 @@ const DEFAULT_GAME_CONFIG = {
       icon: '💚',
       imageUrl: null,
       maxHp: 200,
-      layerWeights: [40, 0, 0],
+      layerWeights: Array.from({length: 30}, (_, i) => i < 10 ? 100 : 0),
       actions: [
         { name: 'たいあたり',          damage: 30, weight: 1 },
         { name: 'ぷるぷるふるえている', damage: 0,  weight: 1 },
@@ -288,6 +284,20 @@ async function loadGameConfigAdmin() {
   if (!gameConfig.monsters)  gameConfig.monsters  = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.monsters));
   if (!gameConfig.cards)     gameConfig.cards     = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.cards));
   if (!gameConfig.encounter) gameConfig.encounter = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.encounter));
+  // encounter 旧3スロット → 30スロットにマイグレーション
+  if (gameConfig.encounter.length < 30) {
+    const old = gameConfig.encounter;
+    gameConfig.encounter = Array.from({length: 30}, (_, i) => ({ ...old[Math.min(old.length - 1, Math.floor(i / 10))] }));
+  }
+  // monster layerWeights 旧3スロット → 30スロットにマイグレーション
+  if (gameConfig.monsters) {
+    for (const mon of Object.values(gameConfig.monsters)) {
+      if (mon.layerWeights && mon.layerWeights.length < 30) {
+        const old = mon.layerWeights;
+        mon.layerWeights = Array.from({length: 30}, (_, i) => old[Math.min(old.length - 1, Math.floor(i / 10))] ?? 0);
+      }
+    }
+  }
   // 旧3層形式 → 30スロット形式にマイグレーション
   if (!gameConfig.layerWeights || gameConfig.layerWeights.length < 30) {
     const old = gameConfig.layerWeights ?? DEFAULT_GAME_CONFIG.layerWeights;
@@ -520,6 +530,80 @@ function renderPermitsTab() {
   document.getElementById('cfg-tab-permits').innerHTML = `<div style="margin-top:4px;">${blocks}</div>`;
 }
 
+function buildEncounterTable(encounter, monsters) {
+  const monIds = Object.keys(monsters);
+  const layerHeaders = [
+    { s: 0,  label: '第1層 (0〜99m)'   },
+    { s: 10, label: '第2層 (100〜199m)' },
+    { s: 20, label: '第3層 (200〜299m)' },
+  ];
+  const monHeaders = monIds.map(id =>
+    `<th style="font-size:.72rem;max-width:60px;word-break:break-all;">${escDrill(monsters[id]?.name || id)}</th>`
+  ).join('');
+
+  let rows = '';
+  for (let s = 0; s < 30; s++) {
+    const hdr = layerHeaders.find(h => h.s === s);
+    if (hdr) rows += `<tr style="background:rgba(255,255,255,.07);">
+      <td colspan="${3 + monIds.length}" style="padding:5px 8px;font-size:.78rem;font-weight:700;opacity:.8;">${hdr.label}</td>
+    </tr>`;
+
+    const enc = encounter[s] ?? { chance: 0 };
+    const monTotal = monIds.reduce((sum, id) => sum + ((monsters[id]?.layerWeights ?? [])[s] ?? 0), 0);
+    const monCol = monTotal === 0 || Math.abs(monTotal - 100) < 0.5 ? '#6bde9b' : '#ff6b6b';
+
+    const monCells = monIds.map(id => {
+      const val = (monsters[id]?.layerWeights ?? [])[s] ?? 0;
+      return `<td style="padding:2px 3px;">
+        <input class="cfg-input" type="number" id="cfg-mon-lw-${id}-${s}"
+          value="${val}" min="0" max="100" step="1" style="width:52px;font-size:.75rem;"
+          oninput="updateEncTotal(${s})">
+      </td>`;
+    }).join('');
+
+    rows += `<tr>
+      <td style="white-space:nowrap;font-size:.75rem;padding:2px 8px;">${s*10}〜${s*10+9}m</td>
+      <td style="padding:2px 3px;">
+        <input class="cfg-input" type="number" id="cfg-enc-${s}-chance"
+          value="${enc.chance ?? 0}" min="0" max="100" step="0.1" style="width:52px;font-size:.75rem;">
+      </td>
+      ${monCells}
+      <td id="enc-total-${s}" style="font-size:.75rem;font-weight:700;color:${monCol};padding:2px 6px;white-space:nowrap;">
+        ${monTotal === 0 ? '–' : monTotal.toFixed(0) + '%'}
+      </td>
+    </tr>`;
+  }
+
+  return `
+    <div class="info-box" style="margin-bottom:8px;font-size:.78rem;">
+      遭遇率：1マス移動ごとの確率(%)。モンスター重み：合計が <strong>100</strong> になるよう設定（0=出現しない）。
+    </div>
+    <div style="overflow-x:auto;margin-bottom:24px;">
+      <table class="drill-table" style="font-size:.8rem;min-width:300px;">
+        <thead>
+          <tr>
+            <th style="min-width:80px;">深度</th>
+            <th style="min-width:60px;">遭遇率%</th>
+            ${monHeaders}
+            <th>モンスター合計</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function updateEncTotal(s) {
+  const monsters = gameConfig.monsters ?? {};
+  const total = Object.keys(monsters).reduce((sum, id) =>
+    sum + (parseFloat(document.getElementById(`cfg-mon-lw-${id}-${s}`)?.value) || 0), 0);
+  const el = document.getElementById(`enc-total-${s}`);
+  if (el) {
+    el.textContent = total === 0 ? '–' : `${total.toFixed(0)}%`;
+    el.style.color = total === 0 || Math.abs(total - 100) < 0.5 ? '#6bde9b' : '#ff6b6b';
+  }
+}
+
 function renderEventsTab() {
   const events    = gameConfig.events    ?? DEFAULT_GAME_CONFIG.events;
   const encounter = gameConfig.encounter ?? DEFAULT_GAME_CONFIG.encounter;
@@ -545,16 +629,10 @@ function renderEventsTab() {
     </div>
 
     <div style="font-size:.88rem;font-weight:700;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.1);">
-      ⚔️ 移動エンカウント確率（1マス移動ごと）
+      ⚔️ 移動エンカウント・モンスター出現（10Mごと）
     </div>
-    <table class="drill-table" style="margin-bottom:24px;">
-      <tr><th>層</th><th>確率 (%)</th></tr>
-      ${encounter.map((e, i) => `
-      <tr>
-        <td style="white-space:nowrap;">${LAYER_NAME[i] ?? `第${i+1}層`}</td>
-        <td>${cfgNum(`cfg-enc-${i}-chance`, e.chance ?? 0, `min="0" max="100" step="0.1" style="width:80px;"`)}</td>
-      </tr>`).join('')}
-    </table>
+    ${buildEncounterTable(encounter, gameConfig.monsters ?? {})}
+
 
     <div style="font-size:.88rem;font-weight:700;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.1);">
       🧱 ブロック破壊イベント
@@ -731,12 +809,13 @@ function collectConfig() {
     });
   });
 
-  // ENCOUNTER
-  if (!gc.encounter) gc.encounter = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.encounter));
-  gc.encounter.forEach((e, i) => {
-    const el = document.getElementById(`cfg-enc-${i}-chance`);
-    if (el) e.chance = parseFloat(el.value) || 0;
-  });
+  // ENCOUNTER (30スロット)
+  if (!gc.encounter || gc.encounter.length < 30)
+    gc.encounter = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.encounter));
+  for (let s = 0; s < 30; s++) {
+    const el = document.getElementById(`cfg-enc-${s}-chance`);
+    if (el) gc.encounter[s] = { chance: parseFloat(el.value) || 0 };
+  }
 
   // CURSE
   if (!gc.curse) gc.curse = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.curse));
@@ -965,7 +1044,6 @@ function renderMonstersTab() {
   </div>`;
 
   for (const [id, mon] of Object.entries(monsters)) {
-    const lw  = mon.layerWeights ?? [0, 0, 0];
     const acts = mon.actions ?? [];
 
     const imgPreview = mon.imageUrl
@@ -1007,13 +1085,6 @@ function renderMonstersTab() {
         </div>
       </div>
 
-      <div style="font-size:.82rem;font-weight:700;margin-bottom:8px;opacity:.7;">出現率（層ごとの重み）</div>
-      <div style="display:flex;gap:14px;margin-bottom:14px;flex-wrap:wrap;">
-        ${[0, 1, 2].map(li => `<label style="font-size:.82rem;">第${li + 1}層<br>
-          <input class="cfg-input mon-lw-${id}" type="number" value="${lw[li] ?? 0}" min="0" style="width:68px;" data-layer="${li}">
-        </label>`).join('')}
-      </div>
-
       <div style="font-size:.82rem;font-weight:700;margin-bottom:8px;opacity:.7;">行動パターン</div>
       <table class="drill-table" style="margin-bottom:8px;">
         <tr><th>行動名</th><th>ダメージ</th><th>重み</th><th></th></tr>
@@ -1037,9 +1108,13 @@ function collectMonstersConfig() {
     if (hpEl)   mon.maxHp = parseInt(hpEl.value) || 100;
     if (iconEl) mon.icon  = iconEl.value;
 
-    const lwEls = document.querySelectorAll(`.mon-lw-${id}`);
-    if (lwEls.length > 0)
-      mon.layerWeights = Array.from(lwEls).map(el => parseFloat(el.value) || 0);
+    // layerWeights はエンカウントタブの統合テーブルから収集
+    const newLw = [];
+    for (let s = 0; s < 30; s++) {
+      const el = document.getElementById(`cfg-mon-lw-${id}-${s}`);
+      newLw.push(el ? (parseFloat(el.value) || 0) : (mon.layerWeights?.[s] ?? 0));
+    }
+    mon.layerWeights = newLw;
 
     const nameEls = document.querySelectorAll(`.mon-act-name-${id}`);
     const dmgEls  = document.querySelectorAll(`.mon-act-dmg-${id}`);
@@ -1059,7 +1134,7 @@ function addMonster() {
   if (!gameConfig.monsters) gameConfig.monsters = {};
   gameConfig.monsters[id] = {
     name: '新モンスター', icon: '👾', imageUrl: null,
-    maxHp: 100, layerWeights: [0, 0, 0],
+    maxHp: 100, layerWeights: Array.from({length: 30}, () => 0),
     actions: [{ name: '攻撃', damage: 10, weight: 1 }],
   };
   renderMonstersTab();

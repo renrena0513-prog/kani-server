@@ -116,12 +116,10 @@ let EVENTS = [
   ],
 ];
 
-// 移動エンカウント確率（各層、1マス移動ごとの %）
-let ENCOUNTER = [
-  { chance: 2 },  // 第1層 0-99m
-  { chance: 4 },  // 第2層 100-199m
-  { chance: 6 },  // 第3層 200-299m
-];
+// 移動エンカウント確率（10Mごと30スロット、1マス移動ごとの %）
+let ENCOUNTER = Array.from({length: 30}, (_, i) => ({
+  chance: [2, 4, 6][Math.min(2, Math.floor(i / 10))]
+}));
 
 // 呪いダメージ（上移動1マスごと、各層）
 let CURSE = [
@@ -139,7 +137,7 @@ let CARDS = {
 let MONSTERS = {
   test_slime: {
     name:'テストスライム', icon:'💚', imageUrl:null, maxHp:200,
-    layerWeights: [40, 0, 0],
+    layerWeights: Array.from({length: 30}, (_, i) => i < 10 ? 100 : 0),
     actions: [
       { name:'たいあたり',          damage:30, weight:1 },
       { name:'ぷるぷるふるえている', damage:0,  weight:1 },
@@ -369,7 +367,15 @@ async function loadGameConfig() {
       cfg.events.forEach((layer, i) => { if (Array.isArray(layer)) EVENTS[i] = layer; });
     }
     if (cfg.encounter && Array.isArray(cfg.encounter)) {
-      cfg.encounter.forEach((e, i) => { if (e?.chance != null) ENCOUNTER[i] = e; });
+      const enc = cfg.encounter;
+      if (enc.length <= 3) {
+        enc.forEach((e, li) => {
+          for (let s = li * 10; s < (li + 1) * 10 && s < ENCOUNTER.length; s++)
+            if (e?.chance != null) ENCOUNTER[s] = { ...e };
+        });
+      } else {
+        enc.forEach((e, i) => { if (i < ENCOUNTER.length && e?.chance != null) ENCOUNTER[i] = e; });
+      }
     }
     if (cfg.curse && Array.isArray(cfg.curse)) {
       cfg.curse.forEach((c, i) => { if (c) CURSE[i] = c; });
@@ -382,7 +388,12 @@ async function loadGameConfig() {
           icon: v.icon ?? MONSTERS[id]?.icon ?? '👾',
           imageUrl: v.imageUrl ?? null,
           maxHp: v.maxHp ?? MONSTERS[id]?.maxHp ?? 100,
-          layerWeights: v.layerWeights ?? MONSTERS[id]?.layerWeights ?? [0,0,0],
+          layerWeights: (() => {
+            const lw = v.layerWeights ?? MONSTERS[id]?.layerWeights;
+            if (!lw) return Array.from({length: 30}, () => 0);
+            if (lw.length <= 3) return Array.from({length: 30}, (_, i) => lw[Math.min(lw.length - 1, Math.floor(i / 10))] ?? 0);
+            return lw;
+          })(),
           actions: (v.actions ?? MONSTERS[id]?.actions ?? []).map(a => ({
             name: a.name ?? '', damage: a.damage ?? 0, weight: a.weight ?? 1,
           })),
@@ -643,7 +654,7 @@ async function move(dx, dy) {
 
   // エンカウントチェック（地下の掘り済みマスのみ・戦闘中は除外）
   if (!C.active && !G.surfaceMode && ny > START_Y) {
-    const li  = Math.min(ENCOUNTER.length - 1, Math.floor(ny / 100));
+    const li  = Math.min(ENCOUNTER.length - 1, Math.floor(ny / 10));
     const enc = ENCOUNTER[li];
     if (enc && Math.random() * 100 < enc.chance) {
       log('⚔️ 敵と遭遇！');
