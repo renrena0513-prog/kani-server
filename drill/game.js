@@ -1721,7 +1721,7 @@ async function equipDrill(rowId) {
 // ============================================================
 
 function showItems() {
-  let html = `<div class="modal-title">🧳 アイテム</div>`;
+  let html = `<div class="modal-title">⚙️ 装備</div>`;
 
   // ── ドリル ──
   html += `<div class="items-section-label">⛏️ ドリル</div>`;
@@ -3325,12 +3325,13 @@ function renderSide() {
     <span style="color:${mbwColor};font-size:.72rem;">${mbw}</span>
   </div>`;
   setHTML('mob-drill-bar', `
-    <span>⛏️ ${drill.name}</span>
-    <span style="opacity:.7;">威力 ${drill.power}</span>
-    <div class="mob-dur-wrap">${durHtml}</div>
-    ${hpBar}
-    ${bpBar}
-    <span style="color:#ffcc44;visibility:${G.mineTarget ? 'visible' : 'hidden'};">⛏️掘削中</span>
+    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">⛏️ ${drill.name}</span>
+    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+      <div class="mob-dur-wrap" style="margin-left:0;">${durHtml}</div>
+      ${hpBar}
+      ${bpBar}
+      <span style="color:#ffcc44;font-size:.68rem;white-space:nowrap;visibility:${G.mineTarget ? 'visible' : 'hidden'};">掘削中</span>
+    </div>
   `);
 
   // ステータス
