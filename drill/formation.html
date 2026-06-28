@@ -260,7 +260,8 @@ async function loadData() {
 
 function initPool() {
   const inDeck = new Set(deckSlots.filter(Boolean));
-  unequippedPool = ownedCards.filter(id => !inDeck.has(id));
+  // 'attack' はデフォルトフィラーとして無限扱い。プールには出さない
+  unequippedPool = ownedCards.filter(id => id !== 'attack' && !inDeck.has(id));
 }
 
 // ============================================================
@@ -371,9 +372,11 @@ function renderEquipped() {
 function renderUnequipped() {
   const grid = document.getElementById('unequipped-grid');
   grid.innerHTML = '';
+  grid.ondragover = e => e.preventDefault();
+  grid.ondrop = e => { e.preventDefault(); handleDropToPool(); };
 
   if (unequippedPool.length === 0) {
-    grid.innerHTML = '<div style="opacity:.4;font-size:.8rem;grid-column:1/-1;padding:10px 0;">未装備のカードなし</div>';
+    grid.innerHTML = '<div style="opacity:.4;font-size:.8rem;grid-column:1/-1;padding:10px 0;">未装備のカードなし（デッキからドラッグで戻せます）</div>';
     return;
   }
 
@@ -412,18 +415,29 @@ function handleDrop(targetSlotIndex) {
     if (poolIdx === -1) { dragSource = null; return; }
 
     const oldCard = deckSlots[targetSlotIndex];
-    unequippedPool.splice(poolIdx, 1);      // プールから取り出す
+    unequippedPool.splice(poolIdx, 1);
     deckSlots[targetSlotIndex] = cardId;
-    if (oldCard) unequippedPool.push(oldCard); // 元のカードをプールへ
+    // attack はフィラーなのでプールには戻さない。他の購入カードのみプールへ
+    if (oldCard && oldCard !== 'attack') unequippedPool.push(oldCard);
 
   } else if (dragSource.type === 'slot') {
-    // スロット同士を入れ替え
     const from = dragSource.slotIndex;
     const tmp = deckSlots[from];
     deckSlots[from] = deckSlots[targetSlotIndex];
     deckSlots[targetSlotIndex] = tmp;
   }
 
+  dragSource = null;
+  renderCards();
+}
+
+function handleDropToPool() {
+  if (!dragSource || dragSource.type !== 'slot') return;
+  const cardId = deckSlots[dragSource.slotIndex];
+  if (!cardId || cardId === 'attack') { dragSource = null; return; }
+  // 購入カードをプールへ戻し、スロットをデフォルト(attack)に戻す
+  unequippedPool.push(cardId);
+  deckSlots[dragSource.slotIndex] = 'attack';
   dragSource = null;
   renderCards();
 }
