@@ -353,14 +353,6 @@ function renderEquipped() {
     slot.addEventListener('dragend', () => slot.classList.remove('dragging'));
     slot.draggable = true;
 
-    // タップでスロットを空に → カードをプールに戻す
-    slot.addEventListener('click', () => {
-      if (cardId) {
-        deckSlots[i] = null;
-        unequippedPool.push(cardId);
-        renderCards();
-      }
-    });
 
     grid.appendChild(slot);
   }
