@@ -680,6 +680,14 @@ async function move(dx, dy) {
   if (ny === START_Y) {
     G.surfaceMode = true;
     if (G.hp < G.maxHp) { G.hp = G.maxHp; _hpDirty = true; }
+    // 地上到達：素材を自動倉庫預け
+    const matsToStore = Object.entries(G.backpack).filter(([id, v]) => v > 0 && isMaterial(id));
+    for (const [item, qty] of matsToStore) {
+      await upsertInv(item, qty);
+      G.backpack[item] = 0;
+      await saveBpItem(item, 0);
+    }
+    if (matsToStore.length > 0) log(`📦 素材 ${matsToStore.length}種を倉庫に自動預け`);
   }
 
   // 呪い：ローカルにHP即適用（死亡のみ await）
