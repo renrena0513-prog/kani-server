@@ -30,11 +30,11 @@ const ITEM_NAMES = {
   drill_copper: '銅ドリル', drill_iron: '鉄ドリル', drill_silver: '銀のドリル',
 };
 
-// 層ごとの掘削済みマス背景色
+// 層ごとの掘削済みマス背景スタイル（background プロパティ値 + 追加CSS）
 const LAYER_BG = [
-  '#15100a', // 第1層 0-99m   (暗褐色)
-  '#1a0808', // 第2層 100-199m (暗赤)
-  '#0a0818', // 第3層 200-299m (深紫)
+  `background:#15100a url('./img/bg_layer1.png') center/cover no-repeat;image-rendering:pixelated`, // 第1層 0-99m
+  `background:#1a0808`, // 第2層 100-199m
+  `background:#0a0818`, // 第3層 200-299m
 ];
 
 // 10Mごとの素材重み（30スロット: 0-9m, 10-19m, ..., 290-299m）
@@ -2791,7 +2791,7 @@ function buildCell(wx, wy, vx = 0, vy = 0, otherByPos = null) {
     const icon = G.avatarUrl
       ? `<img class="player-icon" src="${G.avatarUrl}" alt="" />`
       : `<div class="player-icon">⛏️</div>`;
-    return `<div class="mc mc-player" style="background:${layerBg}">${icon}</div>`;
+    return `<div class="mc mc-player" style="${layerBg}">${icon}</div>`;
   }
 
   const key = `${wx},${wy}`;
@@ -2821,7 +2821,7 @@ function buildCell(wx, wy, vx = 0, vy = 0, otherByPos = null) {
       inner += `<div class="player-icon other-icon" style="font-size:.85rem;" title="落とし物あり">📦</div>`;
     }
     // 地表行は sky style、地下は層別背景色
-    const cellStyle = wy === 0 ? ` style="${skyStyle}"` : ` style="background:${layerBg}"`;
+    const cellStyle = wy === 0 ? ` style="${skyStyle}"` : ` style="${layerBg}"`;
     return `<div class="mc ${base}"${cellStyle}>${inner}</div>`;
   }
 
