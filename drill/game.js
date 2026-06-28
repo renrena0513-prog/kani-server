@@ -638,7 +638,13 @@ async function move(dx, dy) {
   }
 
   if (!isDug) {
-    if (Math.abs(dx) + Math.abs(dy) === 1) startMine(nx, ny);
+    if (Math.abs(dx) + Math.abs(dy) === 1) {
+      if (cellMat(nx, ny) === 'treasure') {
+        await collectTreasure(nx, ny);
+      } else {
+        startMine(nx, ny);
+      }
+    }
     _moveActive = false;
     return;
   }
@@ -957,38 +963,71 @@ async function collectDroppedItems(x, y) {
 // 宝箱
 // ============================================================
 
+// 宝箱を即時開封（採掘なし）
+async function collectTreasure(x, y) {
+  const key = `${x},${y}`;
+  if (G.dugCells.has(key)) return;
+  if (G.digLocks.has(key) && G.digLocks.get(key).by !== G.userId) {
+    log('⚠️ 他のプレイヤーが開封中です');
+    return;
+  }
+  const { error } = await supabaseClient.from('drill_dug_cells')
+    .insert({ map_date: G.mapDate, x, y, dug_by: G.userId });
+  G.dugCells.add(key);
+  if (error) {
+    log('⚠️ 宝箱は既に他のプレイヤーに開封されていました');
+    scheduleRender();
+    return;
+  }
+  await openTreasure(x, y);
+  scheduleRender();
+}
+
 async function openTreasure(x, y) {
   const key = `${x},${y}`;
   const typeId  = G.treasureMap.get(key);
   const typeDef = TREASURE_TYPES[typeId];
   if (!typeDef) { log('⚠️ 宝箱の設定が見つかりません'); return; }
 
+  const chestIcon = typeDef.imageUrl
+    ? `<img src="${escHtml(typeDef.imageUrl)}" style="width:56px;height:56px;object-fit:contain;">`
+    : '📦';
+
   const loot = typeDef.loot ?? [];
-  if (loot.length === 0) { log(`🎁 ${typeDef.name} → 中身が空だった…`); return; }
+  if (loot.length === 0) {
+    showEventModal(chestIcon, `<span style="font-weight:700;">${escHtml(typeDef.name)}</span><br><span style="opacity:.7;">中身が空だった…</span>`);
+    return;
+  }
 
   const rng = cellRng(G.seed + 99, x, y);
   const r = rng();
-
   const total = loot.reduce((s, l) => s + (l.weight ?? 1), 0);
   let pick = r * total;
   let chosen = loot[loot.length - 1];
   for (const l of loot) { pick -= (l.weight ?? 1); if (pick <= 0) { chosen = l; break; } }
+
+  const chestTitle = `<span style="opacity:.7;font-size:.85rem;">${escHtml(typeDef.name)}</span><br>`;
 
   if (chosen.type === 'gold') {
     const amount = Math.floor(Math.random() * ((chosen.max ?? 100) - (chosen.min ?? 0) + 1)) + (chosen.min ?? 0);
     G.drillGold += amount;
     await supabaseClient.from('profiles').update({ drill_gold: G.drillGold }).eq('discord_user_id', G.discordId);
     log(`🎁 ${typeDef.name} → 💰 ${amount}G`);
+    showEventModal(chestIcon, `${chestTitle}<span style="color:#f0c060;font-size:1.6rem;font-weight:700;">💰 ${amount}G</span>`);
   } else if (chosen.type === 'item') {
     const itemId = chosen.itemId;
     const qty    = chosen.qty ?? 1;
     const canFit = Math.floor((G.maxBpWeight - bpWeight()) / itemWeight(itemId));
     const actual = Math.min(qty, canFit);
-    if (actual <= 0) { log('⚠️ リュックが満杯！宝箱の中身が入りません'); return; }
+    if (actual <= 0) {
+      showEventModal(chestIcon, `${chestTitle}<span style="color:#ff6b6b;">リュックが満杯！<br>中身が入りません</span>`);
+      return;
+    }
     if (actual < qty) log(`⚠️ 容量不足で ${qty - actual} 個入りませんでした`);
     G.backpack[itemId] = (G.backpack[itemId] || 0) + actual;
     await saveBpItem(itemId, G.backpack[itemId]);
     log(`🎁 ${typeDef.name} → ${ITEM_NAMES[itemId] || itemId} ×${actual}`);
+    showEventModal(chestIcon, `${chestTitle}<span style="font-size:1.3rem;font-weight:700;">${escHtml(ITEM_NAMES[itemId] || itemId)} ×${actual}</span>`);
   }
 }
 
