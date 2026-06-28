@@ -186,13 +186,20 @@
 
   <!-- タブ＋出品ボタン -->
   <div class="mkt-status-bar">
-    <div class="mkt-tabs">
+    <div class="mkt-tabs" id="main-tabs">
       <button class="mkt-tab active" onclick="showTab('all',this)">📋 出品一覧</button>
       <button class="mkt-tab" onclick="showTab('mine',this)">🏷️ マイ出品</button>
     </div>
     <button class="btn-list" id="btn-list-new" onclick="openListModal()" disabled>
       ＋ 出品する (<span id="my-count">0</span>/3)
     </button>
+  </div>
+  <!-- フィルター -->
+  <div class="mkt-tabs" id="filter-tabs" style="margin-bottom:16px;">
+    <button class="mkt-tab active" onclick="showFilter('all',this)">すべて</button>
+    <button class="mkt-tab" onclick="showFilter('mats',this)">📦 素材</button>
+    <button class="mkt-tab" onclick="showFilter('items',this)">💊 アイテム</button>
+    <button class="mkt-tab" onclick="showFilter('drills',this)">⛏️ ドリル</button>
   </div>
 
   <!-- カードグリッド -->
@@ -302,7 +309,15 @@ let _myInventory = []; // { item_id, quantity, source }
 let _myDrills = [];    // { item_id, quantity:1, source:'drill', drill_row_id, durability, max_dur }
 let _listings = [];
 let _currentTab = 'all';
+let _filterType  = 'all'; // 'all' | 'mats' | 'items' | 'drills'
 let _buyTarget = null; // { listing }
+
+const MAT_IDS = new Set(['dirt','stone','copper','iron','silver','gold']);
+function listingCategory(l) {
+  if (l.source === 'drill' || isDrill(l.item_id)) return 'drills';
+  if (MAT_IDS.has(l.item_id)) return 'mats';
+  return 'items';
+}
 
 // ============================================================
 // 初期化
@@ -376,7 +391,14 @@ async function loadListings() {
 // ============================================================
 function showTab(tab, el) {
   _currentTab = tab;
-  document.querySelectorAll('.mkt-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#main-tabs .mkt-tab').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderGrid();
+}
+
+function showFilter(type, el) {
+  _filterType = type;
+  document.querySelectorAll('#filter-tabs .mkt-tab').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
   renderGrid();
 }
@@ -394,6 +416,9 @@ function renderGrid() {
     items = _listings.filter(l => l.seller_user_id === _userId);
   } else {
     items = _listings.filter(l => l.status === 'active');
+  }
+  if (_filterType !== 'all') {
+    items = items.filter(l => listingCategory(l) === _filterType);
   }
 
   const grid = document.getElementById('mkt-grid');

@@ -493,14 +493,25 @@ html, body {
 #curse-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(140, 0, 220, 0.55);
     z-index: 8998;
     pointer-events: none;
     animation: curse-flash 0.7s ease-out forwards;
 }
+#curse-overlay[data-intensity="strong"] {
+    background: rgba(140, 0, 220, 0.55);
+}
+#curse-overlay[data-intensity="weak"] {
+    background: rgba(140, 0, 220, 0.18);
+    animation: curse-flash-weak 0.9s ease-out forwards;
+}
 @keyframes curse-flash {
     0%   { opacity: 1; }
     40%  { opacity: 0.8; }
+    100% { opacity: 0; }
+}
+@keyframes curse-flash-weak {
+    0%   { opacity: 1; }
+    60%  { opacity: 0.6; }
     100% { opacity: 0; }
 }
 

@@ -690,7 +690,7 @@ async function move(dx, dy) {
                   || (ny >= 200 && !G.permits.has('permit_200'));
     const base = Math.floor(Math.random() * (c.max - c.min + 1)) + c.min;
     const dmg  = noPermit ? base * 10 : base;
-    if (noPermit) showCurseOverlay();
+    showCurseOverlay(noPermit ? 'strong' : 'weak');
     G.hp = Math.max(0, G.hp - dmg);
     _hpDirty = true;
     if (G.hp <= 0) {
@@ -2887,13 +2887,13 @@ function render() {
   renderSide();
 }
 
-function showCurseOverlay() {
+function showCurseOverlay(intensity = 'strong') {
   const existing = document.getElementById('curse-overlay');
   if (existing) existing.remove();
   const el = document.createElement('div');
   el.id = 'curse-overlay';
+  el.dataset.intensity = intensity;
   document.body.appendChild(el);
-  // アニメ終了後に自動削除
   el.addEventListener('animationend', () => el.remove(), { once: true });
 }
 
