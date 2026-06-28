@@ -3330,10 +3330,10 @@ function renderSide() {
   setHTML('mob-drill-bar', `
     <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">⛏️ ${drill.name}</span>
     <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+      <span style="opacity:.75;white-space:nowrap;">威力 ${drill.power}</span>
       <div class="mob-dur-wrap" style="margin-left:0;">${durHtml}</div>
       ${hpBar}
       ${bpBar}
-      <span style="color:#ffcc44;font-size:.68rem;white-space:nowrap;visibility:${G.mineTarget ? 'visible' : 'hidden'};">掘削中</span>
     </div>
   `);
 
