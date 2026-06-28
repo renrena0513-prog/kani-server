@@ -1739,7 +1739,10 @@ function showItems() {
         </div>
         ${isEq
           ? `<span style="font-size:.75rem;opacity:.5;">装備中</span>`
-          : `<button class="btn-modal-action" onclick="equipDrill('${d.id}').then(showItems)">装備</button>`}
+          : `<div style="display:flex;gap:6px;">
+               <button class="btn-modal-action" onclick="equipDrill('${d.id}').then(showItems)">装備</button>
+               ${d.drill_id !== 'beginner' ? `<button class="btn-modal-action" style="background:rgba(200,60,60,.7);" onclick="dropDrillFromWarehouse('${d.id}')">落とす</button>` : ''}
+             </div>`}
       </div>`;
     }
   }
