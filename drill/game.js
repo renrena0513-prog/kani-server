@@ -2420,14 +2420,15 @@ function showCombatModal() {
     ? `<div style="min-height:58px;border:2px dashed rgba(255,193,7,.3);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:.82rem;color:rgba(255,193,7,.6);margin-top:10px;">
         ⏳ 他プレイヤーの行動を待っています...
        </div>`
-    : `<div id="combat-drop-zone" ondragover="event.preventDefault()" ondrop="combatDrop(event)">カードをここにドロップ</div>`;
+    : `<div id="enemy-area" ondragover="event.preventDefault()" ondrop="combatDrop(event)">カードをここにドロップ</div>`;
 
   inner.innerHTML = `
     <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
       <button onclick="showCombatLog()" style="padding:4px 12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:8px;color:rgba(255,255,255,.75);cursor:pointer;font-size:.78rem;">📜 戦闘ログ</button>
     </div>
 
-    <div style="text-align:center;margin-bottom:14px;">
+    <div id="enemy-area" style="text-align:center;margin-bottom:14px;"
+      ondragover="event.preventDefault()" ondrop="combatDrop(event)">
       ${monImgHtml}
       <div style="font-weight:700;font-size:1.05rem;margin-top:8px;">${escHtml(mon.name)}</div>
       <div style="font-size:.8rem;color:${mHpColor};margin:4px 0;">HP ${C.monsterHp} / ${mon.maxHp}</div>
@@ -2441,7 +2442,7 @@ function showCombatModal() {
 
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;">${participantsHtml}</div>
 
-    ${dropZoneHtml}
+    ${isWaiting ? `<div style="text-align:center;font-size:.82rem;color:rgba(255,193,7,.6);margin-top:8px;">⏳ 他プレイヤーの行動を待っています...</div>` : ''}
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px;">${isWaiting ? '' : cardHtml}</div>
   `;
 }
@@ -2654,17 +2655,17 @@ async function joinExistingCombat(session, cx, cy) {
 function combatDragStart(e, idx) {
   _draggedCardIdx = idx;
   e.dataTransfer.effectAllowed = 'move';
-  document.getElementById('combat-drop-zone')?.classList.add('combat-drop-zone--active');
+  document.getElementById('enemy-area')?.classList.add('enemy-area--active');
 }
 
 function combatDragEnd(e) {
   _draggedCardIdx = null;
-  document.getElementById('combat-drop-zone')?.classList.remove('combat-drop-zone--active');
+  document.getElementById('enemy-area')?.classList.remove('enemy-area--active');
 }
 
 function combatDrop(e) {
   e.preventDefault();
-  document.getElementById('combat-drop-zone')?.classList.remove('combat-drop-zone--active');
+  document.getElementById('enemy-area')?.classList.remove('enemy-area--active');
   if (_draggedCardIdx !== null) {
     const idx = _draggedCardIdx;
     _draggedCardIdx = null;
@@ -2692,22 +2693,22 @@ function combatTouchMove(e) {
   const t = e.touches[0];
   _touchGhost.style.left = (t.clientX - _touchGhost.offsetWidth  / 2) + 'px';
   _touchGhost.style.top  = (t.clientY - _touchGhost.offsetHeight / 2) + 'px';
-  const zone = document.getElementById('combat-drop-zone');
+  const zone = document.getElementById('enemy-area');
   if (zone) {
     const zr = zone.getBoundingClientRect();
     const over = t.clientX >= zr.left && t.clientX <= zr.right &&
                  t.clientY >= zr.top  && t.clientY <= zr.bottom;
-    zone.classList.toggle('combat-drop-zone--active', over);
+    zone.classList.toggle('enemy-area--active', over);
   }
 }
 
 function combatTouchEnd(e) {
   if (_touchGhost) { _touchGhost.remove(); _touchGhost = null; }
-  document.getElementById('combat-drop-zone')?.classList.remove('combat-drop-zone--active');
+  document.getElementById('enemy-area')?.classList.remove('enemy-area--active');
   if (_touchCardIdx === null) return;
   const idx = _touchCardIdx;
   _touchCardIdx = null;
-  const zone = document.getElementById('combat-drop-zone');
+  const zone = document.getElementById('enemy-area');
   if (!zone) return;
   const t = e.changedTouches[0];
   const zr = zone.getBoundingClientRect();

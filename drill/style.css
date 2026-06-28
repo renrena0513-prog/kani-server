@@ -576,23 +576,16 @@ html, body {
     line-height: 1.3;
 }
 
-#combat-drop-zone {
-    min-height: 58px;
-    border: 2px dashed rgba(255, 255, 255, 0.25);
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: .82rem;
-    color: rgba(255, 255, 255, 0.4);
+#enemy-area {
+    border-radius: 14px;
+    border: 2px solid transparent;
     transition: border-color .15s, background .15s;
-    margin-top: 10px;
+    padding: 4px;
 }
 
-#combat-drop-zone.combat-drop-zone--active {
+#enemy-area.enemy-area--active {
     border-color: rgba(212, 168, 83, 0.85);
-    background: rgba(212, 168, 83, 0.1);
-    color: rgba(255, 255, 255, 0.75);
+    background: rgba(212, 168, 83, 0.08);
 }
 
 /* ===== PC レイアウト ===== */
