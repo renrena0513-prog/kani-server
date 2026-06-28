@@ -244,7 +244,7 @@ async function loadConfig() {
 async function loadData() {
   const [drillRes, deckRes] = await Promise.all([
     supabaseClient.from('drill_player_drills').select('*').eq('user_id', userId),
-    supabaseClient.from('drill_player_deck').select('slots').eq('user_id', userId).maybeSingle(),
+    supabaseClient.from('drill_player_deck').select('slots,owned_cards').eq('user_id', userId).maybeSingle(),
   ]);
 
   playerDrills = drillRes.data || [];
