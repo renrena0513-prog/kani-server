@@ -181,6 +181,9 @@ const G = {
 let _drillChannel = null; // Realtimeチャンネル参照（Broadcastに使用）
 let _moveSaveTimer = null; // 移動後のDB保存デバウンス用
 let _hpDirty = false;      // 呪いダメージでHP変化した際のフラグ
+let _renderRafId = null;   // RAF描画バッチ用
+let _moveActive = false;   // 移動処理の多重実行防止
+let _lastMoveTime = 0;     // 最後に移動した時刻（Realtimeエコー無視判定用）
 
 // 戦闘状態
 const C = {
@@ -567,9 +570,10 @@ async function releaseLock(x, y) {
 // ============================================================
 
 async function move(dx, dy) {
-  if (G.mineTarget) return;
+  if (_moveActive || G.mineTarget) return;
+  _moveActive = true;
   const nx = G.px + dx, ny = G.py + dy;
-  if (nx < 0 || nx >= MAP_W || ny < 0 || ny >= MAP_H) return;
+  if (nx < 0 || nx >= MAP_W || ny < 0 || ny >= MAP_H) { _moveActive = false; return; }
 
   const isDug = G.dugCells.has(`${nx},${ny}`) || ny === 0;
 
@@ -577,15 +581,18 @@ async function move(dx, dy) {
   const combatHere = G.activeCombats?.get(`${nx},${ny}`);
   if (combatHere && combatHere.id !== C.sessionId) {
     await showJoinCombatPrompt(combatHere, nx, ny);
+    _moveActive = false;
     return;
   }
 
   if (!isDug) {
     if (Math.abs(dx) + Math.abs(dy) === 1) startMine(nx, ny);
+    _moveActive = false;
     return;
   }
 
   // ── 即座に位置更新・描画（DB保存を待たない）──
+  _lastMoveTime = Date.now();
   G.px = nx; G.py = ny;
   if (ny === START_Y) G.surfaceMode = true;
 
@@ -601,16 +608,16 @@ async function move(dx, dy) {
     if (noPermit) showCurseOverlay();
     G.hp = Math.max(0, G.hp - dmg);
     _hpDirty = true;
-    renderSide();
     if (G.hp <= 0) {
       clearTimeout(_moveSaveTimer);
       _hpDirty = false;
+      _moveActive = false;
       await handleDeath('呪い');
       return;
     }
   }
 
-  render();
+  scheduleRender();
 
   // 落下アイテム確認（移動をブロックしない、モーダル表示中はスキップ）
   if (!G.surfaceMode && !_lockedDropId) collectDroppedItems(nx, ny).catch(() => {});
@@ -625,6 +632,8 @@ async function move(dx, dy) {
       if (monsterId) await startCombat(monsterId, nx, ny);
     }
   }
+
+  _moveActive = false;
 
   // ── DB保存はデバウンス：連打中は最後の位置だけ書き込む ──
   clearTimeout(_moveSaveTimer);
@@ -2406,7 +2415,7 @@ function setupRealtime() {
       if (!r || r.map_date !== G.mapDate) return;
       G.dugCells.add(`${r.x},${r.y}`);
       G.digLocks.delete(`${r.x},${r.y}`);
-      renderMap();
+      scheduleRender();
     })
     .on('postgres_changes', {
       event: '*', schema: 'public', table: 'drill_dig_locks',
@@ -2418,7 +2427,7 @@ function setupRealtime() {
         if (r.locked_by !== G.userId)
           G.digLocks.set(`${r.x},${r.y}`, { by: r.locked_by, exp: r.expires_at });
       }
-      renderMap();
+      scheduleRender();
     })
     .on('postgres_changes', {
       event: 'INSERT', schema: 'public', table: 'drill_dropped_items',
@@ -2434,7 +2443,7 @@ function setupRealtime() {
         locked_by: r.locked_by || null,
         locked_until: r.locked_until || null,
       });
-      renderMap();
+      scheduleRender();
     })
     .on('postgres_changes', {
       event: 'UPDATE', schema: 'public', table: 'drill_dropped_items',
@@ -2453,7 +2462,7 @@ function setupRealtime() {
       if (_currentDrop?.drop?.id === r.id) {
         _currentDrop.drop.items = r.items || [];
       }
-      renderMap();
+      scheduleRender();
     })
     .on('postgres_changes', {
       event: 'DELETE', schema: 'public', table: 'drill_dropped_items',
@@ -2479,7 +2488,7 @@ function setupRealtime() {
         }
       }
       if (_currentDrop?.drop?.id === r.id) { closeModal(); _currentDrop = null; }
-      renderMap();
+      scheduleRender();
     })
     .on('postgres_changes', {
       event: '*', schema: 'public', table: 'drill_player_positions',
@@ -2487,8 +2496,9 @@ function setupRealtime() {
       if (!r || r.map_date !== G.mapDate) return;
       if (r.user_id !== G.userId) {
         G.otherPlayers.set(r.user_id, { x: r.x, y: r.y, avatarUrl: r.avatar_url || null });
-        renderMap();
-      } else if (r.x !== G.px || r.y !== G.py) {
+        scheduleRender();
+      } else if ((r.x !== G.px || r.y !== G.py) && Date.now() - _lastMoveTime > 2000) {
+        // 2秒以内に動いていれば自分の位置エコーを無視（連打時のスナップバック防止）
         _applyRemotePos(r.x, r.y);
       }
     })
@@ -2496,8 +2506,8 @@ function setupRealtime() {
       if (!p || p.date !== G.mapDate) return;
       if (p.uid !== G.userId) {
         G.otherPlayers.set(p.uid, { x: p.x, y: p.y, avatarUrl: p.av || G.otherPlayers.get(p.uid)?.avatarUrl || null });
-        renderMap();
-      } else if (p.x !== G.px || p.y !== G.py) {
+        scheduleRender();
+      } else if ((p.x !== G.px || p.y !== G.py) && Date.now() - _lastMoveTime > 2000) {
         _applyRemotePos(p.x, p.y);
       }
     })
@@ -2533,6 +2543,11 @@ function _applyRemotePos(x, y) {
 // ============================================================
 // 描画
 // ============================================================
+
+function scheduleRender() {
+  if (_renderRafId !== null) return;
+  _renderRafId = requestAnimationFrame(() => { _renderRafId = null; render(); });
+}
 
 function render() {
   renderView();
@@ -2634,13 +2649,17 @@ function renderMap() {
 
   const halfW = (VP_W - 1) >> 1;
   const halfH = (VP_H - 1) >> 1;
+  // O(1)ルックアップ用マップを事前構築（セルごとのO(n)線形探索を回避）
+  const otherByPos = new Map();
+  for (const p of G.otherPlayers.values()) otherByPos.set(`${p.x},${p.y}`, p);
+
   const cells = [];
 
   for (let vy = 0; vy < VP_H; vy++) {
     for (let vx = 0; vx < VP_W; vx++) {
       const wx = G.px - halfW + vx;
       const wy = G.py - halfH + vy;
-      cells.push(buildCell(wx, wy, vx, vy));
+      cells.push(buildCell(wx, wy, vx, vy, otherByPos));
     }
   }
 
@@ -2652,21 +2671,23 @@ function renderMap() {
   document.getElementById('gold-disp').textContent = `💰 ${G.drillGold}G`;
 }
 
-function buildCell(wx, wy, vx = 0, vy = 0) {
+function buildCell(wx, wy, vx = 0, vy = 0, otherByPos = null) {
   // 地図外（横・下）は void
   if (wx < 0 || wx >= MAP_W || wy >= MAP_H) {
     return `<div class="mc mc-void"></div>`;
   }
 
-  // 地上背景の一枚絵スタイル（空エリア + 地表行で共用）
-  const halfH_c = (VP_H - 1) >> 1;
-  const vySurf  = halfH_c - G.py;            // ビューポート内での地表行インデックス
-  const skyN    = Math.max(1, vySurf + 1);   // 空エリア行数（地表含む）
-  const bgX     = `${vx / (VP_W - 1) * 100}%`;
-  const bgY     = skyN > 1 ? `${vy / (skyN - 1) * 100}%` : '100%';
-  const skyStyle = `background:#1a3a1a url('./img/surface.png') ${bgX} ${bgY} / ${VP_W * 100}% ${skyN * 100}% no-repeat;image-rendering:pixelated;`;
+  // 地上より上（空エリア）または地表行のみ skyStyle を計算（深地下では不要）
+  let skyStyle = '';
+  if (wy <= 0) {
+    const halfH_c = (VP_H - 1) >> 1;
+    const vySurf  = halfH_c - G.py;
+    const skyN    = Math.max(1, vySurf + 1);
+    const bgX     = `${vx / (VP_W - 1) * 100}%`;
+    const bgY     = skyN > 1 ? `${vy / (skyN - 1) * 100}%` : '100%';
+    skyStyle = `background:#1a3a1a url('./img/surface.png') ${bgX} ${bgY} / ${VP_W * 100}% ${skyN * 100}% no-repeat;image-rendering:pixelated;`;
+  }
 
-  // 地上より上（空エリア）
   if (wy < 0) {
     return `<div class="mc" style="${skyStyle}"></div>`;
   }
@@ -2684,9 +2705,9 @@ function buildCell(wx, wy, vx = 0, vy = 0) {
     return `<div class="mc mc-player">${icon}</div>`;
   }
 
-  const otherAt = [...G.otherPlayers.values()].find(p => p.x === wx && p.y === wy);
-  const isOther = !!otherAt;
   const key = `${wx},${wy}`;
+  const otherAt = otherByPos ? otherByPos.get(key) : [...G.otherPlayers.values()].find(p => p.x === wx && p.y === wy);
+  const isOther = !!otherAt;
   const isDug = G.dugCells.has(key) || wy === 0;
   const isLocked = G.digLocks.has(key) && G.digLocks.get(key).by !== G.userId;
   const isMining = G.mineTarget?.x === wx && G.mineTarget?.y === wy;
