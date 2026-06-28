@@ -155,12 +155,15 @@ const DEFAULT_GAME_CONFIG = {
     silver_drill: { name: '銀のドリル',     power: 50,  dur: 20000, cost: null,  recipe: { silver: 30 } },
     allpurpose:   { name: '万能ドリル',     power: 100, dur: 50000, cost: null,  recipe: { copper: 20, iron: 20, silver: 20 } },
   },
-  // 各層の出現率（%）。合計100になるように設定
-  layerWeights: [
-    [['dirt', 65],  ['stone', 28],  ['copper', 7]],
-    [['dirt', 15],  ['stone', 35],  ['copper', 29], ['iron', 20.5], ['silver', 0.5]],
-    [['dirt', 5],   ['stone', 20],  ['copper', 15], ['iron', 35],   ['silver', 20], ['gold', 5]],
-  ],
+  // 10Mごとの出現率（%）。30スロット: 0-9m, 10-19m, ..., 290-299m
+  layerWeights: (() => {
+    const base = [
+      [['dirt', 65],  ['stone', 28],  ['copper', 7]],
+      [['dirt', 15],  ['stone', 35],  ['copper', 29], ['iron', 20.5], ['silver', 0.5]],
+      [['dirt', 5],   ['stone', 20],  ['copper', 15], ['iron', 35],   ['silver', 20], ['gold', 5]],
+    ];
+    return Array.from({length: 30}, (_, i) => base[Math.min(2, Math.floor(i / 10))].map(e => [...e]));
+  })(),
   shop: [
     { id: 'apprentice',   name: '見習いのドリル', cost: 100   },
     { id: 'journeyman',   name: '一人前のドリル', cost: 2000  },
@@ -285,6 +288,14 @@ async function loadGameConfigAdmin() {
   if (!gameConfig.monsters)  gameConfig.monsters  = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.monsters));
   if (!gameConfig.cards)     gameConfig.cards     = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.cards));
   if (!gameConfig.encounter) gameConfig.encounter = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.encounter));
+  // 旧3層形式 → 30スロット形式にマイグレーション
+  if (!gameConfig.layerWeights || gameConfig.layerWeights.length < 30) {
+    const old = gameConfig.layerWeights ?? DEFAULT_GAME_CONFIG.layerWeights;
+    gameConfig.layerWeights = Array.from({length: 30}, (_, i) => {
+      const src = old[Math.min(old.length - 1, Math.floor(i / 10))];
+      return src ? src.map(e => [...e]) : [['dirt', 100]];
+    });
+  }
   // 旧設定に残っている combat エントリを除去
   if (gameConfig.events) {
     gameConfig.events = gameConfig.events.map(layer =>
@@ -383,42 +394,71 @@ function renderDrillsTab() {
     </div>`;
 }
 
+const LYR_MATS = ['dirt', 'stone', 'copper', 'iron', 'silver', 'gold'];
+
 function renderLayersTab() {
   const cfg = gameConfig.layerWeights ?? DEFAULT_GAME_CONFIG.layerWeights;
-  const layerLabel = ['第1層 (0〜99m)', '第2層 (100〜199m)', '第3層 (200〜299m)'];
-  let html = `<div class="info-box" style="margin-bottom:14px;">
-    各層での素材出現率（%）。合計が <strong>100</strong> になるように設定してください。
-  </div>`;
-  cfg.forEach((layer, li) => {
-    const total = layer.reduce((s, [, p]) => s + parseFloat(p || 0), 0);
-    const col   = Math.abs(total - 100) < 0.05 ? '#6bde9b' : '#ff6b6b';
-    html += `<div style="margin-bottom:20px;">
-      <div style="font-size:.85rem;font-weight:700;margin-bottom:8px;">
-        ${layerLabel[li] ?? ('第' + (li+1) + '層')}
-        <span id="lt-${li}" style="color:${col};font-size:.78rem;margin-left:10px;">合計 ${total.toFixed(1)}%</span>
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:12px;">`;
-    layer.forEach(([mat, pct], mi) => {
-      html += `<label style="display:flex;align-items:center;gap:4px;font-size:.83rem;">
-        ${MAT_NAMES[mat] || mat}
-        <input class="cfg-input lyr-pct" type="number" id="cfg-lyr-${li}-${mi}"
-          data-li="${li}" value="${pct}" min="0" max="100" step="0.1" style="width:68px;"
-          oninput="updateLayerTotal(${li})">%
-      </label>`;
-    });
-    html += `</div></div>`;
-  });
-  document.getElementById('cfg-tab-layers').innerHTML = html;
+  const layerHeaders = [
+    { s: 0,  label: '第1層 (0〜99m)'   },
+    { s: 10, label: '第2層 (100〜199m)' },
+    { s: 20, label: '第3層 (200〜299m)' },
+  ];
+
+  const getVal = (slotIdx, mat) => {
+    const row = cfg[slotIdx] ?? [];
+    return (row.find(([m]) => m === mat)?.[1] ?? 0);
+  };
+
+  let rows = '';
+  for (let s = 0; s < 30; s++) {
+    const header = layerHeaders.find(h => h.s === s);
+    if (header) {
+      rows += `<tr style="background:rgba(255,255,255,.07);">
+        <td colspan="8" style="padding:5px 8px;font-size:.78rem;font-weight:700;opacity:.8;">${header.label}</td>
+      </tr>`;
+    }
+    const total = LYR_MATS.reduce((sum, mat) => sum + getVal(s, mat), 0);
+    const col   = Math.abs(total - 100) < 0.5 ? '#6bde9b' : '#ff6b6b';
+    const inputs = LYR_MATS.map(mat =>
+      `<td style="padding:2px 3px;">
+        <input class="cfg-input" type="number" id="cfg-lyr-${s}-${mat}"
+          value="${getVal(s, mat)}" min="0" max="100" step="0.5"
+          style="width:50px;font-size:.75rem;" oninput="updateLayerTotal(${s})">
+      </td>`
+    ).join('');
+    rows += `<tr>
+      <td style="white-space:nowrap;font-size:.75rem;padding:2px 8px;">${s*10}〜${s*10+9}m</td>
+      ${inputs}
+      <td id="lt-${s}" style="font-size:.75rem;font-weight:700;color:${col};padding:2px 6px;white-space:nowrap;">${total.toFixed(1)}%</td>
+    </tr>`;
+  }
+
+  document.getElementById('cfg-tab-layers').innerHTML = `
+    <div class="info-box" style="margin-bottom:10px;">
+      各10mの素材出現率（%）。合計が <strong>100</strong> になるように設定してください。
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="drill-table" style="font-size:.8rem;min-width:520px;">
+        <thead>
+          <tr>
+            <th style="min-width:80px;">深度</th>
+            <th>土</th><th>石</th><th>銅</th><th>鉄</th><th>銀</th><th>金</th>
+            <th>合計</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
 }
 
-function updateLayerTotal(li) {
-  const inputs = document.querySelectorAll(`.lyr-pct[data-li="${li}"]`);
-  let total = 0;
-  inputs.forEach(el => total += parseFloat(el.value || 0));
-  const el = document.getElementById('lt-' + li);
+function updateLayerTotal(s) {
+  const total = LYR_MATS.reduce((sum, mat) => {
+    return sum + (parseFloat(document.getElementById(`cfg-lyr-${s}-${mat}`)?.value) || 0);
+  }, 0);
+  const el = document.getElementById(`lt-${s}`);
   if (el) {
-    el.textContent = `合計 ${total.toFixed(1)}%`;
-    el.style.color = Math.abs(total - 100) < 0.05 ? '#6bde9b' : '#ff6b6b';
+    el.textContent = `${total.toFixed(1)}%`;
+    el.style.color = Math.abs(total - 100) < 0.5 ? '#6bde9b' : '#ff6b6b';
   }
 }
 
@@ -631,14 +671,17 @@ function collectConfig() {
     }
   });
 
-  // LAYER WEIGHTS (percentage format)
-  if (!gc.layerWeights) gc.layerWeights = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.layerWeights));
-  gc.layerWeights.forEach((layer, li) => {
-    layer.forEach(([mat], mi) => {
-      const el = document.getElementById(`cfg-lyr-${li}-${mi}`);
-      if (el) layer[mi] = [mat, parseFloat(el.value) || 0];
-    });
-  });
+  // LAYER WEIGHTS (30スロット、パーセント形式)
+  if (!gc.layerWeights || gc.layerWeights.length < 30)
+    gc.layerWeights = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.layerWeights));
+  for (let s = 0; s < 30; s++) {
+    const row = [];
+    for (const mat of LYR_MATS) {
+      const val = parseFloat(document.getElementById(`cfg-lyr-${s}-${mat}`)?.value) || 0;
+      if (val > 0) row.push([mat, val]);
+    }
+    gc.layerWeights[s] = row;
+  }
 
   // SHOP
   (gc.shop ?? []).forEach((item, i) => {

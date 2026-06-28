@@ -37,15 +37,15 @@ const LAYER_BG = [
   '#0a0818', // 第3層 200-299m (深紫)
 ];
 
-// 層ごとの素材重み [素材, 累積確率]
-const LAYER_W = [
-  // 第1層 0-99m
+// 10Mごとの素材重み（30スロット: 0-9m, 10-19m, ..., 290-299m）
+const _LW_BASE = [
   [['dirt',0.65],['stone',0.93],['copper',1.00]],
-  // 第2層 100-199m
   [['dirt',0.15],['stone',0.50],['copper',0.79],['iron',0.995],['silver',1.00]],
-  // 第3層 200-299m
   [['dirt',0.05],['stone',0.25],['copper',0.40],['iron',0.75],['silver',0.95],['gold',1.00]],
 ];
+let LAYER_W = Array.from({length: 30}, (_, i) =>
+  _LW_BASE[Math.min(2, Math.floor(i / 10))].map(e => [...e])
+);
 
 // 宝箱生成設定
 const TREASURE_CFG = [
@@ -239,8 +239,8 @@ function cellMat(x, y) {
   if (x < 0 || x >= MAP_W || y < 0 || y >= MAP_H) return null;
   if (G.treasures.has(`${x},${y}`)) return 'treasure';
   if (y === 0) return null; // 地上行はマスなし
-  const layer = Math.min(2, Math.floor(y / 100));
-  return pickW(cellRng(G.seed, x, y), LAYER_W[layer]);
+  const slot = Math.min(LAYER_W.length - 1, Math.floor(y / 10));
+  return pickW(cellRng(G.seed, x, y), LAYER_W[slot]);
 }
 
 function genTreasures(seed) {
@@ -334,15 +334,24 @@ async function loadGameConfig() {
       }
     }
     // layerWeights は %形式で保存 → 累積確率に変換
+    // 旧3層形式（length<=3）との互換性あり
     if (cfg.layerWeights) {
-      cfg.layerWeights.forEach((layer, i) => {
-        if (i >= LAYER_W.length) return;
+      const lw = cfg.layerWeights;
+      const applySlot = (layer, slot) => {
+        if (slot >= LAYER_W.length) return;
         let cum = 0;
-        LAYER_W[i] = layer.map(([mat, pct]) => {
+        LAYER_W[slot] = layer.map(([mat, pct]) => {
           cum += (pct || 0) / 100;
           return [mat, Math.round(cum * 100000) / 100000];
         });
-      });
+      };
+      if (lw.length <= 3) {
+        lw.forEach((layer, li) => {
+          for (let s = li * 10; s < (li + 1) * 10; s++) applySlot(layer, s);
+        });
+      } else {
+        lw.forEach((layer, i) => applySlot(layer, i));
+      }
     }
     if (cfg.shop) {
       cfg.shop.forEach(s => {
