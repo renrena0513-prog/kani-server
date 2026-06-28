@@ -611,7 +611,7 @@ function renderListItems() {
       sub: 'x' + inv.quantity.toLocaleString(),
       cat: MAT_IDS.has(inv.item_id) ? 'mats' : 'items',
     })),
-    ..._myDrills.map(d => {
+    ..._myDrills.filter(d => d.item_id !== 'beginner').map(d => {
       const durStr = d.durability !== null ? ('耐久' + d.durability + '/' + (d.max_dur ?? 'inf')) : '耐久inf';
       return {
         val: JSON.stringify({ item_id: d.item_id, max: 1, source: 'drill', drill_row_id: d.drill_row_id, durability: d.durability, max_dur: d.max_dur }),
@@ -690,6 +690,7 @@ async function confirmList() {
   if (!_listSelected) { alert('アイテムを選択してください'); return; }
   const parsed = JSON.parse(_listSelected);
   const { item_id, max, source, drill_row_id, durability, max_dur } = parsed;
+  if (item_id === 'beginner') { alert('初心者ドリルは出品できません'); return; }
   const qty   = source === 'drill' ? 1 : Math.max(1, Math.min(parseInt(document.getElementById('lm-qty').value) || 1, max));
   const price = Math.max(1, parseInt(document.getElementById('lm-price').value) || 1);
 
