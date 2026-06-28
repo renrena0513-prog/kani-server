@@ -585,25 +585,20 @@ async function move(dx, dy) {
     return;
   }
 
-  // 許可証チェック（上移動は不要）
-  if (dy >= 0) {
-    if (ny >= 100 && ny < 200 && !G.permits.has('permit_100')) {
-      log('⚠️ 100m入坑許可証が必要です'); return;
-    }
-    if (ny >= 200 && !G.permits.has('permit_200')) {
-      log('⚠️ 200m入坑許可証が必要です'); return;
-    }
-  }
-
   // ── 即座に位置更新・描画（DB保存を待たない）──
   G.px = nx; G.py = ny;
   if (ny === START_Y) G.surfaceMode = true;
 
   // 呪い：ローカルにHP即適用（死亡のみ await）
+  // 許可証なしで該当層にいる場合はダメージ10倍
   if (dy < 0 && ny > START_Y) {
     const li = Math.min(CURSE.length - 1, Math.floor(ny / 100));
     const c  = CURSE[li];
-    const dmg = Math.floor(Math.random() * (c.max - c.min + 1)) + c.min;
+    const noPermit = (ny >= 100 && ny < 200 && !G.permits.has('permit_100'))
+                  || (ny >= 200 && !G.permits.has('permit_200'));
+    const base = Math.floor(Math.random() * (c.max - c.min + 1)) + c.min;
+    const dmg  = noPermit ? base * 10 : base;
+    if (noPermit) showCurseOverlay();
     G.hp = Math.max(0, G.hp - dmg);
     _hpDirty = true;
     renderSide();
@@ -2544,6 +2539,16 @@ function render() {
   renderSurfaceHome();
   renderMap();
   renderSide();
+}
+
+function showCurseOverlay() {
+  const existing = document.getElementById('curse-overlay');
+  if (existing) existing.remove();
+  const el = document.createElement('div');
+  el.id = 'curse-overlay';
+  document.body.appendChild(el);
+  // アニメ終了後に自動削除
+  el.addEventListener('animationend', () => el.remove(), { once: true });
 }
 
 function renderView() {

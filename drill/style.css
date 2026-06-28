@@ -481,6 +481,21 @@ html, body {
     50%       { transform: translate(-50%, -50%) scale(1.12); }
 }
 
+/* 許可証なし呪いダメージ10倍フラッシュ */
+#curse-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(140, 0, 220, 0.55);
+    z-index: 8998;
+    pointer-events: none;
+    animation: curse-flash 0.7s ease-out forwards;
+}
+@keyframes curse-flash {
+    0%   { opacity: 1; }
+    40%  { opacity: 0.8; }
+    100% { opacity: 0; }
+}
+
 /* ===== 戦闘モーダル ===== */
 #modal-inner.combat-modal {
     width: min(96vw, 540px);
