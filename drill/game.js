@@ -613,6 +613,17 @@ async function move(dx, dy) {
   // 落下アイテム確認（移動をブロックしない、モーダル表示中はスキップ）
   if (!G.surfaceMode && !_lockedDropId) collectDroppedItems(nx, ny).catch(() => {});
 
+  // エンカウントチェック（地下の掘り済みマスのみ・戦闘中は除外）
+  if (!C.active && !G.surfaceMode && ny > START_Y) {
+    const li = Math.min(EVENTS.length - 1, Math.floor(ny / 100));
+    const ev = pickEvent(li);
+    if (ev.type === 'combat') {
+      log('⚔️ 敵と遭遇！');
+      const monsterId = pickCombatMonster(li);
+      if (monsterId) await startCombat(monsterId, nx, ny);
+    }
+  }
+
   // ── DB保存はデバウンス：連打中は最後の位置だけ書き込む ──
   clearTimeout(_moveSaveTimer);
   _moveSaveTimer = setTimeout(async () => {
@@ -777,11 +788,6 @@ async function triggerBlockEvent(x, y) {
     log('🕳️ イベント: 落とし穴！');
     showEventModal('🕳️', '<span style="font-size:1rem;font-weight:700;">落とし穴！</span><br><span style="opacity:.7;font-size:.9rem;">30m落下します...</span>', () => teleportPitfall());
 
-  } else if (ev.type === 'combat') {
-    log('⚔️ 敵と遭遇！');
-    const combatLi = Math.min(EVENTS.length - 1, Math.floor(y / 100));
-    const monsterId = pickCombatMonster(combatLi);
-    if (monsterId) await startCombat(monsterId, x, y);
   }
 }
 
