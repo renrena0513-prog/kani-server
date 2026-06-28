@@ -3065,9 +3065,8 @@ function renderSurfaceHome() {
   const durStr = G.drillDur === null ? '∞' : G.drillDur;
   const bpKeys = Object.keys(G.backpack).filter(k => G.backpack[k] > 0);
   const surfBw = bpWeight();
-  const bpAlert = bpKeys.length > 0
-    ? `<div class="sh-bp-alert">⚠️ リュックに未確定アイテムあり（${bpKeys.length}種・${surfBw}/${G.maxBpWeight}）— リュックから倉庫に確定できます</div>`
-    : '';
+  const surfBwPct = Math.min(100, Math.round((surfBw / G.maxBpWeight) * 100));
+  const surfBwColor = surfBwPct >= 90 ? '#f44336' : surfBwPct >= 60 ? '#ff9800' : '#4caf50';
 
   el.innerHTML = `
     <div class="sh-card">
@@ -3077,7 +3076,14 @@ function renderSurfaceHome() {
         <span>📍 地上 (0m)</span>
       </div>
       <div class="sh-drill-info">装備: ${drill.name} ／ 耐久: ${durStr}</div>
-      ${bpAlert}
+      <div style="margin-top:8px;">
+        <div style="display:flex;justify-content:space-between;font-size:.72rem;opacity:.6;margin-bottom:3px;">
+          <span>🎒 リュック</span><span style="color:${surfBwColor};">${surfBw} / ${G.maxBpWeight}</span>
+        </div>
+        <div style="height:6px;background:rgba(255,255,255,.12);border-radius:3px;overflow:hidden;">
+          <div style="height:100%;width:${surfBwPct}%;background:${surfBwColor};border-radius:3px;transition:width .3s;"></div>
+        </div>
+      </div>
     </div>
     <div class="sh-menu">
       <button class="sh-btn" onclick="showShop()">🛒&ensp;ショップ</button>
