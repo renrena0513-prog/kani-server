@@ -282,8 +282,15 @@ async function loadGameConfigAdmin() {
   } catch {
     gameConfig = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG));
   }
-  if (!gameConfig.monsters) gameConfig.monsters = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.monsters));
-  if (!gameConfig.cards)    gameConfig.cards    = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.cards));
+  if (!gameConfig.monsters)  gameConfig.monsters  = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.monsters));
+  if (!gameConfig.cards)     gameConfig.cards     = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.cards));
+  if (!gameConfig.encounter) gameConfig.encounter = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.encounter));
+  // 旧設定に残っている combat エントリを除去
+  if (gameConfig.events) {
+    gameConfig.events = gameConfig.events.map(layer =>
+      Array.isArray(layer) ? layer.filter(e => e.type !== 'combat') : layer
+    );
+  }
   renderConfigEditor();
 }
 
