@@ -1809,10 +1809,14 @@ async function endCombat(win) {
       document.getElementById('combat-end-btn').addEventListener('click', resolve, { once: true });
     });
     document.getElementById('modal-overlay').dataset.combatModal = '';
+    document.getElementById('modal-inner').classList.remove('combat-modal');
+    document.getElementById('combat-log-overlay')?.remove();
     closeModal();
     log(`⚔️ ${monName}を倒した！`);
   } else {
     document.getElementById('modal-overlay').dataset.combatModal = '';
+    document.getElementById('modal-inner').classList.remove('combat-modal');
+    document.getElementById('combat-log-overlay')?.remove();
     closeModal();
     await handleDeath(`${monName}との戦闘`);
   }
@@ -1828,24 +1832,26 @@ function showCombatModal() {
   const pHpColor = pHpPct > 50 ? '#6bde9b' : pHpPct > 20 ? '#ffc107' : '#ff5555';
 
   const actionHtml = C.nextAction
-    ? `<div style="font-size:.72rem;margin-top:6px;padding:4px 10px;
-        background:rgba(255,100,50,.15);border:1px solid rgba(255,100,50,.3);
-        border-radius:6px;display:inline-block;">
+    ? `<div style="margin-top:8px;padding:5px 14px;background:rgba(255,100,50,.15);border:1px solid rgba(255,100,50,.3);border-radius:8px;font-size:.8rem;display:inline-block;">
         次の行動: <strong>${escHtml(C.nextAction.name)}</strong>
         ${C.nextAction.damage > 0
           ? `<span style="color:#ff8866;"> (-${C.nextAction.damage}HP)</span>`
-          : `<span style="color:rgba(255,255,255,.45);"> (なし)</span>`}
+          : `<span style="opacity:.5;"> (なし)</span>`}
        </div>`
     : '';
 
-  const logHtml = C.logs.slice(0, 5).map(l =>
-    `<div style="font-size:.72rem;padding:2px 0;color:rgba(255,255,255,.75);line-height:1.4;">${escHtml(l)}</div>`
-  ).join('');
+  const monImgHtml = mon.imageUrl
+    ? `<img src="${mon.imageUrl}" style="width:130px;height:130px;object-fit:contain;image-rendering:pixelated;border-radius:12px;background:rgba(255,255,255,.06);" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><div style="display:none;font-size:5rem;line-height:1;">${mon.icon || '👾'}</div>`
+    : `<div style="font-size:5rem;line-height:1;">${mon.icon || '👾'}</div>`;
+
+  const avatarHtml = G.avatarUrl
+    ? `<img src="${G.avatarUrl}" style="width:46px;height:46px;border-radius:50%;object-fit:cover;border:2px solid rgba(107,222,155,.5);flex-shrink:0;">`
+    : `<div style="font-size:2.2rem;line-height:1;flex-shrink:0;">⛏️</div>`;
 
   const cardHtml = C.hand.map((cardId, i) => {
     const def = CARDS[cardId] || {};
     const cardIconHtml = def.imageUrl
-      ? `<img class="combat-card-img" src="${def.imageUrl}" onerror="this.outerHTML='<div class=\\'combat-card-icon\\'>${def.icon || '❓'}</div>'">`
+      ? `<img class="combat-card-img" src="${def.imageUrl}" onerror="this.outerHTML='<div class=\\'combat-card-icon\\'>${escHtml(def.icon || '❓')}</div>'">`
       : `<div class="combat-card-icon">${def.icon || '❓'}</div>`;
     return `<div class="combat-card" draggable="true"
       ondragstart="combatDragStart(event,${i})"
@@ -1860,33 +1866,64 @@ function showCombatModal() {
   }).join('');
 
   const ov = document.getElementById('modal-overlay');
-  ov.style.display  = 'flex';
+  ov.style.display = 'flex';
   ov.dataset.combatModal = '1';
 
-  document.getElementById('modal-inner').innerHTML = `
-    <div style="text-align:center;margin-bottom:8px;">
-      ${mon.imageUrl
-        ? `<img src="${mon.imageUrl}" style="width:64px;height:64px;object-fit:contain;image-rendering:pixelated;" onerror="this.outerHTML='<div style=\\'font-size:2.8rem;line-height:1;\\'>${mon.icon || '👾'}</div>'">`
-        : `<div style="font-size:2.8rem;line-height:1;">${mon.icon || '👾'}</div>`}
-      <div style="font-weight:700;font-size:.95rem;margin-top:4px;">${escHtml(mon.name)}</div>
-      <div style="font-size:.72rem;color:${mHpColor};margin:2px 0;">HP ${C.monsterHp} / ${mon.maxHp}</div>
-      <div style="height:6px;background:rgba(255,255,255,.15);border-radius:3px;overflow:hidden;margin:0 24px 4px;">
-        <div style="width:${mHpPct}%;height:100%;background:${mHpColor};transition:width .3s;border-radius:3px;"></div>
+  const inner = document.getElementById('modal-inner');
+  inner.classList.add('combat-modal');
+  inner.innerHTML = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+      <button onclick="showCombatLog()" style="padding:4px 12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:8px;color:rgba(255,255,255,.75);cursor:pointer;font-size:.78rem;">📜 戦闘ログ</button>
+    </div>
+
+    <div style="text-align:center;margin-bottom:14px;">
+      ${monImgHtml}
+      <div style="font-weight:700;font-size:1.05rem;margin-top:8px;">${escHtml(mon.name)}</div>
+      <div style="font-size:.8rem;color:${mHpColor};margin:4px 0;">HP ${C.monsterHp} / ${mon.maxHp}</div>
+      <div style="height:8px;background:rgba(255,255,255,.15);border-radius:4px;overflow:hidden;margin:0 auto 4px;max-width:280px;">
+        <div style="width:${mHpPct}%;height:100%;background:${mHpColor};transition:width .3s;border-radius:4px;"></div>
       </div>
       ${actionHtml}
     </div>
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
-      <span style="font-size:.7rem;color:rgba(255,255,255,.45);">❤️ ${G.hp} / ${G.maxHp}</span>
-      <div style="flex:1;height:4px;background:rgba(255,255,255,.12);border-radius:2px;overflow:hidden;">
-        <div style="width:${pHpPct}%;height:100%;background:${pHpColor};border-radius:2px;transition:width .3s;"></div>
+
+    <div style="text-align:center;font-size:.7rem;color:rgba(255,255,255,.28);letter-spacing:.12em;margin-bottom:12px;">⚔️ ─── VS ─── ⚔️</div>
+
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+      ${avatarHtml}
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:.85rem;font-weight:700;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(G.displayName || 'あなた')}</div>
+        <div style="font-size:.74rem;color:${pHpColor};margin-bottom:4px;">HP ${G.hp} / ${G.maxHp}</div>
+        <div style="height:6px;background:rgba(255,255,255,.12);border-radius:3px;overflow:hidden;">
+          <div style="width:${pHpPct}%;height:100%;background:${pHpColor};border-radius:3px;transition:width .3s;"></div>
+        </div>
       </div>
     </div>
-    <div style="min-height:56px;max-height:80px;overflow-y:auto;background:rgba(0,0,0,.25);border-radius:8px;padding:5px 8px;margin-bottom:8px;">${logHtml}</div>
+
     <div id="combat-drop-zone"
       ondragover="event.preventDefault()"
       ondrop="combatDrop(event)">カードをここにドロップ</div>
-    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px;">${cardHtml}</div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px;">${cardHtml}</div>
   `;
+}
+
+function showCombatLog() {
+  const existing = document.getElementById('combat-log-overlay');
+  if (existing) existing.remove();
+  const logHtml = C.logs.length
+    ? C.logs.slice().reverse().map(l =>
+        `<div style="font-size:.82rem;padding:4px 0;color:rgba(255,255,255,.8);border-bottom:1px solid rgba(255,255,255,.07);line-height:1.5;">${escHtml(l)}</div>`
+      ).join('')
+    : '<div style="opacity:.4;font-size:.82rem;padding:8px 0;">ログなし</div>';
+  const overlay = document.createElement('div');
+  overlay.id = 'combat-log-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:20000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  overlay.innerHTML = `
+    <div style="background:#0d2447;border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:20px;width:min(92vw,420px);max-height:80vh;display:flex;flex-direction:column;color:#fff;">
+      <div style="font-weight:700;font-size:1rem;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.15);">📜 戦闘ログ</div>
+      <div style="flex:1;overflow-y:auto;">${logHtml}</div>
+      <button onclick="document.getElementById('combat-log-overlay').remove()" style="margin-top:14px;padding:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:8px;color:#fff;cursor:pointer;font-size:.85rem;width:100%;">✕ 閉じる</button>
+    </div>`;
+  document.body.appendChild(overlay);
 }
 
 // ドラッグ＆ドロップ（デスクトップ）
