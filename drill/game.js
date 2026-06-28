@@ -1205,6 +1205,36 @@ async function useItem(id) {
   log(`🎒 ${def.name}を使用`);
 }
 
+function showWithdrawDialog(id, maxQty) {
+  const def = ITEMS[id] ?? {};
+  const canFit = Math.floor((G.maxBpWeight - bpWeight()) / itemWeight(id));
+  const limit = Math.min(maxQty, canFit);
+  const img = def.imageUrl ? `<img src="${escHtml(def.imageUrl)}" style="width:32px;height:32px;object-fit:contain;vertical-align:middle;margin-right:6px;">` : '';
+  const html = `<div class="modal-title">📤 取り出す</div>
+    <div style="margin-bottom:10px;display:flex;align-items:center;">${img}<strong>${escHtml(def.name || id)}</strong></div>
+    <div style="margin-bottom:12px;font-size:.82rem;opacity:.7;">倉庫: ×${maxQty}　持てる最大: ×${limit > 0 ? limit : 0}</div>
+    ${limit > 0 ? `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+      <label style="font-size:.85rem;">個数</label>
+      <input id="withdraw-qty" type="number" min="1" max="${limit}" value="${limit}"
+        style="width:80px;padding:4px 8px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:6px;color:#fff;font-size:.9rem;">
+      <span style="font-size:.82rem;opacity:.6;">/ ${maxQty}</span>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-modal-action" style="flex:1;" onclick="confirmWithdraw('${id}',${maxQty})">取り出す</button>
+      <button class="btn-modal-close" style="flex:1;" onclick="showWarehouse('items')">戻る</button>
+    </div>` : `
+    <div style="color:#ff8888;font-size:.85rem;margin-bottom:16px;">⚠️ リュックに空きがありません</div>
+    <button class="btn-modal-close" style="width:100%;" onclick="showWarehouse('items')">戻る</button>`}`;
+  openModal(html);
+}
+
+async function confirmWithdraw(id, maxQty) {
+  const input = document.getElementById('withdraw-qty');
+  const qty = Math.max(1, Math.min(parseInt(input?.value || '1'), maxQty));
+  await withdrawItem(id, qty);
+}
+
 async function depositItem(id) {
   const def = ITEMS[id] ?? {};
   const qty = G.backpack[id] || 0;
@@ -1248,7 +1278,7 @@ function showCraft() {
     html += `<div class="modal-row">
       <div><div class="modal-row-label">${p.name}</div>
       <div class="modal-row-sub">${recipe}</div></div>
-      <button class="btn-modal-action" onclick="doCraft('permit','${pid}')" ${can?'':'disabled'}>作成</button>
+      <button class="btn-modal-action" onclick="confirmCraft('permit','${pid}')" ${can?'':'disabled'}>作成</button>
     </div>`;
   }
 
@@ -1260,12 +1290,33 @@ function showCraft() {
     html += `<div class="modal-row">
       <div><div class="modal-row-label">${d.name}</div>
       <div class="modal-row-sub">${recipe}</div></div>
-      <button class="btn-modal-action" onclick="doCraft('drill','${did}')" ${can?'':'disabled'}>作成</button>
+      <button class="btn-modal-action" onclick="confirmCraft('drill','${did}')" ${can?'':'disabled'}>作成</button>
     </div>`;
   }
 
   // 帰還石（帰還石をクラフトしたい場合は後追加）
   html += `<button class="btn-modal-close" onclick="closeModal()">閉じる</button>`;
+  openModal(html);
+}
+
+function confirmCraft(type, id) {
+  let name, recipe;
+  if (type === 'permit') {
+    const p = PERMITS[id];
+    name = p.name;
+    recipe = Object.entries(p.recipe).map(([m, q]) => `${MATS[m]?.name||m}×${q}`).join(', ');
+  } else {
+    const d = DRILLS[id];
+    name = d.name;
+    recipe = Object.entries(d.recipe).map(([m, q]) => `${MATS[m]?.name||m}×${q}`).join(', ');
+  }
+  const html = `<div class="modal-title">🔨 クラフト確認</div>
+    <div style="margin-bottom:8px;"><strong>${escHtml(name)}</strong>を作成しますか？</div>
+    <div style="font-size:.82rem;opacity:.7;margin-bottom:16px;">消費素材: ${escHtml(recipe)}</div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-modal-action" style="flex:1;" onclick="doCraft('${type}','${id}')">作成する</button>
+      <button class="btn-modal-close" style="flex:1;" onclick="showCraft()">戻る</button>
+    </div>`;
   openModal(html);
 }
 
@@ -1336,7 +1387,7 @@ function showBag(tab = 'mats') {
       body = gameItems.map(([id, qty]) => {
         const def = ITEMS[id] ?? {};
         const img = def.imageUrl ? `<img src="${escHtml(def.imageUrl)}" style="width:24px;height:24px;object-fit:contain;vertical-align:middle;margin-right:4px;">` : '';
-        const useBtn = `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;" onclick="useItem('${id}')">使用</button>`;
+        const useBtn = underground ? `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;" onclick="useItem('${id}')">使用</button>` : '';
         const depositBtn = `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;background:rgba(80,180,120,.7);" onclick="depositItem('${id}')">倉庫へ</button>`;
         return `<div class="modal-row">
           <div>
@@ -1467,6 +1518,46 @@ function showDrills() {
     }
   }
   html += `<button class="btn-modal-close" onclick="closeModal()">閉じる</button>`;
+  openModal(html);
+}
+
+function showDrillDetail(rowId) {
+  const d = G.drills.find(x => x.id === rowId);
+  if (!d) return;
+  const def = DRILLS[d.drill_id] || {};
+  const isEquipped = d.id === G.equippedDrillRowId;
+  const durMax = def.dur ?? null;
+  const durVal = d.durability ?? durMax;
+  const durPct = durMax ? Math.max(0, Math.round((durVal / durMax) * 100)) : null;
+  const durColor = durPct === null ? '#aaa' : durPct > 50 ? '#4caf50' : durPct > 20 ? '#ff9800' : '#f44336';
+  const durDisp = durVal === null ? '∞' : `${durVal} / ${durMax}`;
+  const durBar = durMax
+    ? `<div style="margin-top:6px;height:8px;background:rgba(255,255,255,.15);border-radius:4px;overflow:hidden;">
+         <div style="height:100%;width:${durPct}%;background:${durColor};border-radius:4px;transition:width .3s;"></div>
+       </div>`
+    : '';
+  const html = `<div class="modal-title">⛏️ ${escHtml(def.name || d.drill_id)}</div>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="opacity:.7;font-size:.85rem;">発掘力</span>
+        <span style="font-size:1.1rem;font-weight:700;color:#f0c060;">${def.power ?? '?'}</span>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="opacity:.7;font-size:.85rem;">耐久値</span>
+          <span style="font-size:1rem;font-weight:700;color:${durColor};">${durDisp}</span>
+        </div>
+        ${durBar}
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="opacity:.7;font-size:.85rem;">状態</span>
+        <span style="font-size:.85rem;">${isEquipped ? '<span style="color:#d4a853;">装備中</span>' : '未装備'}</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      ${isEquipped ? '' : `<button class="btn-modal-action" style="flex:1;" onclick="equipDrill('${rowId}').then(()=>showWarehouse('drills'))">装備する</button>`}
+      <button class="btn-modal-close" style="flex:1;" onclick="showWarehouse('drills')">戻る</button>
+    </div>`;
   openModal(html);
 }
 
@@ -1715,7 +1806,7 @@ function showWarehouse(tab = 'mats') {
           </div>
           <div style="display:flex;align-items:center;gap:6px;">
             <span>×${qty}</span>
-            <button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;" onclick="withdrawItem('${id}',1)">取り出す</button>
+            <button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;" onclick="showWithdrawDialog('${id}',${qty})">取り出す</button>
           </div>
         </div>`;
       }).join('');
@@ -1738,15 +1829,16 @@ function showWarehouse(tab = 'mats') {
                <div style="height:100%;width:${durPct}%;background:${durColor};border-radius:2px;transition:width .3s;"></div>
              </div>`
           : '';
-        return `<div class="modal-row" style="align-items:flex-start;">
+        return `<div class="modal-row">
           <div style="flex:1;min-width:0;">
             <div class="modal-row-label">${def.name || d.drill_id}${isEquipped ? ' <span style="font-size:.7rem;color:#d4a853;">装備中</span>' : ''}</div>
-            <div class="modal-row-sub">発掘力 ${def.power ?? '?'} ／ 耐久 ${durDisp}</div>
-            ${durBar}
           </div>
-          ${isEquipped
-            ? `<span style="font-size:.72rem;opacity:.4;align-self:center;">装備中</span>`
-            : `<button class="btn-modal-action" onclick="equipDrill('${d.id}').then(()=>showWarehouse('drills'))">装備</button>`}
+          <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
+            <button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;background:rgba(100,160,255,.5);" onclick="showDrillDetail('${d.id}')">詳細</button>
+            ${isEquipped
+              ? `<span style="font-size:.72rem;opacity:.4;">装備中</span>`
+              : `<button class="btn-modal-action" style="font-size:.72rem;padding:4px 10px;" onclick="equipDrill('${d.id}').then(()=>showWarehouse('drills'))">装備</button>`}
+          </div>
         </div>`;
       }).join('');
     }
