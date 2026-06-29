@@ -138,6 +138,28 @@
         }
 
 
+        /* ── ポーカー ドラッグ&ドロップ ── */
+        .poker-drag-container { display: flex; flex-direction: column; gap: 6px; }
+        .poker-drag-row {
+            display: flex; align-items: center; gap: 10px;
+            padding: 12px 14px;
+            background: #fff; border: 1.5px solid #dee2e6; border-radius: 10px;
+            transition: background .15s, border-color .15s, transform .1s;
+            user-select: none;
+        }
+        .poker-drag-row.pdr-changed { background: #fff8e1; border-color: #ffc107; }
+        .poker-drag-row.pdr-dragging { opacity: .45; transform: scale(.97); }
+        .poker-drag-row.pdr-over { background: #e3f2fd; border-color: #2196f3; }
+        .pdr-handle {
+            font-size: 1.3rem; color: #adb5bd; cursor: grab; flex-shrink: 0; line-height: 1;
+        }
+        .pdr-handle:active { cursor: grabbing; }
+        .pdr-rank { font-weight: 700; font-size: 1rem; width: 36px; flex-shrink: 0; text-align: center; }
+        .pdr-name { flex: 1; min-width: 0; }
+        .pdr-team { font-size: .78rem; color: #6c757d; margin-left: 6px; }
+        .pdr-reward { font-size: .9rem; text-align: right; white-space: nowrap; flex-shrink: 0; }
+        .pdr-score { font-weight: 700; }
+
         .loading-overlay {
             position: fixed;
             top: 0;
@@ -1733,30 +1755,29 @@
             </div>
         </div>
 
-        <!-- ポーカー記録編集モーダル -->
+        <!-- ポーカー記録編集モーダル（ドラッグ&ドロップ） -->
         <div class="modal fade" id="pokerEditModal" tabindex="-1" aria-labelledby="pokerEditModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="pokerEditModalLabel">🃏 ポーカー記録編集</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <div class="modal-header" style="background:linear-gradient(135deg,#1a4d8c,#0d2f5c);color:#fff;">
+                        <div>
+                            <h5 class="modal-title mb-0" id="pokerEditModalLabel">🃏 ポーカー記録編集</h5>
+                            <div class="small mt-1" style="opacity:.7;" id="poker-edit-info"></div>
+                        </div>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label small text-muted">日時</label>
-                                <input type="datetime-local" class="form-control" id="poker-edit-datetime">
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label small text-muted">参加人数</label>
-                                <input type="number" class="form-control" id="poker-edit-player-count" min="4" max="8">
-                            </div>
+                        <p class="small text-muted mb-3">
+                            ⠿ をドラッグして順位を変更できます。メンバーの変更はできません。
+                        </p>
+                        <div id="poker-drag-list" class="poker-drag-container"></div>
+                        <div id="poker-change-preview" class="mt-3">
+                            <p class="text-muted small mb-0">変更なし</p>
                         </div>
-                        <div id="poker-edit-players"></div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
-                        <button type="button" class="btn btn-primary" onclick="savePokerMatch()">保存する</button>
+                        <button type="button" class="btn btn-primary" onclick="savePokerMatch()">💾 保存して通知</button>
                     </div>
                 </div>
             </div>
