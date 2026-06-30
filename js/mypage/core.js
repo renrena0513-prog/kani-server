@@ -330,11 +330,18 @@
          * 他人の情報を取得して表示
          */
         async function loadTargetUserInfo() {
-            const { data: profile, error } = await supabaseClient
-                .from('profiles')
-                .select('discord_user_id, account_name, avatar_url, coins, total_assets, gacha_tickets, exchange_tickets, tip, is_hidden, equipped_badge_id, equipped_badge_id_right, team_id, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name), teams!team_id(team_name, logo_badge:badges!logo_badge_id(image_url))')
-                .eq('discord_user_id', targetId)
-                .maybeSingle();
+            const [{ data: profile, error }, { data: pokerProfile }] = await Promise.all([
+                supabaseClient
+                    .from('profiles')
+                    .select('discord_user_id, account_name, avatar_url, coins, total_assets, gacha_tickets, exchange_tickets, tip, is_hidden, equipped_badge_id, equipped_badge_id_right, team_id, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name), teams!team_id(team_name, logo_badge:badges!logo_badge_id(image_url))')
+                    .eq('discord_user_id', targetId)
+                    .maybeSingle(),
+                supabaseClient
+                    .from('poker_profiles')
+                    .select('team_id, poker_teams!team_id(team_name, icon_url)')
+                    .eq('discord_user_id', targetId)
+                    .maybeSingle(),
+            ]);
 
             if (profile?.is_hidden && isViewMode) {
                 const profileContent = document.getElementById('profile-content');
@@ -438,6 +445,19 @@
                     } else {
                         teamNameEl.textContent = teamName;
                     }
+                }
+
+                // ポーカーチーム表示（麻雀チームと同タイミング）
+                const pokerTeam = pokerProfile?.poker_teams;
+                const pokerTeamDisplayEl = document.getElementById('user-poker-team-display');
+                if (pokerTeam && pokerTeamDisplayEl) {
+                    let pokerLogoHtml = '🃏 ';
+                    if (pokerTeam.icon_url) {
+                        pokerLogoHtml = `<img src="${pokerTeam.icon_url}" alt="poker logo" style="width:20px;height:20px;object-fit:contain;margin-right:4px;border-radius:3px;"> `;
+                    }
+                    const pokerBadgeEl = pokerTeamDisplayEl.querySelector('.badge') || pokerTeamDisplayEl;
+                    pokerBadgeEl.innerHTML = `${pokerLogoHtml}${pokerTeam.team_name}`;
+                    pokerTeamDisplayEl.style.display = '';
                 }
 
                 // マネー表示の更新
