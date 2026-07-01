@@ -181,7 +181,7 @@
         .team-card.r1 { background:linear-gradient(135deg,rgba(212,168,83,.28) 0%,rgba(212,168,83,.08) 100%); border:1px solid rgba(212,168,83,.45); box-shadow:0 0 18px rgba(212,168,83,.15); }
         .team-card.r2 { background:linear-gradient(135deg,rgba(176,190,197,.22) 0%,rgba(176,190,197,.06) 100%); border:1px solid rgba(176,190,197,.32); box-shadow:0 0 12px rgba(176,190,197,.1); }
         .team-card.r3 { background:linear-gradient(135deg,rgba(205,127,50,.2) 0%,rgba(205,127,50,.05) 100%); border:1px solid rgba(205,127,50,.28); box-shadow:0 0 10px rgba(205,127,50,.08); }
-        .team-card.rf { background:linear-gradient(135deg,rgba(100,180,255,.14) 0%,rgba(100,180,255,.04) 100%); border:1px solid rgba(100,180,255,.25); }
+        .team-card.rf { background:linear-gradient(135deg,rgba(150,100,255,.22) 0%,rgba(100,60,200,.08) 100%); border:1px solid rgba(150,100,255,.45); box-shadow:0 0 14px rgba(150,100,255,.18); }
         .team-card.rn { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); }
         /* カードヘッダー */
         .tc-header { display:flex; align-items:center; gap:12px; padding:14px 16px 8px; }
@@ -194,7 +194,8 @@
         .team-card.r1 .tc-score { font-size:1.8rem; color:var(--gold2); }
         .team-card.r2 .tc-score { font-size:1.55rem; color:var(--silver); }
         .team-card.r3 .tc-score { font-size:1.35rem; color:var(--bronze); }
-        .team-card.rf .tc-score { font-size:1.15rem; color:rgba(100,180,255,.9); }
+        .team-card.rf .tc-score { font-size:1.2rem; color:rgba(170,130,255,.95); }
+        .finalist-badge { display:inline-block; font-size:.65rem; font-weight:800; letter-spacing:.1em; padding:2px 7px; border-radius:50px; background:rgba(150,100,255,.25); border:1px solid rgba(150,100,255,.5); color:rgba(200,170,255,.9); vertical-align:middle; margin-left:6px; }
         .team-card.rn .tc-score { font-size:1.1rem; color:rgba(255,255,255,.7); }
         .tc-arrow { font-size:.8rem; color:rgba(255,255,255,.3); margin-left:4px; transition:transform .2s; }
         .team-card.open .tc-arrow { transform:rotate(180deg); }
@@ -213,10 +214,10 @@
         .tc-member-chip { font-size:.8rem; color:#d4a853; white-space:nowrap; flex-shrink:0; margin-right:8px; }
         .tc-member-score { font-family:var(--fn); font-size:.88rem; font-weight:700; }
         /* 決勝ライン区切り */
-        .finalist-sep { display:flex; align-items:center; gap:10px; margin:6px 0; }
-        .finalist-sep span { font-size:.72rem; font-weight:700; color:rgba(255,255,255,.28); white-space:nowrap; }
-        .finalist-sep::before, .finalist-sep::after { content:''; flex:1; height:1px; background:rgba(255,255,255,.12); }
-        .finalist-banner { text-align:center; padding:8px 12px; background:rgba(212,168,83,.1); border:1px solid rgba(212,168,83,.25); border-radius:10px; font-size:.75rem; font-weight:700; color:rgba(212,168,83,.9); letter-spacing:.08em; margin-bottom:6px; }
+        .finalist-sep { display:flex; align-items:center; gap:10px; margin:14px 0 6px; }
+        .finalist-sep span { font-size:.72rem; font-weight:700; color:rgba(255,255,255,.35); white-space:nowrap; }
+        .finalist-sep::before, .finalist-sep::after { content:''; flex:1; height:1px; background:rgba(255,255,255,.15); }
+        .finalist-banner { display:flex; align-items:center; justify-content:center; gap:8px; padding:10px 16px; background:linear-gradient(90deg,rgba(150,100,255,.18) 0%,rgba(100,60,200,.1) 100%); border:1px solid rgba(150,100,255,.4); border-radius:14px; font-size:.78rem; font-weight:800; color:rgba(200,170,255,.95); letter-spacing:.1em; margin-bottom:10px; box-shadow:0 0 12px rgba(150,100,255,.12); }
 
         /* ── セクション区切り ── */
         .section-label {
@@ -678,10 +679,11 @@
             else { t.rankNo = i + 1; }
         });
 
-        const FINALIST_RANK = 5;
+        const FINALIST_RANK = 6;
         let html = '';
         let sepInserted = false;
 
+        html += `<div class="finalist-banner">🏆&nbsp; 決勝卓進出チーム &nbsp;— TOP ${FINALIST_RANK} &nbsp;🏆</div>`;
 
         teamList.forEach((t, idx) => {
             // 決勝ライン区切り
@@ -692,7 +694,8 @@
 
             const isFinalist = t.rankNo <= FINALIST_RANK;
             const cls = t.rankNo === 1 ? 'r1' : t.rankNo === 2 ? 'r2' : t.rankNo === 3 ? 'r3' : isFinalist ? 'rf' : 'rn';
-            const medal = t.rankNo <= 3 ? MEDALS[t.rankNo - 1] : `<span style="font-size:1rem;font-weight:900;color:rgba(255,255,255,.4);">${t.rankNo}</span>`;
+            const finalistBadge = (isFinalist && t.rankNo > 3) ? `<span class="finalist-badge">FINALIST</span>` : '';
+            const medal = t.rankNo <= 3 ? MEDALS[t.rankNo - 1] : `<span style="font-size:1rem;font-weight:900;color:${isFinalist ? 'rgba(180,150,255,.9)' : 'rgba(255,255,255,.4)'};">${t.rankNo}</span>`;
             const iconHtml = teamIconMap[t.name]
                 ? `<img src="${teamIconMap[t.name]}" class="tc-icon" alt="">`
                 : `<div class="tc-icon-placeholder">🏅</div>`;
@@ -723,7 +726,7 @@
                     <span class="tc-medal">${medal}</span>
                     ${iconHtml}
                     <div class="tc-info">
-                        <div class="tc-name">${t.name}</div>
+                        <div class="tc-name">${t.name}${finalistBadge}</div>
                     </div>
                     <div style="text-align:right;">
                         <div class="tc-score ${scCls(t.score)}">${sc(t.score)}</div>
