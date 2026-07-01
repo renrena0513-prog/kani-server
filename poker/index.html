@@ -178,9 +178,9 @@
         .team-list { display:flex; flex-direction:column; gap:10px; }
         .team-card { border-radius:16px; overflow:hidden; cursor:pointer; transition:transform .2s, box-shadow .2s; }
         .team-card:hover { transform:translateY(-2px); }
-        .team-card.r1 { background:linear-gradient(135deg,rgba(212,168,83,.28) 0%,rgba(212,168,83,.08) 100%); border:1px solid rgba(212,168,83,.45); box-shadow:0 0 18px rgba(212,168,83,.15); }
-        .team-card.r2 { background:linear-gradient(135deg,rgba(176,190,197,.22) 0%,rgba(176,190,197,.06) 100%); border:1px solid rgba(176,190,197,.32); box-shadow:0 0 12px rgba(176,190,197,.1); }
-        .team-card.r3 { background:linear-gradient(135deg,rgba(205,127,50,.2) 0%,rgba(205,127,50,.05) 100%); border:1px solid rgba(205,127,50,.28); box-shadow:0 0 10px rgba(205,127,50,.08); }
+        .team-card.r1 { background:linear-gradient(135deg,rgba(212,168,83,.38) 0%,rgba(180,120,20,.15) 100%); border:2px solid rgba(212,168,83,.7); box-shadow:0 0 32px rgba(212,168,83,.35), 0 0 8px rgba(212,168,83,.2) inset; }
+        .team-card.r2 { background:linear-gradient(135deg,rgba(200,210,220,.30) 0%,rgba(176,190,197,.10) 100%); border:2px solid rgba(200,215,230,.55); box-shadow:0 0 22px rgba(176,190,197,.25), 0 0 6px rgba(200,215,230,.12) inset; }
+        .team-card.r3 { background:linear-gradient(135deg,rgba(205,127,50,.30) 0%,rgba(180,90,20,.10) 100%); border:2px solid rgba(205,127,50,.5); box-shadow:0 0 20px rgba(205,127,50,.22), 0 0 5px rgba(205,127,50,.1) inset; }
         .team-card.rf { background:linear-gradient(135deg,rgba(150,100,255,.22) 0%,rgba(100,60,200,.08) 100%); border:1px solid rgba(150,100,255,.45); box-shadow:0 0 14px rgba(150,100,255,.18); }
         .team-card.rn { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); }
         /* カードヘッダー */
@@ -191,12 +191,21 @@
         .tc-info { flex:1; min-width:0; }
         .tc-name { font-weight:700; font-size:1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .tc-score { font-family:var(--fn); font-weight:900; text-align:right; }
-        .team-card.r1 .tc-score { font-size:1.8rem; color:var(--gold2); }
-        .team-card.r2 .tc-score { font-size:1.55rem; color:var(--silver); }
-        .team-card.r3 .tc-score { font-size:1.35rem; color:var(--bronze); }
+        .team-card.r1 .tc-score { font-size:2rem; color:var(--gold2); text-shadow:0 0 12px rgba(212,168,83,.6); }
+        .team-card.r2 .tc-score { font-size:1.7rem; color:var(--silver); text-shadow:0 0 8px rgba(200,215,230,.4); }
+        .team-card.r3 .tc-score { font-size:1.45rem; color:var(--bronze); text-shadow:0 0 6px rgba(205,127,50,.4); }
         .team-card.rf .tc-score { font-size:1.2rem; color:rgba(170,130,255,.95); }
-        .finalist-badge { display:inline-block; font-size:.65rem; font-weight:800; letter-spacing:.1em; padding:2px 7px; border-radius:50px; background:rgba(150,100,255,.25); border:1px solid rgba(150,100,255,.5); color:rgba(200,170,255,.9); vertical-align:middle; margin-left:6px; }
+        .team-card.r1 .tc-medal { font-size:2.4rem; filter:drop-shadow(0 0 6px rgba(212,168,83,.7)); }
+        .team-card.r2 .tc-medal { font-size:2.1rem; filter:drop-shadow(0 0 4px rgba(200,215,230,.5)); }
+        .team-card.r3 .tc-medal { font-size:1.9rem; filter:drop-shadow(0 0 4px rgba(205,127,50,.5)); }
+        .team-card.r1 .tc-name { font-size:1.15rem; color:#ffe08a; }
+        .team-card.r2 .tc-name { font-size:1.05rem; color:#d8e8f0; }
+        .team-card.r3 .tc-name { color:#e8b070; }
+        .finalist-badge { display:inline-block; font-size:.6rem; font-weight:800; letter-spacing:.1em; padding:2px 8px; border-radius:50px; background:rgba(150,100,255,.25); border:1px solid rgba(150,100,255,.5); color:rgba(200,170,255,.9); }
         .team-card.rn .tc-score { font-size:1.1rem; color:rgba(255,255,255,.7); }
+        /* 1位シマーアニメ */
+        @keyframes shimmer { 0%,100%{opacity:.55} 50%{opacity:1} }
+        .team-card.r1::after { content:''; position:absolute; inset:0; background:linear-gradient(105deg,transparent 40%,rgba(255,220,100,.08) 50%,transparent 60%); pointer-events:none; animation:shimmer 2.8s ease-in-out infinite; }
         .tc-arrow { font-size:.8rem; color:rgba(255,255,255,.3); margin-left:4px; transition:transform .2s; }
         .team-card.open .tc-arrow { transform:rotate(180deg); }
         /* 統計行 */
@@ -694,7 +703,7 @@
 
             const isFinalist = t.rankNo <= FINALIST_RANK;
             const cls = t.rankNo === 1 ? 'r1' : t.rankNo === 2 ? 'r2' : t.rankNo === 3 ? 'r3' : isFinalist ? 'rf' : 'rn';
-            const finalistBadge = (isFinalist && t.rankNo > 3) ? `<span class="finalist-badge">FINALIST</span>` : '';
+            const finalistBadge = (isFinalist && t.rankNo > 3) ? `<div style="margin-top:4px;"><span class="finalist-badge">FINALIST</span></div>` : '';
             const medal = t.rankNo <= 3 ? MEDALS[t.rankNo - 1] : `<span style="font-size:1rem;font-weight:900;color:${isFinalist ? 'rgba(180,150,255,.9)' : 'rgba(255,255,255,.4)'};">${t.rankNo}</span>`;
             const iconHtml = teamIconMap[t.name]
                 ? `<img src="${teamIconMap[t.name]}" class="tc-icon" alt="">`
@@ -726,7 +735,8 @@
                     <span class="tc-medal">${medal}</span>
                     ${iconHtml}
                     <div class="tc-info">
-                        <div class="tc-name">${t.name}${finalistBadge}</div>
+                        <div class="tc-name">${t.name}</div>
+                        ${finalistBadge}
                     </div>
                     <div style="text-align:right;">
                         <div class="tc-score ${scCls(t.score)}">${sc(t.score)}</div>
