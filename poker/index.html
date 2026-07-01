@@ -122,16 +122,19 @@
         }
         .podium-row:hover { transform: translateX(4px); }
         .podium-row.r1 {
-            background: linear-gradient(90deg,rgba(212,168,83,.22) 0%,rgba(212,168,83,.07) 100%);
-            border: 1px solid rgba(212,168,83,.35);
+            background: linear-gradient(90deg,rgba(212,168,83,.38) 0%,rgba(180,120,20,.15) 100%);
+            border: 2px solid rgba(212,168,83,.65);
+            box-shadow: 0 0 28px rgba(212,168,83,.3), 0 0 6px rgba(212,168,83,.15) inset;
         }
         .podium-row.r2 {
-            background: linear-gradient(90deg,rgba(176,190,197,.18) 0%,rgba(176,190,197,.05) 100%);
-            border: 1px solid rgba(176,190,197,.25);
+            background: linear-gradient(90deg,rgba(200,210,220,.28) 0%,rgba(176,190,197,.08) 100%);
+            border: 2px solid rgba(200,215,230,.5);
+            box-shadow: 0 0 18px rgba(176,190,197,.2);
         }
         .podium-row.r3 {
-            background: linear-gradient(90deg,rgba(205,127,50,.16) 0%,rgba(205,127,50,.04) 100%);
-            border: 1px solid rgba(205,127,50,.2);
+            background: linear-gradient(90deg,rgba(205,127,50,.28) 0%,rgba(180,90,20,.08) 100%);
+            border: 2px solid rgba(205,127,50,.45);
+            box-shadow: 0 0 16px rgba(205,127,50,.18);
         }
         .podium-medal { font-size:2rem; min-width:40px; text-align:center; }
         .podium-avatar {
@@ -139,18 +142,24 @@
             border: 3px solid rgba(255,255,255,.2);
             flex-shrink: 0;
         }
-        .r1 .podium-avatar { width:64px;height:64px;border-color:var(--gold); box-shadow:0 0 0 3px rgba(212,168,83,.25); }
-        .r2 .podium-avatar { width:56px;height:56px;border-color:var(--silver); }
-        .r3 .podium-avatar { width:50px;height:50px;border-color:var(--bronze); }
+        .r1 .podium-avatar { width:64px;height:64px;border-color:var(--gold); box-shadow:0 0 0 4px rgba(212,168,83,.3), 0 0 14px rgba(212,168,83,.25); }
+        .r2 .podium-avatar { width:56px;height:56px;border-color:var(--silver); box-shadow:0 0 0 3px rgba(200,215,230,.2); }
+        .r3 .podium-avatar { width:50px;height:50px;border-color:var(--bronze); box-shadow:0 0 0 3px rgba(205,127,50,.2); }
+        .r1 .podium-medal { font-size:2.4rem; filter:drop-shadow(0 0 6px rgba(212,168,83,.7)); }
+        .r2 .podium-medal { font-size:2.1rem; filter:drop-shadow(0 0 4px rgba(200,215,230,.5)); }
         .podium-info { flex:1; min-width:0; }
         .podium-name { font-weight:700; font-size:1.05rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        .r2 .podium-name,.r3 .podium-name { font-size:.95rem; color:rgba(255,255,255,.9); }
+        .r1 .podium-name { font-size:1.15rem; color:#ffe08a; }
+        .r2 .podium-name { color:#d8e8f0; }
+        .r3 .podium-name { color:#e8b070; }
         .podium-sub { font-size:.75rem; color:rgba(255,255,255,.4); margin-top:2px; }
         .podium-score { font-family:var(--fn); font-weight:900; text-align:right; }
-        .r1 .podium-score { font-size:1.9rem; color:var(--gold2); }
-        .r2 .podium-score { font-size:1.6rem; color:var(--silver); }
-        .r3 .podium-score { font-size:1.4rem; color:var(--bronze); }
+        .r1 .podium-score { font-size:2rem; color:var(--gold2); text-shadow:0 0 12px rgba(212,168,83,.6); }
+        .r2 .podium-score { font-size:1.7rem; color:var(--silver); text-shadow:0 0 8px rgba(200,215,230,.4); }
+        .r3 .podium-score { font-size:1.45rem; color:var(--bronze); text-shadow:0 0 6px rgba(205,127,50,.35); }
         .podium-cnt { font-size:.7rem; color:rgba(255,255,255,.35); text-align:right; }
+        /* 個人1位シマー */
+        .podium-row.r1::after { content:''; position:absolute; inset:0; background:linear-gradient(105deg,transparent 40%,rgba(255,220,100,.07) 50%,transparent 60%); pointer-events:none; animation:shimmer 2.8s ease-in-out infinite; }
 
         /* ── ランキングリスト ── */
         .rank-list { display:flex; flex-direction:column; gap:7px; }
@@ -207,9 +216,9 @@
         @keyframes shimmer { 0%,100%{opacity:.55} 50%{opacity:1} }
         .team-card.r1::after { content:''; position:absolute; inset:0; background:linear-gradient(105deg,transparent 40%,rgba(255,220,100,.08) 50%,transparent 60%); pointer-events:none; animation:shimmer 2.8s ease-in-out infinite; }
         /* スクロールフェードイン */
-        @keyframes fadeSlideUp { from { opacity:0; transform:translateY(22px); } to { opacity:1; transform:translateY(0); } }
-        .scroll-hidden { opacity:0; transform:translateY(22px); }
-        .scroll-visible { animation:fadeSlideUp .5s cubic-bezier(.22,.68,0,1.2) both; }
+        @keyframes fadeSlideUp { from { opacity:0; transform:translateY(28px); } to { opacity:1; transform:translateY(0); } }
+        .scroll-hidden { opacity:0; transform:translateY(28px); }
+        .scroll-visible { animation:fadeSlideUp .85s cubic-bezier(.16,.84,.44,1) both; }
         .tc-arrow { font-size:.8rem; color:rgba(255,255,255,.3); margin-left:4px; transition:transform .2s; }
         .team-card.open .tc-arrow { transform:rotate(180deg); }
         /* 統計行 */
@@ -657,6 +666,9 @@
             </div>`;
         }).join('');
 
+        // ポジウムフェードイン
+        applyScrollAnim(podiumEl.querySelectorAll('.podium-row'), 100);
+
         restLabel.style.display = rest.length ? '' : 'none';
         listEl.innerHTML = rest.map(p => {
             const v = subVal(p);
@@ -758,26 +770,25 @@
         });
 
         el.innerHTML = html;
+        applyScrollAnim(el.querySelectorAll('.team-card, .finalist-banner, .finalist-sep'), 70);
+    }
 
-        // スクロールフェードイン
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach((entry, i) => {
-                if (entry.isIntersecting) {
-                    const el = entry.target;
-                    const delay = el.dataset.delay || 0;
-                    setTimeout(() => {
-                        el.classList.remove('scroll-hidden');
-                        el.classList.add('scroll-visible');
-                    }, delay);
-                    observer.unobserve(el);
-                }
+    function applyScrollAnim(els, stagger = 80) {
+        const obs = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (!entry.isIntersecting) return;
+                const t = entry.target;
+                setTimeout(() => {
+                    t.classList.remove('scroll-hidden');
+                    t.classList.add('scroll-visible');
+                }, Number(t.dataset.delay) || 0);
+                obs.unobserve(t);
             });
-        }, { threshold: 0.08 });
-
-        el.querySelectorAll('.team-card, .finalist-banner, .finalist-sep').forEach((card, i) => {
-            card.classList.add('scroll-hidden');
-            card.dataset.delay = i * 60;
-            observer.observe(card);
+        }, { threshold: 0.06 });
+        Array.from(els).forEach((el, i) => {
+            el.classList.add('scroll-hidden');
+            el.dataset.delay = i * stagger;
+            obs.observe(el);
         });
     }
     </script>
