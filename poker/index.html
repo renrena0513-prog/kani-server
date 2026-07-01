@@ -666,9 +666,6 @@
             </div>`;
         }).join('');
 
-        // ポジウムフェードイン
-        applyScrollAnim(podiumEl.querySelectorAll('.podium-row'), 100);
-
         restLabel.style.display = rest.length ? '' : 'none';
         listEl.innerHTML = rest.map(p => {
             const v = subVal(p);
@@ -688,7 +685,11 @@
             </div>`;
         }).join('');
 
-        applyScrollAnim(listEl.querySelectorAll('.rank-row'), 50);
+        // TOP3・4位以下を同一のアニメーション判定でまとめて処理
+        applyScrollAnim([
+            ...podiumEl.querySelectorAll('.podium-row'),
+            ...listEl.querySelectorAll('.rank-row'),
+        ], 80);
     }
 
     function toggleTeamCard(el) {
