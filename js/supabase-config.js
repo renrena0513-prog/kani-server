@@ -48,7 +48,22 @@ async function getEffectiveUserId() {
 // なりすましを終了
 function stopImpersonation() {
     localStorage.removeItem('admin_impersonate_user');
-    window.location.reload();
+    // 管理画面に戻る
+    const inSub = ['/admin/', '/mypage/', '/poker/', '/mahjong/', '/badge/', '/omikuji/', '/ranking/'].some(d => window.location.pathname.includes(d));
+    window.location.href = inSub ? '../admin/index.html' : 'admin/index.html';
+}
+
+// なりすましバナーをページ上部に挿入
+function _injectImpersonationBanner(impersonated) {
+    if (document.getElementById('impersonation-banner')) return;
+    const banner = document.createElement('div');
+    banner.id = 'impersonation-banner';
+    banner.className = 'impersonation-banner';
+    banner.style.cssText = 'background:#856404;color:#fff;padding:6px 16px;display:flex;align-items:center;gap:12px;font-size:.9rem;';
+    banner.innerHTML = `<span>🎭 なりすまし中: <strong>${impersonated.name || impersonated.discord_user_id}</strong></span>` +
+        `<button onclick="stopImpersonation()" style="background:#dc3545;color:#fff;border:none;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:.8rem;margin-left:auto;">終了</button>`;
+    document.body.prepend(banner);
+    document.body.classList.add('user-impersonating');
 }
 
 // ===== 認証機能 =====
@@ -94,6 +109,11 @@ async function displayUserInfo() {
 
     // なりすまし中の処理
     const impersonated = getImpersonatedUser();
+
+    // #user-info の有無に関わらず全ページでバナーを表示
+    if (impersonated) {
+        _injectImpersonationBanner(impersonated);
+    }
 
     if (user) {
         // ログイン済み
@@ -177,6 +197,7 @@ async function displayUserInfo() {
 
             // なりすまし中の表示
             if (impersonated) {
+                _injectImpersonationBanner(impersonated);
                 userInfoElement.innerHTML = `
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <a href="${mypagePath}?user=${impersonated.discord_user_id}" style="display: flex; align-items: center; text-decoration: none; color: inherit;">
