@@ -511,7 +511,8 @@
             const key = r.discord_user_id || r.account_name;
             if (!map[key]) {
                 const p = profileMap[r.discord_user_id] || {};
-                map[key] = { id: r.discord_user_id, name: p.account_name || r.account_name,
+                const rawName = p.account_name || r.account_name;
+                map[key] = { id: r.discord_user_id, name: (rawName && rawName !== r.discord_user_id ? rawName : null) || '名前未設定',
                     avatar: p.avatar_url || null, team: r.team_name || '',
                     badge_left:  p.badges?.image_url       || null,
                     badge_right: p.badges_right?.image_url || null,

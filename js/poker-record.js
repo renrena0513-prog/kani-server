@@ -575,10 +575,10 @@ async function submitScores() {
     for (const entry of entries) {
         const input = entry.querySelector('.player-account');
         const discordUserId = input.dataset.discordUserId || '';
-        const accountName = input.dataset.accountName || input.value.trim();
+        const accountName = input.dataset.accountName || null;
         const rankIdx = entry.dataset.rowIndex;
 
-        if (!accountName) continue;
+        if (!accountName && !discordUserId) continue;
 
         const teamId = entry.querySelector('.player-team')?.value;
         let teamName = null;
