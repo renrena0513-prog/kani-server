@@ -206,6 +206,10 @@
         /* 1位シマーアニメ */
         @keyframes shimmer { 0%,100%{opacity:.55} 50%{opacity:1} }
         .team-card.r1::after { content:''; position:absolute; inset:0; background:linear-gradient(105deg,transparent 40%,rgba(255,220,100,.08) 50%,transparent 60%); pointer-events:none; animation:shimmer 2.8s ease-in-out infinite; }
+        /* スクロールフェードイン */
+        @keyframes fadeSlideUp { from { opacity:0; transform:translateY(22px); } to { opacity:1; transform:translateY(0); } }
+        .scroll-hidden { opacity:0; transform:translateY(22px); }
+        .scroll-visible { animation:fadeSlideUp .5s cubic-bezier(.22,.68,0,1.2) both; }
         .tc-arrow { font-size:.8rem; color:rgba(255,255,255,.3); margin-left:4px; transition:transform .2s; }
         .team-card.open .tc-arrow { transform:rotate(180deg); }
         /* 統計行 */
@@ -754,6 +758,27 @@
         });
 
         el.innerHTML = html;
+
+        // スクロールフェードイン
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry, i) => {
+                if (entry.isIntersecting) {
+                    const el = entry.target;
+                    const delay = el.dataset.delay || 0;
+                    setTimeout(() => {
+                        el.classList.remove('scroll-hidden');
+                        el.classList.add('scroll-visible');
+                    }, delay);
+                    observer.unobserve(el);
+                }
+            });
+        }, { threshold: 0.08 });
+
+        el.querySelectorAll('.team-card, .finalist-banner, .finalist-sep').forEach((card, i) => {
+            card.classList.add('scroll-hidden');
+            card.dataset.delay = i * 60;
+            observer.observe(card);
+        });
     }
     </script>
 </body>
