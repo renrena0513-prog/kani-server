@@ -216,13 +216,9 @@
         @keyframes shimmer { 0%,100%{opacity:.55} 50%{opacity:1} }
         .team-card.r1::after { content:''; position:absolute; inset:0; background:linear-gradient(105deg,transparent 40%,rgba(255,220,100,.08) 50%,transparent 60%); pointer-events:none; animation:shimmer 2.8s ease-in-out infinite; }
         /* スクロールフェードイン */
-        @keyframes fadeSlideUp {
-            0%   { opacity:0; transform:translateY(90px); }
-            20%  { opacity:1; transform:translateY(70px); }
-            100% { opacity:1; transform:translateY(0); }
-        }
-        .scroll-hidden { opacity:0; transform:translateY(90px); }
-        .scroll-visible { animation:fadeSlideUp 1.8s cubic-bezier(.06,.8,.14,1) both; }
+        @keyframes fadeSlideUp { from { opacity:0; transform:translateY(140px); } to { opacity:1; transform:translateY(0); } }
+        .scroll-hidden { opacity:0; transform:translateY(140px); }
+        .scroll-visible { animation:fadeSlideUp 2.0s cubic-bezier(.08,.82,.17,1) both; }
         .tc-arrow { font-size:.8rem; color:rgba(255,255,255,.3); margin-left:4px; transition:transform .2s; }
         .team-card.open .tc-arrow { transform:rotate(180deg); }
         /* 統計行 */
