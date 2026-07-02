@@ -702,20 +702,15 @@ async function submitScores() {
         for (const player of dataToInsert) {
             if (!player.discord_user_id) continue;
 
-            const isRecorder = player.discord_user_id === submittedBy;
-            const ticketChance = isRecorder ? 0.50 : 0.30;
-            let ticketReward = Math.random() < ticketChance ? 1 : 0;
-            if (player.rank === 1 && Math.random() < 0.80) ticketReward++;
-
             const coinReward = coinTable[player.rank] || 0;
             const chipReward = chipTable[player.rank] || 0;
 
             try {
-                if (coinReward > 0 || ticketReward > 0 || chipReward > 0) {
+                if (coinReward > 0 || chipReward > 0) {
                     const { error: rewardErr } = await supabaseClient.rpc('award_poker_rewards', {
                         p_discord_user_id: player.discord_user_id,
                         p_coins:   coinReward,
-                        p_tickets: ticketReward,
+                        p_tickets: 0,
                         p_chips:   chipReward,
                     });
                     if (rewardErr) console.error(`報酬付与エラー (${player.account_name}):`, rewardErr);
@@ -729,11 +724,10 @@ async function submitScores() {
                         score: player.final_score,
                         team: player.team_name,
                         coin_reward: coinReward,
-                        ticket_reward: ticketReward,
                         chip_reward: chipReward,
                     }
                 });
-                console.log(`${player.account_name} 報酬: マネー=${coinReward}, チケット=${ticketReward}, チップ=${chipReward}`);
+                console.log(`${player.account_name} 報酬: マネー=${coinReward}, チップ=${chipReward}`);
             } catch (err) {
                 console.error(`報酬付与エラー (${player.account_name}):`, err);
             }
