@@ -280,6 +280,34 @@
         }
         .sub-btn:hover:not(.active) { border-color:rgba(255,255,255,.3); color:rgba(255,255,255,.8); }
 
+        /* 卓人数フィルター */
+        .tbl-btn {
+            padding:5px 16px; border-radius:50px;
+            border:1.5px solid rgba(255,255,255,.18);
+            background:rgba(255,255,255,.04);
+            color:rgba(255,255,255,.5);
+            font-size:.8rem; font-weight:600;
+            cursor:pointer; transition:all .2s;
+        }
+        .tbl-btn.active {
+            background:rgba(255,255,255,.15);
+            border-color:rgba(255,255,255,.4);
+            color:white;
+        }
+        .tbl-btn:hover:not(.active) { border-color:rgba(255,255,255,.3); color:rgba(255,255,255,.8); }
+
+        /* 報酬ルールボタン */
+        .rules-link-btn {
+            display:inline-flex; align-items:center; gap:6px;
+            padding:8px 22px; border-radius:50px;
+            background:linear-gradient(135deg,rgba(212,168,83,.3) 0%,rgba(180,120,20,.15) 100%);
+            border:1.5px solid rgba(212,168,83,.55);
+            color:#ffe08a; font-size:.85rem; font-weight:700;
+            text-decoration:none; transition:all .2s;
+            box-shadow:0 0 10px rgba(212,168,83,.12);
+        }
+        .rules-link-btn:hover { background:rgba(212,168,83,.35); color:#fff; transform:translateY(-1px); }
+
         @media (max-width:600px) {
             .r1 .podium-avatar { width:52px;height:52px; }
             .r2 .podium-avatar { width:46px;height:46px; }
@@ -302,6 +330,7 @@
             <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item" href="./index.html">🃏 ランキング</a></li>
             <li><a class="dropdown-item" href="./record.html">📝 記録する</a></li>
+            <li><a class="dropdown-item" href="./rules.html">📖 順位報酬ルール</a></li>
             <li><a class="dropdown-item" href="./users/index.html">👥 ユーザー一覧</a></li>
             <li><a class="dropdown-item" href="./team/index.html">🏅 チーム管理
                 <span id="team-notification-badge" class="notification-badge" style="display:none;">0</span></a></li>
@@ -361,6 +390,24 @@
                     <button class="sub-btn" onclick="setSub('chip',this)">🪙 チップ</button>
                 </div>
             </div>
+            <!-- 卓人数フィルター -->
+            <div id="table-filter-wrap">
+                <div class="filter-label">🃏 卓人数</div>
+                <div class="filter-group" id="table-filter">
+                    <button class="tbl-btn active" onclick="setTableSize('all',this)">全体</button>
+                    <button class="tbl-btn" onclick="setTableSize(4,this)">4人卓</button>
+                    <button class="tbl-btn" onclick="setTableSize(5,this)">5人卓</button>
+                    <button class="tbl-btn" onclick="setTableSize(6,this)">6人卓</button>
+                    <button class="tbl-btn" onclick="setTableSize(7,this)">7人卓</button>
+                    <button class="tbl-btn" onclick="setTableSize(8,this)">8人卓</button>
+                    <button class="tbl-btn" onclick="setTableSize(9,this)">9人卓</button>
+                    <button class="tbl-btn" onclick="setTableSize(10,this)">10人卓</button>
+                </div>
+            </div>
+            <!-- 報酬ルールボタン -->
+            <div>
+                <a href="./rules.html" class="rules-link-btn">📖 順位報酬ルールを見る</a>
+            </div>
         </div>
 
         <div class="main-wrap">
@@ -397,6 +444,7 @@
     let currentTour = 'all';
     let currentMode = 'individual';
     let currentSub  = 'score';
+    let currentTableSize = 'all'; // 'all' | 4〜10
 
     // 大会名インデックス（onclick用）
     let tourList = [];
@@ -406,7 +454,7 @@
     async function loadRanking() {
         const { data: results, error } = await supabaseClient
             .from('poker_results')
-            .select('discord_user_id,account_name,final_score,rank,team_name,tournament_type,match_mode,event_datetime');
+            .select('discord_user_id,account_name,final_score,rank,team_name,tournament_type,match_mode,event_datetime,player_count');
         if (error) { console.error(error); return; }
         allResults = results || [];
 
@@ -465,6 +513,7 @@
         document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         document.getElementById('sub-filter-wrap').style.display = val === 'individual' ? '' : 'none';
+        document.getElementById('table-filter-wrap').style.display = val === 'individual' ? '' : 'none';
         // チームモードに切り替えたとき、大会フィルターを最初の大会に自動セット
         if (val === 'team' && tourList.length > 0) {
             const tourBtns = document.querySelectorAll('.tour-btn');
@@ -484,9 +533,21 @@
         render();
     }
 
+    function setTableSize(val, btn) {
+        currentTableSize = val;
+        document.querySelectorAll('.tbl-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        render();
+    }
+
     function filtered() {
-        if (currentTour === 'all') return allResults;
-        return allResults.filter(r => r.tournament_type === currentTour);
+        let rows = allResults;
+        if (currentTour !== 'all') rows = rows.filter(r => r.tournament_type === currentTour);
+        // 卓人数フィルターは個人ランキングのみ
+        if (currentMode === 'individual' && currentTableSize !== 'all') {
+            rows = rows.filter(r => Number(r.player_count) === currentTableSize);
+        }
+        return rows;
     }
 
     function _badgeHtml(src, isMutant) {
