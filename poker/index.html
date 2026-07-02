@@ -280,21 +280,22 @@
         }
         .sub-btn:hover:not(.active) { border-color:rgba(255,255,255,.3); color:rgba(255,255,255,.8); }
 
-        /* 卓人数フィルター */
-        .tbl-btn {
-            padding:5px 16px; border-radius:50px;
+        /* 卓人数フィルター（プルダウン） */
+        .table-select {
+            padding:6px 36px 6px 16px; border-radius:50px;
             border:1.5px solid rgba(255,255,255,.18);
-            background:rgba(255,255,255,.04);
-            color:rgba(255,255,255,.5);
+            background:rgba(255,255,255,.06);
+            color:rgba(255,255,255,.85);
             font-size:.8rem; font-weight:600;
             cursor:pointer; transition:all .2s;
+            appearance:none; -webkit-appearance:none;
+            background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(255,255,255,0.5)'/%3E%3C/svg%3E");
+            background-repeat:no-repeat;
+            background-position:right 14px center;
         }
-        .tbl-btn.active {
-            background:rgba(255,255,255,.15);
-            border-color:rgba(255,255,255,.4);
-            color:white;
-        }
-        .tbl-btn:hover:not(.active) { border-color:rgba(255,255,255,.3); color:rgba(255,255,255,.8); }
+        .table-select:hover { border-color:rgba(255,255,255,.4); }
+        .table-select:focus { outline:none; border-color:rgba(255,255,255,.5); background-color:rgba(255,255,255,.12); }
+        .table-select option { background:#0d2f5c; color:#fff; }
 
         /* 報酬ルールボタン */
         .rules-link-btn {
@@ -393,16 +394,16 @@
             <!-- 卓人数フィルター -->
             <div id="table-filter-wrap">
                 <div class="filter-label">🃏 卓人数</div>
-                <div class="filter-group" id="table-filter">
-                    <button class="tbl-btn active" onclick="setTableSize('all',this)">全体</button>
-                    <button class="tbl-btn" onclick="setTableSize(4,this)">4人卓</button>
-                    <button class="tbl-btn" onclick="setTableSize(5,this)">5人卓</button>
-                    <button class="tbl-btn" onclick="setTableSize(6,this)">6人卓</button>
-                    <button class="tbl-btn" onclick="setTableSize(7,this)">7人卓</button>
-                    <button class="tbl-btn" onclick="setTableSize(8,this)">8人卓</button>
-                    <button class="tbl-btn" onclick="setTableSize(9,this)">9人卓</button>
-                    <button class="tbl-btn" onclick="setTableSize(10,this)">10人卓</button>
-                </div>
+                <select id="table-size-select" class="table-select" onchange="setTableSize(this)">
+                    <option value="all" selected>全体</option>
+                    <option value="4">4人卓</option>
+                    <option value="5">5人卓</option>
+                    <option value="6">6人卓</option>
+                    <option value="7">7人卓</option>
+                    <option value="8">8人卓</option>
+                    <option value="9">9人卓</option>
+                    <option value="10">10人卓</option>
+                </select>
             </div>
             <!-- 報酬ルールボタン -->
             <div>
@@ -445,6 +446,17 @@
     let currentMode = 'individual';
     let currentSub  = 'score';
     let currentTableSize = 'all'; // 'all' | 4〜10
+
+    // チップ付与テーブル（卓別チップ集計用）※ js/poker-record.js と同期させること
+    const CHIP_REWARD_TABLE = {
+        4:  { 1: 120, 2:  70, 3:  30, 4:  10 },
+        5:  { 1: 150, 2:  90, 3:  50, 4:  20, 5:  10 },
+        6:  { 1: 180, 2: 110, 3:  70, 4:  40, 5:  20, 6:  10 },
+        7:  { 1: 210, 2: 130, 3:  90, 4:  60, 5:  30, 6:  20, 7:  10 },
+        8:  { 1: 240, 2: 150, 3: 110, 4:  70, 5:  50, 6:  30, 7:  20, 8:  10 },
+        9:  { 1: 270, 2: 170, 3: 130, 4:  90, 5:  60, 6:  40, 7:  30, 8:  20, 9:  10 },
+        10: { 1: 300, 2: 190, 3: 150, 4: 110, 5:  80, 6:  60, 7:  40, 8:  30, 9:  20, 10:  10 },
+    };
 
     // 大会名インデックス（onclick用）
     let tourList = [];
@@ -533,10 +545,8 @@
         render();
     }
 
-    function setTableSize(val, btn) {
-        currentTableSize = val;
-        document.querySelectorAll('.tbl-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
+    function setTableSize(sel) {
+        currentTableSize = sel.value === 'all' ? 'all' : Number(sel.value);
         render();
     }
 
@@ -578,25 +588,31 @@
                     badge_left:  p.badges?.image_url       || null,
                     badge_right: p.badges_right?.image_url || null,
                     score: 0, count: 0, wins: 0, positives: 0,
-                    chips: chipMap[r.discord_user_id] || 0 };
+                    chips: chipMap[r.discord_user_id] || 0, chipsEarned: 0 };
             }
             map[key].score += Number(r.final_score);
             map[key].count++;
             if (Number(r.rank) === 1) map[key].wins++;
             if (Number(r.final_score) > 0) map[key].positives++;
+            map[key].chipsEarned += CHIP_REWARD_TABLE[r.player_count]?.[r.rank] || 0;
         });
-        // chipモードはpoker_profilesの全員が対象（試合未参加でもchips>0なら表示）
         if (currentSub === 'chip') {
-            Object.entries(chipMap).forEach(([uid, chips]) => {
-                if (!map[uid]) {
-                    const p = profileMap[uid] || {};
-                    map[uid] = { id: uid, name: p.account_name || uid,
-                        avatar: p.avatar_url || null, team: '',
-                        badge_left:  p.badges?.image_url       || null,
-                        badge_right: p.badges_right?.image_url || null,
-                        score: 0, count: 0, wins: 0, positives: 0, chips };
-                }
-            });
+            if (currentTableSize === 'all') {
+                // 全体は現在の残高ベース。試合未参加でもchips>0なら表示
+                Object.entries(chipMap).forEach(([uid, chips]) => {
+                    if (!map[uid]) {
+                        const p = profileMap[uid] || {};
+                        map[uid] = { id: uid, name: p.account_name || uid,
+                            avatar: p.avatar_url || null, team: '',
+                            badge_left:  p.badges?.image_url       || null,
+                            badge_right: p.badges_right?.image_url || null,
+                            score: 0, count: 0, wins: 0, positives: 0, chips, chipsEarned: 0 };
+                    }
+                });
+            } else {
+                // 卓別はその卓の試合で獲得したチップで集計
+                Object.values(map).forEach(p => { p.chips = p.chipsEarned; });
+            }
         }
         const arr = Object.values(map);
         const sorters = {
