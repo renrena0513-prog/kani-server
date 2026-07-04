@@ -581,7 +581,10 @@ async function submitScores() {
     for (const entry of entries) {
         const input = entry.querySelector('.player-account');
         const discordUserId = input.dataset.discordUserId || '';
-        const accountName = input.dataset.accountName || null;
+        const accountName = input.dataset.accountName ||
+            allProfiles.find(p => p.discord_user_id === discordUserId)?.account_name ||
+            discordUserId ||
+            null;
         const rankIdx = entry.dataset.rowIndex;
 
         if (!accountName && !discordUserId) continue;
@@ -616,7 +619,7 @@ async function submitScores() {
         return;
     }
 
-    const names = tempData.map(p => p.account_name);
+    const names = tempData.map(p => p.account_name).filter(n => n != null);
     if (new Set(names).size !== names.length) {
         showNotice('アカウント名が重複しています。', 'warning');
         resetBtn();
