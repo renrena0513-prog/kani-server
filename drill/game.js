@@ -81,6 +81,27 @@ const SHOP_ITEMS = [
   { id:'journeyman',   name:'一人前のドリル',   cost:2000,  type:'drill', drillId:'journeyman' },
   { id:'veteran',      name:'熟練のドリル',     cost:10000, type:'drill', drillId:'veteran' },
   { id:'drill_attack', name:'ドリルアタック',   cost:100,   type:'card',  cardId:'drill_attack' },
+  // 剣カード（価格は管理画面ショップ設定で調整可）
+  { id:'sword_clay_d',   name:'粘土の剣 D', cost:200,    type:'card', cardId:'sword_clay_d' },
+  { id:'sword_clay_c',   name:'粘土の剣 C', cost:400,    type:'card', cardId:'sword_clay_c' },
+  { id:'sword_clay_b',   name:'粘土の剣 B', cost:800,    type:'card', cardId:'sword_clay_b' },
+  { id:'sword_clay_a',   name:'粘土の剣 A', cost:1600,   type:'card', cardId:'sword_clay_a' },
+  { id:'sword_clay_s',   name:'粘土の剣 S', cost:3000,   type:'card', cardId:'sword_clay_s' },
+  { id:'sword_stone_d',  name:'石の剣 D',   cost:1000,   type:'card', cardId:'sword_stone_d' },
+  { id:'sword_stone_c',  name:'石の剣 C',   cost:1500,   type:'card', cardId:'sword_stone_c' },
+  { id:'sword_stone_b',  name:'石の剣 B',   cost:2500,   type:'card', cardId:'sword_stone_b' },
+  { id:'sword_stone_a',  name:'石の剣 A',   cost:5000,   type:'card', cardId:'sword_stone_a' },
+  { id:'sword_stone_s',  name:'石の剣 S',   cost:10000,  type:'card', cardId:'sword_stone_s' },
+  { id:'sword_copper_d', name:'銅の剣 D',   cost:3000,   type:'card', cardId:'sword_copper_d' },
+  { id:'sword_copper_c', name:'銅の剣 C',   cost:5000,   type:'card', cardId:'sword_copper_c' },
+  { id:'sword_copper_b', name:'銅の剣 B',   cost:8000,   type:'card', cardId:'sword_copper_b' },
+  { id:'sword_copper_a', name:'銅の剣 A',   cost:15000,  type:'card', cardId:'sword_copper_a' },
+  { id:'sword_copper_s', name:'銅の剣 S',   cost:30000,  type:'card', cardId:'sword_copper_s' },
+  { id:'sword_iron_d',   name:'鉄の剣 D',   cost:20000,  type:'card', cardId:'sword_iron_d' },
+  { id:'sword_iron_c',   name:'鉄の剣 C',   cost:30000,  type:'card', cardId:'sword_iron_c' },
+  { id:'sword_iron_b',   name:'鉄の剣 B',   cost:50000,  type:'card', cardId:'sword_iron_b' },
+  { id:'sword_iron_a',   name:'鉄の剣 A',   cost:100000, type:'card', cardId:'sword_iron_a' },
+  { id:'sword_iron_s',   name:'鉄の剣 S',   cost:200000, type:'card', cardId:'sword_iron_s' },
 ];
 
 const PERMITS = {
@@ -154,6 +175,37 @@ let CARDS = {
   attack:       { id:'attack',       name:'攻撃',         desc:'50ダメージ',   icon:'⚔️', imageUrl:null, damage:50  },
   drill_attack: { id:'drill_attack', name:'ドリルアタック', desc:'100ダメージ',  icon:'⛏️', imageUrl:null, damage:100 },
 };
+
+// カードバトル：キャラ基礎ステータス（管理画面 combatStats で上書き可）
+const DEF_COEF = 200; // 防御係数
+let COMBAT_STATS = {
+  attack: 50, defense: 50, critRate: 10, critDmg: 1.5, maxAp: 100, apRegen: 10,
+};
+
+// カードのリッチ攻撃力を計算（1枚使用時の合計ダメージ）
+// リッチフィールド(base_attack/mult_min...)が無いカードは従来どおり固定damage
+function computeCardDamage(cardDef, enemyDefense = null) {
+  if (!cardDef) return 0;
+  const hasRich = cardDef.base_attack != null || cardDef.mult_max != null;
+  if (!hasRich) return cardDef.damage || 0;
+
+  const def = enemyDefense != null ? enemyDefense : (C?.monster?.defense ?? 0);
+  const hits = Math.max(1, Number(cardDef.hit_count) || 1);
+  const min = Number(cardDef.mult_min ?? 1);
+  const max = Number(cardDef.mult_max ?? min);
+  const totalAtk = COMBAT_STATS.attack + (Number(cardDef.base_attack) || 0);
+  const critRate = (COMBAT_STATS.critRate + (Number(cardDef.crit_rate_bonus) || 0)) / 100;
+  const critDmg  = COMBAT_STATS.critDmg + (Number(cardDef.crit_dmg_bonus) || 0);
+
+  let total = 0;
+  for (let h = 0; h < hits; h++) {
+    const mult = min + Math.random() * (max - min);
+    let dmg = Math.max(1, totalAtk * mult * (DEF_COEF / (DEF_COEF + def)));
+    if (Math.random() < critRate) dmg *= critDmg;
+    total += Math.floor(dmg);
+  }
+  return total;
+}
 
 // モンスター定義
 let MONSTERS = {
@@ -432,8 +484,20 @@ async function loadGameConfig() {
           icon: v.icon ?? CARDS[id]?.icon ?? '❓',
           imageUrl: v.imageUrl ?? null,
           damage: v.damage ?? CARDS[id]?.damage ?? 0,
+          // リッチフィールド（あれば戦闘でダメージ計算に使用）
+          rarity:          v.rarity ?? CARDS[id]?.rarity ?? null,
+          ap_cost:         v.ap_cost ?? CARDS[id]?.ap_cost ?? null,
+          base_attack:     v.base_attack ?? CARDS[id]?.base_attack ?? null,
+          mult_min:        v.mult_min ?? CARDS[id]?.mult_min ?? null,
+          mult_max:        v.mult_max ?? CARDS[id]?.mult_max ?? null,
+          crit_rate_bonus: v.crit_rate_bonus ?? CARDS[id]?.crit_rate_bonus ?? null,
+          crit_dmg_bonus:  v.crit_dmg_bonus ?? CARDS[id]?.crit_dmg_bonus ?? null,
+          hit_count:       v.hit_count ?? CARDS[id]?.hit_count ?? null,
         };
       }
+    }
+    if (cfg.combatStats) {
+      Object.assign(COMBAT_STATS, cfg.combatStats);
     }
     if (cfg.items) {
       for (const [id, v] of Object.entries(cfg.items)) {
@@ -2386,7 +2450,7 @@ async function playCard(cardIdx) {
   const cardDef = CARDS[cardId];
   if (!cardDef) return;
 
-  const damage = cardDef.damage || 0;
+  const damage = computeCardDamage(cardDef);
   if (damage > 0) combatAddLog(`⚔️ ${cardDef.name}！ ${C.monster.name}に ${damage} ダメージ`);
 
   // 手札全捨て

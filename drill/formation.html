@@ -355,8 +355,8 @@ function cardHTML(cardId, slotNum) {
   return `
     <div class="card-slot-num">${slotNum}</div>
     ${cardVisual(c)}
-    <div class="card-name">${c.name}</div>
-    <div class="card-dmg">${c.damage ?? 0}</div>`;
+    <div class="card-name">${c.rarity ? `[${c.rarity}] ` : ''}${c.name}</div>
+    <div class="card-dmg">${c.ap_cost != null ? `⚡${c.ap_cost} ` : ''}${c.damage ?? 0}</div>`;
 }
 
 function renderEquipped() {
@@ -407,8 +407,8 @@ function renderUnequipped() {
     card.dataset.cardId = cardId;
     card.innerHTML = `
       ${cardVisual(c)}
-      <div class="card-name">${c.name}</div>
-      <div class="card-dmg">${c.damage ?? 0}</div>
+      <div class="card-name">${c.rarity ? `[${c.rarity}] ` : ''}${c.name}</div>
+      <div class="card-dmg">${c.ap_cost != null ? `⚡${c.ap_cost} ` : ''}${c.damage ?? 0}</div>
       ${count > 1 ? `<div style="font-size:.58rem;opacity:.55;">×${count}</div>` : ''}`;
 
     card.draggable = true;
