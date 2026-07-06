@@ -9,15 +9,25 @@ async function fetchPokerRecords() {
     document.getElementById('poker-records-body').innerHTML =
         '<tr><td colspan="3" class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span>読み込み中...</td></tr>';
 
-    const { data, error } = await supabaseClient
-        .from('poker_results')
-        .select('*')
-        .order('event_datetime', { ascending: false });
-
-    if (error) {
-        document.getElementById('poker-records-body').innerHTML =
-            `<tr><td colspan="3" class="text-center text-danger py-4">読み込みエラー: ${error.message}</td></tr>`;
-        return;
+    // Supabaseの1000件上限を超える分もページ送りで全件取得
+    let data = [];
+    let page = 0;
+    const pageSize = 1000;
+    while (true) {
+        const { data: chunk, error } = await supabaseClient
+            .from('poker_results')
+            .select('*')
+            .order('event_datetime', { ascending: false })
+            .range(page * pageSize, (page + 1) * pageSize - 1);
+        if (error) {
+            document.getElementById('poker-records-body').innerHTML =
+                `<tr><td colspan="3" class="text-center text-danger py-4">読み込みエラー: ${error.message}</td></tr>`;
+            return;
+        }
+        if (!chunk || chunk.length === 0) break;
+        data = data.concat(chunk);
+        if (chunk.length < pageSize) break;
+        page++;
     }
 
     pokerRecordsRaw = data || [];

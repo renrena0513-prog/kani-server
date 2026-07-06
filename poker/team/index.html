@@ -589,14 +589,32 @@
     async function loadTeamStats() {
         const memberIds = teamMembers.map(m => m.discord_user_id);
         if (memberIds.length === 0) return;
-        const [{ data: results }, { data: chipProfiles }, { data: allTeamResults }] = await Promise.all([
+        // 全チーム結果は1000件上限を超えるためページ送りで全件取得
+        async function fetchAllTeamResults() {
+            let out = [];
+            let page = 0;
+            const pageSize = 1000;
+            while (true) {
+                const { data } = await supabaseClient
+                    .from('poker_results')
+                    .select('team_name, final_score')
+                    .not('team_name', 'is', null)
+                    .range(page * pageSize, (page + 1) * pageSize - 1);
+                if (!data || data.length === 0) break;
+                out = out.concat(data);
+                if (data.length < pageSize) break;
+                page++;
+            }
+            return out;
+        }
+        const [{ data: results }, { data: chipProfiles }, allTeamResults] = await Promise.all([
             supabaseClient
                 .from('poker_results')
                 .select('discord_user_id, final_score, rank, player_count, tournament_type, event_datetime, account_name')
                 .in('discord_user_id', memberIds)
                 .order('event_datetime', { ascending: false }),
             supabaseClient.from('profiles').select('discord_user_id, tip, avatar_url, equipped_badge_id, equipped_badge_id_right, badges!equipped_badge_id(image_url), badges_right:badges!equipped_badge_id_right(image_url)').in('discord_user_id', memberIds),
-            supabaseClient.from('poker_results').select('team_name, final_score').not('team_name', 'is', null)
+            fetchAllTeamResults()
         ]);
         const all = results || [];
 
