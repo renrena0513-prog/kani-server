@@ -519,6 +519,27 @@
             transition: all .2s;
         }
         .jp-action-btn:hover { background: rgba(255,255,255,.1); color: rgba(245,230,200,.9); }
+
+        /* おみくじランキングへのリンクボタン */
+        .jp-ranking-link {
+            display: inline-block;
+            margin: 4px auto 24px;
+            padding: 9px 26px;
+            background: linear-gradient(135deg, rgba(212,168,83,.18), rgba(212,168,83,.06));
+            border: 1px solid rgba(212,168,83,.45);
+            border-radius: 25px;
+            color: #f0d089;
+            text-decoration: none;
+            font-family: 'Noto Serif JP', serif;
+            font-size: .92rem;
+            letter-spacing: .06em;
+            transition: all .2s;
+        }
+        .jp-ranking-link:hover {
+            background: linear-gradient(135deg, rgba(212,168,83,.3), rgba(212,168,83,.12));
+            color: #f5e6c8;
+            box-shadow: 0 4px 18px rgba(212,168,83,.3);
+        }
         .jp-pay-btn {
             background: linear-gradient(135deg, #7a0000, #aa0000);
             border-color: rgba(212,168,83,.5);
@@ -718,6 +739,8 @@
     <div class="jp-scene">
         <h1 class="jp-title">御 神 籤</h1>
         <p class="jp-subtitle">一日一度の運試し</p>
+
+        <a href="./ranking.html" class="jp-ranking-link">🏆 おみくじランキング</a>
 
         <!-- Login prompt -->
         <div id="login-prompt" style="display:none;">
