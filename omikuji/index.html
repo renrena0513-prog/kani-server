@@ -1074,7 +1074,7 @@
             if (rank === '天照大御神')       return 'rank-god';
             if (rank === '月読命')           return 'rank-moon';
             if (rank.includes('超大吉'))     return 'rank-super';
-            if (rank.includes('大吉') || ['ねむ吉','かに吉'].includes(rank)) return 'rank-daikichi';
+            if (rank.includes('大吉') || rank.includes('ねむ吉') || rank.includes('かに吉')) return 'rank-daikichi';
             if (rank.includes('中吉'))       return 'rank-kichi';
             if (rank.includes('末吉'))       return 'rank-suekichi';
             if (rank.includes('小吉'))       return 'rank-kichi';
