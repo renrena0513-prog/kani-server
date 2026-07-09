@@ -1058,13 +1058,15 @@
         }
 
         function getRankClass(rank) {
+            // 「ノーペア（大凶）」のようなテーマ名付きにも部分一致で対応。判定順序に注意（超大吉→大吉→吉 等）
             if (rank === '天照大御神')       return 'rank-god';
-            if (rank === '超大吉')           return 'rank-super';
-            if (['大吉','ねむ吉','かに吉'].includes(rank)) return 'rank-daikichi';
-            if (['中吉','吉'].includes(rank)) return 'rank-kichi';
-            if (rank === '末吉')             return 'rank-suekichi';
-            if (rank === '凶')               return 'rank-kyo';
-            if (['大凶','むすめ凶'].includes(rank)) return 'rank-daikyo';
+            if (rank.includes('超大吉'))     return 'rank-super';
+            if (rank.includes('大吉') || ['ねむ吉','かに吉'].includes(rank)) return 'rank-daikichi';
+            if (rank.includes('中吉'))       return 'rank-kichi';
+            if (rank.includes('末吉'))       return 'rank-suekichi';
+            if (rank.includes('大凶'))       return 'rank-daikyo';
+            if (rank.includes('凶'))         return 'rank-kyo';
+            if (rank.includes('吉'))         return 'rank-kichi';
             return 'rank-kichi';
         }
 
