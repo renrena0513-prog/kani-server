@@ -403,19 +403,18 @@
         /* Rank color overrides */
         .rank-god      .jp-rank-text { background: linear-gradient(135deg,#FFD700,#FF8C00,#FFD700); -webkit-background-clip:text; background-clip:text; color:transparent; font-size:3.4rem; }
         .rank-super    .jp-rank-text { color: #7a5a00; text-shadow: 0 0 8px rgba(212,168,83,.4); }
-        .rank-gekiatsu .jp-rank-text { background: linear-gradient(135deg,#ff3000,#ff8c00,#ffd700,#ff3000); -webkit-background-clip:text; background-clip:text; color:transparent; text-shadow: 0 0 14px rgba(255,80,0,.35); }
-        .rank-tokudai  .jp-rank-text { color: #8a4a00; text-shadow: 0 0 10px rgba(255,150,50,.45); }
+        .rank-moon     .jp-rank-text { background: linear-gradient(135deg,#c8d8f0,#8fa8d8,#e8f0ff,#a0b8e0); -webkit-background-clip:text; background-clip:text; color:transparent; font-size:3.4rem; text-shadow: 0 0 16px rgba(160,190,255,.4); }
         .rank-daikichi .jp-rank-text { color: #7a3a00; }
         .rank-kichi    .jp-rank-text { color: #2a5a3a; }
         .rank-suekichi .jp-rank-text { color: #4a3a6a; }
         .rank-kyo      .jp-rank-text { color: #5a5a5a; }
         .rank-daikyo   .jp-rank-text { color: #3a3a3a; font-size: 2.6rem; }
 
-        /* 激熱の紙面は熱っぽく */
-        .rank-gekiatsu .jp-scroll-paper {
-            background: linear-gradient(180deg, #fff8ee, #ffeedd, #ffe4c8, #ffeedd, #fff8ee);
-            box-shadow: 4px 0 12px rgba(255,100,0,.3), -4px 0 12px rgba(255,100,0,.3),
-                        0 0 36px rgba(255,120,0,.18);
+        /* 月読命の紙面は月光の静けさ */
+        .rank-moon .jp-scroll-paper {
+            background: linear-gradient(180deg, #f5f8ff, #e8eefc, #dde8fa, #e8eefc, #f5f8ff);
+            box-shadow: 4px 0 12px rgba(140,170,255,.35), -4px 0 12px rgba(140,170,255,.35),
+                        0 0 40px rgba(160,190,255,.2);
         }
 
         /* God rank glow on scroll */
@@ -936,14 +935,10 @@
                 count = 180;
                 colors = ['#FFD700','#FFC200','#FFD700','#fffacd','#f5e6c8'];
                 sizeRange = [2, 7];
-            } else if (rankClass === 'rank-gekiatsu') {
-                count = 220;
-                colors = ['#ff3000','#ff6347','#ff8c00','#ffd700','#ff4500','#ffa500'];
+            } else if (rankClass === 'rank-moon') {
+                count = 280;
+                colors = ['#e8f0ff','#c8d8f0','#a0b8e0','#ffffff','#d0e0ff','#8fa8d8'];
                 sizeRange = [2, 8];
-            } else if (rankClass === 'rank-tokudai') {
-                count = 150;
-                colors = ['#FFD700','#ffb030','#d4a853','#fffacd','#ff8c00'];
-                sizeRange = [2, 6];
             } else if (rankClass === 'rank-daikichi') {
                 count = 120;
                 colors = ['#FFD700','#d4a853','#ffb7c5','#ffd1dc','#f5e6c8'];
@@ -964,7 +959,7 @@
 
             for (let i = 0; i < count; i++) {
                 const angle = Math.random() * Math.PI * 2;
-                const speed = 3 + Math.random() * (rankClass === 'rank-god' ? 12 : 8);
+                const speed = 3 + Math.random() * (rankClass === 'rank-god' || rankClass === 'rank-moon' ? 12 : 8);
                 particles.push({
                     x: cx, y: cy,
                     vx: Math.cos(angle) * speed,
@@ -1075,11 +1070,10 @@
         }
 
         function getRankClass(rank) {
-            // 「ハイカード（大凶）」のようなテーマ名付きにも部分一致で対応。判定順序に注意（超大吉→特大吉→大吉→吉 等）
+            // 「ハイカード（大凶）」のようなテーマ名付きにも部分一致で対応。判定順序に注意（超大吉→大吉→吉 等）
             if (rank === '天照大御神')       return 'rank-god';
+            if (rank === '月読命')           return 'rank-moon';
             if (rank.includes('超大吉'))     return 'rank-super';
-            if (rank.includes('激熱'))       return 'rank-gekiatsu';
-            if (rank.includes('特大吉'))     return 'rank-tokudai';
             if (rank.includes('大吉') || ['ねむ吉','かに吉'].includes(rank)) return 'rank-daikichi';
             if (rank.includes('中吉'))       return 'rank-kichi';
             if (rank.includes('末吉'))       return 'rank-suekichi';
