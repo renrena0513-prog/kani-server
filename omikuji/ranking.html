@@ -42,6 +42,37 @@
             margin-bottom: 28px;
         }
 
+        /* ── 期間切り替えタブ ── */
+        .jp-tabs {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+        .jp-tab {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 9px 20px;
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(245,230,200,.18);
+            border-radius: 22px;
+            color: rgba(245,230,200,.6);
+            font-family: 'Noto Serif JP', serif;
+            font-size: .9rem;
+            letter-spacing: .04em;
+            cursor: pointer;
+            transition: all .2s;
+        }
+        .jp-tab:hover { background: rgba(255,255,255,.08); color: rgba(245,230,200,.85); }
+        .jp-tab.active {
+            background: linear-gradient(135deg, rgba(212,168,83,.28), rgba(60,20,90,.4));
+            border-color: rgba(212,168,83,.6);
+            color: #f5e6c8;
+            box-shadow: 0 4px 16px rgba(212,168,83,.25);
+        }
+        .jp-tab-sub { font-size: .72rem; opacity: .7; }
+
         /* ── 全体合計カード ── */
         .jp-total-card {
             display: flex;
@@ -172,6 +203,12 @@
         <h1 class="jp-title">御神籤ランキング</h1>
         <p class="jp-subtitle">おみくじで得たマネーの総額くらべ</p>
 
+        <!-- 期間切り替えタブ -->
+        <div class="jp-tabs">
+            <button class="jp-tab active" data-mode="all" onclick="switchMode('all')">📜 今までの全部</button>
+            <button class="jp-tab" data-mode="new" onclick="switchMode('new')">🎋 新おみくじ<span class="jp-tab-sub">6/21〜</span></button>
+        </div>
+
         <!-- 全体合計 -->
         <div class="jp-total-card">
             <div class="jp-total-box">
@@ -200,6 +237,12 @@
     <script>
         const AVATAR_FALLBACK = 'https://ui-avatars.com/api/?name=?&background=3a1a5c&color=fff&size=48';
         const EXCLUDED_RANKING_USERS = new Set(['1184908452959621233']);
+        // 新おみくじ開始: 2026年6月21日 00:00 JST（= 前日15:00 UTC）
+        const NEW_OMIKUJI_START = new Date('2026-06-20T15:00:00Z').getTime();
+
+        let allLogs = [];        // { user_id, amount, created_at } 全期間分をキャッシュ
+        let profileMap = {};     // discord_user_id -> profile
+        let currentMode = 'all'; // 'all' | 'new'
 
         // activity_logs はデフォルト1000件上限のためページ送りで全件取得
         async function fetchAllOmikujiLogs() {
@@ -209,7 +252,7 @@
             while (true) {
                 const { data, error } = await supabaseClient
                     .from('activity_logs')
-                    .select('user_id, amount')
+                    .select('user_id, amount, created_at')
                     .eq('action_type', 'omikuji')
                     .order('created_at', { ascending: true })
                     .range(from, from + batchSize - 1);
@@ -224,80 +267,96 @@
         async function loadRanking() {
             const listEl = document.getElementById('rank-list');
             try {
-                const logs = await fetchAllOmikujiLogs();
+                allLogs = await fetchAllOmikujiLogs();
 
-                // 全体合計（全ユーザー分）
-                let grandDraws = 0;
-                let grandMoney = 0;
-                const stats = {}; // user_id -> { money, draws }
-                logs.forEach(l => {
-                    grandDraws++;
-                    grandMoney += l.amount || 0;
-                    if (!l.user_id) return;
-                    if (!stats[l.user_id]) stats[l.user_id] = { money: 0, draws: 0 };
-                    stats[l.user_id].money += l.amount || 0;
-                    stats[l.user_id].draws++;
-                });
+                // 全期間の登場ユーザーぶんのプロフィールをまとめて取得（両タブで使い回す）
+                const allIds = [...new Set(allLogs.map(l => l.user_id).filter(Boolean))]
+                    .filter(id => !EXCLUDED_RANKING_USERS.has(id));
 
-                document.getElementById('total-draws').textContent = grandDraws.toLocaleString();
-                document.getElementById('total-money').textContent = grandMoney.toLocaleString();
-
-                // ランキング対象ユーザー
-                const ids = Object.keys(stats).filter(id => !EXCLUDED_RANKING_USERS.has(id));
-                if (ids.length === 0) {
-                    listEl.innerHTML = '<div class="jp-empty">まだ誰もおみくじを引いていません</div>';
-                    return;
+                if (allIds.length > 0) {
+                    const { data: profiles } = await supabaseClient
+                        .from('profiles')
+                        .select('discord_user_id, account_name, avatar_url, is_hidden, equipped_badge_id, equipped_badge_id_right, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name)')
+                        .in('discord_user_id', allIds);
+                    profileMap = {};
+                    (profiles || []).forEach(p => { profileMap[p.discord_user_id] = p; });
                 }
 
-                const { data: profiles } = await supabaseClient
-                    .from('profiles')
-                    .select('discord_user_id, account_name, avatar_url, is_hidden, equipped_badge_id, equipped_badge_id_right, badges!equipped_badge_id(image_url, name), badges_right:badges!equipped_badge_id_right(image_url, name)')
-                    .in('discord_user_id', ids);
-
-                const profileMap = {};
-                (profiles || []).forEach(p => { profileMap[p.discord_user_id] = p; });
-
-                const ranking = ids
-                    .filter(id => {
-                        const p = profileMap[id];
-                        return p && !p.is_hidden; // プロフィール無し・非表示ユーザーは除外
-                    })
-                    .map(id => ({ id, ...stats[id], profile: profileMap[id] }))
-                    .sort((a, b) => b.money - a.money || b.draws - a.draws);
-
-                if (ranking.length === 0) {
-                    listEl.innerHTML = '<div class="jp-empty">表示できるデータがありません</div>';
-                    return;
-                }
-
-                listEl.innerHTML = ranking.map((item, i) => {
-                    const rank = i + 1;
-                    const topClass = rank <= 3 ? `top${rank}` : '';
-                    const p = item.profile || {};
-                    const name = p.account_name || item.id;
-                    const avatar = p.avatar_url || AVATAR_FALLBACK;
-                    const badgeL = p.badges ? `<img class="jp-badge-img" src="${p.badges.image_url}" title="${p.badges.name || ''}">` : '';
-                    const badgeR = p.badges_right ? `<img class="jp-badge-img" src="${p.badges_right.image_url}" title="${p.badges_right.name || ''}">` : '';
-
-                    return `
-                        <div class="jp-rank-row ${topClass}">
-                            <div class="jp-rank-num">${rank}</div>
-                            <img class="jp-avatar" src="${avatar}" onerror="this.src='${AVATAR_FALLBACK}'">
-                            <div class="jp-user-info">
-                                <a href="../mypage/index.html?user=${item.id}" class="jp-user-name">
-                                    ${badgeL}<span style="overflow:hidden;text-overflow:ellipsis;">${name}</span>${badgeR}
-                                </a>
-                                <span class="jp-user-draws">🎋 ${item.draws.toLocaleString()} 回</span>
-                            </div>
-                            <div class="jp-user-money">${item.money.toLocaleString()}<span class="jp-total-unit">マネー</span></div>
-                        </div>
-                    `;
-                }).join('');
-
+                renderRanking(currentMode);
             } catch (err) {
                 console.error('おみくじランキング取得エラー:', err);
                 listEl.innerHTML = '<div class="jp-empty" style="color:#e08;">読み込みエラーが発生しました</div>';
             }
+        }
+
+        function switchMode(mode) {
+            if (mode === currentMode) return;
+            currentMode = mode;
+            document.querySelectorAll('.jp-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
+            renderRanking(mode);
+        }
+
+        function renderRanking(mode) {
+            const listEl = document.getElementById('rank-list');
+
+            // 選択期間でログを絞り込み
+            const logs = mode === 'new'
+                ? allLogs.filter(l => new Date(l.created_at).getTime() >= NEW_OMIKUJI_START)
+                : allLogs;
+
+            // 全体合計（全ユーザー分）＋ ユーザー別集計
+            let grandDraws = 0;
+            let grandMoney = 0;
+            const stats = {}; // user_id -> { money, draws }
+            logs.forEach(l => {
+                grandDraws++;
+                grandMoney += l.amount || 0;
+                if (!l.user_id) return;
+                if (!stats[l.user_id]) stats[l.user_id] = { money: 0, draws: 0 };
+                stats[l.user_id].money += l.amount || 0;
+                stats[l.user_id].draws++;
+            });
+
+            document.getElementById('total-draws').textContent = grandDraws.toLocaleString();
+            document.getElementById('total-money').textContent = grandMoney.toLocaleString();
+
+            const ranking = Object.keys(stats)
+                .filter(id => !EXCLUDED_RANKING_USERS.has(id))
+                .filter(id => {
+                    const p = profileMap[id];
+                    return p && !p.is_hidden; // プロフィール無し・非表示ユーザーは除外
+                })
+                .map(id => ({ id, ...stats[id], profile: profileMap[id] }))
+                .sort((a, b) => b.money - a.money || b.draws - a.draws);
+
+            if (ranking.length === 0) {
+                listEl.innerHTML = '<div class="jp-empty">この期間のデータがありません</div>';
+                return;
+            }
+
+            listEl.innerHTML = ranking.map((item, i) => {
+                const rank = i + 1;
+                const topClass = rank <= 3 ? `top${rank}` : '';
+                const p = item.profile || {};
+                const name = p.account_name || item.id;
+                const avatar = p.avatar_url || AVATAR_FALLBACK;
+                const badgeL = p.badges ? `<img class="jp-badge-img" src="${p.badges.image_url}" title="${p.badges.name || ''}">` : '';
+                const badgeR = p.badges_right ? `<img class="jp-badge-img" src="${p.badges_right.image_url}" title="${p.badges_right.name || ''}">` : '';
+
+                return `
+                    <div class="jp-rank-row ${topClass}">
+                        <div class="jp-rank-num">${rank}</div>
+                        <img class="jp-avatar" src="${avatar}" onerror="this.src='${AVATAR_FALLBACK}'">
+                        <div class="jp-user-info">
+                            <a href="../mypage/index.html?user=${item.id}" class="jp-user-name">
+                                ${badgeL}<span style="overflow:hidden;text-overflow:ellipsis;">${name}</span>${badgeR}
+                            </a>
+                            <span class="jp-user-draws">🎋 ${item.draws.toLocaleString()} 回</span>
+                        </div>
+                        <div class="jp-user-money">${item.money.toLocaleString()}<span class="jp-total-unit">マネー</span></div>
+                    </div>
+                `;
+            }).join('');
         }
 
         document.addEventListener('DOMContentLoaded', loadRanking);
