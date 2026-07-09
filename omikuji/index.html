@@ -403,11 +403,20 @@
         /* Rank color overrides */
         .rank-god      .jp-rank-text { background: linear-gradient(135deg,#FFD700,#FF8C00,#FFD700); -webkit-background-clip:text; background-clip:text; color:transparent; font-size:3.4rem; }
         .rank-super    .jp-rank-text { color: #7a5a00; text-shadow: 0 0 8px rgba(212,168,83,.4); }
+        .rank-gekiatsu .jp-rank-text { background: linear-gradient(135deg,#ff3000,#ff8c00,#ffd700,#ff3000); -webkit-background-clip:text; background-clip:text; color:transparent; text-shadow: 0 0 14px rgba(255,80,0,.35); }
+        .rank-tokudai  .jp-rank-text { color: #8a4a00; text-shadow: 0 0 10px rgba(255,150,50,.45); }
         .rank-daikichi .jp-rank-text { color: #7a3a00; }
         .rank-kichi    .jp-rank-text { color: #2a5a3a; }
         .rank-suekichi .jp-rank-text { color: #4a3a6a; }
         .rank-kyo      .jp-rank-text { color: #5a5a5a; }
         .rank-daikyo   .jp-rank-text { color: #3a3a3a; font-size: 2.6rem; }
+
+        /* 激熱の紙面は熱っぽく */
+        .rank-gekiatsu .jp-scroll-paper {
+            background: linear-gradient(180deg, #fff8ee, #ffeedd, #ffe4c8, #ffeedd, #fff8ee);
+            box-shadow: 4px 0 12px rgba(255,100,0,.3), -4px 0 12px rgba(255,100,0,.3),
+                        0 0 36px rgba(255,120,0,.18);
+        }
 
         /* God rank glow on scroll */
         .rank-god .jp-scroll-paper {
@@ -927,6 +936,14 @@
                 count = 180;
                 colors = ['#FFD700','#FFC200','#FFD700','#fffacd','#f5e6c8'];
                 sizeRange = [2, 7];
+            } else if (rankClass === 'rank-gekiatsu') {
+                count = 220;
+                colors = ['#ff3000','#ff6347','#ff8c00','#ffd700','#ff4500','#ffa500'];
+                sizeRange = [2, 8];
+            } else if (rankClass === 'rank-tokudai') {
+                count = 150;
+                colors = ['#FFD700','#ffb030','#d4a853','#fffacd','#ff8c00'];
+                sizeRange = [2, 6];
             } else if (rankClass === 'rank-daikichi') {
                 count = 120;
                 colors = ['#FFD700','#d4a853','#ffb7c5','#ffd1dc','#f5e6c8'];
@@ -1058,12 +1075,15 @@
         }
 
         function getRankClass(rank) {
-            // 「ノーペア（大凶）」のようなテーマ名付きにも部分一致で対応。判定順序に注意（超大吉→大吉→吉 等）
+            // 「ハイカード（大凶）」のようなテーマ名付きにも部分一致で対応。判定順序に注意（超大吉→特大吉→大吉→吉 等）
             if (rank === '天照大御神')       return 'rank-god';
             if (rank.includes('超大吉'))     return 'rank-super';
+            if (rank.includes('激熱'))       return 'rank-gekiatsu';
+            if (rank.includes('特大吉'))     return 'rank-tokudai';
             if (rank.includes('大吉') || ['ねむ吉','かに吉'].includes(rank)) return 'rank-daikichi';
             if (rank.includes('中吉'))       return 'rank-kichi';
             if (rank.includes('末吉'))       return 'rank-suekichi';
+            if (rank.includes('小吉'))       return 'rank-kichi';
             if (rank.includes('大凶'))       return 'rank-daikyo';
             if (rank.includes('凶'))         return 'rank-kyo';
             if (rank.includes('吉'))         return 'rank-kichi';
@@ -1185,7 +1205,12 @@
                 const scrollPaper = document.getElementById('jp-scroll-paper');
                 scrollPaper.className = `jp-scroll-paper ${selectedRankClass}`;
 
-                document.getElementById('fortune-rank').textContent = selected.rank;
+                const rankEl = document.getElementById('fortune-rank');
+                rankEl.textContent = selected.rank;
+                // 長い運勢名は縮小して巻物内に収める（短い名前はCSSクラスのサイズに任せる）
+                rankEl.style.fontSize = selected.rank.length >= 12 ? '1.5rem'
+                                      : selected.rank.length >= 9  ? '1.8rem'
+                                      : selected.rank.length >= 7  ? '2.2rem' : '';
 
                 // Fetch badge info if needed
                 let badgeInfo = null;
