@@ -265,6 +265,7 @@ const G = {
   logs: [],
   hp: 1000,             // 現在HP
   maxHp: 1000,          // 最大HP
+  persistedAp: null,    // 戦闘間で持続するAP（DB同期）
   droppedItems: new Map(), // 'x,y' -> [{id, items:[{item_id,quantity}]}]
   maxBpWeight: 100,
 };
@@ -592,7 +593,7 @@ async function loadAll() {
       supabaseClient.from('drill_inventory').select('item_id,quantity').eq('user_id', uid),
       supabaseClient.from('drill_player_drills').select('*').eq('user_id', uid),
       supabaseClient.from('drill_player_permits').select('permit_id').eq('user_id', uid),
-      supabaseClient.from('profiles').select('drill_gold,drill_hp').eq('discord_user_id', G.discordId).maybeSingle(),
+      supabaseClient.from('profiles').select('drill_gold,drill_hp,drill_ap').eq('discord_user_id', G.discordId).maybeSingle(),
       supabaseClient.from('drill_player_positions').select('user_id,x,y,avatar_url').eq('map_date', date).neq('user_id', uid),
       supabaseClient.from('drill_dropped_items').select('id,pos_x,pos_y,items,dropper_name,cause_of_death,dropped_at,locked_by,locked_until').eq('map_date', date),
       supabaseClient.from('drill_player_deck').select('slots,owned_cards').eq('user_id', uid).maybeSingle(),
@@ -657,9 +658,10 @@ async function loadAll() {
     await supabaseClient.from('drill_player_deck').upsert({ user_id: uid, slots: G.playerDeckSlots, owned_cards: G.ownedCards });
   }
 
-  // ゴールド・HP
-  G.drillGold = profRes.data?.drill_gold || 0;
-  G.hp = profRes.data?.drill_hp ?? G.maxHp;
+  // ゴールド・HP・AP
+  G.drillGold   = profRes.data?.drill_gold || 0;
+  G.hp          = profRes.data?.drill_hp   ?? G.maxHp;
+  if (profRes.data?.drill_ap != null) G.persistedAp = profRes.data.drill_ap;
 
   // 他プレイヤー
   G.otherPlayers = new Map();
@@ -786,6 +788,8 @@ async function move(dx, dy) {
   if (ny === START_Y) {
     G.surfaceMode = true;
     if (G.hp < G.maxHp) { G.hp = G.maxHp; _hpDirty = true; }
+    // 地上到達：AP全回復
+    if (!C.active) { C.ap = COMBAT_STATS.maxAp; savePersistedAp(COMBAT_STATS.maxAp).catch(() => {}); }
     // 地上到達：素材を自動倉庫預け
     const matsToStore = Object.entries(G.backpack).filter(([id, v]) => v > 0 && isMaterial(id));
     for (const [item, qty] of matsToStore) {
@@ -1074,9 +1078,11 @@ async function handleDeath(cause = '不明') {
   });
   closeModal();
 
-  // HP全回復して地上へ
+  // HP・AP全回復して地上へ
   G.hp = G.maxHp;
   await saveHp();
+  C.ap = COMBAT_STATS.maxAp;
+  savePersistedAp(COMBAT_STATS.maxAp).catch(() => {});
   G.px = START_X; G.py = START_Y;
   G.surfaceMode = true;
   await savePos();
@@ -1219,9 +1225,11 @@ async function returnSurface(useStone = false) {
   G.surfaceMode = true;
   await savePos();
 
-  // 地上帰還でHP全回復
+  // 地上帰還でHP・AP全回復
   G.hp = G.maxHp;
   await saveHp();
+  C.ap = COMBAT_STATS.maxAp;
+  savePersistedAp(COMBAT_STATS.maxAp).catch(() => {});
 
   log(`↩️ 帰還完了！${matsToStore.length > 0 ? `${matsToStore.length}種類の素材を確定` : '手ぶら'}（HP全回復）`);
   render();
@@ -2594,6 +2602,18 @@ async function abandonActiveCombatSessions(exceptSessionId = null) {
   } catch {}
 }
 
+// AP を永続保存（localStorage + profiles.drill_ap）
+async function savePersistedAp(ap) {
+  G.persistedAp = ap;
+  localStorage.setItem('drill_persisted_ap', String(ap));
+  if (!G.discordId) return;
+  try {
+    await supabaseClient.from('profiles')
+      .update({ drill_ap: ap })
+      .eq('discord_user_id', G.discordId);
+  } catch {}
+}
+
 // 現在の AP を DB に保存（クロスデバイス同期用）
 async function syncApToDb() {
   if (!C.sessionId || !G.userId) return;
@@ -2680,9 +2700,10 @@ async function startCombat(monsterId, cx, cy) {
   C.currentRound = 1;
   C.myActedRound = 0;
   C.participants = [];
-  // APは戦闘間で持続（全回復しない）
-  const _savedAp = parseInt(localStorage.getItem('drill_persisted_ap') ?? '', 10);
-  C.ap           = !isNaN(_savedAp) ? Math.min(COMBAT_STATS.maxAp, _savedAp) : COMBAT_STATS.maxAp;
+  // APは戦闘間で持続（全回復しない）。DB値 > localStorage の優先順位
+  const _lsAp  = parseInt(localStorage.getItem('drill_persisted_ap') ?? '', 10);
+  const _initAp = G.persistedAp ?? (!isNaN(_lsAp) ? _lsAp : null);
+  C.ap           = _initAp != null ? Math.min(COMBAT_STATS.maxAp, _initAp) : COMBAT_STATS.maxAp;
   C.roundDamage  = 0;
   C.targetIdx    = 0;
   C.enemies      = [];
@@ -2738,6 +2759,7 @@ async function playCard(cardIdx) {
     return;
   }
   C.ap = Math.max(0, C.ap - apCost);
+  syncApToDb().catch(() => {});
 
   // このカードだけ捨て札へ
   C.hand.splice(cardIdx, 1);
@@ -2864,7 +2886,7 @@ async function endTurn() {
 async function endCombat(win) {
   C.active = false;
   // 戦闘終了時のAPを保存（次の戦闘に引き継ぐ）
-  localStorage.setItem('drill_persisted_ap', String(C.ap));
+  savePersistedAp(C.ap).catch(() => {});
   clearCombatState();
   const monName = C.monster?.name || '???';
   if (_combatChannel) { supabaseClient.removeChannel(_combatChannel); _combatChannel = null; }
@@ -4121,7 +4143,7 @@ async function periodicStateSync() {
   if (G.surfaceMode) return;
   try {
     const [profRes, bpRes] = await Promise.all([
-      supabaseClient.from('profiles').select('drill_gold,drill_hp,active_session_id').eq('discord_user_id', G.discordId).single(),
+      supabaseClient.from('profiles').select('drill_gold,drill_hp,drill_ap,active_session_id').eq('discord_user_id', G.discordId).single(),
       supabaseClient.from('drill_backpack').select('item_id,quantity').eq('user_id', G.userId),
     ]);
     let changed = false;
@@ -4132,8 +4154,9 @@ async function periodicStateSync() {
         showKickedScreen();
         return;
       }
-      if (p.drill_gold != null && p.drill_gold !== G.drillGold) { G.drillGold = p.drill_gold; changed = true; }
-      if (p.drill_hp   != null && p.drill_hp   !== G.hp)        { G.hp        = p.drill_hp;   changed = true; }
+      if (p.drill_gold != null && p.drill_gold !== G.drillGold)  { G.drillGold    = p.drill_gold; changed = true; }
+      if (p.drill_hp   != null && p.drill_hp   !== G.hp)         { G.hp           = p.drill_hp;   changed = true; }
+      if (p.drill_ap   != null && p.drill_ap   !== G.persistedAp){ G.persistedAp  = p.drill_ap; }
     }
     if (bpRes.data) {
       const bp = {};
