@@ -2594,6 +2594,72 @@ async function abandonActiveCombatSessions(exceptSessionId = null) {
   } catch {}
 }
 
+// 現在の AP を DB に保存（クロスデバイス同期用）
+async function syncApToDb() {
+  if (!C.sessionId || !G.userId) return;
+  try {
+    await supabaseClient
+      .from('drill_combat_participants')
+      .update({ ap: C.ap })
+      .eq('session_id', C.sessionId)
+      .eq('user_id', G.userId);
+  } catch {}
+}
+
+// DB のアクティブセッションから戦闘状態を復元（クロスデバイス引き継ぎ）
+async function restoreCombatFromDb() {
+  try {
+    const { data: myParts } = await supabaseClient
+      .from('drill_combat_participants')
+      .select('session_id, hp, max_hp, hand, deck, discard, acted_round, ap')
+      .eq('user_id', G.userId);
+    if (!myParts?.length) return false;
+
+    const ids = myParts.map(p => p.session_id);
+    const { data: sessions } = await supabaseClient
+      .from('drill_combat_sessions')
+      .select('id, monster_def, monster_hp, status, next_action, logs, round_num, cx, cy')
+      .in('id', ids)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1);
+    if (!sessions?.length) return false;
+
+    const sess   = sessions[0];
+    const myPart = myParts.find(p => p.session_id === sess.id);
+    if (!myPart) return false;
+
+    const monDef    = sess.monster_def ?? {};
+    C.active        = true;
+    C.sessionId     = sess.id;
+    C.monster       = { ...monDef };
+    C.monsterHp     = sess.monster_hp;
+    C.hand          = (myPart.hand    ?? []).slice();
+    C.deck          = (myPart.deck    ?? []).slice();
+    C.discard       = (myPart.discard ?? []).slice();
+    C.logs          = (sess.logs      ?? []).slice();
+    C.nextAction    = sess.next_action ?? null;
+    C.currentRound  = sess.round_num  ?? 1;
+    C.myActedRound  = myPart.acted_round ?? 0;
+    C.cx            = sess.cx;
+    C.cy            = sess.cy;
+    C.participants  = [];
+    C.ap            = myPart.ap ?? COMBAT_STATS.maxAp;
+    C.roundDamage   = 0;
+    C.targetIdx     = 0;
+    C.enemies       = [];
+
+    if (C.hand.length === 0) drawCombatCards(3);
+    C.logs.unshift('🔄 別端末から戦闘を引き継ぎました');
+
+    saveCombatState();
+    setupCombatRealtime(sess.id);
+    await refreshCombatParticipants(sess.id);
+    showCombatModal();
+    return true;
+  } catch { return false; }
+}
+
 async function startCombat(monsterId, cx, cy) {
   const def = MONSTERS[monsterId];
   if (!def) return;
@@ -2645,6 +2711,7 @@ async function startCombat(monsterId, cx, cy) {
         p_hand: C.hand, p_deck: C.deck, p_discard: C.discard,
       });
       setupCombatRealtime(C.sessionId);
+      syncApToDb().catch(() => {});
       if (!G.activeCombats) G.activeCombats = new Map();
       G.activeCombats.set(`${C.cx},${C.cy}`,
         { id: C.sessionId, monster_def: def, monster_hp: def.maxHp });
@@ -2763,10 +2830,12 @@ async function endTurn() {
       }
       C.ap = Math.min(COMBAT_STATS.maxAp, C.ap + COMBAT_STATS.apRegen);
       drawCombatCards(3);
+      syncApToDb().catch(() => {});
       showCombatModal();
       return;
     }
     // 'waiting': 他プレイヤーを待つ
+    syncApToDb().catch(() => {});
     return;
   }
 
@@ -3182,6 +3251,7 @@ async function joinExistingCombat(session, cx, cy) {
   C.participants = [];
   setupCombatRealtime(fullSession.id);
   await refreshCombatParticipants(fullSession.id);
+  syncApToDb().catch(() => {});
   showCombatModal();
 }
 
@@ -3344,6 +3414,15 @@ function showKickedScreen() {
 async function reconnectSession() {
   await claimSession();
   document.getElementById('kicked-overlay')?.remove();
+  // 再接続時：DB から最新の戦闘状態を同期
+  if (C.active && C.sessionId) {
+    const { data } = await supabaseClient
+      .from('drill_combat_sessions')
+      .select('*').eq('id', C.sessionId).single();
+    if (data) await syncCombatFromDb(data);
+  } else {
+    await restoreCombatFromDb();
+  }
 }
 
 // ============================================================
@@ -4093,7 +4172,8 @@ async function initDrillGame() {
   setupInput();
   setupRealtime();
   render();
-  restoreCombatState();
+  const _dbRestored = await restoreCombatFromDb();
+  if (!_dbRestored) restoreCombatState();
   log('⛏️ ほりほりドリルへようこそ！');
   setInterval(periodicCleanup, 15000);
   setInterval(periodicStateSync, 10000);
