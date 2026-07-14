@@ -1530,6 +1530,72 @@ async function doCraft(type, id) {
 }
 
 // ============================================================
+// カード合成
+// ============================================================
+
+// D→C→B→A→S の順にランクアップ
+const SYNTH_RANK_NEXT = { d: 'c', c: 'b', b: 'a', a: 's' };
+
+function cardDisplayName(cardId) {
+  if (CARDS[cardId]?.name) return CARDS[cardId].name;
+  const si = SHOP_ITEMS.find(s => s.cardId === cardId);
+  return si ? si.name : cardId;
+}
+
+function showSynthesize() {
+  if (G.py !== 0) { log('⚠️ カード合成は地上のみ'); return; }
+
+  const synthList = [];
+  for (const [itemId, qty] of Object.entries(G.inventory)) {
+    if (qty < 4) continue;
+    // 末尾が _d / _c / _b / _a のカードIDにマッチ
+    const m = itemId.match(/^(.+)_([dacb])$/);
+    if (!m) continue;
+    const [, base, rank] = m;
+    const nextRank = SYNTH_RANK_NEXT[rank];
+    if (!nextRank) continue;
+    const toId = `${base}_${nextRank}`;
+    // CARDS または SHOP_ITEMS に存在するか確認
+    if (!CARDS[toId] && !SHOP_ITEMS.find(s => s.cardId === toId)) continue;
+    synthList.push({ fromId: itemId, qty, toId, times: Math.floor(qty / 4) });
+  }
+
+  let html = `<div class="modal-title">⚗️ カード合成</div>
+    <div style="font-size:.78rem;opacity:.6;margin-bottom:14px;">同じカード4枚 → 1ランク上のカード1枚</div>`;
+
+  if (synthList.length === 0) {
+    html += `<div style="font-size:.85rem;opacity:.5;padding:12px 0;">合成できるカードがありません<br>
+      <span style="font-size:.75rem;">同じカードを4枚集めると合成できます</span></div>`;
+  } else {
+    for (const s of synthList) {
+      const fromName = cardDisplayName(s.fromId);
+      const toName   = cardDisplayName(s.toId);
+      html += `<div class="modal-row">
+        <div>
+          <div class="modal-row-label">${escHtml(fromName)} ×4 → ${escHtml(toName)}</div>
+          <div class="modal-row-sub">所持 ${s.qty}枚 / ${s.times}回合成可能</div>
+        </div>
+        <button class="btn-modal-action" onclick="doSynthesize('${s.fromId}','${s.toId}')">合成</button>
+      </div>`;
+    }
+  }
+
+  html += `<button class="btn-modal-close" onclick="closeModal()">閉じる</button>`;
+  openModal(html);
+}
+
+async function doSynthesize(fromId, toId) {
+  const qty = G.inventory[fromId] || 0;
+  if (qty < 4) { log('⚠️ カードが4枚必要です'); showSynthesize(); return; }
+
+  await upsertInv(fromId, -4);
+  await upsertInv(toId, 1);
+
+  log(`⚗️ ${cardDisplayName(fromId)} ×4 → ${cardDisplayName(toId)} に合成！`);
+  showSynthesize();
+}
+
+// ============================================================
 // リュックモーダル
 // ============================================================
 
@@ -3175,6 +3241,7 @@ function renderSurfaceHome() {
     <div class="sh-menu">
       <button class="sh-btn" onclick="showShop()">🛒&ensp;ショップ</button>
       <button class="sh-btn" onclick="showCraft()">🔨&ensp;クラフト</button>
+      <button class="sh-btn" onclick="showSynthesize()">⚗️&ensp;カード合成</button>
       <button class="sh-btn" onclick="showInventory()">📦&ensp;アイテム${bpKeys.length > 0 ? `<span class="sh-badge">${bpKeys.length}</span>` : ''}</button>
       <a class="sh-btn" href="../market/index.html" style="text-decoration:none;text-align:center;">🏪&ensp;マーケット</a>
       <a class="sh-btn" href="formation.html" style="text-decoration:none;text-align:center;">⚔️&ensp;編成</a>
