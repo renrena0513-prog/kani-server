@@ -119,6 +119,12 @@
     }
     .unequipped-card:hover { border-color: rgba(255,255,255,.4); background: rgba(255,255,255,.1); }
     .unequipped-card.dragging { opacity: .4; cursor: grabbing; }
+    /* タップ選択 */
+    .tap-selected {
+      border-color: rgba(255, 210, 0, .9) !important;
+      background: rgba(255, 210, 0, .15) !important;
+      box-shadow: 0 0 12px rgba(255, 210, 0, .3);
+    }
 
     /* 保存ボタン */
     .btn-save {
@@ -190,6 +196,32 @@ const DEFAULT_CARDS = {
   attack:       { name:'攻撃',         desc:'50ダメージ',  icon:'⚔️', damage:50  },
   drill_attack: { name:'ドリルアタック', desc:'100ダメージ', icon:'⛏️', damage:100 },
 };
+
+// ショップで販売しているカードのデフォルト定義
+// admin設定で上書きされるが、未設定でも表示・ドラッグできるよう定義
+const SHOP_CARD_DEFAULTS = {
+  drill_attack:   { name:'ドリルアタック', icon:'⛏️' },
+  sword_clay_d:   { name:'粘土の剣 D', icon:'⚔️' },
+  sword_clay_c:   { name:'粘土の剣 C', icon:'⚔️' },
+  sword_clay_b:   { name:'粘土の剣 B', icon:'⚔️' },
+  sword_clay_a:   { name:'粘土の剣 A', icon:'⚔️' },
+  sword_clay_s:   { name:'粘土の剣 S', icon:'⚔️' },
+  sword_stone_d:  { name:'石の剣 D',   icon:'⚔️' },
+  sword_stone_c:  { name:'石の剣 C',   icon:'⚔️' },
+  sword_stone_b:  { name:'石の剣 B',   icon:'⚔️' },
+  sword_stone_a:  { name:'石の剣 A',   icon:'⚔️' },
+  sword_stone_s:  { name:'石の剣 S',   icon:'⚔️' },
+  sword_copper_d: { name:'銅の剣 D',   icon:'⚔️' },
+  sword_copper_c: { name:'銅の剣 C',   icon:'⚔️' },
+  sword_copper_b: { name:'銅の剣 B',   icon:'⚔️' },
+  sword_copper_a: { name:'銅の剣 A',   icon:'⚔️' },
+  sword_copper_s: { name:'銅の剣 S',   icon:'⚔️' },
+  sword_iron_d:   { name:'鉄の剣 D',   icon:'⚔️' },
+  sword_iron_c:   { name:'鉄の剣 C',   icon:'⚔️' },
+  sword_iron_b:   { name:'鉄の剣 B',   icon:'⚔️' },
+  sword_iron_a:   { name:'鉄の剣 A',   icon:'⚔️' },
+  sword_iron_s:   { name:'鉄の剣 S',   icon:'⚔️' },
+};
 const DEFAULT_DRILLS = {
   beginner:    { name:'初心者ドリル',    power:1,   dur:null  },
   apprentice:  { name:'見習いのドリル',  power:2,   dur:500   },
@@ -214,8 +246,9 @@ let deckSlots = ['attack','attack','attack','attack','attack','attack','attack',
 let ownedCards = { attack: 10 }; // 所持カード枚数マップ
 let unequippedPool = []; // 未装備カードのインスタンスプール
 
-// ドラッグ状態
-let dragSource = null; // { type:'slot'|'unequipped', slotIndex?:number, cardId?:string }
+// ドラッグ / タップ選択状態
+let dragSource = null;   // { type:'slot'|'unequipped', slotIndex?:number, cardId?:string }
+let tapSelected = null;  // タップで選択中の { type, slotIndex?, cardId? }
 
 // ============================================================
 // 初期化
@@ -237,10 +270,11 @@ async function loadConfig() {
   const { data } = await supabaseClient.from('drill_page_settings')
     .select('setting_value').eq('setting_key', 'game_config').maybeSingle();
   const cfg = data?.setting_value ? JSON.parse(data.setting_value) : {};
-  CARDS_DEF = { ...DEFAULT_CARDS };
+  // SHOP_CARD_DEFAULTS → DEFAULT_CARDS → admin設定 の順で上書き（後勝ち）
+  CARDS_DEF = { ...SHOP_CARD_DEFAULTS, ...DEFAULT_CARDS };
   if (cfg.cards) {
     for (const [id, v] of Object.entries(cfg.cards)) {
-      CARDS_DEF[id] = { ...(DEFAULT_CARDS[id] ?? {}), ...v };
+      CARDS_DEF[id] = { ...(CARDS_DEF[id] ?? {}), ...v };
     }
   }
   DRILLS_DEF = { ...DEFAULT_DRILLS };
@@ -359,6 +393,11 @@ function cardHTML(cardId, slotNum) {
     <div class="card-dmg">${c.ap_cost != null ? `⚡${c.ap_cost} ` : ''}${c.damage ?? 0}</div>`;
 }
 
+function clearTapSelected() {
+  tapSelected = null;
+  document.querySelectorAll('.tap-selected').forEach(el => el.classList.remove('tap-selected'));
+}
+
 function renderEquipped() {
   const grid = document.getElementById('equipped-grid');
   grid.innerHTML = '';
@@ -367,18 +406,47 @@ function renderEquipped() {
     const slot = document.createElement('div');
     slot.className = 'card-slot' + (cardId ? ' has-card' : '');
     slot.dataset.slotIndex = i;
-    slot.innerHTML = cardId ? cardHTML(cardId, i + 1) : `<div class="card-slot-num">${i+1}</div><span style="font-size:.7rem;opacity:.25;">空</span>`;
+    slot.innerHTML = cardId
+      ? cardHTML(cardId, i + 1)
+      : `<div class="card-slot-num">${i+1}</div><span style="font-size:.7rem;opacity:.25;">空</span>`;
 
-    slot.addEventListener('dragover', e => { e.preventDefault(); slot.classList.add('drag-over'); });
-    slot.addEventListener('dragleave', () => slot.classList.remove('drag-over'));
-    slot.addEventListener('drop', e => { e.preventDefault(); slot.classList.remove('drag-over'); handleDrop(i); });
-    slot.addEventListener('dragstart', () => {
+    // ── ドラッグ（デスクトップ / Firefox対応）──
+    slot.draggable = true;
+    slot.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('text/plain', `slot:${i}`);
       dragSource = { type: 'slot', slotIndex: i };
       slot.classList.add('dragging');
     });
     slot.addEventListener('dragend', () => slot.classList.remove('dragging'));
-    slot.draggable = true;
+    slot.addEventListener('dragover', e => { e.preventDefault(); slot.classList.add('drag-over'); });
+    slot.addEventListener('dragleave', () => slot.classList.remove('drag-over'));
+    slot.addEventListener('drop', e => {
+      e.preventDefault();
+      slot.classList.remove('drag-over');
+      handleDrop(i);
+    });
 
+    // ── タップ選択（モバイル）──
+    slot.addEventListener('click', () => {
+      if (tapSelected?.type === 'unequipped') {
+        // 未装備カード選択中 → このスロットへ配置
+        handleDrop(i);
+        clearTapSelected();
+      } else if (tapSelected?.type === 'slot' && tapSelected.slotIndex === i) {
+        clearTapSelected(); // 同じスロットをタップ → 解除
+      } else if (cardId && cardId !== 'attack') {
+        // デッキスロットのカードを選択（プールへ戻す候補 or スロット入替）
+        clearTapSelected();
+        dragSource = { type: 'slot', slotIndex: i };
+        tapSelected = { type: 'slot', slotIndex: i };
+        slot.classList.add('tap-selected');
+        showToast('📍 別スロットをタップで入替、下の空欄タップでプールへ');
+      } else if (tapSelected?.type === 'slot') {
+        // スロット選択中 → 別スロットをタップで入替
+        handleDrop(i);
+        clearTapSelected();
+      }
+    });
 
     grid.appendChild(slot);
   }
@@ -389,19 +457,24 @@ function renderUnequipped() {
   grid.innerHTML = '';
   grid.ondragover = e => e.preventDefault();
   grid.ondrop = e => { e.preventDefault(); handleDropToPool(); };
+  // タップ: デッキスロットが選択中なら背景タップでプールへ戻す
+  grid.onclick = e => {
+    if (tapSelected?.type === 'slot' && e.target === grid) {
+      handleDropToPool();
+      clearTapSelected();
+    }
+  };
 
   if (unequippedPool.length === 0) {
     grid.innerHTML = '<div style="opacity:.4;font-size:.8rem;grid-column:1/-1;padding:10px 0;">未装備のカードなし（デッキからドラッグで戻せます）</div>';
     return;
   }
 
-  // 同じカードが複数あれば枚数表示
   const counts = {};
   for (const id of unequippedPool) counts[id] = (counts[id] || 0) + 1;
 
   for (const [cardId, count] of Object.entries(counts)) {
-    const c = CARDS_DEF[cardId];
-    if (!c) continue;
+    const c = CARDS_DEF[cardId] ?? { name: cardId, icon: '❓' };
     const card = document.createElement('div');
     card.className = 'unequipped-card';
     card.dataset.cardId = cardId;
@@ -411,12 +484,28 @@ function renderUnequipped() {
       <div class="card-dmg">${c.ap_cost != null ? `⚡${c.ap_cost} ` : ''}${c.damage ?? 0}</div>
       ${count > 1 ? `<div style="font-size:.58rem;opacity:.55;">×${count}</div>` : ''}`;
 
+    // ── ドラッグ（デスクトップ）──
     card.draggable = true;
-    card.addEventListener('dragstart', () => {
+    card.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('text/plain', `unequipped:${cardId}`);
       dragSource = { type: 'unequipped', cardId };
       card.classList.add('dragging');
     });
     card.addEventListener('dragend', () => card.classList.remove('dragging'));
+
+    // ── タップ選択（モバイル）──
+    card.addEventListener('click', () => {
+      if (tapSelected?.type === 'unequipped' && tapSelected.cardId === cardId) {
+        clearTapSelected(); // 同じカードをタップ → 解除
+        return;
+      }
+      clearTapSelected();
+      tapSelected = { type: 'unequipped', cardId };
+      dragSource = { type: 'unequipped', cardId };
+      card.classList.add('tap-selected');
+      showToast('📍 タップでデッキスロットに配置');
+    });
+
     grid.appendChild(card);
   }
 }

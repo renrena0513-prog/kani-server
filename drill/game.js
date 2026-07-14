@@ -1550,7 +1550,8 @@ function showSynthesize() {
   if (G.py !== 0) { log('⚠️ カード合成は地上のみ'); return; }
 
   const synthList = [];
-  for (const [itemId, qty] of Object.entries(G.inventory)) {
+  // カードは G.ownedCards（drill_player_deck）に保存されている
+  for (const [itemId, qty] of Object.entries(G.ownedCards)) {
     if (qty < 4) continue;
     // 末尾が _d / _c / _b / _a のカードIDにマッチ
     const m = itemId.match(/^(.+)_([dacb])$/);
@@ -1559,7 +1560,7 @@ function showSynthesize() {
     const nextRank = SYNTH_RANK_NEXT[rank];
     if (!nextRank) continue;
     const toId = `${base}_${nextRank}`;
-    // CARDS または SHOP_ITEMS に存在するか確認
+    // CARDS または SHOP_ITEMS に存在するか確認（どちらかにあればOK）
     if (!CARDS[toId] && !SHOP_ITEMS.find(s => s.cardId === toId)) continue;
     synthList.push({ fromId: itemId, qty, toId, times: Math.floor(qty / 4) });
   }
@@ -1589,11 +1590,14 @@ function showSynthesize() {
 }
 
 async function doSynthesize(fromId, toId) {
-  const qty = G.inventory[fromId] || 0;
+  const qty = G.ownedCards[fromId] || 0;
   if (qty < 4) { log('⚠️ カードが4枚必要です'); showSynthesize(); return; }
 
-  await upsertInv(fromId, -4);
-  await upsertInv(toId, 1);
+  G.ownedCards[fromId] = qty - 4;
+  if (G.ownedCards[fromId] <= 0) delete G.ownedCards[fromId];
+  G.ownedCards[toId] = (G.ownedCards[toId] || 0) + 1;
+  await supabaseClient.from('drill_player_deck')
+    .upsert({ user_id: G.userId, owned_cards: G.ownedCards });
 
   log(`⚗️ ${cardDisplayName(fromId)} ×4 → ${cardDisplayName(toId)} に合成！`);
   showSynthesize();
