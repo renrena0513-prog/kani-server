@@ -2460,6 +2460,7 @@ function saveCombatState() {
       logs:         C.logs,
       nextAction:   C.nextAction,
       ap:           C.ap,
+      roundDamage:  C.roundDamage,
       sessionId:    C.sessionId,
       cx:           C.cx,
       cy:           C.cy,
@@ -2493,6 +2494,7 @@ function restoreCombatState() {
     C.currentRound = s.currentRound ?? 1;
     C.myActedRound = s.myActedRound ?? 0;
     C.ap           = s.ap ?? COMBAT_STATS.maxAp;
+    C.roundDamage  = s.roundDamage ?? 0;
     C.participants = [];
     if (C.hand.length === 0) drawCombatCards(3);
     C.logs.unshift('🔄 戦闘を再開しました');
@@ -2526,6 +2528,7 @@ async function startCombat(monsterId, cx, cy) {
   C.myActedRound = 0;
   C.participants = [];
   C.ap           = COMBAT_STATS.maxAp;
+  C.roundDamage  = 0;
 
   drawCombatCards(3);
 
@@ -2561,15 +2564,15 @@ async function startCombat(monsterId, cx, cy) {
   showCombatModal();
 }
 
+// カードを1枚使う（ラウンドは終了しない）
 async function playCard(cardIdx) {
   if (!C.active || cardIdx < 0 || cardIdx >= C.hand.length) return;
-  if (C.sessionId && C.myActedRound >= C.currentRound) return; // 既に行動済み
+  if (C.sessionId && C.myActedRound >= C.currentRound) return;
 
   const cardId  = C.hand[cardIdx];
   const cardDef = CARDS[cardId];
   if (!cardDef) return;
 
-  // AP チェック
   const apCost = cardDef.ap_cost ?? 0;
   if (apCost > 0 && C.ap < apCost) {
     combatAddLog(`⚡ AP 不足！（必要: ${apCost} / 現在: ${C.ap}）`);
@@ -2578,25 +2581,42 @@ async function playCard(cardIdx) {
   }
   C.ap = Math.max(0, C.ap - apCost);
 
+  // このカードだけ捨て札へ
+  C.hand.splice(cardIdx, 1);
+  C.discard.push(cardId);
+
   const { total: damage, crits } = computeCardDamage(cardDef);
+  C.roundDamage += damage;
   if (damage > 0) {
     const critLabel = crits > 0 ? ' 💥CRIT!' : '';
-    combatAddLog(`⚔️ ${cardDef.name}！ ${C.monster.name}に ${damage} ダメージ${critLabel}`);
+    combatAddLog(`⚔️ ${cardDef.name}！ ${damage} ダメージ${critLabel}`);
   }
   spawnDamageNumber(damage, crits > 0);
+  showCombatModal();
+}
 
-  // 手札全捨て
+// ターン終了：残り手札を捨て→モンスター攻撃→次ターン
+async function endTurn() {
+  if (!C.active) return;
+  if (C.sessionId && C.myActedRound >= C.currentRound) return;
+
+  // 残り手札を全て捨て札へ
   C.discard.push(...C.hand);
   C.hand = [];
 
-  // ── マルチプレイヤー（DBセッションあり）──
+  const totalDamage = C.roundDamage;
+  C.roundDamage = 0;
+
+  if (totalDamage > 0) combatAddLog(`📊 ターン合計: ${totalDamage} ダメージ`);
+
+  // ── マルチプレイヤー ──
   if (C.sessionId) {
     C.myActedRound = C.currentRound;
-    showCombatModal(); // 「待機中」表示
+    showCombatModal();
 
     const { data, error } = await supabaseClient.rpc('drill_submit_action', {
       p_session_id: C.sessionId, p_user_id: G.userId,
-      p_damage:     damage,
+      p_damage:     totalDamage,
       p_new_hand:   [], p_new_deck: C.deck, p_new_discard: C.discard,
     });
 
@@ -2609,7 +2629,7 @@ async function playCard(cardIdx) {
     if (data.result === 'monster_dead') {
       C.monsterHp = 0;
       combatAddLog(`✨ ${C.monster.name}を倒した！`);
-      if (C.sessionId) G.activeCombats?.delete(`${C.cx},${C.cy}`);
+      G.activeCombats?.delete(`${C.cx},${C.cy}`);
       showCombatModal();
       await endCombat(true);
       return;
@@ -2632,7 +2652,7 @@ async function playCard(cardIdx) {
         }
       }
       if (data.result === 'party_dead' || G.hp <= 0) {
-        if (C.sessionId) G.activeCombats?.delete(`${C.cx},${C.cy}`);
+        G.activeCombats?.delete(`${C.cx},${C.cy}`);
         showCombatModal();
         await endCombat(false);
         return;
@@ -2642,12 +2662,12 @@ async function playCard(cardIdx) {
       showCombatModal();
       return;
     }
-    // result === 'waiting': 他プレイヤーを待つ（Realtimeで更新）
+    // 'waiting': 他プレイヤーを待つ
     return;
   }
 
-  // ── ソロ（セッションなし）──
-  C.monsterHp = Math.max(0, C.monsterHp - damage);
+  // ── ソロ ──
+  C.monsterHp = Math.max(0, C.monsterHp - totalDamage);
   if (C.monsterHp <= 0) {
     combatAddLog(`✨ ${C.monster.name}を倒した！`);
     showCombatModal();
@@ -2837,6 +2857,11 @@ function showCombatModal() {
 
     ${isWaiting ? `<div style="text-align:center;font-size:.82rem;color:rgba(255,193,7,.6);margin-top:8px;">⏳ 他プレイヤーの行動を待っています...</div>` : ''}
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px;">${isWaiting ? '' : cardHtml}</div>
+    ${!isWaiting ? `
+    <div style="display:flex;gap:8px;align-items:center;margin-top:12px;">
+      ${C.roundDamage > 0 ? `<div style="font-size:.78rem;color:#ffe050;flex:1;">今ターン合計: ${C.roundDamage} ダメージ</div>` : '<div style="flex:1;"></div>'}
+      <button class="btn-modal-action" style="flex:1;background:linear-gradient(135deg,#c0392b,#922b21);border:none;padding:10px 16px;border-radius:10px;color:#fff;font-size:.9rem;font-weight:700;cursor:pointer;" onclick="endTurn()">ターン終了 →</button>
+    </div>` : ''}
   `;
 }
 
@@ -2893,8 +2918,11 @@ function setupCombatRealtime(sessionId) {
 
 async function syncCombatFromDb(row) {
   if (!C.active) return;
-  C.monsterHp    = row.monster_hp;
-  C.currentRound = row.round_num;
+  C.monsterHp = row.monster_hp;
+  if (row.round_num !== C.currentRound) {
+    C.currentRound = row.round_num;
+    C.roundDamage  = 0; // 新ラウンドに入ったのでリセット
+  }
   if (row.next_action) C.nextAction = row.next_action;
   if (row.logs?.length) C.logs = row.logs;
   if (row.status === 'ended') {
@@ -2904,7 +2932,6 @@ async function syncCombatFromDb(row) {
     else                   { await endCombat(false); }
     return;
   }
-  // 自分がまだ行動済みでなければ手札を補充してモーダル更新
   if (C.myActedRound < C.currentRound && C.hand.length === 0) drawCombatCards(3);
   showCombatModal();
 }
