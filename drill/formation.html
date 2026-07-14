@@ -148,6 +148,38 @@
       opacity: 0; transition: opacity .25s; z-index: 9999; white-space: nowrap;
     }
     #fm-toast.show { opacity: 1; }
+
+    /* ランクバッジ */
+    .rank-badge {
+      position: absolute; top: 4px; left: 4px;
+      width: 16px; height: 16px; border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .56rem; font-weight: 900; color: #fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,.6);
+      pointer-events: none; z-index: 3; letter-spacing: 0;
+    }
+    .rank-badge-d { background: #60637a; }
+    .rank-badge-c { background: #2a9e5c; }
+    .rank-badge-b { background: #1870d4; }
+    .rank-badge-a { background: linear-gradient(135deg, #8820e8, #cc30b8); }
+    .rank-badge-s { background: linear-gradient(135deg, #ff4000, #ffcc00); animation: rankSBadge 1.2s ease-in-out infinite alternate; }
+    @keyframes rankSBadge { to { box-shadow: 0 0 7px rgba(255,160,0,.9); transform: scale(1.12); } }
+
+    /* ランク枠色 */
+    .rank-d { border-color: #6a6e88 !important; }
+    .rank-c { border-color: #2a9e5c !important; box-shadow: 0 0 7px rgba(42,158,92,.25); }
+    .rank-b { border-color: #1870d4 !important; box-shadow: 0 0 9px rgba(24,112,212,.3); }
+    .rank-a { border-color: #9020e0 !important; box-shadow: 0 0 12px rgba(144,32,224,.35); }
+    .rank-s { border-color: #ffd700 !important; border-width: 2px !important; animation: rankSGlow 2s linear infinite; }
+    @keyframes rankSGlow {
+      0%   { box-shadow: 0 0 8px #ff0060, 0 0 20px rgba(255,0,96,.2); }
+      17%  { box-shadow: 0 0 8px #ff8800, 0 0 20px rgba(255,136,0,.2); }
+      33%  { box-shadow: 0 0 8px #ffe000, 0 0 20px rgba(255,224,0,.2); }
+      50%  { box-shadow: 0 0 8px #00e060, 0 0 20px rgba(0,224,96,.2); }
+      67%  { box-shadow: 0 0 8px #0088ff, 0 0 20px rgba(0,136,255,.2); }
+      83%  { box-shadow: 0 0 8px #cc00ff, 0 0 20px rgba(204,0,255,.2); }
+      100% { box-shadow: 0 0 8px #ff0060, 0 0 20px rgba(255,0,96,.2); }
+    }
   </style>
 </head>
 <body>
@@ -186,6 +218,14 @@
 <script src="../js/auth-guard.js"></script>
 <script src="../js/navigation.js"></script>
 <script>
+function rankFromId(cardId) {
+  return cardId?.match(/_([dcbas])$/)?.[1] ?? null;
+}
+function rankBadgeHtml(rank) {
+  if (!rank) return '';
+  return `<div class="rank-badge rank-badge-${rank}">${rank.toUpperCase()}</div>`;
+}
+
 // ============================================================
 // カード・ドリル定義（game.jsと同期が必要な場合はここで管理）
 // ============================================================
@@ -386,10 +426,12 @@ function cardVisual(c, small = false) {
 function cardHTML(cardId, slotNum) {
   const c = CARDS_DEF[cardId];
   if (!c) return `<div class="card-slot-num">${slotNum}</div><span style="opacity:.3;">?</span>`;
+  const rank = rankFromId(cardId);
   return `
     <div class="card-slot-num">${slotNum}</div>
+    ${rankBadgeHtml(rank)}
     ${cardVisual(c)}
-    <div class="card-name">${c.rarity ? `[${c.rarity}] ` : ''}${c.name}</div>
+    <div class="card-name">${c.name}</div>
     <div class="card-dmg">${c.ap_cost != null ? `⚡${c.ap_cost} ` : ''}${c.damage ?? 0}</div>`;
 }
 
@@ -404,7 +446,8 @@ function renderEquipped() {
   for (let i = 0; i < 10; i++) {
     const cardId = deckSlots[i];
     const slot = document.createElement('div');
-    slot.className = 'card-slot' + (cardId ? ' has-card' : '');
+    const rank = rankFromId(cardId);
+    slot.className = 'card-slot' + (cardId ? ' has-card' : '') + (rank ? ` rank-${rank}` : '');
     slot.dataset.slotIndex = i;
     slot.innerHTML = cardId
       ? cardHTML(cardId, i + 1)
@@ -475,12 +518,14 @@ function renderUnequipped() {
 
   for (const [cardId, count] of Object.entries(counts)) {
     const c = CARDS_DEF[cardId] ?? { name: cardId, icon: '❓' };
+    const uRank = rankFromId(cardId);
     const card = document.createElement('div');
-    card.className = 'unequipped-card';
+    card.className = 'unequipped-card' + (uRank ? ` rank-${uRank}` : '');
     card.dataset.cardId = cardId;
     card.innerHTML = `
+      ${rankBadgeHtml(uRank)}
       ${cardVisual(c)}
-      <div class="card-name">${c.rarity ? `[${c.rarity}] ` : ''}${c.name}</div>
+      <div class="card-name">${c.name}</div>
       <div class="card-dmg">${c.ap_cost != null ? `⚡${c.ap_cost} ` : ''}${c.damage ?? 0}</div>
       ${count > 1 ? `<div style="font-size:.58rem;opacity:.55;">×${count}</div>` : ''}`;
 

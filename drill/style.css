@@ -587,6 +587,62 @@ html, body {
     opacity: .28;
 }
 
+/* ===== カードランク ===== */
+/* バッジ（左上の D/C/B/A/S 表示） */
+.rank-badge {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .56rem;
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,.6);
+    pointer-events: none;
+    z-index: 3;
+    letter-spacing: 0;
+}
+.rank-badge-d { background: #60637a; }
+.rank-badge-c { background: #2a9e5c; }
+.rank-badge-b { background: #1870d4; }
+.rank-badge-a { background: linear-gradient(135deg, #8820e8, #cc30b8); }
+.rank-badge-s {
+    background: linear-gradient(135deg, #ff4000, #ffcc00);
+    animation: rankSBadge 1.2s ease-in-out infinite alternate;
+}
+@keyframes rankSBadge {
+    to { box-shadow: 0 0 7px rgba(255,160,0,.9); transform: scale(1.12); }
+}
+
+/* ランク別枠 */
+.rank-d { border-color: #6a6e88 !important; }
+.rank-c { border-color: #2a9e5c !important; box-shadow: 0 0 7px rgba(42,158,92,.25); }
+.rank-b { border-color: #1870d4 !important; box-shadow: 0 0 9px rgba(24,112,212,.3); }
+.rank-a { border-color: #9020e0 !important; box-shadow: 0 0 12px rgba(144,32,224,.35); }
+
+/* S ランク: 虹色グロー枠 */
+.rank-s {
+    border-color: #ffd700 !important;
+    border-width: 2px !important;
+    animation: rankSGlow 2s linear infinite;
+}
+@keyframes rankSGlow {
+    0%   { box-shadow: 0 0 10px #ff0060, 0 0 24px rgba(255,0,96,.25); }
+    17%  { box-shadow: 0 0 10px #ff8800, 0 0 24px rgba(255,136,0,.25); }
+    33%  { box-shadow: 0 0 10px #ffe000, 0 0 24px rgba(255,224,0,.25); }
+    50%  { box-shadow: 0 0 10px #00e070, 0 0 24px rgba(0,224,112,.25); }
+    67%  { box-shadow: 0 0 10px #0090ff, 0 0 24px rgba(0,144,255,.25); }
+    83%  { box-shadow: 0 0 10px #9000ff, 0 0 24px rgba(144,0,255,.25); }
+    100% { box-shadow: 0 0 10px #ff0060, 0 0 24px rgba(255,0,96,.25); }
+}
+/* 戦闘カード S ランクは hover 時も維持 */
+.combat-card.rank-s:hover { box-shadow: inherit; }
+
 /* VS 区切り */
 .cb-vs {
     text-align: center;

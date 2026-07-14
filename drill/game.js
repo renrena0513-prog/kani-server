@@ -1255,8 +1255,12 @@ function showShop(tab = 'drill') {
         const def = CARDS[item.cardId] ?? {};
         const canBuy = G.drillGold >= item.cost;
         const ownedCount = G.ownedCards[item.cardId] || 0;
+        const rank = rankFromId(item.cardId);
+        const rankDot = rank
+          ? `<span class="rank-badge rank-badge-${rank}" style="position:static;display:inline-flex;vertical-align:middle;margin-right:4px;">${rank.toUpperCase()}</span>`
+          : '';
         body += `<div class="modal-row">
-          <div><div class="modal-row-label">${item.name}</div>
+          <div><div class="modal-row-label">${rankDot}${escHtml(item.name)}</div>
           <div class="modal-row-sub">${item.cost}G　${def.icon ?? ''} ${def.desc ?? ''}${ownedCount > 0 ? `　<span style="opacity:.55;">所持: ${ownedCount}枚</span>` : ''}</div></div>
           <button class="btn-modal-action" onclick="buyShopDrill('${item.id}')" ${canBuy?'':'disabled'}>購入</button>
         </div>`;
@@ -2156,6 +2160,17 @@ function escHtml(s) {
     ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c]);
 }
 
+// カードID末尾のランク文字を返す (sword_stone_d → 'd', attack → null)
+function rankFromId(cardId) {
+  return cardId?.match(/_([dcbas])$/)?.[1] ?? null;
+}
+
+// ランクバッジ HTML（position:absolute で左上に表示）
+function rankBadgeHtml(rank) {
+  if (!rank) return '';
+  return `<div class="rank-badge rank-badge-${rank}">${rank.toUpperCase()}</div>`;
+}
+
 function showEventModal(icon, body, afterClose) {
   const inner = document.getElementById('modal-inner');
   if (!inner) return;
@@ -2827,13 +2842,14 @@ function showCombatModal() {
     const def    = CARDS[cardId] || {};
     const apCost = def.ap_cost ?? 0;
     const canUse = C.ap >= apCost;
+    const rank   = rankFromId(cardId);
     const cardIconHtml = def.imageUrl
       ? `<img class="combat-card-img" src="${def.imageUrl}" onerror="this.outerHTML='<div class=\\"combat-card-icon\\">${escHtml(def.icon || '❓')}</div>'">`
       : `<div class="combat-card-icon">${def.icon || '❓'}</div>`;
     const apLabel = apCost > 0
       ? `<div style="font-size:.62rem;color:${canUse ? '#60b4ff' : '#ff5555'};font-weight:700;margin-top:2px;">⚡${apCost}</div>`
       : '';
-    return `<div class="combat-card${canUse ? '' : ' combat-card-disabled'}"
+    return `<div class="combat-card${canUse ? '' : ' combat-card-disabled'}${rank ? ` rank-${rank}` : ''}"
         style="${canUse ? '' : 'opacity:.42;cursor:not-allowed;'}"
         draggable="${canUse}"
         onclick="${canUse ? `playCard(${i})` : ''}"
@@ -2842,6 +2858,7 @@ function showCombatModal() {
         ontouchstart="combatTouchStart(event,${i})"
         ontouchmove="combatTouchMove(event)"
         ontouchend="combatTouchEnd(event)">
+      ${rankBadgeHtml(rank)}
       ${cardIconHtml}
       <div class="combat-card-name">${escHtml(def.name || cardId)}</div>
       ${apLabel}
