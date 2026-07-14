@@ -270,7 +270,9 @@ let _lastMoveTime = 0;     // 最後に移動した時刻（Realtimeエコー無
 const C = {
   active: false, monster: null, monsterHp: 0,
   hand: [], deck: [], discard: [], logs: [], nextAction: null,
-  ap: 0,  // 現在AP
+  ap: 0,
+  enemies: [],    // 将来の複数敵対応（現在は monster のみ）
+  targetIdx: 0,   // 選択中の敵インデックス
   // マルチプレイヤー
   sessionId: null, cx: null, cy: null,
   participants: [], currentRound: 1, myActedRound: 0,
@@ -2529,6 +2531,8 @@ async function startCombat(monsterId, cx, cy) {
   C.participants = [];
   C.ap           = COMBAT_STATS.maxAp;
   C.roundDamage  = 0;
+  C.targetIdx    = 0;
+  C.enemies      = [];
 
   drawCombatCards(3);
 
@@ -2592,6 +2596,15 @@ async function playCard(cardIdx) {
     combatAddLog(`⚔️ ${cardDef.name}！ ${damage} ダメージ${critLabel}`);
   }
   spawnDamageNumber(damage, crits > 0);
+
+  // ソロ: 蓄積ダメージでモンスターが倒れる → ターン終了を待たず即勝利
+  if (!C.sessionId && C.roundDamage >= C.monsterHp) {
+    C.monsterHp = 0;
+    combatAddLog(`✨ ${C.monster.name}を倒した！`);
+    showCombatModal();
+    await endCombat(true);
+    return;
+  }
   showCombatModal();
 }
 
@@ -2734,48 +2747,97 @@ function showCombatModal() {
   const mon = C.monster;
   if (!mon) return;
 
-  const mHpPct   = Math.max(0, Math.round((C.monsterHp / mon.maxHp) * 100));
-  const mHpColor = mHpPct > 50 ? '#6bde9b' : mHpPct > 20 ? '#ffc107' : '#ff5555';
-  const pHpPct   = Math.max(0, Math.round((G.hp / G.maxHp) * 100));
-  const pHpColor = pHpPct > 50 ? '#6bde9b' : pHpPct > 20 ? '#ffc107' : '#ff5555';
-
-  const actionHtml = C.nextAction
-    ? `<div style="margin-top:8px;padding:5px 14px;background:rgba(255,100,50,.15);border:1px solid rgba(255,100,50,.3);border-radius:8px;font-size:.8rem;display:inline-block;">
-        次の行動: <strong>${escHtml(C.nextAction.name)}</strong>
-        ${C.nextAction.damage > 0
-          ? `<span style="color:#ff8866;"> (-${C.nextAction.damage}HP)</span>`
-          : `<span style="opacity:.5;"> (なし)</span>`}
-       </div>`
-    : '';
-
-  const monImgHtml = mon.imageUrl
-    ? `<img src="${mon.imageUrl}" style="width:130px;height:130px;object-fit:contain;image-rendering:pixelated;border-radius:12px;background:rgba(255,255,255,.06);" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><div style="display:none;font-size:5rem;line-height:1;">${mon.icon || '👾'}</div>`
-    : `<div style="font-size:5rem;line-height:1;">${mon.icon || '👾'}</div>`;
-
-  const avatarHtml = G.avatarUrl
-    ? `<img src="${G.avatarUrl}" style="width:46px;height:46px;border-radius:50%;object-fit:cover;border:2px solid rgba(107,222,155,.5);flex-shrink:0;">`
-    : `<div style="font-size:2.2rem;line-height:1;flex-shrink:0;">⛏️</div>`;
-
   const apPct   = COMBAT_STATS.maxAp > 0 ? Math.round((C.ap / COMBAT_STATS.maxAp) * 100) : 100;
   const apColor = apPct > 50 ? '#60b4ff' : apPct > 20 ? '#ffc107' : '#ff5555';
 
+  // ── 敵スロット（3枠固定、現在は1体） ──
+  const enemies = C.enemies?.length ? C.enemies : [mon];
+  const tgt = C.targetIdx ?? 0;
+  const enemySlotsHtml = Array.from({length: 3}, (_, i) => {
+    const enemy = enemies[i] ?? null;
+    if (!enemy) return `<div class="cb-enemy-card cb-slot-empty"></div>`;
+    const curHp  = i === 0 ? C.monsterHp : (enemy.currentHp ?? enemy.maxHp);
+    const hpPct  = Math.max(0, Math.round(curHp / enemy.maxHp * 100));
+    const hpCol  = hpPct > 50 ? '#6bde9b' : hpPct > 20 ? '#ffc107' : '#ff5555';
+    const projDmg = (i === tgt && C.roundDamage > 0) ? Math.min(C.roundDamage, curHp) : 0;
+    const imgHtml = enemy.imageUrl
+      ? `<img src="${enemy.imageUrl}" style="width:58px;height:58px;object-fit:contain;image-rendering:pixelated;border-radius:8px;" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><div style="display:none;font-size:2.8rem;line-height:1;">${enemy.icon || '👾'}</div>`
+      : `<div style="font-size:2.8rem;line-height:1;">${enemy.icon || '👾'}</div>`;
+    const nextActHtml = (i === 0 && C.nextAction)
+      ? `<div style="font-size:.58rem;color:rgba(255,130,70,.9);margin-top:3px;line-height:1.3;">${escHtml(C.nextAction.name)}${C.nextAction.damage > 0 ? `<span style="color:#ff8866;"> -${C.nextAction.damage}</span>` : ''}</div>`
+      : '';
+    return `<div class="cb-enemy-card${i === tgt ? ' cb-selected' : ''}"
+        ondragover="event.preventDefault();this.classList.add('cb-drag-over')"
+        ondragleave="this.classList.remove('cb-drag-over')"
+        ondrop="this.classList.remove('cb-drag-over');combatDrop(event)"
+        onclick="combatSelectEnemy(${i})">
+      ${imgHtml}
+      <div style="font-size:.68rem;font-weight:700;margin-top:4px;line-height:1.2;word-break:break-all;">${escHtml(enemy.name)}</div>
+      <div style="font-size:.6rem;color:${hpCol};margin-top:1px;">${curHp}/${enemy.maxHp}</div>
+      <div style="width:100%;height:4px;background:rgba(255,255,255,.15);border-radius:2px;overflow:hidden;margin-top:2px;">
+        <div style="width:${hpPct}%;height:100%;background:${hpCol};border-radius:2px;transition:width .3s;"></div>
+      </div>
+      ${projDmg > 0 ? `<div style="font-size:.6rem;color:#ffe050;font-weight:700;margin-top:2px;">▼${projDmg}</div>` : ''}
+      ${nextActHtml}
+    </div>`;
+  }).join('');
+
+  // ── 味方スロット（3枠固定） ──
+  const otherParticipants = C.participants.filter(p => p.user_id !== G.userId);
+  const allParticipants = [
+    { user_id: G.userId, display_name: G.displayName || 'あなた',
+      avatar_url: G.avatarUrl, hp: G.hp, max_hp: G.maxHp, acted_round: C.myActedRound },
+    ...otherParticipants,
+  ];
+  const allySlotsHtml = Array.from({length: 3}, (_, i) => {
+    const p = allParticipants[i] ?? null;
+    if (!p) return `<div class="cb-ally-card cb-slot-empty"></div>`;
+    const hpPct = Math.max(0, Math.round(p.hp / p.max_hp * 100));
+    const hpCol = hpPct > 50 ? '#6bde9b' : hpPct > 20 ? '#ffc107' : '#ff5555';
+    const acted = C.sessionId && p.acted_round >= C.currentRound;
+    const isSelf = p.user_id === G.userId;
+    const avHtml = p.avatar_url
+      ? `<img src="${p.avatar_url}" style="width:42px;height:42px;border-radius:50%;object-fit:cover;border:2px solid ${acted ? '#ffc107' : 'rgba(107,222,155,.5)'};">`
+      : `<div style="font-size:1.9rem;line-height:1;">⛏️</div>`;
+    const apHtml = isSelf ? `
+      <div style="width:100%;height:3px;background:rgba(255,255,255,.12);border-radius:2px;overflow:hidden;margin-top:3px;">
+        <div style="width:${apPct}%;height:100%;background:${apColor};border-radius:2px;transition:width .3s;"></div>
+      </div>
+      <div style="font-size:.58rem;color:${apColor};margin-top:1px;">⚡${C.ap}/${COMBAT_STATS.maxAp}</div>` : '';
+    return `<div class="cb-ally-card${acted ? ' cb-acted' : ''}">
+      ${avHtml}
+      <div style="font-size:.65rem;font-weight:700;margin-top:3px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+        ${escHtml(p.display_name)}${acted ? ' <span style="color:#ffc107;font-size:.6rem;">✓</span>' : ''}
+      </div>
+      <div style="font-size:.6rem;color:${hpCol};">${p.hp}/${p.max_hp}</div>
+      <div style="width:100%;height:4px;background:rgba(255,255,255,.15);border-radius:2px;overflow:hidden;margin-top:2px;">
+        <div style="width:${hpPct}%;height:100%;background:${hpCol};border-radius:2px;transition:width .3s;"></div>
+      </div>
+      ${apHtml}
+    </div>`;
+  }).join('');
+
+  // ── カード列 ──
+  const isWaiting = C.sessionId && C.myActedRound >= C.currentRound;
   const cardHtml = C.hand.map((cardId, i) => {
-    const def = CARDS[cardId] || {};
+    const def    = CARDS[cardId] || {};
     const apCost = def.ap_cost ?? 0;
     const canUse = C.ap >= apCost;
     const cardIconHtml = def.imageUrl
-      ? `<img class="combat-card-img" src="${def.imageUrl}" onerror="this.outerHTML='<div class=\\'combat-card-icon\\'>${escHtml(def.icon || '❓')}</div>'">`
+      ? `<img class="combat-card-img" src="${def.imageUrl}" onerror="this.outerHTML='<div class=\\"combat-card-icon\\">${escHtml(def.icon || '❓')}</div>'">`
       : `<div class="combat-card-icon">${def.icon || '❓'}</div>`;
     const apLabel = apCost > 0
       ? `<div style="font-size:.62rem;color:${canUse ? '#60b4ff' : '#ff5555'};font-weight:700;margin-top:2px;">⚡${apCost}</div>`
       : '';
-    return `<div class="combat-card${canUse ? '' : ' combat-card-disabled'}" draggable="${canUse}"
-      style="${canUse ? '' : 'opacity:.45;cursor:not-allowed;'}"
-      ondragstart="${canUse ? `combatDragStart(event,${i})` : 'event.preventDefault()'}"
-      ondragend="combatDragEnd(event)"
-      ontouchstart="combatTouchStart(event,${i})"
-      ontouchmove="combatTouchMove(event)"
-      ontouchend="combatTouchEnd(event)">
+    return `<div class="combat-card${canUse ? '' : ' combat-card-disabled'}"
+        style="${canUse ? '' : 'opacity:.42;cursor:not-allowed;'}"
+        draggable="${canUse}"
+        onclick="${canUse ? `playCard(${i})` : ''}"
+        ondragstart="${canUse ? `combatDragStart(event,${i})` : 'event.preventDefault()'}"
+        ondragend="combatDragEnd(event)"
+        ontouchstart="combatTouchStart(event,${i})"
+        ontouchmove="combatTouchMove(event)"
+        ontouchend="combatTouchEnd(event)">
       ${cardIconHtml}
       <div class="combat-card-name">${escHtml(def.name || cardId)}</div>
       ${apLabel}
@@ -2786,82 +2848,35 @@ function showCombatModal() {
   const ov = document.getElementById('modal-overlay');
   ov.style.display = 'flex';
   ov.dataset.combatModal = '1';
-
   const inner = document.getElementById('modal-inner');
   inner.classList.add('combat-modal');
-  // 参加者リスト（マルチ時）
-  const otherParticipants = C.participants.filter(p => p.user_id !== G.userId);
-  const allParticipants = [
-    { user_id: G.userId, display_name: G.displayName || 'あなた',
-      avatar_url: G.avatarUrl, hp: G.hp, max_hp: G.maxHp,
-      acted_round: C.myActedRound },
-    ...otherParticipants,
-  ];
-  const participantsHtml = allParticipants.map((p, pi) => {
-    const hpPct   = Math.max(0, Math.round((p.hp / p.max_hp) * 100));
-    const hpColor = hpPct > 50 ? '#6bde9b' : hpPct > 20 ? '#ffc107' : '#ff5555';
-    const acted   = C.sessionId && p.acted_round >= C.currentRound;
-    const avHtml  = p.avatar_url
-      ? `<img src="${p.avatar_url}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid ${acted ? '#ffc107' : 'rgba(107,222,155,.5)'};">`
-      : `<div style="font-size:1.6rem;flex-shrink:0;">⛏️</div>`;
-    // APバーは自分のみ表示
-    const apBarHtml = pi === 0 ? `
-      <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
-        <span style="font-size:.65rem;color:${apColor};opacity:.85;">⚡AP</span>
-        <div style="flex:1;height:3px;background:rgba(255,255,255,.12);border-radius:2px;overflow:hidden;">
-          <div style="width:${apPct}%;height:100%;background:${apColor};border-radius:2px;transition:width .3s;"></div>
-        </div>
-        <span style="font-size:.65rem;color:${apColor};">${C.ap}/${COMBAT_STATS.maxAp}</span>
-      </div>` : '';
-    return `<div style="display:flex;align-items:center;gap:8px;">
-      ${avHtml}
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:.78rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-          ${escHtml(p.display_name)}${acted ? ' <span style="color:#ffc107;font-size:.68rem;">✓行動済</span>' : ''}
-        </div>
-        <div style="font-size:.7rem;color:${hpColor};">HP ${p.hp} / ${p.max_hp}</div>
-        <div style="height:4px;background:rgba(255,255,255,.12);border-radius:2px;overflow:hidden;margin-top:2px;">
-          <div style="width:${hpPct}%;height:100%;background:${hpColor};border-radius:2px;transition:width .3s;"></div>
-        </div>
-        ${apBarHtml}
-      </div>
-    </div>`;
-  }).join('');
-
-  const isWaiting = C.sessionId && C.myActedRound >= C.currentRound;
-  const dropZoneHtml = isWaiting
-    ? `<div style="min-height:58px;border:2px dashed rgba(255,193,7,.3);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:.82rem;color:rgba(255,193,7,.6);margin-top:10px;">
-        ⏳ 他プレイヤーの行動を待っています...
-       </div>`
-    : `<div id="enemy-area" ondragover="event.preventDefault()" ondrop="combatDrop(event)">カードをここにドロップ</div>`;
 
   inner.innerHTML = `
-    <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
-      <button onclick="showCombatLog()" style="padding:4px 12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:8px;color:rgba(255,255,255,.75);cursor:pointer;font-size:.78rem;">📜 戦闘ログ</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div style="font-size:.7rem;color:rgba(255,255,255,.4);">Round ${C.currentRound}</div>
+      <button onclick="showCombatLog()" style="padding:3px 10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:8px;color:rgba(255,255,255,.7);cursor:pointer;font-size:.7rem;">📜 ログ</button>
     </div>
 
-    <div id="enemy-area" style="text-align:center;margin-bottom:14px;"
-      ondragover="event.preventDefault()" ondrop="combatDrop(event)">
-      ${monImgHtml}
-      <div style="font-weight:700;font-size:1.05rem;margin-top:8px;">${escHtml(mon.name)}</div>
-      <div style="font-size:.8rem;color:${mHpColor};margin:4px 0;">HP ${C.monsterHp} / ${mon.maxHp}</div>
-      <div style="height:8px;background:rgba(255,255,255,.15);border-radius:4px;overflow:hidden;margin:0 auto 4px;max-width:280px;">
-        <div style="width:${mHpPct}%;height:100%;background:${mHpColor};transition:width .3s;border-radius:4px;"></div>
+    <div id="enemy-area" class="cb-row">${enemySlotsHtml}</div>
+
+    <div class="cb-vs">⚔️ ─── VS ─── ⚔️</div>
+
+    <div class="cb-row">${allySlotsHtml}</div>
+
+    ${isWaiting ? `
+      <div style="text-align:center;padding:16px;font-size:.82rem;color:rgba(255,193,7,.65);">
+        ⏳ 他プレイヤーの行動を待っています...
+      </div>` : `
+      <div style="margin:6px 0 4px;font-size:.66rem;color:rgba(255,255,255,.32);">
+        カードをタップ または 敵にドラッグして使用
       </div>
-      ${actionHtml}
-    </div>
-
-    <div style="text-align:center;font-size:.7rem;color:rgba(255,255,255,.28);letter-spacing:.12em;margin-bottom:10px;">⚔️ ─── VS ─── ⚔️</div>
-
-    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;">${participantsHtml}</div>
-
-    ${isWaiting ? `<div style="text-align:center;font-size:.82rem;color:rgba(255,193,7,.6);margin-top:8px;">⏳ 他プレイヤーの行動を待っています...</div>` : ''}
-    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px;">${isWaiting ? '' : cardHtml}</div>
-    ${!isWaiting ? `
-    <div style="display:flex;gap:8px;align-items:center;margin-top:12px;">
-      ${C.roundDamage > 0 ? `<div style="font-size:.78rem;color:#ffe050;flex:1;">今ターン合計: ${C.roundDamage} ダメージ</div>` : '<div style="flex:1;"></div>'}
-      <button class="btn-modal-action" style="flex:1;background:linear-gradient(135deg,#c0392b,#922b21);border:none;padding:10px 16px;border-radius:10px;color:#fff;font-size:.9rem;font-weight:700;cursor:pointer;" onclick="endTurn()">ターン終了 →</button>
-    </div>` : ''}
+      <div class="cb-cards-row">${cardHtml}</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+        ${C.roundDamage > 0
+          ? `<div style="font-size:.75rem;color:#ffe050;font-weight:700;flex:1;">💥 ${C.roundDamage} ダメージ</div>`
+          : '<div style="flex:1;"></div>'}
+        <button onclick="endTurn()" style="flex:1;background:linear-gradient(135deg,#c0392b,#7b241c);border:none;padding:11px 14px;border-radius:10px;color:#fff;font-size:.88rem;font-weight:700;cursor:pointer;letter-spacing:.04em;">ターン終了 →</button>
+      </div>`}
   `;
 }
 
@@ -3075,21 +3090,28 @@ async function joinExistingCombat(session, cx, cy) {
 function combatDragStart(e, idx) {
   _draggedCardIdx = idx;
   e.dataTransfer.effectAllowed = 'move';
-  document.getElementById('enemy-area')?.classList.add('enemy-area--active');
 }
 
 function combatDragEnd(e) {
   _draggedCardIdx = null;
-  document.getElementById('enemy-area')?.classList.remove('enemy-area--active');
+  document.querySelectorAll('.cb-drag-over').forEach(el => el.classList.remove('cb-drag-over'));
 }
 
 function combatDrop(e) {
   e.preventDefault();
-  document.getElementById('enemy-area')?.classList.remove('enemy-area--active');
+  document.querySelectorAll('.cb-drag-over').forEach(el => el.classList.remove('cb-drag-over'));
   if (_draggedCardIdx !== null) {
     const idx = _draggedCardIdx;
     _draggedCardIdx = null;
     playCard(idx);
+  }
+}
+
+function combatSelectEnemy(idx) {
+  const enemies = C.enemies?.length ? C.enemies : [C.monster];
+  if (idx < enemies.length && enemies[idx]) {
+    C.targetIdx = idx;
+    showCombatModal();
   }
 }
 
