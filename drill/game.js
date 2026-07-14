@@ -2553,7 +2553,9 @@ async function startCombat(monsterId, cx, cy) {
   C.currentRound = 1;
   C.myActedRound = 0;
   C.participants = [];
-  C.ap           = COMBAT_STATS.maxAp;
+  // APは戦闘間で持続（全回復しない）
+  const _savedAp = parseInt(localStorage.getItem('drill_persisted_ap') ?? '', 10);
+  C.ap           = !isNaN(_savedAp) ? Math.min(COMBAT_STATS.maxAp, _savedAp) : COMBAT_STATS.maxAp;
   C.roundDamage  = 0;
   C.targetIdx    = 0;
   C.enemies      = [];
@@ -2614,20 +2616,24 @@ async function playCard(cardIdx) {
   C.discard.push(cardId);
 
   const { total: damage, crits } = computeCardDamage(cardDef);
-  C.roundDamage += damage;
   if (damage > 0) {
     const critLabel = crits > 0 ? ' 💥CRIT!' : '';
     combatAddLog(`⚔️ ${cardDef.name}！ ${damage} ダメージ${critLabel}`);
   }
   spawnDamageNumber(damage, crits > 0);
 
-  // ソロ: 蓄積ダメージでモンスターが倒れる → ターン終了を待たず即勝利
-  if (!C.sessionId && C.roundDamage >= C.monsterHp) {
-    C.monsterHp = 0;
-    combatAddLog(`✨ ${C.monster.name}を倒した！`);
-    showCombatModal();
-    await endCombat(true);
-    return;
+  if (C.sessionId) {
+    // マルチ: 蓄積してターン終了時にサーバーへ送信
+    C.roundDamage += damage;
+  } else {
+    // ソロ: HPに即時反映 → 0以下で即勝利
+    C.monsterHp = Math.max(0, C.monsterHp - damage);
+    if (C.monsterHp <= 0) {
+      combatAddLog(`✨ ${C.monster.name}を倒した！`);
+      showCombatModal();
+      await endCombat(true);
+      return;
+    }
   }
   showCombatModal();
 }
@@ -2703,14 +2709,7 @@ async function endTurn() {
     return;
   }
 
-  // ── ソロ ──
-  C.monsterHp = Math.max(0, C.monsterHp - totalDamage);
-  if (C.monsterHp <= 0) {
-    combatAddLog(`✨ ${C.monster.name}を倒した！`);
-    showCombatModal();
-    await endCombat(true);
-    return;
-  }
+  // ── ソロ（ダメージは playCard で即時適用済み） ──
   const action = C.nextAction;
   if (action) {
     combatAddLog(`👾 ${C.monster.name}: ${action.name}`);
@@ -2734,6 +2733,8 @@ async function endTurn() {
 
 async function endCombat(win) {
   C.active = false;
+  // 戦闘終了時のAPを保存（次の戦闘に引き継ぐ）
+  localStorage.setItem('drill_persisted_ap', String(C.ap));
   clearCombatState();
   const monName = C.monster?.name || '???';
   if (_combatChannel) { supabaseClient.removeChannel(_combatChannel); _combatChannel = null; }
@@ -2766,6 +2767,14 @@ async function endCombat(win) {
   }
 }
 
+// スロット番号 → エンティティ番号（中央始まり配置）
+// 1体: [-, 0, -]  2体: [0, 1, -]  3体: [0, 1, 2]
+function entityAtSlot(slotIdx, total) {
+  if (total === 1) return slotIdx === 1 ? 0 : -1;
+  if (total === 2) return slotIdx <= 1 ? slotIdx : -1;
+  return slotIdx;
+}
+
 function showCombatModal() {
   saveCombatState();
   const mon = C.monster;
@@ -2774,48 +2783,53 @@ function showCombatModal() {
   const apPct   = COMBAT_STATS.maxAp > 0 ? Math.round((C.ap / COMBAT_STATS.maxAp) * 100) : 100;
   const apColor = apPct > 50 ? '#60b4ff' : apPct > 20 ? '#ffc107' : '#ff5555';
 
-  // ── 敵スロット（3枠固定、現在は1体） ──
+  // ── 敵スロット（中央始まり配置） ──
   const enemies = C.enemies?.length ? C.enemies : [mon];
   const tgt = C.targetIdx ?? 0;
-  const enemySlotsHtml = Array.from({length: 3}, (_, i) => {
-    const enemy = enemies[i] ?? null;
-    if (!enemy) return `<div class="cb-enemy-card cb-slot-empty"></div>`;
-    const curHp  = i === 0 ? C.monsterHp : (enemy.currentHp ?? enemy.maxHp);
+  const enemySlotsHtml = Array.from({length: 3}, (_, slotIdx) => {
+    const eIdx = entityAtSlot(slotIdx, enemies.length);
+    if (eIdx < 0) return `<div class="cb-enemy-card cb-slot-empty"></div>`;
+    const enemy  = enemies[eIdx];
+    const curHp  = eIdx === 0 ? C.monsterHp : (enemy.currentHp ?? enemy.maxHp);
     const hpPct  = Math.max(0, Math.round(curHp / enemy.maxHp * 100));
     const hpCol  = hpPct > 50 ? '#6bde9b' : hpPct > 20 ? '#ffc107' : '#ff5555';
-    const projDmg = (i === tgt && C.roundDamage > 0) ? Math.min(C.roundDamage, curHp) : 0;
+    // マルチ: まだサーバー未反映の分を予測表示
+    const projDmg = (!C.sessionId || eIdx === tgt) ? 0
+      : Math.min(C.roundDamage, curHp);
+    const dispHp  = C.sessionId ? Math.max(0, curHp - projDmg) : curHp;
+    const dispPct = Math.max(0, Math.round(dispHp / enemy.maxHp * 100));
     const imgHtml = enemy.imageUrl
       ? `<img src="${enemy.imageUrl}" style="width:58px;height:58px;object-fit:contain;image-rendering:pixelated;border-radius:8px;" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><div style="display:none;font-size:2.8rem;line-height:1;">${enemy.icon || '👾'}</div>`
       : `<div style="font-size:2.8rem;line-height:1;">${enemy.icon || '👾'}</div>`;
-    const nextActHtml = (i === 0 && C.nextAction)
+    const nextActHtml = (eIdx === 0 && C.nextAction)
       ? `<div style="font-size:.58rem;color:rgba(255,130,70,.9);margin-top:3px;line-height:1.3;">${escHtml(C.nextAction.name)}${C.nextAction.damage > 0 ? `<span style="color:#ff8866;"> -${C.nextAction.damage}</span>` : ''}</div>`
       : '';
-    return `<div class="cb-enemy-card${i === tgt ? ' cb-selected' : ''}"
+    return `<div class="cb-enemy-card${eIdx === tgt ? ' cb-selected' : ''}"
         ondragover="event.preventDefault();this.classList.add('cb-drag-over')"
         ondragleave="this.classList.remove('cb-drag-over')"
         ondrop="this.classList.remove('cb-drag-over');combatDrop(event)"
-        onclick="combatSelectEnemy(${i})">
+        onclick="combatSelectEnemy(${eIdx})">
       ${imgHtml}
       <div style="font-size:.68rem;font-weight:700;margin-top:4px;line-height:1.2;word-break:break-all;">${escHtml(enemy.name)}</div>
-      <div style="font-size:.6rem;color:${hpCol};margin-top:1px;">${curHp}/${enemy.maxHp}</div>
+      <div style="font-size:.6rem;color:${hpCol};margin-top:1px;">${dispHp}/${enemy.maxHp}</div>
       <div style="width:100%;height:4px;background:rgba(255,255,255,.15);border-radius:2px;overflow:hidden;margin-top:2px;">
-        <div style="width:${hpPct}%;height:100%;background:${hpCol};border-radius:2px;transition:width .3s;"></div>
+        <div style="width:${dispPct}%;height:100%;background:${hpCol};border-radius:2px;transition:width .4s;"></div>
       </div>
-      ${projDmg > 0 ? `<div style="font-size:.6rem;color:#ffe050;font-weight:700;margin-top:2px;">▼${projDmg}</div>` : ''}
       ${nextActHtml}
     </div>`;
   }).join('');
 
-  // ── 味方スロット（3枠固定） ──
+  // ── 味方スロット（中央始まり配置） ──
   const otherParticipants = C.participants.filter(p => p.user_id !== G.userId);
   const allParticipants = [
     { user_id: G.userId, display_name: G.displayName || 'あなた',
       avatar_url: G.avatarUrl, hp: G.hp, max_hp: G.maxHp, acted_round: C.myActedRound },
     ...otherParticipants,
   ];
-  const allySlotsHtml = Array.from({length: 3}, (_, i) => {
-    const p = allParticipants[i] ?? null;
-    if (!p) return `<div class="cb-ally-card cb-slot-empty"></div>`;
+  const allySlotsHtml = Array.from({length: 3}, (_, slotIdx) => {
+    const pIdx = entityAtSlot(slotIdx, allParticipants.length);
+    if (pIdx < 0) return `<div class="cb-ally-card cb-slot-empty"></div>`;
+    const p = allParticipants[pIdx];
     const hpPct = Math.max(0, Math.round(p.hp / p.max_hp * 100));
     const hpCol = hpPct > 50 ? '#6bde9b' : hpPct > 20 ? '#ffc107' : '#ff5555';
     const acted = C.sessionId && p.acted_round >= C.currentRound;
@@ -2841,7 +2855,7 @@ function showCombatModal() {
     </div>`;
   }).join('');
 
-  // ── カード列 ──
+  // ── カード列（ドラッグのみ、タップ不可） ──
   const isWaiting = C.sessionId && C.myActedRound >= C.currentRound;
   const cardHtml = C.hand.map((cardId, i) => {
     const def    = CARDS[cardId] || {};
@@ -2857,7 +2871,6 @@ function showCombatModal() {
     return `<div class="combat-card${canUse ? '' : ' combat-card-disabled'}${rank ? ` rank-${rank}` : ''}"
         style="${canUse ? '' : 'opacity:.42;cursor:not-allowed;'}"
         draggable="${canUse}"
-        onclick="${canUse ? `playCard(${i})` : ''}"
         ondragstart="${canUse ? `combatDragStart(event,${i})` : 'event.preventDefault()'}"
         ondragend="combatDragEnd(event)"
         ontouchstart="combatTouchStart(event,${i})"
@@ -2894,13 +2907,11 @@ function showCombatModal() {
         ⏳ 他プレイヤーの行動を待っています...
       </div>` : `
       <div style="margin:6px 0 4px;font-size:.66rem;color:rgba(255,255,255,.32);">
-        カードをタップ または 敵にドラッグして使用
+        カードを敵にドラッグして使用
       </div>
       <div class="cb-cards-row">${cardHtml}</div>
       <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
-        ${C.roundDamage > 0
-          ? `<div style="font-size:.75rem;color:#ffe050;font-weight:700;flex:1;">💥 ${C.roundDamage} ダメージ</div>`
-          : '<div style="flex:1;"></div>'}
+        <div style="flex:1;"></div>
         <button onclick="endTurn()" style="flex:1;background:linear-gradient(135deg,#c0392b,#7b241c);border:none;padding:11px 14px;border-radius:10px;color:#fff;font-size:.88rem;font-weight:700;cursor:pointer;letter-spacing:.04em;">ターン終了 →</button>
       </div>`}
   `;
