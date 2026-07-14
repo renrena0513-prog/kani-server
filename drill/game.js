@@ -289,6 +289,9 @@ const C = {
 };
 let _combatChannel = null; // 戦闘Realtimeチャンネル
 
+// 多重接続防止：ページロード時に一意のセッションIDを生成
+const _mySessionId = crypto.randomUUID();
+
 let _draggedCardIdx = null;
 let _touchCardIdx   = null;
 let _touchGhost     = null;
@@ -3263,6 +3266,44 @@ function combatTouchEnd(e) {
 }
 
 // ============================================================
+// 多重接続防止（シングルセッション強制）
+// ============================================================
+
+async function claimSession() {
+  await supabaseClient
+    .from('profiles')
+    .update({ active_session_id: _mySessionId })
+    .eq('discord_user_id', G.discordId);
+}
+
+function showKickedScreen() {
+  if (document.getElementById('kicked-overlay')) return;
+  const el = document.createElement('div');
+  el.id = 'kicked-overlay';
+  el.innerHTML = `
+    <div class="kicked-box">
+      <div class="kicked-icon">📵</div>
+      <div class="kicked-title">別の端末からログインされました</div>
+      <div class="kicked-msg">
+        別のデバイスでセッションが開始されたため<br>
+        このセッションは切断されました。
+      </div>
+      <button class="kicked-btn-reconnect" onclick="reconnectSession()">
+        このデバイスで再接続
+      </button>
+      <button class="kicked-btn-logout" onclick="window.location.href='../login/index.html'">
+        ログアウト
+      </button>
+    </div>`;
+  document.body.appendChild(el);
+}
+
+async function reconnectSession() {
+  await claimSession();
+  document.getElementById('kicked-overlay')?.remove();
+}
+
+// ============================================================
 // カード詳細ポップアップ
 // ============================================================
 
@@ -3451,6 +3492,19 @@ function setupRealtime() {
       const path = (r.path || '').replace(/\/$/, '');
       if (path === '/drill' && r.is_active === false && !G.isAdmin) {
         window.location.href = '/';
+      }
+    })
+    .subscribe();
+
+  // セッション監視チャンネル（別端末ログインを即時検知）
+  supabaseClient
+    .channel('session-guard')
+    .on('postgres_changes', {
+      event: 'UPDATE', schema: 'public', table: 'profiles',
+    }, ({ new: r }) => {
+      if (!r || r.discord_user_id !== G.discordId) return;
+      if (r.active_session_id && r.active_session_id !== _mySessionId) {
+        showKickedScreen();
       }
     })
     .subscribe();
@@ -3945,12 +3999,17 @@ async function periodicStateSync() {
   if (G.surfaceMode) return;
   try {
     const [profRes, bpRes] = await Promise.all([
-      supabaseClient.from('profiles').select('drill_gold,drill_hp').eq('discord_user_id', G.discordId).single(),
+      supabaseClient.from('profiles').select('drill_gold,drill_hp,active_session_id').eq('discord_user_id', G.discordId).single(),
       supabaseClient.from('drill_backpack').select('item_id,quantity').eq('user_id', G.userId),
     ]);
     let changed = false;
     if (profRes.data) {
       const p = profRes.data;
+      // 多重接続チェック：DB上のセッションIDが自分と違えばキック
+      if (p.active_session_id && p.active_session_id !== _mySessionId) {
+        showKickedScreen();
+        return;
+      }
       if (p.drill_gold != null && p.drill_gold !== G.drillGold) { G.drillGold = p.drill_gold; changed = true; }
       if (p.drill_hp   != null && p.drill_hp   !== G.hp)        { G.hp        = p.drill_hp;   changed = true; }
     }
@@ -3980,6 +4039,7 @@ async function initDrillGame() {
     G.isAdmin = true;
   }
 
+  await claimSession(); // 多重接続防止：このデバイスのセッションを確保
   await loadGameConfig();
   G.maxHp = BASE_HP;  // loadGameConfig後にBASE_HPが確定するので here
   G.hp = G.maxHp;
