@@ -121,10 +121,60 @@
     .unequipped-card.dragging { opacity: .4; cursor: grabbing; }
     /* タップ選択 */
     .tap-selected {
-      border-color: rgba(255, 210, 0, .9) !important;
-      background: rgba(255, 210, 0, .15) !important;
-      box-shadow: 0 0 12px rgba(255, 210, 0, .3);
+      outline: 3px solid rgba(255, 210, 0, .95) !important;
+      outline-offset: -2px;
+      background: rgba(255, 210, 0, .18) !important;
+      transform: scale(1.07);
+      z-index: 2;
+      animation: tapPulse .75s ease-in-out infinite alternate;
     }
+    @keyframes tapPulse {
+      from { box-shadow: 0 0 8px rgba(255,210,0,.35); }
+      to   { box-shadow: 0 0 22px rgba(255,210,0,.75), 0 0 5px rgba(255,210,0,.9); }
+    }
+    /* 選択中ラベル */
+    .sel-label {
+      position: absolute; bottom: 3px; left: 0; right: 0;
+      text-align: center; font-size: .52rem; font-weight: 900;
+      color: #ffe050; letter-spacing: .04em; pointer-events: none; z-index: 4;
+    }
+    /* 配置ターゲットヒント */
+    .slot-target {
+      position: absolute; inset: 0; border-radius: 8px;
+      background: rgba(60,180,120,.12);
+      border: 2px solid rgba(60,200,130,.45) !important;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .85rem; pointer-events: none; z-index: 1;
+      animation: targetPulse .9s ease-in-out infinite alternate;
+    }
+    @keyframes targetPulse {
+      from { background: rgba(60,180,120,.08); }
+      to   { background: rgba(60,180,120,.22); }
+    }
+    /* 配置完了フラッシュ */
+    .just-placed {
+      animation: placedFlash .55s ease-out forwards !important;
+    }
+    @keyframes placedFlash {
+      0%   { outline: 3px solid rgba(80,220,120,.95) !important; background: rgba(80,220,120,.3); transform: scale(1.1); }
+      100% { outline: none; background: rgba(212,168,83,.1); transform: scale(1); }
+    }
+    /* ヒントバー */
+    #fm-hint {
+      background: rgba(60,120,220,.13);
+      border: 1px solid rgba(100,160,255,.22);
+      border-radius: 10px; padding: 8px 12px;
+      font-size: .78rem; color: rgba(200,220,255,.88);
+      margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
+      min-height: 38px; transition: background .2s;
+    }
+    #fm-hint.selecting { background: rgba(220,180,20,.13); border-color: rgba(255,210,0,.3); color: #ffe590; }
+    #fm-hint .hint-text { flex: 1; }
+    .hint-btn {
+      padding: 4px 11px; border-radius: 7px; font-size: .72rem; font-weight: 700; cursor: pointer; border: none;
+    }
+    .hint-btn-cancel { background: rgba(255,255,255,.1); color: rgba(255,255,255,.6); }
+    .hint-btn-return { background: rgba(200,80,80,.4); color: #ffb3b3; margin-right: 2px; }
 
     /* 保存ボタン */
     .btn-save {
@@ -201,6 +251,7 @@
   <div id="tab-cards">
     <div class="fm-section">
       <div class="fm-section-title">装備中 (10枚)</div>
+      <div id="fm-hint"></div>
       <div class="card-grid" id="equipped-grid"></div>
     </div>
     <div class="fm-section">
@@ -413,6 +464,7 @@ async function equipDrill(rowId) {
 function renderCards() {
   renderEquipped();
   renderUnequipped();
+  updateHintBar();
 }
 
 function cardVisual(c, small = false) {
@@ -437,7 +489,38 @@ function cardHTML(cardId, slotNum) {
 
 function clearTapSelected() {
   tapSelected = null;
-  document.querySelectorAll('.tap-selected').forEach(el => el.classList.remove('tap-selected'));
+  dragSource = null;
+}
+
+function updateHintBar() {
+  const el = document.getElementById('fm-hint');
+  if (!el) return;
+  if (!tapSelected) {
+    el.className = '';
+    el.innerHTML = '💡 カードをタップして選択 → スロットをタップして配置';
+    return;
+  }
+  el.className = 'selecting';
+  if (tapSelected.type === 'unequipped') {
+    const c = CARDS_DEF[tapSelected.cardId] ?? {};
+    el.innerHTML = `<span class="hint-text">🟡 <b>${c.name || tapSelected.cardId}</b> を選択中 — 配置先スロットをタップ</span>
+      <button class="hint-btn hint-btn-cancel" onclick="cancelTap()">✕ キャンセル</button>`;
+  } else {
+    const c = CARDS_DEF[deckSlots[tapSelected.slotIndex]] ?? {};
+    el.innerHTML = `<span class="hint-text">🟡 <b>${c.name || ''}</b>（${tapSelected.slotIndex+1}番）— 入替先または↩ボタンで戻す</span>
+      <button class="hint-btn hint-btn-return" onclick="returnToPool()">↩ プールへ</button>
+      <button class="hint-btn hint-btn-cancel" onclick="cancelTap()">✕</button>`;
+  }
+}
+
+function cancelTap() {
+  clearTapSelected();
+  renderCards();
+  updateHintBar();
+}
+
+function returnToPool() {
+  handleDropToPool();
 }
 
 function renderEquipped() {
@@ -445,13 +528,24 @@ function renderEquipped() {
   grid.innerHTML = '';
   for (let i = 0; i < 10; i++) {
     const cardId = deckSlots[i];
-    const slot = document.createElement('div');
     const rank = rankFromId(cardId);
-    slot.className = 'card-slot' + (cardId ? ' has-card' : '') + (rank ? ` rank-${rank}` : '');
+    const isSelected = tapSelected?.type === 'slot' && tapSelected.slotIndex === i;
+    const isTarget = !isSelected && !!tapSelected;
+
+    const slot = document.createElement('div');
+    const classes = ['card-slot'];
+    if (cardId) classes.push('has-card');
+    if (rank) classes.push(`rank-${rank}`);
+    if (isSelected) classes.push('tap-selected');
+    slot.className = classes.join(' ');
     slot.dataset.slotIndex = i;
-    slot.innerHTML = cardId
+
+    let inner = cardId
       ? cardHTML(cardId, i + 1)
       : `<div class="card-slot-num">${i+1}</div><span style="font-size:.7rem;opacity:.25;">空</span>`;
+    if (isSelected) inner += `<div class="sel-label">選択中</div>`;
+    if (isTarget)   inner += `<div class="slot-target">▼</div>`;
+    slot.innerHTML = inner;
 
     // ── ドラッグ（デスクトップ / Firefox対応）──
     slot.draggable = true;
@@ -472,22 +566,16 @@ function renderEquipped() {
     // ── タップ選択（モバイル）──
     slot.addEventListener('click', () => {
       if (tapSelected?.type === 'unequipped') {
-        // 未装備カード選択中 → このスロットへ配置
         handleDrop(i);
-        clearTapSelected();
       } else if (tapSelected?.type === 'slot' && tapSelected.slotIndex === i) {
-        clearTapSelected(); // 同じスロットをタップ → 解除
-      } else if (cardId && cardId !== 'attack') {
-        // デッキスロットのカードを選択（プールへ戻す候補 or スロット入替）
-        clearTapSelected();
-        dragSource = { type: 'slot', slotIndex: i };
-        tapSelected = { type: 'slot', slotIndex: i };
-        slot.classList.add('tap-selected');
-        showToast('📍 別スロットをタップで入替、下の空欄タップでプールへ');
+        cancelTap();
       } else if (tapSelected?.type === 'slot') {
-        // スロット選択中 → 別スロットをタップで入替
         handleDrop(i);
-        clearTapSelected();
+      } else if (cardId && cardId !== 'attack') {
+        tapSelected = { type: 'slot', slotIndex: i };
+        dragSource = { type: 'slot', slotIndex: i };
+        renderCards();
+        updateHintBar();
       }
     });
 
@@ -519,15 +607,20 @@ function renderUnequipped() {
   for (const [cardId, count] of Object.entries(counts)) {
     const c = CARDS_DEF[cardId] ?? { name: cardId, icon: '❓' };
     const uRank = rankFromId(cardId);
+    const uSelected = tapSelected?.type === 'unequipped' && tapSelected.cardId === cardId;
     const card = document.createElement('div');
-    card.className = 'unequipped-card' + (uRank ? ` rank-${uRank}` : '');
+    const uClasses = ['unequipped-card'];
+    if (uRank) uClasses.push(`rank-${uRank}`);
+    if (uSelected) uClasses.push('tap-selected');
+    card.className = uClasses.join(' ');
     card.dataset.cardId = cardId;
     card.innerHTML = `
       ${rankBadgeHtml(uRank)}
       ${cardVisual(c)}
       <div class="card-name">${c.name}</div>
       <div class="card-dmg">${c.ap_cost != null ? `⚡${c.ap_cost} ` : ''}${c.damage ?? 0}</div>
-      ${count > 1 ? `<div style="font-size:.58rem;opacity:.55;">×${count}</div>` : ''}`;
+      ${count > 1 ? `<div style="font-size:.58rem;opacity:.55;">×${count}</div>` : ''}
+      ${uSelected ? `<div class="sel-label">選択中</div>` : ''}`;
 
     // ── ドラッグ（デスクトップ）──
     card.draggable = true;
@@ -541,14 +634,14 @@ function renderUnequipped() {
     // ── タップ選択（モバイル）──
     card.addEventListener('click', () => {
       if (tapSelected?.type === 'unequipped' && tapSelected.cardId === cardId) {
-        clearTapSelected(); // 同じカードをタップ → 解除
+        cancelTap();
         return;
       }
       clearTapSelected();
       tapSelected = { type: 'unequipped', cardId };
       dragSource = { type: 'unequipped', cardId };
-      card.classList.add('tap-selected');
-      showToast('📍 タップでデッキスロットに配置');
+      renderCards();
+      updateHintBar();
     });
 
     grid.appendChild(card);
@@ -570,11 +663,11 @@ function handleDrop(targetSlotIndex) {
   if (dragSource.type === 'unequipped') {
     const cardId = dragSource.cardId;
     const poolIdx = unequippedPool.indexOf(cardId);
-    if (poolIdx === -1) { dragSource = null; return; }
+    if (poolIdx === -1) { cancelTap(); return; }
 
     // 同カード最大2枚制限
     const deckCount = deckSlots.filter(s => s === cardId).length;
-    if (deckCount >= 2) { showToast('⚠️ 同じカードは最大2枚までです'); dragSource = null; return; }
+    if (deckCount >= 2) { showToast('⚠️ 同じカードは最大2枚までです'); return; } // 選択は維持
 
     const oldCard = deckSlots[targetSlotIndex];
     unequippedPool.splice(poolIdx, 1);
@@ -589,19 +682,26 @@ function handleDrop(targetSlotIndex) {
     deckSlots[targetSlotIndex] = tmp;
   }
 
-  dragSource = null;
+  const flashIdx = targetSlotIndex;
+  clearTapSelected();
   renderCards();
+  updateHintBar();
+  // 配置完了フラッシュ
+  requestAnimationFrame(() => {
+    const slots = document.querySelectorAll('#equipped-grid .card-slot');
+    if (slots[flashIdx]) slots[flashIdx].classList.add('just-placed');
+  });
 }
 
 function handleDropToPool() {
   if (!dragSource || dragSource.type !== 'slot') return;
   const cardId = deckSlots[dragSource.slotIndex];
-  if (!cardId || cardId === 'attack') { dragSource = null; return; }
-  // 購入カードをプールへ戻し、スロットをデフォルト(attack)に戻す
+  if (!cardId || cardId === 'attack') { clearTapSelected(); return; }
   unequippedPool.push(cardId);
   deckSlots[dragSource.slotIndex] = 'attack';
-  dragSource = null;
+  clearTapSelected();
   renderCards();
+  updateHintBar();
 }
 
 // ============================================================
