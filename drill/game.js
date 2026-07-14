@@ -172,7 +172,7 @@ let CURSE = [
 
 // カード定義（拡張用）
 let CARDS = {
-  attack:       { id:'attack',       name:'攻撃',         desc:'50ダメージ',   icon:'⚔️', imageUrl:null, damage:50  },
+  fist_d:       { id:'fist_d',       name:'拳で',          desc:'基本攻撃',     icon:'👊', imageUrl:null, ap_cost:10, base_attack:0, mult_min:0.9, mult_max:1.0 },
   drill_attack: { id:'drill_attack', name:'ドリルアタック', desc:'100ダメージ',  icon:'⛏️', imageUrl:null, damage:100 },
 };
 
@@ -247,8 +247,8 @@ const G = {
   otherPlayers: new Map(), // userId -> {x,y}
   isAdmin: false,
   drills: [],            // 所持ドリル一覧
-  playerDeckSlots: ['attack','attack','attack','attack','attack','attack','attack','attack','attack','attack'],
-  ownedCards: { attack: 10 },
+  playerDeckSlots: ['fist_d','fist_d','fist_d','fist_d','fist_d','fist_d','fist_d','fist_d','fist_d','fist_d'],
+  ownedCards: { fist_d: 10 },
   mineTarget: null,      // {x,y}
   mineTimer: null,
   mineHP: {},            // 'x,y' -> remaining hp
@@ -626,8 +626,13 @@ async function loadAll() {
 
   // デッキ・所持カード
   if (deckRes.data) {
-    G.playerDeckSlots = deckRes.data.slots ?? G.playerDeckSlots;
+    G.playerDeckSlots = (deckRes.data.slots ?? G.playerDeckSlots)
+      .map(s => s === 'attack' ? 'fist_d' : s);
     G.ownedCards = deckRes.data.owned_cards ?? G.ownedCards;
+    if (G.ownedCards.attack) {
+      G.ownedCards.fist_d = (G.ownedCards.fist_d || 0) + G.ownedCards.attack;
+      delete G.ownedCards.attack;
+    }
   } else {
     // 初回：デフォルトデッキをDBに保存
     await supabaseClient.from('drill_player_deck').upsert({ user_id: uid, slots: G.playerDeckSlots, owned_cards: G.ownedCards });

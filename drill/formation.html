@@ -284,7 +284,7 @@ let CARDS_DEF = {};  // admin設定から読み込む
 let DRILLS_DEF = {}; // admin設定から読み込む
 
 const DEFAULT_CARDS = {
-  attack:       { name:'攻撃',         desc:'50ダメージ',  icon:'⚔️', damage:50  },
+  fist_d:       { name:'拳で',          desc:'基本攻撃',   icon:'👊', ap_cost:10, base_attack:0, mult_min:0.9, mult_max:1.0 },
   drill_attack: { name:'ドリルアタック', desc:'100ダメージ', icon:'⛏️', damage:100 },
 };
 
@@ -333,8 +333,8 @@ let userId = null;
 let discordId = null;
 let playerDrills = [];
 let equippedDrillRowId = null;
-let deckSlots = ['attack','attack','attack','attack','attack','attack','attack','attack','attack','attack'];
-let ownedCards = { attack: 10 }; // 所持カード枚数マップ
+let deckSlots = ['fist_d','fist_d','fist_d','fist_d','fist_d','fist_d','fist_d','fist_d','fist_d','fist_d'];
+let ownedCards = { fist_d: 10 };
 let unequippedPool = []; // 未装備カードのインスタンスプール
 
 // ドラッグ / タップ選択状態
@@ -387,18 +387,22 @@ async function loadData() {
   equippedDrillRowId = eq?.id || null;
 
   if (deckRes.data) {
-    deckSlots  = deckRes.data.slots       ?? deckSlots;
+    deckSlots  = (deckRes.data.slots ?? deckSlots).map(s => s === 'attack' ? 'fist_d' : s);
     ownedCards = deckRes.data.owned_cards ?? ownedCards;
+    if (ownedCards.attack) {
+      ownedCards.fist_d = (ownedCards.fist_d || 0) + ownedCards.attack;
+      delete ownedCards.attack;
+    }
   }
   initPool();
 }
 
 function initPool() {
   const deckCounts = {};
-  deckSlots.forEach(id => { if (id && id !== 'attack') deckCounts[id] = (deckCounts[id] || 0) + 1; });
+  deckSlots.forEach(id => { if (id && id !== 'fist_d') deckCounts[id] = (deckCounts[id] || 0) + 1; });
   unequippedPool = [];
   for (const [id, count] of Object.entries(ownedCards)) {
-    if (id === 'attack') continue;
+    if (id === 'fist_d') continue;
     const remaining = Math.max(0, count - (deckCounts[id] || 0));
     for (let i = 0; i < remaining; i++) unequippedPool.push(id);
   }
@@ -571,7 +575,7 @@ function renderEquipped() {
         cancelTap();
       } else if (tapSelected?.type === 'slot') {
         handleDrop(i);
-      } else if (cardId && cardId !== 'attack') {
+      } else if (cardId && cardId !== 'fist_d') {
         tapSelected = { type: 'slot', slotIndex: i };
         dragSource = { type: 'slot', slotIndex: i };
         renderCards();
@@ -672,8 +676,8 @@ function handleDrop(targetSlotIndex) {
     const oldCard = deckSlots[targetSlotIndex];
     unequippedPool.splice(poolIdx, 1);
     deckSlots[targetSlotIndex] = cardId;
-    // attack はフィラーなのでプールには戻さない。他の購入カードのみプールへ
-    if (oldCard && oldCard !== 'attack') unequippedPool.push(oldCard);
+    // fist_d はデフォルトカードなのでプールには戻さない。購入カードのみプールへ
+    if (oldCard && oldCard !== 'fist_d') unequippedPool.push(oldCard);
 
   } else if (dragSource.type === 'slot') {
     const from = dragSource.slotIndex;
@@ -696,9 +700,9 @@ function handleDrop(targetSlotIndex) {
 function handleDropToPool() {
   if (!dragSource || dragSource.type !== 'slot') return;
   const cardId = deckSlots[dragSource.slotIndex];
-  if (!cardId || cardId === 'attack') { clearTapSelected(); return; }
+  if (!cardId || cardId === 'fist_d') { clearTapSelected(); return; }
   unequippedPool.push(cardId);
-  deckSlots[dragSource.slotIndex] = 'attack';
+  deckSlots[dragSource.slotIndex] = 'fist_d';
   clearTapSelected();
   renderCards();
   updateHintBar();
