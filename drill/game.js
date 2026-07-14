@@ -182,6 +182,16 @@ let COMBAT_STATS = {
   attack: 50, defense: 50, critRate: 10, critDmg: 1.5, maxAp: 100, apRegen: 10,
 };
 
+const TARGET_LABELS = {
+  SINGLE:       '単体（敵）',
+  ALL:          '全体（敵）',
+  RANDOM_ENEMY: 'ランダム（敵）',
+  RANDOM_ANY:   'ランダム（敵味方）',
+  ALLY_SINGLE:  '味方単体',
+  ALLY_ALL:     '味方全体',
+  SELF:         '自分',
+};
+
 // カードのリッチ攻撃力を計算（1枚使用時の合計ダメージ）
 // リッチフィールド(base_attack/mult_min...)が無いカードは従来どおり固定damage
 // { total, crits } を返す。リッチフィールドなしのカードは固定damage
@@ -282,6 +292,10 @@ let _combatChannel = null; // 戦闘Realtimeチャンネル
 let _draggedCardIdx = null;
 let _touchCardIdx   = null;
 let _touchGhost     = null;
+let _touchStartPos  = { x: 0, y: 0 };
+let _touchLpTimer   = null;
+let _cbMouseLpTimer = null;
+let _cbMouseDown    = false;
 let _pendingMaterial = null; // { mat, x, y } — リュック満杯時に保留中の素材
 
 // ============================================================
@@ -483,20 +497,22 @@ async function loadGameConfig() {
       for (const [id, v] of Object.entries(cfg.cards)) {
         CARDS[id] = {
           id,
-          name: v.name ?? CARDS[id]?.name ?? id,
-          desc: v.desc ?? CARDS[id]?.desc ?? '',
-          icon: v.icon ?? CARDS[id]?.icon ?? '❓',
-          imageUrl: v.imageUrl ?? null,
-          damage: v.damage ?? CARDS[id]?.damage ?? 0,
-          // リッチフィールド（あれば戦闘でダメージ計算に使用）
-          rarity:          v.rarity ?? CARDS[id]?.rarity ?? null,
-          ap_cost:         v.ap_cost ?? CARDS[id]?.ap_cost ?? null,
-          base_attack:     v.base_attack ?? CARDS[id]?.base_attack ?? null,
-          mult_min:        v.mult_min ?? CARDS[id]?.mult_min ?? null,
-          mult_max:        v.mult_max ?? CARDS[id]?.mult_max ?? null,
+          name:            v.name       ?? CARDS[id]?.name       ?? id,
+          desc:            v.desc       ?? CARDS[id]?.desc       ?? '',
+          icon:            v.icon       ?? CARDS[id]?.icon       ?? '⚔️',
+          imageUrl:        v.imageUrl   ?? null,
+          damage:          v.damage     ?? CARDS[id]?.damage     ?? 0,
+          rarity:          v.rarity          ?? CARDS[id]?.rarity          ?? null,
+          ap_cost:         v.ap_cost         ?? CARDS[id]?.ap_cost         ?? null,
+          base_attack:     v.base_attack     ?? CARDS[id]?.base_attack     ?? null,
+          mult_min:        v.mult_min        ?? CARDS[id]?.mult_min        ?? null,
+          mult_max:        v.mult_max        ?? CARDS[id]?.mult_max        ?? null,
           crit_rate_bonus: v.crit_rate_bonus ?? CARDS[id]?.crit_rate_bonus ?? null,
-          crit_dmg_bonus:  v.crit_dmg_bonus ?? CARDS[id]?.crit_dmg_bonus ?? null,
-          hit_count:       v.hit_count ?? CARDS[id]?.hit_count ?? null,
+          crit_dmg_bonus:  v.crit_dmg_bonus  ?? CARDS[id]?.crit_dmg_bonus  ?? null,
+          hit_count:       v.hit_count       ?? CARDS[id]?.hit_count       ?? null,
+          target:          v.target          ?? CARDS[id]?.target          ?? 'SINGLE',
+          heal:            v.heal            ?? CARDS[id]?.heal            ?? null,
+          special_id:      v.special_id      ?? CARDS[id]?.special_id      ?? null,
         };
       }
     }
@@ -2862,25 +2878,25 @@ function showCombatModal() {
     const apCost = def.ap_cost ?? 0;
     const canUse = C.ap >= apCost;
     const rank   = rankFromId(cardId);
-    const cardIconHtml = def.imageUrl
-      ? `<img class="combat-card-img" src="${def.imageUrl}" onerror="this.outerHTML='<div class=\\"combat-card-icon\\">${escHtml(def.icon || '❓')}</div>'">`
-      : `<div class="combat-card-icon">${def.icon || '❓'}</div>`;
-    const apLabel = apCost > 0
-      ? `<div style="font-size:.62rem;color:${canUse ? '#60b4ff' : '#ff5555'};font-weight:700;margin-top:2px;">⚡${apCost}</div>`
-      : '';
+    const cardImgHtml = def.imageUrl
+      ? `<img class="combat-card-img" src="${def.imageUrl}" onerror="this.outerHTML='<div class=\\"combat-card-icon\\">${escHtml(def.icon || '⚔️')}</div>'">`
+      : `<div class="combat-card-icon">${def.icon || '⚔️'}</div>`;
+    const apColor = canUse ? '#60b4ff' : '#ff6666';
     return `<div class="combat-card${canUse ? '' : ' combat-card-disabled'}${rank ? ` rank-${rank}` : ''}"
         style="${canUse ? '' : 'opacity:.42;cursor:not-allowed;'}"
         draggable="${canUse}"
         ondragstart="${canUse ? `combatDragStart(event,${i})` : 'event.preventDefault()'}"
         ondragend="combatDragEnd(event)"
+        onmousedown="combatMouseDown(event,${i})"
+        onmousemove="combatMouseMove()"
+        onmouseup="combatMouseUp()"
         ontouchstart="combatTouchStart(event,${i})"
         ontouchmove="combatTouchMove(event)"
         ontouchend="combatTouchEnd(event)">
       ${rankBadgeHtml(rank)}
-      ${cardIconHtml}
-      <div class="combat-card-name">${escHtml(def.name || cardId)}</div>
-      ${apLabel}
-      <div class="combat-card-desc">${escHtml(def.desc || '')}</div>
+      <div class="combat-card-ap" style="color:${apColor};">${apCost}</div>
+      <div class="combat-card-img-area">${cardImgHtml}</div>
+      <div class="combat-card-name-bar">${escHtml(def.name || cardId)}</div>
     </div>`;
   }).join('');
 
@@ -3152,36 +3168,85 @@ function combatSelectEnemy(idx) {
   }
 }
 
-// タッチドラッグ（モバイル）
+// ── デスクトップ長押し ──
+function combatMouseDown(e, idx) {
+  if (e.button !== 0) return;
+  _cbMouseDown = true;
+  clearTimeout(_cbMouseLpTimer);
+  _cbMouseLpTimer = setTimeout(() => {
+    _cbMouseLpTimer = null;
+    _cbMouseDown = false;
+    const cardId = C.hand?.[idx];
+    if (cardId) showCardDetail(cardId, CARDS[cardId] || {});
+  }, 500);
+}
+function combatMouseMove() {
+  if (_cbMouseDown) {
+    clearTimeout(_cbMouseLpTimer);
+    _cbMouseLpTimer = null;
+    _cbMouseDown = false;
+  }
+}
+function combatMouseUp() {
+  clearTimeout(_cbMouseLpTimer);
+  _cbMouseLpTimer = null;
+  _cbMouseDown = false;
+}
+
+// ── タッチドラッグ（モバイル） + 長押し ──
 function combatTouchStart(e, idx) {
   _touchCardIdx = idx;
-  const rect = e.currentTarget.getBoundingClientRect();
-  _touchGhost = e.currentTarget.cloneNode(true);
-  Object.assign(_touchGhost.style, {
-    position: 'fixed', zIndex: '99999', opacity: '.85', pointerEvents: 'none',
-    width: rect.width + 'px', height: rect.height + 'px',
-    left: rect.left + 'px', top: rect.top + 'px',
-    transform: 'scale(1.1)', transition: 'none',
-  });
-  document.body.appendChild(_touchGhost);
+  _touchGhost = null;
+  const t0 = e.touches[0];
+  _touchStartPos = { x: t0.clientX, y: t0.clientY };
+  clearTimeout(_touchLpTimer);
+  _touchLpTimer = setTimeout(() => {
+    if (_touchCardIdx !== idx) return;
+    _touchCardIdx = null;
+    const cardId = C.hand?.[idx];
+    if (cardId) showCardDetail(cardId, CARDS[cardId] || {});
+  }, 500);
 }
 
 function combatTouchMove(e) {
-  e.preventDefault();
-  if (!_touchGhost) return;
   const t = e.touches[0];
-  _touchGhost.style.left = (t.clientX - _touchGhost.offsetWidth  / 2) + 'px';
-  _touchGhost.style.top  = (t.clientY - _touchGhost.offsetHeight / 2) + 'px';
-  const zone = document.getElementById('enemy-area');
-  if (zone) {
-    const zr = zone.getBoundingClientRect();
-    const over = t.clientX >= zr.left && t.clientX <= zr.right &&
-                 t.clientY >= zr.top  && t.clientY <= zr.bottom;
-    zone.classList.toggle('enemy-area--active', over);
+  if (_touchGhost) {
+    e.preventDefault();
+    _touchGhost.style.left = (t.clientX - _touchGhost.offsetWidth  / 2) + 'px';
+    _touchGhost.style.top  = (t.clientY - _touchGhost.offsetHeight / 2) + 'px';
+    const zone = document.getElementById('enemy-area');
+    if (zone) {
+      const zr = zone.getBoundingClientRect();
+      zone.classList.toggle('enemy-area--active',
+        t.clientX >= zr.left && t.clientX <= zr.right &&
+        t.clientY >= zr.top  && t.clientY <= zr.bottom);
+    }
+    return;
+  }
+  if (_touchCardIdx === null) return;
+  const dx = t.clientX - _touchStartPos.x;
+  const dy = t.clientY - _touchStartPos.y;
+  if (Math.hypot(dx, dy) > 10) {
+    clearTimeout(_touchLpTimer);
+    _touchLpTimer = null;
+    const card = e.currentTarget;
+    const rect = card.getBoundingClientRect();
+    _touchGhost = card.cloneNode(true);
+    Object.assign(_touchGhost.style, {
+      position: 'fixed', zIndex: '99999', opacity: '.85', pointerEvents: 'none',
+      width: rect.width + 'px', height: rect.height + 'px',
+      left: (t.clientX - rect.width  / 2) + 'px',
+      top:  (t.clientY - rect.height / 2) + 'px',
+      transform: 'scale(1.1)', transition: 'none',
+    });
+    document.body.appendChild(_touchGhost);
+    e.preventDefault();
   }
 }
 
 function combatTouchEnd(e) {
+  clearTimeout(_touchLpTimer);
+  _touchLpTimer = null;
   if (_touchGhost) { _touchGhost.remove(); _touchGhost = null; }
   document.getElementById('enemy-area')?.classList.remove('enemy-area--active');
   if (_touchCardIdx === null) return;
@@ -3195,6 +3260,57 @@ function combatTouchEnd(e) {
       t.clientY >= zr.top  && t.clientY <= zr.bottom) {
     playCard(idx);
   }
+}
+
+// ============================================================
+// カード詳細ポップアップ
+// ============================================================
+
+const _RANK_BG = {
+  d: '#60637a', c: '#2a9e5c', b: '#1870d4',
+  a: 'linear-gradient(135deg,#8820e8,#cc30b8)',
+  s: 'linear-gradient(135deg,#ff4000,#ffcc00)',
+};
+
+function showCardDetail(cardId, def) {
+  hideCardDetail();
+  const rank = rankFromId(cardId);
+  const imgHtml = def.imageUrl
+    ? `<img src="${escHtml(def.imageUrl)}" style="width:100%;height:100%;object-fit:contain;">`
+    : `<div class="cd-icon">${escHtml(def.icon || '⚔️')}</div>`;
+  const row = (label, val) =>
+    `<div class="cd-stat-label">${label}</div><div class="cd-stat-val">${val}</div>`;
+  const bd = document.createElement('div');
+  bd.id = 'card-detail-backdrop';
+  bd.addEventListener('click', hideCardDetail);
+  const pop = document.createElement('div');
+  pop.id = 'card-detail-popup';
+  pop.innerHTML = `
+    <div class="cd-img">${imgHtml}</div>
+    <div class="cd-header">
+      ${rank ? `<div class="cd-rank-badge" style="background:${_RANK_BG[rank]};">${rank.toUpperCase()}</div>` : ''}
+      <div class="cd-name">${escHtml(def.name || cardId)}</div>
+    </div>
+    ${def.desc ? `<div class="cd-desc">${escHtml(def.desc)}</div>` : ''}
+    <div class="cd-stats">
+      ${row('APコスト', def.ap_cost ?? 0)}
+      ${def.base_attack != null ? row('カード攻撃力', `+${def.base_attack}`) : ''}
+      ${def.mult_min != null || def.mult_max != null
+        ? row('倍率', `${def.mult_min ?? '?'} ～ ${def.mult_max ?? '?'}`) : ''}
+      ${def.crit_rate_bonus != null ? row('クリ率補正', `+${def.crit_rate_bonus}%`) : ''}
+      ${def.crit_dmg_bonus  != null ? row('クリダメ補正', `+${def.crit_dmg_bonus}`) : ''}
+      ${row('攻撃回数', def.hit_count ?? 1)}
+      ${row('対象', TARGET_LABELS[def.target ?? 'SINGLE'] ?? (def.target || '単体（敵）'))}
+      ${def.heal != null ? row('回復力', def.heal) : ''}
+    </div>
+    <button class="cd-close" onclick="hideCardDetail()">閉じる</button>`;
+  document.body.appendChild(bd);
+  document.body.appendChild(pop);
+}
+
+function hideCardDetail() {
+  document.getElementById('card-detail-backdrop')?.remove();
+  document.getElementById('card-detail-popup')?.remove();
 }
 
 // ============================================================

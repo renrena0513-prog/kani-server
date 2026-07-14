@@ -6,6 +6,7 @@
   <title>編成 | ほりほりドリル</title>
   <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="style.css">
   <style>
     body {
       background: linear-gradient(180deg, #0d2f5c 0%, #1a1a2e 100%);
@@ -93,9 +94,35 @@
       background: rgba(255,255,255,.15);
     }
     .card-slot.dragging { opacity: .4; }
-    .card-icon { font-size: 1.4rem; line-height: 1; }
-    .card-name { font-size: .62rem; font-weight: 600; text-align: center; padding: 0 4px; }
-    .card-dmg { font-size: .6rem; color: #f0c060; }
+    /* 新カードデザイン：画像で埋める */
+    .card-icon { font-size: 1.6rem; line-height: 1; }
+    .card-img-area {
+      position: absolute;
+      inset: 0 0 22px 0;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+    .card-img-fill {
+      width: 100%; height: 100%;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+    .card-name-bar {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      background: rgba(0,0,0,.62);
+      font-size: .52rem; font-weight: 700; color: #fff;
+      text-align: center; padding: 3px 3px;
+      line-height: 1.2;
+      pointer-events: none;
+    }
+    .card-ap-badge {
+      position: absolute; top: 4px; right: 4px;
+      background: rgba(0,20,90,.88);
+      color: #60b4ff; font-size: .48rem; font-weight: 900;
+      border-radius: 3px; padding: 1px 3px; line-height: 1.5;
+      z-index: 3; pointer-events: none;
+    }
     .card-slot-num {
       position: absolute; top: 3px; left: 5px;
       font-size: .55rem; opacity: .35; font-weight: 700;
@@ -134,9 +161,11 @@
     }
     /* 選択中ラベル */
     .sel-label {
-      position: absolute; bottom: 3px; left: 0; right: 0;
-      text-align: center; font-size: .52rem; font-weight: 900;
+      position: absolute; top: 50%; left: 0; right: 0;
+      transform: translateY(-50%);
+      text-align: center; font-size: .56rem; font-weight: 900;
       color: #ffe050; letter-spacing: .04em; pointer-events: none; z-index: 4;
+      text-shadow: 0 1px 4px rgba(0,0,0,.9);
     }
     /* 配置ターゲットヒント */
     .slot-target {
@@ -275,6 +304,94 @@ function rankFromId(cardId) {
 function rankBadgeHtml(rank) {
   if (!rank) return '';
   return `<div class="rank-badge rank-badge-${rank}">${rank.toUpperCase()}</div>`;
+}
+
+// ============================================================
+// カード詳細ポップアップ（長押し）
+// ============================================================
+const TARGET_LABELS = {
+  SINGLE:'単体（敵）', ALL:'全体（敵）', RANDOM_ENEMY:'ランダム（敵）',
+  RANDOM_ANY:'ランダム（敵味方）', ALLY_SINGLE:'味方単体', ALLY_ALL:'味方全体', SELF:'自分',
+};
+const _RANK_BG = {
+  d:'#60637a', c:'#2a9e5c', b:'#1870d4',
+  a:'linear-gradient(135deg,#8820e8,#cc30b8)',
+  s:'linear-gradient(135deg,#ff4000,#ffcc00)',
+};
+
+function showCardDetail(cardId, def) {
+  hideCardDetail();
+  const rank = rankFromId(cardId);
+  const imgHtml = def.imageUrl
+    ? `<img src="${def.imageUrl}" style="width:100%;height:100%;object-fit:contain;">`
+    : `<div class="cd-icon">${def.icon || '⚔️'}</div>`;
+  const row = (label, val) =>
+    `<div class="cd-stat-label">${label}</div><div class="cd-stat-val">${val}</div>`;
+  const bd = document.createElement('div');
+  bd.id = 'card-detail-backdrop';
+  bd.addEventListener('click', hideCardDetail);
+  const pop = document.createElement('div');
+  pop.id = 'card-detail-popup';
+  pop.innerHTML = `
+    <div class="cd-img">${imgHtml}</div>
+    <div class="cd-header">
+      ${rank ? `<div class="cd-rank-badge" style="background:${_RANK_BG[rank]};">${rank.toUpperCase()}</div>` : ''}
+      <div class="cd-name">${def.name || cardId}</div>
+    </div>
+    ${def.desc ? `<div class="cd-desc">${def.desc}</div>` : ''}
+    <div class="cd-stats">
+      ${row('APコスト', def.ap_cost ?? 0)}
+      ${def.base_attack != null ? row('カード攻撃力', `+${def.base_attack}`) : ''}
+      ${def.mult_min != null || def.mult_max != null
+        ? row('倍率', `${def.mult_min ?? '?'} ～ ${def.mult_max ?? '?'}`) : ''}
+      ${def.crit_rate_bonus != null ? row('クリ率補正', `+${def.crit_rate_bonus}%`) : ''}
+      ${def.crit_dmg_bonus  != null ? row('クリダメ補正', `+${def.crit_dmg_bonus}`) : ''}
+      ${row('攻撃回数', def.hit_count ?? 1)}
+      ${row('対象', TARGET_LABELS[def.target ?? 'SINGLE'] ?? (def.target || '単体（敵）'))}
+      ${def.heal != null ? row('回復力', def.heal) : ''}
+    </div>
+    <button class="cd-close" onclick="hideCardDetail()">閉じる</button>`;
+  document.body.appendChild(bd);
+  document.body.appendChild(pop);
+}
+
+function hideCardDetail() {
+  document.getElementById('card-detail-backdrop')?.remove();
+  document.getElementById('card-detail-popup')?.remove();
+}
+
+let _fmLpTimer = null;
+let _fmMouseDown = false;
+
+function attachLongPress(el, cardId, def) {
+  let moved = false;
+  let lpFired = false;
+  // タッチ
+  el.addEventListener('touchstart', () => {
+    moved = false; lpFired = false;
+    _fmLpTimer = setTimeout(() => {
+      if (!moved) { lpFired = true; showCardDetail(cardId, def); }
+    }, 500);
+  }, { passive: true });
+  el.addEventListener('touchmove', () => { moved = true; clearTimeout(_fmLpTimer); }, { passive: true });
+  el.addEventListener('touchend', e => {
+    clearTimeout(_fmLpTimer);
+    if (lpFired) { e.preventDefault(); lpFired = false; }
+  });
+  // デスクトップ
+  el.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    _fmMouseDown = true;
+    _fmLpTimer = setTimeout(() => {
+      if (_fmMouseDown) showCardDetail(cardId, def);
+      _fmMouseDown = false; _fmLpTimer = null;
+    }, 500);
+  });
+  el.addEventListener('mousemove', () => {
+    if (_fmMouseDown) { clearTimeout(_fmLpTimer); _fmMouseDown = false; }
+  });
+  el.addEventListener('mouseup', () => { clearTimeout(_fmLpTimer); _fmMouseDown = false; });
+  el.addEventListener('dragstart', () => { clearTimeout(_fmLpTimer); _fmMouseDown = false; });
 }
 
 // ============================================================
@@ -471,12 +588,11 @@ function renderCards() {
   updateHintBar();
 }
 
-function cardVisual(c, small = false) {
+function cardVisual(c) {
   if (c.imageUrl) {
-    const sz = small ? '36px' : '44px';
-    return `<img src="${c.imageUrl}" style="width:${sz};height:${sz};object-fit:contain;border-radius:4px;">`;
+    return `<img class="card-img-fill" src="${c.imageUrl}" onerror="this.outerHTML='<div class=\\"card-icon\\">${c.icon || '⚔️'}</div>'">`;
   }
-  return `<div class="card-icon">${c.icon || '❓'}</div>`;
+  return `<div class="card-icon">${c.icon || '⚔️'}</div>`;
 }
 
 function cardHTML(cardId, slotNum) {
@@ -484,11 +600,10 @@ function cardHTML(cardId, slotNum) {
   if (!c) return `<div class="card-slot-num">${slotNum}</div><span style="opacity:.3;">?</span>`;
   const rank = rankFromId(cardId);
   return `
-    <div class="card-slot-num">${slotNum}</div>
     ${rankBadgeHtml(rank)}
-    ${cardVisual(c)}
-    <div class="card-name">${c.name}</div>
-    <div class="card-dmg">${c.ap_cost != null ? `⚡${c.ap_cost} ` : ''}${c.damage ?? 0}</div>`;
+    <div class="card-ap-badge">${c.ap_cost ?? 0}</div>
+    <div class="card-img-area">${cardVisual(c)}</div>
+    <div class="card-name-bar">${c.name}</div>`;
 }
 
 function clearTapSelected() {
@@ -583,6 +698,7 @@ function renderEquipped() {
       }
     });
 
+    if (cardId) attachLongPress(slot, cardId, CARDS_DEF[cardId] ?? {});
     grid.appendChild(slot);
   }
 }
@@ -609,7 +725,7 @@ function renderUnequipped() {
   for (const id of unequippedPool) counts[id] = (counts[id] || 0) + 1;
 
   for (const [cardId, count] of Object.entries(counts)) {
-    const c = CARDS_DEF[cardId] ?? { name: cardId, icon: '❓' };
+    const c = CARDS_DEF[cardId] ?? { name: cardId, icon: '⚔️' };
     const uRank = rankFromId(cardId);
     const uSelected = tapSelected?.type === 'unequipped' && tapSelected.cardId === cardId;
     const card = document.createElement('div');
@@ -620,11 +736,10 @@ function renderUnequipped() {
     card.dataset.cardId = cardId;
     card.innerHTML = `
       ${rankBadgeHtml(uRank)}
-      ${cardVisual(c)}
-      <div class="card-name">${c.name}</div>
-      <div class="card-dmg">${c.ap_cost != null ? `⚡${c.ap_cost} ` : ''}${c.damage ?? 0}</div>
-      ${count > 1 ? `<div style="font-size:.58rem;opacity:.55;">×${count}</div>` : ''}
-      ${uSelected ? `<div class="sel-label">選択中</div>` : ''}`;
+      ${uSelected ? '<div class="sel-label">選択中</div>' : ''}
+      <div class="card-ap-badge">${c.ap_cost ?? 0}</div>
+      <div class="card-img-area">${cardVisual(c)}</div>
+      <div class="card-name-bar">${c.name}${count > 1 ? ` ×${count}` : ''}</div>`;
 
     // ── ドラッグ（デスクトップ）──
     card.draggable = true;
@@ -648,6 +763,7 @@ function renderUnequipped() {
       updateHintBar();
     });
 
+    attachLongPress(card, cardId, c);
     grid.appendChild(card);
   }
 }

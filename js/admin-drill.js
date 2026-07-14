@@ -1235,7 +1235,8 @@ function clearMonsterImage(id) {
 // カード設定タブ
 // ============================================================
 
-const CARD_CSV_COLS = ['id','name','desc','icon','damage','ap_cost','base_attack','mult_min','mult_max','rarity','crit_rate_bonus','crit_dmg_bonus','hit_count'];
+const CARD_CSV_COLS = ['id','imageUrl','rarity','name','desc','ap_cost','base_attack','mult_min','mult_max','crit_rate_bonus','crit_dmg_bonus','hit_count','target','heal','special_id'];
+const CARD_TARGETS = ['SINGLE','ALL','RANDOM_ENEMY','RANDOM_ANY','ALLY_SINGLE','ALLY_ALL','SELF'];
 
 function renderCardsTab() {
   const cards = gameConfig.cards ?? {};
@@ -1254,7 +1255,7 @@ function renderCardsTab() {
   for (const [id, card] of Object.entries(cards)) {
     const imgPreview = card.imageUrl
       ? `<img src="${escDrill(card.imageUrl)}" style="width:48px;height:48px;object-fit:contain;border-radius:6px;background:rgba(255,255,255,.08);">`
-      : `<div style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);border-radius:6px;font-size:2rem;">${escDrill(card.icon || '❓')}</div>`;
+      : `<div style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);border-radius:6px;font-size:2rem;">⚔️</div>`;
 
     html += `
     <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:16px;margin-bottom:16px;">
@@ -1273,19 +1274,18 @@ function renderCardsTab() {
         <label style="font-size:.82rem;">説明<br>
           <input class="cfg-input card-desc-${id}" type="text" value="${escDrill(card.desc ?? '')}" placeholder="説明文" style="width:200px;">
         </label>
-        <label style="font-size:.82rem;">アイコン<br>
-          <input class="cfg-input card-icon-${id}" type="text" value="${escDrill(card.icon ?? '')}" placeholder="⚔️" style="width:60px;">
-        </label>
         <label style="font-size:.82rem;">ランク<br>
           <select class="cfg-input card-rarity-${id}" style="width:70px;">
             ${['','d','c','b','a','s'].map(v => `<option value="${v}"${(card.rarity??'')=== v?' selected':''}>${v===''?'なし':v.toUpperCase()}</option>`).join('')}
           </select>
         </label>
+        <label style="font-size:.82rem;">対象<br>
+          <select class="cfg-input card-target-${id}" style="width:120px;">
+            ${CARD_TARGETS.map(v => `<option value="${v}"${(card.target??'SINGLE')===v?' selected':''}>${v}</option>`).join('')}
+          </select>
+        </label>
       </div>
       <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-top:10px;">
-        <label style="font-size:.82rem;">固定ダメージ<br>
-          <input class="cfg-input card-dmg-${id}" type="number" value="${card.damage ?? 0}" min="0" style="width:80px;">
-        </label>
         <label style="font-size:.82rem;">APコスト<br>
           <input class="cfg-input card-apcost-${id}" type="number" value="${card.ap_cost ?? ''}" placeholder="0" min="0" style="width:70px;">
         </label>
@@ -1307,6 +1307,12 @@ function renderCardsTab() {
         <label style="font-size:.82rem;">ヒット数<br>
           <input class="cfg-input card-hits-${id}" type="number" value="${card.hit_count ?? ''}" placeholder="1" min="1" style="width:60px;">
         </label>
+        <label style="font-size:.82rem;">回復力<br>
+          <input class="cfg-input card-heal-${id}" type="number" value="${card.heal ?? ''}" placeholder="0" min="0" style="width:70px;">
+        </label>
+        <label style="font-size:.82rem;">特殊処理ID<br>
+          <input class="cfg-input card-specialid-${id}" type="text" value="${escDrill(card.special_id ?? '')}" placeholder="なし" style="width:100px;">
+        </label>
         <div style="font-size:.82rem;">画像<br>
           <label class="inv-save-btn" style="cursor:pointer;display:inline-block;padding:3px 10px;">
             📁 選択<input type="file" accept="image/*" style="display:none;" onchange="uploadCardImage('${id}',this)">
@@ -1327,11 +1333,10 @@ function collectCardsConfig() {
   const parseInt2 = (v, fallback = null) => (v === '' || v == null) ? fallback : (parseInt(v) || fallback);
   for (const [id, card] of Object.entries(cards)) {
     const g = cls => document.querySelector(`.${cls}-${id}`)?.value ?? '';
-    card.name            = g('card-name')   || card.name;
+    card.name            = g('card-name')      || card.name;
     card.desc            = g('card-desc');
-    card.icon            = g('card-icon')   || card.icon;
-    card.rarity          = g('card-rarity') || null;
-    card.damage          = parseNum(g('card-dmg'), 0);
+    card.rarity          = g('card-rarity')    || null;
+    card.target          = g('card-target')    || 'SINGLE';
     card.ap_cost         = parseNum(g('card-apcost'));
     card.base_attack     = parseNum(g('card-batk'));
     card.mult_min        = parseNum(g('card-mmin'));
@@ -1339,6 +1344,8 @@ function collectCardsConfig() {
     card.crit_rate_bonus = parseNum(g('card-crate'));
     card.crit_dmg_bonus  = parseNum(g('card-cdmg'));
     card.hit_count       = parseInt2(g('card-hits'));
+    card.heal            = parseNum(g('card-heal'));
+    card.special_id      = g('card-specialid') || null;
   }
   gameConfig.cards = cards;
 }
@@ -1347,7 +1354,7 @@ function addCard() {
   collectCardsConfig();
   const id = 'card_' + Date.now();
   if (!gameConfig.cards) gameConfig.cards = {};
-  gameConfig.cards[id] = { name: '新カード', desc: '', icon: '❓', imageUrl: null, damage: 0 };
+  gameConfig.cards[id] = { name: '新カード', desc: '', imageUrl: null, target: 'SINGLE', ap_cost: 10, base_attack: 0, mult_min: 1.0, mult_max: 1.0 };
   renderCardsTab();
 }
 
@@ -1384,9 +1391,10 @@ function exportCardsCsv() {
   const rows = [CARD_CSV_COLS.map(esc)];
   for (const [id, c] of Object.entries(cards)) {
     rows.push([
-      id, c.name??'', c.desc??'', c.icon??'', c.damage??'',
+      id, c.imageUrl??'', c.rarity??'', c.name??'', c.desc??'',
       c.ap_cost??'', c.base_attack??'', c.mult_min??'', c.mult_max??'',
-      c.rarity??'', c.crit_rate_bonus??'', c.crit_dmg_bonus??'', c.hit_count??'',
+      c.crit_rate_bonus??'', c.crit_dmg_bonus??'', c.hit_count??'',
+      c.target??'SINGLE', c.heal??'', c.special_id??'',
     ].map(esc));
   }
   const csv = '﻿' + rows.map(r => r.join(',')).join('\r\n');
@@ -1426,21 +1434,24 @@ function importCardsCsv(input) {
         const get = col => { const j = header.indexOf(col); return j >= 0 ? (cols[j] ?? '') : null; };
         const isNew = !gameConfig.cards[id];
         const ex = gameConfig.cards[id] ?? {};
+        const rawImageUrl = get('imageUrl');
+        const rawTarget   = get('target');
         gameConfig.cards[id] = {
           ...ex,
+          imageUrl:        (rawImageUrl != null && rawImageUrl !== '' ? rawImageUrl : null) ?? ex.imageUrl ?? null,
+          rarity:          (get('rarity') || null) ?? ex.rarity ?? null,
           name:            get('name')            ?? ex.name ?? '新カード',
           desc:            get('desc')            ?? ex.desc ?? '',
-          icon:            get('icon')            ?? ex.icon ?? '❓',
-          imageUrl:        ex.imageUrl ?? null,
-          damage:          toNum(get('damage'))   ?? ex.damage ?? 0,
           ap_cost:         toNum(get('ap_cost'))  ?? ex.ap_cost ?? null,
           base_attack:     toNum(get('base_attack'))     ?? ex.base_attack ?? null,
           mult_min:        toNum(get('mult_min'))        ?? ex.mult_min ?? null,
           mult_max:        toNum(get('mult_max'))        ?? ex.mult_max ?? null,
-          rarity:          (get('rarity') || null) ?? ex.rarity ?? null,
           crit_rate_bonus: toNum(get('crit_rate_bonus')) ?? ex.crit_rate_bonus ?? null,
           crit_dmg_bonus:  toNum(get('crit_dmg_bonus'))  ?? ex.crit_dmg_bonus ?? null,
           hit_count:       toInt(get('hit_count'))       ?? ex.hit_count ?? null,
+          target:          (rawTarget && CARD_TARGETS.includes(rawTarget) ? rawTarget : null) ?? ex.target ?? 'SINGLE',
+          heal:            toNum(get('heal'))            ?? ex.heal ?? null,
+          special_id:      (get('special_id') || null)  ?? ex.special_id ?? null,
         };
         isNew ? added++ : updated++;
       }

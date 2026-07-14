@@ -654,16 +654,15 @@ html, body {
 
 /* ===== 戦闘カード ===== */
 .combat-card {
-    width: 92px;
-    min-height: 120px;
-    background: linear-gradient(160deg, #1e3f72 0%, #0d2040 100%);
+    width: 80px;
+    height: 118px;
+    background: #0d2040;
     border: 1.5px solid rgba(212, 168, 83, 0.55);
     border-radius: 12px;
-    padding: 10px 6px 8px;
+    overflow: hidden;
+    position: relative;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 4px;
     cursor: pointer;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
@@ -680,32 +679,129 @@ html, body {
 
 .combat-card:active:not(.combat-card-disabled) { cursor: grabbing; }
 
-.combat-card-icon {
-    font-size: 2rem;
-    line-height: 1;
+/* 画像エリア（カード上部を埋める） */
+.combat-card-img-area {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: linear-gradient(160deg, #1e3f72 0%, #0d2040 100%);
 }
 
 .combat-card-img {
-    width: 52px;
-    height: 52px;
+    width: 100%;
+    height: 100%;
     object-fit: contain;
     image-rendering: pixelated;
-    border-radius: 6px;
 }
 
-.combat-card-name {
-    font-size: .76rem;
+.combat-card-icon {
+    font-size: 2.2rem;
+    line-height: 1;
+}
+
+/* 名前バー（カード下部） */
+.combat-card-name-bar {
+    flex-shrink: 0;
+    background: rgba(0, 0, 0, 0.6);
+    font-size: .6rem;
     font-weight: 700;
     color: #fff;
     text-align: center;
-}
-
-.combat-card-desc {
-    font-size: .66rem;
-    color: rgba(255, 255, 255, 0.52);
-    text-align: center;
+    padding: 3px 4px;
     line-height: 1.3;
 }
+
+/* AP バッジ（右上絶対配置） */
+.combat-card-ap {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: rgba(0, 20, 90, 0.88);
+    color: #60b4ff;
+    font-size: .52rem;
+    font-weight: 900;
+    border-radius: 4px;
+    padding: 1px 4px;
+    line-height: 1.5;
+    z-index: 3;
+    pointer-events: none;
+}
+
+/* 旧クラス互換 */
+.combat-card-name { display: none; }
+.combat-card-desc { display: none; }
+
+/* ===== カード詳細ポップアップ ===== */
+#card-detail-backdrop {
+    display: block;
+    position: fixed; inset: 0;
+    z-index: 99990;
+    background: rgba(0, 0, 0, .5);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+}
+#card-detail-popup {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 99999;
+    width: 260px;
+    max-width: 88vw;
+    max-height: 85vh;
+    overflow-y: auto;
+    background: linear-gradient(160deg, #192d4e 0%, #0d1c38 100%);
+    border: 1.5px solid rgba(212, 168, 83, .6);
+    border-radius: 16px;
+    padding: 16px;
+    color: #fff;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, .75);
+    animation: cdPopIn .16s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes cdPopIn {
+    from { transform: translate(-50%, -50%) scale(.82); opacity: 0; }
+    to   { transform: translate(-50%, -50%) scale(1);   opacity: 1; }
+}
+.cd-img {
+    width: 100%; height: 110px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255, 255, 255, .05);
+    border-radius: 10px; margin-bottom: 12px; overflow: hidden;
+}
+.cd-img img { width: 100%; height: 100%; object-fit: contain; }
+.cd-icon { font-size: 3.5rem; line-height: 1; }
+.cd-header {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 8px;
+}
+.cd-rank-badge {
+    width: 22px; height: 22px; border-radius: 5px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .72rem; font-weight: 900; color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,.5);
+}
+.cd-name { font-size: 1rem; font-weight: 800; }
+.cd-desc {
+    font-size: .72rem; color: rgba(255, 255, 255, .52);
+    line-height: 1.55; margin-bottom: 12px; font-style: italic;
+}
+.cd-stats {
+    display: grid; grid-template-columns: auto 1fr;
+    gap: 5px 12px; font-size: .74rem;
+    border-top: 1px solid rgba(255,255,255,.1); padding-top: 10px;
+}
+.cd-stat-label { color: rgba(255, 255, 255, .42); font-size: .67rem; white-space: nowrap; }
+.cd-stat-val   { color: #fff; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.cd-close {
+    display: block; width: 100%; margin-top: 14px;
+    padding: 7px; border: 1px solid rgba(255,255,255,.18);
+    border-radius: 10px; background: rgba(255,255,255,.07);
+    color: rgba(255,255,255,.55); font-size: .78rem; cursor: pointer;
+    transition: background .12s, color .12s;
+}
+.cd-close:hover { background: rgba(255,255,255,.15); color: #fff; }
 
 /* カード横スクロール列 */
 .cb-cards-row {
