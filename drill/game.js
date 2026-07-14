@@ -184,10 +184,11 @@ let COMBAT_STATS = {
 
 // カードのリッチ攻撃力を計算（1枚使用時の合計ダメージ）
 // リッチフィールド(base_attack/mult_min...)が無いカードは従来どおり固定damage
+// { total, crits } を返す。リッチフィールドなしのカードは固定damage
 function computeCardDamage(cardDef, enemyDefense = null) {
-  if (!cardDef) return 0;
+  if (!cardDef) return { total: 0, crits: 0 };
   const hasRich = cardDef.base_attack != null || cardDef.mult_max != null;
-  if (!hasRich) return cardDef.damage || 0;
+  if (!hasRich) return { total: cardDef.damage || 0, crits: 0 };
 
   const def = enemyDefense != null ? enemyDefense : (C?.monster?.defense ?? 0);
   const hits = Math.max(1, Number(cardDef.hit_count) || 1);
@@ -197,14 +198,14 @@ function computeCardDamage(cardDef, enemyDefense = null) {
   const critRate = (COMBAT_STATS.critRate + (Number(cardDef.crit_rate_bonus) || 0)) / 100;
   const critDmg  = COMBAT_STATS.critDmg + (Number(cardDef.crit_dmg_bonus) || 0);
 
-  let total = 0;
+  let total = 0, crits = 0;
   for (let h = 0; h < hits; h++) {
     const mult = min + Math.random() * (max - min);
     let dmg = Math.max(1, totalAtk * mult * (DEF_COEF / (DEF_COEF + def)));
-    if (Math.random() < critRate) dmg *= critDmg;
+    if (Math.random() < critRate) { dmg *= critDmg; crits++; }
     total += Math.floor(dmg);
   }
-  return total;
+  return { total, crits };
 }
 
 // モンスター定義
@@ -269,6 +270,7 @@ let _lastMoveTime = 0;     // 最後に移動した時刻（Realtimeエコー無
 const C = {
   active: false, monster: null, monsterHp: 0,
   hand: [], deck: [], discard: [], logs: [], nextAction: null,
+  ap: 0,  // 現在AP
   // マルチプレイヤー
   sessionId: null, cx: null, cy: null,
   participants: [], currentRound: 1, myActedRound: 0,
@@ -2396,6 +2398,54 @@ function combatAddLog(msg) {
   if (C.logs.length > 20) C.logs.pop();
 }
 
+// ── ダメージフロート演出 ──
+(function injectDmgStyle() {
+  if (document.getElementById('dmg-float-style')) return;
+  const s = document.createElement('style');
+  s.id = 'dmg-float-style';
+  s.textContent = `
+    @keyframes dmgFloat {
+      0%   { opacity:1; transform:translate(-50%,-50%) scale(1.4); }
+      15%  { transform:translate(-50%,-120%) scale(1.1); }
+      65%  { opacity:1; transform:translate(-50%,-220%) scale(0.9); }
+      100% { opacity:0; transform:translate(-50%,-300%) scale(0.8); }
+    }
+    @keyframes dmgFloatCrit {
+      0%   { opacity:1; transform:translate(-50%,-50%) scale(1.8) rotate(-4deg); }
+      12%  { transform:translate(-50%,-140%) scale(1.3) rotate(2deg); }
+      65%  { opacity:1; transform:translate(-50%,-260%) scale(1.0) rotate(0deg); }
+      100% { opacity:0; transform:translate(-50%,-340%) scale(0.85); }
+    }`;
+  document.head.appendChild(s);
+})();
+
+function spawnDamageNumber(amount, isCrit = false) {
+  const area = document.getElementById('enemy-area');
+  if (!area || amount <= 0) return;
+
+  const rect = area.getBoundingClientRect();
+  const x = rect.left + rect.width  * (0.35 + Math.random() * 0.3);
+  const y = rect.top  + rect.height * (0.25 + Math.random() * 0.2);
+
+  const el = document.createElement('div');
+  el.style.cssText = `
+    position:fixed;
+    left:${x}px; top:${y}px;
+    font-size:${isCrit ? '2.6' : '2rem'};
+    font-weight:900;
+    color:${isCrit ? '#ff4466' : '#ffe050'};
+    text-shadow:0 2px 10px rgba(0,0,0,.95),0 0 22px ${isCrit ? 'rgba(255,60,80,.7)' : 'rgba(255,210,0,.6)'};
+    pointer-events:none;
+    z-index:30000;
+    animation:${isCrit ? 'dmgFloatCrit' : 'dmgFloat'} 1.5s ease-out forwards;
+    white-space:nowrap;
+    user-select:none;
+  `;
+  el.textContent = isCrit ? `${amount}!!` : `-${amount}`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1600);
+}
+
 const COMBAT_STORAGE_KEY = 'drill_combat_v1';
 
 function saveCombatState() {
@@ -2409,6 +2459,7 @@ function saveCombatState() {
       discard:      C.discard,
       logs:         C.logs,
       nextAction:   C.nextAction,
+      ap:           C.ap,
       sessionId:    C.sessionId,
       cx:           C.cx,
       cy:           C.cy,
@@ -2441,6 +2492,7 @@ function restoreCombatState() {
     C.cy           = s.cy ?? null;
     C.currentRound = s.currentRound ?? 1;
     C.myActedRound = s.myActedRound ?? 0;
+    C.ap           = s.ap ?? COMBAT_STATS.maxAp;
     C.participants = [];
     if (C.hand.length === 0) drawCombatCards(3);
     C.logs.unshift('🔄 戦闘を再開しました');
@@ -2473,6 +2525,7 @@ async function startCombat(monsterId, cx, cy) {
   C.currentRound = 1;
   C.myActedRound = 0;
   C.participants = [];
+  C.ap           = COMBAT_STATS.maxAp;
 
   drawCombatCards(3);
 
@@ -2516,8 +2569,21 @@ async function playCard(cardIdx) {
   const cardDef = CARDS[cardId];
   if (!cardDef) return;
 
-  const damage = computeCardDamage(cardDef);
-  if (damage > 0) combatAddLog(`⚔️ ${cardDef.name}！ ${C.monster.name}に ${damage} ダメージ`);
+  // AP チェック
+  const apCost = cardDef.ap_cost ?? 0;
+  if (apCost > 0 && C.ap < apCost) {
+    combatAddLog(`⚡ AP 不足！（必要: ${apCost} / 現在: ${C.ap}）`);
+    showCombatModal();
+    return;
+  }
+  C.ap = Math.max(0, C.ap - apCost);
+
+  const { total: damage, crits } = computeCardDamage(cardDef);
+  if (damage > 0) {
+    const critLabel = crits > 0 ? ' 💥CRIT!' : '';
+    combatAddLog(`⚔️ ${cardDef.name}！ ${C.monster.name}に ${damage} ダメージ${critLabel}`);
+  }
+  spawnDamageNumber(damage, crits > 0);
 
   // 手札全捨て
   C.discard.push(...C.hand);
@@ -2571,6 +2637,7 @@ async function playCard(cardIdx) {
         await endCombat(false);
         return;
       }
+      C.ap = Math.min(COMBAT_STATS.maxAp, C.ap + COMBAT_STATS.apRegen);
       drawCombatCards(3);
       showCombatModal();
       return;
@@ -2602,6 +2669,7 @@ async function playCard(cardIdx) {
     await endCombat(false);
     return;
   }
+  C.ap = Math.min(COMBAT_STATS.maxAp, C.ap + COMBAT_STATS.apRegen);
   drawCombatCards(3);
   C.nextAction = getMonsterNextAction();
   showCombatModal();
@@ -2668,19 +2736,29 @@ function showCombatModal() {
     ? `<img src="${G.avatarUrl}" style="width:46px;height:46px;border-radius:50%;object-fit:cover;border:2px solid rgba(107,222,155,.5);flex-shrink:0;">`
     : `<div style="font-size:2.2rem;line-height:1;flex-shrink:0;">⛏️</div>`;
 
+  const apPct   = COMBAT_STATS.maxAp > 0 ? Math.round((C.ap / COMBAT_STATS.maxAp) * 100) : 100;
+  const apColor = apPct > 50 ? '#60b4ff' : apPct > 20 ? '#ffc107' : '#ff5555';
+
   const cardHtml = C.hand.map((cardId, i) => {
     const def = CARDS[cardId] || {};
+    const apCost = def.ap_cost ?? 0;
+    const canUse = C.ap >= apCost;
     const cardIconHtml = def.imageUrl
       ? `<img class="combat-card-img" src="${def.imageUrl}" onerror="this.outerHTML='<div class=\\'combat-card-icon\\'>${escHtml(def.icon || '❓')}</div>'">`
       : `<div class="combat-card-icon">${def.icon || '❓'}</div>`;
-    return `<div class="combat-card" draggable="true"
-      ondragstart="combatDragStart(event,${i})"
+    const apLabel = apCost > 0
+      ? `<div style="font-size:.62rem;color:${canUse ? '#60b4ff' : '#ff5555'};font-weight:700;margin-top:2px;">⚡${apCost}</div>`
+      : '';
+    return `<div class="combat-card${canUse ? '' : ' combat-card-disabled'}" draggable="${canUse}"
+      style="${canUse ? '' : 'opacity:.45;cursor:not-allowed;'}"
+      ondragstart="${canUse ? `combatDragStart(event,${i})` : 'event.preventDefault()'}"
       ondragend="combatDragEnd(event)"
       ontouchstart="combatTouchStart(event,${i})"
       ontouchmove="combatTouchMove(event)"
       ontouchend="combatTouchEnd(event)">
       ${cardIconHtml}
       <div class="combat-card-name">${escHtml(def.name || cardId)}</div>
+      ${apLabel}
       <div class="combat-card-desc">${escHtml(def.desc || '')}</div>
     </div>`;
   }).join('');
@@ -2699,13 +2777,22 @@ function showCombatModal() {
       acted_round: C.myActedRound },
     ...otherParticipants,
   ];
-  const participantsHtml = allParticipants.map(p => {
+  const participantsHtml = allParticipants.map((p, pi) => {
     const hpPct   = Math.max(0, Math.round((p.hp / p.max_hp) * 100));
     const hpColor = hpPct > 50 ? '#6bde9b' : hpPct > 20 ? '#ffc107' : '#ff5555';
     const acted   = C.sessionId && p.acted_round >= C.currentRound;
     const avHtml  = p.avatar_url
       ? `<img src="${p.avatar_url}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid ${acted ? '#ffc107' : 'rgba(107,222,155,.5)'};">`
       : `<div style="font-size:1.6rem;flex-shrink:0;">⛏️</div>`;
+    // APバーは自分のみ表示
+    const apBarHtml = pi === 0 ? `
+      <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
+        <span style="font-size:.65rem;color:${apColor};opacity:.85;">⚡AP</span>
+        <div style="flex:1;height:3px;background:rgba(255,255,255,.12);border-radius:2px;overflow:hidden;">
+          <div style="width:${apPct}%;height:100%;background:${apColor};border-radius:2px;transition:width .3s;"></div>
+        </div>
+        <span style="font-size:.65rem;color:${apColor};">${C.ap}/${COMBAT_STATS.maxAp}</span>
+      </div>` : '';
     return `<div style="display:flex;align-items:center;gap:8px;">
       ${avHtml}
       <div style="flex:1;min-width:0;">
@@ -2716,6 +2803,7 @@ function showCombatModal() {
         <div style="height:4px;background:rgba(255,255,255,.12);border-radius:2px;overflow:hidden;margin-top:2px;">
           <div style="width:${hpPct}%;height:100%;background:${hpColor};border-radius:2px;transition:width .3s;"></div>
         </div>
+        ${apBarHtml}
       </div>
     </div>`;
   }).join('');
