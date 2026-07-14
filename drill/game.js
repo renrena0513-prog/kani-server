@@ -2554,9 +2554,51 @@ function restoreCombatState() {
   } catch { clearCombatState(); }
 }
 
+// 既存の進行中セッションから離脱（二重参加防止）
+async function abandonActiveCombatSessions(exceptSessionId = null) {
+  if (!G.userId) return;
+  try {
+    const { data: myParts } = await supabaseClient
+      .from('drill_combat_participants')
+      .select('session_id')
+      .eq('user_id', G.userId);
+    if (!myParts?.length) return;
+
+    const ids = myParts.map(p => p.session_id).filter(id => id !== exceptSessionId);
+    if (!ids.length) return;
+
+    const { data: active } = await supabaseClient
+      .from('drill_combat_sessions')
+      .select('id')
+      .in('id', ids)
+      .eq('status', 'active');
+    if (!active?.length) return;
+
+    for (const sess of active) {
+      await supabaseClient
+        .from('drill_combat_participants')
+        .delete()
+        .eq('session_id', sess.id)
+        .eq('user_id', G.userId);
+      const { count } = await supabaseClient
+        .from('drill_combat_participants')
+        .select('user_id', { count: 'exact', head: true })
+        .eq('session_id', sess.id);
+      if (!count) {
+        await supabaseClient
+          .from('drill_combat_sessions')
+          .update({ status: 'ended' })
+          .eq('id', sess.id);
+      }
+    }
+  } catch {}
+}
+
 async function startCombat(monsterId, cx, cy) {
   const def = MONSTERS[monsterId];
   if (!def) return;
+
+  await abandonActiveCombatSessions(); // 旧セッションのゴミを先にクリーンアップ
 
   C.active       = true;
   C.monster      = { ...def };
@@ -3101,6 +3143,7 @@ async function showJoinCombatPrompt(session, cx, cy) {
 }
 
 async function joinExistingCombat(session, cx, cy) {
+  await abandonActiveCombatSessions(session.id); // 参加先以外の旧セッションをクリーンアップ
   const { data: fullSession } = await supabaseClient
     .from('drill_combat_sessions').select('*').eq('id', session.id).single();
   if (!fullSession || fullSession.status !== 'active') {
