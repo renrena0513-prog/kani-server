@@ -187,8 +187,8 @@ const DEFAULT_GAME_CONFIG = {
   })(),
   sellPrices: { dirt: 1, stone: 3, copper: 15, iron: 50, silver: 200, gold: 500 },
   permits: {
-    permit_100: { name: '100m入坑許可証', yMin: 100, cost: 7500 },
-    permit_200: { name: '200m入坑許可証', yMin: 200, cost: 110000 },
+    permit_100: { name: '100m入坑許可証', yMin: 100 },
+    permit_200: { name: '200m入坑許可証', yMin: 200 },
   },
   baseHp: 1000,
   events: [
@@ -292,7 +292,11 @@ function cfgNum(id, val, opts = '') {
   return `<input class="cfg-input" type="number" id="${id}" value="${escDrill(String(val ?? ''))}" ${opts}>`;
 }
 
-// レシピ行を追加（ドリル・許可証共通）
+function cfgText(id, val, opts = '') {
+  return `<input class="cfg-input" type="text" id="${id}" value="${escDrill(String(val ?? ''))}" ${opts}>`;
+}
+
+// レシピ行を追加（ドリルのクラフトレシピ用）
 function addRecipeDom(recipeId) {
   const container = document.getElementById('recipe-rows-' + recipeId);
   if (!container) return;
@@ -656,17 +660,18 @@ function renderPermitsTab() {
   const rows = Object.entries(DEFAULT_GAME_CONFIG.permits).map(([id, def]) => {
     const p = { ...def, ...(cfg[id] ?? {}) };
     return `<tr>
-      <td>${escDrill(p.name ?? def.name)}<div style="font-size:.72rem;opacity:.45;">${p.yMin}m以深での採掘に必要</div></td>
-      <td>${cfgNum('cfg-permit-cost-' + id, p.cost, 'min="1" style="width:100px;"')}</td>
+      <td>${cfgText('cfg-permit-name-' + id, p.name ?? def.name, 'style="width:200px;"')}</td>
+      <td>${p.yMin}m以深での採掘に必要</td>
     </tr>`;
   }).join('');
 
   document.getElementById('cfg-tab-permits').innerHTML = `
     <div class="info-box" style="margin-bottom:14px;">
-      ショップの「アイテム」タブでゴールドを払って取得するアイテムです（クラフト不要）。
+      永続アイテム（プレイヤーの「アイテム」画面の「🔑 永続」タブに所持状況が表示されます）。<br>
+      ショップ購入・クラフトはできません。入手方法は未実装です（将来、宝箱やモンスターのドロップとして追加予定）。
     </div>
     <table class="drill-table" style="max-width:420px;">
-      <tr><th>許可証</th><th>価格（G）</th></tr>
+      <tr><th>許可証</th><th>必要な深度</th></tr>
       ${rows}
     </table>`;
 }
@@ -914,8 +919,8 @@ function collectConfig() {
   Object.keys(DEFAULT_GAME_CONFIG.permits).forEach(id => {
     if (!gc.permits) gc.permits = {};
     if (!gc.permits[id]) gc.permits[id] = { ...DEFAULT_GAME_CONFIG.permits[id] };
-    const costEl = document.getElementById('cfg-permit-cost-' + id);
-    if (costEl) gc.permits[id].cost = parseInt(costEl.value) || gc.permits[id].cost;
+    const nameEl = document.getElementById('cfg-permit-name-' + id);
+    if (nameEl) gc.permits[id].name = nameEl.value || gc.permits[id].name;
   });
 
   // BASE HP

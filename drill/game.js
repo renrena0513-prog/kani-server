@@ -85,9 +85,10 @@ let SHOP_ENTRIES = [
   { type:'drill', refId:'veteran',      cost:10000 },
 ];
 
+// 永続アイテム。ショップ購入・クラフト不可（宝箱/モンスタードロップ等での入手を予定）
 const PERMITS = {
-  permit_100: { name:'100m入坑許可証', yMin:100, cost:7500 },
-  permit_200: { name:'200m入坑許可証', yMin:200, cost:110000 },
+  permit_100: { name:'100m入坑許可証', yMin:100 },
+  permit_200: { name:'200m入坑許可証', yMin:200 },
 };
 
 const SELL_PRICES = {
@@ -443,7 +444,7 @@ async function loadGameConfig() {
     if (cfg.sellPrices) Object.assign(SELL_PRICES, cfg.sellPrices);
     if (cfg.permits) {
       for (const [id, v] of Object.entries(cfg.permits)) {
-        if (PERMITS[id] && v.cost != null) PERMITS[id].cost = v.cost;
+        if (PERMITS[id] && v.name) PERMITS[id].name = v.name;
       }
     }
     if (cfg.events && Array.isArray(cfg.events)) {
@@ -1292,23 +1293,14 @@ function showShop(tab = 'drill') {
     }
 
   } else if (tab === 'item') {
-    const shopItems   = Object.entries(ITEMS).filter(([, def]) => def.cost > 0);
-    const shopPermits = Object.entries(PERMITS).filter(([id, def]) => def.cost > 0 && !G.permits.has(id));
-    if (shopItems.length || shopPermits.length) {
+    const shopItems = Object.entries(ITEMS).filter(([, def]) => def.cost > 0);
+    if (shopItems.length) {
       for (const [id, def] of shopItems) {
         const canBuy = G.drillGold >= def.cost;
         body += `<div class="modal-row">
           <div><div class="modal-row-label">${escHtml(def.name)}</div>
           <div class="modal-row-sub">${def.cost}G${def.effectText ? ' ／ ' + escHtml(def.effectText) : ''}</div></div>
           <button class="btn-modal-action" onclick="buyGameItem('${id}')" ${canBuy?'':'disabled'}>購入</button>
-        </div>`;
-      }
-      for (const [id, def] of shopPermits) {
-        const canBuy = G.drillGold >= def.cost;
-        body += `<div class="modal-row">
-          <div><div class="modal-row-label">${escHtml(def.name)}</div>
-          <div class="modal-row-sub">${def.cost}G ／ ${def.yMin}m以深での採掘に必要</div></div>
-          <button class="btn-modal-action" onclick="buyPermit('${id}')" ${canBuy?'':'disabled'}>取得</button>
         </div>`;
       }
     } else {
@@ -1384,18 +1376,6 @@ async function buyGameItem(id) {
   await saveBpItem(id, G.backpack[id]);
   const img = def.imageUrl ? `<img src="${escHtml(def.imageUrl)}" style="width:40px;height:40px;object-fit:contain;display:block;margin:0 auto 8px;">` : '🛍️';
   showEventModal(img, `<strong>${escHtml(def.name)}</strong>を購入しました！<br><span style="color:#f0c060;font-size:.85rem;">-${def.cost} G</span>`, () => showShop());
-}
-
-async function buyPermit(id) {
-  const def = PERMITS[id];
-  if (!def || !def.cost || G.permits.has(id)) return;
-  if (G.drillGold < def.cost) { log('⚠️ 所持金不足'); return; }
-  G.drillGold -= def.cost;
-  await supabaseClient.from('profiles').update({ drill_gold: G.drillGold }).eq('discord_user_id', G.discordId);
-  await supabaseClient.from('drill_player_permits').insert({ user_id: G.userId, permit_id: id });
-  G.permits.add(id);
-  log(`✅ ${def.name}を取得`);
-  showEventModal('📜', `<strong>${escHtml(def.name)}</strong>を取得しました！<br><span style="color:#f0c060;font-size:.85rem;">-${def.cost} G</span>`, () => showShop('item'));
 }
 
 // ============================================================
@@ -1828,13 +1808,14 @@ async function doAlchemy() {
 // ============================================================
 
 function showInventory(tab = 'bag_mats') {
-  const isBag = tab.startsWith('bag_');
+  const topTab = tab.startsWith('bag_') ? 'bag' : tab.startsWith('wh_') ? 'wh' : 'perm';
+  const isBag = topTab === 'bag';
   const innerTab = tab.slice(tab.indexOf('_') + 1);
   const underground = G.py > 0;
 
   const topTabBtn = (s, label) => {
-    const active = isBag ? s === 'bag' : s === 'wh';
-    return `<button onclick="showInventory('${s}_mats')"
+    const active = topTab === s;
+    return `<button onclick="showInventory('${s === 'perm' ? 'perm_list' : s + '_mats'}')"
       style="flex:1;padding:6px 0;border:none;border-bottom:2px solid ${active?'rgba(255,200,80,.9)':'transparent'};
              background:none;color:${active?'rgba(255,200,80,.9)':'rgba(255,255,255,.55)'};
              font-size:.82rem;cursor:pointer;">${label}</button>`;
@@ -1843,6 +1824,7 @@ function showInventory(tab = 'bag_mats') {
   const topTabBar = `<div style="display:flex;border-bottom:1px solid rgba(255,255,255,.15);margin-bottom:12px;">
     ${topTabBtn('bag','🎒 リュック')}
     ${topTabBtn('wh','🏪 倉庫')}
+    ${topTabBtn('perm','🔑 永続')}
   </div>`;
 
   const subBtn = (prefix, t, label) =>
@@ -1853,7 +1835,22 @@ function showInventory(tab = 'bag_mats') {
   let content = '';
   let footer = '';
 
-  if (isBag) {
+  if (topTab === 'perm') {
+    const rows = Object.entries(PERMITS).map(([id, def]) => {
+      const owned = G.permits.has(id);
+      return `<div class="modal-row">
+        <div>
+          <div class="modal-row-label">${escHtml(def.name)}</div>
+          <div class="modal-row-sub">${def.yMin}m以深での採掘に必要</div>
+        </div>
+        <span style="font-size:.82rem;font-weight:700;color:${owned ? '#6bde9b' : 'rgba(255,255,255,.35)'};">
+          ${owned ? '✅ 所持' : '⬜ 未所持'}
+        </span>
+      </div>`;
+    }).join('');
+    content = `<div class="info-box" style="margin-bottom:10px;">一度入手すると永続的に有効です。リュック・倉庫を圧迫せず、持ち出す必要もありません。</div>${rows}`;
+
+  } else if (isBag) {
     const w = bpWeight();
     const wPct = Math.min(100, Math.round((w / G.maxBpWeight) * 100));
     const wColor = wPct >= 100 ? '#ff5555' : wPct > 70 ? '#ffc107' : '#6bde9b';
