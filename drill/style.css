@@ -873,6 +873,30 @@ html, body {
     .side-panel { display: flex; }
     #action-btns { display: none; }
     #panel-right { flex: 0 0 180px; }
+
+    /* マップを画面高さに収まるようスケール */
+    #map-viewport {
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+    }
+    #map-grid {
+        grid-template-columns: repeat(9, 1fr);
+        grid-template-rows: repeat(15, 1fr);
+        width: 100%;
+        height: 100%;
+    }
+    .mc {
+        width: auto;
+        height: auto;
+        font-size: clamp(9px, 1.5vw, 15px);
+    }
+    .player-icon {
+        width: clamp(18px, 3vw, 42px);
+        height: clamp(18px, 3vw, 42px);
+        font-size: clamp(9px, 1.5vw, 13px);
+    }
+    .mc-treasure:not(:has(.cell-chest-icon))::after { font-size: clamp(11px, 2vw, 18px); }
 }
 
 /* ===== モバイル：固定ボトムバー方式 ===== */
