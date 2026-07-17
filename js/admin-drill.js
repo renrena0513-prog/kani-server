@@ -185,11 +185,6 @@ const DEFAULT_GAME_CONFIG = {
     ];
     return Array.from({length: 30}, (_, i) => base[Math.min(2, Math.floor(i / 10))].map(e => [...e]));
   })(),
-  shop: [
-    { id: 'apprentice',   name: '見習いのドリル', cost: 100   },
-    { id: 'journeyman',   name: '一人前のドリル', cost: 2000  },
-    { id: 'veteran',      name: '熟練のドリル',   cost: 10000 },
-  ],
   sellPrices: { dirt: 1, stone: 3, copper: 15, iron: 50, silver: 200, gold: 500 },
   permits: {
     permit_100: { name: '100m入坑許可証', recipe: { stone: 1000, copper: 300 } },
@@ -285,6 +280,34 @@ const DEFAULT_GAME_CONFIG = {
   },
 };
 
+// ショップ初期状態（未設定時のデフォルト。drill/game.js の SHOP_ENTRIES 初期値と一致させること）
+const DEFAULT_SHOP_ENTRIES = [
+  { type: 'drill', refId: 'apprentice',   cost: 100 },
+  { type: 'drill', refId: 'journeyman',   cost: 2000 },
+  { type: 'drill', refId: 'veteran',      cost: 10000 },
+  { type: 'card',  refId: 'drill_attack', cost: 100 },
+  { type: 'card',  refId: 'sword_clay_d',   cost: 200 },
+  { type: 'card',  refId: 'sword_clay_c',   cost: 400 },
+  { type: 'card',  refId: 'sword_clay_b',   cost: 800 },
+  { type: 'card',  refId: 'sword_clay_a',   cost: 1600 },
+  { type: 'card',  refId: 'sword_clay_s',   cost: 3000 },
+  { type: 'card',  refId: 'sword_stone_d',  cost: 1000 },
+  { type: 'card',  refId: 'sword_stone_c',  cost: 1500 },
+  { type: 'card',  refId: 'sword_stone_b',  cost: 2500 },
+  { type: 'card',  refId: 'sword_stone_a',  cost: 5000 },
+  { type: 'card',  refId: 'sword_stone_s',  cost: 10000 },
+  { type: 'card',  refId: 'sword_copper_d', cost: 3000 },
+  { type: 'card',  refId: 'sword_copper_c', cost: 5000 },
+  { type: 'card',  refId: 'sword_copper_b', cost: 8000 },
+  { type: 'card',  refId: 'sword_copper_a', cost: 15000 },
+  { type: 'card',  refId: 'sword_copper_s', cost: 30000 },
+  { type: 'card',  refId: 'sword_iron_d',   cost: 20000 },
+  { type: 'card',  refId: 'sword_iron_c',   cost: 30000 },
+  { type: 'card',  refId: 'sword_iron_b',   cost: 50000 },
+  { type: 'card',  refId: 'sword_iron_a',   cost: 100000 },
+  { type: 'card',  refId: 'sword_iron_s',   cost: 200000 },
+];
+
 let gameConfig = null;
 
 const MAT_IDS        = ['dirt','stone','copper','iron','silver','gold','treasure'];
@@ -338,7 +361,10 @@ async function loadGameConfigAdmin() {
   }
   if (!gameConfig.monsters)       gameConfig.monsters       = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.monsters));
   if (!gameConfig.cards)         gameConfig.cards          = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.cards));
+  // drill_attack はゲーム側の固定カードだが、管理画面のカード一覧・ショップ選択に出せるよう補完
+  if (!gameConfig.cards.drill_attack) gameConfig.cards.drill_attack = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.cards.drill_attack));
   if (!gameConfig.items)         gameConfig.items          = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.items));
+  if (!gameConfig.shopEntries)   gameConfig.shopEntries    = JSON.parse(JSON.stringify(DEFAULT_SHOP_ENTRIES));
   if (!gameConfig.treasureTypes) gameConfig.treasureTypes  = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.treasureTypes));
   if (!gameConfig.treasureSlots || gameConfig.treasureSlots.length < 30)
     gameConfig.treasureSlots = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.treasureSlots));
@@ -550,16 +576,106 @@ function updateLayerTotal(s) {
 }
 
 function renderShopTab() {
-  const cfg  = gameConfig.shop ?? DEFAULT_GAME_CONFIG.shop;
-  const rows = cfg.map((item, i) => `<tr>
-    <td>${escDrill(item.name)}</td>
-    <td>${cfgNum('cfg-shop-cost-' + i, item.cost, 'min="1" style="width:100px;"')}</td>
-  </tr>`).join('');
-  document.getElementById('cfg-tab-shop').innerHTML = `
-    <table class="drill-table" style="max-width:400px;">
-      <tr><th>アイテム</th><th>価格（G）</th></tr>
-      ${rows}
-    </table>`;
+  const el = document.getElementById('cfg-tab-shop');
+  if (!el) return;
+  if (!gameConfig.shopEntries) gameConfig.shopEntries = JSON.parse(JSON.stringify(DEFAULT_SHOP_ENTRIES));
+
+  const drills = gameConfig.drills ?? DEFAULT_GAME_CONFIG.drills;
+  const cards  = gameConfig.cards  ?? {};
+  const items  = gameConfig.items  ?? {};
+  const entryMap = new Map(gameConfig.shopEntries.map(e => [`${e.type}:${e.refId}`, e.cost]));
+
+  const drillRows = Object.entries(drills)
+    .filter(([id]) => id !== 'beginner')
+    .map(([id, def]) => {
+      const key = `drill:${id}`;
+      const checked = entryMap.has(key);
+      const cost = entryMap.get(key) ?? (def.cost > 0 ? def.cost : 100);
+      return `<tr>
+        <td><label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" class="shop-chk" data-type="drill" data-id="${id}" ${checked ? 'checked' : ''}>
+          ${escDrill(def.name ?? id)}
+        </label></td>
+        <td>${cfgNum(`cfg-shopcost-drill-${id}`, cost, 'min="1" style="width:100px;"')}</td>
+      </tr>`;
+    }).join('');
+
+  const cardIds = Object.keys(cards);
+  const cardRows = cardIds.map(id => {
+    const def = cards[id] ?? {};
+    const key = `card:${id}`;
+    const checked = entryMap.has(key);
+    const cost = entryMap.get(key) ?? 100;
+    return `<tr>
+      <td><label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <input type="checkbox" class="shop-chk" data-type="card" data-id="${id}" ${checked ? 'checked' : ''}>
+        ${escDrill(def.name ?? id)}<span style="opacity:.4;font-size:.7rem;margin-left:4px;">${escDrill(id)}</span>
+      </label></td>
+      <td>${cfgNum(`cfg-shopcost-card-${id}`, cost, 'min="1" style="width:100px;"')}</td>
+    </tr>`;
+  }).join('');
+
+  const itemIds = Object.keys(items);
+  const itemRows = itemIds.map(id => {
+    const def = items[id] ?? {};
+    const checked = (def.cost ?? 0) > 0;
+    const cost = def.cost > 0 ? def.cost : 100;
+    return `<tr>
+      <td><label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <input type="checkbox" class="shop-item-chk" data-id="${id}" ${checked ? 'checked' : ''}>
+        ${escDrill(def.name ?? id)}
+      </label></td>
+      <td>${cfgNum(`cfg-shopcost-item-${id}`, cost, 'min="1" style="width:100px;"')}</td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="info-box" style="margin-bottom:16px;">
+      チェックを入れたものがショップに並びます（未チェックのものは非表示）。価格（G）もここで設定できます。
+    </div>
+    <div style="margin-bottom:24px;">
+      <div style="font-size:.9rem;font-weight:700;margin-bottom:8px;">⛏️ ドリル</div>
+      <table class="drill-table" style="max-width:420px;">
+        <tr><th>販売する</th><th>価格（G）</th></tr>
+        ${drillRows || '<tr><td colspan="2" class="text-muted">ドリルが未設定です</td></tr>'}
+      </table>
+    </div>
+    <div style="margin-bottom:24px;">
+      <div style="font-size:.9rem;font-weight:700;margin-bottom:8px;">💊 アイテム</div>
+      <table class="drill-table" style="max-width:420px;">
+        <tr><th>販売する</th><th>価格（G）</th></tr>
+        ${itemRows || '<tr><td colspan="2" class="text-muted">「アイテム」タブでアイテムを追加してください</td></tr>'}
+      </table>
+    </div>
+    <div>
+      <div style="font-size:.9rem;font-weight:700;margin-bottom:8px;">🃏 カード</div>
+      <table class="drill-table" style="max-width:420px;">
+        <tr><th>販売する</th><th>価格（G）</th></tr>
+        ${cardRows || '<tr><td colspan="2" class="text-muted">「カード」タブでカードを追加してください</td></tr>'}
+      </table>
+    </div>`;
+}
+
+function collectShopConfig() {
+  const entries = [];
+  document.querySelectorAll('#cfg-tab-shop .shop-chk').forEach(chk => {
+    if (!chk.checked) return;
+    const type = chk.dataset.type;
+    const id   = chk.dataset.id;
+    const costEl = document.getElementById(`cfg-shopcost-${type}-${id}`);
+    const cost = parseInt(costEl?.value, 10) || 1;
+    entries.push({ type, refId: id, cost });
+  });
+  gameConfig.shopEntries = entries;
+
+  // アイテムの販売価格は items[id].cost に直接反映（0 = 非売品）
+  if (!gameConfig.items) gameConfig.items = {};
+  document.querySelectorAll('#cfg-tab-shop .shop-item-chk').forEach(chk => {
+    const id = chk.dataset.id;
+    if (!gameConfig.items[id]) return;
+    const costEl = document.getElementById(`cfg-shopcost-item-${id}`);
+    gameConfig.items[id].cost = chk.checked ? (parseInt(costEl?.value, 10) || 1) : 0;
+  });
 }
 
 function renderSellTab() {
@@ -838,11 +954,6 @@ function collectConfig() {
     gc.layerWeights[s] = row;
   }
 
-  // SHOP
-  (gc.shop ?? []).forEach((item, i) => {
-    const el = document.getElementById('cfg-shop-cost-' + i);
-    if (el) item.cost = parseInt(el.value) || item.cost;
-  });
 
   // SELL PRICES
   if (!gc.sellPrices) gc.sellPrices = {};
@@ -903,12 +1014,13 @@ function collectConfig() {
     if (maxEl) c.max = parseInt(maxEl.value) || 0;
   });
 
-  // MONSTERS / CARDS / ITEMS / TREASURE
+  // MONSTERS / CARDS / ITEMS / TREASURE / SHOP
   collectMonstersConfig();
   collectCardsConfig();
   collectItemsConfig();
   collectTreasureConfig();
   collectAlchemyConfig();
+  collectShopConfig();
 }
 
 async function saveGameConfig() {
@@ -1434,18 +1546,23 @@ function collectCardsConfig() {
 
 function addCard() {
   collectCardsConfig();
+  collectShopConfig();
   const id = 'card_' + Date.now();
   if (!gameConfig.cards) gameConfig.cards = {};
   const nextNo = Math.max(0, ...Object.values(gameConfig.cards).map(c => c.no ?? 0)) + 1;
   gameConfig.cards[id] = { name: '新カード', desc: '', imageUrl: null, no: nextNo, material: null, weapon_type: null, target: 'enemy_single', ap_cost: 10, base_attack: 0, mult_min: 1.0, mult_max: 1.0, crit_rate_bonus: 0, crit_dmg_bonus: 0, hit_count: 1, heal_power: 0 };
   renderCardsTab();
+  renderShopTab();
 }
 
 function deleteCard(id) {
   collectCardsConfig();
   if (!confirm(`「${gameConfig.cards?.[id]?.name || id}」を削除しますか？`)) return;
+  collectShopConfig();
   delete gameConfig.cards[id];
+  gameConfig.shopEntries = (gameConfig.shopEntries || []).filter(e => !(e.type === 'card' && e.refId === id));
   renderCardsTab();
+  renderShopTab();
 }
 
 async function uploadCardImage(id, input) {
@@ -1561,6 +1678,7 @@ async function importCardsCsv(input) {
     }
 
     renderCardsTab();
+    renderShopTab();
     alert(`✅ インポート完了（drill_cards DB 更新済み）\n${count}件\n\n画像URLと説明文を変更した場合は「保存」ボタンも押してください`);
   } catch (err) {
     alert('CSVのパースに失敗しました: ' + err.message);
@@ -1643,17 +1761,21 @@ function collectItemsConfig() {
 
 function addItem() {
   collectItemsConfig();
+  collectShopConfig();
   const id = 'item_' + Date.now();
   if (!gameConfig.items) gameConfig.items = {};
   gameConfig.items[id] = { name: '新アイテム', weight: 10, cost: 0, effectText: '', imageUrl: null };
   renderItemsTab();
+  renderShopTab();
 }
 
 function deleteItem(id) {
   collectItemsConfig();
   if (!confirm(`「${gameConfig.items?.[id]?.name || id}」を削除しますか？`)) return;
+  collectShopConfig();
   delete gameConfig.items[id];
   renderItemsTab();
+  renderShopTab();
 }
 
 async function uploadItemImage(id, input) {

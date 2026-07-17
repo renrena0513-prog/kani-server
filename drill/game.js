@@ -76,32 +76,35 @@ const DRILLS = {
   allpurpose:  { name:'万能ドリル',      power:100, dur:50000, cost:null, recipe:{copper:20,iron:20,silver:20} },
 };
 
-const SHOP_ITEMS = [
-  { id:'apprentice',   name:'見習いのドリル',   cost:100,   type:'drill', drillId:'apprentice' },
-  { id:'journeyman',   name:'一人前のドリル',   cost:2000,  type:'drill', drillId:'journeyman' },
-  { id:'veteran',      name:'熟練のドリル',     cost:10000, type:'drill', drillId:'veteran' },
-  { id:'drill_attack', name:'ドリルアタック',   cost:100,   type:'card',  cardId:'drill_attack' },
+// ショップ掲載エントリ（管理画面「ショップ」タブで追加・削除・価格設定が可能）
+// type: 'drill' | 'card'   refId: DRILLS / CARDS のキー
+// 名前・アイコン等は表示時に DRILLS[refId] / CARDS[refId] から解決する（ここでは持たない）
+let SHOP_ENTRIES = [
+  { type:'drill', refId:'apprentice',   cost:100 },
+  { type:'drill', refId:'journeyman',   cost:2000 },
+  { type:'drill', refId:'veteran',      cost:10000 },
+  { type:'card',  refId:'drill_attack', cost:100 },
   // 剣カード（価格は管理画面ショップ設定で調整可）
-  { id:'sword_clay_d',   name:'粘土の剣',  cost:200,    type:'card', cardId:'sword_clay_d' },
-  { id:'sword_clay_c',   name:'粘土の剣',  cost:400,    type:'card', cardId:'sword_clay_c' },
-  { id:'sword_clay_b',   name:'粘土の剣',  cost:800,    type:'card', cardId:'sword_clay_b' },
-  { id:'sword_clay_a',   name:'粘土の剣',  cost:1600,   type:'card', cardId:'sword_clay_a' },
-  { id:'sword_clay_s',   name:'粘土の剣',  cost:3000,   type:'card', cardId:'sword_clay_s' },
-  { id:'sword_stone_d',  name:'石の剣',    cost:1000,   type:'card', cardId:'sword_stone_d' },
-  { id:'sword_stone_c',  name:'石の剣',    cost:1500,   type:'card', cardId:'sword_stone_c' },
-  { id:'sword_stone_b',  name:'石の剣',    cost:2500,   type:'card', cardId:'sword_stone_b' },
-  { id:'sword_stone_a',  name:'石の剣',    cost:5000,   type:'card', cardId:'sword_stone_a' },
-  { id:'sword_stone_s',  name:'石の剣',    cost:10000,  type:'card', cardId:'sword_stone_s' },
-  { id:'sword_copper_d', name:'銅の剣',    cost:3000,   type:'card', cardId:'sword_copper_d' },
-  { id:'sword_copper_c', name:'銅の剣',    cost:5000,   type:'card', cardId:'sword_copper_c' },
-  { id:'sword_copper_b', name:'銅の剣',    cost:8000,   type:'card', cardId:'sword_copper_b' },
-  { id:'sword_copper_a', name:'銅の剣',    cost:15000,  type:'card', cardId:'sword_copper_a' },
-  { id:'sword_copper_s', name:'銅の剣',    cost:30000,  type:'card', cardId:'sword_copper_s' },
-  { id:'sword_iron_d',   name:'鉄の剣',    cost:20000,  type:'card', cardId:'sword_iron_d' },
-  { id:'sword_iron_c',   name:'鉄の剣',    cost:30000,  type:'card', cardId:'sword_iron_c' },
-  { id:'sword_iron_b',   name:'鉄の剣',    cost:50000,  type:'card', cardId:'sword_iron_b' },
-  { id:'sword_iron_a',   name:'鉄の剣',    cost:100000, type:'card', cardId:'sword_iron_a' },
-  { id:'sword_iron_s',   name:'鉄の剣',    cost:200000, type:'card', cardId:'sword_iron_s' },
+  { type:'card', refId:'sword_clay_d',   cost:200 },
+  { type:'card', refId:'sword_clay_c',   cost:400 },
+  { type:'card', refId:'sword_clay_b',   cost:800 },
+  { type:'card', refId:'sword_clay_a',   cost:1600 },
+  { type:'card', refId:'sword_clay_s',   cost:3000 },
+  { type:'card', refId:'sword_stone_d',  cost:1000 },
+  { type:'card', refId:'sword_stone_c',  cost:1500 },
+  { type:'card', refId:'sword_stone_b',  cost:2500 },
+  { type:'card', refId:'sword_stone_a',  cost:5000 },
+  { type:'card', refId:'sword_stone_s',  cost:10000 },
+  { type:'card', refId:'sword_copper_d', cost:3000 },
+  { type:'card', refId:'sword_copper_c', cost:5000 },
+  { type:'card', refId:'sword_copper_b', cost:8000 },
+  { type:'card', refId:'sword_copper_a', cost:15000 },
+  { type:'card', refId:'sword_copper_s', cost:30000 },
+  { type:'card', refId:'sword_iron_d',   cost:20000 },
+  { type:'card', refId:'sword_iron_c',   cost:30000 },
+  { type:'card', refId:'sword_iron_b',   cost:50000 },
+  { type:'card', refId:'sword_iron_a',   cost:100000 },
+  { type:'card', refId:'sword_iron_s',   cost:200000 },
 ];
 
 const PERMITS = {
@@ -448,10 +451,16 @@ async function loadGameConfig() {
         lw.forEach((layer, i) => applySlot(layer, i));
       }
     }
-    if (cfg.shop) {
+    if (cfg.shopEntries && Array.isArray(cfg.shopEntries)) {
+      // 新形式：管理画面で追加・削除・価格設定した完全なショップ一覧
+      SHOP_ENTRIES = cfg.shopEntries
+        .filter(e => e && e.refId && (e.type === 'drill' || e.type === 'card'))
+        .map(e => ({ type: e.type, refId: e.refId, cost: Number(e.cost) || 1 }));
+    } else if (cfg.shop) {
+      // 旧形式との後方互換：ドリルの価格のみ上書き可能
       cfg.shop.forEach(s => {
-        const item = SHOP_ITEMS.find(x => x.id === s.id);
-        if (item && s.cost != null) item.cost = s.cost;
+        const entry = SHOP_ENTRIES.find(x => x.type === 'drill' && x.refId === s.id);
+        if (entry && s.cost != null) entry.cost = s.cost;
       });
     }
     if (cfg.sellPrices) Object.assign(SELL_PRICES, cfg.sellPrices);
@@ -1289,15 +1298,20 @@ function showShop(tab = 'drill') {
   let body = '';
 
   if (tab === 'drill') {
-    for (const item of SHOP_ITEMS.filter(i => i.type === 'drill')) {
-      const def = DRILLS[item.drillId] ?? {};
-      const canBuy = G.drillGold >= item.cost;
-      const stats = `<span style="color:rgba(255,200,80,.8);">発掘力 ${def.power ?? '?'}</span> ／ 耐久 ${def.dur ?? '∞'}`;
-      body += `<div class="modal-row">
-        <div><div class="modal-row-label">${item.name}</div>
-        <div class="modal-row-sub">${item.cost}G　${stats}</div></div>
-        <button class="btn-modal-action" onclick="buyShopDrill('${item.id}')" ${canBuy?'':'disabled'}>購入</button>
-      </div>`;
+    const drillEntries = SHOP_ENTRIES.filter(e => e.type === 'drill' && DRILLS[e.refId]);
+    if (drillEntries.length) {
+      for (const entry of drillEntries) {
+        const def = DRILLS[entry.refId];
+        const canBuy = G.drillGold >= entry.cost;
+        const stats = `<span style="color:rgba(255,200,80,.8);">発掘力 ${def.power ?? '?'}</span> ／ 耐久 ${def.dur ?? '∞'}`;
+        body += `<div class="modal-row">
+          <div><div class="modal-row-label">${escHtml(def.name)}</div>
+          <div class="modal-row-sub">${entry.cost}G　${stats}</div></div>
+          <button class="btn-modal-action" onclick="buyShopEntry('drill','${entry.refId}')" ${canBuy?'':'disabled'}>購入</button>
+        </div>`;
+      }
+    } else {
+      body = `<div style="opacity:.45;font-size:.82rem;padding:12px 0;">販売中のドリルはありません</div>`;
     }
 
   } else if (tab === 'item') {
@@ -1316,20 +1330,20 @@ function showShop(tab = 'drill') {
     }
 
   } else if (tab === 'card') {
-    const cardItems = SHOP_ITEMS.filter(i => i.type === 'card');
-    if (cardItems.length) {
-      for (const item of cardItems) {
-        const def = CARDS[item.cardId] ?? {};
-        const canBuy = G.drillGold >= item.cost;
-        const ownedCount = G.ownedCards[item.cardId] || 0;
-        const rank = (def.rarity ?? '').toLowerCase() || rankFromId(item.cardId);
+    const cardEntries = SHOP_ENTRIES.filter(e => e.type === 'card' && CARDS[e.refId]);
+    if (cardEntries.length) {
+      for (const entry of cardEntries) {
+        const def = CARDS[entry.refId];
+        const canBuy = G.drillGold >= entry.cost;
+        const ownedCount = G.ownedCards[entry.refId] || 0;
+        const rank = (def.rarity ?? '').toLowerCase() || rankFromId(entry.refId);
         const rankDot = rank
           ? `<span class="rank-badge rank-badge-${rank}" style="position:static;display:inline-flex;vertical-align:middle;margin-right:4px;">${rank.toUpperCase()}</span>`
           : '';
         body += `<div class="modal-row">
-          <div><div class="modal-row-label">${rankDot}${escHtml(item.name)}</div>
-          <div class="modal-row-sub">${item.cost}G　${def.icon ?? ''} ${def.desc ?? ''}${ownedCount > 0 ? `　<span style="opacity:.55;">所持: ${ownedCount}枚</span>` : ''}</div></div>
-          <button class="btn-modal-action" onclick="buyShopDrill('${item.id}')" ${canBuy?'':'disabled'}>購入</button>
+          <div><div class="modal-row-label">${rankDot}${escHtml(def.name)}</div>
+          <div class="modal-row-sub">${entry.cost}G　${def.icon ?? ''} ${def.desc ?? ''}${ownedCount > 0 ? `　<span style="opacity:.55;">所持: ${ownedCount}枚</span>` : ''}</div></div>
+          <button class="btn-modal-action" onclick="buyShopEntry('card','${entry.refId}')" ${canBuy?'':'disabled'}>購入</button>
         </div>`;
       }
     } else {
@@ -1376,43 +1390,35 @@ function showShop(tab = 'drill') {
   openModal(html);
 }
 
-async function buyShopDrill(shopId) {
-  const item = SHOP_ITEMS.find(i => i.id === shopId);
-  if (!item || G.drillGold < item.cost) { log('⚠️ 所持金不足'); return; }
+async function buyShopEntry(type, refId) {
+  const entry = SHOP_ENTRIES.find(e => e.type === type && e.refId === refId);
+  if (!entry || G.drillGold < entry.cost) { log('⚠️ 所持金不足'); return; }
 
-  if (item.type === 'card') {
-    G.drillGold -= item.cost;
+  if (type === 'card') {
+    const def = CARDS[refId];
+    if (!def) return;
+    G.drillGold -= entry.cost;
     await supabaseClient.from('profiles').update({ drill_gold: G.drillGold }).eq('discord_user_id', G.discordId);
-    G.ownedCards[item.cardId] = (G.ownedCards[item.cardId] || 0) + 1;
+    G.ownedCards[refId] = (G.ownedCards[refId] || 0) + 1;
     await supabaseClient.from('drill_player_cards')
-      .upsert({ user_id: G.userId, card_id: item.cardId, quantity: G.ownedCards[item.cardId] });
-    log(`✅ ${item.name}を購入（${G.ownedCards[item.cardId]}枚目）`);
-    const cardIcon = (CARDS[item.cardId] ?? {}).icon ?? '🃏';
-    showEventModal(cardIcon, `<strong>${escHtml(item.name)}</strong>を購入しました！<br><span style="color:#f0c060;font-size:.85rem;">-${item.cost} G</span>`, () => showShop('card'));
+      .upsert({ user_id: G.userId, card_id: refId, quantity: G.ownedCards[refId] });
+    log(`✅ ${def.name}を購入（${G.ownedCards[refId]}枚目）`);
+    showEventModal(def.icon ?? '🃏', `<strong>${escHtml(def.name)}</strong>を購入しました！<br><span style="color:#f0c060;font-size:.85rem;">-${entry.cost} G</span>`, () => showShop('card'));
     return;
   }
 
-  G.drillGold -= item.cost;
+  // type === 'drill'
+  const def = DRILLS[refId];
+  if (!def) return;
+  G.drillGold -= entry.cost;
   await supabaseClient.from('profiles').update({ drill_gold: G.drillGold }).eq('discord_user_id', G.discordId);
-
-  if (item.type === 'drill') {
-    const { data: nd } = await supabaseClient.from('drill_player_drills').insert({
-      user_id: G.userId, drill_id: item.drillId,
-      durability: DRILLS[item.drillId].dur, equipped: false,
-    }).select().single();
-    if (nd) G.drills.push(nd);
-    log(`✅ ${item.name}を購入`);
-    showEventModal('⛏️', `<strong>${escHtml(item.name)}</strong>を購入しました！<br><span style="color:#f0c060;font-size:.85rem;">-${item.cost} G</span>`, () => showShop('drill'));
-  } else {
-    await upsertInv(item.itemId, 1);
-    log(`✅ ${item.name}を購入`);
-    showShop('item');
-  }
-}
-
-// 後方互換：旧 buyItem 呼び出しが残っていた場合の対応
-async function buyItem(shopId) {
-  return buyShopDrill(shopId);
+  const { data: nd } = await supabaseClient.from('drill_player_drills').insert({
+    user_id: G.userId, drill_id: refId,
+    durability: def.dur, equipped: false,
+  }).select().single();
+  if (nd) G.drills.push(nd);
+  log(`✅ ${def.name}を購入`);
+  showEventModal('⛏️', `<strong>${escHtml(def.name)}</strong>を購入しました！<br><span style="color:#f0c060;font-size:.85rem;">-${entry.cost} G</span>`, () => showShop('drill'));
 }
 
 async function buyGameItem(id) {
@@ -1613,9 +1619,7 @@ async function doCraft(type, id) {
 const SYNTH_RANK_NEXT = { d: 'c', c: 'b', b: 'a', a: 's' };
 
 function cardDisplayName(cardId) {
-  if (CARDS[cardId]?.name) return CARDS[cardId].name;
-  const si = SHOP_ITEMS.find(s => s.cardId === cardId);
-  return si ? si.name : cardId;
+  return CARDS[cardId]?.name || cardId;
 }
 
 function showSynthesize() {
@@ -1632,8 +1636,7 @@ function showSynthesize() {
     const nextRank = SYNTH_RANK_NEXT[rank];
     if (!nextRank) continue;
     const toId = `${base}_${nextRank}`;
-    // CARDS または SHOP_ITEMS に存在するか確認（どちらかにあればOK）
-    if (!CARDS[toId] && !SHOP_ITEMS.find(s => s.cardId === toId)) continue;
+    if (!CARDS[toId]) continue;
     synthList.push({ fromId: itemId, qty, toId, times: Math.floor(qty / 4) });
   }
 
@@ -1702,8 +1705,6 @@ const ALCHEMY_RARITY_WEIGHTS = { d:50, c:30, b:15, a:4, s:1 };
 
 function alchemyCardDisplayName(cardId) {
   if (CARDS[cardId]?.name) return CARDS[cardId].name;
-  const si = SHOP_ITEMS.find(s => s.cardId === cardId);
-  if (si) return si.name;
   const m = cardId.match(/^(.+)_(.+)_([dcbas])$/);
   if (!m) return cardId;
   const [, weapon, material, rarity] = m;
