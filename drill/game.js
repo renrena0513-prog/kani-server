@@ -2076,12 +2076,13 @@ async function discardForPendingMat(id) {
 
 async function dropPendingMaterial() {
   if (!_pendingMaterial) { closeModal(); return; }
-  const { mat } = _pendingMaterial;
+  const { mat, x, y } = _pendingMaterial;
   _pendingMaterial = null;
   await dropAtCurrentPos([{ item_id: mat, quantity: 1 }]);
   log(`📦 ${MATS[mat]?.name || mat} ×1 を足元に落とした`);
   closeModal();
   renderMap();
+  await triggerBlockEvent(x, y);
 }
 
 // 足元にアイテムをドロップする共通ヘルパー
@@ -2558,12 +2559,10 @@ async function takeAll() {
 }
 
 async function doDropCollect(x, y, drop, toCollect) {
-  // ロック解放：変数クリア後にDB側もRPCで解放（削除前に解放）
-  const dropIdToUnlock = _lockedDropId;
+  // ロックは collect RPC まで保持する：先に _lockedDropId をクリアして
+  // closeModal() 内の releaseDropLock() を無効化（解放は RPC 側で行われる）
+  const heldLockId = _lockedDropId;
   _lockedDropId = null;
-  if (dropIdToUnlock) {
-    await supabaseClient.rpc('release_drop_lock', { p_drop_id: dropIdToUnlock, p_user_id: G.userId });
-  }
   closeModal();
   _currentDrop = null;
 
@@ -2579,17 +2578,62 @@ async function doDropCollect(x, y, drop, toCollect) {
     const canTake = w > 0 ? Math.min(item.quantity, Math.floor(cap / w)) : item.quantity;
     if (canTake > 0) { fitted.push({ ...item, quantity: canTake }); cap -= w * canTake; }
   }
-  if (fitted.length === 0 && drillItems.length === 0) { log('⚠️ リュックが満杯で回収できません'); renderSide(); return; }
+  if (fitted.length === 0 && drillItems.length === 0) {
+    log('⚠️ リュックが満杯で回収できません');
+    if (heldLockId) await supabaseClient.rpc('release_drop_lock', { p_drop_id: heldLockId, p_user_id: G.userId });
+    renderSide();
+    return;
+  }
   const skipped = regularItems.reduce((s, i) => s + i.quantity, 0) - fitted.reduce((s, i) => s + i.quantity, 0);
   if (skipped > 0) log(`⚠️ 容量不足で ${skipped} 個は回収できませんでした`);
 
-  for (const { item_id, quantity } of fitted) {
+  // DB側で原子的に回収（他プレイヤーと競合しても実際に取れた分だけが返る）
+  // ロックはRPC内で解決される（更新時はクリア、全回収時は行ごと削除）
+  const want = [...fitted, ...drillItems].map(i => ({ item_id: i.item_id, quantity: i.quantity }));
+  const { data: res, error } = await supabaseClient.rpc('collect_drop_items', {
+    p_drop_id: drop.id, p_user_id: G.userId, p_items: want,
+  });
+  if (error || !res) {
+    log('⚠️ 回収に失敗しました');
+    await supabaseClient.rpc('release_drop_lock', { p_drop_id: drop.id, p_user_id: G.userId });
+    renderSide();
+    return;
+  }
+
+  const taken = res.taken || [];
+  const remaining = res.remaining || [];
+
+  // ローカルキャッシュをDBの結果で更新
+  const key = `${x},${y}`;
+  const list = G.droppedItems.get(key);
+  if (res.deleted) {
+    if (list) {
+      const idx = list.findIndex(d => d.id === drop.id);
+      if (idx >= 0) list.splice(idx, 1);
+      if (list.length === 0) G.droppedItems.delete(key);
+    }
+  } else if (list) {
+    const d = list.find(d => d.id === drop.id);
+    if (d) { d.items = remaining; d.locked_by = null; d.locked_until = null; }
+  }
+
+  if (taken.length === 0) {
+    log('⚠️ 落とし物は先に他のプレイヤーに回収されました');
+    renderSide(); renderMap();
+    return;
+  }
+
+  // 実際に取れた分だけを加算
+  const takenDrills  = taken.filter(i => DRILLS[i.item_id]);
+  const takenRegular = taken.filter(i => !DRILLS[i.item_id]);
+
+  for (const { item_id, quantity } of takenRegular) {
     G.backpack[item_id] = (G.backpack[item_id] || 0) + quantity;
     await saveBpItem(item_id, G.backpack[item_id]);
   }
 
   // ドリル回収：drill_player_drillsに追加（耐久値を保持）
-  for (const { item_id, quantity, durability } of drillItems) {
+  for (const { item_id, quantity, durability } of takenDrills) {
     const def = DRILLS[item_id] || {};
     for (let i = 0; i < quantity; i++) {
       const { data: nd } = await supabaseClient.from('drill_player_drills').insert({
@@ -2601,33 +2645,7 @@ async function doDropCollect(x, y, drop, toCollect) {
     }
   }
 
-  const allFitted = [...fitted, ...drillItems];
-  const takenMap = {};
-  allFitted.forEach(i => { takenMap[i.item_id] = (takenMap[i.item_id] || 0) + i.quantity; });
-  const remaining = (drop.items || [])
-    .map(i => {
-      const leftQty = i.quantity - (takenMap[i.item_id] || 0);
-      if (leftQty <= 0) return null;
-      return i.durability !== undefined ? { item_id: i.item_id, quantity: leftQty, durability: i.durability } : { item_id: i.item_id, quantity: leftQty };
-    })
-    .filter(Boolean);
-
-  const key = `${x},${y}`;
-  if (remaining.length === 0) {
-    await supabaseClient.from('drill_dropped_items').delete().eq('id', drop.id);
-    const list = G.droppedItems.get(key);
-    if (list) {
-      const idx = list.findIndex(d => d.id === drop.id);
-      if (idx >= 0) list.splice(idx, 1);
-      if (list.length === 0) G.droppedItems.delete(key);
-    }
-  } else {
-    await supabaseClient.from('drill_dropped_items').update({ items: remaining }).eq('id', drop.id);
-    const list = G.droppedItems.get(key);
-    if (list) { const d = list.find(d => d.id === drop.id); if (d) d.items = remaining; }
-  }
-
-  const names = allFitted.map(i => `${DRILLS[i.item_id]?.name || ITEM_NAMES[i.item_id] || i.item_id}×${i.quantity}`).join(', ');
+  const names = taken.map(i => `${DRILLS[i.item_id]?.name || ITEM_NAMES[i.item_id] || i.item_id}×${i.quantity}`).join(', ');
   log(`📦 落とし物を回収！ ${names}`);
   renderSide(); renderMap();
 
