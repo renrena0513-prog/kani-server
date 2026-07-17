@@ -372,6 +372,20 @@ async function loadGameConfigAdmin() {
       Array.isArray(layer) ? layer.filter(e => e.type !== 'combat') : layer
     );
   }
+  // drill_cards DB から material / weapon_type / no をマージ
+  try {
+    const { data: dbCards } = await supabaseClient.from('drill_cards').select('id,no,weapon_type,material,target');
+    if (dbCards && gameConfig.cards) {
+      for (const r of dbCards) {
+        if (!gameConfig.cards[r.id]) continue;
+        const c = gameConfig.cards[r.id];
+        if (c.no       == null && r.no       != null) c.no          = r.no;
+        if (!c.weapon_type     && r.weapon_type)      c.weapon_type = r.weapon_type;
+        if (!c.material        && r.material)         c.material    = r.material;
+        if (!c.target          && r.target)           c.target      = r.target;
+      }
+    }
+  } catch { /* DBマージ失敗は無視 */ }
   renderConfigEditor();
 }
 
@@ -905,6 +919,33 @@ async function saveGameConfig() {
       .from('drill_page_settings')
       .upsert({ setting_key: 'game_config', setting_value: JSON.stringify(gameConfig) });
     if (error) throw error;
+
+    // drill_cards テーブルにも stats を同期
+    const cardEntries = Object.entries(gameConfig.cards ?? {});
+    if (cardEntries.length > 0) {
+      const drillRows = cardEntries.map(([id, c], i) => ({
+        id,
+        no:              c.no ?? (i + 1),
+        name:            c.name ?? id,
+        rarity:          (c.rarity ?? 'd').toLowerCase(),
+        material:        c.material ?? null,
+        weapon_type:     c.weapon_type ?? null,
+        icon:            c.icon ?? null,
+        ap_cost:         c.ap_cost ?? 1,
+        base_attack:     c.base_attack ?? 0,
+        mult_min:        c.mult_min ?? 1.0,
+        mult_max:        c.mult_max ?? 1.0,
+        crit_rate_bonus: c.crit_rate_bonus ?? 0,
+        crit_dmg_bonus:  c.crit_dmg_bonus ?? 0,
+        hit_count:       c.hit_count ?? 1,
+        target:          c.target ?? 'enemy_single',
+        heal_power:      c.heal_power ?? c.heal ?? 0,
+        special_id:      c.special_id ?? null,
+      }));
+      const { error: dbErr } = await supabaseClient.from('drill_cards').upsert(drillRows, { onConflict: 'id' });
+      if (dbErr) throw dbErr;
+    }
+
     if (msg) { msg.textContent = '✅ 保存しました（ゲームリロードで反映）'; setTimeout(() => msg.textContent = '', 4000); }
   } catch (e) {
     if (msg) msg.textContent = '❌ ' + e.message;
@@ -1251,7 +1292,19 @@ function clearMonsterImage(id) {
 
 // CSVはdrill_cardsテーブルの列に合わせる（heal → heal_power、no/material追加）
 const CARD_CSV_COLS = ['no','id','name','rarity','material','weapon_type','icon','ap_cost','base_attack','mult_min','mult_max','crit_rate_bonus','crit_dmg_bonus','hit_count','target','heal_power','special_id','imageUrl','desc'];
-const CARD_TARGETS = ['SINGLE','ALL','RANDOM_ENEMY','RANDOM_ANY','ALLY_SINGLE','ALLY_ALL','SELF'];
+const CARD_MATERIALS    = ['土','石','銅','鉄','銀','金'];
+const CARD_WEAPON_TYPES = ['剣','短剣','斧','ハンマー','ブーメラン','槍','杖','鎌'];
+const CARD_TARGETS = [
+  ['enemy_single', '敵単体'],
+  ['enemy_all',    '敵全体'],
+  ['enemy_random', '敵ランダム'],
+  ['self',         '自分のみ'],
+  ['ally_single',  '味方単体（自分含む）'],
+  ['ally_all',     '味方全体'],
+  ['ally_random',  '味方ランダム'],
+  ['all',          '全体'],
+  ['all_random',   '全体ランダム'],
+];
 
 function renderCardsTab() {
   const cards = gameConfig.cards ?? {};
@@ -1294,9 +1347,21 @@ function renderCardsTab() {
             ${['','d','c','b','a','s'].map(v => `<option value="${v}"${(card.rarity??'')=== v?' selected':''}>${v===''?'なし':v.toUpperCase()}</option>`).join('')}
           </select>
         </label>
+        <label style="font-size:.82rem;">素材<br>
+          <select class="cfg-input card-material-${id}" style="width:80px;">
+            <option value=""${!card.material?' selected':''}>未設定</option>
+            ${CARD_MATERIALS.map(v => `<option value="${v}"${card.material===v?' selected':''}>${v}</option>`).join('')}
+          </select>
+        </label>
+        <label style="font-size:.82rem;">武器種<br>
+          <select class="cfg-input card-wtype-${id}" style="width:110px;">
+            <option value=""${!card.weapon_type?' selected':''}>未設定</option>
+            ${CARD_WEAPON_TYPES.map(v => `<option value="${v}"${card.weapon_type===v?' selected':''}>${v}</option>`).join('')}
+          </select>
+        </label>
         <label style="font-size:.82rem;">対象<br>
-          <select class="cfg-input card-target-${id}" style="width:120px;">
-            ${CARD_TARGETS.map(v => `<option value="${v}"${(card.target??'SINGLE')===v?' selected':''}>${v}</option>`).join('')}
+          <select class="cfg-input card-target-${id}" style="width:160px;">
+            ${CARD_TARGETS.map(([v, label]) => `<option value="${v}"${(card.target??'enemy_single')===v?' selected':''}>${label}</option>`).join('')}
           </select>
         </label>
       </div>
@@ -1351,7 +1416,9 @@ function collectCardsConfig() {
     card.name            = g('card-name')      || card.name;
     card.desc            = g('card-desc');
     card.rarity          = g('card-rarity')    || null;
-    card.target          = g('card-target')    || 'SINGLE';
+    card.material        = g('card-material')  || null;
+    card.weapon_type     = g('card-wtype')     || null;
+    card.target          = g('card-target')    || 'enemy_single';
     card.ap_cost         = parseNum(g('card-apcost'));
     card.base_attack     = parseNum(g('card-batk'));
     card.mult_min        = parseNum(g('card-mmin'));
@@ -1359,7 +1426,7 @@ function collectCardsConfig() {
     card.crit_rate_bonus = parseNum(g('card-crate'));
     card.crit_dmg_bonus  = parseNum(g('card-cdmg'));
     card.hit_count       = parseInt2(g('card-hits'));
-    card.heal            = parseNum(g('card-heal'));
+    card.heal_power      = parseNum(g('card-heal'));
     card.special_id      = g('card-specialid') || null;
   }
   gameConfig.cards = cards;
@@ -1369,7 +1436,8 @@ function addCard() {
   collectCardsConfig();
   const id = 'card_' + Date.now();
   if (!gameConfig.cards) gameConfig.cards = {};
-  gameConfig.cards[id] = { name: '新カード', desc: '', imageUrl: null, target: 'SINGLE', ap_cost: 10, base_attack: 0, mult_min: 1.0, mult_max: 1.0 };
+  const nextNo = Math.max(0, ...Object.values(gameConfig.cards).map(c => c.no ?? 0)) + 1;
+  gameConfig.cards[id] = { name: '新カード', desc: '', imageUrl: null, no: nextNo, material: null, weapon_type: null, target: 'enemy_single', ap_cost: 10, base_attack: 0, mult_min: 1.0, mult_max: 1.0, crit_rate_bonus: 0, crit_dmg_bonus: 0, hit_count: 1, heal_power: 0 };
   renderCardsTab();
 }
 
@@ -1459,9 +1527,9 @@ async function importCardsCsv(input) {
         id,
         no:              noVal,
         name:            get('name') || id,
-        rarity:          get('rarity') || 'D',
+        rarity:          (get('rarity') || 'd').toLowerCase(),
         material:        get('material') || null,
-        weapon_type:     get('weapon_type') || 'sword',
+        weapon_type:     get('weapon_type') || null,
         icon:            get('icon') || null,
         ap_cost:         toInt(get('ap_cost')) ?? 1,
         base_attack:     toInt(get('base_attack')) ?? 0,
@@ -1470,7 +1538,7 @@ async function importCardsCsv(input) {
         crit_rate_bonus: toNum(get('crit_rate_bonus')) ?? 0,
         crit_dmg_bonus:  toNum(get('crit_dmg_bonus')) ?? 0,
         hit_count:       toInt(get('hit_count')) ?? 1,
-        target:          get('target') || 'single',
+        target:          get('target') || 'enemy_single',
         heal_power:      toInt(get('heal_power')) ?? 0,
         special_id:      get('special_id') || null,
       });
