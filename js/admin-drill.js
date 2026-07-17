@@ -1373,7 +1373,9 @@ function renderCardsTab() {
     プレイヤーのデッキに入るカードの設定です。CSVで一括編集も可能です。
   </div>`;
 
-  for (const [id, card] of Object.entries(cards)) {
+  const sortedCards = Object.entries(cards).sort((a, b) => (a[1].no ?? Infinity) - (b[1].no ?? Infinity));
+
+  for (const [id, card] of sortedCards) {
     const imgPreview = card.imageUrl
       ? `<img src="${escDrill(card.imageUrl)}" style="width:48px;height:48px;object-fit:contain;border-radius:6px;background:rgba(255,255,255,.08);">`
       : `<div style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);border-radius:6px;font-size:2rem;">⚔️</div>`;
@@ -1387,6 +1389,9 @@ function renderCardsTab() {
             <div style="font-size:.72rem;opacity:.45;margin-bottom:3px;">ID: ${escDrill(id)}</div>
             <input class="cfg-input card-name-${id}" type="text" value="${escDrill(card.name ?? '')}" placeholder="カード名" style="width:160px;">
           </div>
+          <label style="font-size:.82rem;">No.<br>
+            <input class="cfg-input card-no-${id}" type="number" value="${card.no ?? ''}" placeholder="—" min="1" style="width:64px;" onchange="collectCardsConfig();renderCardsTab();">
+          </label>
         </div>
         <button class="inv-del-btn" onclick="deleteCard('${id}')">🗑️ 削除</button>
       </div>
@@ -1466,6 +1471,7 @@ function collectCardsConfig() {
   const parseInt2 = (v, fallback = null) => (v === '' || v == null) ? fallback : (parseInt(v) || fallback);
   for (const [id, card] of Object.entries(cards)) {
     const g = cls => document.querySelector(`.${cls}-${id}`)?.value ?? '';
+    card.no              = parseInt2(g('card-no'), card.no);
     card.name            = g('card-name')      || card.name;
     card.desc            = g('card-desc');
     card.rarity          = g('card-rarity')    || null;
