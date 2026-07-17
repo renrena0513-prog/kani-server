@@ -1249,7 +1249,8 @@ function clearMonsterImage(id) {
 // カード設定タブ
 // ============================================================
 
-const CARD_CSV_COLS = ['id','imageUrl','rarity','name','desc','ap_cost','base_attack','mult_min','mult_max','crit_rate_bonus','crit_dmg_bonus','hit_count','target','heal','special_id'];
+// CSVはdrill_cardsテーブルの列に合わせる（heal → heal_power、no/material追加）
+const CARD_CSV_COLS = ['no','id','name','rarity','material','weapon_type','icon','ap_cost','base_attack','mult_min','mult_max','crit_rate_bonus','crit_dmg_bonus','hit_count','target','heal_power','special_id','imageUrl','desc'];
 const CARD_TARGETS = ['SINGLE','ALL','RANDOM_ENEMY','RANDOM_ANY','ALLY_SINGLE','ALLY_ALL','SELF'];
 
 function renderCardsTab() {
@@ -1260,7 +1261,7 @@ function renderCardsTab() {
     <label class="inv-save-btn" style="cursor:pointer;padding:6px 14px;background:rgba(80,140,220,.5);">
       ⬆️ CSVインポート<input type="file" accept=".csv,text/csv" style="display:none;" onchange="importCardsCsv(this)">
     </label>
-    <span style="font-size:.75rem;opacity:.5;">※ インポート後は必ず「保存」を押してください</span>
+    <span style="font-size:.75rem;opacity:.5;">※ インポートするとDBに即時反映されます（画像URL・説明文を変えた場合は「保存」も押してください）</span>
   </div>
   <div class="info-box" style="margin-bottom:14px;">
     プレイヤーのデッキに入るカードの設定です。CSVで一括編集も可能です。
@@ -1397,86 +1398,105 @@ function clearCardImage(id) {
   renderCardsTab();
 }
 
-// ── CSV エクスポート ──
-function exportCardsCsv() {
-  collectCardsConfig();
-  const cards = gameConfig.cards ?? {};
+// ── CSV エクスポート（drill_cardsテーブルから読む）──
+async function exportCardsCsv() {
+  const { data, error } = await supabaseClient.from('drill_cards').select('*').order('no');
+  if (error) { alert('DB読み込みエラー: ' + error.message); return; }
+  const overrides = gameConfig.cards ?? {};
   const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const rows = [CARD_CSV_COLS.map(esc)];
-  for (const [id, c] of Object.entries(cards)) {
+  for (const r of (data || [])) {
+    const ov = overrides[r.id] ?? {};
     rows.push([
-      id, c.imageUrl??'', c.rarity??'', c.name??'', c.desc??'',
-      c.ap_cost??'', c.base_attack??'', c.mult_min??'', c.mult_max??'',
-      c.crit_rate_bonus??'', c.crit_dmg_bonus??'', c.hit_count??'',
-      c.target??'SINGLE', c.heal??'', c.special_id??'',
+      r.no, r.id, r.name, r.rarity, r.material ?? '', r.weapon_type, r.icon ?? '',
+      r.ap_cost, r.base_attack, r.mult_min, r.mult_max,
+      r.crit_rate_bonus, r.crit_dmg_bonus, r.hit_count,
+      r.target, r.heal_power, r.special_id ?? '',
+      ov.imageUrl ?? '', ov.desc ?? '',
     ].map(esc));
   }
   const csv = '﻿' + rows.map(r => r.join(',')).join('\r\n');
   const a = Object.assign(document.createElement('a'), {
     href: URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })),
-    download: 'cards_' + new Date().toISOString().slice(0,10) + '.csv',
+    download: 'cards_' + new Date().toISOString().slice(0, 10) + '.csv',
   });
   a.click();
   URL.revokeObjectURL(a.href);
 }
 
-// ── CSV インポート ──
-function importCardsCsv(input) {
+// ── CSV インポート（drill_cardsテーブルに直接書く）──
+async function importCardsCsv(input) {
   const file = input.files?.[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const text = e.target.result.replace(/^﻿/, '');
-      const lines = text.split(/\r?\n/).filter(l => l.trim());
-      if (lines.length < 2) { alert('データが見つかりません'); return; }
+  input.value = '';
+  let text;
+  try { text = await file.text(); } catch (e) { alert('ファイル読み込みエラー: ' + e.message); return; }
+  try {
+    const lines = text.replace(/^﻿/, '').split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) { alert('データが見つかりません'); return; }
 
-      const header = parseCsvRow(lines[0]);
-      const idIdx  = header.indexOf('id');
-      if (idIdx < 0) { alert('id列が必要です'); return; }
+    const header = parseCsvRow(lines[0]);
+    const idIdx  = header.indexOf('id');
+    if (idIdx < 0) { alert('id列が必要です'); return; }
 
-      collectCardsConfig();
-      if (!gameConfig.cards) gameConfig.cards = {};
-      const toNum = v => (v === '' || v == null) ? null : parseFloat(v);
-      const toInt = v => (v === '' || v == null) ? null : parseInt(v);
-      let updated = 0, added = 0;
+    const toNum = v => (v === '' || v == null) ? null : parseFloat(v);
+    const toInt = v => (v === '' || v == null) ? null : parseInt(v, 10);
+    const dbRows = [];
+    if (!gameConfig.cards) gameConfig.cards = {};
+    let count = 0;
 
-      for (let i = 1; i < lines.length; i++) {
-        const cols = parseCsvRow(lines[i]);
-        const id = cols[idIdx]?.trim();
-        if (!id) continue;
-        const get = col => { const j = header.indexOf(col); return j >= 0 ? (cols[j] ?? '') : null; };
-        const isNew = !gameConfig.cards[id];
-        const ex = gameConfig.cards[id] ?? {};
-        const rawImageUrl = get('imageUrl');
-        const rawTarget   = get('target');
-        gameConfig.cards[id] = {
-          ...ex,
-          imageUrl:        (rawImageUrl != null && rawImageUrl !== '' ? rawImageUrl : null) ?? ex.imageUrl ?? null,
-          rarity:          (get('rarity') || null) ?? ex.rarity ?? null,
-          name:            get('name')            ?? ex.name ?? '新カード',
-          desc:            get('desc')            ?? ex.desc ?? '',
-          ap_cost:         toNum(get('ap_cost'))  ?? ex.ap_cost ?? null,
-          base_attack:     toNum(get('base_attack'))     ?? ex.base_attack ?? null,
-          mult_min:        toNum(get('mult_min'))        ?? ex.mult_min ?? null,
-          mult_max:        toNum(get('mult_max'))        ?? ex.mult_max ?? null,
-          crit_rate_bonus: toNum(get('crit_rate_bonus')) ?? ex.crit_rate_bonus ?? null,
-          crit_dmg_bonus:  toNum(get('crit_dmg_bonus'))  ?? ex.crit_dmg_bonus ?? null,
-          hit_count:       toInt(get('hit_count'))       ?? ex.hit_count ?? null,
-          target:          (rawTarget && CARD_TARGETS.includes(rawTarget) ? rawTarget : null) ?? ex.target ?? 'SINGLE',
-          heal:            toNum(get('heal'))            ?? ex.heal ?? null,
-          special_id:      (get('special_id') || null)  ?? ex.special_id ?? null,
-        };
-        isNew ? added++ : updated++;
-      }
-      renderCardsTab();
-      alert(`✅ インポート完了\n更新: ${updated}件 / 追加: ${added}件\n\n忘れずに「保存」を押してください`);
-    } catch (err) {
-      alert('CSVのパースに失敗しました: ' + err.message);
+    for (let i = 1; i < lines.length; i++) {
+      const cols = parseCsvRow(lines[i]);
+      const id = cols[idIdx]?.trim();
+      if (!id) continue;
+      const get = col => { const j = header.indexOf(col); return j >= 0 ? (cols[j] ?? '') : null; };
+
+      const noVal = toInt(get('no'));
+      if (noVal == null) continue; // no は必須
+
+      // drill_cards テーブルに書く列
+      dbRows.push({
+        id,
+        no:              noVal,
+        name:            get('name') || id,
+        rarity:          get('rarity') || 'D',
+        material:        get('material') || null,
+        weapon_type:     get('weapon_type') || 'sword',
+        icon:            get('icon') || null,
+        ap_cost:         toInt(get('ap_cost')) ?? 1,
+        base_attack:     toInt(get('base_attack')) ?? 0,
+        mult_min:        toNum(get('mult_min')) ?? 1.0,
+        mult_max:        toNum(get('mult_max')) ?? 1.0,
+        crit_rate_bonus: toNum(get('crit_rate_bonus')) ?? 0,
+        crit_dmg_bonus:  toNum(get('crit_dmg_bonus')) ?? 0,
+        hit_count:       toInt(get('hit_count')) ?? 1,
+        target:          get('target') || 'single',
+        heal_power:      toInt(get('heal_power')) ?? 0,
+        special_id:      get('special_id') || null,
+      });
+
+      // imageUrl / desc だけ gameConfig.cards に残す
+      const imageUrl = get('imageUrl');
+      const desc     = get('desc');
+      const ex = gameConfig.cards[id] ?? {};
+      gameConfig.cards[id] = {
+        ...ex,
+        imageUrl: (imageUrl || null) ?? ex.imageUrl ?? null,
+        desc:     desc ?? ex.desc ?? '',
+      };
+      count++;
     }
-    input.value = '';
-  };
-  reader.readAsText(file, 'UTF-8');
+
+    if (dbRows.length > 0) {
+      const { error } = await supabaseClient.from('drill_cards').upsert(dbRows, { onConflict: 'id' });
+      if (error) { alert('DB保存エラー: ' + error.message); return; }
+    }
+
+    renderCardsTab();
+    alert(`✅ インポート完了（drill_cards DB 更新済み）\n${count}件\n\n画像URLと説明文を変更した場合は「保存」ボタンも押してください`);
+  } catch (err) {
+    alert('CSVのパースに失敗しました: ' + err.message);
+  }
 }
 
 function parseCsvRow(line) {
