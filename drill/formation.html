@@ -639,7 +639,15 @@ function cancelTap() {
 }
 
 function returnToPool() {
-  handleDropToPool();
+  // ボタン押下・背景タップ用: tapSelected を参照（dragSource は dragstart で上書きされる恐れがあるため使わない）
+  if (!tapSelected || tapSelected.type !== 'slot') return;
+  const cardId = deckSlots[tapSelected.slotIndex];
+  if (!cardId || cardId === 'fist_d') { clearTapSelected(); return; }
+  unequippedPool.push(cardId);
+  deckSlots[tapSelected.slotIndex] = 'fist_d';
+  clearTapSelected();
+  renderCards();
+  updateHintBar();
 }
 
 function renderEquipped() {
@@ -711,8 +719,7 @@ function renderUnequipped() {
   // タップ: デッキスロットが選択中なら背景タップでプールへ戻す
   grid.onclick = e => {
     if (tapSelected?.type === 'slot' && e.target === grid) {
-      handleDropToPool();
-      clearTapSelected();
+      returnToPool();
     }
   };
 
