@@ -520,6 +520,10 @@ async function loadGameConfig() {
         };
       }
     }
+    if (cfg.alchemy) {
+      if (cfg.alchemy.weaponWeights) ALCHEMY_WEAPON_WEIGHTS = cfg.alchemy.weaponWeights;
+      if (cfg.alchemy.rarityWeights) Object.assign(ALCHEMY_RARITY_WEIGHTS, cfg.alchemy.rarityWeights);
+    }
     if (cfg.combatStats) {
       Object.assign(COMBAT_STATS, cfg.combatStats);
     }
@@ -1746,6 +1750,18 @@ function showAlchemy() {
   `);
 }
 
+// material+weaponの組み合わせで実在するカードがある武器種のみ返す
+function _alchBuildWeaponTable(material) {
+  const rawWeights = ALCHEMY_WEAPON_WEIGHTS[material] ?? {};
+  const table = {};
+  for (const [weapon, w] of Object.entries(rawWeights)) {
+    if (w <= 0) continue;
+    const hasCard = Object.keys(ALCHEMY_RARITY_WEIGHTS).some(r => !!CARDS[`${weapon}_${material}_${r}`]);
+    if (hasCard) table[weapon] = w;
+  }
+  return table;
+}
+
 async function doAlchemy() {
   if (G.py !== 0) return;
 
@@ -1769,11 +1785,27 @@ async function doAlchemy() {
 
   // STEP1: 素材抽選（投入割合で重み付け）
   const material = _weightedRandom(invest);
-  // STEP2: 武器種抽選
-  const weaponTable = ALCHEMY_WEAPON_WEIGHTS[material] || ALCHEMY_WEAPON_WEIGHTS.dirt;
+
+  // STEP2: 武器種抽選（定義済みカードがある武器種のみ）
+  const weaponTable = _alchBuildWeaponTable(material);
+  if (Object.keys(weaponTable).length === 0) {
+    openModal(`
+      <div class="modal-title">🔥 錬金窯</div>
+      <div style="text-align:center;padding:16px 0;font-size:.9rem;opacity:.7;">
+        ${escHtml(MATS[material]?.name || material)}に対応するカードが<br>まだ登録されていません
+      </div>
+      <button class="btn-modal-close" onclick="showAlchemy()">戻る</button>
+    `);
+    return;
+  }
   const weapon = _weightedRandom(weaponTable);
-  // STEP3: レアリティ抽選
-  const rarity = _weightedRandom(ALCHEMY_RARITY_WEIGHTS);
+
+  // STEP3: レアリティ抽選（そのweapon+materialで実在するレアリティのみ）
+  const rarityTable = {};
+  for (const [r, w] of Object.entries(ALCHEMY_RARITY_WEIGHTS)) {
+    if (CARDS[`${weapon}_${material}_${r}`]) rarityTable[r] = w;
+  }
+  const rarity = _weightedRandom(rarityTable);
 
   const cardId = `${weapon}_${material}_${rarity}`;
 

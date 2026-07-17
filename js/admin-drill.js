@@ -272,6 +272,17 @@ const DEFAULT_GAME_CONFIG = {
     return_stone: { name: '帰還石',     weight: 10, cost: null, effectText: '地上に帰還する',    imageUrl: null },
     potion:       { name: 'ポーション', weight: 10, cost: 100,  effectText: '体力を100回復する', imageUrl: null },
   },
+  alchemy: {
+    weaponWeights: {
+      dirt:   { sword:20, dagger:20, axe:20, hammer:20, boomerang:10, staff:10 },
+      stone:  { sword:25, dagger:15, axe:25, hammer:25, boomerang:5,  staff:5  },
+      copper: { sword:20, dagger:20, axe:20, hammer:20, boomerang:10, staff:10 },
+      iron:   { sword:30, dagger:10, axe:20, hammer:30, boomerang:5,  staff:5  },
+      silver: { sword:20, dagger:20, axe:15, hammer:15, boomerang:10, staff:20 },
+      gold:   { sword:15, dagger:15, axe:15, hammer:15, boomerang:15, staff:25 },
+    },
+    rarityWeights: { d:50, c:30, b:15, a:4, s:1 },
+  },
 };
 
 let gameConfig = null;
@@ -332,6 +343,7 @@ async function loadGameConfigAdmin() {
   if (!gameConfig.treasureSlots || gameConfig.treasureSlots.length < 30)
     gameConfig.treasureSlots = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.treasureSlots));
   if (!gameConfig.encounter) gameConfig.encounter = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.encounter));
+  if (!gameConfig.alchemy)   gameConfig.alchemy   = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.alchemy));
   // encounter 旧3スロット → 30スロットにマイグレーション
   if (gameConfig.encounter.length < 30) {
     const old = gameConfig.encounter;
@@ -375,6 +387,7 @@ function renderConfigEditor() {
   renderCardsTab();
   renderItemsTab();
   renderTreasureTab();
+  renderAlchemyTab();
   // 最初のタブをアクティブに
   const firstBtn = document.querySelector('.cfg-tab-btn');
   if (firstBtn) showCfgTab('mats', firstBtn);
@@ -881,6 +894,7 @@ function collectConfig() {
   collectCardsConfig();
   collectItemsConfig();
   collectTreasureConfig();
+  collectAlchemyConfig();
 }
 
 async function saveGameConfig() {
@@ -1777,6 +1791,106 @@ async function uploadChestImage(id, input) {
 function clearChestImage(id) {
   if (gameConfig.treasureTypes?.[id]) gameConfig.treasureTypes[id].imageUrl = null;
   renderTreasureTab();
+}
+
+// ============================================================
+// 錬金窯設定
+// ============================================================
+
+const ALCHEMY_ADMIN_MAT_IDS  = ['dirt','stone','copper','iron','silver','gold'];
+const ALCHEMY_ADMIN_MAT_NAMES = { dirt:'土', stone:'石', copper:'銅', iron:'鉄', silver:'銀', gold:'金' };
+const ALCHEMY_WEAPON_IDS   = ['sword','dagger','axe','hammer','boomerang','staff'];
+const ALCHEMY_WEAPON_LABELS = { sword:'剣', dagger:'短剣', axe:'斧', hammer:'ハンマー', boomerang:'ブーメラン', staff:'杖' };
+const ALCHEMY_RARITY_IDS   = ['d','c','b','a','s'];
+
+function renderAlchemyTab() {
+  const alch = gameConfig.alchemy ?? DEFAULT_GAME_CONFIG.alchemy;
+  const rw   = alch.rarityWeights ?? { d:50, c:30, b:15, a:4, s:1 };
+  const ww   = alch.weaponWeights ?? DEFAULT_GAME_CONFIG.alchemy.weaponWeights;
+
+  // レアリティ排出率
+  const rarityRows = ALCHEMY_RARITY_IDS.map(r => `
+    <label style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:.8rem;">
+      <span style="font-weight:700;letter-spacing:.05em;">${r.toUpperCase()}</span>
+      <input class="cfg-input alch-rarity-${r}" type="number" min="0" value="${rw[r] ?? 0}"
+        style="width:64px;text-align:center;" oninput="_alchAdminUpdateTotal()">
+    </label>`).join('');
+
+  // 素材ごとの武器種重み
+  const matSections = ALCHEMY_ADMIN_MAT_IDS.map(matId => {
+    const weights = ww[matId] ?? {};
+    const weaponInputs = ALCHEMY_WEAPON_IDS.map(wId => `
+      <label style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:.8rem;min-width:68px;">
+        <span>${ALCHEMY_WEAPON_LABELS[wId]}</span>
+        <input class="cfg-input alch-w-${matId}-${wId}" type="number" min="0" value="${weights[wId] ?? 0}"
+          style="width:60px;text-align:center;">
+      </label>`).join('');
+    return `
+      <div style="margin-bottom:14px;">
+        <div style="font-size:.88rem;font-weight:700;margin-bottom:8px;color:rgba(255,255,255,.7);">
+          ${ALCHEMY_ADMIN_MAT_NAMES[matId]}（${matId}）
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">${weaponInputs}</div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('cfg-tab-alchemy').innerHTML = `
+    <div class="info-box" style="margin-bottom:16px;">
+      重み0、または対応カードが未定義の武器種は排出されません。<br>
+      カードIDは <code style="font-size:.82rem;">{武器種}_{素材}_{レアリティ}</code> 形式で
+      カードタブに登録してください。<br>
+      例: <code style="font-size:.82rem;">sword_iron_s</code>（鉄の剣 S）
+    </div>
+
+    <div style="margin-bottom:24px;">
+      <div style="font-size:.95rem;font-weight:700;margin-bottom:12px;border-bottom:1px solid rgba(255,255,255,.12);padding-bottom:8px;">
+        レアリティ排出率
+      </div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;">
+        ${rarityRows}
+        <div id="alch-rarity-total" style="font-size:.8rem;opacity:.6;align-self:center;"></div>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-size:.95rem;font-weight:700;margin-bottom:12px;border-bottom:1px solid rgba(255,255,255,.12);padding-bottom:8px;">
+        素材ごとの武器種重み
+      </div>
+      ${matSections}
+    </div>`;
+
+  _alchAdminUpdateTotal();
+}
+
+function _alchAdminUpdateTotal() {
+  const el = document.getElementById('alch-rarity-total');
+  if (!el) return;
+  const total = ALCHEMY_RARITY_IDS.reduce((s, r) => {
+    return s + (parseInt(document.querySelector(`.alch-rarity-${r}`)?.value) || 0);
+  }, 0);
+  el.textContent = `合計: ${total}`;
+  el.style.color = total === 100 ? '#6bde9b' : '#f44336';
+}
+
+function collectAlchemyConfig() {
+  if (!gameConfig.alchemy) gameConfig.alchemy = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.alchemy));
+
+  // レアリティ
+  const rw = {};
+  for (const r of ALCHEMY_RARITY_IDS) {
+    rw[r] = parseInt(document.querySelector(`.alch-rarity-${r}`)?.value) || 0;
+  }
+  gameConfig.alchemy.rarityWeights = rw;
+
+  // 武器種重み
+  const ww = {};
+  for (const matId of ALCHEMY_ADMIN_MAT_IDS) {
+    ww[matId] = {};
+    for (const wId of ALCHEMY_WEAPON_IDS) {
+      ww[matId][wId] = parseInt(document.querySelector(`.alch-w-${matId}-${wId}`)?.value) || 0;
+    }
+  }
+  gameConfig.alchemy.weaponWeights = ww;
 }
 
 // ============================================================
