@@ -269,15 +269,15 @@
   <div class="fm-title">⚔️ 編成</div>
 
   <div class="fm-tabs">
-    <button class="fm-tab active" onclick="switchTab('drills',this)">⛏️ ドリル</button>
-    <button class="fm-tab" onclick="switchTab('cards',this)">🃏 カード</button>
+    <button class="fm-tab" onclick="switchTab('drills',this)">⛏️ ドリル</button>
+    <button class="fm-tab active" onclick="switchTab('cards',this)">🃏 カード</button>
   </div>
 
-  <div id="tab-drills" class="active">
+  <div id="tab-drills">
     <div id="drills-content"><div style="opacity:.5;text-align:center;padding:40px 0;">読み込み中...</div></div>
   </div>
 
-  <div id="tab-cards">
+  <div id="tab-cards" class="active">
     <div class="fm-section">
       <div class="fm-section-title">装備中 (10枚)</div>
       <div id="fm-hint"></div>
@@ -512,12 +512,6 @@ async function loadData() {
   (cardsRes.data || []).forEach(r => { if (r.quantity > 0) ownedCards[r.card_id] = r.quantity; });
   initPool();
 
-  // DEBUG: 一時デバッグ表示（確認後削除）
-  const dbg = document.createElement('div');
-  dbg.id = 'dbg-panel';
-  dbg.style = 'position:fixed;bottom:60px;left:8px;right:8px;background:rgba(0,0,0,.88);color:#0f0;font-size:.68rem;padding:8px;border-radius:8px;z-index:9999;word-break:break-all;max-height:180px;overflow:auto;line-height:1.5;';
-  dbg.innerHTML = `uid=${userId}<br>ownedCards=${JSON.stringify(ownedCards)}<br>deckSlots(non-fist)=${JSON.stringify(deckSlots.filter(s=>s!=='fist_d'))}<br>unequippedPool(${unequippedPool.length})=${JSON.stringify(unequippedPool)}<br>cards_err=${JSON.stringify(cardsRes.error)}`;
-  document.body.appendChild(dbg);
 }
 
 function initPool() {
