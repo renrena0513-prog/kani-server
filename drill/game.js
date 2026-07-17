@@ -2626,6 +2626,17 @@ async function syncApToDb() {
   } catch {}
 }
 
+async function syncCardsToDb() {
+  if (!C.sessionId || !G.userId) return;
+  try {
+    await supabaseClient
+      .from('drill_combat_participants')
+      .update({ hand: C.hand, deck: C.deck, discard: C.discard })
+      .eq('session_id', C.sessionId)
+      .eq('user_id', G.userId);
+  } catch {}
+}
+
 // DB のアクティブセッションから戦闘状態を復元（クロスデバイス引き継ぎ）
 async function restoreCombatFromDb() {
   try {
@@ -2764,6 +2775,7 @@ async function playCard(cardIdx) {
   // このカードだけ捨て札へ
   C.hand.splice(cardIdx, 1);
   C.discard.push(cardId);
+  syncCardsToDb().catch(() => {});
 
   const { total: damage, crits } = computeCardDamage(cardDef);
   if (damage > 0) {
@@ -2773,8 +2785,9 @@ async function playCard(cardIdx) {
   spawnDamageNumber(damage, crits > 0);
 
   if (C.sessionId) {
-    // マルチ: 蓄積してターン終了時にサーバーへ送信
+    // マルチ: 蓄積してターン終了時にサーバーへ送信（即時視覚反映）
     C.roundDamage += damage;
+    C.monsterHp = Math.max(0, C.monsterHp - damage);
   } else {
     // ソロ: HPに即時反映 → 0以下で即勝利
     C.monsterHp = Math.max(0, C.monsterHp - damage);
@@ -2784,6 +2797,19 @@ async function playCard(cardIdx) {
       await endCombat(true);
       return;
     }
+    // モンスターの反撃を即時実行
+    const action = C.nextAction;
+    C.nextAction = getMonsterNextAction();
+    if (action) {
+      combatAddLog(`👾 ${C.monster.name}: ${action.name}`);
+      if (action.damage > 0) {
+        G.hp = Math.max(0, G.hp - action.damage);
+        combatAddLog(`💥 ${action.damage} ダメージを受けた！（残り HP: ${G.hp}）`);
+        await saveHp();
+        renderSide();
+      }
+    }
+    if (G.hp <= 0) { showCombatModal(); await endCombat(false); return; }
   }
   showCombatModal();
 }
@@ -2861,22 +2887,7 @@ async function endTurn() {
     return;
   }
 
-  // ── ソロ（ダメージは playCard で即時適用済み） ──
-  const action = C.nextAction;
-  if (action) {
-    combatAddLog(`👾 ${C.monster.name}: ${action.name}`);
-    if (action.damage > 0) {
-      G.hp = Math.max(0, G.hp - action.damage);
-      combatAddLog(`💥 ${action.damage} ダメージを受けた！（残り HP: ${G.hp}）`);
-      await saveHp();
-      renderSide();
-    }
-  }
-  if (G.hp <= 0) {
-    showCombatModal();
-    await endCombat(false);
-    return;
-  }
+  // ── ソロ（モンスター攻撃は playCard で即時実行済み） ──
   C.ap = Math.min(COMBAT_STATS.maxAp, C.ap + COMBAT_STATS.apRegen);
   drawCombatCards(3);
   C.nextAction = getMonsterNextAction();
@@ -2885,8 +2896,9 @@ async function endTurn() {
 
 async function endCombat(win) {
   C.active = false;
-  // 戦闘終了時のAPを保存（次の戦闘に引き継ぐ）
-  savePersistedAp(C.ap).catch(() => {});
+  // 戦闘終了時のAPをローカルのみ保存（DB書き込みは地上帰還時のみ、競合防止）
+  G.persistedAp = C.ap;
+  localStorage.setItem('drill_persisted_ap', String(C.ap));
   clearCombatState();
   const monName = C.monster?.name || '???';
   if (_combatChannel) { supabaseClient.removeChannel(_combatChannel); _combatChannel = null; }
