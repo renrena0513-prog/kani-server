@@ -500,6 +500,12 @@ async function loadData() {
     supabaseClient.from('drill_player_cards').select('card_id,quantity').eq('user_id', userId),
   ]);
 
+  // DEBUG: 一時デバッグ表示（確認後削除）
+  const dbg = document.createElement('div');
+  dbg.style = 'position:fixed;bottom:60px;left:8px;right:8px;background:rgba(0,0,0,.85);color:#0f0;font-size:.7rem;padding:8px;border-radius:8px;z-index:9999;word-break:break-all;max-height:140px;overflow:auto;';
+  dbg.innerHTML = `uid=${userId}<br>cards_data=${JSON.stringify(cardsRes.data)}<br>cards_err=${JSON.stringify(cardsRes.error)}<br>deck_err=${JSON.stringify(deckRes.error)}`;
+  document.body.appendChild(dbg);
+
   playerDrills = drillRes.data || [];
   const eq = playerDrills.find(d => d.equipped) || playerDrills[0];
   equippedDrillRowId = eq?.id || null;
@@ -723,7 +729,10 @@ function renderUnequipped() {
   };
 
   if (unequippedPool.length === 0) {
-    grid.innerHTML = '<div style="opacity:.4;font-size:.8rem;grid-column:1/-1;padding:10px 0;">未装備のカードなし（デッキからドラッグで戻せます）</div>';
+    const hasAnyCards = Object.keys(ownedCards).length > 0;
+    grid.innerHTML = hasAnyCards
+      ? '<div style="opacity:.4;font-size:.8rem;grid-column:1/-1;padding:10px 0;">未装備のカードなし（スロットからドラッグまたは↩ボタンで戻せます）</div>'
+      : '<div style="opacity:.55;font-size:.82rem;grid-column:1/-1;padding:14px 4px;line-height:1.6;">カードを所持していません。<br>ゲーム内の <b>ショップ</b> でカードを購入するとここに表示されます。</div>';
     return;
   }
 
