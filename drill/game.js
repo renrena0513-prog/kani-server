@@ -1640,6 +1640,176 @@ async function doSynthesize(fromId, toId) {
 }
 
 // ============================================================
+// 錬金窯
+// ============================================================
+
+const ALCHEMY_WEAPON_NAMES = {
+  sword: '剣', dagger: '短剣', axe: '斧',
+  hammer: 'ハンマー', boomerang: 'ブーメラン', staff: '杖',
+};
+
+// 素材ごとの武器種重みテーブル（管理画面から変更可能）
+let ALCHEMY_WEAPON_WEIGHTS = {
+  dirt:   { sword:20, dagger:20, axe:20, hammer:20, boomerang:10, staff:10 },
+  stone:  { sword:25, dagger:15, axe:25, hammer:25, boomerang:5,  staff:5  },
+  copper: { sword:20, dagger:20, axe:20, hammer:20, boomerang:10, staff:10 },
+  iron:   { sword:30, dagger:10, axe:20, hammer:30, boomerang:5,  staff:5  },
+  silver: { sword:20, dagger:20, axe:15, hammer:15, boomerang:10, staff:20 },
+  gold:   { sword:15, dagger:15, axe:15, hammer:15, boomerang:15, staff:25 },
+};
+
+const ALCHEMY_RARITY_WEIGHTS = { d:50, c:30, b:15, a:4, s:1 };
+
+function alchemyCardDisplayName(cardId) {
+  if (CARDS[cardId]?.name) return CARDS[cardId].name;
+  const si = SHOP_ITEMS.find(s => s.cardId === cardId);
+  if (si) return si.name;
+  const m = cardId.match(/^(.+)_(.+)_([dcbas])$/);
+  if (!m) return cardId;
+  const [, weapon, material, rarity] = m;
+  const wn = ALCHEMY_WEAPON_NAMES[weapon] || weapon;
+  const mn = MATS[material]?.name || material;
+  return `${mn}の${wn} ${rarity.toUpperCase()}`;
+}
+
+function _weightedRandom(table) {
+  const total = Object.values(table).reduce((s, w) => s + w, 0);
+  let r = Math.random() * total;
+  for (const [key, w] of Object.entries(table)) {
+    r -= w;
+    if (r <= 0) return key;
+  }
+  return Object.keys(table).at(-1);
+}
+
+function _alchUpdateTotal() {
+  const inputs = document.querySelectorAll('.alch-mat-input');
+  let total = 0;
+  inputs.forEach(inp => { total += Math.max(0, parseInt(inp.value, 10) || 0); });
+  const el = document.getElementById('alch-total');
+  if (el) {
+    el.textContent = `合計: ${total} / 100`;
+    el.style.color = total === 100 ? '#6bde9b' : total > 100 ? '#f44336' : '#d4a853';
+  }
+  const btn = document.getElementById('alch-do-btn');
+  if (btn) btn.disabled = total !== 100;
+}
+
+function showAlchemy() {
+  if (G.py !== 0) { log('⚠️ 錬金窯は地上のみ'); return; }
+
+  const matOrder = ['dirt','stone','copper','iron','silver','gold'];
+  const availableMats = matOrder
+    .filter(id => (G.inventory[id] || 0) > 0)
+    .map(id => [id, G.inventory[id]]);
+
+  if (availableMats.length === 0) {
+    openModal(`
+      <div class="modal-title">🔥 錬金窯</div>
+      <div style="font-size:.85rem;opacity:.5;padding:16px 0;text-align:center;">
+        素材がありません<br><span style="font-size:.75rem;">帰還して素材を確定してください</span>
+      </div>
+      <button class="btn-modal-close" onclick="closeModal()">閉じる</button>
+    `);
+    return;
+  }
+
+  let matRows = '';
+  for (const [id, qty] of availableMats) {
+    const name = MATS[id]?.name || id;
+    matRows += `
+      <div class="modal-row" style="align-items:center;padding:8px 0;">
+        <div>
+          <div class="modal-row-label">${escHtml(name)}</div>
+          <div class="modal-row-sub">所持: ${qty}個</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;">
+          <button class="btn-modal-action" style="padding:4px 10px;font-size:.9rem;min-width:0;line-height:1;"
+            onclick="(()=>{const i=document.getElementById('alch-${id}');i.value=Math.max(0,(parseInt(i.value)||0)-1);_alchUpdateTotal();})()">−</button>
+          <input id="alch-${id}" class="alch-mat-input" type="number" min="0" max="${qty}" value="0"
+            style="width:52px;text-align:center;font-size:.95rem;padding:4px 2px;border-radius:6px;
+                   border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:inherit;"
+            oninput="this.value=Math.min(${qty},Math.max(0,parseInt(this.value)||0));_alchUpdateTotal()">
+          <button class="btn-modal-action" style="padding:4px 10px;font-size:.9rem;min-width:0;line-height:1;"
+            onclick="(()=>{const i=document.getElementById('alch-${id}');i.value=Math.min(${qty},(parseInt(i.value)||0)+1);_alchUpdateTotal();})()">＋</button>
+        </div>
+      </div>`;
+  }
+
+  openModal(`
+    <div class="modal-title">🔥 錬金窯</div>
+    <div style="font-size:.78rem;opacity:.6;margin-bottom:12px;">素材を合計100個投入してカードを生成</div>
+    ${matRows}
+    <div id="alch-total" style="text-align:center;margin:14px 0 6px;font-weight:700;color:#d4a853;font-size:.9rem;">合計: 0 / 100</div>
+    <button id="alch-do-btn" class="btn-modal-action" style="width:100%;margin-top:4px;" disabled onclick="doAlchemy()">🔥 錬成する</button>
+    <button class="btn-modal-close" onclick="closeModal()">閉じる</button>
+  `);
+}
+
+async function doAlchemy() {
+  if (G.py !== 0) return;
+
+  const inputs = document.querySelectorAll('.alch-mat-input');
+  const invest = {};
+  let total = 0;
+  inputs.forEach(inp => {
+    const id = inp.id.replace('alch-', '');
+    const qty = Math.max(0, parseInt(inp.value, 10) || 0);
+    if (qty > 0) { invest[id] = qty; total += qty; }
+  });
+
+  if (total !== 100) { log('⚠️ 素材を合計100個投入してください'); return; }
+
+  for (const [id, qty] of Object.entries(invest)) {
+    if ((G.inventory[id] || 0) < qty) {
+      log(`⚠️ ${MATS[id]?.name || id}が不足しています`);
+      return;
+    }
+  }
+
+  // STEP1: 素材抽選（投入割合で重み付け）
+  const material = _weightedRandom(invest);
+  // STEP2: 武器種抽選
+  const weaponTable = ALCHEMY_WEAPON_WEIGHTS[material] || ALCHEMY_WEAPON_WEIGHTS.dirt;
+  const weapon = _weightedRandom(weaponTable);
+  // STEP3: レアリティ抽選
+  const rarity = _weightedRandom(ALCHEMY_RARITY_WEIGHTS);
+
+  const cardId = `${weapon}_${material}_${rarity}`;
+
+  // 素材消費
+  for (const [id, qty] of Object.entries(invest)) {
+    await upsertInv(id, -qty);
+  }
+
+  // カード付与
+  G.ownedCards[cardId] = (G.ownedCards[cardId] || 0) + 1;
+  await supabaseClient.from('drill_player_deck')
+    .upsert({ user_id: G.userId, owned_cards: G.ownedCards });
+
+  const cardName = alchemyCardDisplayName(cardId);
+  const rarityColors = { d:'#999', c:'#4caf50', b:'#2196f3', a:'#9c27b0', s:'#ff9800' };
+  const rarityLabels = { d:'D', c:'C', b:'B', a:'A', s:'S' };
+  log(`🔥 錬金窯: ${cardName} を生成！`);
+
+  openModal(`
+    <div class="modal-title">🔥 錬成完了！</div>
+    <div style="text-align:center;padding:20px 0 16px;">
+      <div style="font-size:2.8rem;margin-bottom:14px;">✨</div>
+      <div style="font-size:.72rem;letter-spacing:.1em;opacity:.5;margin-bottom:6px;">
+        レアリティ <span style="color:${rarityColors[rarity]};font-weight:700;">${rarityLabels[rarity]}</span>
+      </div>
+      <div style="font-size:1.3rem;font-weight:700;color:${rarityColors[rarity]};">
+        ${escHtml(cardName)}
+      </div>
+      <div style="font-size:.78rem;opacity:.45;margin-top:8px;">カードコレクションに追加されました</div>
+    </div>
+    <button class="btn-modal-action" style="width:100%;margin-bottom:6px;" onclick="showAlchemy()">🔥 もう一度錬成</button>
+    <button class="btn-modal-close" onclick="closeModal()">閉じる</button>
+  `);
+}
+
+// ============================================================
 // リュックモーダル
 // ============================================================
 
@@ -3742,6 +3912,7 @@ function renderSurfaceHome() {
       <button class="sh-btn" onclick="showShop()">🛒&ensp;ショップ</button>
       <button class="sh-btn" onclick="showCraft()">🔨&ensp;クラフト</button>
       <button class="sh-btn" onclick="showSynthesize()">⚗️&ensp;カード合成</button>
+      <button class="sh-btn" onclick="showAlchemy()">🔥&ensp;錬金窯</button>
       <button class="sh-btn" onclick="showInventory()">📦&ensp;アイテム${bpKeys.length > 0 ? `<span class="sh-badge">${bpKeys.length}</span>` : ''}</button>
       <a class="sh-btn" href="../market/index.html" style="text-decoration:none;text-align:center;">🏪&ensp;マーケット</a>
       <a class="sh-btn" href="formation.html" style="text-decoration:none;text-align:center;">⚔️&ensp;編成</a>
