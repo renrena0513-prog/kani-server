@@ -451,7 +451,7 @@ let discordId = null;
 let playerDrills = [];
 let equippedDrillRowId = null;
 let deckSlots = ['fist_d','fist_d','fist_d','fist_d','fist_d','fist_d','fist_d','fist_d','fist_d','fist_d'];
-let ownedCards = { fist_d: 10 };
+let ownedCards = {}; // drill_player_cards から読み込む
 let unequippedPool = []; // 未装備カードのインスタンスプール
 
 // ドラッグ / タップ選択状態
@@ -494,9 +494,10 @@ async function loadConfig() {
 }
 
 async function loadData() {
-  const [drillRes, deckRes] = await Promise.all([
+  const [drillRes, deckRes, cardsRes] = await Promise.all([
     supabaseClient.from('drill_player_drills').select('*').eq('user_id', userId),
-    supabaseClient.from('drill_player_deck').select('slots,owned_cards').eq('user_id', userId).maybeSingle(),
+    supabaseClient.from('drill_player_deck').select('slots').eq('user_id', userId).maybeSingle(),
+    supabaseClient.from('drill_player_cards').select('card_id,quantity').eq('user_id', userId),
   ]);
 
   playerDrills = drillRes.data || [];
@@ -504,13 +505,11 @@ async function loadData() {
   equippedDrillRowId = eq?.id || null;
 
   if (deckRes.data) {
-    deckSlots  = (deckRes.data.slots ?? deckSlots).map(s => s === 'attack' ? 'fist_d' : s);
-    ownedCards = deckRes.data.owned_cards ?? ownedCards;
-    if (ownedCards.attack) {
-      ownedCards.fist_d = (ownedCards.fist_d || 0) + ownedCards.attack;
-      delete ownedCards.attack;
-    }
+    deckSlots = (deckRes.data.slots ?? deckSlots)
+      .map(s => (s === 'attack' || s === 'fist') ? 'fist_d' : s);
   }
+  ownedCards = {};
+  (cardsRes.data || []).forEach(r => { if (r.quantity > 0) ownedCards[r.card_id] = r.quantity; });
   initPool();
 }
 

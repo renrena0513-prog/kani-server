@@ -258,7 +258,7 @@ const G = {
   isAdmin: false,
   drills: [],            // 所持ドリル一覧
   playerDeckSlots: ['fist_d','fist_d','fist_d','fist_d','fist_d','fist_d','fist_d','fist_d','fist_d','fist_d'],
-  ownedCards: { fist_d: 10 },
+  ownedCards: {},            // drill_player_cards から読み込む {card_id: quantity}
   mineTarget: null,      // {x,y}
   mineTimer: null,
   mineHP: {},            // 'x,y' -> remaining hp
@@ -587,7 +587,7 @@ async function loadAll() {
   const uid = G.userId;
   const date = G.mapDate;
 
-  const [dugRes, lockRes, posRes, bpRes, invRes, drillRes, permRes, profRes, othRes, dropRes, deckRes] =
+  const [dugRes, lockRes, posRes, bpRes, invRes, drillRes, permRes, profRes, othRes, dropRes, deckRes, cardsRes] =
     await Promise.all([
       supabaseClient.from('drill_dug_cells').select('x,y').eq('map_date', date),
       supabaseClient.from('drill_dig_locks').select('x,y,locked_by,expires_at')
@@ -600,7 +600,8 @@ async function loadAll() {
       supabaseClient.from('profiles').select('drill_gold,drill_hp,drill_ap').eq('discord_user_id', G.discordId).maybeSingle(),
       supabaseClient.from('drill_player_positions').select('user_id,x,y,avatar_url').eq('map_date', date).neq('user_id', uid),
       supabaseClient.from('drill_dropped_items').select('id,pos_x,pos_y,items,dropper_name,cause_of_death,dropped_at,locked_by,locked_until').eq('map_date', date),
-      supabaseClient.from('drill_player_deck').select('slots,owned_cards').eq('user_id', uid).maybeSingle(),
+      supabaseClient.from('drill_player_deck').select('slots').eq('user_id', uid).maybeSingle(),
+      supabaseClient.from('drill_player_cards').select('card_id,quantity').eq('user_id', uid),
     ]);
 
   G.dugCells = new Set((dugRes.data || []).map(r => `${r.x},${r.y}`));
@@ -648,19 +649,17 @@ async function loadAll() {
   // 許可証
   G.permits = new Set((permRes.data || []).map(r => r.permit_id));
 
-  // デッキ・所持カード
+  // デッキスロット
   if (deckRes.data) {
     G.playerDeckSlots = (deckRes.data.slots ?? G.playerDeckSlots)
-      .map(s => s === 'attack' ? 'fist_d' : s);
-    G.ownedCards = deckRes.data.owned_cards ?? G.ownedCards;
-    if (G.ownedCards.attack) {
-      G.ownedCards.fist_d = (G.ownedCards.fist_d || 0) + G.ownedCards.attack;
-      delete G.ownedCards.attack;
-    }
+      .map(s => (s === 'attack' || s === 'fist') ? 'fist_d' : s);
   } else {
     // 初回：デフォルトデッキをDBに保存
-    await supabaseClient.from('drill_player_deck').upsert({ user_id: uid, slots: G.playerDeckSlots, owned_cards: G.ownedCards });
+    await supabaseClient.from('drill_player_deck').upsert({ user_id: uid, slots: G.playerDeckSlots });
   }
+  // 所持カード（drill_player_cards から読み込み）
+  G.ownedCards = {};
+  (cardsRes.data || []).forEach(r => { if (r.quantity > 0) G.ownedCards[r.card_id] = r.quantity; });
 
   // ゴールド・HP・AP
   G.drillGold   = profRes.data?.drill_gold || 0;
@@ -1353,7 +1352,8 @@ async function buyShopDrill(shopId) {
     G.drillGold -= item.cost;
     await supabaseClient.from('profiles').update({ drill_gold: G.drillGold }).eq('discord_user_id', G.discordId);
     G.ownedCards[item.cardId] = (G.ownedCards[item.cardId] || 0) + 1;
-    await supabaseClient.from('drill_player_deck').upsert({ user_id: G.userId, owned_cards: G.ownedCards });
+    await supabaseClient.from('drill_player_cards')
+      .upsert({ user_id: G.userId, card_id: item.cardId, quantity: G.ownedCards[item.cardId] });
     log(`✅ ${item.name}を購入（${G.ownedCards[item.cardId]}枚目）`);
     const cardIcon = (CARDS[item.cardId] ?? {}).icon ?? '🃏';
     showEventModal(cardIcon, `<strong>${escHtml(item.name)}</strong>を購入しました！<br><span style="color:#f0c060;font-size:.85rem;">-${item.cost} G</span>`, () => showShop('card'));
@@ -1590,7 +1590,7 @@ function showSynthesize() {
   if (G.py !== 0) { log('⚠️ カード合成は地上のみ'); return; }
 
   const synthList = [];
-  // カードは G.ownedCards（drill_player_deck）に保存されている
+  // カードは G.ownedCards（drill_player_cards テーブル）に保存されている
   for (const [itemId, qty] of Object.entries(G.ownedCards)) {
     if (qty < 4) continue;
     // 末尾が _d / _c / _b / _a のカードIDにマッチ
@@ -1633,11 +1633,15 @@ async function doSynthesize(fromId, toId) {
   const qty = G.ownedCards[fromId] || 0;
   if (qty < 4) { log('⚠️ カードが4枚必要です'); showSynthesize(); return; }
 
-  G.ownedCards[fromId] = qty - 4;
-  if (G.ownedCards[fromId] <= 0) delete G.ownedCards[fromId];
-  G.ownedCards[toId] = (G.ownedCards[toId] || 0) + 1;
-  await supabaseClient.from('drill_player_deck')
-    .upsert({ user_id: G.userId, owned_cards: G.ownedCards });
+  const newFromQty = qty - 4;
+  const newToQty = (G.ownedCards[toId] || 0) + 1;
+  if (newFromQty <= 0) delete G.ownedCards[fromId]; else G.ownedCards[fromId] = newFromQty;
+  G.ownedCards[toId] = newToQty;
+  await supabaseClient.from('drill_player_cards')
+    .upsert([
+      { user_id: G.userId, card_id: fromId, quantity: newFromQty },
+      { user_id: G.userId, card_id: toId,   quantity: newToQty },
+    ]);
 
   log(`⚗️ ${cardDisplayName(fromId)} ×4 → ${cardDisplayName(toId)} に合成！`);
   showSynthesize();
@@ -1816,8 +1820,8 @@ async function doAlchemy() {
 
   // カード付与
   G.ownedCards[cardId] = (G.ownedCards[cardId] || 0) + 1;
-  await supabaseClient.from('drill_player_deck')
-    .upsert({ user_id: G.userId, owned_cards: G.ownedCards });
+  await supabaseClient.from('drill_player_cards')
+    .upsert({ user_id: G.userId, card_id: cardId, quantity: G.ownedCards[cardId] });
 
   const cardName = alchemyCardDisplayName(cardId);
   const rarityColors = { d:'#999', c:'#4caf50', b:'#2196f3', a:'#9c27b0', s:'#ff9800' };
