@@ -321,7 +321,7 @@ const _RANK_BG = {
 
 function showCardDetail(cardId, def) {
   hideCardDetail();
-  const rank = rankFromId(cardId);
+  const rank = (def?.rarity ?? '').toLowerCase() || rankFromId(cardId);
   const imgHtml = def.imageUrl
     ? `<img src="${def.imageUrl}" style="width:100%;height:100%;object-fit:contain;">`
     : `<div class="cd-icon">${def.icon || '⚔️'}</div>`;
@@ -475,11 +475,36 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function loadConfig() {
-  const { data } = await supabaseClient.from('drill_page_settings')
-    .select('setting_value').eq('setting_key', 'game_config').maybeSingle();
-  const cfg = data?.setting_value ? JSON.parse(data.setting_value) : {};
-  // SHOP_CARD_DEFAULTS → DEFAULT_CARDS → admin設定 の順で上書き（後勝ち）
+  const [settingsRes, dbCardsRes] = await Promise.all([
+    supabaseClient.from('drill_page_settings').select('setting_value').eq('setting_key', 'game_config').maybeSingle(),
+    supabaseClient.from('drill_cards').select('*').order('no'),
+  ]);
+  const cfg = settingsRes.data?.setting_value ? JSON.parse(settingsRes.data.setting_value) : {};
+
+  // SHOP_CARD_DEFAULTS → DEFAULT_CARDS → DBカード定義 → admin設定 の順で上書き（後勝ち）
   CARDS_DEF = { ...SHOP_CARD_DEFAULTS, ...DEFAULT_CARDS };
+  (dbCardsRes.data || []).forEach(r => {
+    const id = r.id === 'fist' ? 'fist_d' : r.id;
+    CARDS_DEF[id] = {
+      ...(CARDS_DEF[id] ?? {}),
+      no: r.no,
+      material: r.material,
+      rarity: r.rarity,
+      weapon_type: r.weapon_type,
+      name: r.name || CARDS_DEF[id]?.name,
+      icon: r.icon || CARDS_DEF[id]?.icon,
+      ap_cost: r.ap_cost ?? CARDS_DEF[id]?.ap_cost,
+      base_attack: r.base_attack ?? CARDS_DEF[id]?.base_attack,
+      mult_min: r.mult_min != null ? Number(r.mult_min) : (CARDS_DEF[id]?.mult_min ?? null),
+      mult_max: r.mult_max != null ? Number(r.mult_max) : (CARDS_DEF[id]?.mult_max ?? null),
+      crit_rate_bonus: r.crit_rate_bonus != null ? Number(r.crit_rate_bonus) : (CARDS_DEF[id]?.crit_rate_bonus ?? null),
+      crit_dmg_bonus: r.crit_dmg_bonus != null ? Number(r.crit_dmg_bonus) : (CARDS_DEF[id]?.crit_dmg_bonus ?? null),
+      hit_count: r.hit_count ?? CARDS_DEF[id]?.hit_count,
+      target: r.target ?? CARDS_DEF[id]?.target,
+      heal: r.heal_power ?? CARDS_DEF[id]?.heal,
+      special_id: r.special_id ?? CARDS_DEF[id]?.special_id,
+    };
+  });
   if (cfg.cards) {
     for (const [id, v] of Object.entries(cfg.cards)) {
       CARDS_DEF[id] = { ...(CARDS_DEF[id] ?? {}), ...v };
@@ -523,6 +548,7 @@ function initPool() {
     const remaining = Math.max(0, count - (deckCounts[id] || 0));
     for (let i = 0; i < remaining; i++) unequippedPool.push(id);
   }
+  unequippedPool.sort((a, b) => (CARDS_DEF[a]?.no ?? 9999) - (CARDS_DEF[b]?.no ?? 9999));
 }
 
 // ============================================================
@@ -598,7 +624,7 @@ function cardVisual(c) {
 function cardHTML(cardId, slotNum) {
   const c = CARDS_DEF[cardId];
   if (!c) return `<div class="card-slot-num">${slotNum}</div><span style="opacity:.3;">?</span>`;
-  const rank = rankFromId(cardId);
+  const rank = (c.rarity ?? '').toLowerCase() || rankFromId(cardId);
   return `
     ${rankBadgeHtml(rank)}
     <div class="card-ap-badge">${c.ap_cost ?? 0}</div>
@@ -655,7 +681,7 @@ function renderEquipped() {
   grid.innerHTML = '';
   for (let i = 0; i < 10; i++) {
     const cardId = deckSlots[i];
-    const rank = rankFromId(cardId);
+    const rank = (CARDS_DEF[cardId]?.rarity ?? '').toLowerCase() || rankFromId(cardId);
     const isSelected = tapSelected?.type === 'slot' && tapSelected.slotIndex === i;
     const isTarget = !isSelected && !!tapSelected;
 
@@ -736,7 +762,7 @@ function renderUnequipped() {
 
   for (const [cardId, count] of Object.entries(counts)) {
     const c = CARDS_DEF[cardId] ?? { name: cardId, icon: '⚔️' };
-    const uRank = rankFromId(cardId);
+    const uRank = (c.rarity ?? '').toLowerCase() || rankFromId(cardId);
     const uSelected = tapSelected?.type === 'unequipped' && tapSelected.cardId === cardId;
     const card = document.createElement('div');
     const uClasses = ['unequipped-card'];

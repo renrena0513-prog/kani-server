@@ -561,6 +561,37 @@ async function loadGameConfig() {
   } catch {}
 }
 
+async function loadCardDefs() {
+  try {
+    const { data } = await supabaseClient.from('drill_cards').select('*').order('no');
+    if (!data) return;
+    data.forEach(r => {
+      const id = r.id === 'fist' ? 'fist_d' : r.id;
+      CARDS[id] = {
+        id,
+        no: r.no,
+        material: r.material,
+        rarity: r.rarity,
+        weapon_type: r.weapon_type,
+        name: r.name || CARDS[id]?.name || id,
+        desc: CARDS[id]?.desc || '',
+        icon: r.icon || CARDS[id]?.icon || '⚔️',
+        imageUrl: CARDS[id]?.imageUrl || null,
+        ap_cost: r.ap_cost ?? CARDS[id]?.ap_cost ?? null,
+        base_attack: r.base_attack ?? CARDS[id]?.base_attack ?? null,
+        mult_min: r.mult_min != null ? Number(r.mult_min) : (CARDS[id]?.mult_min ?? null),
+        mult_max: r.mult_max != null ? Number(r.mult_max) : (CARDS[id]?.mult_max ?? null),
+        crit_rate_bonus: r.crit_rate_bonus != null ? Number(r.crit_rate_bonus) : (CARDS[id]?.crit_rate_bonus ?? null),
+        crit_dmg_bonus: r.crit_dmg_bonus != null ? Number(r.crit_dmg_bonus) : (CARDS[id]?.crit_dmg_bonus ?? null),
+        hit_count: r.hit_count ?? CARDS[id]?.hit_count ?? null,
+        target: r.target ?? CARDS[id]?.target ?? 'SINGLE',
+        heal: r.heal_power ?? CARDS[id]?.heal ?? null,
+        special_id: r.special_id ?? CARDS[id]?.special_id ?? null,
+      };
+    });
+  } catch {}
+}
+
 async function ensureSeed() {
   G.mapDate = gameDate();
   const { data } = await supabaseClient
@@ -1290,7 +1321,7 @@ function showShop(tab = 'drill') {
         const def = CARDS[item.cardId] ?? {};
         const canBuy = G.drillGold >= item.cost;
         const ownedCount = G.ownedCards[item.cardId] || 0;
-        const rank = rankFromId(item.cardId);
+        const rank = (def.rarity ?? '').toLowerCase() || rankFromId(item.cardId);
         const rankDot = rank
           ? `<span class="rank-badge rank-badge-${rank}" style="position:static;display:inline-flex;vertical-align:middle;margin-right:4px;">${rank.toUpperCase()}</span>`
           : '';
@@ -3231,7 +3262,7 @@ function showCombatModal() {
     const def    = CARDS[cardId] || {};
     const apCost = def.ap_cost ?? 0;
     const canUse = C.ap >= apCost;
-    const rank   = rankFromId(cardId);
+    const rank   = (def.rarity ?? '').toLowerCase() || rankFromId(cardId);
     const cardImgHtml = def.imageUrl
       ? `<img class="combat-card-img" src="${def.imageUrl}" onerror="this.outerHTML='<div class=\\"combat-card-icon\\">${escHtml(def.icon || '⚔️')}</div>'">`
       : `<div class="combat-card-icon">${def.icon || '⚔️'}</div>`;
@@ -3677,7 +3708,7 @@ const _RANK_BG = {
 
 function showCardDetail(cardId, def) {
   hideCardDetail();
-  const rank = rankFromId(cardId);
+  const rank = (def?.rarity ?? '').toLowerCase() || rankFromId(cardId);
   const imgHtml = def.imageUrl
     ? `<img src="${escHtml(def.imageUrl)}" style="width:100%;height:100%;object-fit:contain;">`
     : `<div class="cd-icon">${escHtml(def.icon || '⚔️')}</div>`;
@@ -4404,6 +4435,7 @@ async function initDrillGame() {
   }
 
   await claimSession(); // 多重接続防止：このデバイスのセッションを確保
+  await loadCardDefs();
   await loadGameConfig();
   G.maxHp = BASE_HP;  // loadGameConfig後にBASE_HPが確定するので here
   G.hp = G.maxHp;
