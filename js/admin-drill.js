@@ -242,13 +242,6 @@ const DEFAULT_GAME_CONFIG = {
       imageUrl: null,
       damage: 50,
     },
-    drill_attack: {
-      name: 'ドリルアタック',
-      desc: '100ダメージ',
-      icon: '⛏️',
-      imageUrl: null,
-      damage: 100,
-    },
   },
   treasureTypes: {
     wood: {
@@ -282,30 +275,9 @@ const DEFAULT_GAME_CONFIG = {
 
 // ショップ初期状態（未設定時のデフォルト。drill/game.js の SHOP_ENTRIES 初期値と一致させること）
 const DEFAULT_SHOP_ENTRIES = [
-  { type: 'drill', refId: 'apprentice',   cost: 100 },
-  { type: 'drill', refId: 'journeyman',   cost: 2000 },
-  { type: 'drill', refId: 'veteran',      cost: 10000 },
-  { type: 'card',  refId: 'drill_attack', cost: 100 },
-  { type: 'card',  refId: 'sword_clay_d',   cost: 200 },
-  { type: 'card',  refId: 'sword_clay_c',   cost: 400 },
-  { type: 'card',  refId: 'sword_clay_b',   cost: 800 },
-  { type: 'card',  refId: 'sword_clay_a',   cost: 1600 },
-  { type: 'card',  refId: 'sword_clay_s',   cost: 3000 },
-  { type: 'card',  refId: 'sword_stone_d',  cost: 1000 },
-  { type: 'card',  refId: 'sword_stone_c',  cost: 1500 },
-  { type: 'card',  refId: 'sword_stone_b',  cost: 2500 },
-  { type: 'card',  refId: 'sword_stone_a',  cost: 5000 },
-  { type: 'card',  refId: 'sword_stone_s',  cost: 10000 },
-  { type: 'card',  refId: 'sword_copper_d', cost: 3000 },
-  { type: 'card',  refId: 'sword_copper_c', cost: 5000 },
-  { type: 'card',  refId: 'sword_copper_b', cost: 8000 },
-  { type: 'card',  refId: 'sword_copper_a', cost: 15000 },
-  { type: 'card',  refId: 'sword_copper_s', cost: 30000 },
-  { type: 'card',  refId: 'sword_iron_d',   cost: 20000 },
-  { type: 'card',  refId: 'sword_iron_c',   cost: 30000 },
-  { type: 'card',  refId: 'sword_iron_b',   cost: 50000 },
-  { type: 'card',  refId: 'sword_iron_a',   cost: 100000 },
-  { type: 'card',  refId: 'sword_iron_s',   cost: 200000 },
+  { type: 'drill', refId: 'apprentice', cost: 100 },
+  { type: 'drill', refId: 'journeyman', cost: 2000 },
+  { type: 'drill', refId: 'veteran',    cost: 10000 },
 ];
 
 let gameConfig = null;
@@ -361,10 +333,12 @@ async function loadGameConfigAdmin() {
   }
   if (!gameConfig.monsters)       gameConfig.monsters       = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.monsters));
   if (!gameConfig.cards)         gameConfig.cards          = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.cards));
-  // drill_attack はゲーム側の固定カードだが、管理画面のカード一覧・ショップ選択に出せるよう補完
-  if (!gameConfig.cards.drill_attack) gameConfig.cards.drill_attack = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.cards.drill_attack));
+  // drill_attack カードは廃止（ショップでのカード販売機能も廃止）。旧データに残っていれば除去
+  delete gameConfig.cards.drill_attack;
   if (!gameConfig.items)         gameConfig.items          = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.items));
   if (!gameConfig.shopEntries)   gameConfig.shopEntries    = JSON.parse(JSON.stringify(DEFAULT_SHOP_ENTRIES));
+  // カード販売は廃止。旧データに 'card' タイプのエントリが残っていれば除去
+  gameConfig.shopEntries = gameConfig.shopEntries.filter(e => e && e.type === 'drill');
   if (!gameConfig.treasureTypes) gameConfig.treasureTypes  = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.treasureTypes));
   if (!gameConfig.treasureSlots || gameConfig.treasureSlots.length < 30)
     gameConfig.treasureSlots = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.treasureSlots));
@@ -581,7 +555,6 @@ function renderShopTab() {
   if (!gameConfig.shopEntries) gameConfig.shopEntries = JSON.parse(JSON.stringify(DEFAULT_SHOP_ENTRIES));
 
   const drills = gameConfig.drills ?? DEFAULT_GAME_CONFIG.drills;
-  const cards  = gameConfig.cards  ?? {};
   const items  = gameConfig.items  ?? {};
   const entryMap = new Map(gameConfig.shopEntries.map(e => [`${e.type}:${e.refId}`, e.cost]));
 
@@ -599,21 +572,6 @@ function renderShopTab() {
         <td>${cfgNum(`cfg-shopcost-drill-${id}`, cost, 'min="1" style="width:100px;"')}</td>
       </tr>`;
     }).join('');
-
-  const cardIds = Object.keys(cards);
-  const cardRows = cardIds.map(id => {
-    const def = cards[id] ?? {};
-    const key = `card:${id}`;
-    const checked = entryMap.has(key);
-    const cost = entryMap.get(key) ?? 100;
-    return `<tr>
-      <td><label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-        <input type="checkbox" class="shop-chk" data-type="card" data-id="${id}" ${checked ? 'checked' : ''}>
-        ${escDrill(def.name ?? id)}<span style="opacity:.4;font-size:.7rem;margin-left:4px;">${escDrill(id)}</span>
-      </label></td>
-      <td>${cfgNum(`cfg-shopcost-card-${id}`, cost, 'min="1" style="width:100px;"')}</td>
-    </tr>`;
-  }).join('');
 
   const itemIds = Object.keys(items);
   const itemRows = itemIds.map(id => {
@@ -640,18 +598,11 @@ function renderShopTab() {
         ${drillRows || '<tr><td colspan="2" class="text-muted">ドリルが未設定です</td></tr>'}
       </table>
     </div>
-    <div style="margin-bottom:24px;">
+    <div>
       <div style="font-size:.9rem;font-weight:700;margin-bottom:8px;">💊 アイテム</div>
       <table class="drill-table" style="max-width:420px;">
         <tr><th>販売する</th><th>価格（G）</th></tr>
         ${itemRows || '<tr><td colspan="2" class="text-muted">「アイテム」タブでアイテムを追加してください</td></tr>'}
-      </table>
-    </div>
-    <div>
-      <div style="font-size:.9rem;font-weight:700;margin-bottom:8px;">🃏 カード</div>
-      <table class="drill-table" style="max-width:420px;">
-        <tr><th>販売する</th><th>価格（G）</th></tr>
-        ${cardRows || '<tr><td colspan="2" class="text-muted">「カード」タブでカードを追加してください</td></tr>'}
       </table>
     </div>`;
 }
@@ -1041,7 +992,7 @@ async function saveGameConfig() {
         name:            c.name ?? id,
         rarity:          (c.rarity ?? 'd').toLowerCase(),
         material:        c.material ?? null,
-        weapon_type:     c.weapon_type ?? null,
+        weapon_type:     c.weapon_type || 'sword',
         icon:            c.icon ?? null,
         ap_cost:         c.ap_cost ?? 1,
         base_attack:     c.base_attack ?? 0,
@@ -1546,23 +1497,18 @@ function collectCardsConfig() {
 
 function addCard() {
   collectCardsConfig();
-  collectShopConfig();
   const id = 'card_' + Date.now();
   if (!gameConfig.cards) gameConfig.cards = {};
   const nextNo = Math.max(0, ...Object.values(gameConfig.cards).map(c => c.no ?? 0)) + 1;
-  gameConfig.cards[id] = { name: '新カード', desc: '', imageUrl: null, no: nextNo, material: null, weapon_type: null, target: 'enemy_single', ap_cost: 10, base_attack: 0, mult_min: 1.0, mult_max: 1.0, crit_rate_bonus: 0, crit_dmg_bonus: 0, hit_count: 1, heal_power: 0 };
+  gameConfig.cards[id] = { name: '新カード', desc: '', imageUrl: null, no: nextNo, material: null, weapon_type: 'sword', target: 'enemy_single', ap_cost: 10, base_attack: 0, mult_min: 1.0, mult_max: 1.0, crit_rate_bonus: 0, crit_dmg_bonus: 0, hit_count: 1, heal_power: 0 };
   renderCardsTab();
-  renderShopTab();
 }
 
 function deleteCard(id) {
   collectCardsConfig();
   if (!confirm(`「${gameConfig.cards?.[id]?.name || id}」を削除しますか？`)) return;
-  collectShopConfig();
   delete gameConfig.cards[id];
-  gameConfig.shopEntries = (gameConfig.shopEntries || []).filter(e => !(e.type === 'card' && e.refId === id));
   renderCardsTab();
-  renderShopTab();
 }
 
 async function uploadCardImage(id, input) {
@@ -1646,7 +1592,7 @@ async function importCardsCsv(input) {
         name:            get('name') || id,
         rarity:          (get('rarity') || 'd').toLowerCase(),
         material:        get('material') || null,
-        weapon_type:     get('weapon_type') || null,
+        weapon_type:     get('weapon_type') || 'sword',
         icon:            get('icon') || null,
         ap_cost:         toInt(get('ap_cost')) ?? 1,
         base_attack:     toInt(get('base_attack')) ?? 0,
@@ -1678,7 +1624,6 @@ async function importCardsCsv(input) {
     }
 
     renderCardsTab();
-    renderShopTab();
     alert(`✅ インポート完了（drill_cards DB 更新済み）\n${count}件\n\n画像URLと説明文を変更した場合は「保存」ボタンも押してください`);
   } catch (err) {
     alert('CSVのパースに失敗しました: ' + err.message);

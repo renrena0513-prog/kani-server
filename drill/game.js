@@ -77,34 +77,12 @@ const DRILLS = {
 };
 
 // ショップ掲載エントリ（管理画面「ショップ」タブで追加・削除・価格設定が可能）
-// type: 'drill' | 'card'   refId: DRILLS / CARDS のキー
-// 名前・アイコン等は表示時に DRILLS[refId] / CARDS[refId] から解決する（ここでは持たない）
+// type: 'drill'   refId: DRILLS のキー
+// 名前等は表示時に DRILLS[refId] から解決する（ここでは持たない）
 let SHOP_ENTRIES = [
   { type:'drill', refId:'apprentice',   cost:100 },
   { type:'drill', refId:'journeyman',   cost:2000 },
   { type:'drill', refId:'veteran',      cost:10000 },
-  { type:'card',  refId:'drill_attack', cost:100 },
-  // 剣カード（価格は管理画面ショップ設定で調整可）
-  { type:'card', refId:'sword_clay_d',   cost:200 },
-  { type:'card', refId:'sword_clay_c',   cost:400 },
-  { type:'card', refId:'sword_clay_b',   cost:800 },
-  { type:'card', refId:'sword_clay_a',   cost:1600 },
-  { type:'card', refId:'sword_clay_s',   cost:3000 },
-  { type:'card', refId:'sword_stone_d',  cost:1000 },
-  { type:'card', refId:'sword_stone_c',  cost:1500 },
-  { type:'card', refId:'sword_stone_b',  cost:2500 },
-  { type:'card', refId:'sword_stone_a',  cost:5000 },
-  { type:'card', refId:'sword_stone_s',  cost:10000 },
-  { type:'card', refId:'sword_copper_d', cost:3000 },
-  { type:'card', refId:'sword_copper_c', cost:5000 },
-  { type:'card', refId:'sword_copper_b', cost:8000 },
-  { type:'card', refId:'sword_copper_a', cost:15000 },
-  { type:'card', refId:'sword_copper_s', cost:30000 },
-  { type:'card', refId:'sword_iron_d',   cost:20000 },
-  { type:'card', refId:'sword_iron_c',   cost:30000 },
-  { type:'card', refId:'sword_iron_b',   cost:50000 },
-  { type:'card', refId:'sword_iron_a',   cost:100000 },
-  { type:'card', refId:'sword_iron_s',   cost:200000 },
 ];
 
 const PERMITS = {
@@ -175,8 +153,7 @@ let CURSE = [
 
 // カード定義（拡張用）
 let CARDS = {
-  fist_d:       { id:'fist_d',       name:'拳で',          desc:'基本攻撃',     icon:'👊', imageUrl:null, ap_cost:10, base_attack:0, mult_min:0.9, mult_max:1.0 },
-  drill_attack: { id:'drill_attack', name:'ドリルアタック', desc:'100ダメージ',  icon:'⛏️', imageUrl:null, damage:100 },
+  fist_d: { id:'fist_d', name:'拳で', desc:'基本攻撃', icon:'👊', imageUrl:null, ap_cost:10, base_attack:0, mult_min:0.9, mult_max:1.0 },
 };
 
 // カードバトル：キャラ基礎ステータス（管理画面 combatStats で上書き可）
@@ -454,7 +431,7 @@ async function loadGameConfig() {
     if (cfg.shopEntries && Array.isArray(cfg.shopEntries)) {
       // 新形式：管理画面で追加・削除・価格設定した完全なショップ一覧
       SHOP_ENTRIES = cfg.shopEntries
-        .filter(e => e && e.refId && (e.type === 'drill' || e.type === 'card'))
+        .filter(e => e && e.refId && e.type === 'drill')
         .map(e => ({ type: e.type, refId: e.refId, cost: Number(e.cost) || 1 }));
     } else if (cfg.shop) {
       // 旧形式との後方互換：ドリルの価格のみ上書き可能
@@ -1286,8 +1263,8 @@ async function returnSurface(useStone = false) {
 function showShop(tab = 'drill') {
   if (G.py !== 0) { log('⚠️ ショップは地上のみ'); return; }
 
-  const tabs = ['drill','item','card','sell'];
-  const tabLabels = { drill:'⛏️ ドリル', item:'💊 アイテム', card:'🃏 カード', sell:'💰 売却' };
+  const tabs = ['drill','item','sell'];
+  const tabLabels = { drill:'⛏️ ドリル', item:'💊 アイテム', sell:'💰 売却' };
 
   const tabBar = tabs.map(t => `
     <button onclick="showShop('${t}')"
@@ -1327,27 +1304,6 @@ function showShop(tab = 'drill') {
       }
     } else {
       body = `<div style="opacity:.45;font-size:.82rem;padding:12px 0;">販売中のアイテムはありません</div>`;
-    }
-
-  } else if (tab === 'card') {
-    const cardEntries = SHOP_ENTRIES.filter(e => e.type === 'card' && CARDS[e.refId]);
-    if (cardEntries.length) {
-      for (const entry of cardEntries) {
-        const def = CARDS[entry.refId];
-        const canBuy = G.drillGold >= entry.cost;
-        const ownedCount = G.ownedCards[entry.refId] || 0;
-        const rank = (def.rarity ?? '').toLowerCase() || rankFromId(entry.refId);
-        const rankDot = rank
-          ? `<span class="rank-badge rank-badge-${rank}" style="position:static;display:inline-flex;vertical-align:middle;margin-right:4px;">${rank.toUpperCase()}</span>`
-          : '';
-        body += `<div class="modal-row">
-          <div><div class="modal-row-label">${rankDot}${escHtml(def.name)}</div>
-          <div class="modal-row-sub">${entry.cost}G　${def.icon ?? ''} ${def.desc ?? ''}${ownedCount > 0 ? `　<span style="opacity:.55;">所持: ${ownedCount}枚</span>` : ''}</div></div>
-          <button class="btn-modal-action" onclick="buyShopEntry('card','${entry.refId}')" ${canBuy?'':'disabled'}>購入</button>
-        </div>`;
-      }
-    } else {
-      body = `<div style="opacity:.45;font-size:.82rem;padding:12px 0;">販売中のカードはありません</div>`;
     }
 
   } else if (tab === 'sell') {
@@ -1393,19 +1349,6 @@ function showShop(tab = 'drill') {
 async function buyShopEntry(type, refId) {
   const entry = SHOP_ENTRIES.find(e => e.type === type && e.refId === refId);
   if (!entry || G.drillGold < entry.cost) { log('⚠️ 所持金不足'); return; }
-
-  if (type === 'card') {
-    const def = CARDS[refId];
-    if (!def) return;
-    G.drillGold -= entry.cost;
-    await supabaseClient.from('profiles').update({ drill_gold: G.drillGold }).eq('discord_user_id', G.discordId);
-    G.ownedCards[refId] = (G.ownedCards[refId] || 0) + 1;
-    await supabaseClient.from('drill_player_cards')
-      .upsert({ user_id: G.userId, card_id: refId, quantity: G.ownedCards[refId] });
-    log(`✅ ${def.name}を購入（${G.ownedCards[refId]}枚目）`);
-    showEventModal(def.icon ?? '🃏', `<strong>${escHtml(def.name)}</strong>を購入しました！<br><span style="color:#f0c060;font-size:.85rem;">-${entry.cost} G</span>`, () => showShop('card'));
-    return;
-  }
 
   // type === 'drill'
   const def = DRILLS[refId];

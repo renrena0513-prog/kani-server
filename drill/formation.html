@@ -408,14 +408,12 @@ let CARDS_DEF = {};  // admin設定から読み込む
 let DRILLS_DEF = {}; // admin設定から読み込む
 
 const DEFAULT_CARDS = {
-  fist_d:       { name:'拳で',          desc:'基本攻撃',   icon:'👊', ap_cost:10, base_attack:0, mult_min:0.9, mult_max:1.0 },
-  drill_attack: { name:'ドリルアタック', desc:'100ダメージ', icon:'⛏️', damage:100 },
+  fist_d: { name:'拳で', desc:'基本攻撃', icon:'👊', ap_cost:10, base_attack:0, mult_min:0.9, mult_max:1.0 },
 };
 
-// ショップで販売しているカードのデフォルト定義
+// 錬金窯で入手可能なカードのデフォルト定義
 // admin設定で上書きされるが、未設定でも表示・ドラッグできるよう定義
 const SHOP_CARD_DEFAULTS = {
-  drill_attack:   { name:'ドリルアタック', icon:'⛏️' },
   sword_clay_d:   { name:'粘土の剣', icon:'⚔️' },
   sword_clay_c:   { name:'粘土の剣', icon:'⚔️' },
   sword_clay_b:   { name:'粘土の剣', icon:'⚔️' },
