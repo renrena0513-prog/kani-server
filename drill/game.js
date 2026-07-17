@@ -567,11 +567,12 @@ async function loadCardDefs() {
     if (!data) return;
     data.forEach(r => {
       const id = r.id === 'fist' ? 'fist_d' : r.id;
+      const rarity = (r.rarity && ['D','C','B','A','S'].includes(r.rarity)) ? r.rarity : null;
       CARDS[id] = {
         id,
         no: r.no,
         material: r.material,
-        rarity: r.rarity,
+        rarity,
         weapon_type: r.weapon_type,
         name: r.name || CARDS[id]?.name || id,
         desc: CARDS[id]?.desc || '',
