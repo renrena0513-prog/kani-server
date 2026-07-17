@@ -1990,7 +1990,9 @@ function renderAlchemyTab() {
       重み0、または対応カードが未定義の武器種は排出されません。<br>
       カードIDは <code style="font-size:.82rem;">{武器種}_{素材}_{レアリティ}</code> 形式で
       カードタブに登録してください。<br>
-      例: <code style="font-size:.82rem;">sword_iron_s</code>（鉄の剣 S）
+      例: <code style="font-size:.82rem;">sword_iron_s</code>（鉄の剣 S）<br>
+      ※ 土（dirt）素材のみ、カードIDは <code style="font-size:.82rem;">dirt</code> ではなく
+      <code style="font-size:.82rem;">clay</code> と表記してください（例: <code style="font-size:.82rem;">sword_clay_d</code>）。
     </div>
 
     <div style="margin-bottom:24px;">

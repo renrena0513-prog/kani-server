@@ -1625,6 +1625,15 @@ const ALCHEMY_WEAPON_NAMES = {
   hammer: 'ハンマー', boomerang: 'ブーメラン', staff: '杖',
 };
 
+// カードID内の素材表記に対応する日本語名（MATSに存在しない特殊表記も含む）
+const ALCHEMY_MATERIAL_NAMES = {
+  dirt: '土', clay: '粘土', stone: '石', copper: '銅', iron: '鉄', silver: '銀', gold: '金',
+};
+
+// 素材ブロックID → カードID内の素材表記（土は歴史的経緯で"clay"表記のカードが存在する）
+const ALCHEMY_CARD_MATERIAL_ID = { dirt: 'clay' };
+function alchemyCardMaterialId(matId) { return ALCHEMY_CARD_MATERIAL_ID[matId] || matId; }
+
 // 素材ごとの武器種重みテーブル（管理画面から変更可能）
 let ALCHEMY_WEAPON_WEIGHTS = {
   dirt:   { sword:20, dagger:20, axe:20, hammer:20, boomerang:10, staff:10 },
@@ -1643,7 +1652,7 @@ function alchemyCardDisplayName(cardId) {
   if (!m) return cardId;
   const [, weapon, material, rarity] = m;
   const wn = ALCHEMY_WEAPON_NAMES[weapon] || weapon;
-  const mn = MATS[material]?.name || material;
+  const mn = ALCHEMY_MATERIAL_NAMES[material] || MATS[material]?.name || material;
   return `${mn}の${wn} ${rarity.toUpperCase()}`;
 }
 
@@ -1724,10 +1733,11 @@ function showAlchemy() {
 // material+weaponの組み合わせで実在するカードがある武器種のみ返す
 function _alchBuildWeaponTable(material) {
   const rawWeights = ALCHEMY_WEAPON_WEIGHTS[material] ?? {};
+  const cardMat = alchemyCardMaterialId(material);
   const table = {};
   for (const [weapon, w] of Object.entries(rawWeights)) {
     if (w <= 0) continue;
-    const hasCard = Object.keys(ALCHEMY_RARITY_WEIGHTS).some(r => !!CARDS[`${weapon}_${material}_${r}`]);
+    const hasCard = Object.keys(ALCHEMY_RARITY_WEIGHTS).some(r => !!CARDS[`${weapon}_${cardMat}_${r}`]);
     if (hasCard) table[weapon] = w;
   }
   return table;
@@ -1770,15 +1780,16 @@ async function doAlchemy() {
     return;
   }
   const weapon = _weightedRandom(weaponTable);
+  const cardMat = alchemyCardMaterialId(material);
 
   // STEP3: レアリティ抽選（そのweapon+materialで実在するレアリティのみ）
   const rarityTable = {};
   for (const [r, w] of Object.entries(ALCHEMY_RARITY_WEIGHTS)) {
-    if (CARDS[`${weapon}_${material}_${r}`]) rarityTable[r] = w;
+    if (CARDS[`${weapon}_${cardMat}_${r}`]) rarityTable[r] = w;
   }
   const rarity = _weightedRandom(rarityTable);
 
-  const cardId = `${weapon}_${material}_${rarity}`;
+  const cardId = `${weapon}_${cardMat}_${rarity}`;
 
   // 素材消費
   for (const [id, qty] of Object.entries(invest)) {
