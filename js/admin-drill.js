@@ -392,6 +392,7 @@ async function loadGameConfigAdmin() {
 function renderConfigEditor() {
   renderMatsTab();
   renderDrillsTab();
+  renderCraftTab();
   renderLayersTab();
   renderShopTab();
   renderSellTab();
@@ -404,7 +405,7 @@ function renderConfigEditor() {
   renderAlchemyTab();
   // 最初のタブをアクティブに
   const firstBtn = document.querySelector('.cfg-tab-btn');
-  if (firstBtn) showCfgTab('mats', firstBtn);
+  if (firstBtn) showCfgTab('blocks', firstBtn);
 }
 
 function renderMatsTab() {
@@ -427,10 +428,6 @@ function renderMatsTab() {
 function renderDrillsTab() {
   const cfg = gameConfig.drills ?? {};
 
-  const matOptsFor = (selected) => RECIPE_MAT_IDS.map(id =>
-    `<option value="${id}" ${id === selected ? 'selected' : ''}>${MAT_NAMES[id]}</option>`
-  ).join('');
-
   const statsRows = DRILL_IDS.map(id => {
     const def = DEFAULT_GAME_CONFIG.drills[id];
     const d   = { ...def, ...(cfg[id] ?? {}) };
@@ -441,6 +438,24 @@ function renderDrillsTab() {
       <td>${cfgNum('cfg-drill-cost-' +id, d.cost ?? '', 'min="0" placeholder="—" style="width:80px;"')}</td>
     </tr>`;
   }).join('');
+
+  document.getElementById('cfg-tab-drills').innerHTML = `
+    <div class="info-box" style="margin-bottom:12px;">
+      耐久・購入Gは空欄=なし（∞ / ショップ非売品）。クラフトのレシピは「クラフトレシピ」タブで設定します。
+    </div>
+    <div style="overflow-x:auto;">
+    <table class="drill-table">
+      <tr><th>ドリル</th><th>威力</th><th>最大耐久</th><th>購入G</th></tr>
+      ${statsRows}
+    </table></div>`;
+}
+
+function renderCraftTab() {
+  const cfg = gameConfig.drills ?? {};
+
+  const matOptsFor = (selected) => RECIPE_MAT_IDS.map(id =>
+    `<option value="${id}" ${id === selected ? 'selected' : ''}>${MAT_NAMES[id]}</option>`
+  ).join('');
 
   const recipeBlocks = DRILL_IDS.map(id => {
     const def     = DEFAULT_GAME_CONFIG.drills[id];
@@ -464,17 +479,9 @@ function renderDrillsTab() {
     </div>`;
   }).join('');
 
-  document.getElementById('cfg-tab-drills').innerHTML = `
-    <div class="info-box" style="margin-bottom:12px;">
-      耐久・購入Gは空欄=なし（∞ / ショップ非売品）
-    </div>
-    <div style="overflow-x:auto;">
-    <table class="drill-table" style="margin-bottom:20px;">
-      <tr><th>ドリル</th><th>威力</th><th>最大耐久</th><th>購入G</th></tr>
-      ${statsRows}
-    </table></div>
-    <div style="font-weight:700;font-size:.85rem;color:rgba(255,255,255,.65);margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.12);">
-      🔨 クラフトレシピ
+  document.getElementById('cfg-tab-craft').innerHTML = `
+    <div class="info-box" style="margin-bottom:14px;">
+      🔨 ドリルのクラフトに必要な素材レシピです（空=クラフト不可）。
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;">
       ${recipeBlocks}
@@ -838,7 +845,7 @@ function renderEventsTab() {
     </div>`;
   });
 
-  document.getElementById('cfg-tab-events').innerHTML = html;
+  document.getElementById('cfg-tab-events-inner').innerHTML = html;
 }
 
 function updateCurseAvg(li) {
@@ -1648,7 +1655,7 @@ function parseCsvRow(line) {
 // ============================================================
 
 function renderItemsTab() {
-  const el = document.getElementById('cfg-tab-items');
+  const el = document.getElementById('cfg-tab-items-inner');
   if (!el) return;
   const items = gameConfig.items ?? {};
 

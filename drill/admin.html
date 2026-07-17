@@ -105,6 +105,18 @@
         .cfg-input option { background: #0d2447; color: #fff; }
         .cfg-tab-btn { background: rgba(212,168,83,.25) !important; font-weight: normal; }
         .cfg-tab-btn.active { background: rgba(212,168,83,.65) !important; font-weight: 700; }
+        .cfg-subhead {
+            font-size: .92rem;
+            font-weight: 700;
+            color: rgba(255,255,255,.8);
+            margin: 26px 0 14px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(212,168,83,.35);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .cfg-subhead:first-child { margin-top: 0; }
         code { background:rgba(255,255,255,.1); border-radius:4px; padding:1px 6px; font-size:.78rem; color:#a8d4ff; }
         /* 所持品モーダル編集UI */
         .inv-section-title { font-size:.78rem; font-weight:700; opacity:.6; margin-bottom:4px; }
@@ -142,9 +154,9 @@
     <div id="admin-content" style="display:none;">
         <a href="index.html" class="back-link">← ほりほりドリルに戻る</a>
 
-        <!-- ゲーム設定（開始X座標） -->
+        <!-- 設定（開始X座標・マップ強制再生成） -->
         <div class="admin-card">
-            <div class="admin-title">⚙️ ゲーム設定</div>
+            <div class="admin-title">⚙️ 設定</div>
             <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
                 <label style="font-size:.9rem;">開始X座標 (0–255)</label>
                 <input id="setting-start-x" type="number" min="0" max="255" value="128"
@@ -155,47 +167,8 @@
             <div style="font-size:.76rem;opacity:.5;margin-top:8px;">
                 変更は翌日のマップから反映されます（新規プレイヤーの初期位置に影響）
             </div>
-        </div>
 
-        <!-- ゲームパラメータ設定 -->
-        <div class="admin-card">
-            <div class="admin-title">🎮 ゲームパラメータ設定</div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
-                <button class="btn-refresh cfg-tab-btn active" onclick="showCfgTab('mats',this)">ブロック</button>
-                <button class="btn-refresh cfg-tab-btn" onclick="showCfgTab('drills',this)">ドリル</button>
-                <button class="btn-refresh cfg-tab-btn" onclick="showCfgTab('layers',this)">生成重み</button>
-                <button class="btn-refresh cfg-tab-btn" onclick="showCfgTab('shop',this)">ショップ</button>
-                <button class="btn-refresh cfg-tab-btn" onclick="showCfgTab('sell',this)">売却価格</button>
-                <button class="btn-refresh cfg-tab-btn" onclick="showCfgTab('permits',this)">許可証</button>
-                <button class="btn-refresh cfg-tab-btn" onclick="showCfgTab('events',this)">イベント</button>
-                <button class="btn-refresh cfg-tab-btn" onclick="showCfgTab('monsters',this)">モンスター</button>
-                <button class="btn-refresh cfg-tab-btn" onclick="showCfgTab('cards',this)">カード</button>
-                <button class="btn-refresh cfg-tab-btn" onclick="showCfgTab('items',this)">アイテム</button>
-                <button class="btn-refresh cfg-tab-btn" onclick="showCfgTab('treasure',this)">宝箱</button>
-                <button class="btn-refresh cfg-tab-btn" onclick="showCfgTab('alchemy',this)">錬金窯</button>
-            </div>
-            <div id="cfg-tab-mats" class="cfg-section"></div>
-            <div id="cfg-tab-drills" class="cfg-section" style="display:none;"></div>
-            <div id="cfg-tab-layers" class="cfg-section" style="display:none;"></div>
-            <div id="cfg-tab-shop" class="cfg-section" style="display:none;"></div>
-            <div id="cfg-tab-sell" class="cfg-section" style="display:none;"></div>
-            <div id="cfg-tab-permits" class="cfg-section" style="display:none;"></div>
-            <div id="cfg-tab-events"   class="cfg-section" style="display:none;"></div>
-            <div id="cfg-tab-monsters" class="cfg-section" style="display:none;"></div>
-            <div id="cfg-tab-cards"    class="cfg-section" style="display:none;"></div>
-            <div id="cfg-tab-items"    class="cfg-section" style="display:none;"></div>
-            <div id="cfg-tab-treasure" class="cfg-section" style="display:none;"></div>
-            <div id="cfg-tab-alchemy"  class="cfg-section" style="display:none;"></div>
-            <div style="margin-top:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                <button class="btn-refresh" onclick="saveGameConfig()">💾 保存</button>
-                <button class="btn-refresh" style="background:rgba(255,255,255,.15);" onclick="resetGameConfig()">↩️ デフォルトに戻す</button>
-                <span id="config-save-msg" style="font-size:.8rem;opacity:.65;"></span>
-            </div>
-        </div>
-
-        <!-- マップ強制再生成 -->
-        <div class="admin-card">
-            <div class="admin-title">🗺️ マップ強制再生成（テスト用）</div>
+            <div class="cfg-subhead">🗺️ マップ強制再生成（テスト用）</div>
             <div class="info-box" style="border-color:rgba(255,100,100,.4);background:rgba(255,80,80,.08);">
                 ⚠️ 現在の掘削データ・位置情報・ドロップ品・戦闘セッションをすべて削除し、新しいシードでマップを再生成します。<strong>全プレイヤーが影響を受けます。</strong>
             </div>
@@ -205,10 +178,63 @@
             </div>
         </div>
 
+        <!-- ゲームパラメータ設定 -->
+        <div class="admin-card">
+            <div class="admin-title">🎮 ゲームパラメータ設定</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
+                <button class="btn-refresh cfg-tab-btn active" onclick="showCfgTab('blocks',this)">ブロック関連</button>
+                <button class="btn-refresh cfg-tab-btn" onclick="showCfgTab('drills',this)">ドリル</button>
+                <button class="btn-refresh cfg-tab-btn" onclick="showCfgTab('craft',this)">クラフトレシピ</button>
+                <button class="btn-refresh cfg-tab-btn" onclick="showCfgTab('shop',this)">ショップ</button>
+                <button class="btn-refresh cfg-tab-btn" onclick="showCfgTab('events',this)">イベント</button>
+                <button class="btn-refresh cfg-tab-btn" onclick="showCfgTab('monsters',this)">モンスター</button>
+                <button class="btn-refresh cfg-tab-btn" onclick="showCfgTab('cards',this)">カード</button>
+                <button class="btn-refresh cfg-tab-btn" onclick="showCfgTab('items',this)">アイテム</button>
+                <button class="btn-refresh cfg-tab-btn" onclick="showCfgTab('alchemy',this)">錬金窯</button>
+            </div>
+
+            <div id="cfg-tab-blocks" class="cfg-section">
+                <div class="cfg-subhead">🧱 ブロック</div>
+                <div id="cfg-tab-mats"></div>
+                <div class="cfg-subhead">⛰️ 生成重み</div>
+                <div id="cfg-tab-layers"></div>
+                <div class="cfg-subhead">💰 売却価格</div>
+                <div id="cfg-tab-sell"></div>
+            </div>
+
+            <div id="cfg-tab-drills" class="cfg-section" style="display:none;"></div>
+            <div id="cfg-tab-craft"  class="cfg-section" style="display:none;"></div>
+            <div id="cfg-tab-shop"   class="cfg-section" style="display:none;"></div>
+
+            <div id="cfg-tab-events" class="cfg-section" style="display:none;">
+                <div class="cfg-subhead">✨ イベント</div>
+                <div id="cfg-tab-events-inner"></div>
+                <div class="cfg-subhead">🎁 宝箱</div>
+                <div id="cfg-tab-treasure"></div>
+            </div>
+
+            <div id="cfg-tab-monsters" class="cfg-section" style="display:none;"></div>
+            <div id="cfg-tab-cards"    class="cfg-section" style="display:none;"></div>
+
+            <div id="cfg-tab-items" class="cfg-section" style="display:none;">
+                <div id="cfg-tab-items-inner"></div>
+                <div class="cfg-subhead">🎫 許可証</div>
+                <div id="cfg-tab-permits"></div>
+            </div>
+
+            <div id="cfg-tab-alchemy" class="cfg-section" style="display:none;"></div>
+
+            <div style="margin-top:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                <button class="btn-refresh" onclick="saveGameConfig()">💾 保存</button>
+                <button class="btn-refresh" style="background:rgba(255,255,255,.15);" onclick="resetGameConfig()">↩️ デフォルトに戻す</button>
+                <span id="config-save-msg" style="font-size:.8rem;opacity:.65;"></span>
+            </div>
+        </div>
+
         <!-- プレイヤー統計 -->
         <div class="admin-card">
             <div class="admin-title" style="display:flex;justify-content:space-between;align-items:center;">
-                <span>⛏️ ほりほりドリル プレイヤー統計</span>
+                <span>⛏️ プレイヤー</span>
                 <button class="btn-refresh" onclick="fetchDrillStats()">🔄 更新</button>
             </div>
 
