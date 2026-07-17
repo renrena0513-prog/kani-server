@@ -86,8 +86,8 @@ let SHOP_ENTRIES = [
 ];
 
 const PERMITS = {
-  permit_100: { name:'100m入坑許可証', yMin:100, recipe:{stone:1000,copper:300} },
-  permit_200: { name:'200m入坑許可証', yMin:200, recipe:{iron:1000,silver:300} },
+  permit_100: { name:'100m入坑許可証', yMin:100, cost:7500 },
+  permit_200: { name:'200m入坑許可証', yMin:200, cost:110000 },
 };
 
 const SELL_PRICES = {
@@ -443,7 +443,7 @@ async function loadGameConfig() {
     if (cfg.sellPrices) Object.assign(SELL_PRICES, cfg.sellPrices);
     if (cfg.permits) {
       for (const [id, v] of Object.entries(cfg.permits)) {
-        if (PERMITS[id] && v.recipe) PERMITS[id].recipe = v.recipe;
+        if (PERMITS[id] && v.cost != null) PERMITS[id].cost = v.cost;
       }
     }
     if (cfg.events && Array.isArray(cfg.events)) {
@@ -1292,14 +1292,23 @@ function showShop(tab = 'drill') {
     }
 
   } else if (tab === 'item') {
-    const shopItems = Object.entries(ITEMS).filter(([, def]) => def.cost > 0);
-    if (shopItems.length) {
+    const shopItems   = Object.entries(ITEMS).filter(([, def]) => def.cost > 0);
+    const shopPermits = Object.entries(PERMITS).filter(([id, def]) => def.cost > 0 && !G.permits.has(id));
+    if (shopItems.length || shopPermits.length) {
       for (const [id, def] of shopItems) {
         const canBuy = G.drillGold >= def.cost;
         body += `<div class="modal-row">
           <div><div class="modal-row-label">${escHtml(def.name)}</div>
           <div class="modal-row-sub">${def.cost}G${def.effectText ? ' ／ ' + escHtml(def.effectText) : ''}</div></div>
           <button class="btn-modal-action" onclick="buyGameItem('${id}')" ${canBuy?'':'disabled'}>購入</button>
+        </div>`;
+      }
+      for (const [id, def] of shopPermits) {
+        const canBuy = G.drillGold >= def.cost;
+        body += `<div class="modal-row">
+          <div><div class="modal-row-label">${escHtml(def.name)}</div>
+          <div class="modal-row-sub">${def.cost}G ／ ${def.yMin}m以深での採掘に必要</div></div>
+          <button class="btn-modal-action" onclick="buyPermit('${id}')" ${canBuy?'':'disabled'}>取得</button>
         </div>`;
       }
     } else {
@@ -1375,6 +1384,18 @@ async function buyGameItem(id) {
   await saveBpItem(id, G.backpack[id]);
   const img = def.imageUrl ? `<img src="${escHtml(def.imageUrl)}" style="width:40px;height:40px;object-fit:contain;display:block;margin:0 auto 8px;">` : '🛍️';
   showEventModal(img, `<strong>${escHtml(def.name)}</strong>を購入しました！<br><span style="color:#f0c060;font-size:.85rem;">-${def.cost} G</span>`, () => showShop());
+}
+
+async function buyPermit(id) {
+  const def = PERMITS[id];
+  if (!def || !def.cost || G.permits.has(id)) return;
+  if (G.drillGold < def.cost) { log('⚠️ 所持金不足'); return; }
+  G.drillGold -= def.cost;
+  await supabaseClient.from('profiles').update({ drill_gold: G.drillGold }).eq('discord_user_id', G.discordId);
+  await supabaseClient.from('drill_player_permits').insert({ user_id: G.userId, permit_id: id });
+  G.permits.add(id);
+  log(`✅ ${def.name}を取得`);
+  showEventModal('📜', `<strong>${escHtml(def.name)}</strong>を取得しました！<br><span style="color:#f0c060;font-size:.85rem;">-${def.cost} G</span>`, () => showShop('item'));
 }
 
 // ============================================================
@@ -1474,21 +1495,11 @@ function showCraft() {
 
   let html = `<div class="modal-title">🔨 クラフト</div>`;
 
-  // 許可証
-  for (const [pid, p] of Object.entries(PERMITS)) {
-    if (G.permits.has(pid)) continue;
-    const can = Object.entries(p.recipe).every(([m, q]) => (G.inventory[m] || 0) >= q);
-    const recipe = Object.entries(p.recipe).map(([m, q]) => `${MATS[m]?.name||m}×${q}`).join(', ');
-    html += `<div class="modal-row">
-      <div><div class="modal-row-label">${p.name}</div>
-      <div class="modal-row-sub">${recipe}</div></div>
-      <button class="btn-modal-action" onclick="confirmCraft('permit','${pid}')" ${can?'':'disabled'}>作成</button>
-    </div>`;
-  }
-
   // ドリル
+  let any = false;
   for (const [did, d] of Object.entries(DRILLS)) {
     if (!d.recipe) continue;
+    any = true;
     const can = Object.entries(d.recipe).every(([m, q]) => (G.inventory[m] || 0) >= q);
     const recipe = Object.entries(d.recipe).map(([m, q]) => `${MATS[m]?.name||m}×${q}`).join(', ');
     const statsStr = `<span style="color:rgba(255,200,80,.8);">発掘力 ${d.power ?? '?'}</span> ／ 耐久 ${d.dur ?? '∞'}`;
@@ -1496,61 +1507,41 @@ function showCraft() {
       <div><div class="modal-row-label">${d.name}</div>
       <div class="modal-row-sub">${statsStr}</div>
       <div class="modal-row-sub">${recipe}</div></div>
-      <button class="btn-modal-action" onclick="confirmCraft('drill','${did}')" ${can?'':'disabled'}>作成</button>
+      <button class="btn-modal-action" onclick="confirmCraft('${did}')" ${can?'':'disabled'}>作成</button>
     </div>`;
   }
+  if (!any) html += `<div style="opacity:.45;font-size:.82rem;padding:12px 0;">クラフト可能なドリルはありません</div>`;
 
-  // 帰還石（帰還石をクラフトしたい場合は後追加）
   html += `<button class="btn-modal-close" onclick="closeModal()">閉じる</button>`;
   openModal(html);
 }
 
-function confirmCraft(type, id) {
-  let name, recipe;
-  if (type === 'permit') {
-    const p = PERMITS[id];
-    name = p.name;
-    recipe = Object.entries(p.recipe).map(([m, q]) => `${MATS[m]?.name||m}×${q}`).join(', ');
-  } else {
-    const d = DRILLS[id];
-    name = d.name;
-    recipe = Object.entries(d.recipe).map(([m, q]) => `${MATS[m]?.name||m}×${q}`).join(', ');
-  }
+function confirmCraft(id) {
+  const d = DRILLS[id];
+  if (!d?.recipe) return;
+  const recipe = Object.entries(d.recipe).map(([m, q]) => `${MATS[m]?.name||m}×${q}`).join(', ');
   const html = `<div class="modal-title">🔨 クラフト確認</div>
-    <div style="margin-bottom:8px;"><strong>${escHtml(name)}</strong>を作成しますか？</div>
+    <div style="margin-bottom:8px;"><strong>${escHtml(d.name)}</strong>を作成しますか？</div>
     <div style="font-size:.82rem;opacity:.7;margin-bottom:16px;">消費素材: ${escHtml(recipe)}</div>
     <div style="display:flex;gap:8px;">
-      <button class="btn-modal-action" style="flex:1;" onclick="doCraft('${type}','${id}')">作成する</button>
+      <button class="btn-modal-action" style="flex:1;" onclick="doCraft('${id}')">作成する</button>
       <button class="btn-modal-close" style="flex:1;" onclick="showCraft()">戻る</button>
     </div>`;
   openModal(html);
 }
 
-async function doCraft(type, id) {
-  if (type === 'permit') {
-    const p = PERMITS[id];
-    if (!p || G.permits.has(id)) return;
-    for (const [m, q] of Object.entries(p.recipe)) {
-      if ((G.inventory[m] || 0) < q) { log('⚠️ 素材不足'); return; }
-    }
-    for (const [m, q] of Object.entries(p.recipe)) await upsertInv(m, -q);
-    await supabaseClient.from('drill_player_permits').insert({ user_id: G.userId, permit_id: id });
-    G.permits.add(id);
-    log(`✅ ${p.name}を取得`);
-
-  } else if (type === 'drill') {
-    const d = DRILLS[id];
-    if (!d?.recipe) return;
-    for (const [m, q] of Object.entries(d.recipe)) {
-      if ((G.inventory[m] || 0) < q) { log('⚠️ 素材不足'); return; }
-    }
-    for (const [m, q] of Object.entries(d.recipe)) await upsertInv(m, -q);
-    const { data: nd } = await supabaseClient.from('drill_player_drills').insert({
-      user_id: G.userId, drill_id: id, durability: d.dur, equipped: false,
-    }).select().single();
-    if (nd) G.drills.push(nd);
-    log(`✅ ${d.name}を作成`);
+async function doCraft(id) {
+  const d = DRILLS[id];
+  if (!d?.recipe) return;
+  for (const [m, q] of Object.entries(d.recipe)) {
+    if ((G.inventory[m] || 0) < q) { log('⚠️ 素材不足'); return; }
   }
+  for (const [m, q] of Object.entries(d.recipe)) await upsertInv(m, -q);
+  const { data: nd } = await supabaseClient.from('drill_player_drills').insert({
+    user_id: G.userId, drill_id: id, durability: d.dur, equipped: false,
+  }).select().single();
+  if (nd) G.drills.push(nd);
+  log(`✅ ${d.name}を作成`);
   showCraft();
 }
 

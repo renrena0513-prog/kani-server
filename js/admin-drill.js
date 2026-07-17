@@ -187,8 +187,8 @@ const DEFAULT_GAME_CONFIG = {
   })(),
   sellPrices: { dirt: 1, stone: 3, copper: 15, iron: 50, silver: 200, gold: 500 },
   permits: {
-    permit_100: { name: '100m入坑許可証', recipe: { stone: 1000, copper: 300 } },
-    permit_200: { name: '200m入坑許可証', recipe: { iron: 1000,  silver: 300 } },
+    permit_100: { name: '100m入坑許可証', yMin: 100, cost: 7500 },
+    permit_200: { name: '200m入坑許可証', yMin: 200, cost: 110000 },
   },
   baseHp: 1000,
   events: [
@@ -653,32 +653,22 @@ function renderSellTab() {
 function renderPermitsTab() {
   const cfg = gameConfig.permits ?? {};
 
-  const matOptsFor = (selected) => RECIPE_MAT_IDS.map(id =>
-    `<option value="${id}" ${id === selected ? 'selected' : ''}>${MAT_NAMES[id]}</option>`
-  ).join('');
-
-  const blocks = Object.entries(DEFAULT_GAME_CONFIG.permits).map(([id, def]) => {
-    const p       = { ...def, ...(cfg[id] ?? {}) };
-    const entries = Object.entries(p.recipe || {});
-
-    const rows = entries.length > 0
-      ? entries.map(([mat, qty]) => `
-          <div class="recipe-row" style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
-            <select class="cfg-input rmat-${id}" style="flex:1;">${matOptsFor(mat)}</select>
-            <span style="opacity:.45;font-size:.8rem;">×</span>
-            <input class="cfg-input rqty-${id}" type="number" value="${qty}" min="1" style="width:70px;">
-            <button class="inv-del-btn" onclick="this.parentElement.remove()">✕</button>
-          </div>`).join('')
-      : `<div class="recipe-placeholder inv-empty" style="margin-bottom:6px;">なし</div>`;
-
-    return `<div style="margin-bottom:20px;">
-      <div style="font-size:.9rem;font-weight:700;margin-bottom:10px;">${escDrill(def.name)}</div>
-      <div id="recipe-rows-${id}">${rows}</div>
-      <button class="inv-save-btn" style="padding:2px 10px;font-size:.75rem;" onclick="addRecipeDom('${id}')">＋ 素材追加</button>
-    </div>`;
+  const rows = Object.entries(DEFAULT_GAME_CONFIG.permits).map(([id, def]) => {
+    const p = { ...def, ...(cfg[id] ?? {}) };
+    return `<tr>
+      <td>${escDrill(p.name ?? def.name)}<div style="font-size:.72rem;opacity:.45;">${p.yMin}m以深での採掘に必要</div></td>
+      <td>${cfgNum('cfg-permit-cost-' + id, p.cost, 'min="1" style="width:100px;"')}</td>
+    </tr>`;
   }).join('');
 
-  document.getElementById('cfg-tab-permits').innerHTML = `<div style="margin-top:4px;">${blocks}</div>`;
+  document.getElementById('cfg-tab-permits').innerHTML = `
+    <div class="info-box" style="margin-bottom:14px;">
+      ショップの「アイテム」タブでゴールドを払って取得するアイテムです（クラフト不要）。
+    </div>
+    <table class="drill-table" style="max-width:420px;">
+      <tr><th>許可証</th><th>価格（G）</th></tr>
+      ${rows}
+    </table>`;
 }
 
 function buildEncounterTable(encounter, monsters) {
@@ -924,15 +914,8 @@ function collectConfig() {
   Object.keys(DEFAULT_GAME_CONFIG.permits).forEach(id => {
     if (!gc.permits) gc.permits = {};
     if (!gc.permits[id]) gc.permits[id] = { ...DEFAULT_GAME_CONFIG.permits[id] };
-    if (document.getElementById('recipe-rows-' + id)) {
-      const recipe = {};
-      document.querySelectorAll(`.rmat-${id}`).forEach((matEl, i) => {
-        const mat = matEl.value;
-        const qty = parseInt(document.querySelectorAll(`.rqty-${id}`)[i]?.value || '0');
-        if (mat && qty > 0) recipe[mat] = qty;
-      });
-      gc.permits[id].recipe = Object.keys(recipe).length > 0 ? recipe : null;
-    }
+    const costEl = document.getElementById('cfg-permit-cost-' + id);
+    if (costEl) gc.permits[id].cost = parseInt(costEl.value) || gc.permits[id].cost;
   });
 
   // BASE HP
