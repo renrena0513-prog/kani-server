@@ -177,12 +177,15 @@ const TARGET_LABELS = {
 // リッチフィールド(base_attack/mult_min...)が無いカードは従来どおり固定damage
 // { total, crits } を返す。リッチフィールドなしのカードは固定damage
 function computeCardDamage(cardDef, enemyDefense = null) {
-  if (!cardDef) return { total: 0, crits: 0 };
+  if (!cardDef) return { total: 0, crits: 0, hits: [] };
   const hasRich = cardDef.base_attack != null || cardDef.mult_max != null;
-  if (!hasRich) return { total: cardDef.damage || 0, crits: 0 };
+  if (!hasRich) {
+    const dmg = cardDef.damage || 0;
+    return { total: dmg, crits: 0, hits: dmg > 0 ? [{ dmg, crit: false }] : [] };
+  }
 
   const def = enemyDefense != null ? enemyDefense : (C?.monster?.defense ?? 0);
-  const hits = Math.max(1, Number(cardDef.hit_count) || 1);
+  const hitCount = Math.max(1, Number(cardDef.hit_count) || 1);
   const min = Number(cardDef.mult_min ?? 1);
   const max = Number(cardDef.mult_max ?? min);
   const totalAtk = COMBAT_STATS.attack + (Number(cardDef.base_attack) || 0);
@@ -190,13 +193,17 @@ function computeCardDamage(cardDef, enemyDefense = null) {
   const critDmg  = COMBAT_STATS.critDmg + (Number(cardDef.crit_dmg_bonus) || 0);
 
   let total = 0, crits = 0;
-  for (let h = 0; h < hits; h++) {
+  const hits = [];
+  for (let h = 0; h < hitCount; h++) {
     const mult = min + Math.random() * (max - min);
     let dmg = Math.max(1, totalAtk * mult * (DEF_COEF / (DEF_COEF + def)));
-    if (Math.random() < critRate) { dmg *= critDmg; crits++; }
-    total += Math.floor(dmg);
+    let isCrit = false;
+    if (Math.random() < critRate) { dmg *= critDmg; crits++; isCrit = true; }
+    dmg = Math.floor(dmg);
+    total += dmg;
+    hits.push({ dmg, crit: isCrit });
   }
-  return { total, crits };
+  return { total, crits, hits };
 }
 
 // モンスター定義
@@ -3052,12 +3059,16 @@ async function playCard(cardIdx) {
   C.discard.push(cardId);
   syncCardsToDb().catch(() => {});
 
-  const { total: damage, crits } = computeCardDamage(cardDef);
+  const { total: damage, crits, hits } = computeCardDamage(cardDef);
   if (damage > 0) {
     const critLabel = crits > 0 ? ' 💥CRIT!' : '';
     combatAddLog(`⚔️ ${cardDef.name}！ ${damage} ダメージ${critLabel}`);
   }
-  spawnDamageNumber(damage, crits > 0);
+  if (hits.length > 1) {
+    hits.forEach((h, i) => setTimeout(() => spawnDamageNumber(h.dmg, h.crit), i * 220));
+  } else {
+    spawnDamageNumber(damage, crits > 0);
+  }
 
   if (C.sessionId) {
     // マルチ: 蓄積してターン終了時にサーバーへ送信（即時視覚反映）
