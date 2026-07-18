@@ -638,13 +638,13 @@ html, body {
     position: absolute;
     top: 4px;
     left: 4px;
-    width: 16px;
-    height: 16px;
-    border-radius: 4px;
+    width: 22px;
+    height: 22px;
+    border-radius: 5px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: .56rem;
+    font-size: .74rem;
     font-weight: 900;
     color: #fff;
     text-shadow: 0 1px 2px rgba(0,0,0,.6);
@@ -738,7 +738,7 @@ html, body {
 .combat-card-img {
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: cover;
     image-rendering: pixelated;
 }
 
@@ -766,10 +766,10 @@ html, body {
     right: 4px;
     background: rgba(0, 20, 90, 0.88);
     color: #60b4ff;
-    font-size: .52rem;
+    font-size: .7rem;
     font-weight: 900;
-    border-radius: 4px;
-    padding: 1px 4px;
+    border-radius: 5px;
+    padding: 2px 6px;
     line-height: 1.5;
     z-index: 3;
     pointer-events: none;

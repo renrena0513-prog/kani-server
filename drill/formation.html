@@ -110,7 +110,7 @@
     }
     .card-img-fill {
       width: 100%; height: 100%;
-      object-fit: contain;
+      object-fit: cover;
       image-rendering: pixelated;
     }
     .card-name-bar {
@@ -125,8 +125,15 @@
     .card-ap-badge {
       position: absolute; top: 4px; right: 4px;
       background: rgba(0,20,90,.88);
-      color: #60b4ff; font-size: .48rem; font-weight: 900;
-      border-radius: 3px; padding: 1px 3px; line-height: 1.5;
+      color: #60b4ff; font-size: .68rem; font-weight: 900;
+      border-radius: 5px; padding: 2px 6px; line-height: 1.5;
+      z-index: 3; pointer-events: none;
+    }
+    .card-qty-badge {
+      position: absolute; bottom: 22px; right: 4px;
+      background: rgba(212,168,83,.92);
+      color: #1a1a2e; font-size: .62rem; font-weight: 900;
+      border-radius: 5px; padding: 1px 5px; line-height: 1.5;
       z-index: 3; pointer-events: none;
     }
     .card-slot-num {
@@ -260,9 +267,9 @@
     /* ランクバッジ */
     .rank-badge {
       position: absolute; top: 4px; left: 4px;
-      width: 16px; height: 16px; border-radius: 4px;
+      width: 22px; height: 22px; border-radius: 5px;
       display: flex; align-items: center; justify-content: center;
-      font-size: .56rem; font-weight: 900; color: #fff;
+      font-size: .74rem; font-weight: 900; color: #fff;
       text-shadow: 0 1px 2px rgba(0,0,0,.6);
       pointer-events: none; z-index: 3; letter-spacing: 0;
     }
@@ -1053,7 +1060,8 @@ function renderUnequipped() {
       ${uSelected ? '<div class="sel-label">選択中</div>' : ''}
       <div class="card-ap-badge">${c.ap_cost ?? 0}</div>
       <div class="card-img-area">${cardVisual(c)}</div>
-      <div class="card-name-bar">${c.name}${count > 1 ? ` ×${count}` : ''}</div>`;
+      ${count > 1 ? `<div class="card-qty-badge">×${count}</div>` : ''}
+      <div class="card-name-bar">${c.name}</div>`;
 
     // ── ドラッグ（デスクトップ）──
     card.draggable = true;

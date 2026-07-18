@@ -171,6 +171,16 @@ const TARGET_LABELS = {
   ALLY_SINGLE:  '味方単体',
   ALLY_ALL:     '味方全体',
   SELF:         '自分',
+  // DB(drill_cards.target)は小文字表記のため合わせて用意
+  enemy_single: '単体（敵）',
+  enemy_all:    '全体（敵）',
+  enemy_random: 'ランダム（敵）',
+  self:         '自分',
+  ally_single:  '味方単体',
+  ally_all:     '味方全体',
+  ally_random:  '味方ランダム',
+  all:          '全体',
+  all_random:   '全体ランダム',
 };
 
 // カードのリッチ攻撃力を計算（1枚使用時の合計ダメージ）
@@ -1545,26 +1555,66 @@ function cardDisplayName(cardId) {
 }
 
 // 小型カードプレビュー（カード合成・錬金窯の結果表示用）
-function miniCardHtml(cardId) {
+// 長押し（デスクトップ: マウス長押し / モバイル: タッチ長押し）でカード詳細を表示
+let _miniLpTimer = null;
+let _miniLpMoved = false;
+function miniCardLpStart(cardId) {
+  _miniLpMoved = false;
+  clearTimeout(_miniLpTimer);
+  _miniLpTimer = setTimeout(() => {
+    _miniLpTimer = null;
+    if (!_miniLpMoved) showCardDetail(cardId, CARDS[cardId] || {});
+  }, 500);
+}
+function miniCardLpMove() {
+  _miniLpMoved = true;
+  clearTimeout(_miniLpTimer);
+  _miniLpTimer = null;
+}
+function miniCardLpEnd() {
+  clearTimeout(_miniLpTimer);
+  _miniLpTimer = null;
+}
+
+function _miniCardInnerHtml(cardId) {
   const def = CARDS[cardId] || {};
   const rank = (def.rarity ?? '').toLowerCase() || rankFromId(cardId);
   const imgHtml = def.imageUrl
-    ? `<img src="${escHtml(def.imageUrl)}" style="width:100%;height:100%;object-fit:contain;" onerror="this.outerHTML='<div style=&quot;font-size:1.7rem;line-height:1;&quot;>${escHtml(def.icon || '⚔️')}</div>'">`
+    ? `<img src="${escHtml(def.imageUrl)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML='<div style=&quot;font-size:1.7rem;line-height:1;&quot;>${escHtml(def.icon || '⚔️')}</div>'">`
     : `<div style="font-size:1.7rem;line-height:1;">${escHtml(def.icon || '⚔️')}</div>`;
   return `
-    <div style="width:60px;height:88px;flex-shrink:0;background:#0d2040;border:1.5px solid rgba(212,168,83,.55);border-radius:9px;overflow:hidden;position:relative;display:flex;flex-direction:column;">
-      ${rankBadgeHtml(rank)}
-      <div style="position:absolute;top:3px;right:3px;background:rgba(0,20,90,.88);color:#60b4ff;font-size:.48rem;font-weight:900;border-radius:4px;padding:1px 3px;line-height:1.5;z-index:3;">${def.ap_cost ?? 0}</div>
-      <div style="flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;background:linear-gradient(160deg,#1e3f72 0%,#0d2040 100%);">${imgHtml}</div>
-      <div style="flex-shrink:0;background:rgba(0,0,0,.6);font-size:.5rem;font-weight:700;color:#fff;text-align:center;padding:2px 3px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(def.name || cardId)}</div>
+    ${rankBadgeHtml(rank)}
+    <div style="position:absolute;top:3px;right:3px;background:rgba(0,20,90,.88);color:#60b4ff;font-size:.64rem;font-weight:900;border-radius:5px;padding:2px 5px;line-height:1.5;z-index:3;">${def.ap_cost ?? 0}</div>
+    <div style="flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;background:linear-gradient(160deg,#1e3f72 0%,#0d2040 100%);">${imgHtml}</div>
+    <div style="flex-shrink:0;background:rgba(0,0,0,.6);font-size:.5rem;font-weight:700;color:#fff;text-align:center;padding:2px 3px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(def.name || cardId)}</div>`;
+}
+
+function _miniCardLpAttrs(cardId) {
+  return `onmousedown="miniCardLpStart('${cardId}')" onmousemove="miniCardLpMove()" onmouseup="miniCardLpEnd()" onmouseleave="miniCardLpEnd()"
+    ontouchstart="miniCardLpStart('${cardId}')" ontouchmove="miniCardLpMove()" ontouchend="miniCardLpEnd()"`;
+}
+
+// 固定サイズ（カード合成: 横並び用）
+function miniCardHtml(cardId) {
+  return `
+    <div style="width:60px;height:88px;flex-shrink:0;background:#0d2040;border:1.5px solid rgba(212,168,83,.55);border-radius:9px;overflow:hidden;position:relative;display:flex;flex-direction:column;cursor:pointer;user-select:none;"
+        ${_miniCardLpAttrs(cardId)}>
+      ${_miniCardInnerHtml(cardId)}
     </div>`;
 }
 
-function showSynthesize() {
-  if (G.py !== 0) { log('⚠️ カード合成は地上のみ'); return; }
+// グリッド用（錬金窯の結果表示: aspect-ratioでセルいっぱいに広がる）
+function miniCardGridItemHtml(cardId) {
+  return `
+    <div style="aspect-ratio:3/4;background:#0d2040;border:1.5px solid rgba(212,168,83,.55);border-radius:9px;overflow:hidden;position:relative;display:flex;flex-direction:column;cursor:pointer;user-select:none;"
+        ${_miniCardLpAttrs(cardId)}>
+      ${_miniCardInnerHtml(cardId)}
+    </div>`;
+}
 
+// 合成可能なカードの一覧を作る（カードは G.ownedCards＝drill_player_cards に保存されている）
+function _buildSynthList() {
   const synthList = [];
-  // カードは G.ownedCards（drill_player_cards テーブル）に保存されている
   for (const [itemId, qty] of Object.entries(G.ownedCards)) {
     if (qty < 4) continue;
     // 末尾が _d / _c / _b / _a のカードIDにマッチ
@@ -1577,6 +1627,13 @@ function showSynthesize() {
     if (!CARDS[toId]) continue;
     synthList.push({ fromId: itemId, qty, toId, times: Math.floor(qty / 4) });
   }
+  return synthList;
+}
+
+function showSynthesize() {
+  if (G.py !== 0) { log('⚠️ カード合成は地上のみ'); return; }
+
+  const synthList = _buildSynthList();
 
   let html = `<div class="modal-title">⚗️ カード合成</div>
     <div style="font-size:.78rem;opacity:.6;margin-bottom:14px;">同じカード4枚 → 1ランク上のカード1枚</div>`;
@@ -1585,6 +1642,7 @@ function showSynthesize() {
     html += `<div style="font-size:.85rem;opacity:.5;padding:12px 0;">合成できるカードがありません<br>
       <span style="font-size:.75rem;">同じカードを4枚集めると合成できます</span></div>`;
   } else {
+    html += `<button class="btn-modal-action" style="width:100%;margin-bottom:12px;" onclick="doSynthesizeAll()">⚗️ 一括合成（合成可能な分すべて）</button>`;
     for (const s of synthList) {
       html += `<div class="modal-row" style="align-items:center;">
         <div style="display:flex;align-items:center;gap:8px;">
@@ -1620,6 +1678,39 @@ async function doSynthesize(fromId, toId) {
 
   log(`⚗️ ${cardDisplayName(fromId)} ×4 → ${cardDisplayName(toId)} に合成！`);
   showSynthesize();
+}
+
+// 合成可能なものをランクが上がる限り連鎖的にすべて合成する
+async function doSynthesizeAll() {
+  const synthList = _buildSynthList();
+  const producedIds = []; // 合成で生成されたカードID（1回の合成につき1件、重複してもまとめない）
+  const touched = new Set();
+
+  for (const s of synthList) {
+    if (s.times <= 0) continue;
+    const newFromQty = s.qty - s.times * 4;
+    const newToQty = (G.ownedCards[s.toId] || 0) + s.times;
+    if (newFromQty <= 0) delete G.ownedCards[s.fromId]; else G.ownedCards[s.fromId] = newFromQty;
+    G.ownedCards[s.toId] = newToQty;
+    touched.add(s.fromId);
+    touched.add(s.toId);
+    for (let i = 0; i < s.times; i++) producedIds.push(s.toId);
+  }
+
+  if (producedIds.length === 0) { log('⚠️ 合成できるカードがありません'); showSynthesize(); return; }
+
+  await supabaseClient.from('drill_player_cards')
+    .upsert(Array.from(touched).map(id => ({ user_id: G.userId, card_id: id, quantity: G.ownedCards[id] || 0 })));
+
+  log(`⚗️ 一括合成: 合計${producedIds.length}回合成しました！`);
+
+  const resultCardsHtml = producedIds.map(id => miniCardGridItemHtml(id)).join('');
+  openModal(`
+    <div class="modal-title">⚗️ 一括合成完了！（${producedIds.length}件）</div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px;">${resultCardsHtml}</div>
+    <button class="btn-modal-action" style="width:100%;margin-bottom:6px;" onclick="showSynthesize()">⚗️ 合成に戻る</button>
+    <button class="btn-modal-close" onclick="closeModal()">閉じる</button>
+  `);
 }
 
 // ============================================================
@@ -1835,9 +1926,6 @@ async function doAlchemy() {
     }
   }
 
-  const rarityColors = { d:'#999', c:'#4caf50', b:'#2196f3', a:'#9c27b0', s:'#ff9800' };
-  const rarityLabels = { d:'D', c:'C', b:'B', a:'A', s:'S' };
-
   // count回分の抽選をまとめて実行（素材投入・カード付与は最後にまとめて反映）
   const results = [];
   for (let i = 0; i < count; i++) {
@@ -1882,25 +1970,12 @@ async function doAlchemy() {
   if (successCount > 0) log(`🔥 錬金窯: ${successCount}件のカードを生成！`);
   if (failCount > 0) log(`⚠️ ${failCount}回は対応するカードが未登録のため生成されませんでした`);
 
-  const resultRows = results.map(r => {
-    if (!r.ok) {
-      return `<div class="modal-row" style="padding:7px 0;opacity:.5;">
-        <span style="font-size:.82rem;">${escHtml(MATS[r.material]?.name || r.material)} → 生成なし（未登録）</span>
-      </div>`;
-    }
-    return `<div class="modal-row" style="padding:7px 0;align-items:center;">
-      <div style="display:flex;align-items:center;gap:10px;">
-        ${miniCardHtml(r.cardId)}
-        <span style="font-size:.85rem;">${escHtml(alchemyCardDisplayName(r.cardId))}</span>
-      </div>
-      <span style="font-size:.85rem;font-weight:900;color:${rarityColors[r.rarity]};">${rarityLabels[r.rarity]}</span>
-    </div>`;
-  }).join('');
+  const resultCardsHtml = results.filter(r => r.ok).map(r => miniCardGridItemHtml(r.cardId)).join('');
 
   openModal(`
     <div class="modal-title">🔥 錬成完了！（${successCount}/${count}）</div>
-    <div style="max-height:46vh;overflow-y:auto;margin-bottom:12px;">${resultRows}</div>
-    ${failCount > 0 ? `<div style="font-size:.72rem;opacity:.5;margin-bottom:10px;">※ 未登録の組み合わせが出た回は素材のみ消費され、カードは生成されません</div>` : ''}
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px;">${resultCardsHtml}</div>
+    ${failCount > 0 ? `<div style="font-size:.72rem;opacity:.5;margin-bottom:10px;">※ 未登録の組み合わせが${failCount}回あり、素材のみ消費されカードは生成されませんでした</div>` : ''}
     <button class="btn-modal-action" style="width:100%;margin-bottom:6px;" onclick="showAlchemy()">🔥 もう一度錬成</button>
     <button class="btn-modal-close" onclick="closeModal()">閉じる</button>
   `);
@@ -2801,6 +2876,33 @@ function spawnDamageNumber(amount, isCrit = false) {
   setTimeout(() => el.remove(), 1600);
 }
 
+function spawnHealNumber(amount) {
+  const area = document.getElementById('ally-area');
+  if (!area || amount <= 0) return;
+
+  const rect = area.getBoundingClientRect();
+  const x = rect.left + rect.width  * (0.35 + Math.random() * 0.3);
+  const y = rect.top  + rect.height * (0.25 + Math.random() * 0.2);
+
+  const el = document.createElement('div');
+  el.style.cssText = `
+    position:fixed;
+    left:${x}px; top:${y}px;
+    font-size:2rem;
+    font-weight:900;
+    color:#6bde9b;
+    text-shadow:0 2px 10px rgba(0,0,0,.95),0 0 22px rgba(107,222,155,.65);
+    pointer-events:none;
+    z-index:30000;
+    animation:dmgFloat 1.5s ease-out forwards;
+    white-space:nowrap;
+    user-select:none;
+  `;
+  el.textContent = `+${amount}`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1600);
+}
+
 const COMBAT_STORAGE_KEY = 'drill_combat_v1';
 
 function saveCombatState() {
@@ -3056,14 +3158,41 @@ async function startCombat(monsterId, cx, cy) {
   showCombatModal();
 }
 
+// HPを回復し、演出・各種保存をまとめて行う（杖の回復・鎌のライフスティール共通）
+async function applyHeal(amount) {
+  const healed = Math.max(0, Math.min(Math.round(amount), G.maxHp - G.hp));
+  if (healed <= 0) return 0;
+  G.hp += healed;
+  spawnHealNumber(healed);
+  await saveHp();
+  if (C.sessionId) {
+    // マルチ: 自分の参加者行のHPも直接更新（他プレイヤーにリアルタイム反映）
+    await supabaseClient.from('drill_combat_participants')
+      .update({ hp: G.hp }).eq('session_id', C.sessionId).eq('user_id', G.userId);
+  }
+  renderSide();
+  return healed;
+}
+
 // カードを1枚使う（ラウンドは終了しない）
-async function playCard(cardIdx) {
+// dropZone: カードをドロップした場所（'enemy' | 'ally'）。対象が味方専用のカードは 'ally' でのみ使用可
+async function playCard(cardIdx, dropZone = 'enemy') {
   if (!C.active || cardIdx < 0 || cardIdx >= C.hand.length) return;
   if (C.sessionId && C.myActedRound >= C.currentRound) return;
 
   const cardId  = C.hand[cardIdx];
   const cardDef = CARDS[cardId];
   if (!cardDef) return;
+
+  const targetType = (cardDef.target || 'enemy_single').toLowerCase();
+  const isAllyTarget = targetType === 'self' || targetType === 'ally_single' || targetType === 'ally_all';
+  if (isAllyTarget !== (dropZone === 'ally')) {
+    combatAddLog(isAllyTarget
+      ? `⚠️ ${cardDef.name}は味方にドラッグして使ってください`
+      : `⚠️ ${cardDef.name}は敵にドラッグして使ってください`);
+    showCombatModal();
+    return;
+  }
 
   const apCost = cardDef.ap_cost ?? 0;
   if (apCost > 0 && C.ap < apCost) {
@@ -3079,15 +3208,32 @@ async function playCard(cardIdx) {
   C.discard.push(cardId);
   syncCardsToDb().catch(() => {});
 
-  const { total: damage, crits, hits } = computeCardDamage(cardDef);
-  if (damage > 0) {
-    const critLabel = crits > 0 ? ' 💥CRIT!' : '';
-    combatAddLog(`⚔️ ${cardDef.name}！ ${damage} ダメージ${critLabel}`);
-  }
-  if (hits.length > 1) {
-    hits.forEach((h, i) => setTimeout(() => spawnDamageNumber(h.dmg, h.crit), i * 220));
+  let damage = 0, crits = 0, hits = [];
+  if (isAllyTarget) {
+    // 回復カード（杖など）：モンスターへのダメージはなし
+    const healed = await applyHeal(Number(cardDef.heal) || 0);
+    combatAddLog(healed > 0
+      ? `✨ ${cardDef.name}！ HP +${healed} 回復`
+      : `✨ ${cardDef.name}を使った（HPは満タン）`);
   } else {
-    spawnDamageNumber(damage, crits > 0);
+    const computed = computeCardDamage(cardDef);
+    damage = computed.total; crits = computed.crits; hits = computed.hits;
+    if (damage > 0) {
+      const critLabel = crits > 0 ? ' 💥CRIT!' : '';
+      combatAddLog(`⚔️ ${cardDef.name}！ ${damage} ダメージ${critLabel}`);
+    }
+    if (hits.length > 1) {
+      hits.forEach((h, i) => setTimeout(() => spawnDamageNumber(h.dmg, h.crit), i * 220));
+    } else {
+      spawnDamageNumber(damage, crits > 0);
+    }
+
+    // ライフスティール（例: special_id "LIFE_STEAL_10" → ダメージの10%を回復）
+    const lsMatch = /^LIFE_STEAL_(\d+)$/i.exec(cardDef.special_id || '');
+    if (lsMatch && damage > 0) {
+      const healed = await applyHeal(damage * Number(lsMatch[1]) / 100);
+      if (healed > 0) combatAddLog(`🩸 ライフスティール！ HP +${healed}`);
+    }
   }
 
   if (C.sessionId) {
@@ -3362,7 +3508,10 @@ function showCombatModal() {
         <div style="width:${apPct}%;height:100%;background:${apColor};border-radius:2px;transition:width .3s;"></div>
       </div>
       <div style="font-size:.58rem;color:${apColor};margin-top:1px;">⚡${C.ap}/${COMBAT_STATS.maxAp}</div>` : '';
-    return `<div class="cb-ally-card${acted ? ' cb-acted' : ''}">
+    return `<div class="cb-ally-card${acted ? ' cb-acted' : ''}"
+        ondragover="event.preventDefault();this.classList.add('cb-drag-over')"
+        ondragleave="this.classList.remove('cb-drag-over')"
+        ondrop="this.classList.remove('cb-drag-over');combatDropAlly(event)">
       ${avHtml}
       <div style="font-size:.65rem;font-weight:700;margin-top:3px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
         ${escHtml(p.display_name)}${acted ? ' <span style="color:#ffc107;font-size:.6rem;">✓</span>' : ''}
@@ -3420,7 +3569,7 @@ function showCombatModal() {
 
     <div class="cb-vs">⚔️ ─── VS ─── ⚔️</div>
 
-    <div class="cb-row">${allySlotsHtml}</div>
+    <div id="ally-area" class="cb-row">${allySlotsHtml}</div>
 
     ${isWaiting ? `
       <div style="text-align:center;padding:16px;font-size:.82rem;color:rgba(255,193,7,.65);">
@@ -3662,7 +3811,17 @@ function combatDrop(e) {
   if (_draggedCardIdx !== null) {
     const idx = _draggedCardIdx;
     _draggedCardIdx = null;
-    playCard(idx);
+    playCard(idx, 'enemy');
+  }
+}
+
+function combatDropAlly(e) {
+  e.preventDefault();
+  document.querySelectorAll('.cb-drag-over').forEach(el => el.classList.remove('cb-drag-over'));
+  if (_draggedCardIdx !== null) {
+    const idx = _draggedCardIdx;
+    _draggedCardIdx = null;
+    playCard(idx, 'ally');
   }
 }
 
@@ -3720,13 +3879,15 @@ function combatTouchMove(e) {
     e.preventDefault();
     _touchGhost.style.left = (t.clientX - _touchGhost.offsetWidth  / 2) + 'px';
     _touchGhost.style.top  = (t.clientY - _touchGhost.offsetHeight / 2) + 'px';
-    const zone = document.getElementById('enemy-area');
-    if (zone) {
-      const zr = zone.getBoundingClientRect();
-      zone.classList.toggle('enemy-area--active',
-        t.clientX >= zr.left && t.clientX <= zr.right &&
-        t.clientY >= zr.top  && t.clientY <= zr.bottom);
-    }
+    const inRect = (el) => {
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      return t.clientX >= r.left && t.clientX <= r.right && t.clientY >= r.top && t.clientY <= r.bottom;
+    };
+    const enemyZone = document.getElementById('enemy-area');
+    const allyZone  = document.getElementById('ally-area');
+    enemyZone?.classList.toggle('enemy-area--active', inRect(enemyZone));
+    allyZone?.classList.toggle('enemy-area--active', inRect(allyZone));
     return;
   }
   if (_touchCardIdx === null) return;
@@ -3755,17 +3916,20 @@ function combatTouchEnd(e) {
   _touchLpTimer = null;
   if (_touchGhost) { _touchGhost.remove(); _touchGhost = null; }
   document.getElementById('enemy-area')?.classList.remove('enemy-area--active');
+  document.getElementById('ally-area')?.classList.remove('enemy-area--active');
   if (_touchCardIdx === null) return;
   const idx = _touchCardIdx;
   _touchCardIdx = null;
-  const zone = document.getElementById('enemy-area');
-  if (!zone) return;
   const t = e.changedTouches[0];
-  const zr = zone.getBoundingClientRect();
-  if (t.clientX >= zr.left && t.clientX <= zr.right &&
-      t.clientY >= zr.top  && t.clientY <= zr.bottom) {
-    playCard(idx);
-  }
+  const inRect = (el) => {
+    if (!el) return false;
+    const r = el.getBoundingClientRect();
+    return t.clientX >= r.left && t.clientX <= r.right && t.clientY >= r.top && t.clientY <= r.bottom;
+  };
+  const enemyZone = document.getElementById('enemy-area');
+  const allyZone  = document.getElementById('ally-area');
+  if (inRect(enemyZone)) playCard(idx, 'enemy');
+  else if (inRect(allyZone)) playCard(idx, 'ally');
 }
 
 // ============================================================
