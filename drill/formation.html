@@ -153,6 +153,27 @@
     }
     .unequipped-card:hover { border-color: rgba(255,255,255,.4); background: rgba(255,255,255,.1); }
     .unequipped-card.dragging { opacity: .4; cursor: grabbing; }
+
+    /* 未装備カード フィルター・ソートバー */
+    .pool-filter-bar {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;
+    }
+    .pool-filter-bar select {
+      flex: 1 1 auto; min-width: 92px;
+      background: rgba(255,255,255,.07); color: #fff;
+      border: 1px solid rgba(255,255,255,.18); border-radius: 8px;
+      padding: 6px 8px; font-size: .74rem; font-weight: 600;
+      cursor: pointer;
+    }
+    .pool-filter-bar select:focus { outline: none; border-color: rgba(212,168,83,.6); }
+    .pool-dir-btn {
+      flex: 0 0 auto; min-width: 60px;
+      background: rgba(212,168,83,.2); color: #fff;
+      border: 1px solid rgba(212,168,83,.5); border-radius: 8px;
+      padding: 6px 10px; font-size: .74rem; font-weight: 700;
+      cursor: pointer; transition: background .15s;
+    }
+    .pool-dir-btn:hover { background: rgba(212,168,83,.4); }
     /* タップ選択 */
     .tap-selected {
       outline: 3px solid rgba(255, 210, 0, .95) !important;
@@ -292,6 +313,33 @@
     </div>
     <div class="fm-section">
       <div class="fm-section-title">未装備</div>
+      <div class="pool-filter-bar">
+        <select id="pool-sort-select" onchange="renderUnequipped()">
+          <option value="rank">ランク順</option>
+          <option value="attack">攻撃力順</option>
+          <option value="ap">APコスト順</option>
+        </select>
+        <button type="button" class="pool-dir-btn" id="pool-dir-btn" onclick="togglePoolSortDir()">▼ 降順</button>
+        <select id="pool-rank-filter" onchange="renderUnequipped()">
+          <option value="">ランク: すべて</option>
+          <option value="s">S</option>
+          <option value="a">A</option>
+          <option value="b">B</option>
+          <option value="c">C</option>
+          <option value="d">D</option>
+        </select>
+        <select id="pool-weapon-filter" onchange="renderUnequipped()">
+          <option value="">武器種: すべて</option>
+          <option value="剣">剣</option>
+          <option value="短剣">短剣</option>
+          <option value="斧">斧</option>
+          <option value="ハンマー">ハンマー</option>
+          <option value="ブーメラン">ブーメラン</option>
+          <option value="槍">槍</option>
+          <option value="杖">杖</option>
+          <option value="鎌">鎌</option>
+        </select>
+      </div>
       <div class="unequipped-grid" id="unequipped-grid"></div>
     </div>
     <button class="btn-save" onclick="saveDeck()">💾 デッキを保存</button>
@@ -643,6 +691,21 @@ let unequippedPool = []; // 未装備カードのインスタンスプール
 let dragSource = null;   // { type:'slot'|'unequipped', slotIndex?:number, cardId?:string }
 let tapSelected = null;  // タップで選択中の { type, slotIndex?, cardId? }
 
+// 未装備カードのフィルター・ソート状態
+let poolSortDir = 'desc'; // 'asc' | 'desc'
+const RANK_ORDER = { d: 0, c: 1, b: 2, a: 3, s: 4 };
+
+function togglePoolSortDir() {
+  poolSortDir = poolSortDir === 'desc' ? 'asc' : 'desc';
+  const btn = document.getElementById('pool-dir-btn');
+  if (btn) btn.textContent = poolSortDir === 'desc' ? '▼ 降順' : '▲ 昇順';
+  renderUnequipped();
+}
+
+function cardAttackPower(c) {
+  return Number(c?.base_attack ?? c?.damage ?? 0);
+}
+
 // ============================================================
 // 初期化
 // ============================================================
@@ -946,7 +1009,35 @@ function renderUnequipped() {
   const counts = {};
   for (const id of unequippedPool) counts[id] = (counts[id] || 0) + 1;
 
-  for (const [cardId, count] of Object.entries(counts)) {
+  const rankFilter   = document.getElementById('pool-rank-filter')?.value || '';
+  const weaponFilter = document.getElementById('pool-weapon-filter')?.value || '';
+  const sortBy       = document.getElementById('pool-sort-select')?.value || 'rank';
+
+  let entries = Object.entries(counts).filter(([cardId]) => {
+    const c = CARDS_DEF[cardId] ?? {};
+    const rank = (c.rarity ?? '').toLowerCase() || rankFromId(cardId) || '';
+    if (rankFilter && rank !== rankFilter) return false;
+    if (weaponFilter && c.weapon_type !== weaponFilter) return false;
+    return true;
+  });
+
+  const dir = poolSortDir === 'asc' ? 1 : -1;
+  entries.sort(([idA], [idB]) => {
+    const cA = CARDS_DEF[idA] ?? {}, cB = CARDS_DEF[idB] ?? {};
+    let vA, vB;
+    if (sortBy === 'attack')      { vA = cardAttackPower(cA);            vB = cardAttackPower(cB); }
+    else if (sortBy === 'ap')     { vA = Number(cA.ap_cost ?? 0);        vB = Number(cB.ap_cost ?? 0); }
+    else /* rank */               { vA = RANK_ORDER[(cA.rarity ?? '').toLowerCase() || rankFromId(idA)] ?? -1;
+                                     vB = RANK_ORDER[(cB.rarity ?? '').toLowerCase() || rankFromId(idB)] ?? -1; }
+    return (vA - vB) * dir;
+  });
+
+  if (entries.length === 0) {
+    grid.innerHTML = '<div style="opacity:.4;font-size:.8rem;grid-column:1/-1;padding:10px 0;">条件に一致するカードがありません</div>';
+    return;
+  }
+
+  for (const [cardId, count] of entries) {
     const c = CARDS_DEF[cardId] ?? { name: cardId, icon: '⚔️' };
     const uRank = (c.rarity ?? '').toLowerCase() || rankFromId(cardId);
     const uSelected = tapSelected?.type === 'unequipped' && tapSelected.cardId === cardId;

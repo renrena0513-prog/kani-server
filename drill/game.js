@@ -3190,11 +3190,18 @@ async function endCombat(win) {
   const monName = C.monster?.name || '???';
   if (_combatChannel) { supabaseClient.removeChannel(_combatChannel); _combatChannel = null; }
   if (C.sessionId) {
+    // 逃走時は自分だけ参加枠から抜ける（他プレイヤーの待機を残さない）
+    if (win === 'flee') {
+      try {
+        await supabaseClient.from('drill_combat_participants')
+          .delete().eq('session_id', C.sessionId).eq('user_id', G.userId);
+      } catch {}
+    }
     G.activeCombats?.delete(`${C.cx},${C.cy}`);
     renderMap();
   }
 
-  if (win) {
+  if (win === true) {
     await new Promise(resolve => {
       document.getElementById('modal-inner').innerHTML = `
         <div style="text-align:center;padding:24px 0 18px;">
@@ -3209,6 +3216,12 @@ async function endCombat(win) {
     document.getElementById('combat-log-overlay')?.remove();
     closeModal();
     log(`⚔️ ${monName}を倒した！`);
+  } else if (win === 'flee') {
+    document.getElementById('modal-overlay').dataset.combatModal = '';
+    document.getElementById('modal-inner').classList.remove('combat-modal');
+    document.getElementById('combat-log-overlay')?.remove();
+    closeModal();
+    log(`💨 ${monName}から逃げ出した`);
   } else {
     document.getElementById('modal-overlay').dataset.combatModal = '';
     document.getElementById('modal-inner').classList.remove('combat-modal');
@@ -3216,6 +3229,42 @@ async function endCombat(win) {
     closeModal();
     await handleDeath(`${monName}との戦闘`);
   }
+}
+
+// 逃げるコマンド：成功率25%固定。成功で即座に戦闘終了（報酬なし）、失敗でターン終了（モンスターが行動）
+async function fleeCombat() {
+  if (!C.active) return;
+  if (C.sessionId && C.myActedRound >= C.currentRound) return;
+
+  const success = Math.random() < 0.25;
+
+  if (success) {
+    combatAddLog('💨 うまく逃げ出した！');
+    showCombatModal();
+    await endCombat('flee');
+    return;
+  }
+
+  combatAddLog('💨 逃げるのに失敗した…');
+
+  if (!C.sessionId) {
+    // ソロ：何もしなかった扱いでモンスターの反撃だけ即時実行してからターン終了処理へ
+    const action = C.nextAction;
+    C.nextAction = getMonsterNextAction();
+    if (action) {
+      combatAddLog(`👾 ${C.monster.name}: ${action.name}`);
+      if (action.damage > 0) {
+        const mitigated = Math.max(1, Math.floor(action.damage * (DEF_COEF / (DEF_COEF + COMBAT_STATS.defense))));
+        G.hp = Math.max(0, G.hp - mitigated);
+        combatAddLog(`💥 ${mitigated} ダメージを受けた！（残り HP: ${G.hp}）`);
+        await saveHp();
+        renderSide();
+      }
+    }
+    if (G.hp <= 0) { showCombatModal(); await endCombat(false); return; }
+  }
+
+  await endTurn();
 }
 
 // スロット番号 → エンティティ番号（中央始まり配置）
@@ -3362,7 +3411,7 @@ function showCombatModal() {
       </div>
       <div class="cb-cards-row">${cardHtml}</div>
       <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
-        <div style="flex:1;"></div>
+        <button onclick="fleeCombat()" style="flex:1;background:linear-gradient(135deg,#4a4a52,#26262b);border:none;padding:11px 14px;border-radius:10px;color:#fff;font-size:.88rem;font-weight:700;cursor:pointer;letter-spacing:.04em;">🏃 逃げる（25%）</button>
         <button onclick="endTurn()" style="flex:1;background:linear-gradient(135deg,#c0392b,#7b241c);border:none;padding:11px 14px;border-radius:10px;color:#fff;font-size:.88rem;font-weight:700;cursor:pointer;letter-spacing:.04em;">ターン終了 →</button>
       </div>`}
   `;
