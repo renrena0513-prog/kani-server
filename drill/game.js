@@ -160,7 +160,7 @@ let CARDS = {
 // カードバトル：キャラ基礎ステータス（管理画面 combatStats で上書き可）
 const DEF_COEF = 200; // 防御係数
 let COMBAT_STATS = {
-  attack: 50, defense: 50, critRate: 10, critDmg: 1.5, maxAp: 100, apRegen: 10,
+  attack: 50, defense: 50, critRate: 10, critDmg: 1.5, maxAp: 100, apRegen: 10, digPower: 0,
 };
 
 const TARGET_LABELS = {
@@ -202,7 +202,7 @@ function computeCardDamage(cardDef, enemyDefense = null) {
 // モンスター定義
 let MONSTERS = {
   test_slime: {
-    name:'テストスライム', icon:'💚', imageUrl:null, maxHp:200,
+    name:'テストスライム', icon:'💚', imageUrl:null, maxHp:200, defense:0,
     layerWeights: Array.from({length: 30}, (_, i) => i < 10 ? 100 : 0),
     actions: [
       { name:'たいあたり',          damage:30, weight:1 },
@@ -472,6 +472,7 @@ async function loadGameConfig() {
           icon: v.icon ?? MONSTERS[id]?.icon ?? '👾',
           imageUrl: v.imageUrl ?? null,
           maxHp: v.maxHp ?? MONSTERS[id]?.maxHp ?? 100,
+          defense: v.defense ?? MONSTERS[id]?.defense ?? 0,
           layerWeights: (() => {
             const lw = v.layerWeights ?? MONSTERS[id]?.layerWeights;
             if (!lw) return Array.from({length: 30}, () => 0);
@@ -902,7 +903,7 @@ async function mineTick() {
 
   const drill = DRILLS[G.equippedDrillId] || DRILLS.beginner;
   const prevHP = G.mineHP[key] ?? MATS[mat].hp;
-  const dmg = Math.min(drill.power, prevHP);  // 実際に与えたダメージ
+  const dmg = Math.min(drill.power + COMBAT_STATS.digPower, prevHP);  // 実際に与えたダメージ
   G.mineHP[key] = prevHP - dmg;
 
   // ロック延長
@@ -3002,8 +3003,9 @@ async function playCard(cardIdx) {
     if (action) {
       combatAddLog(`👾 ${C.monster.name}: ${action.name}`);
       if (action.damage > 0) {
-        G.hp = Math.max(0, G.hp - action.damage);
-        combatAddLog(`💥 ${action.damage} ダメージを受けた！（残り HP: ${G.hp}）`);
+        const mitigated = Math.max(1, Math.floor(action.damage * (DEF_COEF / (DEF_COEF + COMBAT_STATS.defense))));
+        G.hp = Math.max(0, G.hp - mitigated);
+        combatAddLog(`💥 ${mitigated} ダメージを受けた！（残り HP: ${G.hp}）`);
         await saveHp();
         renderSide();
       }

@@ -191,6 +191,9 @@ const DEFAULT_GAME_CONFIG = {
     permit_200: { name: '200m入坑許可証', yMin: 200 },
   },
   baseHp: 1000,
+  combatStats: {
+    attack: 50, defense: 50, critRate: 10, critDmg: 1.5, maxAp: 100, apRegen: 10, digPower: 0,
+  },
   events: [
     // 第1層 0-99m
     [
@@ -226,6 +229,7 @@ const DEFAULT_GAME_CONFIG = {
       icon: '💚',
       imageUrl: null,
       maxHp: 200,
+      defense: 0,
       layerWeights: Array.from({length: 30}, (_, i) => i < 10 ? 100 : 0),
       actions: [
         { name: 'たいあたり',          damage: 30, weight: 1 },
@@ -335,7 +339,14 @@ async function loadGameConfigAdmin() {
   } catch {
     gameConfig = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG));
   }
+  if (!gameConfig.combatStats)    gameConfig.combatStats    = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.combatStats));
+  for (const [k, v] of Object.entries(DEFAULT_GAME_CONFIG.combatStats)) {
+    if (gameConfig.combatStats[k] == null) gameConfig.combatStats[k] = v;
+  }
   if (!gameConfig.monsters)       gameConfig.monsters       = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.monsters));
+  for (const mon of Object.values(gameConfig.monsters)) {
+    if (mon.defense == null) mon.defense = 0;
+  }
   if (!gameConfig.cards)         gameConfig.cards          = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.cards));
   // drill_attack カードは廃止（ショップでのカード販売機能も廃止）。旧データに残っていれば除去
   delete gameConfig.cards.drill_attack;
@@ -754,7 +765,6 @@ function renderEventsTab() {
   const events    = gameConfig.events    ?? DEFAULT_GAME_CONFIG.events;
   const encounter = gameConfig.encounter ?? DEFAULT_GAME_CONFIG.encounter;
   const curse     = gameConfig.curse     ?? DEFAULT_GAME_CONFIG.curse;
-  const baseHp    = gameConfig.baseHp    ?? DEFAULT_GAME_CONFIG.baseHp;
 
   const EV_LABEL = {
     nothing: 'なし',
@@ -768,10 +778,6 @@ function renderEventsTab() {
     <div class="info-box" style="margin-bottom:14px;">
       重みは合計100推奨（内部で正規化されるので合計が違っても動作します）。<br>
       上移動時の許可証チェックなし・落とし穴は常に30m下へ転移。
-    </div>
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
-      <label style="font-size:.85rem;">❤️ 基礎HP</label>
-      ${cfgNum('cfg-basehp', baseHp, 'min="1" style="width:90px;"')}
     </div>
 
     <div style="font-size:.88rem;font-weight:700;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.1);">
@@ -923,10 +929,6 @@ function collectConfig() {
     if (nameEl) gc.permits[id].name = nameEl.value || gc.permits[id].name;
   });
 
-  // BASE HP
-  const bhEl = document.getElementById('cfg-basehp');
-  if (bhEl) gc.baseHp = parseInt(bhEl.value) || 1000;
-
   // EVENTS
   const defEvs = DEFAULT_GAME_CONFIG.events;
   if (!gc.events) gc.events = JSON.parse(JSON.stringify(defEvs));
@@ -961,6 +963,7 @@ function collectConfig() {
   });
 
   // MONSTERS / CARDS / ITEMS / TREASURE / SHOP
+  collectCombatStatsConfig();
   collectMonstersConfig();
   collectCardsConfig();
   collectItemsConfig();
@@ -1008,14 +1011,6 @@ async function saveGameConfig() {
   } catch (e) {
     if (msg) msg.textContent = '❌ ' + e.message;
   }
-}
-
-async function resetGameConfig() {
-  if (!confirm('すべてのパラメータをデフォルト値に戻しますか？\n（保存ボタンを押すまでDBは変わりません）')) return;
-  gameConfig = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG));
-  renderConfigEditor();
-  const msg = document.getElementById('config-save-msg');
-  if (msg) msg.textContent = '↩️ デフォルト値を表示中（保存するまでDBは未更新）';
 }
 
 // ============================================================
@@ -1204,9 +1199,25 @@ function closeInvModal() {
 
 function renderMonstersTab() {
   const monsters = gameConfig.monsters ?? {};
-  let html = `<div class="info-box" style="margin-bottom:14px;">
-    各モンスターの名前・体力・行動・出現率を設定します。出現率の重みは0=出現しない。
-  </div>`;
+  const baseHp = gameConfig.baseHp ?? DEFAULT_GAME_CONFIG.baseHp;
+  const cs = { ...DEFAULT_GAME_CONFIG.combatStats, ...(gameConfig.combatStats ?? {}) };
+
+  let html = `
+    <div class="cfg-subhead">❤️ プレイヤー基礎ステータス</div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:24px;align-items:flex-end;">
+      <label style="font-size:.82rem;">HP<br>${cfgNum('cfg-basehp', baseHp, 'min="1" style="width:90px;"')}</label>
+      <label style="font-size:.82rem;">AP<br>${cfgNum('cfg-cs-maxAp', cs.maxAp, 'min="0" style="width:80px;"')}</label>
+      <label style="font-size:.82rem;">AP自然回復<br>${cfgNum('cfg-cs-apRegen', cs.apRegen, 'min="0" style="width:80px;"')}</label>
+      <label style="font-size:.82rem;">力<br>${cfgNum('cfg-cs-attack', cs.attack, 'min="0" style="width:80px;"')}</label>
+      <label style="font-size:.82rem;">防御力<br>${cfgNum('cfg-cs-defense', cs.defense, 'min="0" style="width:80px;"')}</label>
+      <label style="font-size:.82rem;">クリティカル率(%)<br>${cfgNum('cfg-cs-critRate', cs.critRate, 'min="0" max="100" step="0.1" style="width:80px;"')}</label>
+      <label style="font-size:.82rem;">クリティカルダメージ(倍率)<br>${cfgNum('cfg-cs-critDmg', cs.critDmg, 'min="0" step="0.01" style="width:80px;"')}</label>
+      <label style="font-size:.82rem;">発掘力<br>${cfgNum('cfg-cs-digPower', cs.digPower, 'min="0" style="width:80px;"')}</label>
+    </div>
+    <div class="cfg-subhead">👾 モンスター</div>
+    <div class="info-box" style="margin-bottom:14px;">
+      各モンスターの名前・体力・防御力・行動・出現率を設定します。出現率の重みは0=出現しない。
+    </div>`;
 
   for (const [id, mon] of Object.entries(monsters)) {
     const acts = mon.actions ?? [];
@@ -1239,6 +1250,9 @@ function renderMonstersTab() {
         <label style="font-size:.82rem;">HP<br>
           <input class="cfg-input mon-hp-${id}" type="number" value="${mon.maxHp}" min="1" style="width:90px;">
         </label>
+        <label style="font-size:.82rem;">防御力<br>
+          <input class="cfg-input mon-def-${id}" type="number" value="${mon.defense ?? 0}" min="0" style="width:80px;">
+        </label>
         <label style="font-size:.82rem;">アイコン絵文字<br>
           <input class="cfg-input mon-icon-${id}" type="text" value="${escDrill(mon.icon ?? '')}" placeholder="👾" style="width:70px;">
         </label>
@@ -1263,15 +1277,40 @@ function renderMonstersTab() {
   document.getElementById('cfg-tab-monsters').innerHTML = html;
 }
 
+function collectCombatStatsConfig() {
+  const gc = gameConfig;
+  const bhEl = document.getElementById('cfg-basehp');
+  if (bhEl) gc.baseHp = parseInt(bhEl.value) || 1000;
+
+  if (!gc.combatStats) gc.combatStats = { ...DEFAULT_GAME_CONFIG.combatStats };
+  const cs = gc.combatStats;
+  const maxApEl    = document.getElementById('cfg-cs-maxAp');
+  const apRegenEl  = document.getElementById('cfg-cs-apRegen');
+  const attackEl   = document.getElementById('cfg-cs-attack');
+  const defenseEl  = document.getElementById('cfg-cs-defense');
+  const critRateEl = document.getElementById('cfg-cs-critRate');
+  const critDmgEl  = document.getElementById('cfg-cs-critDmg');
+  const digPowerEl = document.getElementById('cfg-cs-digPower');
+  if (maxApEl)    cs.maxAp    = parseInt(maxApEl.value) || 0;
+  if (apRegenEl)  cs.apRegen  = parseInt(apRegenEl.value) || 0;
+  if (attackEl)   cs.attack   = parseInt(attackEl.value) || 0;
+  if (defenseEl)  cs.defense  = parseInt(defenseEl.value) || 0;
+  if (critRateEl) cs.critRate = parseFloat(critRateEl.value) || 0;
+  if (critDmgEl)  cs.critDmg  = parseFloat(critDmgEl.value) || 0;
+  if (digPowerEl) cs.digPower = parseInt(digPowerEl.value) || 0;
+}
+
 function collectMonstersConfig() {
   const monsters = gameConfig.monsters ?? {};
   for (const [id, mon] of Object.entries(monsters)) {
     const nameEl = document.querySelector(`.mon-name-${id}`);
     const hpEl   = document.querySelector(`.mon-hp-${id}`);
+    const defEl  = document.querySelector(`.mon-def-${id}`);
     const iconEl = document.querySelector(`.mon-icon-${id}`);
-    if (nameEl) mon.name  = nameEl.value;
-    if (hpEl)   mon.maxHp = parseInt(hpEl.value) || 100;
-    if (iconEl) mon.icon  = iconEl.value;
+    if (nameEl) mon.name    = nameEl.value;
+    if (hpEl)   mon.maxHp   = parseInt(hpEl.value) || 100;
+    if (defEl)  mon.defense = parseInt(defEl.value) || 0;
+    if (iconEl) mon.icon    = iconEl.value;
 
     // layerWeights はエンカウントタブの統合テーブルから収集
     const newLw = [];
@@ -1294,18 +1333,20 @@ function collectMonstersConfig() {
 }
 
 function addMonster() {
+  collectCombatStatsConfig();
   collectMonstersConfig();
   const id = 'monster_' + Date.now();
   if (!gameConfig.monsters) gameConfig.monsters = {};
   gameConfig.monsters[id] = {
     name: '新モンスター', icon: '👾', imageUrl: null,
-    maxHp: 100, layerWeights: Array.from({length: 30}, () => 0),
+    maxHp: 100, defense: 0, layerWeights: Array.from({length: 30}, () => 0),
     actions: [{ name: '攻撃', damage: 10, weight: 1 }],
   };
   renderMonstersTab();
 }
 
 function deleteMonster(id) {
+  collectCombatStatsConfig();
   collectMonstersConfig();
   if (!confirm(`「${gameConfig.monsters?.[id]?.name || id}」を削除しますか？`)) return;
   delete gameConfig.monsters[id];
@@ -1313,6 +1354,7 @@ function deleteMonster(id) {
 }
 
 function addMonsterAction(id) {
+  collectCombatStatsConfig();
   collectMonstersConfig();
   if (!gameConfig.monsters?.[id]) return;
   gameConfig.monsters[id].actions.push({ name: '行動名', damage: 0, weight: 1 });
@@ -1320,6 +1362,7 @@ function addMonsterAction(id) {
 }
 
 function delMonsterAction(id, idx) {
+  collectCombatStatsConfig();
   collectMonstersConfig();
   if (!gameConfig.monsters?.[id]) return;
   gameConfig.monsters[id].actions.splice(idx, 1);
@@ -1330,6 +1373,7 @@ async function uploadMonsterImage(id, input) {
   const file = input.files?.[0];
   if (!file) return;
   try {
+    collectCombatStatsConfig();
     collectMonstersConfig();
     const url = await uploadDrillImage('monsters/' + id, file);
     if (gameConfig.monsters?.[id]) gameConfig.monsters[id].imageUrl = url;
