@@ -1410,7 +1410,7 @@ const CARD_TARGETS = [
 
 let cardsFilter = { rank: '', weaponType: '', material: '', search: '' };
 let cardsPage = 1;
-const CARDS_PAGE_SIZE = 24;
+const CARDS_PAGE_SIZE = 8;
 
 function applyCardsFilter() {
   collectCardsConfig();

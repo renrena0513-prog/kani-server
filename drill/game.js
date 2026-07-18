@@ -1902,83 +1902,93 @@ function _alchBuildWeaponTable(material) {
   return table;
 }
 
+let _alchemyBusy = false; // 連打による多重実行防止
+
 async function doAlchemy() {
   if (G.py !== 0) return;
+  if (_alchemyBusy) return; // 連打防止：処理中は無視
+  _alchemyBusy = true;
+  const btn = document.getElementById('alch-do-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '🔥 錬成中…'; }
 
-  const inputs = document.querySelectorAll('.alch-mat-input');
-  const invest = {};
-  let total = 0;
-  inputs.forEach(inp => {
-    const id = inp.id.replace('alch-', '');
-    const qty = Math.max(0, parseInt(inp.value, 10) || 0);
-    if (qty > 0) { invest[id] = qty; total += qty; }
-  });
+  try {
+    const inputs = document.querySelectorAll('.alch-mat-input');
+    const invest = {};
+    let total = 0;
+    inputs.forEach(inp => {
+      const id = inp.id.replace('alch-', '');
+      const qty = Math.max(0, parseInt(inp.value, 10) || 0);
+      if (qty > 0) { invest[id] = qty; total += qty; }
+    });
 
-  if (total !== 100) { log('⚠️ 素材を合計100個投入してください'); return; }
+    if (total !== 100) { log('⚠️ 素材を合計100個投入してください'); return; }
 
-  const countEl = document.getElementById('alch-count');
-  const count = Math.min(10, Math.max(1, parseInt(countEl?.value, 10) || 1));
+    const countEl = document.getElementById('alch-count');
+    const count = Math.min(10, Math.max(1, parseInt(countEl?.value, 10) || 1));
 
-  for (const [id, qty] of Object.entries(invest)) {
-    if ((G.inventory[id] || 0) < qty * count) {
-      log(`⚠️ ${MATS[id]?.name || id}が不足しています`);
-      return;
+    for (const [id, qty] of Object.entries(invest)) {
+      if ((G.inventory[id] || 0) < qty * count) {
+        log(`⚠️ ${MATS[id]?.name || id}が不足しています`);
+        return;
+      }
     }
-  }
 
-  // count回分の抽選をまとめて実行（素材投入・カード付与は最後にまとめて反映）
-  const results = [];
-  for (let i = 0; i < count; i++) {
-    // STEP1: 素材抽選（投入割合で重み付け）
-    const material = _weightedRandom(invest);
+    // count回分の抽選をまとめて実行（素材投入・カード付与は最後にまとめて反映）
+    const results = [];
+    for (let i = 0; i < count; i++) {
+      // STEP1: 素材抽選（投入割合で重み付け）
+      const material = _weightedRandom(invest);
 
-    // STEP2: 武器種抽選（定義済みカードがある武器種のみ）
-    const weaponTable = _alchBuildWeaponTable(material);
-    if (Object.keys(weaponTable).length === 0) {
-      results.push({ ok: false, material });
-      continue;
+      // STEP2: 武器種抽選（定義済みカードがある武器種のみ）
+      const weaponTable = _alchBuildWeaponTable(material);
+      if (Object.keys(weaponTable).length === 0) {
+        results.push({ ok: false, material });
+        continue;
+      }
+      const weapon = _weightedRandom(weaponTable);
+
+      // STEP3: レアリティ抽選（そのweapon+materialで実在するレアリティのみ）
+      const rarityTable = {};
+      for (const [r, w] of Object.entries(ALCHEMY_RARITY_WEIGHTS)) {
+        if (CARDS[`${weapon}_${material}_${r}`]) rarityTable[r] = w;
+      }
+      const rarity = _weightedRandom(rarityTable);
+      results.push({ ok: true, cardId: `${weapon}_${material}_${rarity}`, rarity });
     }
-    const weapon = _weightedRandom(weaponTable);
 
-    // STEP3: レアリティ抽選（そのweapon+materialで実在するレアリティのみ）
-    const rarityTable = {};
-    for (const [r, w] of Object.entries(ALCHEMY_RARITY_WEIGHTS)) {
-      if (CARDS[`${weapon}_${material}_${r}`]) rarityTable[r] = w;
+    // 素材消費（count分まとめて）
+    for (const [id, qty] of Object.entries(invest)) {
+      await upsertInv(id, -qty * count);
     }
-    const rarity = _weightedRandom(rarityTable);
-    results.push({ ok: true, cardId: `${weapon}_${material}_${rarity}`, rarity });
+
+    // カード付与（まとめて集計してからDBへ反映）
+    const grantedCounts = {};
+    for (const r of results) {
+      if (r.ok) grantedCounts[r.cardId] = (grantedCounts[r.cardId] || 0) + 1;
+    }
+    for (const [cardId, n] of Object.entries(grantedCounts)) {
+      G.ownedCards[cardId] = (G.ownedCards[cardId] || 0) + n;
+      await supabaseClient.from('drill_player_cards')
+        .upsert({ user_id: G.userId, card_id: cardId, quantity: G.ownedCards[cardId] });
+    }
+
+    const successCount = results.filter(r => r.ok).length;
+    const failCount = count - successCount;
+    if (successCount > 0) log(`🔥 錬金窯: ${successCount}件のカードを生成！`);
+    if (failCount > 0) log(`⚠️ ${failCount}回は対応するカードが未登録のため生成されませんでした`);
+
+    const resultCardsHtml = results.filter(r => r.ok).map(r => miniCardGridItemHtml(r.cardId)).join('');
+
+    openModal(`
+      <div class="modal-title">🔥 錬成完了！（${successCount}/${count}）</div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px;">${resultCardsHtml}</div>
+      ${failCount > 0 ? `<div style="font-size:.72rem;opacity:.5;margin-bottom:10px;">※ 未登録の組み合わせが${failCount}回あり、素材のみ消費されカードは生成されませんでした</div>` : ''}
+      <button class="btn-modal-action" style="width:100%;margin-bottom:6px;" onclick="showAlchemy()">🔥 もう一度錬成</button>
+      <button class="btn-modal-close" onclick="closeModal()">閉じる</button>
+    `);
+  } finally {
+    _alchemyBusy = false;
   }
-
-  // 素材消費（count分まとめて）
-  for (const [id, qty] of Object.entries(invest)) {
-    await upsertInv(id, -qty * count);
-  }
-
-  // カード付与（まとめて集計してからDBへ反映）
-  const grantedCounts = {};
-  for (const r of results) {
-    if (r.ok) grantedCounts[r.cardId] = (grantedCounts[r.cardId] || 0) + 1;
-  }
-  for (const [cardId, n] of Object.entries(grantedCounts)) {
-    G.ownedCards[cardId] = (G.ownedCards[cardId] || 0) + n;
-    await supabaseClient.from('drill_player_cards')
-      .upsert({ user_id: G.userId, card_id: cardId, quantity: G.ownedCards[cardId] });
-  }
-
-  const successCount = results.filter(r => r.ok).length;
-  const failCount = count - successCount;
-  if (successCount > 0) log(`🔥 錬金窯: ${successCount}件のカードを生成！`);
-  if (failCount > 0) log(`⚠️ ${failCount}回は対応するカードが未登録のため生成されませんでした`);
-
-  const resultCardsHtml = results.filter(r => r.ok).map(r => miniCardGridItemHtml(r.cardId)).join('');
-
-  openModal(`
-    <div class="modal-title">🔥 錬成完了！（${successCount}/${count}）</div>
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px;">${resultCardsHtml}</div>
-    ${failCount > 0 ? `<div style="font-size:.72rem;opacity:.5;margin-bottom:10px;">※ 未登録の組み合わせが${failCount}回あり、素材のみ消費されカードは生成されませんでした</div>` : ''}
-    <button class="btn-modal-action" style="width:100%;margin-bottom:6px;" onclick="showAlchemy()">🔥 もう一度錬成</button>
-    <button class="btn-modal-close" onclick="closeModal()">閉じる</button>
-  `);
 }
 
 // ============================================================

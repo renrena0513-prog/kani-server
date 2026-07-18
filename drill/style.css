@@ -851,6 +851,7 @@ html, body {
 /* カード横スクロール列 */
 .cb-cards-row {
     display: flex;
+    justify-content: center;
     gap: 8px;
     overflow-x: auto;
     padding: 4px 2px 6px;
