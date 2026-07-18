@@ -266,12 +266,12 @@ const DEFAULT_GAME_CONFIG = {
   },
   alchemy: {
     weaponWeights: {
-      dirt:   { sword:20, dagger:20, axe:20, hammer:20, boomerang:10, staff:10 },
-      stone:  { sword:25, dagger:15, axe:25, hammer:25, boomerang:5,  staff:5  },
-      copper: { sword:20, dagger:20, axe:20, hammer:20, boomerang:10, staff:10 },
-      iron:   { sword:30, dagger:10, axe:20, hammer:30, boomerang:5,  staff:5  },
-      silver: { sword:20, dagger:20, axe:15, hammer:15, boomerang:10, staff:20 },
-      gold:   { sword:15, dagger:15, axe:15, hammer:15, boomerang:15, staff:25 },
+      dirt:   { sword:16, dagger:16, axe:16, hammer:16, boomerang:8, spear:10, staff:8,  scythe:10 },
+      stone:  { sword:20, dagger:12, axe:20, hammer:20, boomerang:4, spear:10, staff:4,  scythe:10 },
+      copper: { sword:16, dagger:16, axe:16, hammer:16, boomerang:8, spear:10, staff:8,  scythe:10 },
+      iron:   { sword:24, dagger:8,  axe:16, hammer:24, boomerang:4, spear:10, staff:4,  scythe:10 },
+      silver: { sword:16, dagger:16, axe:12, hammer:12, boomerang:8, spear:10, staff:16, scythe:10 },
+      gold:   { sword:12, dagger:12, axe:12, hammer:12, boomerang:12,spear:10, staff:20, scythe:10 },
     },
     rarityWeights: { d:50, c:30, b:15, a:4, s:1 },
   },
@@ -1999,8 +1999,8 @@ function clearChestImage(id) {
 
 const ALCHEMY_ADMIN_MAT_IDS  = ['dirt','stone','copper','iron','silver','gold'];
 const ALCHEMY_ADMIN_MAT_NAMES = { dirt:'土', stone:'石', copper:'銅', iron:'鉄', silver:'銀', gold:'金' };
-const ALCHEMY_WEAPON_IDS   = ['sword','dagger','axe','hammer','boomerang','staff'];
-const ALCHEMY_WEAPON_LABELS = { sword:'剣', dagger:'短剣', axe:'斧', hammer:'ハンマー', boomerang:'ブーメラン', staff:'杖' };
+const ALCHEMY_WEAPON_IDS   = ['sword','dagger','axe','hammer','boomerang','spear','staff','scythe'];
+const ALCHEMY_WEAPON_LABELS = { sword:'剣', dagger:'短剣', axe:'斧', hammer:'ハンマー', boomerang:'ブーメラン', spear:'槍', staff:'杖', scythe:'鎌' };
 const ALCHEMY_RARITY_IDS   = ['d','c','b','a','s'];
 
 function renderAlchemyTab() {
