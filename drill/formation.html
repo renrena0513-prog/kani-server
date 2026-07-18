@@ -866,7 +866,7 @@ function renderCards() {
 
 function cardVisual(c) {
   if (c.imageUrl) {
-    return `<img class="card-img-fill" src="${c.imageUrl}" onerror="this.outerHTML='<div class=\\"card-icon\\">${c.icon || '⚔️'}</div>'">`;
+    return `<img class="card-img-fill" src="${c.imageUrl}" onerror="this.outerHTML='<div class=&quot;card-icon&quot;>${c.icon || '⚔️'}</div>'">`;
   }
   return `<div class="card-icon">${c.icon || '⚔️'}</div>`;
 }

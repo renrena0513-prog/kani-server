@@ -1408,6 +1408,26 @@ const CARD_TARGETS = [
   ['all_random',   '全体ランダム'],
 ];
 
+let cardsFilter = { rank: '', weaponType: '', material: '', search: '' };
+let cardsPage = 1;
+const CARDS_PAGE_SIZE = 24;
+
+function applyCardsFilter() {
+  collectCardsConfig();
+  cardsFilter.rank       = document.getElementById('cards-filter-rank')?.value ?? '';
+  cardsFilter.weaponType = document.getElementById('cards-filter-wtype')?.value ?? '';
+  cardsFilter.material   = document.getElementById('cards-filter-material')?.value ?? '';
+  cardsFilter.search     = document.getElementById('cards-filter-search')?.value ?? '';
+  cardsPage = 1;
+  renderCardsTab();
+}
+
+function changeCardsPage(delta, totalPages) {
+  collectCardsConfig();
+  cardsPage = Math.min(Math.max(1, cardsPage + delta), totalPages);
+  renderCardsTab();
+}
+
 function renderCardsTab() {
   const cards = gameConfig.cards ?? {};
   let html = `
@@ -1420,11 +1440,55 @@ function renderCardsTab() {
   </div>
   <div class="info-box" style="margin-bottom:14px;">
     プレイヤーのデッキに入るカードの設定です。CSVで一括編集も可能です。
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center;">
+    <input id="cards-filter-search" class="cfg-input" type="text" placeholder="🔍 IDまたはカード名で検索"
+      value="${escDrill(cardsFilter.search)}" oninput="applyCardsFilter()" style="flex:1 1 180px;">
+    <select id="cards-filter-rank" class="cfg-input" onchange="applyCardsFilter()">
+      <option value="">ランク: すべて</option>
+      ${['d','c','b','a','s'].map(v => `<option value="${v}"${cardsFilter.rank===v?' selected':''}>${v.toUpperCase()}</option>`).join('')}
+    </select>
+    <select id="cards-filter-wtype" class="cfg-input" onchange="applyCardsFilter()">
+      <option value="">武器種: すべて</option>
+      ${CARD_WEAPON_TYPES.map(v => `<option value="${v}"${cardsFilter.weaponType===v?' selected':''}>${v}</option>`).join('')}
+    </select>
+    <select id="cards-filter-material" class="cfg-input" onchange="applyCardsFilter()">
+      <option value="">素材: すべて</option>
+      ${CARD_MATERIALS.map(v => `<option value="${v}"${cardsFilter.material===v?' selected':''}>${v}</option>`).join('')}
+    </select>
   </div>`;
 
   const sortedCards = Object.entries(cards).sort((a, b) => (a[1].no ?? Infinity) - (b[1].no ?? Infinity));
+  const filteredCards = sortedCards.filter(([id, card]) => {
+    if (cardsFilter.rank && (card.rarity ?? '').toLowerCase() !== cardsFilter.rank) return false;
+    if (cardsFilter.weaponType && card.weapon_type !== cardsFilter.weaponType) return false;
+    if (cardsFilter.material && card.material !== cardsFilter.material) return false;
+    if (cardsFilter.search) {
+      const q = cardsFilter.search.toLowerCase();
+      if (!id.toLowerCase().includes(q) && !(card.name ?? '').toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
 
-  for (const [id, card] of sortedCards) {
+  const totalPages = Math.max(1, Math.ceil(filteredCards.length / CARDS_PAGE_SIZE));
+  cardsPage = Math.min(Math.max(1, cardsPage), totalPages);
+  const pageStart = (cardsPage - 1) * CARDS_PAGE_SIZE;
+  const pageCards = filteredCards.slice(pageStart, pageStart + CARDS_PAGE_SIZE);
+
+  const pagerHtml = `
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+      <span style="font-size:.78rem;opacity:.6;">
+        ${filteredCards.length}件中 ${filteredCards.length === 0 ? 0 : pageStart + 1}–${Math.min(pageStart + CARDS_PAGE_SIZE, filteredCards.length)}件を表示
+      </span>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button class="btn-refresh" ${cardsPage <= 1 ? 'disabled style="opacity:.4;cursor:default;"' : ''} onclick="changeCardsPage(-1,${totalPages})">‹ 前へ</button>
+        <span style="font-size:.82rem;">${cardsPage} / ${totalPages}</span>
+        <button class="btn-refresh" ${cardsPage >= totalPages ? 'disabled style="opacity:.4;cursor:default;"' : ''} onclick="changeCardsPage(1,${totalPages})">次へ ›</button>
+      </div>
+    </div>`;
+  html += pagerHtml;
+
+  for (const [id, card] of pageCards) {
     const imgPreview = card.imageUrl
       ? `<img src="${escDrill(card.imageUrl)}" style="width:48px;height:48px;object-fit:contain;border-radius:6px;background:rgba(255,255,255,.08);">`
       : `<div style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);border-radius:6px;font-size:2rem;">⚔️</div>`;
@@ -1510,6 +1574,7 @@ function renderCardsTab() {
     </div>`;
   }
 
+  html += pagerHtml;
   html += `<button class="btn-refresh" onclick="addCard()">＋ カード追加</button>`;
   document.getElementById('cfg-tab-cards').innerHTML = html;
 }
@@ -1519,6 +1584,8 @@ function collectCardsConfig() {
   const parseNum = (v, fallback = null) => (v === '' || v == null) ? fallback : (parseFloat(v) || fallback);
   const parseInt2 = (v, fallback = null) => (v === '' || v == null) ? fallback : (parseInt(v) || fallback);
   for (const [id, card] of Object.entries(cards)) {
+    // フィルター・ページングで現在表示されていないカードは触らない（値の消失を防ぐ）
+    if (!document.querySelector(`.card-name-${id}`)) continue;
     const g = cls => document.querySelector(`.${cls}-${id}`)?.value ?? '';
     card.no              = parseInt2(g('card-no'), card.no);
     card.name            = g('card-name')      || card.name;
@@ -1546,6 +1613,9 @@ function addCard() {
   if (!gameConfig.cards) gameConfig.cards = {};
   const nextNo = Math.max(0, ...Object.values(gameConfig.cards).map(c => c.no ?? 0)) + 1;
   gameConfig.cards[id] = { name: '新カード', desc: '', imageUrl: null, no: nextNo, material: null, weapon_type: 'sword', target: 'enemy_single', ap_cost: 10, base_attack: 0, mult_min: 1.0, mult_max: 1.0, crit_rate_bonus: 0, crit_dmg_bonus: 0, hit_count: 1, heal_power: 0 };
+  // 新しいカードは一覧の最後に追加されるため、フィルターを解除して最終ページへ移動する
+  cardsFilter = { rank: '', weaponType: '', material: '', search: '' };
+  cardsPage = Infinity;
   renderCardsTab();
 }
 

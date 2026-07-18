@@ -1544,6 +1544,22 @@ function cardDisplayName(cardId) {
   return CARDS[cardId]?.name || cardId;
 }
 
+// 小型カードプレビュー（カード合成・錬金窯の結果表示用）
+function miniCardHtml(cardId) {
+  const def = CARDS[cardId] || {};
+  const rank = (def.rarity ?? '').toLowerCase() || rankFromId(cardId);
+  const imgHtml = def.imageUrl
+    ? `<img src="${escHtml(def.imageUrl)}" style="width:100%;height:100%;object-fit:contain;" onerror="this.outerHTML='<div style=&quot;font-size:1.7rem;line-height:1;&quot;>${escHtml(def.icon || '⚔️')}</div>'">`
+    : `<div style="font-size:1.7rem;line-height:1;">${escHtml(def.icon || '⚔️')}</div>`;
+  return `
+    <div style="width:60px;height:88px;flex-shrink:0;background:#0d2040;border:1.5px solid rgba(212,168,83,.55);border-radius:9px;overflow:hidden;position:relative;display:flex;flex-direction:column;">
+      ${rankBadgeHtml(rank)}
+      <div style="position:absolute;top:3px;right:3px;background:rgba(0,20,90,.88);color:#60b4ff;font-size:.48rem;font-weight:900;border-radius:4px;padding:1px 3px;line-height:1.5;z-index:3;">${def.ap_cost ?? 0}</div>
+      <div style="flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;background:linear-gradient(160deg,#1e3f72 0%,#0d2040 100%);">${imgHtml}</div>
+      <div style="flex-shrink:0;background:rgba(0,0,0,.6);font-size:.5rem;font-weight:700;color:#fff;text-align:center;padding:2px 3px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(def.name || cardId)}</div>
+    </div>`;
+}
+
 function showSynthesize() {
   if (G.py !== 0) { log('⚠️ カード合成は地上のみ'); return; }
 
@@ -1570,14 +1586,16 @@ function showSynthesize() {
       <span style="font-size:.75rem;">同じカードを4枚集めると合成できます</span></div>`;
   } else {
     for (const s of synthList) {
-      const fromName = cardDisplayName(s.fromId);
-      const toName   = cardDisplayName(s.toId);
-      html += `<div class="modal-row">
-        <div>
-          <div class="modal-row-label">${escHtml(fromName)} ×4 → ${escHtml(toName)}</div>
-          <div class="modal-row-sub">所持 ${s.qty}枚 / ${s.times}回合成可能</div>
+      html += `<div class="modal-row" style="align-items:center;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          ${miniCardHtml(s.fromId)}
+          <div style="font-size:.8rem;opacity:.6;white-space:nowrap;">×4→</div>
+          ${miniCardHtml(s.toId)}
         </div>
-        <button class="btn-modal-action" onclick="doSynthesize('${s.fromId}','${s.toId}')">合成</button>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+          <div class="modal-row-sub">所持 ${s.qty}枚<br>${s.times}回合成可能</div>
+          <button class="btn-modal-action" onclick="doSynthesize('${s.fromId}','${s.toId}')">合成</button>
+        </div>
       </div>`;
     }
   }
@@ -1870,10 +1888,12 @@ async function doAlchemy() {
         <span style="font-size:.82rem;">${escHtml(MATS[r.material]?.name || r.material)} → 生成なし（未登録）</span>
       </div>`;
     }
-    const name = alchemyCardDisplayName(r.cardId);
-    return `<div class="modal-row" style="padding:7px 0;">
-      <span style="font-size:.85rem;">${escHtml(name)}</span>
-      <span style="font-size:.8rem;font-weight:700;color:${rarityColors[r.rarity]};">${rarityLabels[r.rarity]}</span>
+    return `<div class="modal-row" style="padding:7px 0;align-items:center;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        ${miniCardHtml(r.cardId)}
+        <span style="font-size:.85rem;">${escHtml(alchemyCardDisplayName(r.cardId))}</span>
+      </div>
+      <span style="font-size:.85rem;font-weight:900;color:${rarityColors[r.rarity]};">${rarityLabels[r.rarity]}</span>
     </div>`;
   }).join('');
 
@@ -3363,7 +3383,7 @@ function showCombatModal() {
     const canUse = C.ap >= apCost;
     const rank   = (def.rarity ?? '').toLowerCase() || rankFromId(cardId);
     const cardImgHtml = def.imageUrl
-      ? `<img class="combat-card-img" src="${def.imageUrl}" onerror="this.outerHTML='<div class=\\"combat-card-icon\\">${escHtml(def.icon || '⚔️')}</div>'">`
+      ? `<img class="combat-card-img" src="${def.imageUrl}" onerror="this.outerHTML='<div class=&quot;combat-card-icon&quot;>${escHtml(def.icon || '⚔️')}</div>'">`
       : `<div class="combat-card-icon">${def.icon || '⚔️'}</div>`;
     const apColor = canUse ? '#60b4ff' : '#ff6666';
     return `<div class="combat-card${canUse ? '' : ' combat-card-disabled'}${rank ? ` rank-${rank}` : ''}"
