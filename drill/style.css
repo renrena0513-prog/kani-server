@@ -874,10 +874,20 @@ html, body {
     #action-btns { display: none; }
     #panel-right { flex: 0 0 180px; }
 
-    /* マップを画面高さに収まるようスケール */
+    /* #game-main の実サイズを基準に #map-viewport の大きさを計算するためコンテナ化 */
+    #game-main {
+        container-type: size;
+        container-name: game-main;
+    }
+
+    /* マップを画面高さに収まるようスケール（9:15比率を維持して正方形マスにする）
+       #top-bar（高さ約28px）+ gap(8px) を差し引いた残り領域に収まる最大サイズを算出 */
     #map-viewport {
-        flex: 1;
+        flex: 0 1 auto;
         min-height: 0;
+        width: min(100cqw, (100cqh - 36px) * 9 / 15);
+        height: min(100cqh - 36px, 100cqw * 15 / 9);
+        margin: 0 auto;
         overflow: hidden;
     }
     #map-grid {
