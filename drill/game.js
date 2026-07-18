@@ -1643,17 +1643,72 @@ function _weightedRandom(table) {
   return Object.keys(table).at(-1);
 }
 
+function _alchOthersTotal(excludeId) {
+  let total = 0;
+  document.querySelectorAll('.alch-mat-input').forEach(inp => {
+    if (inp.id !== 'alch-' + excludeId) total += Math.max(0, parseInt(inp.value, 10) || 0);
+  });
+  return total;
+}
+
+function alchAdjust(id, delta, maxQty) {
+  const i = document.getElementById('alch-' + id);
+  if (!i) return;
+  i.value = Math.min(maxQty, Math.max(0, (parseInt(i.value, 10) || 0) + delta));
+  _alchUpdateTotal();
+}
+
+function alchFillMax(id, maxQty) {
+  const i = document.getElementById('alch-' + id);
+  if (!i) return;
+  const remaining = Math.max(0, 100 - _alchOthersTotal(id));
+  i.value = Math.min(maxQty, remaining);
+  _alchUpdateTotal();
+}
+
+function alchAdjustCount(delta) {
+  const i = document.getElementById('alch-count');
+  if (!i) return;
+  i.value = Math.min(10, Math.max(1, (parseInt(i.value, 10) || 1) + delta));
+  _alchUpdateTotal();
+}
+
 function _alchUpdateTotal() {
   const inputs = document.querySelectorAll('.alch-mat-input');
   let total = 0;
-  inputs.forEach(inp => { total += Math.max(0, parseInt(inp.value, 10) || 0); });
+  const perMat = {};
+  inputs.forEach(inp => {
+    const qty = Math.max(0, parseInt(inp.value, 10) || 0);
+    const id = inp.id.replace('alch-', '');
+    perMat[id] = qty;
+    total += qty;
+  });
+
+  const countEl = document.getElementById('alch-count');
+  const count = Math.min(10, Math.max(1, parseInt(countEl?.value, 10) || 1));
+  if (countEl) countEl.value = count;
+
   const el = document.getElementById('alch-total');
+  let shortage = false;
+  for (const [id, qty] of Object.entries(perMat)) {
+    if (qty * count > (G.inventory[id] || 0)) shortage = true;
+  }
+
   if (el) {
-    el.textContent = `合計: ${total} / 100`;
+    const consumeStr = Object.entries(perMat)
+      .filter(([, qty]) => qty > 0)
+      .map(([id, qty]) => `${MATS[id]?.name || id}${qty * count}`)
+      .join('　');
+    el.innerHTML = `合計: ${total} / 100${count > 1 ? `　（×${count}回）` : ''}`
+      + (consumeStr ? `<br><span style="font-size:.72rem;opacity:.6;">消費予定: ${escHtml(consumeStr)}</span>` : '')
+      + (shortage ? `<br><span style="font-size:.72rem;color:#f44336;">⚠️ 素材が不足しています</span>` : '');
     el.style.color = total === 100 ? '#6bde9b' : total > 100 ? '#f44336' : '#d4a853';
   }
   const btn = document.getElementById('alch-do-btn');
-  if (btn) btn.disabled = total !== 100;
+  if (btn) {
+    btn.disabled = total !== 100 || shortage;
+    btn.textContent = count > 1 ? `🔥 錬成する（×${count}）` : '🔥 錬成する';
+  }
 }
 
 function showAlchemy() {
@@ -1684,27 +1739,39 @@ function showAlchemy() {
           <div class="modal-row-label">${escHtml(name)}</div>
           <div class="modal-row-sub">所持: ${qty}個</div>
         </div>
-        <div style="display:flex;align-items:center;gap:5px;">
-          <button class="btn-modal-action" style="padding:4px 10px;font-size:.9rem;min-width:0;line-height:1;"
-            onclick="(()=>{const i=document.getElementById('alch-${id}');i.value=Math.max(0,(parseInt(i.value)||0)-1);_alchUpdateTotal();})()">−</button>
+        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:flex-end;">
+          <button class="btn-modal-action" style="padding:4px 8px;font-size:.82rem;min-width:0;line-height:1;" onclick="alchAdjust('${id}',-10,${qty})">−10</button>
+          <button class="btn-modal-action" style="padding:4px 9px;font-size:.9rem;min-width:0;line-height:1;" onclick="alchAdjust('${id}',-1,${qty})">−</button>
           <input id="alch-${id}" class="alch-mat-input" type="number" min="0" max="${qty}" value="0"
             style="width:52px;text-align:center;font-size:.95rem;padding:4px 2px;border-radius:6px;
                    border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:inherit;"
             oninput="this.value=Math.min(${qty},Math.max(0,parseInt(this.value)||0));_alchUpdateTotal()">
-          <button class="btn-modal-action" style="padding:4px 10px;font-size:.9rem;min-width:0;line-height:1;"
-            onclick="(()=>{const i=document.getElementById('alch-${id}');i.value=Math.min(${qty},(parseInt(i.value)||0)+1);_alchUpdateTotal();})()">＋</button>
+          <button class="btn-modal-action" style="padding:4px 9px;font-size:.9rem;min-width:0;line-height:1;" onclick="alchAdjust('${id}',1,${qty})">＋</button>
+          <button class="btn-modal-action" style="padding:4px 8px;font-size:.82rem;min-width:0;line-height:1;" onclick="alchAdjust('${id}',10,${qty})">＋10</button>
+          <button class="btn-modal-action" style="padding:4px 8px;font-size:.78rem;min-width:0;line-height:1;background:rgba(212,168,83,.5);" onclick="alchFillMax('${id}',${qty})">残り最大</button>
         </div>
       </div>`;
   }
 
   openModal(`
     <div class="modal-title">🔥 錬金窯</div>
-    <div style="font-size:.78rem;opacity:.6;margin-bottom:12px;">素材を合計100個投入してカードを生成</div>
+    <div style="font-size:.78rem;opacity:.6;margin-bottom:12px;">素材を合計100個投入してカードを生成（1回あたりの比率）</div>
     ${matRows}
-    <div id="alch-total" style="text-align:center;margin:14px 0 6px;font-weight:700;color:#d4a853;font-size:.9rem;">合計: 0 / 100</div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin:14px 0 4px;">
+      <span style="font-size:.82rem;opacity:.7;">錬成回数</span>
+      <button class="btn-modal-action" style="padding:4px 10px;min-width:0;line-height:1;" onclick="alchAdjustCount(-1)">−</button>
+      <input id="alch-count" type="number" min="1" max="10" value="1"
+        style="width:48px;text-align:center;font-size:.95rem;padding:4px 2px;border-radius:6px;
+               border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:inherit;"
+        oninput="this.value=Math.min(10,Math.max(1,parseInt(this.value)||1));_alchUpdateTotal()">
+      <button class="btn-modal-action" style="padding:4px 10px;min-width:0;line-height:1;" onclick="alchAdjustCount(1)">＋</button>
+      <span style="font-size:.75rem;opacity:.5;">（最大10）</span>
+    </div>
+    <div id="alch-total" style="text-align:center;margin:10px 0 6px;font-weight:700;color:#d4a853;font-size:.9rem;">合計: 0 / 100</div>
     <button id="alch-do-btn" class="btn-modal-action" style="width:100%;margin-top:4px;" disabled onclick="doAlchemy()">🔥 錬成する</button>
     <button class="btn-modal-close" onclick="closeModal()">閉じる</button>
   `);
+  _alchUpdateTotal();
 }
 
 // material+weaponの組み合わせで実在するカードがある武器種のみ返す
@@ -1733,66 +1800,80 @@ async function doAlchemy() {
 
   if (total !== 100) { log('⚠️ 素材を合計100個投入してください'); return; }
 
+  const countEl = document.getElementById('alch-count');
+  const count = Math.min(10, Math.max(1, parseInt(countEl?.value, 10) || 1));
+
   for (const [id, qty] of Object.entries(invest)) {
-    if ((G.inventory[id] || 0) < qty) {
+    if ((G.inventory[id] || 0) < qty * count) {
       log(`⚠️ ${MATS[id]?.name || id}が不足しています`);
       return;
     }
   }
 
-  // STEP1: 素材抽選（投入割合で重み付け）
-  const material = _weightedRandom(invest);
-
-  // STEP2: 武器種抽選（定義済みカードがある武器種のみ）
-  const weaponTable = _alchBuildWeaponTable(material);
-  if (Object.keys(weaponTable).length === 0) {
-    openModal(`
-      <div class="modal-title">🔥 錬金窯</div>
-      <div style="text-align:center;padding:16px 0;font-size:.9rem;opacity:.7;">
-        ${escHtml(MATS[material]?.name || material)}に対応するカードが<br>まだ登録されていません
-      </div>
-      <button class="btn-modal-close" onclick="showAlchemy()">戻る</button>
-    `);
-    return;
-  }
-  const weapon = _weightedRandom(weaponTable);
-
-  // STEP3: レアリティ抽選（そのweapon+materialで実在するレアリティのみ）
-  const rarityTable = {};
-  for (const [r, w] of Object.entries(ALCHEMY_RARITY_WEIGHTS)) {
-    if (CARDS[`${weapon}_${material}_${r}`]) rarityTable[r] = w;
-  }
-  const rarity = _weightedRandom(rarityTable);
-
-  const cardId = `${weapon}_${material}_${rarity}`;
-
-  // 素材消費
-  for (const [id, qty] of Object.entries(invest)) {
-    await upsertInv(id, -qty);
-  }
-
-  // カード付与
-  G.ownedCards[cardId] = (G.ownedCards[cardId] || 0) + 1;
-  await supabaseClient.from('drill_player_cards')
-    .upsert({ user_id: G.userId, card_id: cardId, quantity: G.ownedCards[cardId] });
-
-  const cardName = alchemyCardDisplayName(cardId);
   const rarityColors = { d:'#999', c:'#4caf50', b:'#2196f3', a:'#9c27b0', s:'#ff9800' };
   const rarityLabels = { d:'D', c:'C', b:'B', a:'A', s:'S' };
-  log(`🔥 錬金窯: ${cardName} を生成！`);
+
+  // count回分の抽選をまとめて実行（素材投入・カード付与は最後にまとめて反映）
+  const results = [];
+  for (let i = 0; i < count; i++) {
+    // STEP1: 素材抽選（投入割合で重み付け）
+    const material = _weightedRandom(invest);
+
+    // STEP2: 武器種抽選（定義済みカードがある武器種のみ）
+    const weaponTable = _alchBuildWeaponTable(material);
+    if (Object.keys(weaponTable).length === 0) {
+      results.push({ ok: false, material });
+      continue;
+    }
+    const weapon = _weightedRandom(weaponTable);
+
+    // STEP3: レアリティ抽選（そのweapon+materialで実在するレアリティのみ）
+    const rarityTable = {};
+    for (const [r, w] of Object.entries(ALCHEMY_RARITY_WEIGHTS)) {
+      if (CARDS[`${weapon}_${material}_${r}`]) rarityTable[r] = w;
+    }
+    const rarity = _weightedRandom(rarityTable);
+    results.push({ ok: true, cardId: `${weapon}_${material}_${rarity}`, rarity });
+  }
+
+  // 素材消費（count分まとめて）
+  for (const [id, qty] of Object.entries(invest)) {
+    await upsertInv(id, -qty * count);
+  }
+
+  // カード付与（まとめて集計してからDBへ反映）
+  const grantedCounts = {};
+  for (const r of results) {
+    if (r.ok) grantedCounts[r.cardId] = (grantedCounts[r.cardId] || 0) + 1;
+  }
+  for (const [cardId, n] of Object.entries(grantedCounts)) {
+    G.ownedCards[cardId] = (G.ownedCards[cardId] || 0) + n;
+    await supabaseClient.from('drill_player_cards')
+      .upsert({ user_id: G.userId, card_id: cardId, quantity: G.ownedCards[cardId] });
+  }
+
+  const successCount = results.filter(r => r.ok).length;
+  const failCount = count - successCount;
+  if (successCount > 0) log(`🔥 錬金窯: ${successCount}件のカードを生成！`);
+  if (failCount > 0) log(`⚠️ ${failCount}回は対応するカードが未登録のため生成されませんでした`);
+
+  const resultRows = results.map(r => {
+    if (!r.ok) {
+      return `<div class="modal-row" style="padding:7px 0;opacity:.5;">
+        <span style="font-size:.82rem;">${escHtml(MATS[r.material]?.name || r.material)} → 生成なし（未登録）</span>
+      </div>`;
+    }
+    const name = alchemyCardDisplayName(r.cardId);
+    return `<div class="modal-row" style="padding:7px 0;">
+      <span style="font-size:.85rem;">${escHtml(name)}</span>
+      <span style="font-size:.8rem;font-weight:700;color:${rarityColors[r.rarity]};">${rarityLabels[r.rarity]}</span>
+    </div>`;
+  }).join('');
 
   openModal(`
-    <div class="modal-title">🔥 錬成完了！</div>
-    <div style="text-align:center;padding:20px 0 16px;">
-      <div style="font-size:2.8rem;margin-bottom:14px;">✨</div>
-      <div style="font-size:.72rem;letter-spacing:.1em;opacity:.5;margin-bottom:6px;">
-        レアリティ <span style="color:${rarityColors[rarity]};font-weight:700;">${rarityLabels[rarity]}</span>
-      </div>
-      <div style="font-size:1.3rem;font-weight:700;color:${rarityColors[rarity]};">
-        ${escHtml(cardName)}
-      </div>
-      <div style="font-size:.78rem;opacity:.45;margin-top:8px;">カードコレクションに追加されました</div>
-    </div>
+    <div class="modal-title">🔥 錬成完了！（${successCount}/${count}）</div>
+    <div style="max-height:46vh;overflow-y:auto;margin-bottom:12px;">${resultRows}</div>
+    ${failCount > 0 ? `<div style="font-size:.72rem;opacity:.5;margin-bottom:10px;">※ 未登録の組み合わせが出た回は素材のみ消費され、カードは生成されません</div>` : ''}
     <button class="btn-modal-action" style="width:100%;margin-bottom:6px;" onclick="showAlchemy()">🔥 もう一度錬成</button>
     <button class="btn-modal-close" onclick="closeModal()">閉じる</button>
   `);
