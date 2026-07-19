@@ -436,18 +436,33 @@ async function loadGameConfigAdmin() {
       Array.isArray(layer) ? layer.filter(e => e.type !== 'combat') : layer
     );
   }
-  // drill_cards DB から material / weapon_type / no をマージ
+  // drill_cards DB をカードの正データとしてマージ（imageUrl/descのみgameConfig.cards側の値を維持）
   try {
-    const { data: dbCards } = await supabaseClient.from('drill_cards').select('id,no,weapon_type,material,target');
-    if (dbCards && gameConfig.cards) {
+    const { data: dbCards } = await supabaseClient.from('drill_cards').select('*');
+    if (dbCards) {
+      if (!gameConfig.cards) gameConfig.cards = {};
       for (const r of dbCards) {
         const id = r.id === 'fist' ? 'fist_d' : r.id;
-        if (!gameConfig.cards[id]) continue;
-        const c = gameConfig.cards[id];
-        if (c.no       == null && r.no       != null) c.no          = r.no;
-        if (!c.weapon_type     && r.weapon_type)      c.weapon_type = r.weapon_type;
-        if (!c.material        && r.material)         c.material    = r.material;
-        if (!c.target          && r.target)           c.target      = r.target;
+        const ex = gameConfig.cards[id] ?? {};
+        gameConfig.cards[id] = {
+          ...ex,
+          no:              r.no,
+          name:            r.name,
+          rarity:          r.rarity,
+          material:        r.material,
+          weapon_type:     r.weapon_type,
+          icon:            r.icon,
+          ap_cost:         r.ap_cost,
+          base_attack:     r.base_attack,
+          mult_min:        r.mult_min,
+          mult_max:        r.mult_max,
+          crit_rate_bonus: r.crit_rate_bonus,
+          crit_dmg_bonus:  r.crit_dmg_bonus,
+          hit_count:       r.hit_count,
+          target:          r.target,
+          heal_power:      r.heal_power,
+          special_id:      r.special_id,
+        };
       }
     }
   } catch { /* DBマージ失敗は無視 */ }

@@ -617,25 +617,28 @@ async function loadGameConfig() {
       }
     }
     if (cfg.cards) {
+      // drill_cards（loadCardDefsで読み込み済み）が正データ。cfg.cardsはimageUrl/descの上書き専用で、
+      // drill_cards未登録のカード（保存前の新規追加カード等）にのみ他フィールドのフォールバックとして使う
       for (const [id, v] of Object.entries(cfg.cards)) {
+        const ex = CARDS[id];
         CARDS[id] = {
           id,
-          name:            v.name       ?? CARDS[id]?.name       ?? id,
-          desc:            v.desc       ?? CARDS[id]?.desc       ?? '',
-          icon:            v.icon       ?? CARDS[id]?.icon       ?? '⚔️',
+          name:            ex?.name       ?? v.name       ?? id,
+          desc:            v.desc       ?? ex?.desc       ?? '',
+          icon:            ex?.icon       ?? v.icon       ?? '⚔️',
           imageUrl:        v.imageUrl   ?? null,
-          damage:          v.damage     ?? CARDS[id]?.damage     ?? 0,
-          rarity:          v.rarity          ?? CARDS[id]?.rarity          ?? null,
-          ap_cost:         v.ap_cost         ?? CARDS[id]?.ap_cost         ?? null,
-          base_attack:     v.base_attack     ?? CARDS[id]?.base_attack     ?? null,
-          mult_min:        v.mult_min        ?? CARDS[id]?.mult_min        ?? null,
-          mult_max:        v.mult_max        ?? CARDS[id]?.mult_max        ?? null,
-          crit_rate_bonus: v.crit_rate_bonus ?? CARDS[id]?.crit_rate_bonus ?? null,
-          crit_dmg_bonus:  v.crit_dmg_bonus  ?? CARDS[id]?.crit_dmg_bonus  ?? null,
-          hit_count:       v.hit_count       ?? CARDS[id]?.hit_count       ?? null,
-          target:          v.target          ?? CARDS[id]?.target          ?? 'SINGLE',
-          heal:            v.heal            ?? CARDS[id]?.heal            ?? null,
-          special_id:      v.special_id      ?? CARDS[id]?.special_id      ?? null,
+          damage:          ex?.damage     ?? v.damage     ?? 0,
+          rarity:          ex?.rarity          ?? v.rarity          ?? null,
+          ap_cost:         ex?.ap_cost         ?? v.ap_cost         ?? null,
+          base_attack:     ex?.base_attack     ?? v.base_attack     ?? null,
+          mult_min:        ex?.mult_min        ?? v.mult_min        ?? null,
+          mult_max:        ex?.mult_max        ?? v.mult_max        ?? null,
+          crit_rate_bonus: ex?.crit_rate_bonus ?? v.crit_rate_bonus ?? null,
+          crit_dmg_bonus:  ex?.crit_dmg_bonus  ?? v.crit_dmg_bonus  ?? null,
+          hit_count:       ex?.hit_count       ?? v.hit_count       ?? null,
+          target:          ex?.target          ?? v.target          ?? 'SINGLE',
+          heal:            ex?.heal            ?? v.heal            ?? null,
+          special_id:      ex?.special_id      ?? v.special_id      ?? null,
         };
       }
     }

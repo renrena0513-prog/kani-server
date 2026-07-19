@@ -455,16 +455,19 @@ async function loadCardDefs() {
       weapon_type: r.weapon_type || null, ap_cost: r.ap_cost ?? null, base_attack: r.base_attack ?? null,
     };
   });
+  // drill_cards（上でCARD_INFOに読み込み済み）が正データ。cfg.cardsはimageUrlの上書き専用で、
+  // drill_cards未登録のカードにのみ他フィールドのフォールバックとして使う
   if (cfg.cards) {
     for (const [id, v] of Object.entries(cfg.cards)) {
+      const ex = CARD_INFO[id];
       CARD_INFO[id] = {
-        name: v.name ?? CARD_INFO[id]?.name ?? id,
-        icon: v.icon ?? CARD_INFO[id]?.icon ?? '🃏',
-        imageUrl: v.imageUrl ?? CARD_INFO[id]?.imageUrl ?? null,
-        rarity: (v.rarity ?? CARD_INFO[id]?.rarity ?? '').toLowerCase(),
-        weapon_type: v.weapon_type ?? CARD_INFO[id]?.weapon_type ?? null,
-        ap_cost: v.ap_cost ?? CARD_INFO[id]?.ap_cost ?? null,
-        base_attack: v.base_attack ?? CARD_INFO[id]?.base_attack ?? null,
+        name: ex?.name ?? v.name ?? id,
+        icon: ex?.icon ?? v.icon ?? '🃏',
+        imageUrl: v.imageUrl ?? ex?.imageUrl ?? null,
+        rarity: (ex?.rarity ?? v.rarity ?? '').toLowerCase(),
+        weapon_type: ex?.weapon_type ?? v.weapon_type ?? null,
+        ap_cost: ex?.ap_cost ?? v.ap_cost ?? null,
+        base_attack: ex?.base_attack ?? v.base_attack ?? null,
       };
     }
   }

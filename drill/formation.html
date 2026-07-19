@@ -821,9 +821,11 @@ async function loadConfig() {
       special_id: r.special_id ?? CARDS_DEF[id]?.special_id,
     };
   });
+  // drill_cards（上で読み込み済み）が正データ。cfg.cardsはimageUrl/descの上書き専用で、
+  // drill_cards未登録のカード（保存前の新規追加カード等）にのみ他フィールドのフォールバックとして使う
   if (cfg.cards) {
     for (const [id, v] of Object.entries(cfg.cards)) {
-      CARDS_DEF[id] = { ...(CARDS_DEF[id] ?? {}), ...v };
+      CARDS_DEF[id] = { ...v, ...(CARDS_DEF[id] ?? {}) };
     }
   }
   DRILLS_DEF = { ...DEFAULT_DRILLS };
