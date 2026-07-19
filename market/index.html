@@ -72,6 +72,29 @@
     .mkt-card-icon {
       font-size: 2rem; line-height: 1; flex-shrink: 0;
     }
+    /* カード出品専用のビジュアル（トレーディングカード風） */
+    .mkt-card-visual {
+      position: relative; width: 64px; height: 90px; flex-shrink: 0;
+      border-radius: 8px; overflow: hidden;
+      background: linear-gradient(160deg,#1e3f72 0%,#0d2040 100%);
+      border: 1px solid rgba(212,168,83,.4);
+    }
+    .mkt-card-visual img { width: 100%; height: 100%; object-fit: cover; }
+    .mkt-card-visual .mkt-card-icon {
+      width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+    }
+    .mkt-card-visual .mkt-rank-badge {
+      position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 5px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .62rem; font-weight: 900; color: #fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,.6); z-index: 3;
+    }
+    .mkt-card-visual .mkt-ap-badge {
+      position: absolute; top: 3px; right: 3px;
+      background: rgba(0,20,90,.88); color: #60b4ff;
+      font-size: .58rem; font-weight: 900; border-radius: 4px;
+      padding: 1px 4px; z-index: 3;
+    }
     .mkt-card-name { font-size: 1rem; font-weight: 700; }
     .mkt-card-qty { font-size: .78rem; color: rgba(255,255,255,.55); margin-top: 2px; }
 
@@ -120,8 +143,10 @@
     .mkt-modal {
       background: #0d2447; border: 1px solid rgba(255,255,255,.15);
       border-radius: 16px; padding: 24px;
-      width: min(92vw, 420px); color: #fff;
+      width: min(94vw, 420px); color: #fff;
+      max-height: 88vh; overflow-y: auto;
     }
+    .mkt-modal.wide { width: min(94vw, 680px); }
     .mkt-modal-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 18px;
       padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,.15); }
 
@@ -170,6 +195,70 @@
     .lm-item-row.selected {
       background: rgba(212,168,83,.25);
       border-color: rgba(212,168,83,.6);
+    }
+
+    /* カード出品時のフィルター・ソートバー */
+    .lm-card-filters {
+      display: none; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;
+    }
+    .lm-card-filters select {
+      flex: 1 1 auto; min-width: 84px;
+      background: rgba(255,255,255,.1); color: #fff;
+      border: 1px solid rgba(255,255,255,.2); border-radius: 8px;
+      padding: 6px 8px; font-size: .78rem; font-weight: 600; cursor: pointer;
+    }
+    .lm-card-filters select option { background: #0d2447; color: #fff; }
+    .lm-dir-btn {
+      flex: 0 0 auto; min-width: 56px;
+      background: rgba(212,168,83,.25); color: #fff;
+      border: 1px solid rgba(212,168,83,.5); border-radius: 8px;
+      padding: 6px 10px; font-size: .78rem; font-weight: 700; cursor: pointer;
+    }
+
+    /* カード出品ピッカー：グリッド表示 */
+    .lm-card-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
+      gap: 8px;
+    }
+    .lm-mini-card {
+      aspect-ratio: 3/4; background: #0d2040;
+      border: 2px solid rgba(255,255,255,.15); border-radius: 9px;
+      position: relative; overflow: hidden; cursor: pointer;
+      display: flex; flex-direction: column;
+      transition: border-color .12s, transform .12s;
+    }
+    .lm-mini-card:hover { border-color: rgba(255,255,255,.4); }
+    .lm-mini-card.selected {
+      border-color: rgba(212,168,83,.9);
+      box-shadow: 0 0 0 2px rgba(212,168,83,.4);
+    }
+    .lm-mini-img {
+      flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;
+      overflow: hidden; background: linear-gradient(160deg,#1e3f72 0%,#0d2040 100%);
+    }
+    .lm-mini-img img { width: 100%; height: 100%; object-fit: cover; }
+    .lm-mini-name {
+      flex-shrink: 0; background: rgba(0,0,0,.65);
+      font-size: .5rem; font-weight: 700; color: #fff; text-align: center;
+      padding: 2px 3px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .lm-mini-rank {
+      position: absolute; top: 3px; left: 3px; width: 18px; height: 18px;
+      border-radius: 4px; display: flex; align-items: center; justify-content: center;
+      font-size: .6rem; font-weight: 900; color: #fff; z-index: 3;
+      text-shadow: 0 1px 2px rgba(0,0,0,.6);
+    }
+    .lm-mini-ap {
+      position: absolute; top: 3px; right: 3px;
+      background: rgba(0,20,90,.88); color: #60b4ff;
+      font-size: .56rem; font-weight: 900; border-radius: 4px;
+      padding: 1px 4px; z-index: 3;
+    }
+    .lm-mini-qty {
+      position: absolute; bottom: 18px; right: 3px;
+      background: rgba(212,168,83,.92); color: #1a1a2e;
+      font-size: .52rem; font-weight: 900; border-radius: 4px;
+      padding: 0 4px; z-index: 3;
     }
 
     .mkt-empty {
@@ -248,7 +337,7 @@
 
 <!-- 出品モーダル -->
 <div class="mkt-modal-overlay" id="list-modal">
-  <div class="mkt-modal">
+  <div class="mkt-modal wide">
     <div class="mkt-modal-title">🏷️ 出品する</div>
     <div class="mkt-field">
       <div style="display:flex;gap:5px;flex-wrap:wrap;" id="lm-cat-tabs">
@@ -259,8 +348,27 @@
         <button class="mkt-tab" style="padding:4px 12px;font-size:.8rem;" onclick="setListCat('cards',this)">🃏 カード</button>
       </div>
     </div>
+    <div class="lm-card-filters" id="lm-card-filters">
+      <select id="lm-card-rank" onchange="updateCardListFilter()">
+        <option value="">ランク: すべて</option>
+        <option value="s">S</option><option value="a">A</option><option value="b">B</option>
+        <option value="c">C</option><option value="d">D</option>
+      </select>
+      <select id="lm-card-weapon" onchange="updateCardListFilter()">
+        <option value="">武器種: すべて</option>
+        <option value="剣">剣</option><option value="短剣">短剣</option><option value="斧">斧</option>
+        <option value="ハンマー">ハンマー</option><option value="ブーメラン">ブーメラン</option>
+        <option value="槍">槍</option><option value="杖">杖</option><option value="鎌">鎌</option>
+      </select>
+      <select id="lm-card-sort" onchange="updateCardListFilter()">
+        <option value="rank">ランク順</option>
+        <option value="attack">攻撃力順</option>
+        <option value="ap">APコスト順</option>
+      </select>
+      <button type="button" class="lm-dir-btn" id="lm-card-dir-btn" onclick="toggleCardListDir()">▼ 降順</button>
+    </div>
     <div class="mkt-field" style="margin-bottom:10px;">
-      <div id="lm-item-list" style="max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:3px;"></div>
+      <div id="lm-item-list" style="max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:3px;"></div>
     </div>
     <div class="mkt-field" id="lm-qty-field" style="display:none;">
       <label>個数（最大 <span id="lm-max">0</span> 個）</label>
@@ -325,11 +433,15 @@ function isCardId(id) { return Object.prototype.hasOwnProperty.call(CARD_INFO, i
 async function loadCardDefs() {
   const [settingsRes, dbCardsRes] = await Promise.all([
     supabaseClient.from('drill_page_settings').select('setting_value').eq('setting_key', 'game_config').maybeSingle(),
-    supabaseClient.from('drill_cards').select('id,name,icon,rarity').order('no'),
+    supabaseClient.from('drill_cards').select('id,name,icon,rarity,weapon_type,ap_cost,base_attack').order('no'),
   ]);
   const cfg = settingsRes.data?.setting_value ? JSON.parse(settingsRes.data.setting_value) : {};
   (dbCardsRes.data || []).forEach(r => {
-    CARD_INFO[r.id] = { name: r.name || r.id, icon: r.icon || '🃏', rarity: (r.rarity || '').toLowerCase(), imageUrl: null };
+    const id = r.id === 'fist' ? 'fist_d' : r.id;
+    CARD_INFO[id] = {
+      name: r.name || id, icon: r.icon || '🃏', rarity: (r.rarity || '').toLowerCase(), imageUrl: null,
+      weapon_type: r.weapon_type || null, ap_cost: r.ap_cost ?? null, base_attack: r.base_attack ?? null,
+    };
   });
   if (cfg.cards) {
     for (const [id, v] of Object.entries(cfg.cards)) {
@@ -338,6 +450,9 @@ async function loadCardDefs() {
         icon: v.icon ?? CARD_INFO[id]?.icon ?? '🃏',
         imageUrl: v.imageUrl ?? CARD_INFO[id]?.imageUrl ?? null,
         rarity: (v.rarity ?? CARD_INFO[id]?.rarity ?? '').toLowerCase(),
+        weapon_type: v.weapon_type ?? CARD_INFO[id]?.weapon_type ?? null,
+        ap_cost: v.ap_cost ?? CARD_INFO[id]?.ap_cost ?? null,
+        base_attack: v.base_attack ?? CARD_INFO[id]?.base_attack ?? null,
       };
     }
   }
@@ -358,6 +473,8 @@ let _filterType  = 'all'; // 'all' | 'mats' | 'items' | 'drills' | 'cards'
 let _buyTarget = null;    // { listing }
 let _listCat = 'all';     // 出品モーダルのカテゴリフィルター
 let _listSelected = null; // 選択中アイテムのJSON文字列
+let _cardListFilter = { rank: '', weapon: '', sort: 'rank', dir: 'desc' }; // 出品ピッカーのカードフィルター・ソート
+const CARD_RANK_ORDER = { d: 0, c: 1, b: 2, a: 3, s: 4 };
 
 const MAT_IDS = new Set(['dirt','stone','copper','iron','silver','gold']);
 function listingCategory(l) {
@@ -521,18 +638,17 @@ function buildCard(l) {
     }
   }
 
-  // カードの場合は画像・ランクバッジを表示
+  // カードの場合はトレーディングカード風のビジュアル（画像・ランクバッジ・APバッジ）を表示
   let cardIconHtml = `<div class="mkt-card-icon">${escHtml(icon)}</div>`;
-  let rankBadge = '';
   if (l.source === 'card' && l.item_data) {
     const d = typeof l.item_data === 'string' ? JSON.parse(l.item_data) : l.item_data;
-    if (d.imageUrl) {
-      cardIconHtml = `<img src="${escHtml(d.imageUrl)}" style="width:44px;height:58px;object-fit:cover;border-radius:6px;flex-shrink:0;" onerror="this.outerHTML='<div class=&quot;mkt-card-icon&quot;>${escHtml(icon)}</div>'">`;
-    }
-    if (d.rarity) {
-      const rankColors = { d:'#60637a', c:'#2a9e5c', b:'#1870d4', a:'#8820e8', s:'#ff4000' };
-      rankBadge = `<span style="font-size:.68rem;font-weight:900;color:#fff;background:${rankColors[d.rarity] || '#666'};border-radius:4px;padding:1px 6px;margin-left:6px;">${d.rarity.toUpperCase()}</span>`;
-    }
+    const rankColors = { d:'#60637a', c:'#2a9e5c', b:'#1870d4', a:'#8820e8', s:'#ff4000' };
+    const rankBadgeInner = d.rarity ? `<div class="mkt-rank-badge" style="background:${rankColors[d.rarity] || '#666'};">${d.rarity.toUpperCase()}</div>` : '';
+    const apBadgeInner = d.ap_cost != null ? `<div class="mkt-ap-badge">${d.ap_cost}</div>` : '';
+    const imgInner = d.imageUrl
+      ? `<img src="${escHtml(d.imageUrl)}" onerror="this.outerHTML='<div class=&quot;mkt-card-icon&quot;>${escHtml(icon)}</div>'">`
+      : `<div class="mkt-card-icon">${escHtml(icon)}</div>`;
+    cardIconHtml = `<div class="mkt-card-visual">${rankBadgeInner}${apBadgeInner}${imgInner}</div>`;
   }
 
   const qtyLine = l.source === 'drill'
@@ -544,7 +660,7 @@ function buildCard(l) {
       <div class="mkt-card-item">
         ${cardIconHtml}
         <div style="flex:1;min-width:0;">
-          <div class="mkt-card-name">${escHtml(l.item_name)}${rankBadge}${ownBadge}</div>
+          <div class="mkt-card-name">${escHtml(l.item_name)}${ownBadge}</div>
           ${qtyLine}
           ${drillDurBar}
         </div>
@@ -643,6 +759,11 @@ function openListModal() {
 
   _listSelected = null;
   _listCat = 'all';
+  _cardListFilter = { rank: '', weapon: '', sort: 'rank', dir: 'desc' };
+  document.getElementById('lm-card-rank').value = '';
+  document.getElementById('lm-card-weapon').value = '';
+  document.getElementById('lm-card-sort').value = 'rank';
+  document.getElementById('lm-card-dir-btn').textContent = '▼ 降順';
   document.querySelectorAll('#lm-cat-tabs .mkt-tab').forEach((b, i) => b.classList.toggle('active', i === 0));
   document.getElementById('lm-qty').value = 1;
   document.getElementById('lm-qty').disabled = false;
@@ -663,6 +784,15 @@ function setListCat(cat, el) {
 
 function renderListItems() {
   const container = document.getElementById('lm-item-list');
+  const filterBar = document.getElementById('lm-card-filters');
+
+  if (_listCat === 'cards') {
+    filterBar.style.display = 'flex';
+    renderCardListPicker(container);
+    return;
+  }
+  filterBar.style.display = 'none';
+
   const allItems = [
     ..._myInventory.map(inv => ({
       val: JSON.stringify({ item_id: inv.item_id, max: inv.quantity, source: inv.source }),
@@ -699,13 +829,67 @@ function renderListItems() {
 
   container.innerHTML = filtered.map(item => {
     const isSelected = _listSelected === item.val;
-    const selAttr = item.val.replace(/"/g, '&quot;');
     return '<div class="lm-item-row' + (isSelected ? ' selected' : '') + '" onclick="selectListItem(\'' + encodeURIComponent(item.val) + '\')">'
       + '<span style="font-size:1.1rem;line-height:1;">' + item.icon + '</span>'
       + '<span style="flex:1;font-size:.88rem;font-weight:600;">' + escHtml(item.label) + '</span>'
       + '<span style="font-size:.78rem;color:rgba(255,255,255,.55);">' + escHtml(item.sub) + '</span>'
       + '</div>';
   }).join('');
+}
+
+// カード出品ピッカー：フィルター・ソート付きのカードグリッド表示
+function renderCardListPicker(container) {
+  let cards = _myCards.slice();
+  if (_cardListFilter.rank)   cards = cards.filter(c => (CARD_INFO[c.item_id]?.rarity || '') === _cardListFilter.rank);
+  if (_cardListFilter.weapon) cards = cards.filter(c => (CARD_INFO[c.item_id]?.weapon_type || '') === _cardListFilter.weapon);
+
+  const dir = _cardListFilter.dir === 'asc' ? 1 : -1;
+  cards.sort((a, b) => {
+    const ca = CARD_INFO[a.item_id] || {}, cb = CARD_INFO[b.item_id] || {};
+    let va, vb;
+    if (_cardListFilter.sort === 'attack')    { va = Number(ca.base_attack ?? 0); vb = Number(cb.base_attack ?? 0); }
+    else if (_cardListFilter.sort === 'ap')   { va = Number(ca.ap_cost ?? 0);     vb = Number(cb.ap_cost ?? 0); }
+    else /* rank */                           { va = CARD_RANK_ORDER[ca.rarity] ?? -1; vb = CARD_RANK_ORDER[cb.rarity] ?? -1; }
+    return (va - vb) * dir;
+  });
+
+  if (cards.length === 0) {
+    container.innerHTML = '<div style="font-size:.82rem;color:rgba(255,255,255,.35);padding:10px;text-align:center;">該当カードなし</div>';
+    return;
+  }
+
+  container.innerHTML = `<div class="lm-card-grid">${cards.map(c => cardPickHtml(c)).join('')}</div>`;
+}
+
+function cardPickHtml(c) {
+  const def = CARD_INFO[c.item_id] || {};
+  const val = JSON.stringify({ item_id: c.item_id, max: c.quantity, source: 'card' });
+  const isSelected = _listSelected === val;
+  const rank = def.rarity;
+  const rankColors = { d:'#60637a', c:'#2a9e5c', b:'#1870d4', a:'#8820e8', s:'#ff4000' };
+  const imgHtml = def.imageUrl
+    ? `<img src="${escHtml(def.imageUrl)}" onerror="this.outerHTML='<div style=&quot;font-size:1.6rem;line-height:1;&quot;>${escHtml(def.icon || '🃏')}</div>'">`
+    : `<div style="font-size:1.6rem;line-height:1;">${escHtml(def.icon || '🃏')}</div>`;
+  return `<div class="lm-mini-card${isSelected ? ' selected' : ''}" onclick="selectListItem('${encodeURIComponent(val)}')">
+    ${rank ? `<div class="lm-mini-rank" style="background:${rankColors[rank] || '#666'};">${rank.toUpperCase()}</div>` : ''}
+    <div class="lm-mini-ap">${def.ap_cost ?? 0}</div>
+    <div class="lm-mini-img">${imgHtml}</div>
+    ${c.quantity > 1 ? `<div class="lm-mini-qty">×${c.quantity}</div>` : ''}
+    <div class="lm-mini-name">${escHtml(def.name || c.item_id)}</div>
+  </div>`;
+}
+
+function updateCardListFilter() {
+  _cardListFilter.rank   = document.getElementById('lm-card-rank').value;
+  _cardListFilter.weapon = document.getElementById('lm-card-weapon').value;
+  _cardListFilter.sort   = document.getElementById('lm-card-sort').value;
+  renderListItems();
+}
+
+function toggleCardListDir() {
+  _cardListFilter.dir = _cardListFilter.dir === 'desc' ? 'asc' : 'desc';
+  document.getElementById('lm-card-dir-btn').textContent = _cardListFilter.dir === 'desc' ? '▼ 降順' : '▲ 昇順';
+  renderListItems();
 }
 
 function selectListItem(encoded) {
@@ -764,7 +948,7 @@ async function confirmList() {
   const itemData = source === 'drill'
     ? { drill_row_id, durability, max_dur }
     : source === 'card'
-      ? { rarity: CARD_INFO[item_id]?.rarity ?? null, imageUrl: CARD_INFO[item_id]?.imageUrl ?? null }
+      ? { rarity: CARD_INFO[item_id]?.rarity ?? null, imageUrl: CARD_INFO[item_id]?.imageUrl ?? null, ap_cost: CARD_INFO[item_id]?.ap_cost ?? null }
       : {};
 
   // ドリルの場合は耐久値を名前に付加して表示

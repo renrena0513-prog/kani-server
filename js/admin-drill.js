@@ -246,6 +246,12 @@ const DEFAULT_GAME_CONFIG = {
       imageUrl: null,
       damage: 50,
     },
+    fist_d: {
+      name: '拳で', desc: '基本攻撃', icon: '👊', imageUrl: null,
+      rarity: null, material: null, weapon_type: null, target: 'enemy_single',
+      ap_cost: 10, base_attack: 0, mult_min: 0.9, mult_max: 1.0,
+      crit_rate_bonus: 0, crit_dmg_bonus: 0, hit_count: 1, heal: 0, special_id: null,
+    },
   },
   treasureTypes: {
     wood: {
@@ -350,6 +356,8 @@ async function loadGameConfigAdmin() {
   if (!gameConfig.cards)         gameConfig.cards          = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.cards));
   // drill_attack カードは廃止（ショップでのカード販売機能も廃止）。旧データに残っていれば除去
   delete gameConfig.cards.drill_attack;
+  // 初期装備の「拳」カードは今まで設定に含まれておらず編集できなかったため補完
+  if (!gameConfig.cards.fist_d) gameConfig.cards.fist_d = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.cards.fist_d));
   if (!gameConfig.items)         gameConfig.items          = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.items));
   if (!gameConfig.shopEntries)   gameConfig.shopEntries    = JSON.parse(JSON.stringify(DEFAULT_SHOP_ENTRIES));
   // カード販売は廃止。旧データに 'card' タイプのエントリが残っていれば除去
@@ -392,8 +400,9 @@ async function loadGameConfigAdmin() {
     const { data: dbCards } = await supabaseClient.from('drill_cards').select('id,no,weapon_type,material,target');
     if (dbCards && gameConfig.cards) {
       for (const r of dbCards) {
-        if (!gameConfig.cards[r.id]) continue;
-        const c = gameConfig.cards[r.id];
+        const id = r.id === 'fist' ? 'fist_d' : r.id;
+        if (!gameConfig.cards[id]) continue;
+        const c = gameConfig.cards[id];
         if (c.no       == null && r.no       != null) c.no          = r.no;
         if (!c.weapon_type     && r.weapon_type)      c.weapon_type = r.weapon_type;
         if (!c.material        && r.material)         c.material    = r.material;
