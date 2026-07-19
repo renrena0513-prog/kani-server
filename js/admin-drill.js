@@ -1835,7 +1835,9 @@ async function importCardsCsv(input) {
 
     for (let i = 1; i < lines.length; i++) {
       const cols = parseCsvRow(lines[i]);
-      const id = cols[idIdx]?.trim();
+      // 'fist' は旧IDの残骸。現行の拳カードIDである 'fist_d' に正規化する
+      const rawId = cols[idIdx]?.trim();
+      const id = rawId === 'fist' ? 'fist_d' : rawId;
       if (!id) continue;
       const get = col => { const j = header.indexOf(col); return j >= 0 ? (cols[j] ?? '') : null; };
 
@@ -1876,6 +1878,11 @@ async function importCardsCsv(input) {
     }
 
     if (dbRows.length > 0) {
+      // no列にはUNIQUE制約があるため、並び替え/入れ替えでid基準upsertが衝突しないよう
+      // 一旦マイナスの仮noに退避してから本来のnoで上書きする（2段階upsert）
+      const tempRows = dbRows.map((r, i) => ({ ...r, no: -(i + 1) }));
+      const { error: tmpErr } = await supabaseClient.from('drill_cards').upsert(tempRows, { onConflict: 'id' });
+      if (tmpErr) { alert('DB保存エラー: ' + tmpErr.message); return; }
       const { error } = await supabaseClient.from('drill_cards').upsert(dbRows, { onConflict: 'id' });
       if (error) { alert('DB保存エラー: ' + error.message); return; }
     }
