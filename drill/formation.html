@@ -182,6 +182,36 @@
       cursor: pointer; transition: background .15s;
     }
     .pool-dir-btn:hover { background: rgba(212,168,83,.4); }
+
+    /* メモリ */
+    .mem-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    }
+    .mem-card {
+      background: rgba(255,255,255,.06); border: 2px solid rgba(255,255,255,.15);
+      border-radius: 10px; padding: 10px 6px;
+      display: flex; flex-direction: column; align-items: center; gap: 5px;
+      cursor: pointer; transition: border-color .15s, background .15s; text-align: center;
+      user-select: none;
+    }
+    .mem-card:hover { border-color: rgba(255,255,255,.4); background: rgba(255,255,255,.1); }
+    .mem-card.equipped { border-color: rgba(212,168,83,.75); background: rgba(212,168,83,.14); }
+    .mem-card-icon { font-size: 1.9rem; line-height: 1; }
+    .mem-card-img { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; }
+    .mem-card-name { font-size: .76rem; font-weight: 700; line-height: 1.2; }
+    .mem-card-stat { font-size: .68rem; color: #6bde9b; }
+    .mem-empty { grid-column: 1/-1; opacity: .45; font-size: .82rem; padding: 14px 0; text-align: center; }
+
+    /* ステータス */
+    .status-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 4px; border-bottom: 1px solid rgba(255,255,255,.08);
+      font-size: .88rem;
+    }
+    .status-row .status-name { opacity: .75; }
+    .status-row .status-val { font-weight: 700; }
+    .status-row .status-bonus { color: #6bde9b; font-size: .74rem; margin-left: 6px; }
+
     /* タップ選択 */
     .tap-selected {
       outline: 3px solid rgba(255, 210, 0, .95) !important;
@@ -252,8 +282,8 @@
     .save-msg { text-align: center; font-size: .8rem; opacity: .6; margin-top: 8px; min-height: 20px; }
 
     /* タブ表示切り替え */
-    #tab-drills, #tab-cards { display: none; }
-    #tab-drills.active, #tab-cards.active { display: block; }
+    #tab-drills, #tab-cards, #tab-memories, #tab-status { display: none; }
+    #tab-drills.active, #tab-cards.active, #tab-memories.active, #tab-status.active { display: block; }
 
     /* トースト通知 */
     #fm-toast {
@@ -307,6 +337,8 @@
   <div class="fm-tabs">
     <button class="fm-tab" onclick="switchTab('drills',this)">⛏️ ドリル</button>
     <button class="fm-tab active" onclick="switchTab('cards',this)">🃏 カード</button>
+    <button class="fm-tab" onclick="switchTab('memories',this)">🧠 メモリ</button>
+    <button class="fm-tab" onclick="switchTab('status',this)">📊 ステータス</button>
   </div>
 
   <div id="tab-drills">
@@ -352,6 +384,24 @@
     </div>
     <button class="btn-save" onclick="saveDeck()">💾 デッキを保存</button>
     <div class="save-msg" id="save-msg"></div>
+  </div>
+
+  <div id="tab-memories">
+    <div class="fm-section">
+      <div class="fm-section-title" id="mem-equipped-title">装備中 (0/3)</div>
+      <div class="mem-grid" id="mem-equipped-grid"></div>
+    </div>
+    <div class="fm-section">
+      <div class="fm-section-title">未装備</div>
+      <div class="mem-grid" id="mem-unequipped-grid"></div>
+    </div>
+  </div>
+
+  <div id="tab-status">
+    <div class="fm-section">
+      <div class="fm-section-title">現在のステータス</div>
+      <div id="status-list"></div>
+    </div>
   </div>
 </div>
 
@@ -462,6 +512,15 @@ function attachLongPress(el, cardId, def) {
 // ============================================================
 let CARDS_DEF = {};  // admin設定から読み込む
 let DRILLS_DEF = {}; // admin設定から読み込む
+let MEMORIES_DEF = {}; // admin設定から読み込む
+let myMemories = []; // drill_player_memories から読み込む [{id, memory_id, equipped}]
+const combatStatsBase = { attack:50, defense:50, critRate:10, critDmg:1.5, maxAp:100, apRegen:10, digPower:0 };
+let baseMaxHp = 1000;
+const baseMaxWeight = 100;
+const MEMORY_STAT_LABELS = {
+  hp:'体力', maxAp:'最大AP', apRegen:'AP自然回復', attack:'力', defense:'防御力',
+  critRate:'クリ率', critDmg:'クリダメ', digPower:'発掘力', maxWeight:'最大重量',
+};
 
 const DEFAULT_CARDS = {
   fist_d: { name:'拳で', desc:'基本攻撃', icon:'👊', ap_cost:10, base_attack:0, mult_min:0.9, mult_max:1.0 },
@@ -773,13 +832,30 @@ async function loadConfig() {
       DRILLS_DEF[id] = { ...(DEFAULT_DRILLS[id] ?? {}), ...v };
     }
   }
+
+  // メモリ定義
+  MEMORIES_DEF = {};
+  if (cfg.memories) {
+    for (const [id, v] of Object.entries(cfg.memories)) {
+      MEMORIES_DEF[id] = {
+        name: v.name ?? id, desc: v.desc ?? '', icon: v.icon ?? '🧠',
+        imageUrl: v.imageUrl ?? null, rarity: (v.rarity ?? '').toLowerCase() || null,
+        stat: v.stat ?? 'hp', amount: Number(v.amount) || 0,
+      };
+    }
+  }
+
+  // ステータス表示用のベース値
+  if (cfg.combatStats) Object.assign(combatStatsBase, cfg.combatStats);
+  if (cfg.baseHp != null) baseMaxHp = cfg.baseHp;
 }
 
 async function loadData() {
-  const [drillRes, deckRes, cardsRes] = await Promise.all([
+  const [drillRes, deckRes, cardsRes, memRes] = await Promise.all([
     supabaseClient.from('drill_player_drills').select('*').eq('user_id', userId),
     supabaseClient.from('drill_player_deck').select('slots').eq('user_id', userId).maybeSingle(),
     supabaseClient.from('drill_player_cards').select('card_id,quantity').eq('user_id', userId),
+    supabaseClient.from('drill_player_memories').select('id,memory_id,equipped').eq('user_id', userId),
   ]);
 
   playerDrills = drillRes.data || [];
@@ -794,6 +870,7 @@ async function loadData() {
   (cardsRes.data || []).forEach(r => { if (r.quantity > 0) ownedCards[r.card_id] = r.quantity; });
   initPool();
 
+  myMemories = memRes.data || [];
 }
 
 function initPool() {
@@ -816,6 +893,106 @@ function switchTab(tab, btn) {
   btn.classList.add('active');
   document.getElementById('tab-drills').classList.toggle('active', tab === 'drills');
   document.getElementById('tab-cards').classList.toggle('active', tab === 'cards');
+  document.getElementById('tab-memories').classList.toggle('active', tab === 'memories');
+  document.getElementById('tab-status').classList.toggle('active', tab === 'status');
+  if (tab === 'memories') renderMemories();
+  if (tab === 'status') renderStatus();
+}
+
+// ============================================================
+// メモリタブ
+// ============================================================
+function renderMemories() {
+  const equipped = myMemories.filter(m => m.equipped);
+  const unequipped = myMemories.filter(m => !m.equipped);
+
+  document.getElementById('mem-equipped-title').textContent = `装備中 (${equipped.length}/3)`;
+
+  const eqGrid = document.getElementById('mem-equipped-grid');
+  eqGrid.innerHTML = equipped.length === 0
+    ? '<div class="mem-empty">装備中のメモリはありません</div>'
+    : equipped.map(m => memCardHtml(m, true)).join('');
+
+  const uneqGrid = document.getElementById('mem-unequipped-grid');
+  uneqGrid.innerHTML = unequipped.length === 0
+    ? '<div class="mem-empty">未装備のメモリはありません<br><span style="font-size:.72rem;">モンスターを倒すと入手できます</span></div>'
+    : unequipped.map(m => memCardHtml(m, false)).join('');
+}
+
+function memCardHtml(m, isEquipped) {
+  const def = MEMORIES_DEF[m.memory_id] || { name: m.memory_id, icon: '🧠' };
+  const statLabel = MEMORY_STAT_LABELS[def.stat] || def.stat || '';
+  const sign = (def.amount ?? 0) >= 0 ? '+' : '';
+  const visual = def.imageUrl
+    ? `<img class="mem-card-img" src="${def.imageUrl}" onerror="this.outerHTML='<div class=&quot;mem-card-icon&quot;>${def.icon || '🧠'}</div>'">`
+    : `<div class="mem-card-icon">${def.icon || '🧠'}</div>`;
+  return `<div class="mem-card${isEquipped ? ' equipped' : ''}" onclick="toggleMemoryEquip('${m.id}')">
+    ${visual}
+    <div class="mem-card-name">${def.name}</div>
+    <div class="mem-card-stat">${statLabel} ${sign}${def.amount ?? 0}</div>
+  </div>`;
+}
+
+async function toggleMemoryEquip(rowId) {
+  const m = myMemories.find(x => x.id === rowId);
+  if (!m) return;
+
+  if (m.equipped) {
+    m.equipped = false;
+    await supabaseClient.from('drill_player_memories').update({ equipped: false }).eq('id', rowId);
+    renderMemories();
+    return;
+  }
+
+  const equippedCount = myMemories.filter(x => x.equipped).length;
+  if (equippedCount >= 3) {
+    showToast('⚠️ メモリは最大3つまでしか装備できません');
+    return;
+  }
+  const sameTypeEquipped = myMemories.some(x => x.equipped && x.memory_id === m.memory_id);
+  if (sameTypeEquipped) {
+    showToast('⚠️ 同じ種類のメモリは1つまでしか装備できません');
+    return;
+  }
+
+  m.equipped = true;
+  await supabaseClient.from('drill_player_memories').update({ equipped: true }).eq('id', rowId);
+  renderMemories();
+}
+
+// ============================================================
+// ステータスタブ
+// ============================================================
+function renderStatus() {
+  const bonuses = {}; // stat -> 合計ボーナス
+  for (const m of myMemories) {
+    if (!m.equipped) continue;
+    const def = MEMORIES_DEF[m.memory_id];
+    if (!def) continue;
+    bonuses[def.stat] = (bonuses[def.stat] || 0) + (Number(def.amount) || 0);
+  }
+
+  const rows = [
+    ['hp',        '❤️ 体力',        baseMaxHp],
+    ['maxAp',     '⚡ 最大AP',      combatStatsBase.maxAp],
+    ['apRegen',   '🔄 AP自然回復',  combatStatsBase.apRegen],
+    ['attack',    '⚔️ 力',          combatStatsBase.attack],
+    ['defense',   '🛡️ 防御力',      combatStatsBase.defense],
+    ['critRate',  '💥 クリ率(%)',   combatStatsBase.critRate],
+    ['critDmg',   '💢 クリダメ(倍)', combatStatsBase.critDmg],
+    ['digPower',  '⛏️ 発掘力',      combatStatsBase.digPower],
+    ['maxWeight', '🎒 最大重量',    baseMaxWeight],
+  ];
+
+  document.getElementById('status-list').innerHTML = rows.map(([stat, label, base]) => {
+    const bonus = bonuses[stat] || 0;
+    const total = base + bonus;
+    const bonusHtml = bonus !== 0 ? `<span class="status-bonus">(${bonus > 0 ? '+' : ''}${bonus})</span>` : '';
+    return `<div class="status-row">
+      <span class="status-name">${label}</span>
+      <span><span class="status-val">${total}</span>${bonusHtml}</span>
+    </div>`;
+  }).join('');
 }
 
 // ============================================================

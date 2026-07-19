@@ -281,7 +281,22 @@ const DEFAULT_GAME_CONFIG = {
     },
     rarityWeights: { d:50, c:30, b:15, a:4, s:1 },
   },
+  memoryDropRate: 10, // モンスター討伐時にメモリがドロップする確率(%)
+  memories: {},
 };
+
+// メモリで強化できるステータス
+const MEMORY_STATS = [
+  ['hp',        '体力'],
+  ['maxAp',     '最大AP'],
+  ['apRegen',   'AP自然回復'],
+  ['attack',    '力'],
+  ['defense',   '防御力'],
+  ['critRate',  'クリ率'],
+  ['critDmg',   'クリダメ'],
+  ['digPower',  '発掘力'],
+  ['maxWeight', '最大重量'],
+];
 
 // ショップ初期状態（未設定時のデフォルト。drill/game.js の SHOP_ENTRIES 初期値と一致させること）
 const DEFAULT_SHOP_ENTRIES = [
@@ -367,6 +382,8 @@ async function loadGameConfigAdmin() {
     gameConfig.treasureSlots = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.treasureSlots));
   if (!gameConfig.encounter) gameConfig.encounter = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.encounter));
   if (!gameConfig.alchemy)   gameConfig.alchemy   = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.alchemy));
+  if (!gameConfig.memories)  gameConfig.memories  = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.memories));
+  if (gameConfig.memoryDropRate == null) gameConfig.memoryDropRate = DEFAULT_GAME_CONFIG.memoryDropRate;
   // encounter 旧3スロット → 30スロットにマイグレーション
   if (gameConfig.encounter.length < 30) {
     const old = gameConfig.encounter;
@@ -427,6 +444,7 @@ function renderConfigEditor() {
   renderItemsTab();
   renderTreasureTab();
   renderAlchemyTab();
+  renderMemoriesTab();
   // 最初のタブをアクティブに
   const firstBtn = document.querySelector('.cfg-tab-btn');
   if (firstBtn) showCfgTab('blocks', firstBtn);
@@ -979,6 +997,7 @@ function collectConfig() {
   collectTreasureConfig();
   collectAlchemyConfig();
   collectShopConfig();
+  collectMemoriesConfig();
 }
 
 async function saveGameConfig() {
@@ -1863,6 +1882,128 @@ async function uploadItemImage(id, input) {
 function clearItemImage(id) {
   if (gameConfig.items?.[id]) gameConfig.items[id].imageUrl = null;
   renderItemsTab();
+}
+
+// ============================================================
+// メモリ設定タブ
+// ============================================================
+
+function renderMemoriesTab() {
+  const el = document.getElementById('cfg-tab-memories');
+  if (!el) return;
+  const memories = gameConfig.memories ?? {};
+
+  let html = `
+  <div class="info-box" style="margin-bottom:14px;">
+    メモリはモンスター討伐時にドロップし、編成画面から最大3種類まで装備できます（同じ種類は1つまで）。
+    プレイヤーのステータスを恒久的に強化します。
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+    <label style="font-size:.85rem;">討伐時のドロップ率(%)
+      ${cfgNum('cfg-memory-droprate', gameConfig.memoryDropRate ?? 10, 'min="0" max="100" style="width:80px;margin-left:6px;"')}
+    </label>
+  </div>`;
+
+  for (const [id, def] of Object.entries(memories)) {
+    const imgPreview = def.imageUrl
+      ? `<img src="${escDrill(def.imageUrl)}" style="width:40px;height:40px;object-fit:contain;vertical-align:middle;cursor:pointer;border-radius:6px;" onclick="clearMemoryImage('${id}')" title="クリックで削除">`
+      : `<div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);border-radius:6px;font-size:1.4rem;">${escDrill(def.icon || '🧠')}</div>`;
+
+    html += `<div style="border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:12px;margin-bottom:12px;">
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
+        ${imgPreview}
+        <input type="text" class="cfg-input" id="cfg-mem-name-${id}" value="${escDrill(def.name ?? id)}" style="width:130px;" placeholder="名前">
+        <input type="text" class="cfg-input" id="cfg-mem-icon-${id}" value="${escDrill(def.icon ?? '')}" style="width:60px;" placeholder="🧠">
+        <label style="cursor:pointer;font-size:.8rem;padding:4px 8px;background:rgba(255,255,255,.1);border-radius:4px;">
+          📷 画像
+          <input type="file" accept="image/*" style="display:none;" onchange="uploadMemoryImage('${id}',this)">
+        </label>
+        <button class="btn-refresh" style="margin-left:auto;background:rgba(255,100,100,.2);" onclick="deleteMemory('${id}')">🗑️ 削除</button>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:.8rem;align-items:flex-end;">
+        <label>説明<br>
+          <input type="text" class="cfg-input" id="cfg-mem-desc-${id}" value="${escDrill(def.desc ?? '')}" style="width:160px;margin-top:2px;" placeholder="説明文">
+        </label>
+        <label>ランク<br>
+          <select class="cfg-input" id="cfg-mem-rarity-${id}" style="width:70px;margin-top:2px;">
+            ${['','d','c','b','a','s'].map(v => `<option value="${v}"${(def.rarity??'')===v?' selected':''}>${v===''?'なし':v.toUpperCase()}</option>`).join('')}
+          </select>
+        </label>
+        <label>ステータス<br>
+          <select class="cfg-input" id="cfg-mem-stat-${id}" style="width:110px;margin-top:2px;">
+            ${MEMORY_STATS.map(([v,label]) => `<option value="${v}"${(def.stat??'hp')===v?' selected':''}>${label}</option>`).join('')}
+          </select>
+        </label>
+        <label>上昇量<br>
+          <input type="number" class="cfg-input" id="cfg-mem-amount-${id}" value="${def.amount ?? 0}" style="width:80px;margin-top:2px;">
+        </label>
+        <label>出現重み<br>
+          <input type="number" class="cfg-input" id="cfg-mem-weight-${id}" value="${def.weight ?? 10}" min="0" style="width:70px;margin-top:2px;">
+        </label>
+      </div>
+    </div>`;
+  }
+
+  html += `<button class="btn-refresh" onclick="addMemory()">＋ メモリを追加</button>`;
+  el.innerHTML = html;
+}
+
+function collectMemoriesConfig() {
+  const rateEl = document.getElementById('cfg-memory-droprate');
+  if (rateEl) gameConfig.memoryDropRate = Math.max(0, Math.min(100, parseInt(rateEl.value) || 0));
+
+  const memories = gameConfig.memories ?? {};
+  for (const [id, def] of Object.entries(memories)) {
+    const nameEl   = document.getElementById(`cfg-mem-name-${id}`);
+    const iconEl   = document.getElementById(`cfg-mem-icon-${id}`);
+    const descEl   = document.getElementById(`cfg-mem-desc-${id}`);
+    const rarityEl = document.getElementById(`cfg-mem-rarity-${id}`);
+    const statEl   = document.getElementById(`cfg-mem-stat-${id}`);
+    const amountEl = document.getElementById(`cfg-mem-amount-${id}`);
+    const weightEl = document.getElementById(`cfg-mem-weight-${id}`);
+    if (!nameEl) continue; // 未表示（描画前）の場合はスキップ
+    def.name   = nameEl.value || def.name;
+    def.icon   = iconEl.value || '🧠';
+    def.desc   = descEl.value;
+    def.rarity = rarityEl.value || null;
+    def.stat   = statEl.value || 'hp';
+    def.amount = parseFloat(amountEl.value) || 0;
+    def.weight = Math.max(0, parseInt(weightEl.value) || 0);
+  }
+  gameConfig.memories = memories;
+}
+
+function addMemory() {
+  collectMemoriesConfig();
+  const id = 'memory_' + Date.now();
+  if (!gameConfig.memories) gameConfig.memories = {};
+  gameConfig.memories[id] = { name: '新しいメモリ', desc: '', icon: '🧠', imageUrl: null, rarity: 'd', stat: 'hp', amount: 10, weight: 10 };
+  renderMemoriesTab();
+}
+
+function deleteMemory(id) {
+  collectMemoriesConfig();
+  if (!confirm(`「${gameConfig.memories?.[id]?.name || id}」を削除しますか？`)) return;
+  delete gameConfig.memories[id];
+  renderMemoriesTab();
+}
+
+async function uploadMemoryImage(id, input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  try {
+    collectMemoriesConfig();
+    const url = await uploadDrillImage('memories/' + id, file);
+    if (gameConfig.memories?.[id]) gameConfig.memories[id].imageUrl = url;
+    renderMemoriesTab();
+  } catch (e) {
+    alert('アップロードエラー: ' + e.message);
+  }
+}
+
+function clearMemoryImage(id) {
+  if (gameConfig.memories?.[id]) gameConfig.memories[id].imageUrl = null;
+  renderMemoriesTab();
 }
 
 // ============================================================

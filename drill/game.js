@@ -162,6 +162,7 @@ const DEF_COEF = 200; // 防御係数
 let COMBAT_STATS = {
   attack: 50, defense: 50, critRate: 10, critDmg: 1.5, maxAp: 100, apRegen: 10, digPower: 0,
 };
+let COMBAT_STATS_BASE = null; // メモリ適用前の素の値（applyMemoryBonusesで初回キャプチャ）
 
 const TARGET_LABELS = {
   SINGLE:       '単体（敵）',
@@ -229,6 +230,65 @@ let MONSTERS = {
   },
 };
 
+// メモリ定義（モンスター討伐時にドロップし、編成画面で最大3種類まで装備できるステータス強化アイテム）
+let MEMORIES = {};
+let MEMORY_DROP_RATE = 10; // 討伐時のドロップ率(%)
+
+// 装備中メモリの効果をベースステータスに適用する（loadGameConfig/loadAll完了後に1回呼ぶ）
+function applyMemoryBonuses() {
+  if (COMBAT_STATS_BASE == null) COMBAT_STATS_BASE = { ...COMBAT_STATS };
+  if (G._baseMaxHp == null) G._baseMaxHp = G.maxHp;
+  if (G._baseMaxBpWeight == null) G._baseMaxBpWeight = G.maxBpWeight;
+
+  Object.assign(COMBAT_STATS, COMBAT_STATS_BASE);
+  G.maxHp = G._baseMaxHp;
+  G.maxBpWeight = G._baseMaxBpWeight;
+
+  for (const m of G.memories) {
+    if (!m.equipped) continue;
+    const def = MEMORIES[m.memory_id];
+    if (!def) continue;
+    const amt = Number(def.amount) || 0;
+    switch (def.stat) {
+      case 'hp':        G.maxHp += amt; break;
+      case 'maxAp':     COMBAT_STATS.maxAp += amt; break;
+      case 'apRegen':   COMBAT_STATS.apRegen += amt; break;
+      case 'attack':    COMBAT_STATS.attack += amt; break;
+      case 'defense':   COMBAT_STATS.defense += amt; break;
+      case 'critRate':  COMBAT_STATS.critRate += amt; break;
+      case 'critDmg':   COMBAT_STATS.critDmg += amt; break;
+      case 'digPower':  COMBAT_STATS.digPower += amt; break;
+      case 'maxWeight': G.maxBpWeight += amt; break;
+    }
+  }
+  G.hp = Math.min(G.hp, G.maxHp);
+}
+
+// 重み付きでメモリを1種類抽選する
+function _weightedPickMemory() {
+  const entries = Object.entries(MEMORIES).filter(([, def]) => (def.weight ?? 0) > 0);
+  if (entries.length === 0) return null;
+  const total = entries.reduce((s, [, def]) => s + (def.weight ?? 0), 0);
+  let r = Math.random() * total;
+  for (const [id, def] of entries) {
+    r -= (def.weight ?? 0);
+    if (r <= 0) return id;
+  }
+  return entries[entries.length - 1][0];
+}
+
+// モンスター討伐時のメモリドロップ抽選（成功したら付与してmemory_idを返す）
+async function grantMemoryDrop() {
+  if (Math.random() * 100 >= MEMORY_DROP_RATE) return null;
+  const memoryId = _weightedPickMemory();
+  if (!memoryId) return null;
+  const { data } = await supabaseClient.from('drill_player_memories')
+    .insert({ user_id: G.userId, memory_id: memoryId, equipped: false })
+    .select().single();
+  if (data) G.memories.push(data);
+  return memoryId;
+}
+
 // ============================================================
 // ゲーム状態
 // ============================================================
@@ -269,6 +329,7 @@ const G = {
   lootGold: 0,   // 今回の探索で得た未確定ゴールド（地上帰還で確定、死亡で消失）
   lootDrills: [], // 今回の探索で拾った未確定ドリル [{id, drill_id, durability}]（死亡でその場に落とす）
   lootCards: {}, // 今回の探索で得た未確定カード（現状は入手経路なし。将来の受け皿）
+  memories: [], // 所持メモリ一覧 [{id, memory_id, equipped}]（drill_player_memoriesから読み込む）
 };
 
 let _drillChannel = null; // Realtimeチャンネル参照（Broadcastに使用）
@@ -535,6 +596,21 @@ async function loadGameConfig() {
     if (cfg.combatStats) {
       Object.assign(COMBAT_STATS, cfg.combatStats);
     }
+    if (cfg.memoryDropRate != null) MEMORY_DROP_RATE = cfg.memoryDropRate;
+    if (cfg.memories) {
+      for (const [id, v] of Object.entries(cfg.memories)) {
+        MEMORIES[id] = {
+          name:     v.name     ?? MEMORIES[id]?.name     ?? id,
+          desc:     v.desc     ?? MEMORIES[id]?.desc     ?? '',
+          icon:     v.icon     ?? MEMORIES[id]?.icon     ?? '🧠',
+          imageUrl: v.imageUrl ?? null,
+          rarity:   v.rarity   ?? MEMORIES[id]?.rarity   ?? null,
+          stat:     v.stat     ?? MEMORIES[id]?.stat     ?? 'hp',
+          amount:   v.amount   ?? MEMORIES[id]?.amount   ?? 0,
+          weight:   v.weight   ?? MEMORIES[id]?.weight   ?? 10,
+        };
+      }
+    }
     if (cfg.items) {
       for (const [id, v] of Object.entries(cfg.items)) {
         ITEMS[id] = {
@@ -627,7 +703,7 @@ async function loadAll() {
   const uid = G.userId;
   const date = G.mapDate;
 
-  const [dugRes, lockRes, posRes, bpRes, invRes, drillRes, permRes, profRes, othRes, dropRes, deckRes, cardsRes] =
+  const [dugRes, lockRes, posRes, bpRes, invRes, drillRes, permRes, profRes, othRes, dropRes, deckRes, cardsRes, memRes] =
     await Promise.all([
       supabaseClient.from('drill_dug_cells').select('x,y').eq('map_date', date),
       supabaseClient.from('drill_dig_locks').select('x,y,locked_by,expires_at')
@@ -642,6 +718,7 @@ async function loadAll() {
       supabaseClient.from('drill_dropped_items').select('id,pos_x,pos_y,items,dropper_name,cause_of_death,dropped_at,locked_by,locked_until').eq('map_date', date),
       supabaseClient.from('drill_player_deck').select('slots').eq('user_id', uid).maybeSingle(),
       supabaseClient.from('drill_player_cards').select('card_id,quantity').eq('user_id', uid),
+      supabaseClient.from('drill_player_memories').select('id,memory_id,equipped').eq('user_id', uid),
     ]);
 
   G.dugCells = new Set((dugRes.data || []).map(r => `${r.x},${r.y}`));
@@ -701,6 +778,9 @@ async function loadAll() {
   // 所持カード（drill_player_cards から読み込み）
   G.ownedCards = {};
   (cardsRes.data || []).forEach(r => { if (r.quantity > 0) G.ownedCards[r.card_id] = r.quantity; });
+
+  // 所持メモリ
+  G.memories = memRes.data || [];
 
   // ゴールド・HP・AP
   G.drillGold   = profRes.data?.drill_gold || 0;
@@ -3505,11 +3585,14 @@ async function endCombat(win) {
   }
 
   if (win === true) {
+    const droppedMemoryId = await grantMemoryDrop();
+    const memDef = droppedMemoryId ? MEMORIES[droppedMemoryId] : null;
     await new Promise(resolve => {
       document.getElementById('modal-inner').innerHTML = `
         <div style="text-align:center;padding:24px 0 18px;">
           <div style="font-size:3rem;margin-bottom:12px;">🎉</div>
           <div style="font-size:1.1rem;font-weight:700;color:#6bde9b;">${escHtml(monName)}を倒した！</div>
+          ${memDef ? `<div style="margin-top:14px;font-size:.88rem;color:#c9a0ff;">🧠 メモリ「${escHtml(memDef.name)}」を入手！</div>` : ''}
         </div>
         <button class="btn-modal-close" id="combat-end-btn">閉じる</button>`;
       document.getElementById('combat-end-btn').addEventListener('click', resolve, { once: true });
@@ -3518,7 +3601,7 @@ async function endCombat(win) {
     document.getElementById('modal-inner').classList.remove('combat-modal');
     document.getElementById('combat-log-overlay')?.remove();
     closeModal();
-    log(`⚔️ ${monName}を倒した！`);
+    log(`⚔️ ${monName}を倒した！${memDef ? ` 🧠メモリ「${escHtml(memDef.name)}」を入手` : ''}`);
   } else if (win === 'flee') {
     document.getElementById('modal-overlay').dataset.combatModal = '';
     document.getElementById('modal-inner').classList.remove('combat-modal');
@@ -4865,6 +4948,7 @@ async function initDrillGame() {
   await ensureSeed();
   genTreasures(G.seed);
   await loadAll();
+  applyMemoryBonuses();
   setupInput();
   setupRealtime();
   render();
