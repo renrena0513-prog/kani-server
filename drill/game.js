@@ -232,7 +232,7 @@ let MONSTERS = {
 
 // メモリ定義（モンスター討伐時にドロップし、編成画面で最大3種類まで装備できるステータス強化アイテム）
 let MEMORIES = {};
-let MEMORY_DROP_RATE = 10; // 討伐時のドロップ率(%)
+let MEMORY_RANK_WEIGHTS = { d:50, c:30, b:15, a:4, s:1 }; // メモリドロップ時のランク抽選比率（全モンスター共通）
 
 // 装備中メモリの効果をベースステータスに適用する（loadGameConfig/loadAll完了後に1回呼ぶ）
 function applyMemoryBonuses() {
@@ -264,29 +264,69 @@ function applyMemoryBonuses() {
   G.hp = Math.min(G.hp, G.maxHp);
 }
 
-// 重み付きでメモリを1種類抽選する
-function _weightedPickMemory() {
-  const entries = Object.entries(MEMORIES).filter(([, def]) => (def.weight ?? 0) > 0);
-  if (entries.length === 0) return null;
-  const total = entries.reduce((s, [, def]) => s + (def.weight ?? 0), 0);
-  let r = Math.random() * total;
-  for (const [id, def] of entries) {
-    r -= (def.weight ?? 0);
-    if (r <= 0) return id;
+// 指定ランクの中から重み付きでメモリを1種類抽選する（該当ランクの定義が無ければnull）
+function _weightedPickMemory(rank) {
+  const table = {};
+  for (const [id, def] of Object.entries(MEMORIES)) {
+    if (def.rarity !== rank) continue;
+    if ((def.weight ?? 0) > 0) table[id] = def.weight;
   }
-  return entries[entries.length - 1][0];
+  if (Object.keys(table).length === 0) return null;
+  return _weightedRandom(table);
 }
 
 // モンスター討伐時のメモリドロップ抽選（成功したら付与してmemory_idを返す）
-async function grantMemoryDrop() {
-  if (Math.random() * 100 >= MEMORY_DROP_RATE) return null;
-  const memoryId = _weightedPickMemory();
+// dropRate: そのモンスター固有のドロップ率(%)
+async function grantMemoryDrop(dropRate) {
+  if (!dropRate || Math.random() * 100 >= dropRate) return null;
+  const rank = _weightedRandom(MEMORY_RANK_WEIGHTS);
+  const memoryId = _weightedPickMemory(rank);
   if (!memoryId) return null;
   const { data } = await supabaseClient.from('drill_player_memories')
     .insert({ user_id: G.userId, memory_id: memoryId, equipped: false })
     .select().single();
   if (data) G.memories.push(data);
   return memoryId;
+}
+
+// モンスターのノーマルドロップ（重み付き抽選で1つ）と固定ドロップ（毎回すべて）を解決する
+function resolveMonsterDrops(monster) {
+  const drops = [];
+  for (const d of monster?.fixedDrops ?? []) {
+    if (d.itemId) drops.push({ itemId: d.itemId, qty: d.qty ?? 1 });
+  }
+  const normalDrops = monster?.normalDrops ?? [];
+  if (normalDrops.length > 0) {
+    const table = {};
+    normalDrops.forEach((d, i) => { table[i] = d.weight ?? 0; });
+    if (Object.values(table).some(w => w > 0)) {
+      const picked = normalDrops[Number(_weightedRandom(table))];
+      if (picked?.itemId) drops.push({ itemId: picked.itemId, qty: picked.qty ?? 1 });
+    }
+  }
+  return drops;
+}
+
+// ドロップを実際に付与する（お金は戦利品ゴールドへ、素材/アイテムはリュックへ。入らなければ足元に落とす）
+async function grantMonsterDrops(drops) {
+  const granted = [];
+  for (const { itemId, qty } of drops) {
+    if (itemId === 'money') {
+      await addLootGold(qty);
+      granted.push(`💰${qty}G`);
+      continue;
+    }
+    const name = getItemName(itemId);
+    if (bpWeight() + itemWeight(itemId) * qty <= G.maxBpWeight) {
+      G.backpack[itemId] = (G.backpack[itemId] || 0) + qty;
+      await saveBpItem(itemId, G.backpack[itemId]);
+      granted.push(`${name}×${qty}`);
+    } else {
+      await dropAtCurrentPos([{ item_id: itemId, quantity: qty }]);
+      granted.push(`${name}×${qty}（足元へ）`);
+    }
+  }
+  return granted;
 }
 
 // ============================================================
@@ -563,6 +603,13 @@ async function loadGameConfig() {
           actions: (v.actions ?? MONSTERS[id]?.actions ?? []).map(a => ({
             name: a.name ?? '', damage: a.damage ?? 0, weight: a.weight ?? 1,
           })),
+          memoryDropRate: v.memoryDropRate ?? MONSTERS[id]?.memoryDropRate ?? 0,
+          normalDrops: (v.normalDrops ?? MONSTERS[id]?.normalDrops ?? []).map(d => ({
+            itemId: d.itemId, qty: d.qty ?? 1, weight: d.weight ?? 1,
+          })),
+          fixedDrops: (v.fixedDrops ?? MONSTERS[id]?.fixedDrops ?? []).map(d => ({
+            itemId: d.itemId, qty: d.qty ?? 1,
+          })),
         };
       }
     }
@@ -596,7 +643,7 @@ async function loadGameConfig() {
     if (cfg.combatStats) {
       Object.assign(COMBAT_STATS, cfg.combatStats);
     }
-    if (cfg.memoryDropRate != null) MEMORY_DROP_RATE = cfg.memoryDropRate;
+    if (cfg.memoryRankWeights) Object.assign(MEMORY_RANK_WEIGHTS, cfg.memoryRankWeights);
     if (cfg.memories) {
       for (const [id, v] of Object.entries(cfg.memories)) {
         MEMORIES[id] = {
@@ -3585,14 +3632,17 @@ async function endCombat(win) {
   }
 
   if (win === true) {
-    const droppedMemoryId = await grantMemoryDrop();
+    const droppedMemoryId = await grantMemoryDrop(C.monster?.memoryDropRate);
     const memDef = droppedMemoryId ? MEMORIES[droppedMemoryId] : null;
+    const itemDrops = resolveMonsterDrops(C.monster);
+    const grantedItems = itemDrops.length > 0 ? await grantMonsterDrops(itemDrops) : [];
     await new Promise(resolve => {
       document.getElementById('modal-inner').innerHTML = `
         <div style="text-align:center;padding:24px 0 18px;">
           <div style="font-size:3rem;margin-bottom:12px;">🎉</div>
           <div style="font-size:1.1rem;font-weight:700;color:#6bde9b;">${escHtml(monName)}を倒した！</div>
-          ${memDef ? `<div style="margin-top:14px;font-size:.88rem;color:#c9a0ff;">🧠 メモリ「${escHtml(memDef.name)}」を入手！</div>` : ''}
+          ${grantedItems.length > 0 ? `<div style="margin-top:10px;font-size:.85rem;color:#f0c060;">${grantedItems.map(escHtml).join('　')}</div>` : ''}
+          ${memDef ? `<div style="margin-top:10px;font-size:.88rem;color:#c9a0ff;">🧠 メモリ「${escHtml(memDef.name)}」を入手！</div>` : ''}
         </div>
         <button class="btn-modal-close" id="combat-end-btn">閉じる</button>`;
       document.getElementById('combat-end-btn').addEventListener('click', resolve, { once: true });
@@ -3601,7 +3651,8 @@ async function endCombat(win) {
     document.getElementById('modal-inner').classList.remove('combat-modal');
     document.getElementById('combat-log-overlay')?.remove();
     closeModal();
-    log(`⚔️ ${monName}を倒した！${memDef ? ` 🧠メモリ「${escHtml(memDef.name)}」を入手` : ''}`);
+    const extraMsgs = [...grantedItems, ...(memDef ? [`🧠メモリ「${memDef.name}」を入手`] : [])];
+    log(`⚔️ ${monName}を倒した！${extraMsgs.length > 0 ? ' ' + extraMsgs.join(' ') : ''}`);
   } else if (win === 'flee') {
     document.getElementById('modal-overlay').dataset.combatModal = '';
     document.getElementById('modal-inner').classList.remove('combat-modal');

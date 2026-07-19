@@ -236,6 +236,9 @@ const DEFAULT_GAME_CONFIG = {
         { name: 'ぷるぷるふるえている', damage: 0,  weight: 1 },
         { name: 'からみつく',          damage: 50, weight: 1 },
       ],
+      memoryDropRate: 0,
+      normalDrops: [],
+      fixedDrops: [],
     },
   },
   cards: {
@@ -281,9 +284,13 @@ const DEFAULT_GAME_CONFIG = {
     },
     rarityWeights: { d:50, c:30, b:15, a:4, s:1 },
   },
-  memoryDropRate: 10, // モンスター討伐時にメモリがドロップする確率(%)
+  memoryRankWeights: { d:50, c:30, b:15, a:4, s:1 }, // メモリドロップ時のランク抽選比率（全モンスター共通）
   memories: {},
 };
+
+// ドロップ選択肢（お金 + 素材 + アイテム）の共通値
+const DROP_ITEM_IDS   = ['money', 'dirt','stone','copper','iron','silver','gold'];
+const DROP_ITEM_NAMES = { money:'お金', dirt:'土', stone:'石', copper:'銅', iron:'鉄', silver:'銀', gold:'金' };
 
 // メモリで強化できるステータス
 const MEMORY_STATS = [
@@ -383,7 +390,15 @@ async function loadGameConfigAdmin() {
   if (!gameConfig.encounter) gameConfig.encounter = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.encounter));
   if (!gameConfig.alchemy)   gameConfig.alchemy   = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.alchemy));
   if (!gameConfig.memories)  gameConfig.memories  = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.memories));
-  if (gameConfig.memoryDropRate == null) gameConfig.memoryDropRate = DEFAULT_GAME_CONFIG.memoryDropRate;
+  if (!gameConfig.memoryRankWeights) gameConfig.memoryRankWeights = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.memoryRankWeights));
+  // モンスターに新しいドロップ設定項目がなければ補完
+  if (gameConfig.monsters) {
+    for (const mon of Object.values(gameConfig.monsters)) {
+      if (mon.memoryDropRate == null) mon.memoryDropRate = 0;
+      if (!Array.isArray(mon.normalDrops)) mon.normalDrops = [];
+      if (!Array.isArray(mon.fixedDrops))  mon.fixedDrops  = [];
+    }
+  }
   // encounter 旧3スロット → 30スロットにマイグレーション
   if (gameConfig.encounter.length < 30) {
     const old = gameConfig.encounter;
@@ -1249,6 +1264,8 @@ function renderMonstersTab() {
 
   for (const [id, mon] of Object.entries(monsters)) {
     const acts = mon.actions ?? [];
+    const normalDrops = mon.normalDrops ?? [];
+    const fixedDrops  = mon.fixedDrops  ?? [];
 
     const imgPreview = mon.imageUrl
       ? `<img src="${escDrill(mon.imageUrl)}" style="width:48px;height:48px;object-fit:contain;border-radius:6px;background:rgba(255,255,255,.08);">`
@@ -1259,6 +1276,22 @@ function renderMonstersTab() {
       <td><input class="cfg-input mon-act-dmg-${id}"  type="number" value="${act.damage}" min="0" style="width:68px;"></td>
       <td><input class="cfg-input mon-act-wt-${id}"   type="number" value="${act.weight}" min="0" step="0.1" style="width:58px;"></td>
       <td><button class="inv-del-btn" onclick="delMonsterAction('${id}',${ai})">✕</button></td>
+    </tr>`).join('');
+
+    const dropItemOptions = (selected) => DROP_ITEM_IDS.map(v =>
+      `<option value="${v}"${selected===v?' selected':''}>${DROP_ITEM_NAMES[v]}</option>`).join('');
+
+    const normalDropRows = normalDrops.map((d, di) => `<tr>
+      <td><select class="cfg-input mon-ndrop-item-${id}" style="width:100%;min-width:90px;">${dropItemOptions(d.itemId)}</select></td>
+      <td><input class="cfg-input mon-ndrop-qty-${id}"    type="number" value="${d.qty ?? 1}" min="1" style="width:64px;"></td>
+      <td><input class="cfg-input mon-ndrop-wt-${id}"     type="number" value="${d.weight ?? 1}" min="0" style="width:64px;"></td>
+      <td><button class="inv-del-btn" onclick="delMonsterNormalDrop('${id}',${di})">✕</button></td>
+    </tr>`).join('');
+
+    const fixedDropRows = fixedDrops.map((d, di) => `<tr>
+      <td><select class="cfg-input mon-fdrop-item-${id}" style="width:100%;min-width:90px;">${dropItemOptions(d.itemId)}</select></td>
+      <td><input class="cfg-input mon-fdrop-qty-${id}"    type="number" value="${d.qty ?? 1}" min="1" style="width:64px;"></td>
+      <td><button class="inv-del-btn" onclick="delMonsterFixedDrop('${id}',${di})">✕</button></td>
     </tr>`).join('');
 
     html += `
@@ -1298,6 +1331,24 @@ function renderMonstersTab() {
         ${actionRows || '<tr><td colspan="4" style="opacity:.4;font-size:.8rem;padding:6px;">なし</td></tr>'}
       </table>
       <button class="inv-save-btn" style="padding:2px 10px;font-size:.75rem;" onclick="addMonsterAction('${id}')">＋ 行動追加</button>
+
+      <div style="font-size:.82rem;font-weight:700;margin:16px 0 8px;opacity:.7;">🧠 メモリドロップ率(%)</div>
+      <input class="cfg-input mon-memrate-${id}" type="number" value="${mon.memoryDropRate ?? 0}" min="0" max="100" style="width:80px;">
+      <div style="font-size:.72rem;opacity:.5;margin-top:4px;">ランク（D〜S）の比率はメモリタブの共通設定に従います。</div>
+
+      <div style="font-size:.82rem;font-weight:700;margin:16px 0 8px;opacity:.7;">📦 ノーマルドロップ（重み付き抽選で1つ）</div>
+      <table class="drill-table" style="margin-bottom:8px;">
+        <tr><th>アイテム</th><th>個数</th><th>重み</th><th></th></tr>
+        ${normalDropRows || '<tr><td colspan="4" style="opacity:.4;font-size:.8rem;padding:6px;">なし</td></tr>'}
+      </table>
+      <button class="inv-save-btn" style="padding:2px 10px;font-size:.75rem;" onclick="addMonsterNormalDrop('${id}')">＋ ドロップ追加</button>
+
+      <div style="font-size:.82rem;font-weight:700;margin:16px 0 8px;opacity:.7;">🎁 固定ドロップ（毎回100%）</div>
+      <table class="drill-table" style="margin-bottom:8px;">
+        <tr><th>アイテム</th><th>個数</th><th></th></tr>
+        ${fixedDropRows || '<tr><td colspan="3" style="opacity:.4;font-size:.8rem;padding:6px;">なし</td></tr>'}
+      </table>
+      <button class="inv-save-btn" style="padding:2px 10px;font-size:.75rem;" onclick="addMonsterFixedDrop('${id}')">＋ ドロップ追加</button>
     </div>`;
   }
 
@@ -1356,6 +1407,25 @@ function collectMonstersConfig() {
       damage: parseInt(dmgEls[i]?.value) || 0,
       weight: parseFloat(wtEls[i]?.value) || 1,
     }));
+
+    const memRateEl = document.querySelector(`.mon-memrate-${id}`);
+    if (memRateEl) mon.memoryDropRate = Math.max(0, Math.min(100, parseInt(memRateEl.value) || 0));
+
+    const ndItemEls = document.querySelectorAll(`.mon-ndrop-item-${id}`);
+    const ndQtyEls  = document.querySelectorAll(`.mon-ndrop-qty-${id}`);
+    const ndWtEls   = document.querySelectorAll(`.mon-ndrop-wt-${id}`);
+    mon.normalDrops = Array.from(ndItemEls).map((el, i) => ({
+      itemId: el.value,
+      qty:    parseInt(ndQtyEls[i]?.value) || 1,
+      weight: parseFloat(ndWtEls[i]?.value) || 0,
+    }));
+
+    const fdItemEls = document.querySelectorAll(`.mon-fdrop-item-${id}`);
+    const fdQtyEls  = document.querySelectorAll(`.mon-fdrop-qty-${id}`);
+    mon.fixedDrops = Array.from(fdItemEls).map((el, i) => ({
+      itemId: el.value,
+      qty:    parseInt(fdQtyEls[i]?.value) || 1,
+    }));
   }
   gameConfig.monsters = monsters;
 }
@@ -1369,7 +1439,42 @@ function addMonster() {
     name: '新モンスター', icon: '👾', imageUrl: null,
     maxHp: 100, defense: 0, layerWeights: Array.from({length: 30}, () => 0),
     actions: [{ name: '攻撃', damage: 10, weight: 1 }],
+    memoryDropRate: 0, normalDrops: [], fixedDrops: [],
   };
+  renderMonstersTab();
+}
+
+function addMonsterNormalDrop(id) {
+  collectCombatStatsConfig();
+  collectMonstersConfig();
+  if (!gameConfig.monsters?.[id]) return;
+  if (!gameConfig.monsters[id].normalDrops) gameConfig.monsters[id].normalDrops = [];
+  gameConfig.monsters[id].normalDrops.push({ itemId: 'money', qty: 1, weight: 1 });
+  renderMonstersTab();
+}
+
+function delMonsterNormalDrop(id, idx) {
+  collectCombatStatsConfig();
+  collectMonstersConfig();
+  if (!gameConfig.monsters?.[id]) return;
+  gameConfig.monsters[id].normalDrops.splice(idx, 1);
+  renderMonstersTab();
+}
+
+function addMonsterFixedDrop(id) {
+  collectCombatStatsConfig();
+  collectMonstersConfig();
+  if (!gameConfig.monsters?.[id]) return;
+  if (!gameConfig.monsters[id].fixedDrops) gameConfig.monsters[id].fixedDrops = [];
+  gameConfig.monsters[id].fixedDrops.push({ itemId: 'money', qty: 1 });
+  renderMonstersTab();
+}
+
+function delMonsterFixedDrop(id, idx) {
+  collectCombatStatsConfig();
+  collectMonstersConfig();
+  if (!gameConfig.monsters?.[id]) return;
+  gameConfig.monsters[id].fixedDrops.splice(idx, 1);
   renderMonstersTab();
 }
 
@@ -1892,16 +1997,26 @@ function renderMemoriesTab() {
   const el = document.getElementById('cfg-tab-memories');
   if (!el) return;
   const memories = gameConfig.memories ?? {};
+  const rw = gameConfig.memoryRankWeights ?? DEFAULT_GAME_CONFIG.memoryRankWeights;
+
+  const rankRows = ALCHEMY_RARITY_IDS.map(r => `
+    <label style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:.8rem;">
+      <span style="font-weight:700;letter-spacing:.05em;">${r.toUpperCase()}</span>
+      <input class="cfg-input mem-rank-${r}" type="number" min="0" value="${rw[r] ?? 0}"
+        style="width:64px;text-align:center;" oninput="_memAdminUpdateTotal()">
+    </label>`).join('');
 
   let html = `
   <div class="info-box" style="margin-bottom:14px;">
     メモリはモンスター討伐時にドロップし、編成画面から最大3種類まで装備できます（同じ種類は1つまで）。
-    プレイヤーのステータスを恒久的に強化します。
+    プレイヤーのステータスを恒久的に強化します。ドロップ率はモンスタータブで個別に設定します。
   </div>
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
-    <label style="font-size:.85rem;">討伐時のドロップ率(%)
-      ${cfgNum('cfg-memory-droprate', gameConfig.memoryDropRate ?? 10, 'min="0" max="100" style="width:80px;margin-left:6px;"')}
-    </label>
+  <div style="margin-bottom:20px;">
+    <div style="font-size:.95rem;font-weight:700;margin-bottom:10px;">メモリのランク抽選比率（全モンスター共通）</div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;">
+      ${rankRows}
+      <div id="mem-rank-total" style="font-size:.8rem;opacity:.6;align-self:center;"></div>
+    </div>
   </div>`;
 
   for (const [id, def] of Object.entries(memories)) {
@@ -1946,11 +2061,25 @@ function renderMemoriesTab() {
 
   html += `<button class="btn-refresh" onclick="addMemory()">＋ メモリを追加</button>`;
   el.innerHTML = html;
+  _memAdminUpdateTotal();
+}
+
+function _memAdminUpdateTotal() {
+  const el = document.getElementById('mem-rank-total');
+  if (!el) return;
+  const total = ALCHEMY_RARITY_IDS.reduce((s, r) => {
+    return s + (parseInt(document.querySelector(`.mem-rank-${r}`)?.value) || 0);
+  }, 0);
+  el.textContent = `合計: ${total}`;
+  el.style.color = total === 100 ? '#6bde9b' : '#f44336';
 }
 
 function collectMemoriesConfig() {
-  const rateEl = document.getElementById('cfg-memory-droprate');
-  if (rateEl) gameConfig.memoryDropRate = Math.max(0, Math.min(100, parseInt(rateEl.value) || 0));
+  const rw = {};
+  for (const r of ALCHEMY_RARITY_IDS) {
+    rw[r] = parseInt(document.querySelector(`.mem-rank-${r}`)?.value) || 0;
+  }
+  gameConfig.memoryRankWeights = rw;
 
   const memories = gameConfig.memories ?? {};
   for (const [id, def] of Object.entries(memories)) {
