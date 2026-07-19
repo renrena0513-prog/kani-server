@@ -266,6 +266,9 @@ const G = {
   persistedAp: null,    // 戦闘間で持続するAP（DB同期）
   droppedItems: new Map(), // 'x,y' -> [{id, items:[{item_id,quantity}]}]
   maxBpWeight: 100,
+  lootGold: 0,   // 今回の探索で得た未確定ゴールド（地上帰還で確定、死亡で消失）
+  lootDrills: [], // 今回の探索で拾った未確定ドリル [{id, drill_id, durability}]（死亡でその場に落とす）
+  lootCards: {}, // 今回の探索で得た未確定カード（現状は入手経路なし。将来の受け皿）
 };
 
 let _drillChannel = null; // Realtimeチャンネル参照（Broadcastに使用）
@@ -634,7 +637,7 @@ async function loadAll() {
       supabaseClient.from('drill_inventory').select('item_id,quantity').eq('user_id', uid),
       supabaseClient.from('drill_player_drills').select('*').eq('user_id', uid),
       supabaseClient.from('drill_player_permits').select('permit_id').eq('user_id', uid),
-      supabaseClient.from('profiles').select('drill_gold,drill_hp,drill_ap').eq('discord_user_id', G.discordId).maybeSingle(),
+      supabaseClient.from('profiles').select('drill_gold,drill_hp,drill_ap,drill_loot_gold').eq('discord_user_id', G.discordId).maybeSingle(),
       supabaseClient.from('drill_player_positions').select('user_id,x,y,avatar_url').eq('map_date', date).neq('user_id', uid),
       supabaseClient.from('drill_dropped_items').select('id,pos_x,pos_y,items,dropper_name,cause_of_death,dropped_at,locked_by,locked_until').eq('map_date', date),
       supabaseClient.from('drill_player_deck').select('slots').eq('user_id', uid).maybeSingle(),
@@ -682,6 +685,7 @@ async function loadAll() {
     G.drillDur = equipped.durability;
   }
   G.drills = drills;
+  G.lootDrills = drills.filter(d => d.is_loot);
 
   // 許可証
   G.permits = new Set((permRes.data || []).map(r => r.permit_id));
@@ -700,6 +704,7 @@ async function loadAll() {
 
   // ゴールド・HP・AP
   G.drillGold   = profRes.data?.drill_gold || 0;
+  G.lootGold    = profRes.data?.drill_loot_gold || 0;
   G.hp          = profRes.data?.drill_hp   ?? G.maxHp;
   if (profRes.data?.drill_ap != null) G.persistedAp = profRes.data.drill_ap;
 
@@ -745,6 +750,12 @@ async function savePos() {
 
 async function saveHp() {
   await supabaseClient.from('profiles').update({ drill_hp: G.hp }).eq('discord_user_id', G.discordId);
+}
+
+// 探索中に得たゴールドは「戦利品」として未確定で加算する（地上帰還で確定、死亡で消失）
+async function addLootGold(amount) {
+  G.lootGold += amount;
+  await supabaseClient.from('profiles').update({ drill_loot_gold: G.lootGold }).eq('discord_user_id', G.discordId);
 }
 
 function bpWeight() {
@@ -1021,9 +1032,8 @@ async function triggerBlockEvent(x, y) {
 
   if (ev.type === 'gold') {
     const amount = Math.floor(Math.random() * (ev.max - ev.min + 1)) + ev.min;
-    G.drillGold += amount;
-    await supabaseClient.from('profiles').update({ drill_gold: G.drillGold }).eq('discord_user_id', G.discordId);
-    log(`✨ イベント: お金発見！ +${amount}G`);
+    await addLootGold(amount);
+    log(`✨ イベント: お金発見！ +${amount}G（戦利品・帰還で確定）`);
     renderSide(); renderMap();
     showEventModal('💰', `<span style="color:#f0c060;font-size:1.5rem;font-weight:700;">+${amount}G</span><br><span style="opacity:.75;">お金を発見！</span>`);
 
@@ -1073,8 +1083,13 @@ async function handleDeath(cause = '不明') {
 
   // 素材のみその場に落とす（アイテムはbackpackに残す）
   const bpMats = Object.entries(G.backpack).filter(([id, v]) => v > 0 && isMaterial(id));
-  if (bpMats.length > 0) {
-    const items = bpMats.map(([item_id, quantity]) => ({ item_id, quantity }));
+  const matItems = bpMats.map(([item_id, quantity]) => ({ item_id, quantity }));
+
+  // 戦利品（今回の探索で拾った未確定のドリル）は装備中でもその場に落とす
+  const lootDrillItems = G.lootDrills.map(d => ({ item_id: d.drill_id, quantity: 1, durability: d.durability }));
+  const items = [...matItems, ...lootDrillItems];
+
+  if (items.length > 0) {
     const { data: drop } = await supabaseClient.from('drill_dropped_items').insert({
       map_date: G.mapDate, pos_x: G.px, pos_y: G.py,
       dropper_user_id: G.userId,
@@ -1098,8 +1113,46 @@ async function handleDeath(cause = '不明') {
     }
   }
 
-  const lostMsg = bpMats.length > 0
-    ? `${bpMats.length}種の素材をその場に落とした`
+  // 戦利品ドリルをプレイヤーから削除（装備中でも失う。他に持っていれば再装備、無ければ初心者ドリルを付与）
+  let requippedMsg = '';
+  if (G.lootDrills.length > 0) {
+    const lootIds = new Set(G.lootDrills.map(d => d.id));
+    const lostEquipped = lootIds.has(G.equippedDrillRowId);
+    await supabaseClient.from('drill_player_drills').delete().in('id', Array.from(lootIds));
+    G.drills = G.drills.filter(d => !lootIds.has(d.id));
+    G.lootDrills = [];
+
+    if (lostEquipped) {
+      let next = G.drills[0];
+      if (!next) {
+        const { data: nd } = await supabaseClient.from('drill_player_drills')
+          .insert({ user_id: G.userId, drill_id: 'beginner', durability: null, equipped: true }).select().single();
+        next = nd;
+        if (next) G.drills.push(next);
+      }
+      if (next) {
+        await supabaseClient.from('drill_player_drills').update({ equipped: true }).eq('id', next.id);
+        G.equippedDrillRowId = next.id;
+        G.equippedDrillId = next.drill_id;
+        G.drillDur = next.durability;
+        requippedMsg = `${DRILLS[next.drill_id]?.name || next.drill_id}を再装備`;
+      }
+    }
+  }
+
+  // 戦利品ゴールドは死亡ですべて失う
+  const lostGold = G.lootGold;
+  if (G.lootGold > 0) {
+    G.lootGold = 0;
+    await supabaseClient.from('profiles').update({ drill_loot_gold: 0 }).eq('discord_user_id', G.discordId);
+  }
+
+  const lostParts = [];
+  if (bpMats.length > 0) lostParts.push(`素材${bpMats.length}種`);
+  if (lootDrillItems.length > 0) lostParts.push(`ドリル${lootDrillItems.length}台`);
+  if (lostGold > 0) lostParts.push(`💰${lostGold}G`);
+  const lostMsg = lostParts.length > 0
+    ? `${lostParts.join('・')}を失った${requippedMsg ? `（${requippedMsg}）` : ''}`
     : '何も落とさなかった';
   log(`💀 HP が尽きた！死因: ${cause}。${lostMsg}`);
 
@@ -1204,9 +1257,8 @@ async function openTreasure(x, y) {
 
   if (chosen.type === 'gold') {
     const amount = Math.floor(Math.random() * ((chosen.max ?? 100) - (chosen.min ?? 0) + 1)) + (chosen.min ?? 0);
-    G.drillGold += amount;
-    await supabaseClient.from('profiles').update({ drill_gold: G.drillGold }).eq('discord_user_id', G.discordId);
-    log(`🎁 ${typeDef.name} → 💰 ${amount}G`);
+    await addLootGold(amount);
+    log(`🎁 ${typeDef.name} → 💰 ${amount}G（戦利品・帰還で確定）`);
     showEventModal(chestIcon, `<span style="opacity:.7;font-size:.85rem;">${escHtml(typeDef.name)}</span><br><span style="color:#f0c060;font-size:1.6rem;font-weight:700;">💰 ${amount}G</span>`);
     return;
   }
@@ -1230,6 +1282,57 @@ async function openTreasure(x, y) {
       if (got) showDropModal(x, y, entry);
     }
   }
+}
+
+// ============================================================
+// 戦利品（今回の探索で得た未確定のゴールド・ドリル・カード）
+// ============================================================
+
+function showLoot() {
+  const rows = [];
+
+  if (G.lootGold > 0) {
+    rows.push(`<div class="modal-row">
+      <div class="modal-row-label">💰 ゴールド</div>
+      <span style="font-size:.9rem;font-weight:700;color:#f0c060;">+${G.lootGold}G</span>
+    </div>`);
+  }
+
+  if (G.lootDrills.length > 0) {
+    for (const d of G.lootDrills) {
+      const def = DRILLS[d.drill_id] || {};
+      const durStr = d.durability == null ? '∞' : d.durability;
+      const equippedTag = d.id === G.equippedDrillRowId ? ' <span style="color:#ffc107;font-size:.7rem;">（装備中）</span>' : '';
+      rows.push(`<div class="modal-row">
+        <div>
+          <div class="modal-row-label">⛏️ ${escHtml(def.name || d.drill_id)}${equippedTag}</div>
+          <div class="modal-row-sub">耐久: ${durStr}</div>
+        </div>
+      </div>`);
+    }
+  }
+
+  const hasCards = Object.keys(G.lootCards || {}).length > 0;
+  if (hasCards) {
+    for (const [cardId, qty] of Object.entries(G.lootCards)) {
+      const def = CARDS[cardId] || {};
+      rows.push(`<div class="modal-row">
+        <div class="modal-row-label">🃏 ${escHtml(def.name || cardId)}</div>
+        <span style="font-size:.85rem;">×${qty}</span>
+      </div>`);
+    }
+  }
+
+  const isEmpty = rows.length === 0;
+  openModal(`
+    <div class="modal-title">🏆 戦利品</div>
+    <div class="info-box" style="margin-bottom:10px;">
+      今回の探索で得たものです。地上に帰還するまで確定しません。<br>
+      <strong style="color:#ff8866;">死亡するとすべてその場に落として失います</strong>（ドリルは装備中でも対象）。
+    </div>
+    ${isEmpty ? '<div style="opacity:.5;font-size:.85rem;padding:12px 0;text-align:center;">まだ戦利品はありません</div>' : rows.join('')}
+    <button class="btn-modal-close" onclick="closeModal()">閉じる</button>
+  `);
 }
 
 // ============================================================
@@ -1261,6 +1364,22 @@ async function returnSurface(useStone = false) {
     await saveBpItem(item, 0);
   }
 
+  // 戦利品（ゴールド・今回拾ったドリル）を確定
+  const confirmedGold = G.lootGold;
+  const confirmedDrills = G.lootDrills.length;
+  if (G.lootGold > 0) {
+    G.drillGold += G.lootGold;
+    G.lootGold = 0;
+    await supabaseClient.from('profiles')
+      .update({ drill_gold: G.drillGold, drill_loot_gold: 0 }).eq('discord_user_id', G.discordId);
+  }
+  if (G.lootDrills.length > 0) {
+    const ids = G.lootDrills.map(d => d.id);
+    G.lootDrills.forEach(d => { d.is_loot = false; });
+    G.lootDrills = [];
+    await supabaseClient.from('drill_player_drills').update({ is_loot: false }).in('id', ids);
+  }
+
   G.px = START_X; G.py = START_Y;
   G.surfaceMode = true;
   await savePos();
@@ -1271,7 +1390,11 @@ async function returnSurface(useStone = false) {
   C.ap = COMBAT_STATS.maxAp;
   savePersistedAp(COMBAT_STATS.maxAp).catch(() => {});
 
-  log(`↩️ 帰還完了！${matsToStore.length > 0 ? `${matsToStore.length}種類の素材を確定` : '手ぶら'}（HP全回復）`);
+  const lootMsgs = [];
+  if (matsToStore.length > 0) lootMsgs.push(`${matsToStore.length}種類の素材`);
+  if (confirmedGold > 0) lootMsgs.push(`💰${confirmedGold}G`);
+  if (confirmedDrills > 0) lootMsgs.push(`ドリル${confirmedDrills}台`);
+  log(`↩️ 帰還完了！${lootMsgs.length > 0 ? `${lootMsgs.join('・')}を確定` : '手ぶら'}（HP全回復）`);
   render();
 }
 
@@ -1996,10 +2119,12 @@ async function doAlchemy() {
 // ============================================================
 
 function showInventory(tab = 'bag_mats') {
-  const topTab = tab.startsWith('bag_') ? 'bag' : tab.startsWith('wh_') ? 'wh' : 'perm';
+  let topTab = tab.startsWith('bag_') ? 'bag' : tab.startsWith('wh_') ? 'wh' : 'perm';
+  const underground = G.py > 0;
+  // 倉庫は地上でのみ利用可能（探索中に開けるのは不自然なため）
+  if (topTab === 'wh' && underground) { topTab = 'bag'; tab = 'bag_mats'; }
   const isBag = topTab === 'bag';
   const innerTab = tab.slice(tab.indexOf('_') + 1);
-  const underground = G.py > 0;
 
   const topTabBtn = (s, label) => {
     const active = topTab === s;
@@ -2011,7 +2136,7 @@ function showInventory(tab = 'bag_mats') {
 
   const topTabBar = `<div style="display:flex;border-bottom:1px solid rgba(255,255,255,.15);margin-bottom:12px;">
     ${topTabBtn('bag','🎒 リュック')}
-    ${topTabBtn('wh','🏪 倉庫')}
+    ${underground ? '' : topTabBtn('wh','🏪 倉庫')}
     ${topTabBtn('perm','🔑 永続')}
   </div>`;
 
@@ -2763,7 +2888,8 @@ async function doDropCollect(x, y, drop, toCollect) {
     await saveBpItem(item_id, G.backpack[item_id]);
   }
 
-  // ドリル回収：drill_player_drillsに追加（耐久値を保持）
+  // ドリル回収：drill_player_drillsに追加（耐久値を保持）。今回の探索で拾った分は
+  // is_loot=true の「戦利品」扱いとし、地上帰還まで確定しない（死亡でその場に落とす）
   for (const { item_id, quantity, durability } of takenDrills) {
     const def = DRILLS[item_id] || {};
     for (let i = 0; i < quantity; i++) {
@@ -2771,8 +2897,9 @@ async function doDropCollect(x, y, drop, toCollect) {
         user_id: G.userId, drill_id: item_id,
         durability: durability ?? def.dur,
         equipped: false,
+        is_loot: true,
       }).select().single();
-      if (nd) G.drills.push(nd);
+      if (nd) { G.drills.push(nd); G.lootDrills.push(nd); }
     }
   }
 
@@ -4342,7 +4469,7 @@ function renderMap() {
   document.getElementById('coord-disp').textContent = `📍 ${G.px}, ${G.py}`;
   const lyr = Math.floor(G.py / 100) + 1;
   document.getElementById('layer-disp').textContent = `第${lyr}層 (${G.py}m)`;
-  document.getElementById('gold-disp').textContent = `💰 ${G.drillGold}G`;
+  document.getElementById('gold-disp').textContent = `💰 ${G.drillGold}G` + (G.lootGold > 0 ? ` (+${G.lootGold})` : '');
 }
 
 function buildCell(wx, wy, vx = 0, vy = 0, otherByPos = null) {
@@ -4515,7 +4642,7 @@ function renderSide() {
   setHTML('status-info', `
     <div>📍 ${G.px}, ${G.py}</div>
     <div>第${lyr}層</div>
-    <div>💰 ${G.drillGold}G</div>
+    <div>💰 ${G.drillGold}G${G.lootGold > 0 ? ` <span style="color:#f0c060;">(+${G.lootGold} 戦利品)</span>` : ''}</div>
     <div style="margin-top:4px;">
       <div style="font-size:.75rem;opacity:.65;margin-bottom:2px;">❤️ HP ${G.hp} / ${G.maxHp}</div>
       <div style="height:6px;background:rgba(255,255,255,.15);border-radius:3px;overflow:hidden;">
@@ -4577,15 +4704,16 @@ function handleClick(wx, wy) {
 }
 
 function setupInput() {
-  // モバイルアクションボタン（地下専用: アイテム・リュック・ログ）
+  // モバイルアクションボタン（地下専用: アイテム・リュック・戦利品・ログ）
   document.getElementById('btn-items')?.addEventListener('click', showItems);
   document.getElementById('btn-bag')?.addEventListener('click', () => showInventory('bag_mats'));
+  document.getElementById('btn-loot')?.addEventListener('click', showLoot);
   document.getElementById('btn-log')?.addEventListener('click', showLogModal);
 
   // PC 左パネルボタン
   document.getElementById('btn-drills-pc')?.addEventListener('click', showDrills);
   document.getElementById('btn-bag-pc')?.addEventListener('click', () => showInventory('bag_mats'));
-  document.getElementById('btn-return-pc')?.addEventListener('click', () => showInventory('bag_mats'));
+  document.getElementById('btn-loot-pc')?.addEventListener('click', showLoot);
 
   // キーボード（リピートは無視して1押し1歩）
   document.addEventListener('keydown', e => {
@@ -4686,7 +4814,7 @@ async function periodicStateSync() {
   if (G.surfaceMode) return;
   try {
     const [profRes, bpRes] = await Promise.all([
-      supabaseClient.from('profiles').select('drill_gold,drill_hp,drill_ap,active_session_id').eq('discord_user_id', G.discordId).single(),
+      supabaseClient.from('profiles').select('drill_gold,drill_hp,drill_ap,drill_loot_gold,active_session_id').eq('discord_user_id', G.discordId).single(),
       supabaseClient.from('drill_backpack').select('item_id,quantity').eq('user_id', G.userId),
     ]);
     let changed = false;
@@ -4698,6 +4826,7 @@ async function periodicStateSync() {
         return;
       }
       if (p.drill_gold != null && p.drill_gold !== G.drillGold)  { G.drillGold    = p.drill_gold; changed = true; }
+      if (p.drill_loot_gold != null && p.drill_loot_gold !== G.lootGold) { G.lootGold = p.drill_loot_gold; changed = true; }
       if (p.drill_hp   != null && p.drill_hp   !== G.hp)         { G.hp           = p.drill_hp;   changed = true; }
       if (p.drill_ap   != null && p.drill_ap   !== G.persistedAp){ G.persistedAp  = p.drill_ap; }
     }

@@ -212,6 +212,7 @@
     <button class="mkt-tab" onclick="showFilter('mats',this)">📦 素材</button>
     <button class="mkt-tab" onclick="showFilter('items',this)">💊 アイテム</button>
     <button class="mkt-tab" onclick="showFilter('drills',this)">⛏️ ドリル</button>
+    <button class="mkt-tab" onclick="showFilter('cards',this)">🃏 カード</button>
   </div>
 
   <!-- カードグリッド -->
@@ -255,6 +256,7 @@
         <button class="mkt-tab" style="padding:4px 12px;font-size:.8rem;" onclick="setListCat('mats',this)">📦 素材</button>
         <button class="mkt-tab" style="padding:4px 12px;font-size:.8rem;" onclick="setListCat('items',this)">💊 アイテム</button>
         <button class="mkt-tab" style="padding:4px 12px;font-size:.8rem;" onclick="setListCat('drills',this)">⛏️ ドリル</button>
+        <button class="mkt-tab" style="padding:4px 12px;font-size:.8rem;" onclick="setListCat('cards',this)">🃏 カード</button>
       </div>
     </div>
     <div class="mkt-field" style="margin-bottom:10px;">
@@ -312,9 +314,34 @@ const ITEM_INFO = {
   allpurpose:    { name: '万能ドリル',     icon: '⛏️', maxDur: 50000},
 };
 
-function itemName(id) { return ITEM_INFO[id]?.name ?? id; }
-function itemIcon(id) { return ITEM_INFO[id]?.icon ?? '📦'; }
+// カード定義（drill_cards + game_config.cards から動的に読み込む。ドリル/game.jsと同じ二層構造）
+let CARD_INFO = {}; // card_id -> {name, icon, imageUrl, rarity}
+
+function itemName(id) { return ITEM_INFO[id]?.name ?? CARD_INFO[id]?.name ?? id; }
+function itemIcon(id) { return ITEM_INFO[id]?.icon ?? CARD_INFO[id]?.icon ?? '📦'; }
 function isDrill(id)  { return ITEM_INFO[id]?.maxDur !== undefined; }
+function isCardId(id) { return Object.prototype.hasOwnProperty.call(CARD_INFO, id); }
+
+async function loadCardDefs() {
+  const [settingsRes, dbCardsRes] = await Promise.all([
+    supabaseClient.from('drill_page_settings').select('setting_value').eq('setting_key', 'game_config').maybeSingle(),
+    supabaseClient.from('drill_cards').select('id,name,icon,rarity').order('no'),
+  ]);
+  const cfg = settingsRes.data?.setting_value ? JSON.parse(settingsRes.data.setting_value) : {};
+  (dbCardsRes.data || []).forEach(r => {
+    CARD_INFO[r.id] = { name: r.name || r.id, icon: r.icon || '🃏', rarity: (r.rarity || '').toLowerCase(), imageUrl: null };
+  });
+  if (cfg.cards) {
+    for (const [id, v] of Object.entries(cfg.cards)) {
+      CARD_INFO[id] = {
+        name: v.name ?? CARD_INFO[id]?.name ?? id,
+        icon: v.icon ?? CARD_INFO[id]?.icon ?? '🃏',
+        imageUrl: v.imageUrl ?? CARD_INFO[id]?.imageUrl ?? null,
+        rarity: (v.rarity ?? CARD_INFO[id]?.rarity ?? '').toLowerCase(),
+      };
+    }
+  }
+}
 
 // ============================================================
 // 状態
@@ -324,9 +351,10 @@ let _discordId = null;
 let _myGold = 0;
 let _myInventory = []; // { item_id, quantity, source }
 let _myDrills = [];    // { item_id, quantity:1, source:'drill', drill_row_id, durability, max_dur }
+let _myCards = [];     // { item_id, quantity, source:'card' }
 let _listings = [];
 let _currentTab = 'all';
-let _filterType  = 'all'; // 'all' | 'mats' | 'items' | 'drills'
+let _filterType  = 'all'; // 'all' | 'mats' | 'items' | 'drills' | 'cards'
 let _buyTarget = null;    // { listing }
 let _listCat = 'all';     // 出品モーダルのカテゴリフィルター
 let _listSelected = null; // 選択中アイテムのJSON文字列
@@ -334,6 +362,7 @@ let _listSelected = null; // 選択中アイテムのJSON文字列
 const MAT_IDS = new Set(['dirt','stone','copper','iron','silver','gold']);
 function listingCategory(l) {
   if (l.source === 'drill' || isDrill(l.item_id)) return 'drills';
+  if (l.source === 'card' || isCardId(l.item_id)) return 'cards';
   if (MAT_IDS.has(l.item_id)) return 'mats';
   return 'items';
 }
@@ -349,7 +378,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   _userId    = user.id;
   _discordId = user.user_metadata?.provider_id;
 
-  await Promise.all([loadMyGold(), loadInventory(), loadListings()]);
+  await Promise.all([loadMyGold(), loadCardDefs(), loadInventory(), loadListings()]);
   renderGrid();
   setupRealtime();
 });
@@ -366,10 +395,12 @@ async function loadMyGold() {
 }
 
 async function loadInventory() {
-  const [invRes, bpRes, drillRes] = await Promise.all([
+  const [invRes, bpRes, drillRes, cardRes] = await Promise.all([
     supabaseClient.from('drill_inventory').select('item_id,quantity').eq('user_id', _userId),
     supabaseClient.from('drill_backpack').select('item_id,quantity').eq('user_id', _userId),
-    supabaseClient.from('drill_player_drills').select('id,drill_id,durability,equipped').eq('user_id', _userId).eq('equipped', false),
+    // 探索中に拾った未確定の戦利品ドリル（is_loot=true）は帰還して確定するまで出品不可
+    supabaseClient.from('drill_player_drills').select('id,drill_id,durability,equipped').eq('user_id', _userId).eq('equipped', false).eq('is_loot', false),
+    supabaseClient.from('drill_player_cards').select('card_id,quantity').eq('user_id', _userId),
   ]);
   const merged = {};
   for (const r of invRes.data || []) {
@@ -394,6 +425,13 @@ async function loadInventory() {
     durability: d.durability,
     max_dur: ITEM_INFO[d.drill_id]?.maxDur ?? null,
   }));
+
+  // カード
+  _myCards = (cardRes.data || []).filter(r => r.quantity > 0).map(r => ({
+    item_id: r.card_id,
+    quantity: r.quantity,
+    source: 'card',
+  })).sort((a,b) => (itemName(a.item_id) < itemName(b.item_id) ? -1 : 1));
 }
 
 async function loadListings() {
@@ -483,6 +521,20 @@ function buildCard(l) {
     }
   }
 
+  // カードの場合は画像・ランクバッジを表示
+  let cardIconHtml = `<div class="mkt-card-icon">${escHtml(icon)}</div>`;
+  let rankBadge = '';
+  if (l.source === 'card' && l.item_data) {
+    const d = typeof l.item_data === 'string' ? JSON.parse(l.item_data) : l.item_data;
+    if (d.imageUrl) {
+      cardIconHtml = `<img src="${escHtml(d.imageUrl)}" style="width:44px;height:58px;object-fit:cover;border-radius:6px;flex-shrink:0;" onerror="this.outerHTML='<div class=&quot;mkt-card-icon&quot;>${escHtml(icon)}</div>'">`;
+    }
+    if (d.rarity) {
+      const rankColors = { d:'#60637a', c:'#2a9e5c', b:'#1870d4', a:'#8820e8', s:'#ff4000' };
+      rankBadge = `<span style="font-size:.68rem;font-weight:900;color:#fff;background:${rankColors[d.rarity] || '#666'};border-radius:4px;padding:1px 6px;margin-left:6px;">${d.rarity.toUpperCase()}</span>`;
+    }
+  }
+
   const qtyLine = l.source === 'drill'
     ? ''
     : `<div class="mkt-card-qty">残り ${l.remaining_qty.toLocaleString()} / ${l.total_qty.toLocaleString()} 個</div>`;
@@ -490,9 +542,9 @@ function buildCard(l) {
   return `
     <div class="mkt-card${isOwn ? ' own' : ''}">
       <div class="mkt-card-item">
-        <div class="mkt-card-icon">${escHtml(icon)}</div>
+        ${cardIconHtml}
         <div style="flex:1;min-width:0;">
-          <div class="mkt-card-name">${escHtml(l.item_name)}${ownBadge}</div>
+          <div class="mkt-card-name">${escHtml(l.item_name)}${rankBadge}${ownBadge}</div>
           ${qtyLine}
           ${drillDurBar}
         </div>
@@ -518,7 +570,15 @@ function openBuyModal(listingId) {
   if (!l || l.status !== 'active') return;
   _buyTarget = l;
 
-  document.getElementById('bm-icon').textContent   = l.item_icon || itemIcon(l.item_id);
+  const bmIcon = document.getElementById('bm-icon');
+  const cardData = l.source === 'card' && l.item_data
+    ? (typeof l.item_data === 'string' ? JSON.parse(l.item_data) : l.item_data)
+    : null;
+  if (cardData?.imageUrl) {
+    bmIcon.innerHTML = `<img src="${escHtml(cardData.imageUrl)}" style="width:44px;height:58px;object-fit:cover;border-radius:6px;">`;
+  } else {
+    bmIcon.textContent = l.item_icon || itemIcon(l.item_id);
+  }
   document.getElementById('bm-name').textContent   = l.item_name;
   document.getElementById('bm-seller').textContent = `出品者: ${l.seller_name || '名無し'}`;
   document.getElementById('bm-max').textContent    = l.remaining_qty;
@@ -621,6 +681,13 @@ function renderListItems() {
         cat: 'drills',
       };
     }),
+    ..._myCards.map(c => ({
+      val: JSON.stringify({ item_id: c.item_id, max: c.quantity, source: 'card' }),
+      icon: itemIcon(c.item_id),
+      label: itemName(c.item_id),
+      sub: 'x' + c.quantity.toLocaleString(),
+      cat: 'cards',
+    })),
   ];
 
   const filtered = _listCat === 'all' ? allItems : allItems.filter(i => i.cat === _listCat);
@@ -696,7 +763,9 @@ async function confirmList() {
 
   const itemData = source === 'drill'
     ? { drill_row_id, durability, max_dur }
-    : {};
+    : source === 'card'
+      ? { rarity: CARD_INFO[item_id]?.rarity ?? null, imageUrl: CARD_INFO[item_id]?.imageUrl ?? null }
+      : {};
 
   // ドリルの場合は耐久値を名前に付加して表示
   const displayName = source === 'drill' && durability !== null
