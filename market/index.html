@@ -296,12 +296,27 @@
     </button>
   </div>
   <!-- フィルター -->
-  <div class="mkt-tabs" id="filter-tabs" style="margin-bottom:16px;">
+  <div class="mkt-tabs" id="filter-tabs" style="margin-bottom:12px;">
     <button class="mkt-tab active" onclick="showFilter('all',this)">すべて</button>
     <button class="mkt-tab" onclick="showFilter('mats',this)">📦 素材</button>
     <button class="mkt-tab" onclick="showFilter('items',this)">💊 アイテム</button>
     <button class="mkt-tab" onclick="showFilter('drills',this)">⛏️ ドリル</button>
     <button class="mkt-tab" onclick="showFilter('cards',this)">🃏 カード</button>
+  </div>
+  <div class="mkt-tabs" style="margin-bottom:16px;flex-wrap:wrap;">
+    <select id="mat-filter-select" class="mkt-input" style="display:none;width:auto;padding:6px 10px;font-size:.85rem;" onchange="renderGrid()">
+      <option value="">素材: すべて</option>
+      <option value="dirt">土</option>
+      <option value="stone">石</option>
+      <option value="copper">銅</option>
+      <option value="iron">鉄</option>
+      <option value="silver">銀</option>
+      <option value="gold">金</option>
+    </select>
+    <select id="sort-select" class="mkt-input" style="width:auto;padding:6px 10px;font-size:.85rem;margin-left:auto;" onchange="renderGrid()">
+      <option value="new">新着順</option>
+      <option value="price_asc">単価が安い順</option>
+    </select>
   </div>
 
   <!-- カードグリッド -->
@@ -321,15 +336,12 @@
         <div id="bm-seller" style="font-size:.78rem;color:rgba(255,255,255,.5);margin-top:2px;"></div>
       </div>
     </div>
-    <div class="mkt-field">
-      <label>個数（最大 <span id="bm-max"></span> 個）</label>
-      <input class="mkt-input" type="number" id="bm-qty" min="1" value="1" oninput="updateBuyPreview()">
-    </div>
     <div class="mkt-preview" id="buy-preview">
+      <div class="mkt-preview-row"><span>個数</span><span id="bp-qty">-</span></div>
       <div class="mkt-preview-row"><span>単価</span><span id="bp-unit">-</span></div>
       <div class="mkt-preview-row"><span>合計</span><span id="bp-total">-</span></div>
     </div>
-    <div class="mkt-fee-note" style="margin-bottom:12px;">※ 手数料20%（出品者には80%が入ります）</div>
+    <div class="mkt-fee-note" style="margin-bottom:12px;">※ まとめ買いのみ（一部数量のみの購入は不可）／手数料20%（出品者には80%が入ります）</div>
     <button class="btn-mkt-confirm danger" id="btn-buy-confirm" onclick="confirmBuy()">購入する</button>
     <button class="btn-mkt-close" onclick="closeBuyModal()">キャンセル</button>
   </div>
@@ -574,6 +586,8 @@ function showFilter(type, el) {
   _filterType = type;
   document.querySelectorAll('#filter-tabs .mkt-tab').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
+  document.getElementById('mat-filter-select').style.display = type === 'mats' ? '' : 'none';
+  if (type !== 'mats') document.getElementById('mat-filter-select').value = '';
   renderGrid();
 }
 
@@ -593,6 +607,18 @@ function renderGrid() {
   }
   if (_filterType !== 'all') {
     items = items.filter(l => listingCategory(l) === _filterType);
+  }
+  const matFilter = document.getElementById('mat-filter-select')?.value;
+  if (_filterType === 'mats' && matFilter) {
+    items = items.filter(l => l.item_id === matFilter);
+  }
+
+  const sortBy = document.getElementById('sort-select')?.value || 'new';
+  items = items.slice();
+  if (sortBy === 'price_asc') {
+    items.sort((a, b) => a.price_per_unit - b.price_per_unit);
+  } else {
+    items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   }
 
   const grid = document.getElementById('mkt-grid');
@@ -697,19 +723,17 @@ function openBuyModal(listingId) {
   }
   document.getElementById('bm-name').textContent   = l.item_name;
   document.getElementById('bm-seller').textContent = `出品者: ${l.seller_name || '名無し'}`;
-  document.getElementById('bm-max').textContent    = l.remaining_qty;
-  const qtyEl = document.getElementById('bm-qty');
-  qtyEl.max   = l.remaining_qty;
-  qtyEl.value = 1;
   updateBuyPreview();
   document.getElementById('buy-modal').classList.add('open');
 }
 
+// 購入は常に「まとめ買い」＝残り数量すべてを一括購入（一部数量だけの購入は不可）
 function updateBuyPreview() {
   if (!_buyTarget) return;
-  const qty   = Math.max(1, Math.min(parseInt(document.getElementById('bm-qty').value) || 1, _buyTarget.remaining_qty));
+  const qty   = _buyTarget.remaining_qty;
   const total = qty * _buyTarget.price_per_unit;
-  document.getElementById('bp-unit').textContent  = `${_buyTarget.price_per_unit.toLocaleString()} G`;
+  document.getElementById('bp-qty').textContent   = `${qty.toLocaleString()} 個`;
+  document.getElementById('bp-unit').textContent  = `${_buyTarget.price_per_unit.toLocaleString()} G / 個`;
   document.getElementById('bp-total').textContent = `${total.toLocaleString()} G`;
 }
 
@@ -720,7 +744,7 @@ function closeBuyModal() {
 
 async function confirmBuy() {
   if (!_buyTarget) return;
-  const qty = Math.max(1, Math.min(parseInt(document.getElementById('bm-qty').value) || 1, _buyTarget.remaining_qty));
+  const qty = _buyTarget.remaining_qty;
   const total = qty * _buyTarget.price_per_unit;
 
   if (_myGold < total) { alert('所持金が足りません'); return; }

@@ -247,18 +247,21 @@ function applyMemoryBonuses() {
   for (const m of G.memories) {
     if (!m.equipped) continue;
     const def = MEMORIES[m.memory_id];
-    if (!def) continue;
-    const amt = Number(def.amount) || 0;
-    switch (def.stat) {
-      case 'hp':        G.maxHp += amt; break;
-      case 'maxAp':     COMBAT_STATS.maxAp += amt; break;
-      case 'apRegen':   COMBAT_STATS.apRegen += amt; break;
-      case 'attack':    COMBAT_STATS.attack += amt; break;
-      case 'defense':   COMBAT_STATS.defense += amt; break;
-      case 'critRate':  COMBAT_STATS.critRate += amt; break;
-      case 'critDmg':   COMBAT_STATS.critDmg += amt; break;
-      case 'digPower':  COMBAT_STATS.digPower += amt; break;
-      case 'maxWeight': G.maxBpWeight += amt; break;
+    if (!def?.bonuses) continue;
+    for (const [stat, amount] of Object.entries(def.bonuses)) {
+      const amt = Number(amount) || 0;
+      if (amt === 0) continue;
+      switch (stat) {
+        case 'hp':        G.maxHp += amt; break;
+        case 'maxAp':     COMBAT_STATS.maxAp += amt; break;
+        case 'apRegen':   COMBAT_STATS.apRegen += amt; break;
+        case 'attack':    COMBAT_STATS.attack += amt; break;
+        case 'defense':   COMBAT_STATS.defense += amt; break;
+        case 'critRate':  COMBAT_STATS.critRate += amt; break;
+        case 'critDmg':   COMBAT_STATS.critDmg += amt; break;
+        case 'digPower':  COMBAT_STATS.digPower += amt; break;
+        case 'maxWeight': G.maxBpWeight += amt; break;
+      }
     }
   }
   G.hp = Math.min(G.hp, G.maxHp);
@@ -646,14 +649,16 @@ async function loadGameConfig() {
     if (cfg.memoryRankWeights) Object.assign(MEMORY_RANK_WEIGHTS, cfg.memoryRankWeights);
     if (cfg.memories) {
       for (const [id, v] of Object.entries(cfg.memories)) {
+        // 旧形式（単一ステータスのみ強化: stat/amount）との互換のためフォールバックする
+        const bonuses = v.bonuses ?? MEMORIES[id]?.bonuses ?? {};
+        if (!v.bonuses && v.stat && v.amount != null) bonuses[v.stat] = v.amount;
         MEMORIES[id] = {
           name:     v.name     ?? MEMORIES[id]?.name     ?? id,
           desc:     v.desc     ?? MEMORIES[id]?.desc     ?? '',
           icon:     v.icon     ?? MEMORIES[id]?.icon     ?? '🧠',
           imageUrl: v.imageUrl ?? null,
           rarity:   v.rarity   ?? MEMORIES[id]?.rarity   ?? null,
-          stat:     v.stat     ?? MEMORIES[id]?.stat     ?? 'hp',
-          amount:   v.amount   ?? MEMORIES[id]?.amount   ?? 0,
+          bonuses,
           weight:   v.weight   ?? MEMORIES[id]?.weight   ?? 10,
         };
       }

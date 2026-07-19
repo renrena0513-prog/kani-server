@@ -837,10 +837,13 @@ async function loadConfig() {
   MEMORIES_DEF = {};
   if (cfg.memories) {
     for (const [id, v] of Object.entries(cfg.memories)) {
+      // 旧形式（単一ステータスのみ強化: stat/amount）との互換フォールバック
+      const bonuses = v.bonuses ?? {};
+      if (!v.bonuses && v.stat && v.amount != null) bonuses[v.stat] = Number(v.amount) || 0;
       MEMORIES_DEF[id] = {
         name: v.name ?? id, desc: v.desc ?? '', icon: v.icon ?? '🧠',
         imageUrl: v.imageUrl ?? null, rarity: (v.rarity ?? '').toLowerCase() || null,
-        stat: v.stat ?? 'hp', amount: Number(v.amount) || 0,
+        bonuses,
       };
     }
   }
@@ -920,16 +923,18 @@ function renderMemories() {
 }
 
 function memCardHtml(m, isEquipped) {
-  const def = MEMORIES_DEF[m.memory_id] || { name: m.memory_id, icon: '🧠' };
-  const statLabel = MEMORY_STAT_LABELS[def.stat] || def.stat || '';
-  const sign = (def.amount ?? 0) >= 0 ? '+' : '';
+  const def = MEMORIES_DEF[m.memory_id] || { name: m.memory_id, icon: '🧠', bonuses: {} };
+  const bonusLines = Object.entries(def.bonuses ?? {})
+    .filter(([, amt]) => (Number(amt) || 0) !== 0)
+    .map(([stat, amt]) => `${MEMORY_STAT_LABELS[stat] || stat} ${amt >= 0 ? '+' : ''}${amt}`)
+    .join(' / ');
   const visual = def.imageUrl
     ? `<img class="mem-card-img" src="${def.imageUrl}" onerror="this.outerHTML='<div class=&quot;mem-card-icon&quot;>${def.icon || '🧠'}</div>'">`
     : `<div class="mem-card-icon">${def.icon || '🧠'}</div>`;
   return `<div class="mem-card${isEquipped ? ' equipped' : ''}" onclick="toggleMemoryEquip('${m.id}')">
     ${visual}
     <div class="mem-card-name">${def.name}</div>
-    <div class="mem-card-stat">${statLabel} ${sign}${def.amount ?? 0}</div>
+    <div class="mem-card-stat">${bonusLines || 'なし'}</div>
   </div>`;
 }
 
@@ -968,8 +973,10 @@ function renderStatus() {
   for (const m of myMemories) {
     if (!m.equipped) continue;
     const def = MEMORIES_DEF[m.memory_id];
-    if (!def) continue;
-    bonuses[def.stat] = (bonuses[def.stat] || 0) + (Number(def.amount) || 0);
+    if (!def?.bonuses) continue;
+    for (const [stat, amt] of Object.entries(def.bonuses)) {
+      bonuses[stat] = (bonuses[stat] || 0) + (Number(amt) || 0);
+    }
   }
 
   const rows = [

@@ -391,6 +391,15 @@ async function loadGameConfigAdmin() {
   if (!gameConfig.alchemy)   gameConfig.alchemy   = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.alchemy));
   if (!gameConfig.memories)  gameConfig.memories  = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.memories));
   if (!gameConfig.memoryRankWeights) gameConfig.memoryRankWeights = JSON.parse(JSON.stringify(DEFAULT_GAME_CONFIG.memoryRankWeights));
+  // 旧形式（単一ステータスのみ強化）のメモリを、全ステータス同時強化の新形式へマイグレーション
+  for (const def of Object.values(gameConfig.memories)) {
+    if (!def.bonuses) {
+      def.bonuses = Object.fromEntries(MEMORY_STATS.map(([statKey]) => [statKey, 0]));
+      if (def.stat && def.amount != null) def.bonuses[def.stat] = def.amount;
+    }
+    delete def.stat;
+    delete def.amount;
+  }
   // モンスターに新しいドロップ設定項目がなければ補完
   if (gameConfig.monsters) {
     for (const mon of Object.values(gameConfig.monsters)) {
@@ -2035,7 +2044,7 @@ function renderMemoriesTab() {
         </label>
         <button class="btn-refresh" style="margin-left:auto;background:rgba(255,100,100,.2);" onclick="deleteMemory('${id}')">🗑️ 削除</button>
       </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:.8rem;align-items:flex-end;">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:.8rem;align-items:flex-end;margin-bottom:10px;">
         <label>説明<br>
           <input type="text" class="cfg-input" id="cfg-mem-desc-${id}" value="${escDrill(def.desc ?? '')}" style="width:160px;margin-top:2px;" placeholder="説明文">
         </label>
@@ -2044,17 +2053,18 @@ function renderMemoriesTab() {
             ${['','d','c','b','a','s'].map(v => `<option value="${v}"${(def.rarity??'')===v?' selected':''}>${v===''?'なし':v.toUpperCase()}</option>`).join('')}
           </select>
         </label>
-        <label>ステータス<br>
-          <select class="cfg-input" id="cfg-mem-stat-${id}" style="width:110px;margin-top:2px;">
-            ${MEMORY_STATS.map(([v,label]) => `<option value="${v}"${(def.stat??'hp')===v?' selected':''}>${label}</option>`).join('')}
-          </select>
-        </label>
-        <label>上昇量<br>
-          <input type="number" class="cfg-input" id="cfg-mem-amount-${id}" value="${def.amount ?? 0}" style="width:80px;margin-top:2px;">
-        </label>
         <label>出現重み<br>
           <input type="number" class="cfg-input" id="cfg-mem-weight-${id}" value="${def.weight ?? 10}" min="0" style="width:70px;margin-top:2px;">
         </label>
+      </div>
+      <div style="font-size:.78rem;font-weight:700;opacity:.6;margin-bottom:6px;">上昇量（全ステータスに同時に加算されます）</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:.8rem;">
+        ${MEMORY_STATS.map(([statKey, label]) => `
+          <label style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+            <span style="font-size:.72rem;opacity:.7;">${label}</span>
+            <input type="number" class="cfg-input mem-bonus-${id}" data-stat="${statKey}"
+              value="${(def.bonuses ?? {})[statKey] ?? 0}" style="width:64px;text-align:center;">
+          </label>`).join('')}
       </div>
     </div>`;
   }
@@ -2087,17 +2097,21 @@ function collectMemoriesConfig() {
     const iconEl   = document.getElementById(`cfg-mem-icon-${id}`);
     const descEl   = document.getElementById(`cfg-mem-desc-${id}`);
     const rarityEl = document.getElementById(`cfg-mem-rarity-${id}`);
-    const statEl   = document.getElementById(`cfg-mem-stat-${id}`);
-    const amountEl = document.getElementById(`cfg-mem-amount-${id}`);
     const weightEl = document.getElementById(`cfg-mem-weight-${id}`);
     if (!nameEl) continue; // 未表示（描画前）の場合はスキップ
     def.name   = nameEl.value || def.name;
     def.icon   = iconEl.value || '🧠';
     def.desc   = descEl.value;
     def.rarity = rarityEl.value || null;
-    def.stat   = statEl.value || 'hp';
-    def.amount = parseFloat(amountEl.value) || 0;
     def.weight = Math.max(0, parseInt(weightEl.value) || 0);
+
+    const bonuses = {};
+    document.querySelectorAll(`.mem-bonus-${id}`).forEach(el => {
+      bonuses[el.dataset.stat] = parseFloat(el.value) || 0;
+    });
+    def.bonuses = bonuses;
+    delete def.stat;
+    delete def.amount;
   }
   gameConfig.memories = memories;
 }
@@ -2106,7 +2120,10 @@ function addMemory() {
   collectMemoriesConfig();
   const id = 'memory_' + Date.now();
   if (!gameConfig.memories) gameConfig.memories = {};
-  gameConfig.memories[id] = { name: '新しいメモリ', desc: '', icon: '🧠', imageUrl: null, rarity: 'd', stat: 'hp', amount: 10, weight: 10 };
+  gameConfig.memories[id] = {
+    name: '新しいメモリ', desc: '', icon: '🧠', imageUrl: null, rarity: 'd', weight: 10,
+    bonuses: Object.fromEntries(MEMORY_STATS.map(([statKey]) => [statKey, 0])),
+  };
   renderMemoriesTab();
 }
 
@@ -2368,16 +2385,20 @@ function renderAlchemyTab() {
   // 素材ごとの武器種重み
   const matSections = ALCHEMY_ADMIN_MAT_IDS.map(matId => {
     const weights = ww[matId] ?? {};
+    const matTotal = ALCHEMY_WEAPON_IDS.reduce((s, wId) => s + (parseInt(weights[wId]) || 0), 0);
     const weaponInputs = ALCHEMY_WEAPON_IDS.map(wId => `
       <label style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:.8rem;min-width:68px;">
         <span>${ALCHEMY_WEAPON_LABELS[wId]}</span>
         <input class="cfg-input alch-w-${matId}-${wId}" type="number" min="0" value="${weights[wId] ?? 0}"
-          style="width:60px;text-align:center;">
+          style="width:60px;text-align:center;" oninput="_alchMatUpdateTotal('${matId}')">
       </label>`).join('');
     return `
       <div style="margin-bottom:14px;">
-        <div style="font-size:.88rem;font-weight:700;margin-bottom:8px;color:rgba(255,255,255,.7);">
-          ${ALCHEMY_ADMIN_MAT_NAMES[matId]}（${matId}）
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <div style="font-size:.88rem;font-weight:700;color:rgba(255,255,255,.7);">
+            ${ALCHEMY_ADMIN_MAT_NAMES[matId]}（${matId}）
+          </div>
+          <div id="alch-mat-total-${matId}" style="font-size:.76rem;opacity:.6;">合計: ${matTotal}</div>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">${weaponInputs}</div>
       </div>`;
@@ -2421,6 +2442,15 @@ function _alchAdminUpdateTotal() {
   }, 0);
   el.textContent = `合計: ${total}`;
   el.style.color = total === 100 ? '#6bde9b' : '#f44336';
+}
+
+function _alchMatUpdateTotal(matId) {
+  const el = document.getElementById(`alch-mat-total-${matId}`);
+  if (!el) return;
+  const total = ALCHEMY_WEAPON_IDS.reduce((s, wId) => {
+    return s + (parseInt(document.querySelector(`.alch-w-${matId}-${wId}`)?.value) || 0);
+  }, 0);
+  el.textContent = `合計: ${total}`;
 }
 
 function collectAlchemyConfig() {
