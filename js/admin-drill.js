@@ -1696,64 +1696,61 @@ function renderCardsTab() {
     </div>`;
   html += pagerHtml;
 
-  // ラベル+入力欄を横並び1行にまとめるコンパクト表示用ヘルパー
-  const fld = (label, inputHtml) => `
-    <label style="display:inline-flex;align-items:center;gap:4px;font-size:.72rem;white-space:nowrap;opacity:.9;">
-      <span style="opacity:.55;">${label}</span>${inputHtml}
-    </label>`;
   const selectedMonster = gameConfig.monsters?.[cardsTestMonsterId] ?? null;
+  const th = label => `<th style="position:sticky;top:0;background:#132a54;padding:6px 6px;text-align:left;font-size:.7rem;opacity:.7;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,.15);">${label}</th>`;
+  const td = (inner, extra = '') => `<td style="padding:3px 5px;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,.06);${extra}">${inner}</td>`;
+  const reCalc = `collectCardsConfig();renderCardsTab();`;
+
+  html += `
+  <div style="overflow-x:auto;border:1px solid rgba(255,255,255,.1);border-radius:8px;">
+  <table style="border-collapse:collapse;font-size:.75rem;">
+    <thead><tr>
+      ${th('画像')}${th('ID')}${th('名前')}${th('No')}${th('説明')}${th('ランク')}${th('素材')}${th('武器種')}${th('対象')}
+      ${th('AP')}${th('追加攻撃力')}${th('倍率下限')}${th('倍率上限')}${th('クリ率補正')}${th('クリダメ補正')}${th('ヒット数')}${th('回復力')}${th('特殊処理ID')}${th('')}
+      ${cardsTestMonsterId ? th('平均dmg/回復') + th('期待dmg(クリ)') + th('AP効率') : ''}
+      ${th('')}
+    </tr></thead>
+    <tbody>`;
 
   for (const [id, card] of pageCards) {
     const imgPreview = card.imageUrl
-      ? `<img src="${escDrill(card.imageUrl)}" style="width:34px;height:34px;object-fit:contain;border-radius:5px;background:rgba(255,255,255,.08);">`
-      : `<div style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);border-radius:5px;font-size:1.3rem;">⚔️</div>`;
+      ? `<img src="${escDrill(card.imageUrl)}" style="width:28px;height:28px;object-fit:contain;border-radius:4px;background:rgba(255,255,255,.08);">`
+      : `<div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);border-radius:4px;font-size:1rem;">⚔️</div>`;
 
-    let testHtml = '';
+    let testCells = '';
     if (cardsTestMonsterId) {
       const t = computeCardTestStats(card, selectedMonster?.defense);
-      testHtml = t.isHeal
-        ? `<div style="margin-top:5px;padding:4px 8px;background:rgba(120,220,150,.1);border-radius:5px;font-size:.72rem;">
-             💚 平均回復量 <b>${Math.round(t.heal)}</b>　AP効率 <b>${t.apEff != null ? t.apEff.toFixed(2) : '—'}</b>/AP
-           </div>`
-        : `<div style="margin-top:5px;padding:4px 8px;background:rgba(255,160,80,.1);border-radius:5px;font-size:.72rem;">
-             ⚔️ 平均ダメージ <b>${Math.round(t.avgDmg)}</b>　期待ダメージ(クリ考慮) <b>${Math.round(t.expDmg)}</b>　AP効率 <b>${t.apEff != null ? t.apEff.toFixed(2) : '—'}</b>/AP
-           </div>`;
+      testCells = t.isHeal
+        ? td(`💚${Math.round(t.heal)}`) + td('—') + td(t.apEff != null ? t.apEff.toFixed(2) : '—')
+        : td(Math.round(t.avgDmg)) + td(Math.round(t.expDmg)) + td(t.apEff != null ? t.apEff.toFixed(2) : '—');
     }
 
-    const reCalc = `collectCardsConfig();renderCardsTab();`;
-    html += `
-    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:8px 12px;margin-bottom:8px;">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        ${imgPreview}
-        <span style="font-size:.68rem;opacity:.4;">${escDrill(id)}</span>
-        <input class="cfg-input card-name-${id}" type="text" value="${escDrill(card.name ?? '')}" placeholder="カード名" style="width:130px;">
-        ${fld('No.', `<input class="cfg-input card-no-${id}" type="number" value="${card.no ?? ''}" placeholder="—" min="1" style="width:56px;" onchange="${reCalc}">`)}
-        ${fld('説明', `<input class="cfg-input card-desc-${id}" type="text" value="${escDrill(card.desc ?? '')}" placeholder="説明文" style="width:150px;">`)}
-        ${fld('ランク', `<select class="cfg-input card-rarity-${id}" style="width:62px;">${['','d','c','b','a','s'].map(v => `<option value="${v}"${(card.rarity??'')=== v?' selected':''}>${v===''?'なし':v.toUpperCase()}</option>`).join('')}</select>`)}
-        ${fld('素材', `<select class="cfg-input card-material-${id}" style="width:70px;"><option value=""${!card.material?' selected':''}>未設定</option>${CARD_MATERIALS.map(v => `<option value="${v}"${card.material===v?' selected':''}>${v}</option>`).join('')}</select>`)}
-        ${fld('武器種', `<select class="cfg-input card-wtype-${id}" style="width:90px;"><option value=""${!card.weapon_type?' selected':''}>未設定</option>${CARD_WEAPON_TYPES.map(v => `<option value="${v}"${card.weapon_type===v?' selected':''}>${v}</option>`).join('')}</select>`)}
-        ${fld('対象', `<select class="cfg-input card-target-${id}" style="width:140px;" onchange="${reCalc}">${CARD_TARGETS.map(([v, label]) => `<option value="${v}"${(card.target??'enemy_single')===v?' selected':''}>${label}</option>`).join('')}</select>`)}
-        <button class="inv-del-btn" style="margin-left:auto;" onclick="deleteCard('${id}')">🗑️</button>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
-        ${fld('AP', `<input class="cfg-input card-apcost-${id}" type="number" value="${card.ap_cost ?? ''}" placeholder="0" min="0" style="width:56px;" onchange="${reCalc}">`)}
-        ${fld('追加攻撃力', `<input class="cfg-input card-batk-${id}" type="number" value="${card.base_attack ?? ''}" placeholder="0" style="width:60px;" onchange="${reCalc}">`)}
-        ${fld('倍率下限', `<input class="cfg-input card-mmin-${id}" type="number" value="${card.mult_min ?? ''}" placeholder="1.0" step="0.01" style="width:60px;" onchange="${reCalc}">`)}
-        ${fld('倍率上限', `<input class="cfg-input card-mmax-${id}" type="number" value="${card.mult_max ?? ''}" placeholder="1.0" step="0.01" style="width:60px;" onchange="${reCalc}">`)}
-        ${fld('クリ率補正', `<input class="cfg-input card-crate-${id}" type="number" value="${card.crit_rate_bonus ?? ''}" placeholder="0" style="width:56px;" onchange="${reCalc}">`)}
-        ${fld('クリダメ補正', `<input class="cfg-input card-cdmg-${id}" type="number" value="${card.crit_dmg_bonus ?? ''}" placeholder="0" step="0.01" style="width:56px;" onchange="${reCalc}">`)}
-        ${fld('ヒット数', `<input class="cfg-input card-hits-${id}" type="number" value="${card.hit_count ?? ''}" placeholder="1" min="1" style="width:50px;" onchange="${reCalc}">`)}
-        ${fld('回復力', `<input class="cfg-input card-heal-${id}" type="number" value="${card.heal_power ?? ''}" placeholder="0" min="0" style="width:60px;" onchange="${reCalc}">`)}
-        ${fld('特殊処理ID', `<input class="cfg-input card-specialid-${id}" type="text" value="${escDrill(card.special_id ?? '')}" placeholder="なし" style="width:90px;">`)}
-        <span style="display:inline-flex;align-items:center;gap:4px;font-size:.72rem;">
-          <span style="opacity:.55;">画像</span>
-          <label class="inv-save-btn" style="cursor:pointer;display:inline-block;padding:2px 8px;">📁<input type="file" accept="image/*" style="display:none;" onchange="uploadCardImage('${id}',this)"></label>
-          ${card.imageUrl ? `<button class="inv-del-btn" onclick="clearCardImage('${id}')">✕</button>` : ''}
-        </span>
-      </div>
-      ${testHtml}
-    </div>`;
+    html += `<tr>
+      ${td(imgPreview)}
+      ${td(`<span style="opacity:.45;font-size:.68rem;">${escDrill(id)}</span>`)}
+      ${td(`<input class="cfg-input card-name-${id}" type="text" value="${escDrill(card.name ?? '')}" placeholder="カード名" style="width:110px;">`)}
+      ${td(`<input class="cfg-input card-no-${id}" type="number" value="${card.no ?? ''}" placeholder="—" min="1" style="width:52px;" onchange="${reCalc}">`)}
+      ${td(`<input class="cfg-input card-desc-${id}" type="text" value="${escDrill(card.desc ?? '')}" placeholder="説明文" style="width:140px;">`)}
+      ${td(`<select class="cfg-input card-rarity-${id}" style="width:60px;">${['','d','c','b','a','s'].map(v => `<option value="${v}"${(card.rarity??'')=== v?' selected':''}>${v===''?'なし':v.toUpperCase()}</option>`).join('')}</select>`)}
+      ${td(`<select class="cfg-input card-material-${id}" style="width:68px;"><option value=""${!card.material?' selected':''}>未設定</option>${CARD_MATERIALS.map(v => `<option value="${v}"${card.material===v?' selected':''}>${v}</option>`).join('')}</select>`)}
+      ${td(`<select class="cfg-input card-wtype-${id}" style="width:88px;"><option value=""${!card.weapon_type?' selected':''}>未設定</option>${CARD_WEAPON_TYPES.map(v => `<option value="${v}"${card.weapon_type===v?' selected':''}>${v}</option>`).join('')}</select>`)}
+      ${td(`<select class="cfg-input card-target-${id}" style="width:130px;" onchange="${reCalc}">${CARD_TARGETS.map(([v, label]) => `<option value="${v}"${(card.target??'enemy_single')===v?' selected':''}>${label}</option>`).join('')}</select>`)}
+      ${td(`<input class="cfg-input card-apcost-${id}" type="number" value="${card.ap_cost ?? ''}" placeholder="0" min="0" style="width:50px;" onchange="${reCalc}">`)}
+      ${td(`<input class="cfg-input card-batk-${id}" type="number" value="${card.base_attack ?? ''}" placeholder="0" style="width:56px;" onchange="${reCalc}">`)}
+      ${td(`<input class="cfg-input card-mmin-${id}" type="number" value="${card.mult_min ?? ''}" placeholder="1.0" step="0.01" style="width:56px;" onchange="${reCalc}">`)}
+      ${td(`<input class="cfg-input card-mmax-${id}" type="number" value="${card.mult_max ?? ''}" placeholder="1.0" step="0.01" style="width:56px;" onchange="${reCalc}">`)}
+      ${td(`<input class="cfg-input card-crate-${id}" type="number" value="${card.crit_rate_bonus ?? ''}" placeholder="0" style="width:52px;" onchange="${reCalc}">`)}
+      ${td(`<input class="cfg-input card-cdmg-${id}" type="number" value="${card.crit_dmg_bonus ?? ''}" placeholder="0" step="0.01" style="width:52px;" onchange="${reCalc}">`)}
+      ${td(`<input class="cfg-input card-hits-${id}" type="number" value="${card.hit_count ?? ''}" placeholder="1" min="1" style="width:46px;" onchange="${reCalc}">`)}
+      ${td(`<input class="cfg-input card-heal-${id}" type="number" value="${card.heal_power ?? ''}" placeholder="0" min="0" style="width:56px;" onchange="${reCalc}">`)}
+      ${td(`<input class="cfg-input card-specialid-${id}" type="text" value="${escDrill(card.special_id ?? '')}" placeholder="なし" style="width:80px;">`)}
+      ${td(`<label class="inv-save-btn" style="cursor:pointer;display:inline-block;padding:2px 8px;">📁<input type="file" accept="image/*" style="display:none;" onchange="uploadCardImage('${id}',this)"></label>${card.imageUrl ? `<button class="inv-del-btn" onclick="clearCardImage('${id}')">✕</button>` : ''}`)}
+      ${testCells}
+      ${td(`<button class="inv-del-btn" onclick="deleteCard('${id}')">🗑️</button>`)}
+    </tr>`;
   }
+
+  html += `</tbody></table></div>`;
 
   html += pagerHtml;
   html += `<button class="btn-refresh" onclick="addCard()">＋ カード追加</button>`;
