@@ -1568,6 +1568,47 @@ const CARD_TARGETS = [
 let cardsFilter = { rank: '', weaponType: '', material: '', search: '' };
 let cardsPage = 1;
 const CARDS_PAGE_SIZE = 8;
+let cardsTestMonsterId = '';
+const CARD_DEF_COEF = 200; // drill/game.jsのDEF_COEFと合わせる
+
+// 選択中モンスター相手にこのカードを使った場合の平均/期待ダメージ・回復量・AP効率を計算する
+// （drill/game.js の computeCardDamage と同じ計算式を、乱数を使わず期待値ベースで算出）
+function computeCardTestStats(card, monsterDefense) {
+  const stats = gameConfig.combatStats ?? {};
+  const baseAttack  = Number(stats.attack)   || 0;
+  const baseCritRate = Number(stats.critRate) || 0;
+  const baseCritDmg  = Number(stats.critDmg)  || 1.5;
+  const apCost = Number(card.ap_cost) || 0;
+
+  // drill/game.js の isAllyTarget 判定と一致させる（ally_randomは実際はダメージ扱いのため含めない）
+  const isHeal = ['self', 'ally_single', 'ally_all'].includes(card.target);
+  if (isHeal) {
+    const heal = Number(card.heal_power ?? card.heal) || 0;
+    return { isHeal: true, heal, apEff: apCost > 0 ? heal / apCost : null };
+  }
+
+  const def = Number(monsterDefense) || 0;
+  const hitCount = Math.max(1, Number(card.hit_count) || 1);
+  const min = Number(card.mult_min ?? 1);
+  const max = Number(card.mult_max ?? min);
+  const totalAtk = baseAttack + (Number(card.base_attack) || 0);
+  const critRate = Math.min(1, Math.max(0, (baseCritRate + (Number(card.crit_rate_bonus) || 0)) / 100));
+  const critDmg  = baseCritDmg + (Number(card.crit_dmg_bonus) || 0);
+  const defFactor = CARD_DEF_COEF / (CARD_DEF_COEF + def);
+
+  const avgHitDmg = Math.max(1, totalAtk * ((min + max) / 2) * defFactor);
+  const avgDmg = avgHitDmg * hitCount;
+  const expHitDmg = avgHitDmg * (1 + critRate * (critDmg - 1));
+  const expDmg = expHitDmg * hitCount;
+
+  return { isHeal: false, avgDmg, expDmg, apEff: apCost > 0 ? expDmg / apCost : null };
+}
+
+function changeCardsTestMonster() {
+  collectCardsConfig();
+  cardsTestMonsterId = document.getElementById('cards-test-monster')?.value ?? '';
+  renderCardsTab();
+}
 
 function applyCardsFilter() {
   collectCardsConfig();
@@ -1613,6 +1654,16 @@ function renderCardsTab() {
       <option value="">素材: すべて</option>
       ${CARD_MATERIALS.map(v => `<option value="${v}"${cardsFilter.material===v?' selected':''}>${v}</option>`).join('')}
     </select>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;padding:10px 14px;background:rgba(255,200,80,.06);border:1px solid rgba(255,200,80,.25);border-radius:8px;">
+    <span style="font-size:.82rem;font-weight:700;">🎯 ダメージテスト対象モンスター</span>
+    <select id="cards-test-monster" class="cfg-input" onchange="changeCardsTestMonster()">
+      <option value="">未選択</option>
+      ${Object.entries(gameConfig.monsters ?? {}).map(([mid, m]) =>
+        `<option value="${mid}"${cardsTestMonsterId===mid?' selected':''}>${escDrill(m.name || mid)}（防御力${m.defense ?? 0}）</option>`
+      ).join('')}
+    </select>
+    <span style="font-size:.72rem;opacity:.5;">選択すると各カードに平均/期待ダメージ・AP効率が表示されます</span>
   </div>`;
 
   const sortedCards = Object.entries(cards).sort((a, b) => (a[1].no ?? Infinity) - (b[1].no ?? Infinity));
@@ -1645,89 +1696,62 @@ function renderCardsTab() {
     </div>`;
   html += pagerHtml;
 
+  // ラベル+入力欄を横並び1行にまとめるコンパクト表示用ヘルパー
+  const fld = (label, inputHtml) => `
+    <label style="display:inline-flex;align-items:center;gap:4px;font-size:.72rem;white-space:nowrap;opacity:.9;">
+      <span style="opacity:.55;">${label}</span>${inputHtml}
+    </label>`;
+  const selectedMonster = gameConfig.monsters?.[cardsTestMonsterId] ?? null;
+
   for (const [id, card] of pageCards) {
     const imgPreview = card.imageUrl
-      ? `<img src="${escDrill(card.imageUrl)}" style="width:48px;height:48px;object-fit:contain;border-radius:6px;background:rgba(255,255,255,.08);">`
-      : `<div style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);border-radius:6px;font-size:2rem;">⚔️</div>`;
+      ? `<img src="${escDrill(card.imageUrl)}" style="width:34px;height:34px;object-fit:contain;border-radius:5px;background:rgba(255,255,255,.08);">`
+      : `<div style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);border-radius:5px;font-size:1.3rem;">⚔️</div>`;
 
+    let testHtml = '';
+    if (cardsTestMonsterId) {
+      const t = computeCardTestStats(card, selectedMonster?.defense);
+      testHtml = t.isHeal
+        ? `<div style="margin-top:5px;padding:4px 8px;background:rgba(120,220,150,.1);border-radius:5px;font-size:.72rem;">
+             💚 平均回復量 <b>${Math.round(t.heal)}</b>　AP効率 <b>${t.apEff != null ? t.apEff.toFixed(2) : '—'}</b>/AP
+           </div>`
+        : `<div style="margin-top:5px;padding:4px 8px;background:rgba(255,160,80,.1);border-radius:5px;font-size:.72rem;">
+             ⚔️ 平均ダメージ <b>${Math.round(t.avgDmg)}</b>　期待ダメージ(クリ考慮) <b>${Math.round(t.expDmg)}</b>　AP効率 <b>${t.apEff != null ? t.apEff.toFixed(2) : '—'}</b>/AP
+           </div>`;
+    }
+
+    const reCalc = `collectCardsConfig();renderCardsTab();`;
     html += `
-    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:16px;margin-bottom:16px;">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          ${imgPreview}
-          <div>
-            <div style="font-size:.72rem;opacity:.45;margin-bottom:3px;">ID: ${escDrill(id)}</div>
-            <input class="cfg-input card-name-${id}" type="text" value="${escDrill(card.name ?? '')}" placeholder="カード名" style="width:160px;">
-          </div>
-          <label style="font-size:.82rem;">No.<br>
-            <input class="cfg-input card-no-${id}" type="number" value="${card.no ?? ''}" placeholder="—" min="1" style="width:64px;" onchange="collectCardsConfig();renderCardsTab();">
-          </label>
-        </div>
-        <button class="inv-del-btn" onclick="deleteCard('${id}')">🗑️ 削除</button>
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:8px 12px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        ${imgPreview}
+        <span style="font-size:.68rem;opacity:.4;">${escDrill(id)}</span>
+        <input class="cfg-input card-name-${id}" type="text" value="${escDrill(card.name ?? '')}" placeholder="カード名" style="width:130px;">
+        ${fld('No.', `<input class="cfg-input card-no-${id}" type="number" value="${card.no ?? ''}" placeholder="—" min="1" style="width:56px;" onchange="${reCalc}">`)}
+        ${fld('説明', `<input class="cfg-input card-desc-${id}" type="text" value="${escDrill(card.desc ?? '')}" placeholder="説明文" style="width:150px;">`)}
+        ${fld('ランク', `<select class="cfg-input card-rarity-${id}" style="width:62px;">${['','d','c','b','a','s'].map(v => `<option value="${v}"${(card.rarity??'')=== v?' selected':''}>${v===''?'なし':v.toUpperCase()}</option>`).join('')}</select>`)}
+        ${fld('素材', `<select class="cfg-input card-material-${id}" style="width:70px;"><option value=""${!card.material?' selected':''}>未設定</option>${CARD_MATERIALS.map(v => `<option value="${v}"${card.material===v?' selected':''}>${v}</option>`).join('')}</select>`)}
+        ${fld('武器種', `<select class="cfg-input card-wtype-${id}" style="width:90px;"><option value=""${!card.weapon_type?' selected':''}>未設定</option>${CARD_WEAPON_TYPES.map(v => `<option value="${v}"${card.weapon_type===v?' selected':''}>${v}</option>`).join('')}</select>`)}
+        ${fld('対象', `<select class="cfg-input card-target-${id}" style="width:140px;" onchange="${reCalc}">${CARD_TARGETS.map(([v, label]) => `<option value="${v}"${(card.target??'enemy_single')===v?' selected':''}>${label}</option>`).join('')}</select>`)}
+        <button class="inv-del-btn" style="margin-left:auto;" onclick="deleteCard('${id}')">🗑️</button>
       </div>
-
-      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;">
-        <label style="font-size:.82rem;">説明<br>
-          <input class="cfg-input card-desc-${id}" type="text" value="${escDrill(card.desc ?? '')}" placeholder="説明文" style="width:200px;">
-        </label>
-        <label style="font-size:.82rem;">ランク<br>
-          <select class="cfg-input card-rarity-${id}" style="width:70px;">
-            ${['','d','c','b','a','s'].map(v => `<option value="${v}"${(card.rarity??'')=== v?' selected':''}>${v===''?'なし':v.toUpperCase()}</option>`).join('')}
-          </select>
-        </label>
-        <label style="font-size:.82rem;">素材<br>
-          <select class="cfg-input card-material-${id}" style="width:80px;">
-            <option value=""${!card.material?' selected':''}>未設定</option>
-            ${CARD_MATERIALS.map(v => `<option value="${v}"${card.material===v?' selected':''}>${v}</option>`).join('')}
-          </select>
-        </label>
-        <label style="font-size:.82rem;">武器種<br>
-          <select class="cfg-input card-wtype-${id}" style="width:110px;">
-            <option value=""${!card.weapon_type?' selected':''}>未設定</option>
-            ${CARD_WEAPON_TYPES.map(v => `<option value="${v}"${card.weapon_type===v?' selected':''}>${v}</option>`).join('')}
-          </select>
-        </label>
-        <label style="font-size:.82rem;">対象<br>
-          <select class="cfg-input card-target-${id}" style="width:160px;">
-            ${CARD_TARGETS.map(([v, label]) => `<option value="${v}"${(card.target??'enemy_single')===v?' selected':''}>${label}</option>`).join('')}
-          </select>
-        </label>
-      </div>
-      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-top:10px;">
-        <label style="font-size:.82rem;">APコスト<br>
-          <input class="cfg-input card-apcost-${id}" type="number" value="${card.ap_cost ?? ''}" placeholder="0" min="0" style="width:70px;">
-        </label>
-        <label style="font-size:.82rem;">追加攻撃力<br>
-          <input class="cfg-input card-batk-${id}" type="number" value="${card.base_attack ?? ''}" placeholder="0" style="width:70px;">
-        </label>
-        <label style="font-size:.82rem;">倍率 下限<br>
-          <input class="cfg-input card-mmin-${id}" type="number" value="${card.mult_min ?? ''}" placeholder="1.0" step="0.01" style="width:70px;">
-        </label>
-        <label style="font-size:.82rem;">倍率 上限<br>
-          <input class="cfg-input card-mmax-${id}" type="number" value="${card.mult_max ?? ''}" placeholder="1.0" step="0.01" style="width:70px;">
-        </label>
-        <label style="font-size:.82rem;">クリ率補正<br>
-          <input class="cfg-input card-crate-${id}" type="number" value="${card.crit_rate_bonus ?? ''}" placeholder="0" style="width:70px;">
-        </label>
-        <label style="font-size:.82rem;">クリダメ補正<br>
-          <input class="cfg-input card-cdmg-${id}" type="number" value="${card.crit_dmg_bonus ?? ''}" placeholder="0" step="0.01" style="width:70px;">
-        </label>
-        <label style="font-size:.82rem;">ヒット数<br>
-          <input class="cfg-input card-hits-${id}" type="number" value="${card.hit_count ?? ''}" placeholder="1" min="1" style="width:60px;">
-        </label>
-        <label style="font-size:.82rem;">回復力<br>
-          <input class="cfg-input card-heal-${id}" type="number" value="${card.heal ?? ''}" placeholder="0" min="0" style="width:70px;">
-        </label>
-        <label style="font-size:.82rem;">特殊処理ID<br>
-          <input class="cfg-input card-specialid-${id}" type="text" value="${escDrill(card.special_id ?? '')}" placeholder="なし" style="width:100px;">
-        </label>
-        <div style="font-size:.82rem;">画像<br>
-          <label class="inv-save-btn" style="cursor:pointer;display:inline-block;padding:3px 10px;">
-            📁 選択<input type="file" accept="image/*" style="display:none;" onchange="uploadCardImage('${id}',this)">
-          </label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+        ${fld('AP', `<input class="cfg-input card-apcost-${id}" type="number" value="${card.ap_cost ?? ''}" placeholder="0" min="0" style="width:56px;" onchange="${reCalc}">`)}
+        ${fld('追加攻撃力', `<input class="cfg-input card-batk-${id}" type="number" value="${card.base_attack ?? ''}" placeholder="0" style="width:60px;" onchange="${reCalc}">`)}
+        ${fld('倍率下限', `<input class="cfg-input card-mmin-${id}" type="number" value="${card.mult_min ?? ''}" placeholder="1.0" step="0.01" style="width:60px;" onchange="${reCalc}">`)}
+        ${fld('倍率上限', `<input class="cfg-input card-mmax-${id}" type="number" value="${card.mult_max ?? ''}" placeholder="1.0" step="0.01" style="width:60px;" onchange="${reCalc}">`)}
+        ${fld('クリ率補正', `<input class="cfg-input card-crate-${id}" type="number" value="${card.crit_rate_bonus ?? ''}" placeholder="0" style="width:56px;" onchange="${reCalc}">`)}
+        ${fld('クリダメ補正', `<input class="cfg-input card-cdmg-${id}" type="number" value="${card.crit_dmg_bonus ?? ''}" placeholder="0" step="0.01" style="width:56px;" onchange="${reCalc}">`)}
+        ${fld('ヒット数', `<input class="cfg-input card-hits-${id}" type="number" value="${card.hit_count ?? ''}" placeholder="1" min="1" style="width:50px;" onchange="${reCalc}">`)}
+        ${fld('回復力', `<input class="cfg-input card-heal-${id}" type="number" value="${card.heal_power ?? ''}" placeholder="0" min="0" style="width:60px;" onchange="${reCalc}">`)}
+        ${fld('特殊処理ID', `<input class="cfg-input card-specialid-${id}" type="text" value="${escDrill(card.special_id ?? '')}" placeholder="なし" style="width:90px;">`)}
+        <span style="display:inline-flex;align-items:center;gap:4px;font-size:.72rem;">
+          <span style="opacity:.55;">画像</span>
+          <label class="inv-save-btn" style="cursor:pointer;display:inline-block;padding:2px 8px;">📁<input type="file" accept="image/*" style="display:none;" onchange="uploadCardImage('${id}',this)"></label>
           ${card.imageUrl ? `<button class="inv-del-btn" onclick="clearCardImage('${id}')">✕</button>` : ''}
-        </div>
+        </span>
       </div>
+      ${testHtml}
     </div>`;
   }
 
@@ -2038,6 +2062,13 @@ function renderMemoriesTab() {
     </label>`).join('');
 
   let html = `
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">
+    <button class="btn-refresh" onclick="exportMemoriesCsv()" style="background:rgba(80,180,120,.6);">⬇️ CSVエクスポート</button>
+    <label class="inv-save-btn" style="cursor:pointer;padding:6px 14px;background:rgba(80,140,220,.5);">
+      ⬆️ CSVインポート<input type="file" accept=".csv,text/csv" style="display:none;" onchange="importMemoriesCsv(this)">
+    </label>
+    <span style="font-size:.75rem;opacity:.5;">※ インポートするとDBに即時反映されます（画像は個別アップロードしてください）</span>
+  </div>
   <div class="info-box" style="margin-bottom:14px;">
     メモリはモンスター討伐時にドロップし、編成画面から最大3種類まで装備できます（同じ種類は1つまで）。
     プレイヤーのステータスを恒久的に強化します。ドロップ率はモンスタータブで個別に設定します。
@@ -2172,6 +2203,84 @@ async function uploadMemoryImage(id, input) {
 function clearMemoryImage(id) {
   if (gameConfig.memories?.[id]) gameConfig.memories[id].imageUrl = null;
   renderMemoriesTab();
+}
+
+// CSVはgameConfig.memoriesの列に合わせる（bonusesはステータスごとに列を分ける）
+const MEMORY_CSV_COLS = ['id','name','desc','icon','rarity','weight','imageUrl', ...MEMORY_STATS.map(([k]) => k)];
+
+// ── CSV エクスポート（gameConfig.memoriesから読む）──
+function exportMemoriesCsv() {
+  collectMemoriesConfig();
+  const memories = gameConfig.memories ?? {};
+  const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const rows = [MEMORY_CSV_COLS.map(esc)];
+  for (const [id, def] of Object.entries(memories)) {
+    const bonuses = def.bonuses ?? {};
+    rows.push([
+      id, def.name ?? id, def.desc ?? '', def.icon ?? '', def.rarity ?? '', def.weight ?? 10, def.imageUrl ?? '',
+      ...MEMORY_STATS.map(([k]) => bonuses[k] ?? 0),
+    ].map(esc));
+  }
+  const csv = '﻿' + rows.map(r => r.join(',')).join('\r\n');
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })),
+    download: 'memories_' + new Date().toISOString().slice(0, 10) + '.csv',
+  });
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ── CSV インポート（gameConfig.memoriesを更新し、DBへ即時反映）──
+async function importMemoriesCsv(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  input.value = '';
+  let text;
+  try { text = await file.text(); } catch (e) { alert('ファイル読み込みエラー: ' + e.message); return; }
+  try {
+    const lines = text.replace(/^﻿/, '').split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) { alert('データが見つかりません'); return; }
+
+    const header = parseCsvRow(lines[0]);
+    const idIdx  = header.indexOf('id');
+    if (idIdx < 0) { alert('id列が必要です'); return; }
+
+    collectMemoriesConfig(); // 未保存の画面編集を先に取り込んでおく
+    if (!gameConfig.memories) gameConfig.memories = {};
+    let count = 0;
+
+    for (let i = 1; i < lines.length; i++) {
+      const cols = parseCsvRow(lines[i]);
+      const id = cols[idIdx]?.trim();
+      if (!id) continue;
+      const get = col => { const j = header.indexOf(col); return j >= 0 ? (cols[j] ?? '') : null; };
+
+      const ex = gameConfig.memories[id] ?? {};
+      const bonuses = {};
+      MEMORY_STATS.forEach(([k]) => { bonuses[k] = parseFloat(get(k)) || 0; });
+
+      gameConfig.memories[id] = {
+        ...ex,
+        name:     get('name') || id,
+        desc:     get('desc') ?? '',
+        icon:     get('icon') || '🧠',
+        rarity:   (get('rarity') || '').toLowerCase() || null,
+        weight:   Math.max(0, parseInt(get('weight')) || 0),
+        imageUrl: get('imageUrl') || ex.imageUrl || null,
+        bonuses,
+      };
+      count++;
+    }
+
+    const { error } = await supabaseClient.from('drill_page_settings')
+      .upsert({ setting_key: 'game_config', setting_value: JSON.stringify(gameConfig) });
+    if (error) { alert('DB保存エラー: ' + error.message); return; }
+
+    renderMemoriesTab();
+    alert(`✅ インポート完了（DB更新済み）\n${count}件`);
+  } catch (err) {
+    alert('CSVのパースに失敗しました: ' + err.message);
+  }
 }
 
 // ============================================================
