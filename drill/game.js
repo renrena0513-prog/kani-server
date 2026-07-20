@@ -199,7 +199,8 @@ function computeCardDamage(cardDef, enemyDefense = null) {
   const hitCount = Math.max(1, Number(cardDef.hit_count) || 1);
   const min = Number(cardDef.mult_min ?? 1);
   const max = Number(cardDef.mult_max ?? min);
-  const totalAtk = COMBAT_STATS.attack + (Number(cardDef.base_attack) || 0);
+  const wtypeBonus = MEMORY_SPECIAL_EFFECTS.weaponDmgBonus[cardDef.weapon_type] || 0;
+  const totalAtk = COMBAT_STATS.attack + (Number(cardDef.base_attack) || 0) + wtypeBonus;
   const critRate = (COMBAT_STATS.critRate + (Number(cardDef.crit_rate_bonus) || 0)) / 100;
   const critDmg  = COMBAT_STATS.critDmg + (Number(cardDef.crit_dmg_bonus) || 0);
 
@@ -234,6 +235,23 @@ let MONSTERS = {
 let MEMORIES = {};
 let MEMORY_RANK_WEIGHTS = { d:50, c:30, b:15, a:4, s:1 }; // メモリドロップ時のランク抽選比率（全モンスター共通）
 
+// 装備中メモリの特殊効果（special_id）を集計した結果。applyMemoryBonuses()で再計算される。
+// 命名規則（今後の特殊メモリもこのIDパターンを増やして対応する）:
+//   WTYPE_DMG_<武器種>_<加算値>   … その武器種のカードのダメージに加算（例: WTYPE_DMG_剣_10）
+//   DROP_MULT_<素材ID>_<倍率>    … その素材の採掘ドロップ数に乗算（例: DROP_MULT_dirt_2、複数所持時は乗算で重ねがけ）
+let MEMORY_SPECIAL_EFFECTS = { weaponDmgBonus: {}, dropMult: {} };
+
+function _applyMemorySpecial(specialId) {
+  let m;
+  if ((m = /^WTYPE_DMG_(.+)_(-?\d+(?:\.\d+)?)$/.exec(specialId))) {
+    const [, wtype, amt] = m;
+    MEMORY_SPECIAL_EFFECTS.weaponDmgBonus[wtype] = (MEMORY_SPECIAL_EFFECTS.weaponDmgBonus[wtype] || 0) + Number(amt);
+  } else if ((m = /^DROP_MULT_(.+)_(\d+(?:\.\d+)?)$/.exec(specialId))) {
+    const [, mat, mult] = m;
+    MEMORY_SPECIAL_EFFECTS.dropMult[mat] = (MEMORY_SPECIAL_EFFECTS.dropMult[mat] || 1) * Number(mult);
+  }
+}
+
 // 装備中メモリの効果をベースステータスに適用する（loadGameConfig/loadAll完了後に1回呼ぶ）
 function applyMemoryBonuses() {
   if (COMBAT_STATS_BASE == null) COMBAT_STATS_BASE = { ...COMBAT_STATS };
@@ -243,11 +261,14 @@ function applyMemoryBonuses() {
   Object.assign(COMBAT_STATS, COMBAT_STATS_BASE);
   G.maxHp = G._baseMaxHp;
   G.maxBpWeight = G._baseMaxBpWeight;
+  MEMORY_SPECIAL_EFFECTS = { weaponDmgBonus: {}, dropMult: {} };
 
   for (const m of G.memories) {
     if (!m.equipped) continue;
     const def = MEMORIES[m.memory_id];
-    if (!def?.bonuses) continue;
+    if (!def) continue;
+    if (def.special_id) _applyMemorySpecial(def.special_id);
+    if (!def.bonuses) continue;
     for (const [stat, amount] of Object.entries(def.bonuses)) {
       const amt = Number(amount) || 0;
       if (amt === 0) continue;
@@ -267,24 +288,35 @@ function applyMemoryBonuses() {
   G.hp = Math.min(G.hp, G.maxHp);
 }
 
-// 指定ランクの中から重み付きでメモリを1種類抽選する（該当ランクの定義が無ければnull）
-function _weightedPickMemory(rank) {
-  const table = {};
-  for (const [id, def] of Object.entries(MEMORIES)) {
-    if (def.rarity !== rank) continue;
-    if ((def.weight ?? 0) > 0) table[id] = def.weight;
-  }
-  if (Object.keys(table).length === 0) return null;
-  return _weightedRandom(table);
+// 採掘で素材1ブロックあたりに実際に付与する個数（DROP_MULT特殊メモリを考慮）
+function matDropQty(mat) {
+  const mult = MEMORY_SPECIAL_EFFECTS.dropMult[mat] || 1;
+  return Math.max(1, Math.round(mult));
+}
+
+// 指定の系統・ランクに該当するメモリIDを探す（同じ系統+ランクは1つのみを想定）
+function _findMemoryByGroupRank(group, rank) {
+  const found = Object.entries(MEMORIES).find(([, def]) => def.group === group && def.rarity === rank);
+  return found ? found[0] : null;
 }
 
 // モンスター討伐時のメモリドロップ抽選（成功したら付与してmemory_idを返す）
-// dropRate: そのモンスター固有のドロップ率(%)
-async function grantMemoryDrop(dropRate) {
+// dropRate: そのモンスター固有のドロップ率(%)、group: そのモンスターがドロップするメモリの系統
+async function grantMemoryDrop(dropRate, group) {
   if (!dropRate || Math.random() * 100 >= dropRate) return null;
-  const rank = _weightedRandom(MEMORY_RANK_WEIGHTS);
-  const memoryId = _weightedPickMemory(rank);
+  if (!group) return null;
+
+  // その系統に実在するランクだけで抽選する（系統内に無いランクは対象外）
+  const rankTable = {};
+  for (const [rank, weight] of Object.entries(MEMORY_RANK_WEIGHTS)) {
+    if (weight <= 0) continue;
+    if (_findMemoryByGroupRank(group, rank)) rankTable[rank] = weight;
+  }
+  if (Object.keys(rankTable).length === 0) return null;
+  const rank = _weightedRandom(rankTable);
+  const memoryId = _findMemoryByGroupRank(group, rank);
   if (!memoryId) return null;
+
   const { data } = await supabaseClient.from('drill_player_memories')
     .insert({ user_id: G.userId, memory_id: memoryId, equipped: false })
     .select().single();
@@ -607,6 +639,7 @@ async function loadGameConfig() {
             name: a.name ?? '', damage: a.damage ?? 0, weight: a.weight ?? 1,
           })),
           memoryDropRate: v.memoryDropRate ?? MONSTERS[id]?.memoryDropRate ?? 0,
+          memoryGroup: v.memoryGroup ?? MONSTERS[id]?.memoryGroup ?? null,
           normalDrops: (v.normalDrops ?? MONSTERS[id]?.normalDrops ?? []).map(d => ({
             itemId: d.itemId, qty: d.qty ?? 1, weight: d.weight ?? 1,
           })),
@@ -620,25 +653,26 @@ async function loadGameConfig() {
       // drill_cards（loadCardDefsで読み込み済み）が正データ。cfg.cardsはimageUrl/descの上書き専用で、
       // drill_cards未登録のカード（保存前の新規追加カード等）にのみ他フィールドのフォールバックとして使う
       for (const [id, v] of Object.entries(cfg.cards)) {
-        const ex = CARDS[id];
+        const ex = CARDS[id] ?? {};
         CARDS[id] = {
+          ...ex, // weapon_type/material/no等、drill_cards由来でここに列挙されないフィールドを保持
           id,
-          name:            ex?.name       ?? v.name       ?? id,
-          desc:            v.desc       ?? ex?.desc       ?? '',
-          icon:            ex?.icon       ?? v.icon       ?? '⚔️',
+          name:            ex.name       ?? v.name       ?? id,
+          desc:            v.desc       ?? ex.desc       ?? '',
+          icon:            ex.icon       ?? v.icon       ?? '⚔️',
           imageUrl:        v.imageUrl   ?? null,
-          damage:          ex?.damage     ?? v.damage     ?? 0,
-          rarity:          ex?.rarity          ?? v.rarity          ?? null,
-          ap_cost:         ex?.ap_cost         ?? v.ap_cost         ?? null,
-          base_attack:     ex?.base_attack     ?? v.base_attack     ?? null,
-          mult_min:        ex?.mult_min        ?? v.mult_min        ?? null,
-          mult_max:        ex?.mult_max        ?? v.mult_max        ?? null,
-          crit_rate_bonus: ex?.crit_rate_bonus ?? v.crit_rate_bonus ?? null,
-          crit_dmg_bonus:  ex?.crit_dmg_bonus  ?? v.crit_dmg_bonus  ?? null,
-          hit_count:       ex?.hit_count       ?? v.hit_count       ?? null,
-          target:          ex?.target          ?? v.target          ?? 'SINGLE',
-          heal:            ex?.heal            ?? v.heal            ?? null,
-          special_id:      ex?.special_id      ?? v.special_id      ?? null,
+          damage:          ex.damage     ?? v.damage     ?? 0,
+          rarity:          ex.rarity          ?? v.rarity          ?? null,
+          ap_cost:         ex.ap_cost         ?? v.ap_cost         ?? null,
+          base_attack:     ex.base_attack     ?? v.base_attack     ?? null,
+          mult_min:        ex.mult_min        ?? v.mult_min        ?? null,
+          mult_max:        ex.mult_max        ?? v.mult_max        ?? null,
+          crit_rate_bonus: ex.crit_rate_bonus ?? v.crit_rate_bonus ?? null,
+          crit_dmg_bonus:  ex.crit_dmg_bonus  ?? v.crit_dmg_bonus  ?? null,
+          hit_count:       ex.hit_count       ?? v.hit_count       ?? null,
+          target:          ex.target          ?? v.target          ?? 'SINGLE',
+          heal:            ex.heal            ?? v.heal            ?? null,
+          special_id:      ex.special_id      ?? v.special_id      ?? null,
         };
       }
     }
@@ -659,10 +693,11 @@ async function loadGameConfig() {
           name:     v.name     ?? MEMORIES[id]?.name     ?? id,
           desc:     v.desc     ?? MEMORIES[id]?.desc     ?? '',
           icon:     v.icon     ?? MEMORIES[id]?.icon     ?? '🧠',
-          imageUrl: v.imageUrl ?? null,
-          rarity:   v.rarity   ?? MEMORIES[id]?.rarity   ?? null,
+          imageUrl:   v.imageUrl   ?? null,
+          group:      v.group      ?? MEMORIES[id]?.group      ?? null,
+          rarity:     v.rarity     ?? MEMORIES[id]?.rarity     ?? null,
+          special_id: v.special_id ?? MEMORIES[id]?.special_id ?? null,
           bonuses,
-          weight:   v.weight   ?? MEMORIES[id]?.weight   ?? 10,
         };
       }
     }
@@ -1116,15 +1151,16 @@ async function finishMine(x, y, mat) {
   if (mat === 'treasure') {
     await openTreasure(x, y);
   } else {
-    if (bpWeight() + itemWeight(mat) > G.maxBpWeight) {
+    const qty = matDropQty(mat);
+    if (bpWeight() + itemWeight(mat) * qty > G.maxBpWeight) {
       _pendingMaterial = { mat, x, y };
       showBagFullModal();
       render();
       return;
     }
-    G.backpack[mat] = (G.backpack[mat] || 0) + 1;
+    G.backpack[mat] = (G.backpack[mat] || 0) + qty;
     await saveBpItem(mat, G.backpack[mat]);
-    log(`✅ ${MATS[mat].name}を採掘`);
+    log(`✅ ${MATS[mat].name}を採掘${qty > 1 ? ` ×${qty}` : ''}`);
   }
   render();
 
@@ -2452,11 +2488,12 @@ async function discardForPendingMat(id) {
   await dropAtCurrentPos([{ item_id: id, quantity: 1 }]);
   log(`📦 ${getItemName(id)} ×1 を落とした`);
 
-  if (bpWeight() + itemWeight(mat) <= G.maxBpWeight) {
+  const qty = matDropQty(mat);
+  if (bpWeight() + itemWeight(mat) * qty <= G.maxBpWeight) {
     _pendingMaterial = null;
-    G.backpack[mat] = (G.backpack[mat] || 0) + 1;
+    G.backpack[mat] = (G.backpack[mat] || 0) + qty;
     await saveBpItem(mat, G.backpack[mat]);
-    log(`✅ ${MATS[mat].name}を採掘`);
+    log(`✅ ${MATS[mat].name}を採掘${qty > 1 ? ` ×${qty}` : ''}`);
     closeModal();
     render();
     await triggerBlockEvent(x, y);
@@ -2469,8 +2506,9 @@ async function dropPendingMaterial() {
   if (!_pendingMaterial) { closeModal(); return; }
   const { mat, x, y } = _pendingMaterial;
   _pendingMaterial = null;
-  await dropAtCurrentPos([{ item_id: mat, quantity: 1 }]);
-  log(`📦 ${MATS[mat]?.name || mat} ×1 を足元に落とした`);
+  const qty = matDropQty(mat);
+  await dropAtCurrentPos([{ item_id: mat, quantity: qty }]);
+  log(`📦 ${MATS[mat]?.name || mat} ×${qty} を足元に落とした`);
   closeModal();
   renderMap();
   await triggerBlockEvent(x, y);
@@ -3640,7 +3678,7 @@ async function endCombat(win) {
   }
 
   if (win === true) {
-    const droppedMemoryId = await grantMemoryDrop(C.monster?.memoryDropRate);
+    const droppedMemoryId = await grantMemoryDrop(C.monster?.memoryDropRate, C.monster?.memoryGroup);
     const memDef = droppedMemoryId ? MEMORIES[droppedMemoryId] : null;
     const itemDrops = resolveMonsterDrops(C.monster);
     const grantedItems = itemDrops.length > 0 ? await grantMonsterDrops(itemDrops) : [];

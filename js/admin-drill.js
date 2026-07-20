@@ -404,6 +404,7 @@ async function loadGameConfigAdmin() {
   if (gameConfig.monsters) {
     for (const mon of Object.values(gameConfig.monsters)) {
       if (mon.memoryDropRate == null) mon.memoryDropRate = 0;
+      if (mon.memoryGroup === undefined) mon.memoryGroup = null;
       if (!Array.isArray(mon.normalDrops)) mon.normalDrops = [];
       if (!Array.isArray(mon.fixedDrops))  mon.fixedDrops  = [];
     }
@@ -1268,6 +1269,7 @@ function renderMonstersTab() {
   const monsters = gameConfig.monsters ?? {};
   const baseHp = gameConfig.baseHp ?? DEFAULT_GAME_CONFIG.baseHp;
   const cs = { ...DEFAULT_GAME_CONFIG.combatStats, ...(gameConfig.combatStats ?? {}) };
+  const memoryGroups = [...new Set(Object.values(gameConfig.memories ?? {}).map(m => m.group).filter(Boolean))];
 
   let html = `
     <div class="cfg-subhead">❤️ プレイヤー基礎ステータス</div>
@@ -1356,9 +1358,19 @@ function renderMonstersTab() {
       </table>
       <button class="inv-save-btn" style="padding:2px 10px;font-size:.75rem;" onclick="addMonsterAction('${id}')">＋ 行動追加</button>
 
-      <div style="font-size:.82rem;font-weight:700;margin:16px 0 8px;opacity:.7;">🧠 メモリドロップ率(%)</div>
-      <input class="cfg-input mon-memrate-${id}" type="number" value="${mon.memoryDropRate ?? 0}" min="0" max="100" style="width:80px;">
-      <div style="font-size:.72rem;opacity:.5;margin-top:4px;">ランク（D〜S）の比率はメモリタブの共通設定に従います。</div>
+      <div style="font-size:.82rem;font-weight:700;margin:16px 0 8px;opacity:.7;">🧠 メモリドロップ</div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;">
+        <label style="font-size:.82rem;">ドロップ率(%)<br>
+          <input class="cfg-input mon-memrate-${id}" type="number" value="${mon.memoryDropRate ?? 0}" min="0" max="100" style="width:80px;">
+        </label>
+        <label style="font-size:.82rem;">ドロップする系統<br>
+          <select class="cfg-input mon-memgroup-${id}" style="width:160px;">
+            <option value=""${!mon.memoryGroup?' selected':''}>未設定（ドロップしない）</option>
+            ${memoryGroups.map(g => `<option value="${escDrill(g)}"${mon.memoryGroup===g?' selected':''}>${escDrill(g)}</option>`).join('')}
+          </select>
+        </label>
+      </div>
+      <div style="font-size:.72rem;opacity:.5;margin-top:4px;">系統内でのランク（D〜S）の比率はメモリタブの共通設定に従います。系統はメモリタブでメモリごとに設定してください。</div>
 
       <div style="font-size:.82rem;font-weight:700;margin:16px 0 8px;opacity:.7;">📦 ノーマルドロップ（重み付き抽選で1つ）</div>
       <table class="drill-table" style="margin-bottom:8px;">
@@ -1434,6 +1446,8 @@ function collectMonstersConfig() {
 
     const memRateEl = document.querySelector(`.mon-memrate-${id}`);
     if (memRateEl) mon.memoryDropRate = Math.max(0, Math.min(100, parseInt(memRateEl.value) || 0));
+    const memGroupEl = document.querySelector(`.mon-memgroup-${id}`);
+    if (memGroupEl) mon.memoryGroup = memGroupEl.value || null;
 
     const ndItemEls = document.querySelectorAll(`.mon-ndrop-item-${id}`);
     const ndQtyEls  = document.querySelectorAll(`.mon-ndrop-qty-${id}`);
@@ -1463,7 +1477,7 @@ function addMonster() {
     name: '新モンスター', icon: '👾', imageUrl: null,
     maxHp: 100, defense: 0, layerWeights: Array.from({length: 30}, () => 0),
     actions: [{ name: '攻撃', damage: 10, weight: 1 }],
-    memoryDropRate: 0, normalDrops: [], fixedDrops: [],
+    memoryDropRate: 0, memoryGroup: null, normalDrops: [], fixedDrops: [],
   };
   renderMonstersTab();
 }
@@ -1762,21 +1776,21 @@ function renderCardsTab() {
       ${td(imgPreview)}
       ${td(`<span style="opacity:.45;font-size:.68rem;">${escDrill(id)}</span>`)}
       ${td(`<input class="cfg-input card-name-${id}" type="text" value="${escDrill(card.name ?? '')}" placeholder="カード名" style="width:110px;">`)}
-      ${td(`<input class="cfg-input card-no-${id}" type="number" value="${card.no ?? ''}" placeholder="—" min="1" style="width:52px;" onchange="${reCalc}">`)}
-      ${td(`<input class="cfg-input card-desc-${id}" type="text" value="${escDrill(card.desc ?? '')}" placeholder="説明文" style="width:140px;">`)}
+      ${td(`<input class="cfg-input card-no-${id}" type="number" value="${card.no ?? ''}" placeholder="—" min="1" style="width:56px;" onchange="${reCalc}">`)}
+      ${td(`<input class="cfg-input card-desc-${id}" type="text" value="${escDrill(card.desc ?? '')}" placeholder="説明文" style="width:140px;text-overflow:ellipsis;">`)}
       ${td(`<select class="cfg-input card-rarity-${id}" style="width:60px;">${['','d','c','b','a','s'].map(v => `<option value="${v}"${(card.rarity??'')=== v?' selected':''}>${v===''?'なし':v.toUpperCase()}</option>`).join('')}</select>`)}
       ${td(`<select class="cfg-input card-material-${id}" style="width:68px;"><option value=""${!card.material?' selected':''}>未設定</option>${CARD_MATERIALS.map(v => `<option value="${v}"${card.material===v?' selected':''}>${v}</option>`).join('')}</select>`)}
       ${td(`<select class="cfg-input card-wtype-${id}" style="width:88px;"><option value=""${!card.weapon_type?' selected':''}>未設定</option>${CARD_WEAPON_TYPES.map(v => `<option value="${v}"${card.weapon_type===v?' selected':''}>${v}</option>`).join('')}</select>`)}
       ${td(`<select class="cfg-input card-target-${id}" style="width:130px;" onchange="${reCalc}">${CARD_TARGETS.map(([v, label]) => `<option value="${v}"${(card.target??'enemy_single')===v?' selected':''}>${label}</option>`).join('')}</select>`)}
-      ${td(`<input class="cfg-input card-apcost-${id}" type="number" value="${card.ap_cost ?? ''}" placeholder="0" min="0" style="width:50px;" onchange="${reCalc}">`)}
-      ${td(`<input class="cfg-input card-batk-${id}" type="number" value="${card.base_attack ?? ''}" placeholder="0" style="width:56px;" onchange="${reCalc}">`)}
-      ${td(`<input class="cfg-input card-mmin-${id}" type="number" value="${card.mult_min ?? ''}" placeholder="1.0" step="0.01" style="width:56px;" onchange="${reCalc}">`)}
-      ${td(`<input class="cfg-input card-mmax-${id}" type="number" value="${card.mult_max ?? ''}" placeholder="1.0" step="0.01" style="width:56px;" onchange="${reCalc}">`)}
-      ${td(`<input class="cfg-input card-crate-${id}" type="number" value="${card.crit_rate_bonus ?? ''}" placeholder="0" style="width:52px;" onchange="${reCalc}">`)}
-      ${td(`<input class="cfg-input card-cdmg-${id}" type="number" value="${card.crit_dmg_bonus ?? ''}" placeholder="0" step="0.01" style="width:52px;" onchange="${reCalc}">`)}
-      ${td(`<input class="cfg-input card-hits-${id}" type="number" value="${card.hit_count ?? ''}" placeholder="1" min="1" style="width:46px;" onchange="${reCalc}">`)}
-      ${td(`<input class="cfg-input card-heal-${id}" type="number" value="${card.heal_power ?? ''}" placeholder="0" min="0" style="width:56px;" onchange="${reCalc}">`)}
-      ${td(`<input class="cfg-input card-specialid-${id}" type="text" value="${escDrill(card.special_id ?? '')}" placeholder="なし" style="width:80px;">`)}
+      ${td(`<input class="cfg-input card-apcost-${id}" type="number" value="${card.ap_cost ?? ''}" placeholder="0" min="0" style="width:58px;" onchange="${reCalc}">`)}
+      ${td(`<input class="cfg-input card-batk-${id}" type="number" value="${card.base_attack ?? ''}" placeholder="0" style="width:74px;" onchange="${reCalc}">`)}
+      ${td(`<input class="cfg-input card-mmin-${id}" type="number" value="${card.mult_min ?? ''}" placeholder="1.0" step="0.01" style="width:66px;" onchange="${reCalc}">`)}
+      ${td(`<input class="cfg-input card-mmax-${id}" type="number" value="${card.mult_max ?? ''}" placeholder="1.0" step="0.01" style="width:66px;" onchange="${reCalc}">`)}
+      ${td(`<input class="cfg-input card-crate-${id}" type="number" value="${card.crit_rate_bonus ?? ''}" placeholder="0" style="width:62px;" onchange="${reCalc}">`)}
+      ${td(`<input class="cfg-input card-cdmg-${id}" type="number" value="${card.crit_dmg_bonus ?? ''}" placeholder="0" step="0.01" style="width:62px;" onchange="${reCalc}">`)}
+      ${td(`<input class="cfg-input card-hits-${id}" type="number" value="${card.hit_count ?? ''}" placeholder="1" min="1" style="width:54px;" onchange="${reCalc}">`)}
+      ${td(`<input class="cfg-input card-heal-${id}" type="number" value="${card.heal_power ?? ''}" placeholder="0" min="0" style="width:70px;" onchange="${reCalc}">`)}
+      ${td(`<input class="cfg-input card-specialid-${id}" type="text" value="${escDrill(card.special_id ?? '')}" placeholder="なし" style="width:100px;text-overflow:ellipsis;">`)}
       ${td(`<label class="inv-save-btn" style="cursor:pointer;display:inline-block;padding:2px 8px;">📁<input type="file" accept="image/*" style="display:none;" onchange="uploadCardImage('${id}',this)"></label>${card.imageUrl ? `<button class="inv-del-btn" onclick="clearCardImage('${id}')">✕</button>` : ''}`)}
       ${testCells}
       ${td(`<button class="inv-del-btn" onclick="deleteCard('${id}')">🗑️</button>`)}
@@ -2078,6 +2092,26 @@ function clearItemImage(id) {
 // メモリ設定タブ
 // ============================================================
 
+let memoriesFilter = { group: '', rank: '', search: '' };
+let memoriesPage = 1;
+const MEMORIES_PAGE_SIZE = 20;
+const MEMORY_RANK_ORDER = { d: 0, c: 1, b: 2, a: 3, s: 4 };
+
+function applyMemoriesFilter() {
+  collectMemoriesConfig();
+  memoriesFilter.group  = document.getElementById('mem-filter-group')?.value ?? '';
+  memoriesFilter.rank   = document.getElementById('mem-filter-rank')?.value ?? '';
+  memoriesFilter.search = document.getElementById('mem-filter-search')?.value ?? '';
+  memoriesPage = 1;
+  renderMemoriesTab();
+}
+
+function changeMemoriesPage(delta, totalPages) {
+  collectMemoriesConfig();
+  memoriesPage = Math.min(Math.max(1, memoriesPage + delta), totalPages);
+  renderMemoriesTab();
+}
+
 function renderMemoriesTab() {
   const el = document.getElementById('cfg-tab-memories');
   if (!el) return;
@@ -2091,7 +2125,13 @@ function renderMemoriesTab() {
         style="width:64px;text-align:center;" oninput="_memAdminUpdateTotal()">
     </label>`).join('');
 
+  const memoryGroups = [...new Set(Object.values(memories).map(m => m.group).filter(Boolean))];
   let html = `
+  <datalist id="mem-group-list">${memoryGroups.map(g => `<option value="${escDrill(g)}">`).join('')}</datalist>
+  <datalist id="mem-special-list">
+    <option value="WTYPE_DMG_剣_10">
+    <option value="DROP_MULT_dirt_2">
+  </datalist>
   <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">
     <button class="btn-refresh" onclick="exportMemoriesCsv()" style="background:rgba(80,180,120,.6);">⬇️ CSVエクスポート</button>
     <label class="inv-save-btn" style="cursor:pointer;padding:6px 14px;background:rgba(80,140,220,.5);">
@@ -2101,7 +2141,13 @@ function renderMemoriesTab() {
   </div>
   <div class="info-box" style="margin-bottom:14px;">
     メモリはモンスター討伐時にドロップし、編成画面から最大3種類まで装備できます（同じ種類は1つまで）。
-    プレイヤーのステータスを恒久的に強化します。ドロップ率はモンスタータブで個別に設定します。
+    プレイヤーのステータスを恒久的に強化します。ドロップ率・ドロップする系統はモンスタータブで個別に設定します。<br>
+    「系統」はD〜Sランクの同じメモリをまとめるグループ名です（例: 体力強化 の d/c/b/a/s を同じ系統名にする）。
+    モンスターには系統を割り当て、討伐時にその系統内からランク抽選比率に従ってランクが自動決定されます。<br>
+    「特殊処理ID」は装備中に発動する特殊効果です。現在対応している書式:<br>
+    ・<code>WTYPE_DMG_&lt;武器種&gt;_&lt;加算値&gt;</code> … 例 <code>WTYPE_DMG_剣_10</code>＝剣カードのダメージ+10<br>
+    ・<code>DROP_MULT_&lt;素材ID&gt;_&lt;倍率&gt;</code> … 例 <code>DROP_MULT_dirt_2</code>＝土のドロップ数が2倍<br>
+    新しい特殊効果を追加する場合は、この書式パターンをdrill/game.jsの<code>_applyMemorySpecial()</code>に追加してください。
   </div>
   <div style="margin-bottom:20px;">
     <div style="font-size:.95rem;font-weight:700;margin-bottom:10px;">メモリのランク抽選比率（全モンスター共通）</div>
@@ -2109,50 +2155,90 @@ function renderMemoriesTab() {
       ${rankRows}
       <div id="mem-rank-total" style="font-size:.8rem;opacity:.6;align-self:center;"></div>
     </div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center;">
+    <input id="mem-filter-search" class="cfg-input" type="text" placeholder="🔍 IDまたは名前で検索"
+      value="${escDrill(memoriesFilter.search)}" oninput="applyMemoriesFilter()" style="flex:1 1 180px;">
+    <select id="mem-filter-group" class="cfg-input" onchange="applyMemoriesFilter()">
+      <option value="">系統: すべて</option>
+      ${memoryGroups.map(g => `<option value="${escDrill(g)}"${memoriesFilter.group===g?' selected':''}>${escDrill(g)}</option>`).join('')}
+    </select>
+    <select id="mem-filter-rank" class="cfg-input" onchange="applyMemoriesFilter()">
+      <option value="">ランク: すべて</option>
+      ${ALCHEMY_RARITY_IDS.map(v => `<option value="${v}"${memoriesFilter.rank===v?' selected':''}>${v.toUpperCase()}</option>`).join('')}
+    </select>
   </div>`;
 
-  for (const [id, def] of Object.entries(memories)) {
-    const imgPreview = def.imageUrl
-      ? `<img src="${escDrill(def.imageUrl)}" style="width:40px;height:40px;object-fit:contain;vertical-align:middle;cursor:pointer;border-radius:6px;" onclick="clearMemoryImage('${id}')" title="クリックで削除">`
-      : `<div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);border-radius:6px;font-size:1.4rem;">${escDrill(def.icon || '🧠')}</div>`;
+  const sortedMemories = Object.entries(memories).sort((a, b) => {
+    const ga = a[1].group ?? '', gb = b[1].group ?? '';
+    if (ga !== gb) return ga.localeCompare(gb);
+    const ra = MEMORY_RANK_ORDER[a[1].rarity] ?? 99, rb = MEMORY_RANK_ORDER[b[1].rarity] ?? 99;
+    if (ra !== rb) return ra - rb;
+    return (a[1].name ?? '').localeCompare(b[1].name ?? '');
+  });
+  const filteredMemories = sortedMemories.filter(([id, def]) => {
+    if (memoriesFilter.group && def.group !== memoriesFilter.group) return false;
+    if (memoriesFilter.rank && (def.rarity ?? '').toLowerCase() !== memoriesFilter.rank) return false;
+    if (memoriesFilter.search) {
+      const q = memoriesFilter.search.toLowerCase();
+      if (!id.toLowerCase().includes(q) && !(def.name ?? '').toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
 
-    html += `<div style="border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:12px;margin-bottom:12px;">
-      <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
-        ${imgPreview}
-        <input type="text" class="cfg-input" id="cfg-mem-name-${id}" value="${escDrill(def.name ?? id)}" style="width:130px;" placeholder="名前">
-        <input type="text" class="cfg-input" id="cfg-mem-icon-${id}" value="${escDrill(def.icon ?? '')}" style="width:60px;" placeholder="🧠">
-        <label style="cursor:pointer;font-size:.8rem;padding:4px 8px;background:rgba(255,255,255,.1);border-radius:4px;">
-          📷 画像
-          <input type="file" accept="image/*" style="display:none;" onchange="uploadMemoryImage('${id}',this)">
-        </label>
-        <button class="btn-refresh" style="margin-left:auto;background:rgba(255,100,100,.2);" onclick="deleteMemory('${id}')">🗑️ 削除</button>
-      </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:.8rem;align-items:flex-end;margin-bottom:10px;">
-        <label>説明<br>
-          <input type="text" class="cfg-input" id="cfg-mem-desc-${id}" value="${escDrill(def.desc ?? '')}" style="width:160px;margin-top:2px;" placeholder="説明文">
-        </label>
-        <label>ランク<br>
-          <select class="cfg-input" id="cfg-mem-rarity-${id}" style="width:70px;margin-top:2px;">
-            ${['','d','c','b','a','s'].map(v => `<option value="${v}"${(def.rarity??'')===v?' selected':''}>${v===''?'なし':v.toUpperCase()}</option>`).join('')}
-          </select>
-        </label>
-        <label>出現重み<br>
-          <input type="number" class="cfg-input" id="cfg-mem-weight-${id}" value="${def.weight ?? 10}" min="0" style="width:70px;margin-top:2px;">
-        </label>
-      </div>
-      <div style="font-size:.78rem;font-weight:700;opacity:.6;margin-bottom:6px;">上昇量（全ステータスに同時に加算されます）</div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:.8rem;">
-        ${MEMORY_STATS.map(([statKey, label]) => `
-          <label style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-            <span style="font-size:.72rem;opacity:.7;">${label}</span>
-            <input type="number" class="cfg-input mem-bonus-${id}" data-stat="${statKey}"
-              value="${(def.bonuses ?? {})[statKey] ?? 0}" style="width:64px;text-align:center;">
-          </label>`).join('')}
+  const totalPages = Math.max(1, Math.ceil(filteredMemories.length / MEMORIES_PAGE_SIZE));
+  memoriesPage = Math.min(Math.max(1, memoriesPage), totalPages);
+  const pageStart = (memoriesPage - 1) * MEMORIES_PAGE_SIZE;
+  const pageMemories = filteredMemories.slice(pageStart, pageStart + MEMORIES_PAGE_SIZE);
+
+  const pagerHtml = `
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+      <span style="font-size:.78rem;opacity:.6;">
+        ${filteredMemories.length}件中 ${filteredMemories.length === 0 ? 0 : pageStart + 1}–${Math.min(pageStart + MEMORIES_PAGE_SIZE, filteredMemories.length)}件を表示
+      </span>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button class="btn-refresh" ${memoriesPage <= 1 ? 'disabled style="opacity:.4;cursor:default;"' : ''} onclick="changeMemoriesPage(-1,${totalPages})">‹ 前へ</button>
+        <span style="font-size:.82rem;">${memoriesPage} / ${totalPages}</span>
+        <button class="btn-refresh" ${memoriesPage >= totalPages ? 'disabled style="opacity:.4;cursor:default;"' : ''} onclick="changeMemoriesPage(1,${totalPages})">次へ ›</button>
       </div>
     </div>`;
+  html += pagerHtml;
+
+  const th = label => `<th style="position:sticky;top:0;background:#132a54;padding:6px 6px;text-align:left;font-size:.7rem;opacity:.7;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,.15);">${label}</th>`;
+  const td = inner => `<td style="padding:3px 5px;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,.06);">${inner}</td>`;
+
+  html += `
+  <div style="overflow-x:auto;border:1px solid rgba(255,255,255,.1);border-radius:8px;">
+  <table style="border-collapse:collapse;font-size:.75rem;">
+    <thead><tr>
+      ${th('画像')}${th('ID')}${th('名前')}${th('アイコン')}${th('系統')}${th('ランク')}${th('説明')}${th('特殊処理ID')}
+      ${MEMORY_STATS.map(([, label]) => th(label)).join('')}
+      ${th('')}
+    </tr></thead>
+    <tbody>`;
+
+  for (const [id, def] of pageMemories) {
+    const imgPreview = def.imageUrl
+      ? `<img src="${escDrill(def.imageUrl)}" style="width:28px;height:28px;object-fit:contain;border-radius:4px;cursor:pointer;" onclick="clearMemoryImage('${id}')" title="クリックで削除">`
+      : `<div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);border-radius:4px;font-size:1rem;">${escDrill(def.icon || '🧠')}</div>`;
+
+    html += `<tr>
+      ${td(imgPreview)}
+      ${td(`<span style="opacity:.45;font-size:.68rem;">${escDrill(id)}</span>`)}
+      ${td(`<input type="text" class="cfg-input" id="cfg-mem-name-${id}" value="${escDrill(def.name ?? id)}" style="width:110px;" placeholder="名前">`)}
+      ${td(`<input type="text" class="cfg-input" id="cfg-mem-icon-${id}" value="${escDrill(def.icon ?? '')}" style="width:44px;" placeholder="🧠">`)}
+      ${td(`<input type="text" class="cfg-input" id="cfg-mem-group-${id}" value="${escDrill(def.group ?? '')}" style="width:110px;" placeholder="例: 体力強化" list="mem-group-list" onchange="collectMemoriesConfig();renderMemoriesTab();">`)}
+      ${td(`<select class="cfg-input" id="cfg-mem-rarity-${id}" style="width:62px;" onchange="collectMemoriesConfig();renderMemoriesTab();">${['','d','c','b','a','s'].map(v => `<option value="${v}"${(def.rarity??'')===v?' selected':''}>${v===''?'なし':v.toUpperCase()}</option>`).join('')}</select>`)}
+      ${td(`<input type="text" class="cfg-input" id="cfg-mem-desc-${id}" value="${escDrill(def.desc ?? '')}" style="width:130px;" placeholder="説明文">`)}
+      ${td(`<input type="text" class="cfg-input" id="cfg-mem-specialid-${id}" value="${escDrill(def.special_id ?? '')}" style="width:150px;" placeholder="なし" list="mem-special-list">`)}
+      ${MEMORY_STATS.map(([statKey]) => td(`<input type="number" class="cfg-input mem-bonus-${id}" data-stat="${statKey}" value="${(def.bonuses ?? {})[statKey] ?? 0}" style="width:52px;">`)).join('')}
+      ${td(`<label class="inv-save-btn" style="cursor:pointer;display:inline-block;padding:2px 8px;">📁<input type="file" accept="image/*" style="display:none;" onchange="uploadMemoryImage('${id}',this)"></label> <button class="inv-del-btn" onclick="deleteMemory('${id}')">🗑️</button>`)}
+    </tr>`;
   }
 
-  html += `<button class="btn-refresh" onclick="addMemory()">＋ メモリを追加</button>`;
+  html += `</tbody></table></div>`;
+  html += pagerHtml;
+  html += `<button class="btn-refresh" style="margin-top:10px;" onclick="addMemory()">＋ メモリを追加</button>`;
   el.innerHTML = html;
   _memAdminUpdateTotal();
 }
@@ -2176,17 +2262,20 @@ function collectMemoriesConfig() {
 
   const memories = gameConfig.memories ?? {};
   for (const [id, def] of Object.entries(memories)) {
-    const nameEl   = document.getElementById(`cfg-mem-name-${id}`);
-    const iconEl   = document.getElementById(`cfg-mem-icon-${id}`);
-    const descEl   = document.getElementById(`cfg-mem-desc-${id}`);
-    const rarityEl = document.getElementById(`cfg-mem-rarity-${id}`);
-    const weightEl = document.getElementById(`cfg-mem-weight-${id}`);
+    const nameEl      = document.getElementById(`cfg-mem-name-${id}`);
+    const iconEl      = document.getElementById(`cfg-mem-icon-${id}`);
+    const descEl      = document.getElementById(`cfg-mem-desc-${id}`);
+    const groupEl     = document.getElementById(`cfg-mem-group-${id}`);
+    const rarityEl    = document.getElementById(`cfg-mem-rarity-${id}`);
+    const specialIdEl = document.getElementById(`cfg-mem-specialid-${id}`);
     if (!nameEl) continue; // 未表示（描画前）の場合はスキップ
-    def.name   = nameEl.value || def.name;
-    def.icon   = iconEl.value || '🧠';
-    def.desc   = descEl.value;
-    def.rarity = rarityEl.value || null;
-    def.weight = Math.max(0, parseInt(weightEl.value) || 0);
+    def.name       = nameEl.value || def.name;
+    def.icon       = iconEl.value || '🧠';
+    def.desc       = descEl.value;
+    def.group      = groupEl.value.trim() || null;
+    def.rarity     = rarityEl.value || null;
+    def.special_id = specialIdEl.value.trim() || null;
+    delete def.weight;
 
     const bonuses = {};
     document.querySelectorAll(`.mem-bonus-${id}`).forEach(el => {
@@ -2204,7 +2293,7 @@ function addMemory() {
   const id = 'memory_' + Date.now();
   if (!gameConfig.memories) gameConfig.memories = {};
   gameConfig.memories[id] = {
-    name: '新しいメモリ', desc: '', icon: '🧠', imageUrl: null, rarity: 'd', weight: 10,
+    name: '新しいメモリ', desc: '', icon: '🧠', imageUrl: null, group: null, rarity: 'd', special_id: null,
     bonuses: Object.fromEntries(MEMORY_STATS.map(([statKey]) => [statKey, 0])),
   };
   renderMemoriesTab();
@@ -2236,7 +2325,7 @@ function clearMemoryImage(id) {
 }
 
 // CSVはgameConfig.memoriesの列に合わせる（bonusesはステータスごとに列を分ける）
-const MEMORY_CSV_COLS = ['id','name','desc','icon','rarity','weight','imageUrl', ...MEMORY_STATS.map(([k]) => k)];
+const MEMORY_CSV_COLS = ['id','name','desc','icon','group','rarity','special_id','imageUrl', ...MEMORY_STATS.map(([k]) => k)];
 
 // ── CSV エクスポート（gameConfig.memoriesから読む）──
 function exportMemoriesCsv() {
@@ -2247,7 +2336,7 @@ function exportMemoriesCsv() {
   for (const [id, def] of Object.entries(memories)) {
     const bonuses = def.bonuses ?? {};
     rows.push([
-      id, def.name ?? id, def.desc ?? '', def.icon ?? '', def.rarity ?? '', def.weight ?? 10, def.imageUrl ?? '',
+      id, def.name ?? id, def.desc ?? '', def.icon ?? '', def.group ?? '', def.rarity ?? '', def.special_id ?? '', def.imageUrl ?? '',
       ...MEMORY_STATS.map(([k]) => bonuses[k] ?? 0),
     ].map(esc));
   }
@@ -2291,14 +2380,16 @@ async function importMemoriesCsv(input) {
 
       gameConfig.memories[id] = {
         ...ex,
-        name:     get('name') || id,
-        desc:     get('desc') ?? '',
-        icon:     get('icon') || '🧠',
-        rarity:   (get('rarity') || '').toLowerCase() || null,
-        weight:   Math.max(0, parseInt(get('weight')) || 0),
-        imageUrl: get('imageUrl') || ex.imageUrl || null,
+        name:       get('name') || id,
+        desc:       get('desc') ?? '',
+        icon:       get('icon') || '🧠',
+        group:      get('group') || null,
+        rarity:     (get('rarity') || '').toLowerCase() || null,
+        special_id: get('special_id') || null,
+        imageUrl:   get('imageUrl') || ex.imageUrl || null,
         bonuses,
       };
+      delete gameConfig.memories[id].weight;
       count++;
     }
 
