@@ -145,6 +145,9 @@ let ENCOUNTER = Array.from({length: 30}, (_, i) => ({
   chance: [2, 4, 6][Math.min(2, Math.floor(i / 10))]
 }));
 
+// 深度スロット(10Mごと30スロット)ごとの出現モンスター＋重み [{monsterId, weight}, ...]
+let ENCOUNTER_MONSTERS = Array.from({length: 30}, () => []);
+
 // 呪いダメージ（上移動1マスごと、各層）
 let CURSE = [
   { min:1,  max:10 }, // 第1層
@@ -218,18 +221,8 @@ function computeCardDamage(cardDef, enemyDefense = null) {
   return { total, crits, hits };
 }
 
-// モンスター定義
-let MONSTERS = {
-  test_slime: {
-    name:'テストスライム', icon:'💚', imageUrl:null, maxHp:200, defense:0,
-    layerWeights: Array.from({length: 30}, (_, i) => i < 10 ? 100 : 0),
-    actions: [
-      { name:'たいあたり',          damage:30, weight:1 },
-      { name:'ぷるぷるふるえている', damage:0,  weight:1 },
-      { name:'からみつく',          damage:50, weight:1 },
-    ],
-  },
-};
+// モンスター定義（admin設定のcfg.monstersから読み込まれる。ここでは空で初期化する）
+let MONSTERS = {};
 
 // メモリ定義（モンスター討伐時にドロップし、編成画面で最大3種類まで装備できるステータス強化アイテム）
 let MEMORIES = {};
@@ -617,6 +610,11 @@ async function loadGameConfig() {
         enc.forEach((e, i) => { if (i < ENCOUNTER.length && e?.chance != null) ENCOUNTER[i] = e; });
       }
     }
+    if (cfg.encounterMonsters && Array.isArray(cfg.encounterMonsters)) {
+      cfg.encounterMonsters.forEach((entries, i) => {
+        if (i < ENCOUNTER_MONSTERS.length && Array.isArray(entries)) ENCOUNTER_MONSTERS[i] = entries;
+      });
+    }
     if (cfg.curse && Array.isArray(cfg.curse)) {
       cfg.curse.forEach((c, i) => { if (c) CURSE[i] = c; });
     }
@@ -630,12 +628,6 @@ async function loadGameConfig() {
           imageUrl: v.imageUrl ?? null,
           maxHp: v.maxHp ?? MONSTERS[id]?.maxHp ?? 100,
           defense: v.defense ?? MONSTERS[id]?.defense ?? 0,
-          layerWeights: (() => {
-            const lw = v.layerWeights ?? MONSTERS[id]?.layerWeights;
-            if (!lw) return Array.from({length: 30}, () => 0);
-            if (lw.length <= 3) return Array.from({length: 30}, (_, i) => lw[Math.min(lw.length - 1, Math.floor(i / 10))] ?? 0);
-            return lw;
-          })(),
           actions: (v.actions ?? MONSTERS[id]?.actions ?? []).map(a => ({
             name: a.name ?? '', damage: a.damage ?? 0, weight: a.weight ?? 1,
           })),
@@ -1906,10 +1898,23 @@ function miniCardGridItemHtml(cardId) {
     </div>`;
 }
 
-// 合成可能なカードの一覧を作る（カードは G.ownedCards＝drill_player_cards に保存されている）
+// デッキ編成中のカードID→枚数（合成対象から除外するため）
+function _deckCardCounts() {
+  const counts = {};
+  for (const id of G.playerDeckSlots) {
+    if (!id || id === 'fist_d') continue;
+    counts[id] = (counts[id] || 0) + 1;
+  }
+  return counts;
+}
+
+// 合成可能なカードの一覧を作る（カードは G.ownedCards＝drill_player_cards に保存されている。
+// デッキ編成中の枚数は除外し、編成に使っていない分だけを対象にする）
 function _buildSynthList() {
+  const deckCounts = _deckCardCounts();
   const synthList = [];
-  for (const [itemId, qty] of Object.entries(G.ownedCards)) {
+  for (const [itemId, totalQty] of Object.entries(G.ownedCards)) {
+    const qty = Math.max(0, totalQty - (deckCounts[itemId] || 0));
     if (qty < 4) continue;
     // 末尾が _d / _c / _b / _a のカードIDにマッチ
     const m = itemId.match(/^(.+)_([dacb])$/);
@@ -1964,7 +1969,7 @@ function showSynthesize(tab = 'card') {
     }
   } else {
     const synthList = _buildSynthList();
-    content += `<div style="font-size:.78rem;opacity:.6;margin-bottom:14px;">同じカード4枚 → 1ランク上のカード1枚</div>`;
+    content += `<div style="font-size:.78rem;opacity:.6;margin-bottom:14px;">編成に使っていない同じカード4枚 → 1ランク上のカード1枚（デッキ編成中のカードは対象外）</div>`;
     if (synthList.length === 0) {
       content += `<div style="font-size:.85rem;opacity:.5;padding:12px 0;">合成できるカードがありません<br>
         <span style="font-size:.75rem;">同じカードを4枚集めると合成できます</span></div>`;
@@ -1978,7 +1983,7 @@ function showSynthesize(tab = 'card') {
             ${miniCardHtml(s.toId)}
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-            <div class="modal-row-sub">所持 ${s.qty}枚<br>${s.times}回合成可能</div>
+            <div class="modal-row-sub">未編成 ${s.qty}枚<br>${s.times}回合成可能</div>
             <button class="btn-modal-action" onclick="doSynthesize('${s.fromId}','${s.toId}')">合成</button>
           </div>
         </div>`;
@@ -1992,7 +1997,9 @@ function showSynthesize(tab = 'card') {
 
 async function doSynthesize(fromId, toId) {
   const qty = G.ownedCards[fromId] || 0;
-  if (qty < 4) { log('⚠️ カードが4枚必要です'); showSynthesize('card'); return; }
+  const deckCounts = _deckCardCounts();
+  const available = Math.max(0, qty - (deckCounts[fromId] || 0));
+  if (available < 4) { log('⚠️ 編成に使っていないカードが4枚必要です'); showSynthesize('card'); return; }
 
   const newFromQty = qty - 4;
   const newToQty = (G.ownedCards[toId] || 0) + 1;
@@ -2123,7 +2130,9 @@ async function doSynthesizeAll() {
 
   for (const s of synthList) {
     if (s.times <= 0) continue;
-    const newFromQty = s.qty - s.times * 4;
+    // s.qty はデッキ編成分を除いた枚数。実際の所持数(G.ownedCards)から減算する
+    const totalQty = G.ownedCards[s.fromId] || 0;
+    const newFromQty = totalQty - s.times * 4;
     const newToQty = (G.ownedCards[s.toId] || 0) + s.times;
     if (newFromQty <= 0) delete G.ownedCards[s.fromId]; else G.ownedCards[s.fromId] = newFromQty;
     G.ownedCards[s.toId] = newToQty;
@@ -3264,9 +3273,10 @@ function getMonsterNextAction() {
 }
 
 function pickCombatMonster(layerIdx) {
-  const eligible = Object.entries(MONSTERS)
-    .map(([id, m]) => ({ id, w: m.layerWeights?.[layerIdx] ?? 0 }))
-    .filter(x => x.w > 0);
+  const entries = ENCOUNTER_MONSTERS[layerIdx] ?? [];
+  const eligible = entries
+    .map(e => ({ id: e.monsterId, w: Number(e.weight) || 0 }))
+    .filter(x => x.w > 0 && MONSTERS[x.id]);
   if (eligible.length === 0) return Object.keys(MONSTERS)[0] ?? null;
   const total = eligible.reduce((s, x) => s + x.w, 0);
   let r = Math.random() * total;

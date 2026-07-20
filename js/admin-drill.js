@@ -218,6 +218,7 @@ const DEFAULT_GAME_CONFIG = {
     ],
   ],
   encounter: Array.from({length: 30}, (_, i) => ({ chance: [2, 4, 6][Math.min(2, Math.floor(i / 10))] })),
+  encounterMonsters: Array.from({length: 30}, (_, i) => i < 10 ? [{ monsterId: 'test_slime', weight: 1 }] : []),
   curse: [
     { min: 1, max: 10 }, // 第1層
     { min: 3, max: 20 }, // 第2層
@@ -230,7 +231,6 @@ const DEFAULT_GAME_CONFIG = {
       imageUrl: null,
       maxHp: 200,
       defense: 0,
-      layerWeights: Array.from({length: 30}, (_, i) => i < 10 ? 100 : 0),
       actions: [
         { name: 'たいあたり',          damage: 30, weight: 1 },
         { name: 'ぷるぷるふるえている', damage: 0,  weight: 1 },
@@ -413,14 +413,26 @@ async function loadGameConfigAdmin() {
     const old = gameConfig.encounter;
     gameConfig.encounter = Array.from({length: 30}, (_, i) => ({ ...old[Math.min(old.length - 1, Math.floor(i / 10))] }));
   }
-  // monster layerWeights 旧3スロット → 30スロットにマイグレーション
-  if (gameConfig.monsters) {
-    for (const mon of Object.values(gameConfig.monsters)) {
-      if (mon.layerWeights && mon.layerWeights.length < 30) {
-        const old = mon.layerWeights;
-        mon.layerWeights = Array.from({length: 30}, (_, i) => old[Math.min(old.length - 1, Math.floor(i / 10))] ?? 0);
+  // 旧形式: モンスターごとのlayerWeights(30スロット重み配列) → 深度スロット別のencounterMonstersへ一度だけ移行
+  if (!gameConfig.encounterMonsters) {
+    gameConfig.encounterMonsters = Array.from({length: 30}, () => []);
+    if (gameConfig.monsters) {
+      for (const [monId, mon] of Object.entries(gameConfig.monsters)) {
+        if (!Array.isArray(mon.layerWeights)) continue;
+        for (let s = 0; s < Math.min(30, mon.layerWeights.length); s++) {
+          const w = Number(mon.layerWeights[s]) || 0;
+          if (w > 0) gameConfig.encounterMonsters[s].push({ monsterId: monId, weight: w });
+        }
       }
     }
+  }
+  if (gameConfig.encounterMonsters.length < 30) {
+    const old = gameConfig.encounterMonsters;
+    gameConfig.encounterMonsters = Array.from({length: 30}, (_, i) => old[i] ?? []);
+  }
+  // layerWeightsフィールドは廃止（encounterMonstersに統合済み）
+  if (gameConfig.monsters) {
+    for (const mon of Object.values(gameConfig.monsters)) delete mon.layerWeights;
   }
   // 旧3層形式 → 30スロット形式にマイグレーション
   if (!gameConfig.layerWeights || gameConfig.layerWeights.length < 30) {
@@ -753,78 +765,40 @@ function renderPermitsTab() {
     </table>`;
 }
 
-function buildEncounterTable(encounter, monsters) {
-  const monIds = Object.keys(monsters);
+function buildEncounterTable(encounter) {
   const layerHeaders = [
     { s: 0,  label: '第1層 (0〜99m)'   },
     { s: 10, label: '第2層 (100〜199m)' },
     { s: 20, label: '第3層 (200〜299m)' },
   ];
-  const monHeaders = monIds.map(id =>
-    `<th style="font-size:.72rem;max-width:60px;word-break:break-all;">${escDrill(monsters[id]?.name || id)}</th>`
-  ).join('');
 
   let rows = '';
   for (let s = 0; s < 30; s++) {
     const hdr = layerHeaders.find(h => h.s === s);
     if (hdr) rows += `<tr style="background:rgba(255,255,255,.07);">
-      <td colspan="${3 + monIds.length}" style="padding:5px 8px;font-size:.78rem;font-weight:700;opacity:.8;">${hdr.label}</td>
+      <td colspan="2" style="padding:5px 8px;font-size:.78rem;font-weight:700;opacity:.8;">${hdr.label}</td>
     </tr>`;
 
     const enc = encounter[s] ?? { chance: 0 };
-    const monTotal = monIds.reduce((sum, id) => sum + ((monsters[id]?.layerWeights ?? [])[s] ?? 0), 0);
-    const monCol = monTotal === 0 || Math.abs(monTotal - 100) < 0.5 ? '#6bde9b' : '#ff6b6b';
-
-    const monCells = monIds.map(id => {
-      const val = (monsters[id]?.layerWeights ?? [])[s] ?? 0;
-      return `<td style="padding:2px 3px;">
-        <input class="cfg-input" type="number" id="cfg-mon-lw-${id}-${s}"
-          value="${val}" min="0" max="100" step="1" style="width:52px;font-size:.75rem;"
-          oninput="updateEncTotal(${s})">
-      </td>`;
-    }).join('');
-
     rows += `<tr>
       <td style="white-space:nowrap;font-size:.75rem;padding:2px 8px;">${s*10}〜${s*10+9}m</td>
       <td style="padding:2px 3px;">
         <input class="cfg-input" type="number" id="cfg-enc-${s}-chance"
           value="${enc.chance ?? 0}" min="0" max="100" step="0.1" style="width:52px;font-size:.75rem;">
       </td>
-      ${monCells}
-      <td id="enc-total-${s}" style="font-size:.75rem;font-weight:700;color:${monCol};padding:2px 6px;white-space:nowrap;">
-        ${monTotal === 0 ? '–' : monTotal.toFixed(0) + '%'}
-      </td>
     </tr>`;
   }
 
   return `
     <div class="info-box" style="margin-bottom:8px;font-size:.78rem;">
-      遭遇率：1マス移動ごとの確率(%)。モンスター重み：合計が <strong>100</strong> になるよう設定（0=出現しない）。
+      遭遇率：1マス移動ごとに戦闘へ遭遇する確率(%)。どのモンスターが出現するかはモンスタータブの「モンスター出現設定」で設定します。
     </div>
     <div style="overflow-x:auto;margin-bottom:24px;">
-      <table class="drill-table" style="font-size:.8rem;min-width:300px;">
-        <thead>
-          <tr>
-            <th style="min-width:80px;">深度</th>
-            <th style="min-width:60px;">遭遇率%</th>
-            ${monHeaders}
-            <th>モンスター合計</th>
-          </tr>
-        </thead>
+      <table class="drill-table" style="font-size:.8rem;min-width:220px;">
+        <thead><tr><th style="min-width:80px;">深度</th><th style="min-width:60px;">遭遇率%</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>`;
-}
-
-function updateEncTotal(s) {
-  const monsters = gameConfig.monsters ?? {};
-  const total = Object.keys(monsters).reduce((sum, id) =>
-    sum + (parseFloat(document.getElementById(`cfg-mon-lw-${id}-${s}`)?.value) || 0), 0);
-  const el = document.getElementById(`enc-total-${s}`);
-  if (el) {
-    el.textContent = total === 0 ? '–' : `${total.toFixed(0)}%`;
-    el.style.color = total === 0 || Math.abs(total - 100) < 0.5 ? '#6bde9b' : '#ff6b6b';
-  }
 }
 
 function renderEventsTab() {
@@ -847,9 +821,9 @@ function renderEventsTab() {
     </div>
 
     <div style="font-size:.88rem;font-weight:700;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.1);">
-      ⚔️ 移動エンカウント・モンスター出現（10Mごと）
+      ⚔️ 移動エンカウント率（10Mごと）
     </div>
-    ${buildEncounterTable(encounter, gameConfig.monsters ?? {})}
+    ${buildEncounterTable(encounter)}
 
 
     <div style="font-size:.88rem;font-weight:700;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.1);">
@@ -1264,6 +1238,15 @@ function closeInvModal() {
 // モンスター設定タブ
 // ============================================================
 
+let expandedMonsters = new Set(); // 詳細を展開中のモンスターID（UI状態のみ、保存はされない）
+
+function toggleMonsterExpand(id) {
+  collectCombatStatsConfig();
+  collectMonstersConfig();
+  if (expandedMonsters.has(id)) expandedMonsters.delete(id); else expandedMonsters.add(id);
+  renderMonstersTab();
+}
+
 function renderMonstersTab() {
   const monsters = gameConfig.monsters ?? {};
   const baseHp = gameConfig.baseHp ?? DEFAULT_GAME_CONFIG.baseHp;
@@ -1281,75 +1264,86 @@ function renderMonstersTab() {
       <label style="font-size:.82rem;">クリティカルダメージ(倍率)<br>${cfgNum('cfg-cs-critDmg', cs.critDmg, 'min="0" step="0.01" style="width:80px;"')}</label>
       <label style="font-size:.82rem;">発掘力<br>${cfgNum('cfg-cs-digPower', cs.digPower, 'min="0" style="width:80px;"')}</label>
     </div>
+
+    <div class="cfg-subhead">⚔️ モンスター出現設定（10Mごと）</div>
+    ${renderEncounterMonstersSection(monsters)}
+
     <div class="cfg-subhead">👾 モンスター</div>
     <div class="info-box" style="margin-bottom:14px;">
-      各モンスターの名前・体力・防御力・行動・出現率を設定します。出現率の重みは0=出現しない。
+      各モンスターの名前・体力・防御力・行動・ドロップを設定します。「詳細」を開くと行動パターンやドロップを編集できます。
     </div>`;
 
   for (const [id, mon] of Object.entries(monsters)) {
-    const acts = mon.actions ?? [];
-    const normalDrops = mon.normalDrops ?? [];
-    const fixedDrops  = mon.fixedDrops  ?? [];
-
     const imgPreview = mon.imageUrl
-      ? `<img src="${escDrill(mon.imageUrl)}" style="width:48px;height:48px;object-fit:contain;border-radius:6px;background:rgba(255,255,255,.08);">`
-      : `<div style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);border-radius:6px;font-size:2rem;">${escDrill(mon.icon || '👾')}</div>`;
+      ? `<img src="${escDrill(mon.imageUrl)}" style="width:36px;height:36px;object-fit:contain;border-radius:6px;background:rgba(255,255,255,.08);">`
+      : `<div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);border-radius:6px;font-size:1.5rem;">${escDrill(mon.icon || '👾')}</div>`;
 
-    const actionRows = acts.map((act, ai) => `<tr>
-      <td><input class="cfg-input mon-act-name-${id}" type="text" value="${escDrill(act.name)}" style="width:100%;min-width:110px;"></td>
-      <td><input class="cfg-input mon-act-dmg-${id}"  type="number" value="${act.damage}" min="0" style="width:68px;"></td>
-      <td><input class="cfg-input mon-act-wt-${id}"   type="number" value="${act.weight}" min="0" step="0.1" style="width:58px;"></td>
-      <td><button class="inv-del-btn" onclick="delMonsterAction('${id}',${ai})">✕</button></td>
-    </tr>`).join('');
-
-    const dropItemOptions = (selected) => DROP_ITEM_IDS.map(v =>
-      `<option value="${v}"${selected===v?' selected':''}>${DROP_ITEM_NAMES[v]}</option>`).join('');
-
-    const normalDropRows = normalDrops.map((d, di) => `<tr>
-      <td><select class="cfg-input mon-ndrop-item-${id}" style="width:100%;min-width:90px;">${dropItemOptions(d.itemId)}</select></td>
-      <td><input class="cfg-input mon-ndrop-qty-${id}"    type="number" value="${d.qty ?? 1}" min="1" style="width:64px;"></td>
-      <td><input class="cfg-input mon-ndrop-wt-${id}"     type="number" value="${d.weight ?? 1}" min="0" style="width:64px;"></td>
-      <td><button class="inv-del-btn" onclick="delMonsterNormalDrop('${id}',${di})">✕</button></td>
-    </tr>`).join('');
-
-    const fixedDropRows = fixedDrops.map((d, di) => `<tr>
-      <td><select class="cfg-input mon-fdrop-item-${id}" style="width:100%;min-width:90px;">${dropItemOptions(d.itemId)}</select></td>
-      <td><input class="cfg-input mon-fdrop-qty-${id}"    type="number" value="${d.qty ?? 1}" min="1" style="width:64px;"></td>
-      <td><button class="inv-del-btn" onclick="delMonsterFixedDrop('${id}',${di})">✕</button></td>
-    </tr>`).join('');
+    const expanded = expandedMonsters.has(id);
 
     html += `
-    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:16px;margin-bottom:16px;">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          ${imgPreview}
-          <div>
-            <div style="font-size:.72rem;opacity:.45;margin-bottom:3px;">ID: ${escDrill(id)}</div>
-            <input class="cfg-input mon-name-${id}" type="text" value="${escDrill(mon.name)}" placeholder="名前" style="width:160px;">
-          </div>
-        </div>
-        <button class="inv-del-btn" onclick="deleteMonster('${id}')">🗑️ 削除</button>
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:8px 12px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        ${imgPreview}
+        <span style="font-size:.68rem;opacity:.4;">${escDrill(id)}</span>
+        <input class="cfg-input mon-name-${id}" type="text" value="${escDrill(mon.name)}" placeholder="名前" style="width:130px;">
+        <label style="display:inline-flex;align-items:center;gap:4px;font-size:.78rem;">HP
+          <input class="cfg-input mon-hp-${id}" type="number" value="${mon.maxHp}" min="1" style="width:70px;">
+        </label>
+        <label style="display:inline-flex;align-items:center;gap:4px;font-size:.78rem;">防御力
+          <input class="cfg-input mon-def-${id}" type="number" value="${mon.defense ?? 0}" min="0" style="width:64px;">
+        </label>
+        <label style="display:inline-flex;align-items:center;gap:4px;font-size:.78rem;">アイコン
+          <input class="cfg-input mon-icon-${id}" type="text" value="${escDrill(mon.icon ?? '')}" placeholder="👾" style="width:56px;">
+        </label>
+        <button class="btn-refresh" style="font-size:.75rem;padding:4px 10px;margin-left:auto;" onclick="toggleMonsterExpand('${id}')">${expanded ? '▲ 閉じる' : '▼ 詳細'}</button>
+        <button class="inv-del-btn" onclick="deleteMonster('${id}')">🗑️</button>
+      </div>
+      ${expanded ? renderMonsterDetail(id, mon) : ''}
+    </div>`;
+  }
+
+  html += `<button class="btn-refresh" onclick="addMonster()">＋ モンスター追加</button>`;
+  document.getElementById('cfg-tab-monsters').innerHTML = html;
+}
+
+function renderMonsterDetail(id, mon) {
+  const acts = mon.actions ?? [];
+  const normalDrops = mon.normalDrops ?? [];
+  const fixedDrops  = mon.fixedDrops  ?? [];
+
+  const actionRows = acts.map((act, ai) => `<tr>
+    <td><input class="cfg-input mon-act-name-${id}" type="text" value="${escDrill(act.name)}" style="width:100%;min-width:110px;"></td>
+    <td><input class="cfg-input mon-act-dmg-${id}"  type="number" value="${act.damage}" min="0" style="width:68px;"></td>
+    <td><input class="cfg-input mon-act-wt-${id}"   type="number" value="${act.weight}" min="0" step="0.1" style="width:58px;"></td>
+    <td><button class="inv-del-btn" onclick="delMonsterAction('${id}',${ai})">✕</button></td>
+  </tr>`).join('');
+
+  const dropItemOptions = (selected) => DROP_ITEM_IDS.map(v =>
+    `<option value="${v}"${selected===v?' selected':''}>${DROP_ITEM_NAMES[v]}</option>`).join('');
+
+  const normalDropRows = normalDrops.map((d, di) => `<tr>
+    <td><select class="cfg-input mon-ndrop-item-${id}" style="width:100%;min-width:90px;">${dropItemOptions(d.itemId)}</select></td>
+    <td><input class="cfg-input mon-ndrop-qty-${id}"    type="number" value="${d.qty ?? 1}" min="1" style="width:64px;"></td>
+    <td><input class="cfg-input mon-ndrop-wt-${id}"     type="number" value="${d.weight ?? 1}" min="0" style="width:64px;"></td>
+    <td><button class="inv-del-btn" onclick="delMonsterNormalDrop('${id}',${di})">✕</button></td>
+  </tr>`).join('');
+
+  const fixedDropRows = fixedDrops.map((d, di) => `<tr>
+    <td><select class="cfg-input mon-fdrop-item-${id}" style="width:100%;min-width:90px;">${dropItemOptions(d.itemId)}</select></td>
+    <td><input class="cfg-input mon-fdrop-qty-${id}"    type="number" value="${d.qty ?? 1}" min="1" style="width:64px;"></td>
+    <td><button class="inv-del-btn" onclick="delMonsterFixedDrop('${id}',${di})">✕</button></td>
+  </tr>`).join('');
+
+  return `
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.1);">
+      <div style="font-size:.82rem;">画像<br>
+        <label class="inv-save-btn" style="cursor:pointer;display:inline-block;padding:3px 10px;margin-top:4px;">
+          📁 選択<input type="file" accept="image/*" style="display:none;" onchange="uploadMonsterImage('${id}',this)">
+        </label>
+        ${mon.imageUrl ? `<button class="inv-del-btn" onclick="clearMonsterImage('${id}')">✕</button>` : ''}
       </div>
 
-      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;align-items:flex-end;">
-        <label style="font-size:.82rem;">HP<br>
-          <input class="cfg-input mon-hp-${id}" type="number" value="${mon.maxHp}" min="1" style="width:90px;">
-        </label>
-        <label style="font-size:.82rem;">防御力<br>
-          <input class="cfg-input mon-def-${id}" type="number" value="${mon.defense ?? 0}" min="0" style="width:80px;">
-        </label>
-        <label style="font-size:.82rem;">アイコン絵文字<br>
-          <input class="cfg-input mon-icon-${id}" type="text" value="${escDrill(mon.icon ?? '')}" placeholder="👾" style="width:70px;">
-        </label>
-        <div style="font-size:.82rem;">画像<br>
-          <label class="inv-save-btn" style="cursor:pointer;display:inline-block;padding:3px 10px;">
-            📁 選択<input type="file" accept="image/*" style="display:none;" onchange="uploadMonsterImage('${id}',this)">
-          </label>
-          ${mon.imageUrl ? `<button class="inv-del-btn" onclick="clearMonsterImage('${id}')">✕</button>` : ''}
-        </div>
-      </div>
-
-      <div style="font-size:.82rem;font-weight:700;margin-bottom:8px;opacity:.7;">行動パターン</div>
+      <div style="font-size:.82rem;font-weight:700;margin:14px 0 8px;opacity:.7;">行動パターン</div>
       <table class="drill-table" style="margin-bottom:8px;">
         <tr><th>行動名</th><th>ダメージ</th><th>重み</th><th></th></tr>
         ${actionRows || '<tr><td colspan="4" style="opacity:.4;font-size:.8rem;padding:6px;">なし</td></tr>'}
@@ -1374,10 +1368,56 @@ function renderMonstersTab() {
       </table>
       <button class="inv-save-btn" style="padding:2px 10px;font-size:.75rem;" onclick="addMonsterFixedDrop('${id}')">＋ ドロップ追加</button>
     </div>`;
+}
+
+// モンスター出現設定（深度スロットごとにモンスター＋重みのリストを設定する）
+function renderEncounterMonstersSection(monsters) {
+  const table = gameConfig.encounterMonsters ?? Array.from({length: 30}, () => []);
+  const monIds = Object.keys(monsters);
+
+  const monsterOptions = (selected) => monIds.length === 0
+    ? '<option value="">（モンスター未登録）</option>'
+    : monIds.map(mid => `<option value="${mid}"${selected===mid?' selected':''}>${escDrill(monsters[mid]?.name || mid)}</option>`).join('');
+
+  const layerHeaders = [
+    { s: 0,  label: '第1層 (0〜99m)'   },
+    { s: 10, label: '第2層 (100〜199m)' },
+    { s: 20, label: '第3層 (200〜299m)' },
+  ];
+
+  let rows = '';
+  for (let s = 0; s < 30; s++) {
+    const hdr = layerHeaders.find(h => h.s === s);
+    if (hdr) rows += `<tr style="background:rgba(255,255,255,.07);">
+      <td colspan="2" style="padding:5px 8px;font-size:.78rem;font-weight:700;opacity:.8;">${hdr.label}</td>
+    </tr>`;
+
+    const entries = table[s] ?? [];
+    const entryTags = entries.map((e, ei) => `
+      <span style="display:inline-flex;align-items:center;gap:3px;margin:2px 6px 2px 0;padding:2px 4px;background:rgba(255,255,255,.05);border-radius:6px;">
+        <select class="cfg-input enc-mon-id-${s}-${ei}" style="width:110px;font-size:.74rem;">${monsterOptions(e.monsterId)}</select>
+        <input class="cfg-input enc-mon-wt-${s}-${ei}" type="number" value="${e.weight ?? 1}" min="0" step="0.1" style="width:52px;font-size:.74rem;">
+        <button class="inv-del-btn" style="padding:1px 6px;" onclick="delEncounterMonster(${s},${ei})">✕</button>
+      </span>`).join('');
+
+    rows += `<tr>
+      <td style="white-space:nowrap;font-size:.75rem;padding:4px 8px;vertical-align:top;">${s*10}〜${s*10+9}m</td>
+      <td style="padding:4px 6px;">
+        ${entryTags}<button class="inv-save-btn" style="padding:1px 8px;font-size:.72rem;" onclick="addEncounterMonster(${s})">＋追加</button>
+      </td>
+    </tr>`;
   }
 
-  html += `<button class="btn-refresh" onclick="addMonster()">＋ モンスター追加</button>`;
-  document.getElementById('cfg-tab-monsters').innerHTML = html;
+  return `
+    <div class="info-box" style="margin-bottom:8px;font-size:.78rem;">
+      10Mごとに、その深度で出現しうるモンスターと重みを設定します（同じ深度に複数設定可、重みの比率で抽選）。遭遇するかどうかの確率自体はイベントタブの「遭遇率」で設定します。
+    </div>
+    <div style="overflow-x:auto;margin-bottom:24px;">
+      <table class="drill-table" style="font-size:.8rem;min-width:300px;">
+        <thead><tr><th style="min-width:80px;">深度</th><th>モンスター・重み</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
 }
 
 function collectCombatStatsConfig() {
@@ -1415,14 +1455,6 @@ function collectMonstersConfig() {
     if (defEl)  mon.defense = parseInt(defEl.value) || 0;
     if (iconEl) mon.icon    = iconEl.value;
 
-    // layerWeights はエンカウントタブの統合テーブルから収集
-    const newLw = [];
-    for (let s = 0; s < 30; s++) {
-      const el = document.getElementById(`cfg-mon-lw-${id}-${s}`);
-      newLw.push(el ? (parseFloat(el.value) || 0) : (mon.layerWeights?.[s] ?? 0));
-    }
-    mon.layerWeights = newLw;
-
     const nameEls = document.querySelectorAll(`.mon-act-name-${id}`);
     const dmgEls  = document.querySelectorAll(`.mon-act-dmg-${id}`);
     const wtEls   = document.querySelectorAll(`.mon-act-wt-${id}`);
@@ -1452,6 +1484,39 @@ function collectMonstersConfig() {
     }));
   }
   gameConfig.monsters = monsters;
+
+  collectEncounterMonstersConfig();
+}
+
+// モンスター出現設定（深度スロットごとのモンスター＋重みリスト）を画面から収集する
+function collectEncounterMonstersConfig() {
+  if (!gameConfig.encounterMonsters) gameConfig.encounterMonsters = Array.from({length: 30}, () => []);
+  const table = gameConfig.encounterMonsters;
+  for (let s = 0; s < 30; s++) {
+    const entries = table[s] ?? [];
+    entries.forEach((e, ei) => {
+      const idEl = document.querySelector(`.enc-mon-id-${s}-${ei}`);
+      const wtEl = document.querySelector(`.enc-mon-wt-${s}-${ei}`);
+      if (idEl) e.monsterId = idEl.value;
+      if (wtEl) e.weight = parseFloat(wtEl.value) || 0;
+    });
+  }
+}
+
+function addEncounterMonster(s) {
+  collectCombatStatsConfig();
+  collectMonstersConfig();
+  if (!gameConfig.encounterMonsters) gameConfig.encounterMonsters = Array.from({length: 30}, () => []);
+  const firstMonId = Object.keys(gameConfig.monsters ?? {})[0] ?? '';
+  gameConfig.encounterMonsters[s].push({ monsterId: firstMonId, weight: 1 });
+  renderMonstersTab();
+}
+
+function delEncounterMonster(s, idx) {
+  collectCombatStatsConfig();
+  collectMonstersConfig();
+  gameConfig.encounterMonsters[s].splice(idx, 1);
+  renderMonstersTab();
 }
 
 function addMonster() {
@@ -1461,7 +1526,7 @@ function addMonster() {
   if (!gameConfig.monsters) gameConfig.monsters = {};
   gameConfig.monsters[id] = {
     name: '新モンスター', icon: '👾', imageUrl: null,
-    maxHp: 100, defense: 0, layerWeights: Array.from({length: 30}, () => 0),
+    maxHp: 100, defense: 0,
     actions: [{ name: '攻撃', damage: 10, weight: 1 }],
     memoryDropRate: 0, normalDrops: [], fixedDrops: [],
   };

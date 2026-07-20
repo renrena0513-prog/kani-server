@@ -182,6 +182,7 @@
       cursor: pointer; transition: background .15s;
     }
     .pool-dir-btn:hover { background: rgba(212,168,83,.4); }
+    .pool-dir-btn.active { background: rgba(212,168,83,.85); border-color: rgba(212,168,83,1); color: #1a1200; }
 
     /* メモリ */
     .mem-grid {
@@ -422,6 +423,7 @@
           <option value="c">C</option>
           <option value="d">D</option>
         </select>
+        <button type="button" class="pool-dir-btn" id="mem-special-filter-btn" onclick="toggleMemSpecialFilter()">🌟 特殊能力あり</button>
       </div>
       <div class="mem-grid" id="mem-unequipped-grid"></div>
     </div>
@@ -876,6 +878,7 @@ async function loadConfig() {
       MEMORIES_DEF[id] = {
         name: v.name ?? id, desc: v.desc ?? '', icon: v.icon ?? '🧠',
         imageUrl: v.imageUrl ?? null, rarity: (v.rarity ?? '').toLowerCase() || null,
+        special_id: v.special_id ?? null,
         bonuses,
       };
     }
@@ -939,11 +942,19 @@ function switchTab(tab, btn) {
 // メモリタブ
 // ============================================================
 let memSortDir = 'desc'; // 'asc' | 'desc'
+let memSpecialFilterOn = false;
 
 function toggleMemSortDir() {
   memSortDir = memSortDir === 'desc' ? 'asc' : 'desc';
   const btn = document.getElementById('mem-dir-btn');
   if (btn) btn.textContent = memSortDir === 'desc' ? '▼ 降順' : '▲ 昇順';
+  renderMemories();
+}
+
+function toggleMemSpecialFilter() {
+  memSpecialFilterOn = !memSpecialFilterOn;
+  const btn = document.getElementById('mem-special-filter-btn');
+  if (btn) btn.classList.toggle('active', memSpecialFilterOn);
   renderMemories();
 }
 
@@ -968,9 +979,10 @@ function renderMemories() {
   const sortBy     = document.getElementById('mem-sort-select')?.value || 'rank';
 
   unequipped = unequipped.filter(m => {
-    if (!rankFilter) return true;
-    const rank = (MEMORIES_DEF[m.memory_id]?.rarity ?? '').toLowerCase();
-    return rank === rankFilter;
+    const def = MEMORIES_DEF[m.memory_id];
+    if (rankFilter && (def?.rarity ?? '').toLowerCase() !== rankFilter) return false;
+    if (memSpecialFilterOn && !def?.special_id) return false;
+    return true;
   });
 
   const dir = memSortDir === 'asc' ? 1 : -1;
