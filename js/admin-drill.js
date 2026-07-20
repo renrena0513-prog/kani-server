@@ -1569,12 +1569,13 @@ let cardsFilter = { rank: '', weaponType: '', material: '', search: '' };
 let cardsPage = 1;
 const CARDS_PAGE_SIZE = 20;
 let cardsTestMonsterId = '';
+let cardsTestStats = null; // null の間はgameConfig.combatStats（初期ステータス）を使う
 const CARD_DEF_COEF = 200; // drill/game.jsのDEF_COEFと合わせる
 
 // 選択中モンスター相手にこのカードを使った場合の平均/期待ダメージ・回復量・AP効率を計算する
 // （drill/game.js の computeCardDamage と同じ計算式を、乱数を使わず期待値ベースで算出）
 function computeCardTestStats(card, monsterDefense) {
-  const stats = gameConfig.combatStats ?? {};
+  const stats = cardsTestStats ?? gameConfig.combatStats ?? {};
   const baseAttack  = Number(stats.attack)   || 0;
   const baseCritRate = Number(stats.critRate) || 0;
   const baseCritDmg  = Number(stats.critDmg)  || 1.5;
@@ -1607,6 +1608,24 @@ function computeCardTestStats(card, monsterDefense) {
 function changeCardsTestMonster() {
   collectCardsConfig();
   cardsTestMonsterId = document.getElementById('cards-test-monster')?.value ?? '';
+  renderCardsTab();
+}
+
+function changeCardsTestStats() {
+  collectCardsConfig();
+  const base = gameConfig.combatStats ?? {};
+  const num = (v, fb) => { const n = parseFloat(v); return Number.isFinite(n) ? n : fb; };
+  cardsTestStats = {
+    attack:   num(document.getElementById('cards-test-attack')?.value,   base.attack ?? 0),
+    critRate: num(document.getElementById('cards-test-critrate')?.value, base.critRate ?? 0),
+    critDmg:  num(document.getElementById('cards-test-critdmg')?.value,  base.critDmg ?? 1.5),
+  };
+  renderCardsTab();
+}
+
+function resetCardsTestStats() {
+  collectCardsConfig();
+  cardsTestStats = null;
   renderCardsTab();
 }
 
@@ -1663,6 +1682,20 @@ function renderCardsTab() {
         `<option value="${mid}"${cardsTestMonsterId===mid?' selected':''}>${escDrill(m.name || mid)}（防御力${m.defense ?? 0}）</option>`
       ).join('')}
     </select>
+    <span style="font-size:.75rem;opacity:.6;margin-left:6px;">プレイヤーステータス（初期値=初期ステータス）</span>
+    <label style="display:inline-flex;align-items:center;gap:4px;font-size:.78rem;">
+      力<input id="cards-test-attack" class="cfg-input" type="number" style="width:64px;"
+        value="${cardsTestStats?.attack ?? gameConfig.combatStats?.attack ?? 0}" onchange="changeCardsTestStats()">
+    </label>
+    <label style="display:inline-flex;align-items:center;gap:4px;font-size:.78rem;">
+      クリ率<input id="cards-test-critrate" class="cfg-input" type="number" style="width:64px;"
+        value="${cardsTestStats?.critRate ?? gameConfig.combatStats?.critRate ?? 0}" onchange="changeCardsTestStats()">
+    </label>
+    <label style="display:inline-flex;align-items:center;gap:4px;font-size:.78rem;">
+      クリダメ<input id="cards-test-critdmg" class="cfg-input" type="number" step="0.01" style="width:64px;"
+        value="${cardsTestStats?.critDmg ?? gameConfig.combatStats?.critDmg ?? 1.5}" onchange="changeCardsTestStats()">
+    </label>
+    <button class="btn-refresh" style="font-size:.75rem;padding:4px 10px;" onclick="resetCardsTestStats()">↺ 初期値に戻す</button>
     <span style="font-size:.72rem;opacity:.5;">選択すると各カードに平均/期待ダメージ・AP効率が表示されます</span>
   </div>`;
 
