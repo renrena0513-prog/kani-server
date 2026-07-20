@@ -1924,41 +1924,75 @@ function _buildSynthList() {
   return synthList;
 }
 
-function showSynthesize() {
-  if (G.py !== 0) { log('⚠️ カード合成は地上のみ'); return; }
+function showSynthesize(tab = 'card') {
+  if (G.py !== 0) { log('⚠️ 合成は地上のみ'); return; }
 
-  const synthList = _buildSynthList();
+  const tabBtn = (s, label) => {
+    const active = tab === s;
+    return `<button onclick="showSynthesize('${s}')"
+      style="flex:1;padding:6px 0;border:none;border-bottom:2px solid ${active?'rgba(255,200,80,.9)':'transparent'};
+             background:none;color:${active?'rgba(255,200,80,.9)':'rgba(255,255,255,.55)'};
+             font-size:.82rem;cursor:pointer;">${label}</button>`;
+  };
+  const tabBar = `<div style="display:flex;border-bottom:1px solid rgba(255,255,255,.15);margin-bottom:12px;">
+    ${tabBtn('card', '🃏 カード合成')}
+    ${tabBtn('memory', '🧠 メモリ合成')}
+  </div>`;
 
-  let html = `<div class="modal-title">⚗️ カード合成</div>
-    <div style="font-size:.78rem;opacity:.6;margin-bottom:14px;">同じカード4枚 → 1ランク上のカード1枚</div>`;
-
-  if (synthList.length === 0) {
-    html += `<div style="font-size:.85rem;opacity:.5;padding:12px 0;">合成できるカードがありません<br>
-      <span style="font-size:.75rem;">同じカードを4枚集めると合成できます</span></div>`;
+  let content = '';
+  if (tab === 'memory') {
+    const synthList = _buildMemorySynthList();
+    content += `<div style="font-size:.78rem;opacity:.6;margin-bottom:14px;">未装備の同じメモリ4個 → 1ランク上のメモリ1個（装備中のメモリは対象外）</div>`;
+    if (synthList.length === 0) {
+      content += `<div style="font-size:.85rem;opacity:.5;padding:12px 0;">合成できるメモリがありません<br>
+        <span style="font-size:.75rem;">未装備の同じメモリを4個集めると合成できます</span></div>`;
+    } else {
+      content += `<button class="btn-modal-action" style="width:100%;margin-bottom:12px;" onclick="doSynthesizeAllMemory()">⚗️ 一括合成（合成可能な分すべて）</button>`;
+      for (const s of synthList) {
+        content += `<div class="modal-row" style="align-items:center;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            ${miniMemoryHtml(s.fromId)}
+            <div style="font-size:.8rem;opacity:.6;white-space:nowrap;">×4→</div>
+            ${miniMemoryHtml(s.toId)}
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            <div class="modal-row-sub">未装備 ${s.qty}個<br>${s.times}回合成可能</div>
+            <button class="btn-modal-action" onclick="doSynthesizeMemory('${s.fromId}','${s.toId}')">合成</button>
+          </div>
+        </div>`;
+      }
+    }
   } else {
-    html += `<button class="btn-modal-action" style="width:100%;margin-bottom:12px;" onclick="doSynthesizeAll()">⚗️ 一括合成（合成可能な分すべて）</button>`;
-    for (const s of synthList) {
-      html += `<div class="modal-row" style="align-items:center;">
-        <div style="display:flex;align-items:center;gap:8px;">
-          ${miniCardHtml(s.fromId)}
-          <div style="font-size:.8rem;opacity:.6;white-space:nowrap;">×4→</div>
-          ${miniCardHtml(s.toId)}
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-          <div class="modal-row-sub">所持 ${s.qty}枚<br>${s.times}回合成可能</div>
-          <button class="btn-modal-action" onclick="doSynthesize('${s.fromId}','${s.toId}')">合成</button>
-        </div>
-      </div>`;
+    const synthList = _buildSynthList();
+    content += `<div style="font-size:.78rem;opacity:.6;margin-bottom:14px;">同じカード4枚 → 1ランク上のカード1枚</div>`;
+    if (synthList.length === 0) {
+      content += `<div style="font-size:.85rem;opacity:.5;padding:12px 0;">合成できるカードがありません<br>
+        <span style="font-size:.75rem;">同じカードを4枚集めると合成できます</span></div>`;
+    } else {
+      content += `<button class="btn-modal-action" style="width:100%;margin-bottom:12px;" onclick="doSynthesizeAll()">⚗️ 一括合成（合成可能な分すべて）</button>`;
+      for (const s of synthList) {
+        content += `<div class="modal-row" style="align-items:center;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            ${miniCardHtml(s.fromId)}
+            <div style="font-size:.8rem;opacity:.6;white-space:nowrap;">×4→</div>
+            ${miniCardHtml(s.toId)}
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            <div class="modal-row-sub">所持 ${s.qty}枚<br>${s.times}回合成可能</div>
+            <button class="btn-modal-action" onclick="doSynthesize('${s.fromId}','${s.toId}')">合成</button>
+          </div>
+        </div>`;
+      }
     }
   }
 
-  html += `<button class="btn-modal-close" onclick="closeModal()">閉じる</button>`;
+  const html = `<div class="modal-title">⚗️ 合成</div>${tabBar}${content}<button class="btn-modal-close" onclick="closeModal()">閉じる</button>`;
   openModal(html);
 }
 
 async function doSynthesize(fromId, toId) {
   const qty = G.ownedCards[fromId] || 0;
-  if (qty < 4) { log('⚠️ カードが4枚必要です'); showSynthesize(); return; }
+  if (qty < 4) { log('⚠️ カードが4枚必要です'); showSynthesize('card'); return; }
 
   const newFromQty = qty - 4;
   const newToQty = (G.ownedCards[toId] || 0) + 1;
@@ -1971,7 +2005,114 @@ async function doSynthesize(fromId, toId) {
     ]);
 
   log(`⚗️ ${cardDisplayName(fromId)} ×4 → ${cardDisplayName(toId)} に合成！`);
-  showSynthesize();
+  showSynthesize('card');
+}
+
+// メモリ表示名
+function memoryDisplayName(memoryId) {
+  return MEMORIES[memoryId]?.name || memoryId;
+}
+
+// 小型メモリプレビュー（メモリ合成の結果表示用）
+function _miniMemoryInnerHtml(memoryId) {
+  const def = MEMORIES[memoryId] || {};
+  const rank = (def.rarity ?? '').toLowerCase();
+  const imgHtml = def.imageUrl
+    ? `<img src="${escHtml(def.imageUrl)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML='<div style=&quot;font-size:1.7rem;line-height:1;&quot;>${escHtml(def.icon || '🧠')}</div>'">`
+    : `<div style="font-size:1.7rem;line-height:1;">${escHtml(def.icon || '🧠')}</div>`;
+  return `
+    ${rankBadgeHtml(rank)}
+    <div style="flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;background:linear-gradient(160deg,#1e3f72 0%,#0d2040 100%);">${imgHtml}</div>
+    <div style="flex-shrink:0;background:rgba(0,0,0,.6);font-size:.5rem;font-weight:700;color:#fff;text-align:center;padding:2px 3px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(def.name || memoryId)}</div>`;
+}
+
+function miniMemoryHtml(memoryId) {
+  return `
+    <div style="width:60px;height:88px;flex-shrink:0;background:#0d2040;border:1.5px solid rgba(212,168,83,.55);border-radius:9px;overflow:hidden;position:relative;display:flex;flex-direction:column;">
+      ${_miniMemoryInnerHtml(memoryId)}
+    </div>`;
+}
+
+function miniMemoryGridItemHtml(memoryId) {
+  return `
+    <div style="aspect-ratio:3/4;background:#0d2040;border:1.5px solid rgba(212,168,83,.55);border-radius:9px;overflow:hidden;position:relative;display:flex;flex-direction:column;">
+      ${_miniMemoryInnerHtml(memoryId)}
+    </div>`;
+}
+
+// 合成可能なメモリの一覧を作る（未装備のみ対象。G.memoriesはdrill_player_memoriesの行=1個ずつ）
+function _buildMemorySynthList() {
+  const counts = {}; // memory_id -> 未装備の所持数
+  for (const m of G.memories) {
+    if (m.equipped) continue;
+    counts[m.memory_id] = (counts[m.memory_id] || 0) + 1;
+  }
+  const synthList = [];
+  for (const [memoryId, qty] of Object.entries(counts)) {
+    if (qty < 4) continue;
+    const def = MEMORIES[memoryId];
+    if (!def?.rarity || !def?.group) continue;
+    const nextRank = SYNTH_RANK_NEXT[def.rarity];
+    if (!nextRank) continue;
+    const toId = _findMemoryByGroupRank(def.group, nextRank);
+    if (!toId) continue;
+    synthList.push({ fromId: memoryId, qty, toId, times: Math.floor(qty / 4) });
+  }
+  return synthList;
+}
+
+async function doSynthesizeMemory(fromId, toId) {
+  const rows = G.memories.filter(m => m.memory_id === fromId && !m.equipped);
+  if (rows.length < 4) { log('⚠️ 未装備のメモリが4個必要です'); showSynthesize('memory'); return; }
+
+  const consumeIds = rows.slice(0, 4).map(r => r.id);
+  await supabaseClient.from('drill_player_memories').delete().in('id', consumeIds);
+  G.memories = G.memories.filter(m => !consumeIds.includes(m.id));
+
+  const { data } = await supabaseClient.from('drill_player_memories')
+    .insert({ user_id: G.userId, memory_id: toId, equipped: false })
+    .select().single();
+  if (data) G.memories.push(data);
+
+  log(`⚗️ ${memoryDisplayName(fromId)} ×4 → ${memoryDisplayName(toId)} に合成！`);
+  showSynthesize('memory');
+}
+
+// 合成可能なメモリをすべて一括合成する（カードと同じく単発パス。連鎖はしない）
+async function doSynthesizeAllMemory() {
+  const synthList = _buildMemorySynthList();
+  const deleteIds = [];
+  const insertRows = [];
+  const producedIds = [];
+
+  for (const s of synthList) {
+    if (s.times <= 0) continue;
+    const rows = G.memories.filter(m => m.memory_id === s.fromId && !m.equipped);
+    const consume = rows.slice(0, s.times * 4);
+    for (const r of consume) deleteIds.push(r.id);
+    for (let i = 0; i < s.times; i++) {
+      insertRows.push({ user_id: G.userId, memory_id: s.toId, equipped: false });
+      producedIds.push(s.toId);
+    }
+  }
+
+  if (producedIds.length === 0) { log('⚠️ 合成できるメモリがありません'); showSynthesize('memory'); return; }
+
+  if (deleteIds.length > 0) await supabaseClient.from('drill_player_memories').delete().in('id', deleteIds);
+  G.memories = G.memories.filter(m => !deleteIds.includes(m.id));
+
+  const { data } = await supabaseClient.from('drill_player_memories').insert(insertRows).select();
+  if (data) G.memories.push(...data);
+
+  log(`⚗️ 一括合成: 合計${producedIds.length}回合成しました！`);
+
+  const resultMemoriesHtml = producedIds.map(id => miniMemoryGridItemHtml(id)).join('');
+  openModal(`
+    <div class="modal-title">⚗️ 一括合成完了！（${producedIds.length}件）</div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px;">${resultMemoriesHtml}</div>
+    <button class="btn-modal-action" style="width:100%;margin-bottom:6px;" onclick="showSynthesize('memory')">⚗️ 合成に戻る</button>
+    <button class="btn-modal-close" onclick="closeModal()">閉じる</button>
+  `);
 }
 
 // 合成可能なものをランクが上がる限り連鎖的にすべて合成する
@@ -1991,7 +2132,7 @@ async function doSynthesizeAll() {
     for (let i = 0; i < s.times; i++) producedIds.push(s.toId);
   }
 
-  if (producedIds.length === 0) { log('⚠️ 合成できるカードがありません'); showSynthesize(); return; }
+  if (producedIds.length === 0) { log('⚠️ 合成できるカードがありません'); showSynthesize('card'); return; }
 
   await supabaseClient.from('drill_player_cards')
     .upsert(Array.from(touched).map(id => ({ user_id: G.userId, card_id: id, quantity: G.ownedCards[id] || 0 })));
@@ -2002,7 +2143,7 @@ async function doSynthesizeAll() {
   openModal(`
     <div class="modal-title">⚗️ 一括合成完了！（${producedIds.length}件）</div>
     <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px;">${resultCardsHtml}</div>
-    <button class="btn-modal-action" style="width:100%;margin-bottom:6px;" onclick="showSynthesize()">⚗️ 合成に戻る</button>
+    <button class="btn-modal-action" style="width:100%;margin-bottom:6px;" onclick="showSynthesize('card')">⚗️ 合成に戻る</button>
     <button class="btn-modal-close" onclick="closeModal()">閉じる</button>
   `);
 }
@@ -4578,7 +4719,7 @@ function renderSurfaceHome() {
     <div class="sh-menu">
       <button class="sh-btn" onclick="showShop()">🛒&ensp;ショップ</button>
       <button class="sh-btn" onclick="showCraft()">🔨&ensp;クラフト</button>
-      <button class="sh-btn" onclick="showSynthesize()">⚗️&ensp;カード合成</button>
+      <button class="sh-btn" onclick="showSynthesize()">⚗️&ensp;合成</button>
       <button class="sh-btn" onclick="showAlchemy()">🔥&ensp;錬金窯</button>
       <button class="sh-btn" onclick="showInventory()">📦&ensp;アイテム${bpKeys.length > 0 ? `<span class="sh-badge">${bpKeys.length}</span>` : ''}</button>
       <a class="sh-btn" href="../market/index.html" style="text-decoration:none;text-align:center;">🏪&ensp;マーケット</a>

@@ -192,12 +192,19 @@
       border-radius: 10px; padding: 10px 6px;
       display: flex; flex-direction: column; align-items: center; gap: 5px;
       cursor: pointer; transition: border-color .15s, background .15s; text-align: center;
-      user-select: none;
+      user-select: none; position: relative;
     }
     .mem-card:hover { border-color: rgba(255,255,255,.4); background: rgba(255,255,255,.1); }
     .mem-card.equipped { border-color: rgba(212,168,83,.75); background: rgba(212,168,83,.14); }
-    .mem-card-icon { font-size: 1.9rem; line-height: 1; }
-    .mem-card-img { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; }
+    .mem-card-icon-wrap { position: relative; width: 52px; height: 52px; flex-shrink: 0; }
+    .mem-card-icon, .mem-card-img {
+      width: 52px; height: 52px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; overflow: hidden;
+      background: linear-gradient(160deg,#1e3f72 0%,#0d2040 100%);
+      border: 1.5px solid rgba(255,255,255,.2);
+    }
+    .mem-card-icon { font-size: 1.7rem; line-height: 1; }
+    .mem-card-img { object-fit: cover; }
     .mem-card-name { font-size: .76rem; font-weight: 700; line-height: 1.2; }
     .mem-card-stat { font-size: .68rem; color: #6bde9b; }
     .mem-empty { grid-column: 1/-1; opacity: .45; font-size: .82rem; padding: 14px 0; text-align: center; }
@@ -393,6 +400,29 @@
     </div>
     <div class="fm-section">
       <div class="fm-section-title">未装備</div>
+      <div class="pool-filter-bar">
+        <select id="mem-sort-select" onchange="renderMemories()">
+          <option value="rank">ランク順</option>
+          <option value="hp">体力順</option>
+          <option value="maxAp">最大AP順</option>
+          <option value="apRegen">AP自然回復順</option>
+          <option value="attack">力順</option>
+          <option value="defense">防御力順</option>
+          <option value="critRate">クリ率順</option>
+          <option value="critDmg">クリダメ順</option>
+          <option value="digPower">発掘力順</option>
+          <option value="maxWeight">最大重量順</option>
+        </select>
+        <button type="button" class="pool-dir-btn" id="mem-dir-btn" onclick="toggleMemSortDir()">▼ 降順</button>
+        <select id="mem-rank-filter" onchange="renderMemories()">
+          <option value="">ランク: すべて</option>
+          <option value="s">S</option>
+          <option value="a">A</option>
+          <option value="b">B</option>
+          <option value="c">C</option>
+          <option value="d">D</option>
+        </select>
+      </div>
       <div class="mem-grid" id="mem-unequipped-grid"></div>
     </div>
   </div>
@@ -787,6 +817,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadData();
   renderDrills();
   renderCards();
+  renderMemories();
 });
 
 async function loadConfig() {
@@ -907,37 +938,139 @@ function switchTab(tab, btn) {
 // ============================================================
 // メモリタブ
 // ============================================================
+let memSortDir = 'desc'; // 'asc' | 'desc'
+
+function toggleMemSortDir() {
+  memSortDir = memSortDir === 'desc' ? 'asc' : 'desc';
+  const btn = document.getElementById('mem-dir-btn');
+  if (btn) btn.textContent = memSortDir === 'desc' ? '▼ 降順' : '▲ 昇順';
+  renderMemories();
+}
+
 function renderMemories() {
   const equipped = myMemories.filter(m => m.equipped);
-  const unequipped = myMemories.filter(m => !m.equipped);
+  let unequipped = myMemories.filter(m => !m.equipped);
 
   document.getElementById('mem-equipped-title').textContent = `装備中 (${equipped.length}/3)`;
 
   const eqGrid = document.getElementById('mem-equipped-grid');
   eqGrid.innerHTML = equipped.length === 0
     ? '<div class="mem-empty">装備中のメモリはありません</div>'
-    : equipped.map(m => memCardHtml(m, true)).join('');
+    : equipped.map(m => memCardHtml(m, true, null)).join('');
 
   const uneqGrid = document.getElementById('mem-unequipped-grid');
+  if (unequipped.length === 0) {
+    uneqGrid.innerHTML = '<div class="mem-empty">未装備のメモリはありません<br><span style="font-size:.72rem;">モンスターを倒すと入手できます</span></div>';
+    return;
+  }
+
+  const rankFilter = document.getElementById('mem-rank-filter')?.value || '';
+  const sortBy     = document.getElementById('mem-sort-select')?.value || 'rank';
+
+  unequipped = unequipped.filter(m => {
+    if (!rankFilter) return true;
+    const rank = (MEMORIES_DEF[m.memory_id]?.rarity ?? '').toLowerCase();
+    return rank === rankFilter;
+  });
+
+  const dir = memSortDir === 'asc' ? 1 : -1;
+  unequipped.sort((a, b) => {
+    const defA = MEMORIES_DEF[a.memory_id] ?? {}, defB = MEMORIES_DEF[b.memory_id] ?? {};
+    let vA, vB;
+    if (sortBy === 'rank') {
+      vA = RANK_ORDER[(defA.rarity ?? '').toLowerCase()] ?? -1;
+      vB = RANK_ORDER[(defB.rarity ?? '').toLowerCase()] ?? -1;
+    } else {
+      vA = Number(defA.bonuses?.[sortBy] ?? 0);
+      vB = Number(defB.bonuses?.[sortBy] ?? 0);
+    }
+    return (vA - vB) * dir;
+  });
+
   uneqGrid.innerHTML = unequipped.length === 0
-    ? '<div class="mem-empty">未装備のメモリはありません<br><span style="font-size:.72rem;">モンスターを倒すと入手できます</span></div>'
-    : unequipped.map(m => memCardHtml(m, false)).join('');
+    ? '<div class="mem-empty">条件に一致するメモリがありません</div>'
+    : unequipped.map(m => memCardHtml(m, false, sortBy)).join('');
 }
 
-function memCardHtml(m, isEquipped) {
+function memCardHtml(m, isEquipped, sortBy) {
   const def = MEMORIES_DEF[m.memory_id] || { name: m.memory_id, icon: '🧠', bonuses: {} };
-  const bonusLines = Object.entries(def.bonuses ?? {})
-    .filter(([, amt]) => (Number(amt) || 0) !== 0)
-    .map(([stat, amt]) => `${MEMORY_STAT_LABELS[stat] || stat} ${amt >= 0 ? '+' : ''}${amt}`)
-    .join(' / ');
+  const rank = (def.rarity ?? '').toLowerCase();
+  // 通常時は名前のみ。ソート中はその数値を表示する
+  const statLine = (sortBy && sortBy !== 'rank')
+    ? `${MEMORY_STAT_LABELS[sortBy] || sortBy} ${Number(def.bonuses?.[sortBy] ?? 0) >= 0 ? '+' : ''}${def.bonuses?.[sortBy] ?? 0}`
+    : '';
   const visual = def.imageUrl
     ? `<img class="mem-card-img" src="${def.imageUrl}" onerror="this.outerHTML='<div class=&quot;mem-card-icon&quot;>${def.icon || '🧠'}</div>'">`
     : `<div class="mem-card-icon">${def.icon || '🧠'}</div>`;
-  return `<div class="mem-card${isEquipped ? ' equipped' : ''}" onclick="toggleMemoryEquip('${m.id}')">
-    ${visual}
+  return `<div class="mem-card${isEquipped ? ' equipped' : ''}${rank ? ` rank-${rank}` : ''}"
+      onclick="memCardClick('${m.id}')"
+      onmousedown="memCardLpStart('${m.memory_id}')" onmousemove="memCardLpMove()" onmouseup="memCardLpEnd()" onmouseleave="memCardLpEnd()"
+      ontouchstart="memCardLpStart('${m.memory_id}')" ontouchmove="memCardLpMove()" ontouchend="memCardLpEnd()">
+    <div class="mem-card-icon-wrap">${rankBadgeHtml(rank)}${visual}</div>
     <div class="mem-card-name">${def.name}</div>
-    <div class="mem-card-stat">${bonusLines || 'なし'}</div>
+    <div class="mem-card-stat">${statLine}</div>
   </div>`;
+}
+
+// 長押し（500ms）でメモリ詳細を表示。短いタップは装備トグルのみ発動する
+let _memLpTimer = null;
+let _memLpMoved = false;
+let _memLpFired = false;
+function memCardLpStart(memoryId) {
+  _memLpMoved = false;
+  clearTimeout(_memLpTimer);
+  _memLpTimer = setTimeout(() => {
+    _memLpTimer = null;
+    if (!_memLpMoved) { _memLpFired = true; showMemoryDetail(memoryId, MEMORIES_DEF[memoryId] || {}); }
+  }, 500);
+}
+function memCardLpMove() {
+  _memLpMoved = true;
+  clearTimeout(_memLpTimer);
+  _memLpTimer = null;
+}
+function memCardLpEnd() {
+  clearTimeout(_memLpTimer);
+  _memLpTimer = null;
+}
+function memCardClick(rowId) {
+  if (_memLpFired) { _memLpFired = false; return; }
+  toggleMemoryEquip(rowId);
+}
+
+function showMemoryDetail(memoryId, def) {
+  hideMemoryDetail();
+  const rank = (def?.rarity ?? '').toLowerCase();
+  const imgHtml = def.imageUrl
+    ? `<img src="${def.imageUrl}" style="width:100%;height:100%;object-fit:contain;">`
+    : `<div class="cd-icon">${def.icon || '🧠'}</div>`;
+  const row = (label, val) =>
+    `<div class="cd-stat-label">${label}</div><div class="cd-stat-val">${val}</div>`;
+  const bonusRows = Object.entries(def.bonuses ?? {})
+    .filter(([, amt]) => (Number(amt) || 0) !== 0)
+    .map(([stat, amt]) => row(MEMORY_STAT_LABELS[stat] || stat, `${amt >= 0 ? '+' : ''}${amt}`))
+    .join('');
+  const bd = document.createElement('div');
+  bd.id = 'card-detail-backdrop';
+  bd.addEventListener('click', hideMemoryDetail);
+  const pop = document.createElement('div');
+  pop.id = 'card-detail-popup';
+  pop.innerHTML = `
+    <div class="cd-img">${imgHtml}</div>
+    <div class="cd-header">
+      ${rank ? `<div class="cd-rank-badge" style="background:${_RANK_BG[rank]};">${rank.toUpperCase()}</div>` : ''}
+      <div class="cd-name">${def.name || memoryId}</div>
+    </div>
+    ${def.desc ? `<div class="cd-desc">${def.desc}</div>` : ''}
+    <div class="cd-stats">${bonusRows || row('効果', 'なし')}</div>
+    <button class="cd-close" onclick="hideMemoryDetail()">閉じる</button>`;
+  document.body.appendChild(bd);
+  document.body.appendChild(pop);
+}
+
+function hideMemoryDetail() {
+  document.getElementById('card-detail-backdrop')?.remove();
+  document.getElementById('card-detail-popup')?.remove();
 }
 
 async function toggleMemoryEquip(rowId) {
