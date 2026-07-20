@@ -457,6 +457,16 @@ function rankBadgeHtml(rank) {
 const TARGET_LABELS = {
   SINGLE:'単体（敵）', ALL:'全体（敵）', RANDOM_ENEMY:'ランダム（敵）',
   RANDOM_ANY:'ランダム（敵味方）', ALLY_SINGLE:'味方単体', ALLY_ALL:'味方全体', SELF:'自分',
+  // DB(drill_cards.target)は小文字表記のため合わせて用意（drill/game.jsと同じ定義）
+  enemy_single: '単体（敵）',
+  enemy_all:    '全体（敵）',
+  enemy_random: 'ランダム（敵）',
+  self:         '自分',
+  ally_single:  '味方単体',
+  ally_all:     '味方全体',
+  ally_random:  '味方ランダム',
+  all:          '全体',
+  all_random:   '全体ランダム',
 };
 const _RANK_BG = {
   d:'#60637a', c:'#2a9e5c', b:'#1870d4',

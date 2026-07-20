@@ -310,10 +310,11 @@ async function grantMemoryDrop(dropRate, group) {
   const memoryId = _findMemoryByGroupRank(group, rank);
   if (!memoryId) return null;
 
+  // 戦利品として付与（is_loot:true）。地上帰還まで確定しない
   const { data } = await supabaseClient.from('drill_player_memories')
-    .insert({ user_id: G.userId, memory_id: memoryId, equipped: false })
+    .insert({ user_id: G.userId, memory_id: memoryId, equipped: false, is_loot: true })
     .select().single();
-  if (data) G.memories.push(data);
+  if (data) { G.memories.push(data); G.lootMemories.push(data); }
   return memoryId;
 }
 
@@ -397,7 +398,8 @@ const G = {
   lootGold: 0,   // 今回の探索で得た未確定ゴールド（地上帰還で確定、死亡で消失）
   lootDrills: [], // 今回の探索で拾った未確定ドリル [{id, drill_id, durability}]（死亡でその場に落とす）
   lootCards: {}, // 今回の探索で得た未確定カード（現状は入手経路なし。将来の受け皿）
-  memories: [], // 所持メモリ一覧 [{id, memory_id, equipped}]（drill_player_memoriesから読み込む）
+  memories: [], // 所持メモリ一覧 [{id, memory_id, equipped, is_loot}]（drill_player_memoriesから読み込む。loot分も含む）
+  lootMemories: [], // 今回の探索で得た未確定メモリ（地上帰還で確定、死亡で消失）
 };
 
 let _drillChannel = null; // Realtimeチャンネル参照（Broadcastに使用）
@@ -800,7 +802,7 @@ async function loadAll() {
       supabaseClient.from('drill_dropped_items').select('id,pos_x,pos_y,items,dropper_name,cause_of_death,dropped_at,locked_by,locked_until').eq('map_date', date),
       supabaseClient.from('drill_player_deck').select('slots').eq('user_id', uid).maybeSingle(),
       supabaseClient.from('drill_player_cards').select('card_id,quantity').eq('user_id', uid),
-      supabaseClient.from('drill_player_memories').select('id,memory_id,equipped').eq('user_id', uid),
+      supabaseClient.from('drill_player_memories').select('id,memory_id,equipped,is_loot').eq('user_id', uid),
     ]);
 
   G.dugCells = new Set((dugRes.data || []).map(r => `${r.x},${r.y}`));
@@ -861,8 +863,9 @@ async function loadAll() {
   G.ownedCards = {};
   (cardsRes.data || []).forEach(r => { if (r.quantity > 0) G.ownedCards[r.card_id] = r.quantity; });
 
-  // 所持メモリ
+  // 所持メモリ（loot分も含む。未確定分はG.lootMemoriesで別途追跡）
   G.memories = memRes.data || [];
+  G.lootMemories = G.memories.filter(m => m.is_loot);
 
   // ゴールド・HP・AP
   G.drillGold   = profRes.data?.drill_gold || 0;
@@ -1310,10 +1313,20 @@ async function handleDeath(cause = '不明') {
     await supabaseClient.from('profiles').update({ drill_loot_gold: 0 }).eq('discord_user_id', G.discordId);
   }
 
+  // 戦利品メモリも死亡ですべて失う
+  const lostMemories = G.lootMemories.length;
+  if (G.lootMemories.length > 0) {
+    const lootIds = new Set(G.lootMemories.map(m => m.id));
+    await supabaseClient.from('drill_player_memories').delete().in('id', Array.from(lootIds));
+    G.memories = G.memories.filter(m => !lootIds.has(m.id));
+    G.lootMemories = [];
+  }
+
   const lostParts = [];
   if (bpMats.length > 0) lostParts.push(`素材${bpMats.length}種`);
   if (lootDrillItems.length > 0) lostParts.push(`ドリル${lootDrillItems.length}台`);
   if (lostGold > 0) lostParts.push(`💰${lostGold}G`);
+  if (lostMemories > 0) lostParts.push(`メモリ${lostMemories}個`);
   const lostMsg = lostParts.length > 0
     ? `${lostParts.join('・')}を失った${requippedMsg ? `（${requippedMsg}）` : ''}`
     : '何も落とさなかった';
@@ -1486,6 +1499,18 @@ function showLoot() {
     }
   }
 
+  if (G.lootMemories.length > 0) {
+    for (const m of G.lootMemories) {
+      const def = MEMORIES[m.memory_id] || {};
+      rows.push(`<div class="modal-row" style="align-items:center;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          ${memoryCircleHtml(m.memory_id, 44)}
+          <div class="modal-row-label">${escHtml(def.name || m.memory_id)}</div>
+        </div>
+      </div>`);
+    }
+  }
+
   const isEmpty = rows.length === 0;
   openModal(`
     <div class="modal-title">🏆 戦利品</div>
@@ -1542,6 +1567,13 @@ async function returnSurface(useStone = false) {
     G.lootDrills = [];
     await supabaseClient.from('drill_player_drills').update({ is_loot: false }).in('id', ids);
   }
+  const confirmedMemories = G.lootMemories.length;
+  if (G.lootMemories.length > 0) {
+    const ids = G.lootMemories.map(m => m.id);
+    G.lootMemories.forEach(m => { m.is_loot = false; });
+    G.lootMemories = [];
+    await supabaseClient.from('drill_player_memories').update({ is_loot: false }).in('id', ids);
+  }
 
   G.px = START_X; G.py = START_Y;
   G.surfaceMode = true;
@@ -1557,6 +1589,7 @@ async function returnSurface(useStone = false) {
   if (matsToStore.length > 0) lootMsgs.push(`${matsToStore.length}種類の素材`);
   if (confirmedGold > 0) lootMsgs.push(`💰${confirmedGold}G`);
   if (confirmedDrills > 0) lootMsgs.push(`ドリル${confirmedDrills}台`);
+  if (confirmedMemories > 0) lootMsgs.push(`メモリ${confirmedMemories}個`);
   log(`↩️ 帰還完了！${lootMsgs.length > 0 ? `${lootMsgs.join('・')}を確定` : '手ぶら'}（HP全回復）`);
   render();
 }
@@ -2075,6 +2108,7 @@ async function doSynthesizeMemory(fromId, toId) {
   const consumeIds = rows.slice(0, 4).map(r => r.id);
   await supabaseClient.from('drill_player_memories').delete().in('id', consumeIds);
   G.memories = G.memories.filter(m => !consumeIds.includes(m.id));
+  G.lootMemories = G.lootMemories.filter(m => !consumeIds.includes(m.id));
 
   const { data } = await supabaseClient.from('drill_player_memories')
     .insert({ user_id: G.userId, memory_id: toId, equipped: false })
@@ -2107,6 +2141,7 @@ async function doSynthesizeAllMemory() {
 
   if (deleteIds.length > 0) await supabaseClient.from('drill_player_memories').delete().in('id', deleteIds);
   G.memories = G.memories.filter(m => !deleteIds.includes(m.id));
+  G.lootMemories = G.lootMemories.filter(m => !deleteIds.includes(m.id));
 
   const { data } = await supabaseClient.from('drill_player_memories').insert(insertRows).select();
   if (data) G.memories.push(...data);
@@ -3021,6 +3056,22 @@ function rankBadgeHtml(rank) {
   return `<div class="rank-badge rank-badge-${rank}">${rank.toUpperCase()}</div>`;
 }
 
+// メモリの円形アイコン表示（編成画面と同じ見た目。戦利品・戦闘勝利画面用）
+function memoryCircleHtml(memoryId, size = 64) {
+  const def = MEMORIES[memoryId] || {};
+  const rank = (def.rarity ?? '').toLowerCase();
+  const visual = def.imageUrl
+    ? `<img src="${escHtml(def.imageUrl)}" style="width:100%;height:100%;object-fit:cover;">`
+    : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:${Math.round(size*0.42)}px;">${escHtml(def.icon || '🧠')}</div>`;
+  return `
+    <div style="position:relative;width:${size}px;height:${size}px;flex-shrink:0;">
+      ${rankBadgeHtml(rank)}
+      <div style="width:100%;height:100%;border-radius:50%;overflow:hidden;background:linear-gradient(160deg,#1e3f72 0%,#0d2040 100%);border:2px solid rgba(255,255,255,.2);">
+        ${visual}
+      </div>
+    </div>`;
+}
+
 function showEventModal(icon, body, afterClose) {
   const inner = document.getElementById('modal-inner');
   if (!inner) return;
@@ -3839,7 +3890,11 @@ async function endCombat(win) {
           <div style="font-size:3rem;margin-bottom:12px;">🎉</div>
           <div style="font-size:1.1rem;font-weight:700;color:#6bde9b;">${escHtml(monName)}を倒した！</div>
           ${grantedItems.length > 0 ? `<div style="margin-top:10px;font-size:.85rem;color:#f0c060;">${grantedItems.map(escHtml).join('　')}</div>` : ''}
-          ${memDef ? `<div style="margin-top:10px;font-size:.88rem;color:#c9a0ff;">🧠 メモリ「${escHtml(memDef.name)}」を入手！</div>` : ''}
+          ${memDef ? `
+            <div style="margin-top:14px;display:flex;flex-direction:column;align-items:center;gap:6px;">
+              ${memoryCircleHtml(droppedMemoryId, 64)}
+              <div style="font-size:.88rem;color:#c9a0ff;">🧠 メモリ「${escHtml(memDef.name)}」を入手！<br><span style="font-size:.7rem;opacity:.7;">（戦利品・帰還で確定）</span></div>
+            </div>` : ''}
         </div>
         <button class="btn-modal-close" id="combat-end-btn">閉じる</button>`;
       document.getElementById('combat-end-btn').addEventListener('click', resolve, { once: true });
@@ -3848,7 +3903,7 @@ async function endCombat(win) {
     document.getElementById('modal-inner').classList.remove('combat-modal');
     document.getElementById('combat-log-overlay')?.remove();
     closeModal();
-    const extraMsgs = [...grantedItems, ...(memDef ? [`🧠メモリ「${memDef.name}」を入手`] : [])];
+    const extraMsgs = [...grantedItems, ...(memDef ? [`🧠メモリ「${memDef.name}」を入手（戦利品）`] : [])];
     log(`⚔️ ${monName}を倒した！${extraMsgs.length > 0 ? ' ' + extraMsgs.join(' ') : ''}`);
   } else if (win === 'flee') {
     document.getElementById('modal-overlay').dataset.combatModal = '';
