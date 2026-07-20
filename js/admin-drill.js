@@ -1567,7 +1567,7 @@ const CARD_TARGETS = [
 
 let cardsFilter = { rank: '', weaponType: '', material: '', search: '' };
 let cardsPage = 1;
-const CARDS_PAGE_SIZE = 8;
+const CARDS_PAGE_SIZE = 20;
 let cardsTestMonsterId = '';
 const CARD_DEF_COEF = 200; // drill/game.jsのDEF_COEFと合わせる
 
