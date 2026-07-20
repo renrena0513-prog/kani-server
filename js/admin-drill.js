@@ -2215,9 +2215,9 @@ function renderMemoriesTab() {
       ${td(`<input type="text" class="cfg-input" id="cfg-mem-icon-${id}" value="${escDrill(def.icon ?? '')}" style="width:44px;" placeholder="🧠">`)}
       ${td(`<select class="cfg-input" id="cfg-mem-group-${id}" style="width:130px;" onchange="collectMemoriesConfig();renderMemoriesTab();"><option value=""${!def.group?' selected':''}>未設定</option>${monsterList.map(([mid, mon]) => `<option value="${mid}"${def.group===mid?' selected':''}>${escDrill(mon.name || mid)}</option>`).join('')}</select>`)}
       ${td(`<select class="cfg-input" id="cfg-mem-rarity-${id}" style="width:62px;" onchange="collectMemoriesConfig();renderMemoriesTab();">${['','d','c','b','a','s'].map(v => `<option value="${v}"${(def.rarity??'')===v?' selected':''}>${v===''?'なし':v.toUpperCase()}</option>`).join('')}</select>`)}
-      ${td(`<input type="text" class="cfg-input" id="cfg-mem-desc-${id}" value="${escDrill(def.desc ?? '')}" style="width:130px;" placeholder="説明文">`)}
-      ${td(`<input type="text" class="cfg-input" id="cfg-mem-specialid-${id}" value="${escDrill(def.special_id ?? '')}" style="width:150px;" placeholder="なし" list="mem-special-list">`)}
-      ${MEMORY_STATS.map(([statKey]) => td(`<input type="number" class="cfg-input mem-bonus-${id}" data-stat="${statKey}" value="${(def.bonuses ?? {})[statKey] ?? 0}" style="width:52px;">`)).join('')}
+      ${td(`<input type="text" class="cfg-input" id="cfg-mem-desc-${id}" value="${escDrill(def.desc ?? '')}" style="width:130px;text-overflow:ellipsis;" placeholder="説明文">`)}
+      ${td(`<input type="text" class="cfg-input" id="cfg-mem-specialid-${id}" value="${escDrill(def.special_id ?? '')}" style="width:150px;text-overflow:ellipsis;" placeholder="なし" list="mem-special-list">`)}
+      ${MEMORY_STATS.map(([statKey]) => td(`<input type="number" class="cfg-input mem-bonus-${id}" data-stat="${statKey}" value="${(def.bonuses ?? {})[statKey] ?? 0}" style="width:72px;">`)).join('')}
       ${td(`<label class="inv-save-btn" style="cursor:pointer;display:inline-block;padding:2px 8px;">📁<input type="file" accept="image/*" style="display:none;" onchange="uploadMemoryImage('${id}',this)"></label> <button class="inv-del-btn" onclick="deleteMemory('${id}')">🗑️</button>`)}
     </tr>`;
   }
