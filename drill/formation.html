@@ -188,25 +188,25 @@
       display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
     }
     .mem-card {
-      background: rgba(255,255,255,.06); border: 2px solid rgba(255,255,255,.15);
-      border-radius: 10px; padding: 10px 6px;
-      display: flex; flex-direction: column; align-items: center; gap: 5px;
-      cursor: pointer; transition: border-color .15s, background .15s; text-align: center;
+      background: none; border: none; padding: 6px 4px;
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      cursor: pointer; text-align: center;
       user-select: none; position: relative;
     }
-    .mem-card:hover { border-color: rgba(255,255,255,.4); background: rgba(255,255,255,.1); }
-    .mem-card.equipped { border-color: rgba(212,168,83,.75); background: rgba(212,168,83,.14); }
-    .mem-card-icon-wrap { position: relative; width: 52px; height: 52px; flex-shrink: 0; }
+    .mem-card-icon-wrap { position: relative; width: 74px; height: 74px; flex-shrink: 0; }
     .mem-card-icon, .mem-card-img {
-      width: 52px; height: 52px; border-radius: 50%;
+      width: 74px; height: 74px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center; overflow: hidden;
       background: linear-gradient(160deg,#1e3f72 0%,#0d2040 100%);
-      border: 1.5px solid rgba(255,255,255,.2);
+      border: 2px solid rgba(255,255,255,.2); transition: border-color .15s;
     }
-    .mem-card-icon { font-size: 1.7rem; line-height: 1; }
+    .mem-card:hover .mem-card-icon, .mem-card:hover .mem-card-img { border-color: rgba(255,255,255,.5); }
+    .mem-card.equipped .mem-card-icon, .mem-card.equipped .mem-card-img {
+      border-color: rgba(212,168,83,.9); box-shadow: 0 0 8px rgba(212,168,83,.5);
+    }
+    .mem-card-icon { font-size: 2.2rem; line-height: 1; }
     .mem-card-img { object-fit: cover; }
     .mem-card-name { font-size: .76rem; font-weight: 700; line-height: 1.2; }
-    .mem-card-stat { font-size: .68rem; color: #6bde9b; }
     .mem-empty { grid-column: 1/-1; opacity: .45; font-size: .82rem; padding: 14px 0; text-align: center; }
 
     /* ステータス */
@@ -995,20 +995,20 @@ function renderMemories() {
 function memCardHtml(m, isEquipped, sortBy) {
   const def = MEMORIES_DEF[m.memory_id] || { name: m.memory_id, icon: '🧠', bonuses: {} };
   const rank = (def.rarity ?? '').toLowerCase();
-  // 通常時は名前のみ。ソート中はその数値を表示する
-  const statLine = (sortBy && sortBy !== 'rank')
-    ? `${MEMORY_STAT_LABELS[sortBy] || sortBy} ${Number(def.bonuses?.[sortBy] ?? 0) >= 0 ? '+' : ''}${def.bonuses?.[sortBy] ?? 0}`
-    : '';
+  // ランク順（通常時）は名前のみ。ステータスでソート中はその数値だけを表示する
+  const isRankSort = !sortBy || sortBy === 'rank';
+  const label = isRankSort
+    ? def.name
+    : `${MEMORY_STAT_LABELS[sortBy] || sortBy} ${Number(def.bonuses?.[sortBy] ?? 0) >= 0 ? '+' : ''}${def.bonuses?.[sortBy] ?? 0}`;
   const visual = def.imageUrl
     ? `<img class="mem-card-img" src="${def.imageUrl}" onerror="this.outerHTML='<div class=&quot;mem-card-icon&quot;>${def.icon || '🧠'}</div>'">`
     : `<div class="mem-card-icon">${def.icon || '🧠'}</div>`;
-  return `<div class="mem-card${isEquipped ? ' equipped' : ''}${rank ? ` rank-${rank}` : ''}"
+  return `<div class="mem-card${isEquipped ? ' equipped' : ''}"
       onclick="memCardClick('${m.id}')"
       onmousedown="memCardLpStart('${m.memory_id}')" onmousemove="memCardLpMove()" onmouseup="memCardLpEnd()" onmouseleave="memCardLpEnd()"
       ontouchstart="memCardLpStart('${m.memory_id}')" ontouchmove="memCardLpMove()" ontouchend="memCardLpEnd()">
     <div class="mem-card-icon-wrap">${rankBadgeHtml(rank)}${visual}</div>
-    <div class="mem-card-name">${def.name}</div>
-    <div class="mem-card-stat">${statLine}</div>
+    <div class="mem-card-name">${label}</div>
   </div>`;
 }
 
