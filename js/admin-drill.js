@@ -404,7 +404,6 @@ async function loadGameConfigAdmin() {
   if (gameConfig.monsters) {
     for (const mon of Object.values(gameConfig.monsters)) {
       if (mon.memoryDropRate == null) mon.memoryDropRate = 0;
-      if (mon.memoryGroup === undefined) mon.memoryGroup = null;
       if (!Array.isArray(mon.normalDrops)) mon.normalDrops = [];
       if (!Array.isArray(mon.fixedDrops))  mon.fixedDrops  = [];
     }
@@ -1269,7 +1268,6 @@ function renderMonstersTab() {
   const monsters = gameConfig.monsters ?? {};
   const baseHp = gameConfig.baseHp ?? DEFAULT_GAME_CONFIG.baseHp;
   const cs = { ...DEFAULT_GAME_CONFIG.combatStats, ...(gameConfig.combatStats ?? {}) };
-  const memoryGroups = [...new Set(Object.values(gameConfig.memories ?? {}).map(m => m.group).filter(Boolean))];
 
   let html = `
     <div class="cfg-subhead">❤️ プレイヤー基礎ステータス</div>
@@ -1358,19 +1356,9 @@ function renderMonstersTab() {
       </table>
       <button class="inv-save-btn" style="padding:2px 10px;font-size:.75rem;" onclick="addMonsterAction('${id}')">＋ 行動追加</button>
 
-      <div style="font-size:.82rem;font-weight:700;margin:16px 0 8px;opacity:.7;">🧠 メモリドロップ</div>
-      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;">
-        <label style="font-size:.82rem;">ドロップ率(%)<br>
-          <input class="cfg-input mon-memrate-${id}" type="number" value="${mon.memoryDropRate ?? 0}" min="0" max="100" style="width:80px;">
-        </label>
-        <label style="font-size:.82rem;">ドロップする系統<br>
-          <select class="cfg-input mon-memgroup-${id}" style="width:160px;">
-            <option value=""${!mon.memoryGroup?' selected':''}>未設定（ドロップしない）</option>
-            ${memoryGroups.map(g => `<option value="${escDrill(g)}"${mon.memoryGroup===g?' selected':''}>${escDrill(g)}</option>`).join('')}
-          </select>
-        </label>
-      </div>
-      <div style="font-size:.72rem;opacity:.5;margin-top:4px;">系統内でのランク（D〜S）の比率はメモリタブの共通設定に従います。系統はメモリタブでメモリごとに設定してください。</div>
+      <div style="font-size:.82rem;font-weight:700;margin:16px 0 8px;opacity:.7;">🧠 メモリドロップ率(%)</div>
+      <input class="cfg-input mon-memrate-${id}" type="number" value="${mon.memoryDropRate ?? 0}" min="0" max="100" style="width:80px;">
+      <div style="font-size:.72rem;opacity:.5;margin-top:4px;">このモンスター専用のメモリをメモリタブで作成し「ドロップ元モンスター」にこのモンスターを選ぶと、討伐時にランク（D〜S。比率はメモリタブの共通設定）を自動抽選してドロップします。</div>
 
       <div style="font-size:.82rem;font-weight:700;margin:16px 0 8px;opacity:.7;">📦 ノーマルドロップ（重み付き抽選で1つ）</div>
       <table class="drill-table" style="margin-bottom:8px;">
@@ -1446,8 +1434,6 @@ function collectMonstersConfig() {
 
     const memRateEl = document.querySelector(`.mon-memrate-${id}`);
     if (memRateEl) mon.memoryDropRate = Math.max(0, Math.min(100, parseInt(memRateEl.value) || 0));
-    const memGroupEl = document.querySelector(`.mon-memgroup-${id}`);
-    if (memGroupEl) mon.memoryGroup = memGroupEl.value || null;
 
     const ndItemEls = document.querySelectorAll(`.mon-ndrop-item-${id}`);
     const ndQtyEls  = document.querySelectorAll(`.mon-ndrop-qty-${id}`);
@@ -1477,7 +1463,7 @@ function addMonster() {
     name: '新モンスター', icon: '👾', imageUrl: null,
     maxHp: 100, defense: 0, layerWeights: Array.from({length: 30}, () => 0),
     actions: [{ name: '攻撃', damage: 10, weight: 1 }],
-    memoryDropRate: 0, memoryGroup: null, normalDrops: [], fixedDrops: [],
+    memoryDropRate: 0, normalDrops: [], fixedDrops: [],
   };
   renderMonstersTab();
 }
@@ -2125,9 +2111,9 @@ function renderMemoriesTab() {
         style="width:64px;text-align:center;" oninput="_memAdminUpdateTotal()">
     </label>`).join('');
 
-  const memoryGroups = [...new Set(Object.values(memories).map(m => m.group).filter(Boolean))];
+  const monsterList = Object.entries(gameConfig.monsters ?? {}); // [id, mon][]
+  const monsterName = mid => gameConfig.monsters?.[mid]?.name ?? mid;
   let html = `
-  <datalist id="mem-group-list">${memoryGroups.map(g => `<option value="${escDrill(g)}">`).join('')}</datalist>
   <datalist id="mem-special-list">
     <option value="WTYPE_DMG_剣_10">
     <option value="DROP_MULT_dirt_2">
@@ -2141,9 +2127,9 @@ function renderMemoriesTab() {
   </div>
   <div class="info-box" style="margin-bottom:14px;">
     メモリはモンスター討伐時にドロップし、編成画面から最大3種類まで装備できます（同じ種類は1つまで）。
-    プレイヤーのステータスを恒久的に強化します。ドロップ率・ドロップする系統はモンスタータブで個別に設定します。<br>
-    「系統」はD〜Sランクの同じメモリをまとめるグループ名です（例: 体力強化 の d/c/b/a/s を同じ系統名にする）。
-    モンスターには系統を割り当て、討伐時にその系統内からランク抽選比率に従ってランクが自動決定されます。<br>
+    プレイヤーのステータスを恒久的に強化します。1体のモンスターにつき、そのモンスター専用のメモリが対応します。<br>
+    D〜Sの5ランク分をそれぞれ作成し、各行の「ドロップ元モンスター」に同じモンスターを選んでください。討伐時、ランク（D〜S）は下の共通比率で自動抽選されます。
+    ドロップ率(%)はモンスタータブで個別に設定します。<br>
     「特殊処理ID」は装備中に発動する特殊効果です。現在対応している書式:<br>
     ・<code>WTYPE_DMG_&lt;武器種&gt;_&lt;加算値&gt;</code> … 例 <code>WTYPE_DMG_剣_10</code>＝剣カードのダメージ+10<br>
     ・<code>DROP_MULT_&lt;素材ID&gt;_&lt;倍率&gt;</code> … 例 <code>DROP_MULT_dirt_2</code>＝土のドロップ数が2倍<br>
@@ -2160,8 +2146,8 @@ function renderMemoriesTab() {
     <input id="mem-filter-search" class="cfg-input" type="text" placeholder="🔍 IDまたは名前で検索"
       value="${escDrill(memoriesFilter.search)}" oninput="applyMemoriesFilter()" style="flex:1 1 180px;">
     <select id="mem-filter-group" class="cfg-input" onchange="applyMemoriesFilter()">
-      <option value="">系統: すべて</option>
-      ${memoryGroups.map(g => `<option value="${escDrill(g)}"${memoriesFilter.group===g?' selected':''}>${escDrill(g)}</option>`).join('')}
+      <option value="">モンスター: すべて</option>
+      ${monsterList.map(([mid, mon]) => `<option value="${mid}"${memoriesFilter.group===mid?' selected':''}>${escDrill(mon.name || mid)}</option>`).join('')}
     </select>
     <select id="mem-filter-rank" class="cfg-input" onchange="applyMemoriesFilter()">
       <option value="">ランク: すべて</option>
@@ -2170,7 +2156,7 @@ function renderMemoriesTab() {
   </div>`;
 
   const sortedMemories = Object.entries(memories).sort((a, b) => {
-    const ga = a[1].group ?? '', gb = b[1].group ?? '';
+    const ga = monsterName(a[1].group ?? ''), gb = monsterName(b[1].group ?? '');
     if (ga !== gb) return ga.localeCompare(gb);
     const ra = MEMORY_RANK_ORDER[a[1].rarity] ?? 99, rb = MEMORY_RANK_ORDER[b[1].rarity] ?? 99;
     if (ra !== rb) return ra - rb;
@@ -2211,7 +2197,7 @@ function renderMemoriesTab() {
   <div style="overflow-x:auto;border:1px solid rgba(255,255,255,.1);border-radius:8px;">
   <table style="border-collapse:collapse;font-size:.75rem;">
     <thead><tr>
-      ${th('画像')}${th('ID')}${th('名前')}${th('アイコン')}${th('系統')}${th('ランク')}${th('説明')}${th('特殊処理ID')}
+      ${th('画像')}${th('ID')}${th('名前')}${th('アイコン')}${th('ドロップ元モンスター')}${th('ランク')}${th('説明')}${th('特殊処理ID')}
       ${MEMORY_STATS.map(([, label]) => th(label)).join('')}
       ${th('')}
     </tr></thead>
@@ -2227,7 +2213,7 @@ function renderMemoriesTab() {
       ${td(`<span style="opacity:.45;font-size:.68rem;">${escDrill(id)}</span>`)}
       ${td(`<input type="text" class="cfg-input" id="cfg-mem-name-${id}" value="${escDrill(def.name ?? id)}" style="width:110px;" placeholder="名前">`)}
       ${td(`<input type="text" class="cfg-input" id="cfg-mem-icon-${id}" value="${escDrill(def.icon ?? '')}" style="width:44px;" placeholder="🧠">`)}
-      ${td(`<input type="text" class="cfg-input" id="cfg-mem-group-${id}" value="${escDrill(def.group ?? '')}" style="width:110px;" placeholder="例: 体力強化" list="mem-group-list" onchange="collectMemoriesConfig();renderMemoriesTab();">`)}
+      ${td(`<select class="cfg-input" id="cfg-mem-group-${id}" style="width:130px;" onchange="collectMemoriesConfig();renderMemoriesTab();"><option value=""${!def.group?' selected':''}>未設定</option>${monsterList.map(([mid, mon]) => `<option value="${mid}"${def.group===mid?' selected':''}>${escDrill(mon.name || mid)}</option>`).join('')}</select>`)}
       ${td(`<select class="cfg-input" id="cfg-mem-rarity-${id}" style="width:62px;" onchange="collectMemoriesConfig();renderMemoriesTab();">${['','d','c','b','a','s'].map(v => `<option value="${v}"${(def.rarity??'')===v?' selected':''}>${v===''?'なし':v.toUpperCase()}</option>`).join('')}</select>`)}
       ${td(`<input type="text" class="cfg-input" id="cfg-mem-desc-${id}" value="${escDrill(def.desc ?? '')}" style="width:130px;" placeholder="説明文">`)}
       ${td(`<input type="text" class="cfg-input" id="cfg-mem-specialid-${id}" value="${escDrill(def.special_id ?? '')}" style="width:150px;" placeholder="なし" list="mem-special-list">`)}

@@ -624,6 +624,7 @@ async function loadGameConfig() {
     if (cfg.monsters) {
       for (const [id, v] of Object.entries(cfg.monsters)) {
         MONSTERS[id] = {
+          id,
           name: v.name ?? MONSTERS[id]?.name ?? id,
           icon: v.icon ?? MONSTERS[id]?.icon ?? '👾',
           imageUrl: v.imageUrl ?? null,
@@ -639,7 +640,6 @@ async function loadGameConfig() {
             name: a.name ?? '', damage: a.damage ?? 0, weight: a.weight ?? 1,
           })),
           memoryDropRate: v.memoryDropRate ?? MONSTERS[id]?.memoryDropRate ?? 0,
-          memoryGroup: v.memoryGroup ?? MONSTERS[id]?.memoryGroup ?? null,
           normalDrops: (v.normalDrops ?? MONSTERS[id]?.normalDrops ?? []).map(d => ({
             itemId: d.itemId, qty: d.qty ?? 1, weight: d.weight ?? 1,
           })),
@@ -3678,7 +3678,7 @@ async function endCombat(win) {
   }
 
   if (win === true) {
-    const droppedMemoryId = await grantMemoryDrop(C.monster?.memoryDropRate, C.monster?.memoryGroup);
+    const droppedMemoryId = await grantMemoryDrop(C.monster?.memoryDropRate, C.monster?.id);
     const memDef = droppedMemoryId ? MEMORIES[droppedMemoryId] : null;
     const itemDrops = resolveMonsterDrops(C.monster);
     const grantedItems = itemDrops.length > 0 ? await grantMonsterDrops(itemDrops) : [];
