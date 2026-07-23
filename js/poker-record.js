@@ -619,13 +619,6 @@ async function submitScores() {
         return;
     }
 
-    const names = tempData.map(p => p.account_name).filter(n => n != null);
-    if (new Set(names).size !== names.length) {
-        showNotice('アカウント名が重複しています。', 'warning');
-        resetBtn();
-        return;
-    }
-
     // 人数不足チェック
     if (tempData.length !== playerCount) {
         if (!isAdmin) {
