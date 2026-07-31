@@ -548,6 +548,178 @@ function clearTeam(idx) {
     clearPlayer(idx);
 }
 
+// ===== 試合形式切替 =====
+let cashRowSeq = 0;
+
+function switchMatchMode() {
+    const mode = document.getElementById('form-match-mode').value;
+    const isCash = mode === 'cash';
+    document.getElementById('team-mode-section').style.display = isCash ? 'none' : '';
+    document.getElementById('cash-mode-section').style.display = isCash ? '' : 'none';
+    document.getElementById('player-count-col').style.display = isCash ? 'none' : '';
+    if (isCash && document.getElementById('cash-players-container').children.length === 0) {
+        addCashPlayerRow();
+        addCashPlayerRow();
+    }
+}
+
+function addCashPlayerRow() {
+    cashRowSeq++;
+    const id = cashRowSeq;
+    const container = document.getElementById('cash-players-container');
+    container.insertAdjacentHTML('beforeend', `
+        <div class="player-entry" id="cash-row-${id}" data-cash-id="${id}">
+            <div class="row g-2 align-items-center player-row">
+                <div class="col account-col">
+                    <label class="small text-muted">アカウント名</label>
+                    <div class="custom-dropdown-container">
+                        <input type="text" class="form-control form-control-sm cash-player-account"
+                               placeholder="タップして選択" inputmode="none" onclick="showCashDropdown(${id})" oninput="filterCashDropdown(${id})">
+                        <div class="selected-player-badge" id="cash-selected-badge-${id}" style="display:none;">
+                            <img src="" class="badge-avatar">
+                            <span class="name"></span>
+                            <span class="btn-clear" onclick="clearCashPlayer(${id})">×</span>
+                        </div>
+                        <div class="custom-dropdown-list" id="cash-dropdown-list-${id}"></div>
+                    </div>
+                </div>
+                <div class="col-4 col-md-3">
+                    <label class="small text-muted">チップ増減</label>
+                    <input type="number" class="form-control form-control-sm cash-chip-input" placeholder="+1000 / -500" oninput="updateCashSum()">
+                </div>
+                <div class="col-auto d-flex align-items-end" style="padding-bottom:6px;">
+                    <span class="btn-clear" style="font-size:1.6rem;" title="削除" onclick="removeCashPlayerRow(${id})">×</span>
+                </div>
+            </div>
+        </div>
+    `);
+    updateCashSum();
+}
+
+function removeCashPlayerRow(id) {
+    const rows = document.querySelectorAll('#cash-players-container .player-entry');
+    if (rows.length <= 2) {
+        showNotice('プレイヤーは最低2人必要です。', 'warning');
+        return;
+    }
+    document.getElementById(`cash-row-${id}`)?.remove();
+    updateCashSum();
+}
+
+function getCashSelectedDiscordIds(excludeId) {
+    const ids = new Set();
+    document.querySelectorAll('.cash-player-account').forEach(input => {
+        const rowId = input.closest('.player-entry')?.dataset.cashId;
+        if (rowId !== String(excludeId) && input.dataset.discordUserId) ids.add(input.dataset.discordUserId);
+    });
+    return ids;
+}
+
+function showCashDropdown(id) {
+    const list = document.getElementById(`cash-dropdown-list-${id}`);
+    const input = document.querySelector(`#cash-row-${id} .cash-player-account`);
+
+    if (list.style.display === 'block') {
+        input.inputMode = 'text';
+        input.placeholder = '名前を入力';
+        input.focus();
+        return;
+    }
+
+    document.querySelectorAll('.custom-dropdown-list').forEach(l => l.style.display = 'none');
+    document.querySelectorAll('.player-entry').forEach(e => { e.style.zIndex = ''; e.style.position = ''; });
+
+    const entry = document.getElementById(`cash-row-${id}`);
+    entry.style.position = 'relative';
+    entry.style.zIndex = '1000';
+    const selectedIds = getCashSelectedDiscordIds(id);
+    renderCashDropdownItems(id, allProfiles.filter(p => !selectedIds.has(p.discord_user_id)));
+    list.style.display = 'block';
+
+    setTimeout(() => {
+        const h = (e) => {
+            if (!list.contains(e.target) && !e.target.classList.contains('cash-player-account')) {
+                list.style.display = 'none';
+                entry.style.zIndex = '';
+                entry.style.position = '';
+                document.removeEventListener('mousedown', h);
+            }
+        };
+        document.addEventListener('mousedown', h);
+    }, 10);
+}
+
+function filterCashDropdown(id) {
+    const input = document.querySelector(`#cash-row-${id} .cash-player-account`);
+    const val = input.value.trim().toLowerCase();
+    const selectedIds = getCashSelectedDiscordIds(id);
+    let candidates = allProfiles.filter(p => !selectedIds.has(p.discord_user_id));
+    if (val) {
+        candidates = candidates.filter(p => {
+            const name = (p.account_name || '').toLowerCase();
+            return name.includes(val) || (p.discord_user_id || '').includes(val);
+        });
+    }
+    renderCashDropdownItems(id, candidates);
+    document.getElementById(`cash-dropdown-list-${id}`).style.display = 'block';
+}
+
+function renderCashDropdownItems(id, profiles) {
+    const list = document.getElementById(`cash-dropdown-list-${id}`);
+    if (profiles.length === 0) {
+        list.innerHTML = '<div class="p-2 small text-muted">該当なし</div>';
+        return;
+    }
+    list.innerHTML = profiles.map(p => {
+        const display = p.account_name || p.discord_user_id;
+        const avatar = p.avatar_url || 'https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=24';
+        return `
+            <div class="dropdown-item-flex" onclick="selectCashPlayer(${id}, '${p.discord_user_id}', '${(p.account_name || '').replace(/'/g, "\\'")}')">
+                <img src="${avatar}" class="dropdown-avatar" onerror="this.src='https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=24'">
+                <span class="small">${display}</span>
+            </div>`;
+    }).join('');
+}
+
+function selectCashPlayer(id, discordUserId, accountName) {
+    const profile = allProfiles.find(p => p.discord_user_id === discordUserId);
+    const input = document.querySelector(`#cash-row-${id} .cash-player-account`);
+    const badgeEl = document.getElementById(`cash-selected-badge-${id}`);
+
+    input.value = accountName || discordUserId;
+    input.dataset.discordUserId = discordUserId;
+    input.dataset.accountName = accountName;
+    input.style.display = 'none';
+
+    badgeEl.querySelector('.badge-avatar').src = profile?.avatar_url || 'https://ui-avatars.com/api/?name=?&background=1a4d8c&color=fff&size=24';
+    badgeEl.querySelector('.name').textContent = accountName || discordUserId;
+    badgeEl.style.display = 'flex';
+
+    document.getElementById(`cash-dropdown-list-${id}`).style.display = 'none';
+}
+
+function clearCashPlayer(id) {
+    const input = document.querySelector(`#cash-row-${id} .cash-player-account`);
+    const badge = document.getElementById(`cash-selected-badge-${id}`);
+    input.value = '';
+    input.dataset.discordUserId = '';
+    input.dataset.accountName = '';
+    input.inputMode = 'none';
+    input.placeholder = 'タップして選択';
+    input.style.display = 'block';
+    badge.style.display = 'none';
+    input.focus();
+}
+
+function updateCashSum() {
+    let sum = 0;
+    document.querySelectorAll('.cash-chip-input').forEach(inp => { sum += Number(inp.value) || 0; });
+    const display = document.getElementById('cash-sum-display');
+    if (!display) return;
+    display.textContent = (sum > 0 ? '+' : '') + sum.toLocaleString();
+    display.style.color = sum === 0 ? '#4caf50' : '#ff6b6b';
+}
+
 function toggleRuleSettings() {
     const content = document.getElementById('rule-settings-content');
     const icon = document.getElementById('rule-toggle-icon');
@@ -559,6 +731,15 @@ function toggleRuleSettings() {
 
 // 送信処理
 async function submitScores() {
+    const mode = document.getElementById('form-match-mode')?.value || 'team';
+    if (mode === 'cash') {
+        await submitCashGame();
+    } else {
+        await submitTeamScores();
+    }
+}
+
+async function submitTeamScores() {
     const submitBtn = document.querySelector('.btn-submit');
     if (submitBtn.disabled) return;
     submitBtn.disabled = true;
@@ -809,6 +990,140 @@ async function sendDiscordNotification(matchData, playerCount, bonusReceivers = 
 
     const embed = {
         title: `🃏 ${matchType}　${playerCount}人トーナメント　結果`,
+        color: 0x1a4d8c,
+        fields,
+        timestamp: new Date().toISOString(),
+        footer: { text: 'かに鯖ポーカー大会システム' }
+    };
+
+    try {
+        const res = await fetch(DISCORD_WEBHOOK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                content: matchData.filter(p => p.discord_user_id).map(p => `<@${p.discord_user_id}>`).join(' '),
+                embeds: [embed]
+            })
+        });
+        if (!res.ok) {
+            const body = await res.text();
+            console.error('Discord通知失敗:', res.status, body);
+        } else {
+            console.log('Discord通知送信成功');
+        }
+    } catch (err) {
+        console.error('Discord通知エラー:', err);
+    }
+}
+
+// ===== キャッシュゲーム送信処理 =====
+async function submitCashGame() {
+    const submitBtn = document.querySelector('.btn-submit');
+    if (submitBtn.disabled) return;
+    submitBtn.disabled = true;
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 送信中...';
+
+    const resetBtn = () => {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+        document.getElementById('loading-overlay').style.display = 'none';
+    };
+
+    const rows = document.querySelectorAll('#cash-players-container .player-entry');
+    const tempData = [];
+    for (const row of rows) {
+        const input = row.querySelector('.cash-player-account');
+        const chipInput = row.querySelector('.cash-chip-input');
+        const discordUserId = input.dataset.discordUserId || '';
+        if (!discordUserId) continue;
+        const accountName = input.dataset.accountName || discordUserId;
+        const delta = Number(chipInput.value) || 0;
+        tempData.push({ discord_user_id: discordUserId, account_name: accountName, chip_delta: delta });
+    }
+
+    // バリデーション
+    if (tempData.length < 2) {
+        showNotice('2人以上のプレイヤーを入力してください。', 'warning');
+        resetBtn();
+        return;
+    }
+
+    const discordIds = tempData.map(p => p.discord_user_id);
+    if (new Set(discordIds).size !== discordIds.length) {
+        showNotice('同じユーザーが複数選択されています。', 'warning');
+        resetBtn();
+        return;
+    }
+
+    if (tempData.every(p => p.chip_delta === 0)) {
+        showNotice('チップの増減を入力してください。', 'warning');
+        resetBtn();
+        return;
+    }
+
+    const sum = tempData.reduce((s, p) => s + p.chip_delta, 0);
+    if (sum !== 0) {
+        showNotice(`チップの合計がプラマイ0になっていません（現在 ${sum > 0 ? '+' : ''}${sum.toLocaleString()}）。金額を確認してください。`, 'error');
+        resetBtn();
+        return;
+    }
+
+    document.getElementById('loading-overlay').style.display = 'flex';
+
+    const matchId = crypto.randomUUID();
+    const submittedBy = await getEffectiveUserId();
+
+    try {
+        for (const p of tempData) {
+            const { error } = await supabaseClient.rpc('adjust_poker_chips', {
+                p_discord_user_id: p.discord_user_id,
+                p_chip_delta: p.chip_delta
+            });
+            if (error) throw error;
+
+            await logActivity(p.discord_user_id, 'poker', {
+                matchId: matchId,
+                details: {
+                    mode: 'キャッシュゲーム',
+                    chip_delta: p.chip_delta,
+                    note: 'キャッシュゲーム チップ増減'
+                }
+            });
+        }
+
+        await sendCashDiscordNotification(tempData, submittedBy);
+        showNotice('チップの増減を記録しました！', 'success');
+        resetBtn();
+    } catch (err) {
+        showNotice('送信エラー: ' + err.message, 'error');
+        resetBtn();
+    } finally {
+        document.getElementById('loading-overlay').style.display = 'none';
+    }
+}
+
+async function sendCashDiscordNotification(matchData, submittedBy) {
+    if (!matchData || matchData.length === 0) return;
+    if (typeof DISCORD_WEBHOOK_URL === 'undefined' || !DISCORD_WEBHOOK_URL) return;
+
+    const sorted = [...matchData].sort((a, b) => b.chip_delta - a.chip_delta);
+    const fields = sorted.map(p => {
+        const nameDisplay = p.discord_user_id ? `<@${p.discord_user_id}>` : `**${p.account_name}**`;
+        const deltaStr = (p.chip_delta > 0 ? '+' : '') + p.chip_delta.toLocaleString();
+        const icon = p.chip_delta > 0 ? '📈' : p.chip_delta < 0 ? '📉' : '➖';
+        return {
+            name: `${icon}　${p.account_name}`,
+            value: `${nameDisplay}\n> 🪙 ${deltaStr}`,
+            inline: false
+        };
+    });
+
+    const reporterMention = submittedBy ? `<@${submittedBy}>` : '不明';
+    fields.push({ name: '✍️ 記録者', value: reporterMention, inline: false });
+
+    const embed = {
+        title: '🃏 キャッシュゲーム　結果',
         color: 0x1a4d8c,
         fields,
         timestamp: new Date().toISOString(),
