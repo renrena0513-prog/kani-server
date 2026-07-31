@@ -4,6 +4,26 @@ let pokerMatchGroups = {};
 let pokerCashLogsRaw = [];
 let pokerCashMatchGroups = {};
 
+const POKER_RECORDS_PER_PAGE = 20;
+let pokerRecordsPage = 1;
+let pokerCashRecordsPage = 1;
+
+/** ページネーションUIを描画（総件数からページ数を算出し、前へ/次へボタンの活性状態も更新） */
+function renderPokerPagination(containerId, page, totalItems, perPage, changeFnName) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const totalPages = Math.max(1, Math.ceil(totalItems / perPage));
+    if (totalItems === 0) {
+        container.innerHTML = '';
+        return;
+    }
+    container.innerHTML = `
+        <button class="btn btn-outline-secondary btn-sm" onclick="${changeFnName}(-1)" ${page <= 1 ? 'disabled' : ''}>◀ 前へ</button>
+        <span class="fw-bold">${page} / ${totalPages}</span>
+        <button class="btn btn-outline-secondary btn-sm" onclick="${changeFnName}(1)" ${page >= totalPages ? 'disabled' : ''}>次へ ▶</button>
+    `;
+}
+
 // =====================================
 // 記録リスト読み込み・表示
 // =====================================
@@ -39,17 +59,30 @@ async function fetchPokerRecords() {
         pokerMatchGroups[r.match_id].push(r);
     });
 
+    pokerRecordsPage = 1;
+    renderPokerRecords();
+}
+
+function changePokerRecordsPage(delta) {
+    const totalPages = Math.max(1, Math.ceil(Object.keys(pokerMatchGroups).length / POKER_RECORDS_PER_PAGE));
+    const newPage = pokerRecordsPage + delta;
+    if (newPage < 1 || newPage > totalPages) return;
+    pokerRecordsPage = newPage;
     renderPokerRecords();
 }
 
 function renderPokerRecords() {
     const tbody = document.getElementById('poker-records-body');
-    const groups = Object.values(pokerMatchGroups);
+    const allGroups = Object.values(pokerMatchGroups);
 
-    if (groups.length === 0) {
+    if (allGroups.length === 0) {
         tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-4">記録がありません</td></tr>';
+        renderPokerPagination('poker-records-pagination', pokerRecordsPage, 0, POKER_RECORDS_PER_PAGE, 'changePokerRecordsPage');
         return;
     }
+
+    const start = (pokerRecordsPage - 1) * POKER_RECORDS_PER_PAGE;
+    const groups = allGroups.slice(start, start + POKER_RECORDS_PER_PAGE);
 
     tbody.innerHTML = groups.map(players => {
         const first = players[0];
@@ -72,6 +105,8 @@ function renderPokerRecords() {
             </td>
         </tr>`;
     }).join('');
+
+    renderPokerPagination('poker-records-pagination', pokerRecordsPage, allGroups.length, POKER_RECORDS_PER_PAGE, 'changePokerRecordsPage');
 }
 
 // =====================================
@@ -167,17 +202,30 @@ async function fetchPokerCashRecords() {
         pokerCashMatchGroups[l.match_id].push(l);
     });
 
+    pokerCashRecordsPage = 1;
+    renderPokerCashRecords();
+}
+
+function changePokerCashRecordsPage(delta) {
+    const totalPages = Math.max(1, Math.ceil(Object.keys(pokerCashMatchGroups).length / POKER_RECORDS_PER_PAGE));
+    const newPage = pokerCashRecordsPage + delta;
+    if (newPage < 1 || newPage > totalPages) return;
+    pokerCashRecordsPage = newPage;
     renderPokerCashRecords();
 }
 
 function renderPokerCashRecords() {
     const tbody = document.getElementById('poker-cash-records-body');
-    const groups = Object.values(pokerCashMatchGroups);
+    const allGroups = Object.values(pokerCashMatchGroups);
 
-    if (groups.length === 0) {
+    if (allGroups.length === 0) {
         tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-4">記録がありません</td></tr>';
+        renderPokerPagination('poker-cash-records-pagination', pokerCashRecordsPage, 0, POKER_RECORDS_PER_PAGE, 'changePokerCashRecordsPage');
         return;
     }
+
+    const start = (pokerCashRecordsPage - 1) * POKER_RECORDS_PER_PAGE;
+    const groups = allGroups.slice(start, start + POKER_RECORDS_PER_PAGE);
 
     tbody.innerHTML = groups.map(logs => {
         const first = logs[0];
@@ -201,6 +249,8 @@ function renderPokerCashRecords() {
             </td>
         </tr>`;
     }).join('');
+
+    renderPokerPagination('poker-cash-records-pagination', pokerCashRecordsPage, allGroups.length, POKER_RECORDS_PER_PAGE, 'changePokerCashRecordsPage');
 }
 
 // =====================================
