@@ -582,6 +582,7 @@ function addCashPlayerRow() {
                         </div>
                         <div class="custom-dropdown-list" id="cash-dropdown-list-${id}"></div>
                     </div>
+                    <div class="small mt-1" id="cash-chip-balance-${id}" style="color:rgba(255,255,255,0.5);min-height:1.1em;"></div>
                 </div>
                 <div class="col-4 col-md-3">
                     <label class="small text-muted">チップ増減</label>
@@ -695,6 +696,9 @@ function selectCashPlayer(id, discordUserId, accountName) {
     badgeEl.querySelector('.name').textContent = accountName || discordUserId;
     badgeEl.style.display = 'flex';
 
+    const balanceEl = document.getElementById(`cash-chip-balance-${id}`);
+    if (balanceEl) balanceEl.textContent = `🪙 手持ち: ${(profile?.tip || 0).toLocaleString()}`;
+
     document.getElementById(`cash-dropdown-list-${id}`).style.display = 'none';
 }
 
@@ -708,6 +712,8 @@ function clearCashPlayer(id) {
     input.placeholder = 'タップして選択';
     input.style.display = 'block';
     badge.style.display = 'none';
+    const balanceEl = document.getElementById(`cash-chip-balance-${id}`);
+    if (balanceEl) balanceEl.textContent = '';
     input.focus();
 }
 
@@ -718,6 +724,19 @@ function updateCashSum() {
     if (!display) return;
     display.textContent = (sum > 0 ? '+' : '') + sum.toLocaleString();
     display.style.color = sum === 0 ? '#4caf50' : '#ff6b6b';
+}
+
+/** 送信後、最新のプロフィール情報で選択済み行の手持ちチップ表示を更新 */
+function refreshCashChipBalances() {
+    document.querySelectorAll('#cash-players-container .player-entry').forEach(row => {
+        const id = row.dataset.cashId;
+        const input = row.querySelector('.cash-player-account');
+        const discordUserId = input?.dataset.discordUserId;
+        if (!discordUserId) return;
+        const profile = allProfiles.find(p => p.discord_user_id === discordUserId);
+        const balanceEl = document.getElementById(`cash-chip-balance-${id}`);
+        if (balanceEl) balanceEl.textContent = `🪙 手持ち: ${(profile?.tip || 0).toLocaleString()}`;
+    });
 }
 
 function toggleRuleSettings() {
@@ -1087,12 +1106,15 @@ async function submitCashGame() {
                 details: {
                     mode: 'キャッシュゲーム',
                     chip_delta: p.chip_delta,
+                    account_name: p.account_name,
                     note: 'キャッシュゲーム チップ増減'
                 }
             });
         }
 
         await sendCashDiscordNotification(tempData, submittedBy);
+        await fetchProfiles();
+        refreshCashChipBalances();
         showNotice('チップの増減を記録しました！', 'success');
         resetBtn();
     } catch (err) {

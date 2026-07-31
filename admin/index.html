@@ -713,7 +713,7 @@
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="poker-records-tab" data-bs-toggle="pill"
                                     data-bs-target="#poker-records-pane" type="button" role="tab"
-                                    onclick="fetchPokerRecords()">🃏 ポーカー記録管理</button>
+                                    onclick="fetchPokerRecords(); fetchPokerCashRecords();">🃏 ポーカー記録管理</button>
                             </li>
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="team-requests-tab" data-bs-toggle="pill"
@@ -1107,6 +1107,27 @@
                                         </tr>
                                     </thead>
                                     <tbody id="poker-records-body">
+                                        <tr><td colspan="3" class="text-center text-muted py-4">タブを開くと読み込まれます</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-4 mt-5">
+                            <h2 class="mb-0" style="font-family:var(--font-title);color:var(--deep-gray);">💰 キャッシュゲーム記録</h2>
+                            <button onclick="fetchPokerCashRecords()" class="btn btn-outline-primary btn-sm">🔄 更新</button>
+                        </div>
+                        <div class="admin-section">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle" style="font-size:0.9rem;">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>日時</th>
+                                            <th>チップ増減</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="poker-cash-records-body">
                                         <tr><td colspan="3" class="text-center text-muted py-4">タブを開くと読み込まれます</td></tr>
                                     </tbody>
                                 </table>
