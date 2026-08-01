@@ -12,9 +12,10 @@ DECLARE
     v_sel_names text[];
     v_team_names text[];
     v_sorted_sel text[];
+    v_existing_sum bigint;
 BEGIN
-    IF p_amount IS NULL OR p_amount <= 0 THEN
-        RETURN jsonb_build_object('ok', false, 'error', '金額は1以上を指定してください');
+    IF p_amount IS NULL OR p_amount < 1000 OR p_amount % 1000 <> 0 THEN
+        RETURN jsonb_build_object('ok', false, 'error', '金額は1000単位で入力してください');
     END IF;
     IF p_bet_type NOT IN ('win', 'place', 'trio', 'trifecta') THEN
         RETURN jsonb_build_object('ok', false, 'error', '無効な賭式です');
@@ -76,6 +77,15 @@ BEGIN
 
     IF v_odds IS NULL THEN
         RETURN jsonb_build_object('ok', false, 'error', '無効な選択です');
+    END IF;
+
+    SELECT COALESCE(SUM(amount), 0) INTO v_existing_sum
+    FROM poker_finals_bets
+    WHERE event_id = p_event_id AND discord_user_id = p_discord_user_id
+      AND bet_type = p_bet_type AND selection = p_selection;
+    IF v_existing_sum + p_amount > 50000 THEN
+        RETURN jsonb_build_object('ok', false, 'error',
+            '同じ賭け方への合計ベット額は50,000マネーまでです（現在の合計: ' || v_existing_sum::text || 'マネー）');
     END IF;
 
     SELECT coins INTO v_coins FROM profiles WHERE discord_user_id = p_discord_user_id FOR UPDATE;

@@ -11,6 +11,7 @@ let selectedSelection = null; // 配列。win/place=[team]、trio/trifecta=[team
 let selectedOdds = null;
 let comboLists = { trio: [], trifecta: [] }; // 現在のイベントの全組み合わせ（オッズ検索用）
 let comboPickValue = { trio: ['', '', ''], trifecta: ['', '', ''] }; // 三連複・三連単ピッカーの選択状態
+let myBetsCache = []; // 自分のベット一覧（合計ベット上限チェック用）
 
 let openEventRowSeq = 0;
 let previewData = { place: [], trio: [], trifecta: [] };
@@ -95,6 +96,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     document.getElementById('betsOverviewModal').addEventListener('show.bs.modal', openBetsOverview);
+
+    document.getElementById('editOddsModal').addEventListener('show.bs.modal', () => {
+        document.getElementById('edit-odds-error').style.display = 'none';
+        const teams = currentEvent?.teams || [];
+        document.getElementById('edit-odds-team-rows').innerHTML = teams.map(t => `
+            <div class="team-row" data-team-name="${escapeHtml(t.team_name)}">
+                <span style="flex:1;display:flex;align-items:center;gap:6px;">${teamIconInlineHtml(t.team_name)}${escapeHtml(t.team_name)}</span>
+                <input type="number" class="form-control odds-input" value="${t.odds}" step="0.1" min="1.01" oninput="recalcEditPreview()">
+            </div>
+        `).join('');
+        switchEditPreviewTab('place');
+    });
 });
 
 async function checkAdminStatus() {
@@ -136,6 +149,7 @@ async function loadEventState() {
     document.getElementById('state-settled').style.display = 'none';
     document.getElementById('btn-settle-event').style.display = 'none';
     document.getElementById('btn-cancel-event').style.display = 'none';
+    document.getElementById('btn-edit-odds').style.display = 'none';
     document.getElementById('btn-open-event').style.display = 'none';
     document.getElementById('btn-bets-overview').style.display = 'none';
 
@@ -166,6 +180,7 @@ async function loadEventState() {
         if (isAdmin) {
             document.getElementById('btn-settle-event').style.display = '';
             document.getElementById('btn-cancel-event').style.display = '';
+            document.getElementById('btn-edit-odds').style.display = '';
         }
         await renderOpenState();
     } else if (currentEvent.status === 'cancelled') {
@@ -378,15 +393,66 @@ function updateSelectedHint() {
     updatePayoutPreview();
 }
 
+/** 入力欄は「1000単位の口数」を受け取る（例: 5 → 5,000マネー）。数字以外を除去し、末尾に薄く表示する「000」の位置を再計算する */
+function handleAmountInput() {
+    const input = document.getElementById('bet-amount-input');
+    let v = input.value.replace(/[^0-9]/g, '');
+    if (v.length > 1) v = v.replace(/^0+/, '') || '0';
+    input.value = v;
+    positionAmountSuffix();
+    updatePayoutPreview();
+}
+
+/** 入力済みテキストの実測幅ぶんだけ「000」サフィックスを右へずらし、常に入力文字のすぐ後ろに表示する */
+function positionAmountSuffix() {
+    const input = document.getElementById('bet-amount-input');
+    const suffix = document.getElementById('amount-suffix');
+    if (!input || !suffix) return;
+    if (!input.value) {
+        suffix.style.left = '16px';
+        return;
+    }
+    if (!positionAmountSuffix._canvas) {
+        positionAmountSuffix._canvas = document.createElement('canvas');
+    }
+    const ctx = positionAmountSuffix._canvas.getContext('2d');
+    const cs = getComputedStyle(input);
+    ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+    const textWidth = ctx.measureText(input.value).width;
+    const paddingLeft = parseFloat(cs.paddingLeft) || 16;
+    suffix.style.left = `${paddingLeft + textWidth}px`;
+}
+
+/** 入力欄の値（口数）を実際の賭け金額（口数×1000）に変換する */
+function getBetAmountFromInput() {
+    const units = Number(document.getElementById('bet-amount-input').value);
+    return units > 0 ? units * 1000 : 0;
+}
+
 /** 賭ける金額入力に応じて、予想払戻（金額×オッズ）をリアルタイム表示 */
 function updatePayoutPreview() {
     const el = document.getElementById('payout-preview');
-    const amount = Number(document.getElementById('bet-amount-input').value);
-    if (!selectedOdds || !amount || amount <= 0) {
+    const amount = getBetAmountFromInput();
+    if (!selectedOdds || !amount) {
         el.innerHTML = '';
         return;
     }
-    el.innerHTML = `予想払戻: <b>${Math.round(amount * selectedOdds).toLocaleString()}</b> マネー`;
+    el.innerHTML = `賭け金: <b>${amount.toLocaleString()}</b> マネー / 予想払戻: <b>${Math.round(amount * selectedOdds).toLocaleString()}</b> マネー`;
+}
+
+/** 賭式+選択を正規化したグルーピングキー（三連複は順不同なので昇順に揃える） */
+function selectionKey(betType, selection) {
+    const sel = betType === 'trio' ? [...selection].sort() : selection;
+    return betType + '|' + JSON.stringify(sel);
+}
+
+/** 1〜3位の仮定 order に対して、この賭けが的中するかどうかを判定する（管理者・プレイヤー双方のシミュレーションで共用） */
+function betWon(bet, order) {
+    const sortedOrder = [...order].sort();
+    if (bet.bet_type === 'win') return bet.selection[0] === order[0];
+    if (bet.bet_type === 'place') return order.includes(bet.selection[0]);
+    if (bet.bet_type === 'trifecta') return JSON.stringify(bet.selection) === JSON.stringify(order);
+    return JSON.stringify([...bet.selection].sort()) === JSON.stringify(sortedOrder);
 }
 
 async function placeBet() {
@@ -394,9 +460,18 @@ async function placeBet() {
         showNotice('チームを選択してください。', 'warning');
         return;
     }
-    const amount = Number(document.getElementById('bet-amount-input').value);
-    if (!amount || amount <= 0) {
-        showNotice('賭ける金額を入力してください。', 'warning');
+    const amount = getBetAmountFromInput();
+    if (!amount) {
+        showNotice('金額を入力してください。', 'warning');
+        return;
+    }
+
+    const key = selectionKey(selectedBetType, selectedSelection);
+    const existingSum = myBetsCache
+        .filter(b => selectionKey(b.bet_type, b.selection) === key)
+        .reduce((s, b) => s + b.amount, 0);
+    if (existingSum + amount > 50000) {
+        showNotice(`同じ賭け方への合計ベット額は50,000マネーまでです（現在の合計: ${existingSum.toLocaleString()}マネー）`, 'warning');
         return;
     }
 
@@ -424,9 +499,25 @@ async function placeBet() {
 
     showNotice(`賭けました！（オッズ ${Number(data.odds).toFixed(1)}倍）`, 'success');
     document.getElementById('bet-amount-input').value = '';
+    positionAmountSuffix();
     updatePayoutPreview();
     await refreshBalance();
     await renderMyBets();
+}
+
+/** 同じ賭式・同じ選択の複数ベットを合算して1行にまとめる（表示専用。集計元データは変更しない） */
+function mergeBetsBySelection(list) {
+    const map = new Map();
+    for (const b of list) {
+        const key = selectionKey(b.bet_type, b.selection);
+        if (!map.has(key)) {
+            map.set(key, { ...b, amount: 0, payout: b.payout === null ? null : 0 });
+        }
+        const merged = map.get(key);
+        merged.amount += b.amount;
+        if (merged.payout !== null && b.payout !== null) merged.payout += b.payout;
+    }
+    return [...map.values()];
 }
 
 async function renderMyBets() {
@@ -438,8 +529,11 @@ async function renderMyBets() {
         .order('created_at', { ascending: true });
 
     const list = myBets || [];
+    myBetsCache = list;
     const section = document.getElementById('my-bets-section');
     const container = document.getElementById('my-bets-list');
+    const totalEl = document.getElementById('my-bets-total');
+    const simBox = document.getElementById('my-sim-box');
 
     if (list.length === 0) {
         section.style.display = 'none';
@@ -447,9 +541,24 @@ async function renderMyBets() {
     }
     section.style.display = '';
 
+    const totalAmount = list.reduce((s, b) => s + b.amount, 0);
+    totalEl.innerHTML = `合計賭け金額: <b>${totalAmount.toLocaleString()}</b> マネー`;
+
+    simBox.style.display = '';
+    const teams = sortedByOdds(currentEvent.teams || []);
+    const optHtml = '<option value="">選択してください</option>' +
+        teams.map(t => `<option value="${escapeHtml(t.team_name)}">${escapeHtml(t.team_name)}</option>`).join('');
+    for (const n of [1, 2, 3]) {
+        const sel = document.getElementById(`my-sim-select-${n}`);
+        const prevValue = sel.value;
+        sel.innerHTML = optHtml;
+        if ([...sel.options].some(o => o.value === prevValue)) sel.value = prevValue;
+    }
+    runMySimulation();
+
     const sep = t => t === 'trifecta' ? ' → ' : '・';
 
-    container.innerHTML = list.map(b => {
+    container.innerHTML = mergeBetsBySelection(list).map(b => {
         const settled = b.payout !== null;
         const won = settled && b.payout > 0;
         const rowCls = !settled ? '' : (won ? 'win-row' : 'lose-row');
@@ -495,7 +604,7 @@ async function renderSettledState() {
         const cls = profit > 0 ? 'win' : profit < 0 ? 'lose' : 'none';
         const sep = t => t === 'trifecta' ? ' → ' : '・';
 
-        const rows = list.map(b => {
+        const rows = mergeBetsBySelection(list).map(b => {
             const won = b.payout > 0;
             const selectionHtml = b.selection.map(t => teamIconInlineHtml(t) + escapeHtml(t)).join(sep(b.bet_type));
             return `<div class="my-bet-row ${won ? 'win-row' : 'lose-row'}">
@@ -649,7 +758,7 @@ function recalcPreview() {
 
 function switchPreviewTab(tab) {
     previewTab = tab;
-    document.querySelectorAll('.preview-tab').forEach(b => b.classList.toggle('active', b.dataset.ptab === tab));
+    document.querySelectorAll('#openEventModal .preview-tab').forEach(b => b.classList.toggle('active', b.dataset.ptab === tab));
     renderPreviewTable();
 }
 
@@ -663,6 +772,83 @@ function renderPreviewTable() {
     const sep = previewTab === 'trifecta' ? ' → ' : previewTab === 'trio' ? '・' : '';
     const sorted = [...list].sort((a, b) => a.odds - b.odds);
     body.innerHTML = sorted.map(e => `<tr><td>${e.teams.map(escapeHtml).join(sep)}</td><td>${e.odds.toFixed(1)}倍</td></tr>`).join('');
+}
+
+// ===== 管理者: オッズ編集（開催中のみ・チーム追加削除不可） =====
+let editPreviewData = { place: [], trio: [], trifecta: [] };
+let editPreviewTab = 'place';
+
+function switchEditPreviewTab(tab) {
+    editPreviewTab = tab;
+    document.querySelectorAll('#editOddsModal .preview-tab').forEach(b => b.classList.toggle('active', b.dataset.eptab === tab));
+    recalcEditPreview();
+}
+
+function recalcEditPreview() {
+    const rows = document.querySelectorAll('#edit-odds-team-rows .team-row');
+    const teams = [];
+    rows.forEach(row => {
+        const name = row.dataset.teamName;
+        const odds = Number(row.querySelector('.odds-input').value);
+        if (name && odds > 0) teams.push({ team_name: name, odds });
+    });
+    const s = {
+        payout_rate: Number(currentEvent.payout_rate),
+        min_odds: Number(currentEvent.min_odds),
+        max_odds: Number(currentEvent.max_odds)
+    };
+    editPreviewData = computeOddsPreview(teams, s.payout_rate, s.min_odds, s.max_odds);
+    renderEditPreviewTable();
+}
+
+function renderEditPreviewTable() {
+    const body = document.getElementById('edit-preview-table-body');
+    const list = editPreviewData[editPreviewTab] || [];
+    if (list.length === 0) {
+        body.innerHTML = '<tr><td colspan="2" class="text-center text-muted py-3">オッズを正しく入力してください</td></tr>';
+        return;
+    }
+    const sep = editPreviewTab === 'trifecta' ? ' → ' : editPreviewTab === 'trio' ? '・' : '';
+    const sorted = [...list].sort((a, b) => a.odds - b.odds);
+    body.innerHTML = sorted.map(e => `<tr><td>${e.teams.map(escapeHtml).join(sep)}</td><td>${e.odds.toFixed(1)}倍</td></tr>`).join('');
+}
+
+async function confirmEditOdds() {
+    const errorEl = document.getElementById('edit-odds-error');
+    errorEl.style.display = 'none';
+
+    const rows = document.querySelectorAll('#edit-odds-team-rows .team-row');
+    const teams = [];
+    for (const row of rows) {
+        const name = row.dataset.teamName;
+        const odds = Number(row.querySelector('.odds-input').value);
+        if (!odds || odds <= 0) {
+            errorEl.textContent = `${name} のオッズを正しく入力してください。`;
+            errorEl.style.display = '';
+            return;
+        }
+        teams.push({ team_name: name, odds });
+    }
+
+    const { data, error } = await supabaseClient.rpc('poker_bet_edit_odds', {
+        p_event_id: currentEvent.id,
+        p_teams: teams
+    });
+
+    if (error) {
+        errorEl.textContent = '送信エラー: ' + error.message;
+        errorEl.style.display = '';
+        return;
+    }
+    if (!data.ok) {
+        errorEl.textContent = data.error || '編集に失敗しました。';
+        errorEl.style.display = '';
+        return;
+    }
+
+    bootstrap.Modal.getInstance(document.getElementById('editOddsModal'))?.hide();
+    showNotice('オッズを更新しました。', 'success');
+    await loadEventState();
 }
 
 async function confirmOpenEvent() {
@@ -825,6 +1011,8 @@ async function cancelEvent() {
 // ===== 管理者: 賭け状況一覧・結果シミュレーション =====
 let overviewBetsCache = [];
 
+let overviewProfileMap = {};
+
 async function openBetsOverview() {
     document.getElementById('bets-overview-summary').textContent = '読み込み中...';
     document.getElementById('bets-overview-body').innerHTML = '';
@@ -840,15 +1028,15 @@ async function openBetsOverview() {
     overviewBetsCache = bets || [];
 
     const userIds = [...new Set(overviewBetsCache.map(b => b.discord_user_id))];
-    let profileMap = {};
+    overviewProfileMap = {};
     if (userIds.length > 0) {
         const { data: profiles } = await supabaseClient
             .from('profiles').select('discord_user_id, account_name, avatar_url').in('discord_user_id', userIds);
-        (profiles || []).forEach(p => { profileMap[p.discord_user_id] = p; });
+        (profiles || []).forEach(p => { overviewProfileMap[p.discord_user_id] = p; });
     }
 
     renderBetsOverviewSummary();
-    renderBetsOverviewTable(profileMap);
+    renderBetsOverviewTable();
 
     const teams = sortedByOdds(currentEvent.teams || []);
     const optHtml = '<option value="">選択してください</option>' +
@@ -871,28 +1059,69 @@ function renderBetsOverviewSummary() {
         `合計賭け金: <b>${total.toLocaleString()}</b> マネー （${overviewBetsCache.length}件）`;
 }
 
-function renderBetsOverviewTable(profileMap) {
+function renderBetsOverviewTable() {
     const sep = t => t === 'trifecta' ? ' → ' : '・';
     const body = document.getElementById('bets-overview-body');
+    const canCancel = currentEvent?.status === 'open';
+    const headRow = document.querySelector('#bets-overview-table thead tr');
+    if (headRow) {
+        const existingOpCol = headRow.querySelector('.overview-op-col');
+        if (canCancel && !existingOpCol) {
+            headRow.insertAdjacentHTML('beforeend', '<th class="overview-op-col">操作</th>');
+        } else if (!canCancel && existingOpCol) {
+            existingOpCol.remove();
+        }
+    }
+
     if (overviewBetsCache.length === 0) {
-        body.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">まだ賭けがありません</td></tr>';
+        body.innerHTML = `<tr><td colspan="${canCancel ? 6 : 5}" class="text-center text-muted py-3">まだ賭けがありません</td></tr>`;
         return;
     }
     body.innerHTML = overviewBetsCache.map(b => {
-        const p = profileMap[b.discord_user_id];
+        const p = overviewProfileMap[b.discord_user_id];
         const name = p?.account_name || b.discord_user_id;
         const avatarHtml = p?.avatar_url
             ? `<img src="${escapeHtml(p.avatar_url)}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;margin-right:6px;vertical-align:middle;" alt="">`
             : '';
         const selectionHtml = b.selection.map(t => teamIconInlineHtml(t) + escapeHtml(t)).join(sep(b.bet_type));
+        const opCell = canCancel
+            ? `<td><button type="button" class="btn btn-sm btn-danger-outline" style="padding:4px 12px;font-size:0.78rem;" onclick="cancelSingleBet('${b.id}')">取消</button></td>`
+            : '';
         return `<tr>
             <td>${avatarHtml}${escapeHtml(name)}</td>
             <td>${BET_TYPE_LABELS[b.bet_type]}</td>
             <td>${selectionHtml}</td>
             <td>${Number(b.amount).toLocaleString()}</td>
             <td>${Number(b.odds).toFixed(1)}倍</td>
+            ${opCell}
         </tr>`;
     }).join('');
+}
+
+/** 個別の賭けを取消し、賭けた本人へ全額返金する（開催中のイベントのみ） */
+async function cancelSingleBet(betId) {
+    const bet = overviewBetsCache.find(b => b.id === betId);
+    if (!bet) return;
+    const p = overviewProfileMap[bet.discord_user_id];
+    const name = p?.account_name || bet.discord_user_id;
+
+    if (!confirm(`${name} の賭け（${BET_TYPE_LABELS[bet.bet_type]} ${bet.selection.join('・')} / ${Number(bet.amount).toLocaleString()}マネー）を取り消して返金します。よろしいですか？`)) return;
+
+    const { data, error } = await supabaseClient.rpc('poker_bet_cancel_single', { p_bet_id: betId });
+
+    if (error) {
+        showNotice('送信エラー: ' + error.message, 'error');
+        return;
+    }
+    if (!data.ok) {
+        showNotice(data.error || '取消に失敗しました。', 'warning');
+        return;
+    }
+
+    showNotice(`取り消しました。${name} へ ${Number(data.refund_amount).toLocaleString()} マネーを返金しました。`, 'success');
+    await openBetsOverview();
+    await refreshBalance();
+    await renderMyBets();
 }
 
 /** 1〜3位を仮に指定した場合の的中件数・払戻総額を試算する（実際の確定処理は行わない） */
@@ -912,18 +1141,11 @@ function runSimulation() {
     }
 
     const order = [s1, s2, s3];
-    const sortedOrder = [...order].sort();
     let winners = 0;
     let totalPayout = 0;
 
     overviewBetsCache.forEach(b => {
-        let won = false;
-        if (b.bet_type === 'win') won = b.selection[0] === order[0];
-        else if (b.bet_type === 'place') won = order.includes(b.selection[0]);
-        else if (b.bet_type === 'trifecta') won = JSON.stringify(b.selection) === JSON.stringify(order);
-        else won = JSON.stringify([...b.selection].sort()) === JSON.stringify(sortedOrder);
-
-        if (won) {
+        if (betWon(b, order)) {
             winners++;
             totalPayout += Math.round(b.amount * b.odds);
         }
@@ -934,4 +1156,39 @@ function runSimulation() {
 
     resultEl.innerHTML = `この結果の場合: <b>${winners}件</b>的中 ／ 払戻合計 <b>${totalPayout.toLocaleString()}</b> マネー<br>` +
         `<span class="text-muted" style="font-size:0.85rem;">総賭け金 ${totalStake.toLocaleString()} に対する収支: ${net >= 0 ? '+' : ''}${net.toLocaleString()}</span>`;
+}
+
+/** 1〜3位を仮に指定した場合、自分の賭けがどれだけ的中し、いくら収支になるかを試算する */
+function runMySimulation() {
+    const resultEl = document.getElementById('my-simulation-result');
+    if (!resultEl) return;
+    const s1 = document.getElementById('my-sim-select-1').value;
+    const s2 = document.getElementById('my-sim-select-2').value;
+    const s3 = document.getElementById('my-sim-select-3').value;
+
+    if (!s1 || !s2 || !s3) {
+        resultEl.innerHTML = '';
+        return;
+    }
+    if (new Set([s1, s2, s3]).size !== 3) {
+        resultEl.innerHTML = `<span style="color:#f87171;">同じチームが複数指定されています</span>`;
+        return;
+    }
+
+    const order = [s1, s2, s3];
+    let winners = 0;
+    let totalPayout = 0;
+
+    myBetsCache.forEach(b => {
+        if (betWon(b, order)) {
+            winners++;
+            totalPayout += Math.round(b.amount * b.odds);
+        }
+    });
+
+    const totalStake = myBetsCache.reduce((s, b) => s + b.amount, 0);
+    const net = totalPayout - totalStake;
+
+    resultEl.innerHTML = `この結果の場合: <b>${winners}件</b>的中 ／ 払戻合計 <b>${totalPayout.toLocaleString()}</b> マネー<br>` +
+        `<span class="text-muted" style="font-size:0.85rem;">収支: <span style="color:${net >= 0 ? '#4ade80' : '#f87171'};">${net >= 0 ? '+' : ''}${net.toLocaleString()}</span></span>`;
 }

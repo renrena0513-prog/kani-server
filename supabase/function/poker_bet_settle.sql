@@ -19,7 +19,7 @@ DECLARE
     v_sel_sorted text[];
     v_won boolean;
 BEGIN
-    IF NOT is_admin() THEN
+    IF is_admin() IS NOT TRUE THEN
         RETURN jsonb_build_object('ok', false, 'error', '管理者のみ実行できます');
     END IF;
     v_admin_id := auth.jwt() -> 'user_metadata' ->> 'provider_id';

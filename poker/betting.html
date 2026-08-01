@@ -121,8 +121,13 @@
         .bet-form-row .form-control { background: rgba(255,255,255,0.15); border: 1.5px solid rgba(255,255,255,0.25); border-radius: 12px; padding: 10px 16px; color: #fff; max-width: 200px; }
         .bet-form-row .form-control::placeholder { color: rgba(255,255,255,0.4); }
         .balance-hint { text-align: center; color: rgba(255,255,255,0.6); font-size: 0.85rem; margin-top: 8px; }
+        .bet-limit-notice { text-align: center; color: rgba(255, 200, 120, 0.85); font-size: 0.78rem; margin-top: 6px; }
         .payout-preview { text-align: center; font-size: 0.9rem; color: rgba(255,255,255,0.75); min-height: 1.3em; margin-top: 6px; }
         .payout-preview b { color: var(--gold); font-family: var(--font-title); }
+        .amount-input-wrap { position: relative; display: inline-flex; align-items: center; }
+        .amount-input-wrap .form-control { padding-right: 8px; }
+        .amount-suffix { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.38); pointer-events: none; white-space: nowrap; font-size: 1em; }
+        .amount-input-notice { text-align: center; color: rgba(255,255,255,0.55); font-size: 0.78rem; margin-top: 6px; }
         .selected-hint { text-align: center; color: rgba(255,255,255,0.85); font-size: 0.95rem; margin-bottom: 4px; min-height: 1.3em; }
         .selected-hint b { color: var(--gold); }
 
@@ -239,6 +244,7 @@
             <button type="button" class="btn btn-blue" id="btn-open-event" style="display:none;" data-bs-toggle="modal" data-bs-target="#openEventModal">🎬 開催する</button>
             <button type="button" class="btn btn-blue" id="btn-settle-event" style="display:none;" data-bs-toggle="modal" data-bs-target="#settleModal">🏆 結果を入力</button>
             <button type="button" class="btn btn-danger-outline" id="btn-cancel-event" style="display:none;" onclick="cancelEvent()">🛑 中止する</button>
+            <button type="button" class="btn btn-blue" id="btn-edit-odds" style="display:none;" data-bs-toggle="modal" data-bs-target="#editOddsModal">✏️ オッズ編集</button>
             <button type="button" class="btn btn-blue" id="btn-bets-overview" style="display:none;" data-bs-toggle="modal" data-bs-target="#betsOverviewModal">📋 賭け状況</button>
             <button type="button" class="btn btn-blue" id="btn-open-settings" data-bs-toggle="modal" data-bs-target="#settingsModal">⚙️ 設定</button>
         </div>
@@ -295,15 +301,31 @@
 
             <div class="selected-hint" id="selected-hint">チームを選択してください</div>
             <div class="bet-form-row">
-                <input type="number" class="form-control" id="bet-amount-input" placeholder="賭けるマネー" min="1" oninput="updatePayoutPreview()">
+                <div class="amount-input-wrap">
+                    <input type="text" inputmode="numeric" class="form-control" id="bet-amount-input" placeholder="0" oninput="handleAmountInput()">
+                    <span class="amount-suffix" id="amount-suffix">000</span>
+                </div>
                 <button type="button" class="btn btn-gold" id="btn-place-bet" onclick="placeBet()" disabled>賭ける</button>
             </div>
+            <div class="amount-input-notice">💡 1000単位で入力されます（例: 5 → 5,000マネー）</div>
             <div class="payout-preview" id="payout-preview"></div>
             <div class="balance-hint">所持マネー: <span id="my-balance-display">-</span></div>
+            <div class="bet-limit-notice">⚠️ 同じ賭け方（同じチーム・同じ組み合わせ）への合計ベット額は、お一人様50,000マネーまでです。</div>
 
             <div id="my-bets-section" style="display:none;">
                 <h3 class="section-title" style="margin-top:28px;">📋 あなたの賭け</h3>
+                <div class="my-bets-total" id="my-bets-total"></div>
                 <div class="my-bets-list" id="my-bets-list"></div>
+
+                <div class="my-sim-box" id="my-sim-box" style="display:none;">
+                    <div class="my-sim-title">🔮 結果をシミュレーション（自分の賭けの収益を試算）</div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <select class="form-select" id="my-sim-select-1" onchange="runMySimulation()"></select>
+                        <select class="form-select" id="my-sim-select-2" onchange="runMySimulation()"></select>
+                        <select class="form-select" id="my-sim-select-3" onchange="runMySimulation()"></select>
+                    </div>
+                    <div id="my-simulation-result" class="simulation-result"></div>
+                </div>
             </div>
         </div>
 
@@ -379,6 +401,39 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
                 <button type="button" class="btn btn-primary" onclick="confirmSettleEvent()">結果を確定する</button>
+            </div>
+        </div></div>
+    </div>
+
+    <!-- オッズ編集モーダル（管理者専用） -->
+    <div class="modal fade" id="editOddsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg"><div class="modal-content">
+            <div class="modal-header modal-header-blue">
+                <h5 class="modal-title">✏️ オッズを編集</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted" style="font-size:0.85rem;">参加チームの追加・削除はできません（単勝オッズのみ変更可）。既に成立しているベットのオッズは変わらず、これから賭ける分にのみ新しいオッズが適用されます。</p>
+                <div id="edit-odds-team-rows"></div>
+                <div id="edit-odds-error" class="text-danger mt-3" style="display:none;"></div>
+
+                <div class="preview-section">
+                    <div class="preview-tabs">
+                        <button type="button" class="preview-tab active" data-eptab="place" onclick="switchEditPreviewTab('place')">複勝プレビュー</button>
+                        <button type="button" class="preview-tab" data-eptab="trio" onclick="switchEditPreviewTab('trio')">三連複プレビュー</button>
+                        <button type="button" class="preview-tab" data-eptab="trifecta" onclick="switchEditPreviewTab('trifecta')">三連単プレビュー</button>
+                    </div>
+                    <div class="preview-table-wrap">
+                        <table class="table table-sm mb-0" id="edit-preview-table">
+                            <thead><tr><th>組み合わせ</th><th>オッズ</th></tr></thead>
+                            <tbody id="edit-preview-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                <button type="button" class="btn btn-primary" onclick="confirmEditOdds()">保存する</button>
             </div>
         </div></div>
     </div>

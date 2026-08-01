@@ -11,7 +11,7 @@ DECLARE
     v_refunded int := 0;
     v_total_refund bigint := 0;
 BEGIN
-    IF NOT is_admin() THEN
+    IF is_admin() IS NOT TRUE THEN
         RETURN jsonb_build_object('ok', false, 'error', '管理者のみ実行できます');
     END IF;
     v_admin_id := auth.jwt() -> 'user_metadata' ->> 'provider_id';
