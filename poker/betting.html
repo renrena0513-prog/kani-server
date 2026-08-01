@@ -29,6 +29,8 @@
         .btn-gold { background: linear-gradient(135deg, var(--gold) 0%, #b8892d 100%); border: none; color: white; font-weight: 700; padding: 12px 32px; border-radius: 50px; box-shadow: 0 8px 25px rgba(212,168,83,0.4); transition: all 0.3s; }
         .btn-gold:hover { transform: translateY(-2px); box-shadow: 0 12px 35px rgba(212,168,83,0.5); color: white; }
         .btn-gold:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .btn-danger-outline { background: transparent; color: #f87171; border: 2px solid #f87171; padding: 9px 20px; border-radius: 20px; transition: all 0.3s; cursor: pointer; font-weight: 700; }
+        .btn-danger-outline:hover { background: rgba(248,113,113,0.2); }
         .admin-action-bar { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 25px; }
 
         /* 準備中 */
@@ -40,6 +42,13 @@
         .bet-type-tab { background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.75); padding: 8px 20px; border-radius: 20px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
         .bet-type-tab:hover { background: rgba(255,255,255,0.14); }
         .bet-type-tab.active { background: rgba(212,168,83,0.25); border-color: var(--gold); color: var(--gold); }
+        .bet-type-desc { text-align: center; font-size: 0.85rem; color: rgba(255,255,255,0.65); margin-bottom: 18px; min-height: 1.3em; }
+
+        /* チームアイコン */
+        .team-icon-img { width: 40px; height: 40px; object-fit: contain; border-radius: 50%; background: rgba(255,255,255,0.15); margin: 0 auto 8px; display: block; }
+        .team-icon-placeholder { width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; margin: 0 auto 8px; }
+        .team-icon-inline { width: 20px; height: 20px; object-fit: contain; border-radius: 50%; background: rgba(255,255,255,0.15); vertical-align: middle; margin-right: 4px; }
+        .team-icon-placeholder-inline { width: 20px; height: 20px; border-radius: 50%; background: rgba(255,255,255,0.15); display: inline-flex; align-items: center; justify-content: center; font-size: 0.7rem; vertical-align: middle; margin-right: 4px; }
 
         /* チームカード（単勝） */
         .team-bet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
@@ -56,6 +65,9 @@
         /* 三連複・三連単ピッカー（着順/組み合わせをプルダウンで選択） */
         .combo-picker-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
         .combo-picker-row .combo-pick { flex: 1; min-width: 140px; }
+        .combo-picker-preview { display: flex; justify-content: center; gap: 16px; min-height: 1.6em; margin-bottom: 8px; }
+        .combo-picker-preview .cp-item { display: flex; flex-direction: column; align-items: center; font-size: 0.75rem; color: rgba(255,255,255,0.6); }
+        .combo-picker-preview .cp-item img, .combo-picker-preview .cp-item .team-icon-placeholder { width: 28px; height: 28px; margin: 0 0 3px; }
         .combo-picker-odds { text-align: center; font-size: 1rem; min-height: 1.6em; margin-bottom: 16px; color: rgba(255,255,255,0.8); }
         .combo-picker-odds b { font-family: var(--font-title); font-size: 1.3rem; color: var(--gold); }
 
@@ -92,6 +104,16 @@
         .profit-summary .profit { font-family: var(--font-title); font-size: 2rem; font-weight: 900; }
         .profit-summary.win .profit { color: #4ade80; }
         .profit-summary.lose .profit { color: #f87171; }
+
+        /* 賭け状況・シミュレーション（管理者専用モーダル） */
+        .bets-overview-summary { background: rgba(255,255,255,0.06); border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; font-size: 0.95rem; }
+        .bets-overview-summary b { color: var(--gold); font-family: var(--font-title); }
+        .simulate-box { background: rgba(212,168,83,0.08); border: 1px solid rgba(212,168,83,0.25); border-radius: 12px; padding: 16px; }
+        .simulation-result { margin-top: 12px; text-align: center; font-size: 0.95rem; min-height: 1.4em; }
+        .simulation-result b { color: var(--gold); font-family: var(--font-title); font-size: 1.1rem; }
+        #bets-overview-table { color: #fff; font-size: 0.85rem; }
+        #bets-overview-table th { color: rgba(255,255,255,0.6); border-color: rgba(255,255,255,0.15); }
+        #bets-overview-table td { border-color: rgba(255,255,255,0.1); vertical-align: middle; }
 
         /* 開催フォーム（チーム行） */
         .team-row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
@@ -165,6 +187,8 @@
         <div class="admin-action-bar admin-only" style="display:none;">
             <button type="button" class="btn btn-blue" id="btn-open-event" style="display:none;" data-bs-toggle="modal" data-bs-target="#openEventModal">🎬 開催する</button>
             <button type="button" class="btn btn-blue" id="btn-settle-event" style="display:none;" data-bs-toggle="modal" data-bs-target="#settleModal">🏆 結果を入力</button>
+            <button type="button" class="btn btn-danger-outline" id="btn-cancel-event" style="display:none;" onclick="cancelEvent()">🛑 中止する</button>
+            <button type="button" class="btn btn-blue" id="btn-bets-overview" style="display:none;" data-bs-toggle="modal" data-bs-target="#betsOverviewModal">📋 賭け状況</button>
             <button type="button" class="btn btn-blue" id="btn-open-settings" data-bs-toggle="modal" data-bs-target="#settingsModal">⚙️ 設定</button>
         </div>
 
@@ -182,6 +206,15 @@
             </div>
         </div>
 
+        <!-- 中止済み -->
+        <div class="content-card" id="state-cancelled" style="display:none;">
+            <div class="empty-state">
+                <div class="empty-state-icon">🛑</div>
+                <h3>中止されました</h3>
+                <p class="text-muted">前回の決勝卓予想は中止されました。賭けていたマネーは全額返金されています。</p>
+            </div>
+        </div>
+
         <!-- 開催中（賭け受付） -->
         <div class="content-card" id="state-open" style="display:none;">
             <h3 class="section-title" id="open-event-title">🎯 決勝卓予想</h3>
@@ -192,6 +225,7 @@
                 <button type="button" class="bet-type-tab" data-type="trio" onclick="switchBetType('trio')">三連複</button>
                 <button type="button" class="bet-type-tab" data-type="trifecta" onclick="switchBetType('trifecta')">三連単</button>
             </div>
+            <div class="bet-type-desc" id="bet-type-desc"></div>
 
             <div id="win-bet-panel" class="bet-panel">
                 <div class="team-bet-grid" id="win-team-grid"></div>
@@ -205,6 +239,7 @@
                     <select class="form-select combo-pick" id="trio-pick-2" onchange="updateComboPicker('trio')"></select>
                     <select class="form-select combo-pick" id="trio-pick-3" onchange="updateComboPicker('trio')"></select>
                 </div>
+                <div class="combo-picker-preview" id="trio-picker-preview"></div>
                 <div class="combo-picker-odds" id="trio-picker-odds"></div>
             </div>
             <div id="trifecta-bet-panel" class="bet-panel" style="display:none;">
@@ -213,6 +248,7 @@
                     <select class="form-select combo-pick" id="trifecta-pick-2" onchange="updateComboPicker('trifecta')"></select>
                     <select class="form-select combo-pick" id="trifecta-pick-3" onchange="updateComboPicker('trifecta')"></select>
                 </div>
+                <div class="combo-picker-preview" id="trifecta-picker-preview"></div>
                 <div class="combo-picker-odds" id="trifecta-picker-odds"></div>
             </div>
 
@@ -326,6 +362,39 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
                 <button type="button" class="btn btn-primary" onclick="saveSettings()">保存する</button>
+            </div>
+        </div></div>
+    </div>
+
+    <!-- 賭け状況モーダル（管理者専用） -->
+    <div class="modal fade" id="betsOverviewModal" tabindex="-1">
+        <div class="modal-dialog modal-lg"><div class="modal-content">
+            <div class="modal-header modal-header-blue">
+                <h5 class="modal-title">📋 賭け状況</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="bets-overview-summary" class="bets-overview-summary"></div>
+
+                <div class="simulate-box">
+                    <div style="font-weight:700;margin-bottom:12px;">🔮 結果シミュレーション（未確定・試算のみ）</div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <select class="form-select" id="sim-select-1" onchange="runSimulation()"></select>
+                        <select class="form-select" id="sim-select-2" onchange="runSimulation()"></select>
+                        <select class="form-select" id="sim-select-3" onchange="runSimulation()"></select>
+                    </div>
+                    <div id="simulation-result" class="simulation-result"></div>
+                </div>
+
+                <div class="table-responsive mt-3">
+                    <table class="table table-sm" id="bets-overview-table">
+                        <thead><tr><th>参加者</th><th>賭式</th><th>選択</th><th>金額</th><th>オッズ</th></tr></thead>
+                        <tbody id="bets-overview-body"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
             </div>
         </div></div>
     </div>

@@ -1,6 +1,7 @@
 // 決勝卓予想（優勝チーム予想ベッティング）ページ用ロジック
 let isAdmin = false;
 let allTeams = [];
+let teamIconMap = {}; // team_name -> icon_url
 let currentUserId = null;
 let currentEvent = null;
 let bettingSettings = null;
@@ -15,6 +16,12 @@ let previewData = { place: [], trio: [], trifecta: [] };
 let previewTab = 'place';
 
 const BET_TYPE_LABELS = { win: '単勝', place: '複勝', trio: '三連複', trifecta: '三連単' };
+const BET_TYPE_DESCRIPTIONS = {
+    win: '🥇 1位になるチームを当てます。的中すればオッズ通りの配当がもらえます。',
+    place: '🎖️ 3位以内に入るチームを当てます。的中しやすい分、配当は控えめです。',
+    trio: '🎯 1〜3位に入る3チームを「順不同」で当てます。着順は関係ありません。',
+    trifecta: '🏆 1位・2位・3位を「着順通り」に当てます。的中は難しい分、高配当が狙えます。'
+};
 
 function escapeHtml(str) {
     return String(str || '')
@@ -23,6 +30,22 @@ function escapeHtml(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+}
+
+/** チームアイコンHTML（カード/表彰台向け・40px・中央揃え） */
+function teamIconBlockHtml(teamName) {
+    const url = teamIconMap[teamName];
+    return url
+        ? `<img src="${escapeHtml(url)}" class="team-icon-img" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'team-icon-placeholder',textContent:'🏅'}))">`
+        : `<span class="team-icon-placeholder">🏅</span>`;
+}
+
+/** チームアイコンHTML（文中向け・20px・インライン） */
+function teamIconInlineHtml(teamName) {
+    const url = teamIconMap[teamName];
+    return url
+        ? `<img src="${escapeHtml(url)}" class="team-icon-inline" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'team-icon-placeholder-inline',textContent:'🏅'}))">`
+        : `<span class="team-icon-placeholder-inline">🏅</span>`;
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -50,6 +73,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('settings-max-odds').value = s.max_odds;
         document.getElementById('settings-error').style.display = 'none';
     });
+
+    document.getElementById('betsOverviewModal').addEventListener('show.bs.modal', openBetsOverview);
 });
 
 async function checkAdminStatus() {
@@ -64,7 +89,11 @@ async function fetchTeams() {
         .from('poker_teams')
         .select('id, team_name, icon_url')
         .order('team_name');
-    if (!error) allTeams = data || [];
+    if (!error) {
+        allTeams = data || [];
+        teamIconMap = {};
+        allTeams.forEach(t => { if (t.icon_url) teamIconMap[t.team_name] = t.icon_url; });
+    }
 }
 
 async function fetchSettings() {
@@ -82,10 +111,13 @@ async function fetchSettings() {
 async function loadEventState() {
     document.getElementById('state-loading').style.display = '';
     document.getElementById('state-none').style.display = 'none';
+    document.getElementById('state-cancelled').style.display = 'none';
     document.getElementById('state-open').style.display = 'none';
     document.getElementById('state-settled').style.display = 'none';
     document.getElementById('btn-settle-event').style.display = 'none';
+    document.getElementById('btn-cancel-event').style.display = 'none';
     document.getElementById('btn-open-event').style.display = 'none';
+    document.getElementById('btn-bets-overview').style.display = 'none';
 
     const { data, error } = await supabaseClient
         .from('poker_finals_predictions')
@@ -108,9 +140,17 @@ async function loadEventState() {
         return;
     }
 
+    if (isAdmin) document.getElementById('btn-bets-overview').style.display = '';
+
     if (currentEvent.status === 'open') {
-        if (isAdmin) document.getElementById('btn-settle-event').style.display = '';
+        if (isAdmin) {
+            document.getElementById('btn-settle-event').style.display = '';
+            document.getElementById('btn-cancel-event').style.display = '';
+        }
         await renderOpenState();
+    } else if (currentEvent.status === 'cancelled') {
+        if (isAdmin) document.getElementById('btn-open-event').style.display = '';
+        document.getElementById('state-cancelled').style.display = '';
     } else {
         if (isAdmin) document.getElementById('btn-open-event').style.display = '';
         await renderSettledState();
@@ -126,6 +166,7 @@ async function renderOpenState() {
     const grid = document.getElementById('win-team-grid');
     grid.innerHTML = teams.map(t => `
         <div class="team-bet-card" data-team-name="${escapeHtml(t.team_name)}" onclick="selectWinTeam('${escapeHtml(t.team_name).replace(/'/g, "\\'")}')">
+            ${teamIconBlockHtml(t.team_name)}
             <div class="t-name">${escapeHtml(t.team_name)}</div>
             <div class="t-odds">${Number(t.odds).toFixed(1)}<span style="font-size:0.85rem;">倍</span></div>
             <div class="t-odds-label">単勝オッズ</div>
@@ -135,6 +176,7 @@ async function renderOpenState() {
     const placeGrid = document.getElementById('place-team-grid');
     placeGrid.innerHTML = (currentEvent.place_odds || []).map(t => `
         <div class="team-bet-card" data-team-name="${escapeHtml(t.team_name)}" onclick="selectPlaceTeam('${escapeHtml(t.team_name).replace(/'/g, "\\'")}')">
+            ${teamIconBlockHtml(t.team_name)}
             <div class="t-name">${escapeHtml(t.team_name)}</div>
             <div class="t-odds">${Number(t.odds).toFixed(1)}<span style="font-size:0.85rem;">倍</span></div>
             <div class="t-odds-label">複勝オッズ</div>
@@ -163,6 +205,7 @@ function switchBetType(type) {
     selectedOdds = null;
 
     document.querySelectorAll('.bet-type-tab').forEach(tab => tab.classList.toggle('active', tab.dataset.type === type));
+    document.getElementById('bet-type-desc').textContent = BET_TYPE_DESCRIPTIONS[type] || '';
     document.getElementById('win-bet-panel').style.display = type === 'win' ? '' : 'none';
     document.getElementById('place-bet-panel').style.display = type === 'place' ? '' : 'none';
     document.getElementById('trio-bet-panel').style.display = type === 'trio' ? '' : 'none';
@@ -174,6 +217,7 @@ function switchBetType(type) {
         document.getElementById(`${type}-pick-2`).value = '';
         document.getElementById(`${type}-pick-3`).value = '';
         document.getElementById(`${type}-picker-odds`).innerHTML = '';
+        document.getElementById(`${type}-picker-preview`).innerHTML = '';
         populateComboPickers(type);
     }
 
@@ -201,6 +245,13 @@ function updateComboPicker(type) {
 
     const picks = [1, 2, 3].map(s => document.getElementById(`${type}-pick-${s}`).value);
     const oddsEl = document.getElementById(`${type}-picker-odds`);
+    const previewEl = document.getElementById(`${type}-picker-preview`);
+
+    const labels = type === 'trifecta' ? ['1着', '2着', '3着'] : ['', '', ''];
+    previewEl.innerHTML = picks.map((p, i) => p
+        ? `<div class="cp-item">${teamIconBlockHtml(p)}<span>${labels[i] ? labels[i] + ' ' : ''}${escapeHtml(p)}</span></div>`
+        : ''
+    ).join('');
 
     if (picks.some(p => !p)) {
         oddsEl.innerHTML = '';
@@ -343,8 +394,9 @@ async function renderMyBets() {
             : won
                 ? `<span style="color:#4ade80;">+${(b.payout - b.amount).toLocaleString()}</span>`
                 : `<span style="color:#f87171;">-${Number(b.amount).toLocaleString()}</span>`;
+        const selectionHtml = b.selection.map(t => teamIconInlineHtml(t) + escapeHtml(t)).join(sep(b.bet_type));
         return `<div class="my-bet-row ${rowCls}">
-            <span><span class="bt-type">${BET_TYPE_LABELS[b.bet_type]}</span>${b.selection.map(escapeHtml).join(sep(b.bet_type))}</span>
+            <span><span class="bt-type">${BET_TYPE_LABELS[b.bet_type]}</span>${selectionHtml}</span>
             <span class="bt-amount">${Number(b.amount).toLocaleString()}マネー ・ ${Number(b.odds).toFixed(1)}倍</span>
             <span class="bt-payout">${payoutHtml}</span>
         </div>`;
@@ -356,9 +408,9 @@ async function renderMyBets() {
 // ===== 結果画面 =====
 async function renderSettledState() {
     const order = currentEvent.result_order || [];
-    document.getElementById('settled-1st').textContent = order[0] || '-';
-    document.getElementById('settled-2nd').textContent = order[1] || '-';
-    document.getElementById('settled-3rd').textContent = order[2] || '-';
+    document.getElementById('settled-1st').innerHTML = order[0] ? teamIconBlockHtml(order[0]) + escapeHtml(order[0]) : '-';
+    document.getElementById('settled-2nd').innerHTML = order[1] ? teamIconBlockHtml(order[1]) + escapeHtml(order[1]) : '-';
+    document.getElementById('settled-3rd').innerHTML = order[2] ? teamIconBlockHtml(order[2]) + escapeHtml(order[2]) : '-';
 
     const { data: myBets } = await supabaseClient
         .from('poker_finals_bets')
@@ -381,8 +433,9 @@ async function renderSettledState() {
 
         const rows = list.map(b => {
             const won = b.payout > 0;
+            const selectionHtml = b.selection.map(t => teamIconInlineHtml(t) + escapeHtml(t)).join(sep(b.bet_type));
             return `<div class="my-bet-row ${won ? 'win-row' : 'lose-row'}">
-                <span><span class="bt-type">${BET_TYPE_LABELS[b.bet_type]}</span>${b.selection.map(escapeHtml).join(sep(b.bet_type))}</span>
+                <span><span class="bt-type">${BET_TYPE_LABELS[b.bet_type]}</span>${selectionHtml}</span>
                 <span class="bt-amount">${Number(b.amount).toLocaleString()}マネー ・ ${Number(b.odds).toFixed(1)}倍</span>
                 <span class="bt-payout" style="color:${won ? '#4ade80' : '#f87171'};">${won ? '+' + (b.payout - b.amount).toLocaleString() : '-' + Number(b.amount).toLocaleString()}</span>
             </div>`;
@@ -681,4 +734,140 @@ async function saveSettings() {
     bettingSettings = { payout_rate: rate, min_odds: minOdds, max_odds: maxOdds };
     bootstrap.Modal.getInstance(document.getElementById('settingsModal'))?.hide();
     showNotice('設定を保存しました。', 'success');
+}
+
+// ===== 管理者: 中止（全額返金） =====
+async function cancelEvent() {
+    if (!currentEvent) return;
+    if (!confirm('決勝卓予想を中止します。すでに賭けられているマネーは全額返金されます。よろしいですか？')) return;
+
+    const { data, error } = await supabaseClient.rpc('poker_bet_cancel_event', {
+        p_event_id: currentEvent.id
+    });
+
+    if (error) {
+        showNotice('送信エラー: ' + error.message, 'error');
+        return;
+    }
+    if (!data.ok) {
+        showNotice(data.error || '中止に失敗しました。', 'warning');
+        return;
+    }
+
+    showNotice(`中止しました。${data.refunded}件（合計${Number(data.total_refund).toLocaleString()}マネー）を返金しました。`, 'success');
+    await loadEventState();
+}
+
+// ===== 管理者: 賭け状況一覧・結果シミュレーション =====
+let overviewBetsCache = [];
+
+async function openBetsOverview() {
+    document.getElementById('bets-overview-summary').textContent = '読み込み中...';
+    document.getElementById('bets-overview-body').innerHTML = '';
+    document.getElementById('simulation-result').innerHTML = '';
+    if (!currentEvent) return;
+
+    const { data: bets } = await supabaseClient
+        .from('poker_finals_bets')
+        .select('*')
+        .eq('event_id', currentEvent.id)
+        .order('created_at', { ascending: true });
+
+    overviewBetsCache = bets || [];
+
+    const userIds = [...new Set(overviewBetsCache.map(b => b.discord_user_id))];
+    let profileMap = {};
+    if (userIds.length > 0) {
+        const { data: profiles } = await supabaseClient
+            .from('profiles').select('discord_user_id, account_name, avatar_url').in('discord_user_id', userIds);
+        (profiles || []).forEach(p => { profileMap[p.discord_user_id] = p; });
+    }
+
+    renderBetsOverviewSummary();
+    renderBetsOverviewTable(profileMap);
+
+    const teams = currentEvent.teams || [];
+    const optHtml = '<option value="">選択してください</option>' +
+        teams.map(t => `<option value="${escapeHtml(t.team_name)}">${escapeHtml(t.team_name)}</option>`).join('');
+    document.getElementById('sim-select-1').innerHTML = optHtml;
+    document.getElementById('sim-select-2').innerHTML = optHtml;
+    document.getElementById('sim-select-3').innerHTML = optHtml;
+
+    if (currentEvent.status !== 'open' && currentEvent.result_order) {
+        document.getElementById('sim-select-1').value = currentEvent.result_order[0] || '';
+        document.getElementById('sim-select-2').value = currentEvent.result_order[1] || '';
+        document.getElementById('sim-select-3').value = currentEvent.result_order[2] || '';
+        runSimulation();
+    }
+}
+
+function renderBetsOverviewSummary() {
+    const total = overviewBetsCache.reduce((s, b) => s + b.amount, 0);
+    document.getElementById('bets-overview-summary').innerHTML =
+        `合計賭け金: <b>${total.toLocaleString()}</b> マネー （${overviewBetsCache.length}件）`;
+}
+
+function renderBetsOverviewTable(profileMap) {
+    const sep = t => t === 'trifecta' ? ' → ' : '・';
+    const body = document.getElementById('bets-overview-body');
+    if (overviewBetsCache.length === 0) {
+        body.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">まだ賭けがありません</td></tr>';
+        return;
+    }
+    body.innerHTML = overviewBetsCache.map(b => {
+        const p = profileMap[b.discord_user_id];
+        const name = p?.account_name || b.discord_user_id;
+        const avatarHtml = p?.avatar_url
+            ? `<img src="${escapeHtml(p.avatar_url)}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;margin-right:6px;vertical-align:middle;" alt="">`
+            : '';
+        const selectionHtml = b.selection.map(t => teamIconInlineHtml(t) + escapeHtml(t)).join(sep(b.bet_type));
+        return `<tr>
+            <td>${avatarHtml}${escapeHtml(name)}</td>
+            <td>${BET_TYPE_LABELS[b.bet_type]}</td>
+            <td>${selectionHtml}</td>
+            <td>${Number(b.amount).toLocaleString()}</td>
+            <td>${Number(b.odds).toFixed(1)}倍</td>
+        </tr>`;
+    }).join('');
+}
+
+/** 1〜3位を仮に指定した場合の的中件数・払戻総額を試算する（実際の確定処理は行わない） */
+function runSimulation() {
+    const s1 = document.getElementById('sim-select-1').value;
+    const s2 = document.getElementById('sim-select-2').value;
+    const s3 = document.getElementById('sim-select-3').value;
+    const resultEl = document.getElementById('simulation-result');
+
+    if (!s1 || !s2 || !s3) {
+        resultEl.innerHTML = '';
+        return;
+    }
+    if (new Set([s1, s2, s3]).size !== 3) {
+        resultEl.innerHTML = `<span style="color:#f87171;">同じチームが複数指定されています</span>`;
+        return;
+    }
+
+    const order = [s1, s2, s3];
+    const sortedOrder = [...order].sort();
+    let winners = 0;
+    let totalPayout = 0;
+
+    overviewBetsCache.forEach(b => {
+        let won = false;
+        if (b.bet_type === 'win') won = b.selection[0] === order[0];
+        else if (b.bet_type === 'place') won = order.includes(b.selection[0]);
+        else if (b.bet_type === 'trifecta') won = JSON.stringify(b.selection) === JSON.stringify(order);
+        else won = JSON.stringify([...b.selection].sort()) === JSON.stringify(sortedOrder);
+
+        if (won) {
+            winners++;
+            totalPayout += Math.round(b.amount * b.odds);
+        }
+    });
+
+    const totalStake = overviewBetsCache.reduce((s, b) => s + b.amount, 0);
+    const net = totalStake - totalPayout;
+
+    resultEl.innerHTML = `この結果の場合: <b>${winners}件</b>的中 ／ 払戻合計 <b>${totalPayout.toLocaleString()}</b> マネー<br>` +
+        `<span class="text-muted" style="font-size:0.85rem;">総賭け金 ${totalStake.toLocaleString()} に対する収支: ${net >= 0 ? '+' : ''}${net.toLocaleString()}</span>`;
 }
