@@ -10,6 +10,7 @@ let selectedBetType = 'win';
 let selectedSelection = null; // 配列。win/place=[team]、trio/trifecta=[team,team,team]
 let selectedOdds = null;
 let comboLists = { trio: [], trifecta: [] }; // 現在のイベントの全組み合わせ（オッズ検索用）
+let comboPickValue = { trio: ['', '', ''], trifecta: ['', '', ''] }; // 三連複・三連単ピッカーの選択状態
 
 let openEventRowSeq = 0;
 let previewData = { place: [], trio: [], trifecta: [] };
@@ -32,6 +33,15 @@ function escapeHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
+/** 要素を表示し、フェードイン・アップのアニメーションを毎回再生させる */
+function showCard(el) {
+    if (!el) return;
+    el.style.display = '';
+    el.classList.remove('anim-fade-in');
+    void el.offsetWidth; // reflow を強制してアニメーションを再トリガー
+    el.classList.add('anim-fade-in');
+}
+
 /** チームアイコンHTML（カード/表彰台向け・40px・中央揃え） */
 function teamIconBlockHtml(teamName) {
     const url = teamIconMap[teamName];
@@ -48,6 +58,16 @@ function teamIconInlineHtml(teamName) {
         : `<span class="team-icon-placeholder-inline">🏅</span>`;
 }
 
+/** {team_name/team_name, odds} を持つ配列をオッズ昇順（本命=強いチーム順）に並べ替え */
+function sortedByOdds(list) {
+    return [...(list || [])].sort((a, b) => a.odds - b.odds);
+}
+
+/** 現イベントのチーム名を単勝オッズ昇順で返す */
+function sortedTeamNamesByWinOdds() {
+    return sortedByOdds(currentEvent?.teams || []).map(t => t.team_name);
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     currentUserId = await getEffectiveUserId();
     await Promise.all([checkAdminStatus(), fetchTeams()]);
@@ -58,7 +78,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('settleModal').addEventListener('show.bs.modal', () => {
         document.getElementById('settle-error').style.display = 'none';
-        const teams = currentEvent?.teams || [];
+        const teams = sortedByOdds(currentEvent?.teams || []);
         const optHtml = '<option value="">選択してください</option>' +
             teams.map(t => `<option value="${escapeHtml(t.team_name)}">${escapeHtml(t.team_name)}</option>`).join('');
         document.getElementById('settle-select-1').innerHTML = optHtml;
@@ -135,7 +155,7 @@ async function loadEventState() {
     currentEvent = (data && data[0]) || null;
 
     if (!currentEvent) {
-        document.getElementById('state-none').style.display = '';
+        showCard(document.getElementById('state-none'));
         if (isAdmin) document.getElementById('btn-open-event').style.display = '';
         return;
     }
@@ -150,7 +170,7 @@ async function loadEventState() {
         await renderOpenState();
     } else if (currentEvent.status === 'cancelled') {
         if (isAdmin) document.getElementById('btn-open-event').style.display = '';
-        document.getElementById('state-cancelled').style.display = '';
+        showCard(document.getElementById('state-cancelled'));
     } else {
         if (isAdmin) document.getElementById('btn-open-event').style.display = '';
         await renderSettledState();
@@ -164,8 +184,8 @@ async function renderOpenState() {
     document.getElementById('open-event-title').textContent = `🎯 ${currentEvent.title}`;
 
     const grid = document.getElementById('win-team-grid');
-    grid.innerHTML = teams.map(t => `
-        <div class="team-bet-card" data-team-name="${escapeHtml(t.team_name)}" onclick="selectWinTeam('${escapeHtml(t.team_name).replace(/'/g, "\\'")}')">
+    grid.innerHTML = sortedByOdds(teams).map((t, i) => `
+        <div class="team-bet-card" style="--i:${i}" data-team-name="${escapeHtml(t.team_name)}" onclick="selectWinTeam('${escapeHtml(t.team_name).replace(/'/g, "\\'")}')">
             ${teamIconBlockHtml(t.team_name)}
             <div class="t-name">${escapeHtml(t.team_name)}</div>
             <div class="t-odds">${Number(t.odds).toFixed(1)}<span style="font-size:0.85rem;">倍</span></div>
@@ -174,8 +194,8 @@ async function renderOpenState() {
     `).join('');
 
     const placeGrid = document.getElementById('place-team-grid');
-    placeGrid.innerHTML = (currentEvent.place_odds || []).map(t => `
-        <div class="team-bet-card" data-team-name="${escapeHtml(t.team_name)}" onclick="selectPlaceTeam('${escapeHtml(t.team_name).replace(/'/g, "\\'")}')">
+    placeGrid.innerHTML = sortedByOdds(currentEvent.place_odds || []).map((t, i) => `
+        <div class="team-bet-card" style="--i:${i}" data-team-name="${escapeHtml(t.team_name)}" onclick="selectPlaceTeam('${escapeHtml(t.team_name).replace(/'/g, "\\'")}')">
             ${teamIconBlockHtml(t.team_name)}
             <div class="t-name">${escapeHtml(t.team_name)}</div>
             <div class="t-odds">${Number(t.odds).toFixed(1)}<span style="font-size:0.85rem;">倍</span></div>
@@ -189,7 +209,7 @@ async function renderOpenState() {
     switchBetType('win');
     await refreshBalance();
 
-    document.getElementById('state-open').style.display = '';
+    showCard(document.getElementById('state-open'));
     await renderMyBets();
 }
 
@@ -213,45 +233,89 @@ function switchBetType(type) {
 
     document.querySelectorAll('#win-team-grid .team-bet-card, #place-team-grid .team-bet-card').forEach(c => c.classList.remove('selected'));
     if (type === 'trio' || type === 'trifecta') {
-        document.getElementById(`${type}-pick-1`).value = '';
-        document.getElementById(`${type}-pick-2`).value = '';
-        document.getElementById(`${type}-pick-3`).value = '';
+        comboPickValue[type] = ['', '', ''];
         document.getElementById(`${type}-picker-odds`).innerHTML = '';
-        document.getElementById(`${type}-picker-preview`).innerHTML = '';
-        populateComboPickers(type);
+        renderComboPickerSlots(type);
     }
 
     updateSelectedHint();
 }
 
-/** 三連複・三連単の1〜3着（または組み合わせ）プルダウンを、既に選ばれているチームを除外しつつ再描画 */
-function populateComboPickers(type) {
-    const teamNames = (currentEvent?.teams || []).map(t => t.team_name);
+/** 三連複・三連単の1〜3着（または組み合わせ）スロットをアイコン付きカスタムドロップダウンとして描画 */
+function renderComboPickerSlots(type) {
     const labels = type === 'trifecta' ? ['1着', '2着', '3着'] : ['チーム1', 'チーム2', 'チーム3'];
-    for (let slot = 1; slot <= 3; slot++) {
-        const sel = document.getElementById(`${type}-pick-${slot}`);
-        const current = sel.value;
-        const others = [1, 2, 3].filter(s => s !== slot)
-            .map(s => document.getElementById(`${type}-pick-${s}`).value)
-            .filter(Boolean);
-        const options = teamNames.filter(t => t === current || !others.includes(t));
-        sel.innerHTML = `<option value="">${labels[slot - 1]}</option>` +
-            options.map(t => `<option value="${escapeHtml(t)}" ${t === current ? 'selected' : ''}>${escapeHtml(t)}</option>`).join('');
+    const container = document.getElementById(`${type}-pick-container`);
+    container.innerHTML = [1, 2, 3].map(slot => `
+        <div class="custom-dropdown-container combo-pick-wrap">
+            <div class="combo-pick-display" onclick="toggleComboPickList('${type}', ${slot})">
+                <span class="cp-slot-label">${labels[slot - 1]}</span>
+                <span class="cp-slot-value" id="${type}-pick-value-${slot}">未選択</span>
+                <span class="cp-caret">▼</span>
+            </div>
+            <div class="custom-dropdown-list" id="${type}-pick-list-${slot}"></div>
+        </div>
+    `).join('');
+}
+
+function toggleComboPickList(type, slot) {
+    const list = document.getElementById(`${type}-pick-list-${slot}`);
+    const wasOpen = list.classList.contains('open');
+    document.querySelectorAll('.custom-dropdown-list.open').forEach(l => l.classList.remove('open'));
+    if (wasOpen) return;
+
+    renderComboPickListItems(type, slot);
+    list.classList.add('open');
+
+    setTimeout(() => {
+        const h = (e) => {
+            if (!list.contains(e.target) && !e.target.closest('.combo-pick-wrap')) {
+                list.classList.remove('open');
+                document.removeEventListener('mousedown', h);
+            }
+        };
+        document.addEventListener('mousedown', h);
+    }, 10);
+}
+
+function renderComboPickListItems(type, slot) {
+    const list = document.getElementById(`${type}-pick-list-${slot}`);
+    const teamNames = sortedTeamNamesByWinOdds();
+    const others = [1, 2, 3].filter(s => s !== slot).map(s => comboPickValue[type][s - 1]).filter(Boolean);
+    const available = teamNames.filter(t => !others.includes(t));
+
+    let html = '';
+    if (comboPickValue[type][slot - 1]) {
+        html += `<div class="dropdown-item-flex" onclick="clearComboPickSlot('${type}', ${slot})"><span style="color:rgba(255,255,255,0.5);">選択解除</span></div>`;
     }
+    html += available.map(t => `
+        <div class="dropdown-item-flex" onclick="selectComboPickTeam('${type}', ${slot}, '${t.replace(/'/g, "\\'")}')">
+            ${teamIconInlineHtml(t)}<span>${escapeHtml(t)}</span>
+        </div>
+    `).join('');
+    list.innerHTML = html || '<div class="p-2 small text-muted">選択可能なチームがありません</div>';
+}
+
+function selectComboPickTeam(type, slot, teamName) {
+    comboPickValue[type][slot - 1] = teamName;
+    const display = document.getElementById(`${type}-pick-value-${slot}`).closest('.combo-pick-display');
+    document.getElementById(`${type}-pick-value-${slot}`).innerHTML = teamIconInlineHtml(teamName) + escapeHtml(teamName);
+    display.classList.add('filled');
+    document.getElementById(`${type}-pick-list-${slot}`).classList.remove('open');
+    updateComboPicker(type);
+}
+
+function clearComboPickSlot(type, slot) {
+    comboPickValue[type][slot - 1] = '';
+    const display = document.getElementById(`${type}-pick-value-${slot}`).closest('.combo-pick-display');
+    document.getElementById(`${type}-pick-value-${slot}`).textContent = '未選択';
+    display.classList.remove('filled');
+    document.getElementById(`${type}-pick-list-${slot}`).classList.remove('open');
+    updateComboPicker(type);
 }
 
 function updateComboPicker(type) {
-    populateComboPickers(type);
-
-    const picks = [1, 2, 3].map(s => document.getElementById(`${type}-pick-${s}`).value);
+    const picks = comboPickValue[type];
     const oddsEl = document.getElementById(`${type}-picker-odds`);
-    const previewEl = document.getElementById(`${type}-picker-preview`);
-
-    const labels = type === 'trifecta' ? ['1着', '2着', '3着'] : ['', '', ''];
-    previewEl.innerHTML = picks.map((p, i) => p
-        ? `<div class="cp-item">${teamIconBlockHtml(p)}<span>${labels[i] ? labels[i] + ' ' : ''}${escapeHtml(p)}</span></div>`
-        : ''
-    ).join('');
 
     if (picks.some(p => !p)) {
         oddsEl.innerHTML = '';
@@ -272,7 +336,7 @@ function updateComboPicker(type) {
 
     oddsEl.innerHTML = `オッズ: <b>${Number(entry.odds).toFixed(1)}倍</b>`;
     selectedBetType = type;
-    selectedSelection = picks;
+    selectedSelection = [...picks];
     selectedOdds = entry.odds;
     updateSelectedHint();
 }
@@ -450,7 +514,7 @@ async function renderSettledState() {
         `;
     }
 
-    document.getElementById('state-settled').style.display = '';
+    showCard(document.getElementById('state-settled'));
 }
 
 // ===== 管理者: 開催（オッズプレビュー付き） =====
@@ -786,7 +850,7 @@ async function openBetsOverview() {
     renderBetsOverviewSummary();
     renderBetsOverviewTable(profileMap);
 
-    const teams = currentEvent.teams || [];
+    const teams = sortedByOdds(currentEvent.teams || []);
     const optHtml = '<option value="">選択してください</option>' +
         teams.map(t => `<option value="${escapeHtml(t.team_name)}">${escapeHtml(t.team_name)}</option>`).join('');
     document.getElementById('sim-select-1').innerHTML = optHtml;
