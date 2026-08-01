@@ -32,6 +32,7 @@ function generateTopNav(basePath = '../') {
                 <div class="topnav-dropdown">
                     <a class="topnav-dd-item" href="${basePath}poker/index.html" data-page-path="/poker">📊 ランキング</a>
                     <a class="topnav-dd-item" href="${basePath}poker/record.html" data-page-path="/poker/record">📝 記録する</a>
+                    <a class="topnav-dd-item" href="${basePath}poker/betting.html" data-page-path="/poker/betting">🎰 決勝卓予想</a>
                     <a class="topnav-dd-item" href="${basePath}poker/users/index.html" data-page-path="/poker/users">👥 ユーザー一覧</a>
                     <a class="topnav-dd-item" href="${basePath}poker/team/index.html" data-page-path="/poker/team">🏅 チーム管理</a>
                 </div>
@@ -75,6 +76,7 @@ function generateTopNav(basePath = '../') {
         <div class="drawer-group-label" data-nav-group="poker">🃏 ポーカー大会</div>
         <a class="drawer-item drawer-sub" href="${basePath}poker/index.html" data-page-path="/poker" data-nav-group="poker">📊 ランキング</a>
         <a class="drawer-item drawer-sub" href="${basePath}poker/record.html" data-page-path="/poker/record" data-nav-group="poker">📝 記録する</a>
+        <a class="drawer-item drawer-sub" href="${basePath}poker/betting.html" data-page-path="/poker/betting" data-nav-group="poker">🎰 決勝卓予想</a>
         <a class="drawer-item drawer-sub" href="${basePath}poker/users/index.html" data-page-path="/poker/users" data-nav-group="poker">👥 ユーザー一覧</a>
         <a class="drawer-item drawer-sub" href="${basePath}poker/team/index.html" data-page-path="/poker/team" data-nav-group="poker">🏅 チーム管理</a>
         <div class="drawer-group-label" data-nav-group="fun">🎉 おたのしみ</div>

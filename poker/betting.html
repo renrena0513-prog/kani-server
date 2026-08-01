@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>決勝卓予想 | ポーカー大会</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../styles.css">
+    <style>
+        :root {
+            --primary-blue: #1a4d8c;
+            --deep-blue: #0d2f5c;
+            --cream: #faf5e8;
+            --gold: #d4a853;
+            --font-title: 'Noto Serif JP', serif;
+            --font-body: 'M PLUS Rounded 1c', sans-serif;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: var(--font-body); background: linear-gradient(135deg, #0d2f5c 0%, #1a4d8c 50%, #153d70 100%); min-height: 100vh; background-attachment: fixed; color: #fff; padding: 20px; }
+        .page-header { font-family: var(--font-title); color: white; text-shadow: 2px 4px 12px rgba(0,0,0,0.3); margin-bottom: 1rem; font-size: 2.4rem; letter-spacing: 2px; }
+        .content-card { background: rgba(255,255,255,0.1); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.18); border-radius: 24px; padding: 32px; box-shadow: 0 8px 32px rgba(0,0,0,0.25); margin-bottom: 25px; max-width: 900px; margin-left: auto; margin-right: auto; }
+        .section-title { font-family: var(--font-title); color: #fff; border-bottom: 2px solid rgba(212,168,83,0.7); padding-bottom: 10px; margin-bottom: 20px; font-size: 1.25rem; font-weight: 700; }
+        .text-muted { color: rgba(255,255,255,0.55) !important; }
+        .btn-blue { background: linear-gradient(135deg, var(--primary-blue), var(--deep-blue)); color: white; border: 1px solid rgba(255,255,255,0.2); padding: 10px 24px; border-radius: 20px; font-weight: 700; cursor: pointer; transition: all 0.3s; }
+        .btn-blue:hover { opacity: 0.85; transform: translateY(-1px); color: white; }
+        .btn-gold { background: linear-gradient(135deg, var(--gold) 0%, #b8892d 100%); border: none; color: white; font-weight: 700; padding: 12px 32px; border-radius: 50px; box-shadow: 0 8px 25px rgba(212,168,83,0.4); transition: all 0.3s; }
+        .btn-gold:hover { transform: translateY(-2px); box-shadow: 0 12px 35px rgba(212,168,83,0.5); color: white; }
+        .btn-gold:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .admin-action-bar { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 25px; }
+
+        /* 準備中 */
+        .empty-state { text-align: center; padding: 60px 20px; color: rgba(255,255,255,0.75); }
+        .empty-state-icon { font-size: 4rem; margin-bottom: 16px; }
+
+        /* チームカード（オッズ表示・賭け選択） */
+        .team-bet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px; }
+        .team-bet-card { background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.15); border-radius: 16px; padding: 18px; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .team-bet-card:hover { background: rgba(255,255,255,0.14); border-color: rgba(212,168,83,0.5); }
+        .team-bet-card.selected { border-color: var(--gold); background: rgba(212,168,83,0.18); box-shadow: 0 0 0 3px rgba(212,168,83,0.25); }
+        .team-bet-card.winner { border-color: #4ade80; background: rgba(74,222,128,0.15); }
+        .team-bet-card .t-name { font-weight: 700; font-size: 1.05rem; margin-bottom: 8px; }
+        .team-bet-card .t-odds { font-family: var(--font-title); font-size: 1.4rem; font-weight: 900; color: var(--gold); }
+        .team-bet-card .t-odds-label { font-size: 0.7rem; color: rgba(255,255,255,0.5); }
+
+        .bet-form-row { display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
+        .bet-form-row .form-control { background: rgba(255,255,255,0.15); border: 1.5px solid rgba(255,255,255,0.25); border-radius: 12px; padding: 10px 16px; color: #fff; max-width: 200px; }
+        .bet-form-row .form-control::placeholder { color: rgba(255,255,255,0.4); }
+        .balance-hint { text-align: center; color: rgba(255,255,255,0.6); font-size: 0.85rem; margin-top: 8px; }
+
+        .my-bet-card { background: rgba(212,168,83,0.12); border: 1.5px solid rgba(212,168,83,0.4); border-radius: 16px; padding: 20px; text-align: center; margin-top: 10px; }
+        .result-banner { text-align: center; padding: 24px; }
+        .result-banner .winner-name { font-family: var(--font-title); font-size: 1.8rem; font-weight: 900; color: var(--gold); margin: 10px 0; }
+        .result-outcome { text-align: center; padding: 24px; border-radius: 16px; margin-top: 16px; }
+        .result-outcome.win { background: rgba(74,222,128,0.15); border: 1.5px solid rgba(74,222,128,0.5); }
+        .result-outcome.lose { background: rgba(248,113,113,0.12); border: 1.5px solid rgba(248,113,113,0.4); }
+        .result-outcome .profit { font-family: var(--font-title); font-size: 2rem; font-weight: 900; }
+        .result-outcome.win .profit { color: #4ade80; }
+        .result-outcome.lose .profit { color: #f87171; }
+
+        /* 開催フォーム（チーム行） */
+        .team-row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+        .team-row .form-select, .team-row .form-control { flex: 1; }
+        .team-row .odds-input { max-width: 110px; flex: 0 0 110px; }
+        .team-row .btn-remove-row { background: none; border: none; color: rgba(255,255,255,0.4); font-size: 1.4rem; cursor: pointer; flex-shrink: 0; }
+        .team-row .btn-remove-row:hover { color: #f87171; }
+
+        /* モーダル */
+        .modal-content { background: rgba(13,47,92,0.95) !important; backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(255,255,255,0.18) !important; color: #fff !important; border-radius: 16px; }
+        .modal-content p, .modal-content span, .modal-content label, .modal-content h5, .modal-content div { color: #fff; }
+        .modal-content .text-muted { color: rgba(255,255,255,0.5) !important; }
+        .modal-content .form-label { color: rgba(255,255,255,0.8); }
+        .modal-content .form-control, .modal-content .form-select { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); color: #fff; }
+        .modal-content .form-control::placeholder { color: rgba(255,255,255,0.35); }
+        .modal-content .form-control:focus, .modal-content .form-select:focus { background: rgba(255,255,255,0.15); border-color: var(--gold); box-shadow: 0 0 0 3px rgba(212,168,83,0.2); color: #fff; }
+        .modal-content .form-select option { background: #0d2f5c; }
+        .modal-footer { border-top-color: rgba(255,255,255,0.12); }
+        .modal-header { border-bottom-color: rgba(255,255,255,0.12); }
+        .modal-header-blue { background: var(--deep-blue); color: white; }
+        .modal-header .btn-close { filter: brightness(0) invert(1); }
+
+        .nav-dropdown { position: fixed; top: 20px; right: 20px; z-index: 1000; }
+        .notification-badge { background: #dc3545; color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 10px; margin-left: auto; }
+    </style>
+</head>
+<body>
+    <!-- 右上ナビゲーション -->
+    <div class="nav-dropdown dropdown" style="position:fixed;top:20px;right:20px;z-index:1000;">
+        <button class="btn dropdown-toggle" type="button" id="navDropdown" data-bs-toggle="dropdown" aria-expanded="false"
+            style="background:linear-gradient(135deg,var(--gold) 0%,#b8892d 100%);color:white;padding:12px 24px;border-radius:25px;font-weight:bold;">
+            📝 メニュー
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navDropdown">
+            <li><a class="dropdown-item" href="../index.html">🏠 ホームに戻る</a></li>
+            <li><a class="dropdown-item" href="../mypage/index.html">👤 マイページ</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="./index.html">🃏 ランキング</a></li>
+            <li><a class="dropdown-item" href="./record.html">📝 記録する</a></li>
+            <li><a class="dropdown-item" href="./betting.html">🎰 決勝卓予想</a></li>
+            <li><a class="dropdown-item" href="./rules.html">📖 順位報酬ルール</a></li>
+            <li><a class="dropdown-item" href="./users/index.html">👥 ユーザー一覧</a></li>
+            <li><a class="dropdown-item" href="./team/index.html">🏅 チーム管理
+                <span id="team-notification-badge" class="notification-badge" style="display:none;">0</span></a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="../badge/list.html">📛 バッジ一覧</a></li>
+            <li><a class="dropdown-item" href="../badge/shop.html">🛒 バッジショップ</a></li>
+            <li><a class="dropdown-item" href="../ranking/index.html">💵 資産ランキング</a></li>
+            <li class="admin-only" style="display:none;"><hr class="dropdown-divider"></li>
+            <li class="admin-only" style="display:none;"><a class="dropdown-item" href="../admin/index.html">⚙️ 管理画面</a></li>
+        </ul>
+    </div>
+
+    <div class="container py-5" style="padding-top:80px!important;max-width:1000px;">
+        <header class="text-center">
+            <h1 class="page-header fw-bold">🎰 決勝卓予想</h1>
+            <p class="text-muted mb-4">決勝卓で優勝するチームを予想して、マネーを賭けよう！</p>
+        </header>
+
+        <!-- 管理者操作 -->
+        <div class="admin-action-bar admin-only" style="display:none;">
+            <button type="button" class="btn btn-blue" id="btn-open-event" style="display:none;" data-bs-toggle="modal" data-bs-target="#openEventModal">🎬 開催する</button>
+            <button type="button" class="btn btn-blue" id="btn-settle-event" style="display:none;" data-bs-toggle="modal" data-bs-target="#settleModal">🏆 結果を入力</button>
+        </div>
+
+        <!-- 読み込み中 -->
+        <div class="content-card text-center" id="state-loading">
+            <div class="spinner-border text-light" style="width:3rem;height:3rem;"></div>
+        </div>
+
+        <!-- 準備中 -->
+        <div class="content-card" id="state-none" style="display:none;">
+            <div class="empty-state">
+                <div class="empty-state-icon">🎲</div>
+                <h3>準備中</h3>
+                <p class="text-muted">決勝卓予想はまだ開催されていません。開催をお待ちください。</p>
+            </div>
+        </div>
+
+        <!-- 開催中（賭け受付） -->
+        <div class="content-card" id="state-open" style="display:none;">
+            <h3 class="section-title" id="open-event-title">🎯 決勝卓予想</h3>
+            <div class="team-bet-grid" id="open-team-grid"></div>
+
+            <div id="bet-form-area">
+                <div class="bet-form-row">
+                    <input type="number" class="form-control" id="bet-amount-input" placeholder="賭けるマネー" min="1">
+                    <button type="button" class="btn btn-gold" id="btn-place-bet" onclick="placeBet()" disabled>賭ける</button>
+                </div>
+                <div class="balance-hint">所持マネー: <span id="my-balance-display">-</span></div>
+            </div>
+
+            <div id="my-bet-area" style="display:none;"></div>
+        </div>
+
+        <!-- 結果画面 -->
+        <div class="content-card" id="state-settled" style="display:none;">
+            <div class="result-banner">
+                <div class="text-muted">優勝チーム</div>
+                <div class="winner-name" id="settled-winner-name">-</div>
+            </div>
+            <div class="team-bet-grid" id="settled-team-grid"></div>
+            <div id="settled-outcome-area"></div>
+        </div>
+    </div>
+
+    <!-- 開催モーダル -->
+    <div class="modal fade" id="openEventModal" tabindex="-1">
+        <div class="modal-dialog"><div class="modal-content">
+            <div class="modal-header modal-header-blue">
+                <h5 class="modal-title">🎬 決勝卓予想を開催する</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label">タイトル（任意）</label>
+                <input type="text" class="form-control mb-3" id="open-event-title-input" placeholder="決勝卓予想">
+
+                <label class="form-label">参加チームとオッズ</label>
+                <div id="open-event-team-rows"></div>
+                <button type="button" class="btn btn-sm btn-outline-light mt-2" onclick="addOpenEventTeamRow()">＋ チームを追加</button>
+
+                <div id="open-event-error" class="text-danger mt-3" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                <button type="button" class="btn btn-primary" id="btn-confirm-open" onclick="confirmOpenEvent()">開催する</button>
+            </div>
+        </div></div>
+    </div>
+
+    <!-- 結果入力モーダル -->
+    <div class="modal fade" id="settleModal" tabindex="-1">
+        <div class="modal-dialog"><div class="modal-content">
+            <div class="modal-header modal-header-blue">
+                <h5 class="modal-title">🏆 結果を入力</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">優勝したチームを選択してください。全プレイヤーへの払戻が確定します。</p>
+                <div id="settle-team-list"></div>
+                <div id="settle-error" class="text-danger mt-3" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                <button type="button" class="btn btn-primary" id="btn-confirm-settle" onclick="confirmSettleEvent()" disabled>結果を確定する</button>
+            </div>
+        </div></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabase-config.js"></script>
+    <script src="../js/auth-guard.js"></script>
+    <script src="../js/survey-modal.js"></script>
+    <script src="../js/navigation.js"></script>
+    <script src="../js/poker-betting.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            initAccordionNav('../');
+        });
+    </script>
+</body>
+</html>
