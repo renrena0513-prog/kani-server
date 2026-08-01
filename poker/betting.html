@@ -35,37 +35,80 @@
         .empty-state { text-align: center; padding: 60px 20px; color: rgba(255,255,255,0.75); }
         .empty-state-icon { font-size: 4rem; margin-bottom: 16px; }
 
-        /* チームカード（オッズ表示・賭け選択） */
-        .team-bet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px; }
-        .team-bet-card { background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.15); border-radius: 16px; padding: 18px; text-align: center; cursor: pointer; transition: all 0.2s; }
+        /* 賭式タブ */
+        .bet-type-tabs { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+        .bet-type-tab { background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.75); padding: 8px 20px; border-radius: 20px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+        .bet-type-tab:hover { background: rgba(255,255,255,0.14); }
+        .bet-type-tab.active { background: rgba(212,168,83,0.25); border-color: var(--gold); color: var(--gold); }
+
+        /* チームカード（単勝） */
+        .team-bet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .team-bet-card { background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.15); border-radius: 16px; padding: 16px; text-align: center; cursor: pointer; transition: all 0.2s; }
         .team-bet-card:hover { background: rgba(255,255,255,0.14); border-color: rgba(212,168,83,0.5); }
         .team-bet-card.selected { border-color: var(--gold); background: rgba(212,168,83,0.18); box-shadow: 0 0 0 3px rgba(212,168,83,0.25); }
-        .team-bet-card.winner { border-color: #4ade80; background: rgba(74,222,128,0.15); }
-        .team-bet-card .t-name { font-weight: 700; font-size: 1.05rem; margin-bottom: 8px; }
-        .team-bet-card .t-odds { font-family: var(--font-title); font-size: 1.4rem; font-weight: 900; color: var(--gold); }
+        .team-bet-card.rank-1 { border-color: #ffd700; background: rgba(255,215,0,0.15); }
+        .team-bet-card.rank-2 { border-color: #c0c0c0; background: rgba(192,192,192,0.12); }
+        .team-bet-card.rank-3 { border-color: #cd7f32; background: rgba(205,127,50,0.12); }
+        .team-bet-card .t-name { font-weight: 700; font-size: 1rem; margin-bottom: 6px; }
+        .team-bet-card .t-odds { font-family: var(--font-title); font-size: 1.3rem; font-weight: 900; color: var(--gold); }
         .team-bet-card .t-odds-label { font-size: 0.7rem; color: rgba(255,255,255,0.5); }
+
+        /* 三連複・三連単ピッカー（着順/組み合わせをプルダウンで選択） */
+        .combo-picker-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+        .combo-picker-row .combo-pick { flex: 1; min-width: 140px; }
+        .combo-picker-odds { text-align: center; font-size: 1rem; min-height: 1.6em; margin-bottom: 16px; color: rgba(255,255,255,0.8); }
+        .combo-picker-odds b { font-family: var(--font-title); font-size: 1.3rem; color: var(--gold); }
 
         .bet-form-row { display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
         .bet-form-row .form-control { background: rgba(255,255,255,0.15); border: 1.5px solid rgba(255,255,255,0.25); border-radius: 12px; padding: 10px 16px; color: #fff; max-width: 200px; }
         .bet-form-row .form-control::placeholder { color: rgba(255,255,255,0.4); }
         .balance-hint { text-align: center; color: rgba(255,255,255,0.6); font-size: 0.85rem; margin-top: 8px; }
+        .payout-preview { text-align: center; font-size: 0.9rem; color: rgba(255,255,255,0.75); min-height: 1.3em; margin-top: 6px; }
+        .payout-preview b { color: var(--gold); font-family: var(--font-title); }
+        .selected-hint { text-align: center; color: rgba(255,255,255,0.85); font-size: 0.95rem; margin-bottom: 4px; min-height: 1.3em; }
+        .selected-hint b { color: var(--gold); }
 
-        .my-bet-card { background: rgba(212,168,83,0.12); border: 1.5px solid rgba(212,168,83,0.4); border-radius: 16px; padding: 20px; text-align: center; margin-top: 10px; }
-        .result-banner { text-align: center; padding: 24px; }
-        .result-banner .winner-name { font-family: var(--font-title); font-size: 1.8rem; font-weight: 900; color: var(--gold); margin: 10px 0; }
-        .result-outcome { text-align: center; padding: 24px; border-radius: 16px; margin-top: 16px; }
-        .result-outcome.win { background: rgba(74,222,128,0.15); border: 1.5px solid rgba(74,222,128,0.5); }
-        .result-outcome.lose { background: rgba(248,113,113,0.12); border: 1.5px solid rgba(248,113,113,0.4); }
-        .result-outcome .profit { font-family: var(--font-title); font-size: 2rem; font-weight: 900; }
-        .result-outcome.win .profit { color: #4ade80; }
-        .result-outcome.lose .profit { color: #f87171; }
+        /* 自分の賭け一覧 */
+        .my-bets-list { margin-top: 10px; }
+        .my-bet-row { display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.06); border-radius: 12px; padding: 10px 16px; margin-bottom: 8px; font-size: 0.88rem; }
+        .my-bet-row .bt-type { background: rgba(212,168,83,0.25); color: var(--gold); padding: 2px 10px; border-radius: 10px; font-weight: 700; font-size: 0.75rem; margin-right: 8px; }
+        .my-bet-row.win-row { border-left: 3px solid #4ade80; }
+        .my-bet-row.lose-row { border-left: 3px solid #f87171; opacity: 0.75; }
+        .my-bet-row .bt-amount { color: rgba(255,255,255,0.6); margin-left: 8px; }
+        .my-bet-row .bt-payout { font-weight: 700; margin-left: auto; padding-left: 10px; }
+
+        .result-banner { text-align: center; padding: 10px 0 24px; }
+        .podium-row { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; }
+        .podium-item { text-align: center; }
+        .podium-item .rank-label { font-size: 0.75rem; color: rgba(255,255,255,0.5); }
+        .podium-item .rank-team { font-family: var(--font-title); font-size: 1.3rem; font-weight: 900; margin-top: 4px; }
+        .podium-item.p1 .rank-team { color: #ffd700; }
+        .podium-item.p2 .rank-team { color: #c0c0c0; }
+        .podium-item.p3 .rank-team { color: #cd7f32; }
+        .profit-summary { text-align: center; padding: 20px; border-radius: 16px; margin: 16px 0; }
+        .profit-summary.win { background: rgba(74,222,128,0.15); border: 1.5px solid rgba(74,222,128,0.5); }
+        .profit-summary.lose { background: rgba(248,113,113,0.12); border: 1.5px solid rgba(248,113,113,0.4); }
+        .profit-summary.none { background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.15); }
+        .profit-summary .profit { font-family: var(--font-title); font-size: 2rem; font-weight: 900; }
+        .profit-summary.win .profit { color: #4ade80; }
+        .profit-summary.lose .profit { color: #f87171; }
 
         /* 開催フォーム（チーム行） */
         .team-row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
-        .team-row .form-select, .team-row .form-control { flex: 1; }
+        .team-row .form-control, .team-row .form-select { flex: 1; }
         .team-row .odds-input { max-width: 110px; flex: 0 0 110px; }
         .team-row .btn-remove-row { background: none; border: none; color: rgba(255,255,255,0.4); font-size: 1.4rem; cursor: pointer; flex-shrink: 0; }
         .team-row .btn-remove-row:hover { color: #f87171; }
+
+        /* プレビュー */
+        .preview-section { margin-top: 18px; }
+        .preview-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+        .preview-tab { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.7); padding: 4px 14px; border-radius: 14px; font-size: 0.8rem; cursor: pointer; }
+        .preview-tab.active { background: rgba(212,168,83,0.2); border-color: var(--gold); color: var(--gold); }
+        .preview-table-wrap { max-height: 220px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; }
+        .preview-table-wrap table { width: 100%; font-size: 0.82rem; }
+        .preview-table-wrap th, .preview-table-wrap td { padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .settings-hint { font-size: 0.78rem; color: rgba(255,255,255,0.45); margin-top: 6px; }
 
         /* モーダル */
         .modal-content { background: rgba(13,47,92,0.95) !important; backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(255,255,255,0.18) !important; color: #fff !important; border-radius: 16px; }
@@ -122,6 +165,7 @@
         <div class="admin-action-bar admin-only" style="display:none;">
             <button type="button" class="btn btn-blue" id="btn-open-event" style="display:none;" data-bs-toggle="modal" data-bs-target="#openEventModal">🎬 開催する</button>
             <button type="button" class="btn btn-blue" id="btn-settle-event" style="display:none;" data-bs-toggle="modal" data-bs-target="#settleModal">🏆 結果を入力</button>
+            <button type="button" class="btn btn-blue" id="btn-open-settings" data-bs-toggle="modal" data-bs-target="#settingsModal">⚙️ 設定</button>
         </div>
 
         <!-- 読み込み中 -->
@@ -141,33 +185,67 @@
         <!-- 開催中（賭け受付） -->
         <div class="content-card" id="state-open" style="display:none;">
             <h3 class="section-title" id="open-event-title">🎯 決勝卓予想</h3>
-            <div class="team-bet-grid" id="open-team-grid"></div>
 
-            <div id="bet-form-area">
-                <div class="bet-form-row">
-                    <input type="number" class="form-control" id="bet-amount-input" placeholder="賭けるマネー" min="1">
-                    <button type="button" class="btn btn-gold" id="btn-place-bet" onclick="placeBet()" disabled>賭ける</button>
-                </div>
-                <div class="balance-hint">所持マネー: <span id="my-balance-display">-</span></div>
+            <div class="bet-type-tabs">
+                <button type="button" class="bet-type-tab active" data-type="win" onclick="switchBetType('win')">単勝</button>
+                <button type="button" class="bet-type-tab" data-type="place" onclick="switchBetType('place')">複勝</button>
+                <button type="button" class="bet-type-tab" data-type="trio" onclick="switchBetType('trio')">三連複</button>
+                <button type="button" class="bet-type-tab" data-type="trifecta" onclick="switchBetType('trifecta')">三連単</button>
             </div>
 
-            <div id="my-bet-area" style="display:none;"></div>
+            <div id="win-bet-panel" class="bet-panel">
+                <div class="team-bet-grid" id="win-team-grid"></div>
+            </div>
+            <div id="place-bet-panel" class="bet-panel" style="display:none;">
+                <div class="team-bet-grid" id="place-team-grid"></div>
+            </div>
+            <div id="trio-bet-panel" class="bet-panel" style="display:none;">
+                <div class="combo-picker-row">
+                    <select class="form-select combo-pick" id="trio-pick-1" onchange="updateComboPicker('trio')"></select>
+                    <select class="form-select combo-pick" id="trio-pick-2" onchange="updateComboPicker('trio')"></select>
+                    <select class="form-select combo-pick" id="trio-pick-3" onchange="updateComboPicker('trio')"></select>
+                </div>
+                <div class="combo-picker-odds" id="trio-picker-odds"></div>
+            </div>
+            <div id="trifecta-bet-panel" class="bet-panel" style="display:none;">
+                <div class="combo-picker-row">
+                    <select class="form-select combo-pick" id="trifecta-pick-1" onchange="updateComboPicker('trifecta')"></select>
+                    <select class="form-select combo-pick" id="trifecta-pick-2" onchange="updateComboPicker('trifecta')"></select>
+                    <select class="form-select combo-pick" id="trifecta-pick-3" onchange="updateComboPicker('trifecta')"></select>
+                </div>
+                <div class="combo-picker-odds" id="trifecta-picker-odds"></div>
+            </div>
+
+            <div class="selected-hint" id="selected-hint">チームを選択してください</div>
+            <div class="bet-form-row">
+                <input type="number" class="form-control" id="bet-amount-input" placeholder="賭けるマネー" min="1" oninput="updatePayoutPreview()">
+                <button type="button" class="btn btn-gold" id="btn-place-bet" onclick="placeBet()" disabled>賭ける</button>
+            </div>
+            <div class="payout-preview" id="payout-preview"></div>
+            <div class="balance-hint">所持マネー: <span id="my-balance-display">-</span></div>
+
+            <div id="my-bets-section" style="display:none;">
+                <h3 class="section-title" style="margin-top:28px;">📋 あなたの賭け</h3>
+                <div class="my-bets-list" id="my-bets-list"></div>
+            </div>
         </div>
 
         <!-- 結果画面 -->
         <div class="content-card" id="state-settled" style="display:none;">
             <div class="result-banner">
-                <div class="text-muted">優勝チーム</div>
-                <div class="winner-name" id="settled-winner-name">-</div>
+                <div class="podium-row">
+                    <div class="podium-item p1"><div class="rank-label">🥇 1位</div><div class="rank-team" id="settled-1st">-</div></div>
+                    <div class="podium-item p2"><div class="rank-label">🥈 2位</div><div class="rank-team" id="settled-2nd">-</div></div>
+                    <div class="podium-item p3"><div class="rank-label">🥉 3位</div><div class="rank-team" id="settled-3rd">-</div></div>
+                </div>
             </div>
-            <div class="team-bet-grid" id="settled-team-grid"></div>
             <div id="settled-outcome-area"></div>
         </div>
     </div>
 
     <!-- 開催モーダル -->
     <div class="modal fade" id="openEventModal" tabindex="-1">
-        <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-dialog modal-lg"><div class="modal-content">
             <div class="modal-header modal-header-blue">
                 <h5 class="modal-title">🎬 決勝卓予想を開催する</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -176,11 +254,26 @@
                 <label class="form-label">タイトル（任意）</label>
                 <input type="text" class="form-control mb-3" id="open-event-title-input" placeholder="決勝卓予想">
 
-                <label class="form-label">参加チームとオッズ</label>
+                <label class="form-label">参加チームと単勝オッズ</label>
                 <div id="open-event-team-rows"></div>
                 <button type="button" class="btn btn-sm btn-outline-light mt-2" onclick="addOpenEventTeamRow()">＋ チームを追加</button>
+                <div class="settings-hint" id="open-event-settings-hint"></div>
 
                 <div id="open-event-error" class="text-danger mt-3" style="display:none;"></div>
+
+                <div class="preview-section">
+                    <div class="preview-tabs">
+                        <button type="button" class="preview-tab active" data-ptab="place" onclick="switchPreviewTab('place')">複勝プレビュー</button>
+                        <button type="button" class="preview-tab" data-ptab="trio" onclick="switchPreviewTab('trio')">三連複プレビュー</button>
+                        <button type="button" class="preview-tab" data-ptab="trifecta" onclick="switchPreviewTab('trifecta')">三連単プレビュー</button>
+                    </div>
+                    <div class="preview-table-wrap">
+                        <table class="table table-sm mb-0" id="preview-table">
+                            <thead><tr><th>組み合わせ</th><th>オッズ</th></tr></thead>
+                            <tbody id="preview-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
@@ -197,13 +290,42 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p class="text-muted">優勝したチームを選択してください。全プレイヤーへの払戻が確定します。</p>
-                <div id="settle-team-list"></div>
+                <p class="text-muted">決勝卓の1位・2位・3位を選択してください。全プレイヤーへの払戻が確定します。</p>
+                <label class="form-label">🥇 1位</label>
+                <select class="form-select mb-2" id="settle-select-1"></select>
+                <label class="form-label">🥈 2位</label>
+                <select class="form-select mb-2" id="settle-select-2"></select>
+                <label class="form-label">🥉 3位</label>
+                <select class="form-select mb-2" id="settle-select-3"></select>
                 <div id="settle-error" class="text-danger mt-3" style="display:none;"></div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
-                <button type="button" class="btn btn-primary" id="btn-confirm-settle" onclick="confirmSettleEvent()" disabled>結果を確定する</button>
+                <button type="button" class="btn btn-primary" onclick="confirmSettleEvent()">結果を確定する</button>
+            </div>
+        </div></div>
+    </div>
+
+    <!-- 設定モーダル -->
+    <div class="modal fade" id="settingsModal" tabindex="-1">
+        <div class="modal-dialog"><div class="modal-content">
+            <div class="modal-header modal-header-blue">
+                <h5 class="modal-title">⚙️ 決勝卓予想 設定</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label">払戻率（%）</label>
+                <input type="number" class="form-control mb-3" id="settings-payout-rate" step="1" min="1" max="100">
+                <label class="form-label">最低オッズ</label>
+                <input type="number" class="form-control mb-3" id="settings-min-odds" step="0.1" min="1">
+                <label class="form-label">最高オッズ</label>
+                <input type="number" class="form-control mb-3" id="settings-max-odds" step="1" min="1">
+                <p class="text-muted" style="font-size:0.82rem;">次回以降に開催するイベントから適用されます。</p>
+                <div id="settings-error" class="text-danger" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                <button type="button" class="btn btn-primary" onclick="saveSettings()">保存する</button>
             </div>
         </div></div>
     </div>
