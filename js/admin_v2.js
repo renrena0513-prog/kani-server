@@ -2522,12 +2522,13 @@ function buildLogActionButtons() {
         ticket_transfer: '🎟️ チケット譲渡',
         ticket_receive: '🎫 チケット受取',
         omikuji: '⛩️ おみくじ',
+        omikuji_chip: '🪙 チップおみくじ',
         mahjong: '🀄 麻雀',
         admin_edit: '🔧 管理者調整',
         'レアリティ改定調整': '🧪 レアリティ改定調整'
     };
     const preferredOrder = [
-        'gacha_draw', 'mahjong', 'omikuji',
+        'gacha_draw', 'mahjong', 'omikuji', 'omikuji_chip',
         'transfer_send', 'transfer_receive',
         'badge_purchase', 'badge_sell', 'badge_transfer', 'badge_receive', 'royalty_receive',
         'ticket_transfer', 'ticket_receive',
@@ -2563,6 +2564,7 @@ async function loadLogActionTypes() {
         'ticket_transfer',
         'ticket_receive',
         'omikuji',
+        'omikuji_chip',
         'mahjong',
         'admin_edit',
         'レアリティ改定調整'
@@ -2749,6 +2751,7 @@ async function fetchActivityLogs(page = 1) {
                 'transfer_send': { icon: '💸', label: '送金' },
                 'transfer_receive': { icon: '📩', label: '受取' },
                 'omikuji': { icon: '⛩️', label: 'おみくじ' },
+                'omikuji_chip': { icon: '🪙', label: 'チップおみくじ' },
                 'ticket_transfer': { icon: '🎟️', label: 'チケット譲渡' },
                 'ticket_receive': { icon: '🎫', label: 'チケット受取' },
                 'admin_edit': { icon: '🔧', label: '管理者調整' },
@@ -2806,7 +2809,7 @@ async function fetchActivityLogs(page = 1) {
                     }
                 }
             }
-            if (log.action_type === 'omikuji') {
+            if (log.action_type === 'omikuji' || log.action_type === 'omikuji_chip') {
                 if (details?.rank) detailParts.push(`結果: ${details.rank}`);
                 if (details?.message) detailParts.push(`文言: ${details.message}`);
                 if (details?.ticket_reward !== undefined) detailParts.push(`🎫: ${details.ticket_reward}枚`);
@@ -2861,12 +2864,12 @@ function changeLogsPage(delta) {
     }
 }
 
-async function clearOmikujiDateIfNeeded(logId, userId) {
-    if (userId) {
-        await supabaseClient.from('profiles')
-            .update({ last_omikuji_at: null, consecutive_omikuji_days: 0 })
-            .eq('discord_user_id', userId);
-    }
+async function clearOmikujiDateIfNeeded(logId, userId, actionType) {
+    if (!userId) return;
+    const payload = actionType === 'omikuji_chip'
+        ? { last_chip_omikuji_at: null, consecutive_chip_omikuji_days: 0 }
+        : { last_omikuji_at: null, consecutive_omikuji_days: 0 };
+    await supabaseClient.from('profiles').update(payload).eq('discord_user_id', userId);
 }
 
 async function revertLog(logId) {
@@ -2882,8 +2885,8 @@ async function revertLog(logId) {
         if (error) throw error;
 
         if (data?.ok) {
-            if (logData?.action_type === 'omikuji') {
-                await clearOmikujiDateIfNeeded(logId, logData.user_id);
+            if (logData?.action_type === 'omikuji' || logData?.action_type === 'omikuji_chip') {
+                await clearOmikujiDateIfNeeded(logId, logData.user_id, logData.action_type);
             }
             alert('成功');
             fetchActivityLogs(currentLogsPage);
@@ -2943,8 +2946,8 @@ async function revertSelectedLogs() {
             if (error) throw error;
             if (data?.ok) {
                 const log = logMap[logId];
-                if (log?.action_type === 'omikuji') {
-                    await clearOmikujiDateIfNeeded(logId, log.user_id);
+                if (log?.action_type === 'omikuji' || log?.action_type === 'omikuji_chip') {
+                    await clearOmikujiDateIfNeeded(logId, log.user_id, log.action_type);
                 }
                 successCount++;
             } else errorCount++;

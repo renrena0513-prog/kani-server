@@ -201,10 +201,16 @@
 
     <div class="jp-wrap">
         <h1 class="jp-title">御神籤ランキング</h1>
-        <p class="jp-subtitle">おみくじで得たマネーの総額くらべ</p>
+        <p class="jp-subtitle" id="ranking-subtitle">おみくじで得たマネーの総額くらべ</p>
 
-        <!-- 期間切り替えタブ -->
+        <!-- 通貨切り替えタブ -->
         <div class="jp-tabs">
+            <button class="jp-tab jp-currency-tab active" data-currency="coin" onclick="switchCurrency('coin')">💰 マネー版</button>
+            <button class="jp-tab jp-currency-tab" data-currency="chip" onclick="switchCurrency('chip')">🪙 チップ版</button>
+        </div>
+
+        <!-- 期間切り替えタブ（マネー版のみ） -->
+        <div class="jp-tabs" id="period-tabs">
             <button class="jp-tab active" data-mode="all" onclick="switchMode('all')">📜 今までの全部</button>
             <button class="jp-tab" data-mode="new" onclick="switchMode('new')">🎋 新おみくじ<span class="jp-tab-sub">6/21〜</span></button>
         </div>
@@ -216,8 +222,8 @@
                 <div class="jp-total-value"><span id="total-draws">-</span><span class="jp-total-unit">回</span></div>
             </div>
             <div class="jp-total-box">
-                <div class="jp-total-label">💰 総排出マネー</div>
-                <div class="jp-total-value"><span id="total-money">-</span><span class="jp-total-unit">マネー</span></div>
+                <div class="jp-total-label" id="total-money-label">💰 総排出マネー</div>
+                <div class="jp-total-value"><span id="total-money">-</span><span class="jp-total-unit" id="total-money-unit">マネー</span></div>
             </div>
         </div>
 
@@ -240,12 +246,14 @@
         // 新おみくじ開始: 2026年6月21日 00:00 JST（= 前日15:00 UTC）
         const NEW_OMIKUJI_START = new Date('2026-06-20T15:00:00Z').getTime();
 
-        let allLogs = [];        // { user_id, amount, created_at } 全期間分をキャッシュ
+        let allLogs = [];        // { user_id, amount, created_at } マネー版（omikuji）全期間分をキャッシュ
+        let allChipLogs = [];    // チップ版（omikuji_chip）全期間分をキャッシュ
         let profileMap = {};     // discord_user_id -> profile
-        let currentMode = 'all'; // 'all' | 'new'
+        let currentMode = 'all'; // 'all' | 'new'（マネー版のみ使用）
+        let currentCurrency = 'coin'; // 'coin' | 'chip'
 
         // activity_logs はデフォルト1000件上限のためページ送りで全件取得
-        async function fetchAllOmikujiLogs() {
+        async function fetchAllLogsByAction(actionType) {
             const batchSize = 1000;
             let all = [];
             let from = 0;
@@ -253,7 +261,7 @@
                 const { data, error } = await supabaseClient
                     .from('activity_logs')
                     .select('user_id, amount, created_at')
-                    .eq('action_type', 'omikuji')
+                    .eq('action_type', actionType)
                     .order('created_at', { ascending: true })
                     .range(from, from + batchSize - 1);
                 if (error) throw error;
@@ -267,10 +275,13 @@
         async function loadRanking() {
             const listEl = document.getElementById('rank-list');
             try {
-                allLogs = await fetchAllOmikujiLogs();
+                [allLogs, allChipLogs] = await Promise.all([
+                    fetchAllLogsByAction('omikuji'),
+                    fetchAllLogsByAction('omikuji_chip')
+                ]);
 
                 // 全期間の登場ユーザーぶんのプロフィールをまとめて取得（両タブで使い回す）
-                const allIds = [...new Set(allLogs.map(l => l.user_id).filter(Boolean))]
+                const allIds = [...new Set([...allLogs, ...allChipLogs].map(l => l.user_id).filter(Boolean))]
                     .filter(id => !EXCLUDED_RANKING_USERS.has(id));
 
                 if (allIds.length > 0) {
@@ -282,27 +293,44 @@
                     (profiles || []).forEach(p => { profileMap[p.discord_user_id] = p; });
                 }
 
-                renderRanking(currentMode);
+                renderRanking();
             } catch (err) {
                 console.error('おみくじランキング取得エラー:', err);
                 listEl.innerHTML = '<div class="jp-empty" style="color:#e08;">読み込みエラーが発生しました</div>';
             }
         }
 
+        function switchCurrency(currency) {
+            if (currency === currentCurrency) return;
+            currentCurrency = currency;
+            document.querySelectorAll('.jp-currency-tab').forEach(t => t.classList.toggle('active', t.dataset.currency === currency));
+            document.getElementById('period-tabs').style.display = currency === 'chip' ? 'none' : 'flex';
+            document.getElementById('ranking-subtitle').textContent = currency === 'chip'
+                ? 'チップおみくじで得たチップの総額くらべ'
+                : 'おみくじで得たマネーの総額くらべ';
+            renderRanking();
+        }
+
         function switchMode(mode) {
             if (mode === currentMode) return;
             currentMode = mode;
-            document.querySelectorAll('.jp-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
-            renderRanking(mode);
+            document.querySelectorAll('#period-tabs .jp-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
+            renderRanking();
         }
 
-        function renderRanking(mode) {
+        function renderRanking() {
             const listEl = document.getElementById('rank-list');
+            const isChip = currentCurrency === 'chip';
+            const unit = isChip ? 'チップ' : 'マネー';
 
-            // 選択期間でログを絞り込み
-            const logs = mode === 'new'
-                ? allLogs.filter(l => new Date(l.created_at).getTime() >= NEW_OMIKUJI_START)
-                : allLogs;
+            document.getElementById('total-money-label').textContent = isChip ? '🪙 総排出チップ' : '💰 総排出マネー';
+            document.getElementById('total-money-unit').textContent = unit;
+
+            // 選択通貨・選択期間でログを絞り込み（チップ版は期間タブなし＝常に全期間）
+            const sourceLogs = isChip ? allChipLogs : allLogs;
+            const logs = (!isChip && currentMode === 'new')
+                ? sourceLogs.filter(l => new Date(l.created_at).getTime() >= NEW_OMIKUJI_START)
+                : sourceLogs;
 
             // 全体合計（全ユーザー分）＋ ユーザー別集計
             let grandDraws = 0;
@@ -353,7 +381,7 @@
                             </a>
                             <span class="jp-user-draws">🎋 ${item.draws.toLocaleString()} 回</span>
                         </div>
-                        <div class="jp-user-money">${item.money.toLocaleString()}<span class="jp-total-unit">マネー</span></div>
+                        <div class="jp-user-money">${item.money.toLocaleString()}<span class="jp-total-unit">${unit}</span></div>
                     </div>
                 `;
             }).join('');

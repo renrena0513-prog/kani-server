@@ -7,6 +7,7 @@ DECLARE
     v_log record;
     v_coin_delta bigint := 0;
     v_asset_delta bigint := 0;
+    v_tip_delta bigint := 0;
     v_ticket_delta int := 0;
     v_mangan_delta int := 0;
     v_ex_ticket_rarity text := NULL;
@@ -19,9 +20,13 @@ BEGIN
     SELECT * INTO v_log FROM activity_logs WHERE id = p_log_id;
     IF NOT FOUND THEN RETURN json_build_object('ok', false, 'error', '対象のログが見つかりません'); END IF;
 
-    -- 【コイン・総資産の差し戻し】
-    v_coin_delta := -COALESCE(v_log.amount, 0);
-    IF v_log.amount > 0 THEN v_asset_delta := -v_log.amount; END IF;
+    -- 【コイン・総資産の差し戻し】（チップおみくじはamountがチップ額なのでcoins側は触らない）
+    IF v_log.action_type = 'omikuji_chip' THEN
+        v_tip_delta := -COALESCE(v_log.amount, 0);
+    ELSE
+        v_coin_delta := -COALESCE(v_log.amount, 0);
+        IF v_log.amount > 0 THEN v_asset_delta := -v_log.amount; END IF;
+    END IF;
 
     -- 【祈願符の差し戻し（おみくじ報酬）】
     IF v_log.details->>'ticket_reward' IS NOT NULL THEN
@@ -91,9 +96,10 @@ BEGIN
     END IF;
 
     -- 【プロフィール更新】
-    UPDATE profiles SET 
+    UPDATE profiles SET
         coins = coins + v_coin_delta,
         total_assets = total_assets + v_asset_delta,
+        tip = GREATEST(0, tip + v_tip_delta),
         gacha_tickets = gacha_tickets + v_ticket_delta,
         mangan_tickets = mangan_tickets + v_mangan_delta,
         exchange_tickets = CASE WHEN v_ex_ticket_rarity IS NOT NULL THEN

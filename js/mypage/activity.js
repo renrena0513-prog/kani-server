@@ -151,6 +151,7 @@
                     'badge_sell': '💴 バッジ売却',
                     'badge_purchase': '🛒 バッジ購入',
                     'omikuji': '🎋 おみくじ',
+                    'omikuji_chip': '🪙 チップおみくじ',
                     'royalty_receive': '💎 売上還元',
                     'gacha_draw': '⛩️ お賽銭'
                 };
@@ -169,10 +170,11 @@
                         const scoreFormatted = Number(score) >= 0 ? `+${score}` : `${score}`;
                         amountStr = `<span class="text-secondary">${scoreFormatted} pts</span>`;
                     } else {
-                        const isTicketOmikuji = log.action_type === 'omikuji' && log.details?.ticket_reward;
+                        const isTicketOmikuji = (log.action_type === 'omikuji' || log.action_type === 'omikuji_chip') && log.details?.ticket_reward;
                         // ガチャでマネー0の場合は祈願符（チケット）使用なので🎫-1表示
                         const isTicketGacha = log.action_type === 'gacha_draw' && log.amount === 0;
-                        amountStr = isTicketGacha ? '🎫 -1' : (log.amount !== null && (!isTicketOmikuji || log.amount !== 0)) ? `💵 ${log.amount.toLocaleString()}` : '';
+                        const amountIcon = log.action_type === 'omikuji_chip' ? '🪙' : '💵';
+                        amountStr = isTicketGacha ? '🎫 -1' : (log.amount !== null && (!isTicketOmikuji || log.amount !== 0)) ? `${amountIcon} ${log.amount.toLocaleString()}` : '';
                     }
 
                     // 相手の情報を取得（基本は target_user_id。常に最新のプロフィールを参照）
@@ -219,7 +221,7 @@
                         detailsStr = `💴 「${log.details?.badge_name || 'バッジ'}」を売却`;
                     } else if (log.action_type === 'badge_purchase') {
                         detailsStr = `🛒 「${log.details?.badge_name || 'バッジ'}」を購入`;
-                    } else if (log.action_type === 'omikuji') {
+                    } else if (log.action_type === 'omikuji' || log.action_type === 'omikuji_chip') {
                         const tr = log.details?.ticket_reward;
                         const mr = log.details?.mangan_ticket_reward;
                         const rank = log.details?.rank || '不明';
