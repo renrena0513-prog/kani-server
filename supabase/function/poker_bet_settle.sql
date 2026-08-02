@@ -53,6 +53,11 @@ BEGIN
             v_won := (v_bet.selection->>0) = v_result_names[1];
         ELSIF v_bet.bet_type = 'place' THEN
             v_won := (v_bet.selection->>0) = ANY(v_result_names);
+        ELSIF v_bet.bet_type = 'exacta' THEN
+            v_won := (v_bet.selection->>0 = v_result_names[1]) AND (v_bet.selection->>1 = v_result_names[2]);
+        ELSIF v_bet.bet_type = 'quinella' THEN
+            v_sel_sorted := ARRAY(SELECT jsonb_array_elements_text(v_bet.selection) ORDER BY 1);
+            v_won := (v_sel_sorted = ARRAY(SELECT unnest(v_result_names[1:2]) ORDER BY 1));
         ELSIF v_bet.bet_type = 'trifecta' THEN
             v_won := (v_bet.selection = p_result_order);
         ELSE -- trio

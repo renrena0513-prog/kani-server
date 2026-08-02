@@ -15,6 +15,8 @@
             --deep-blue: #0d2f5c;
             --cream: #faf5e8;
             --gold: #d4a853;
+            --felt-green: #0c4a34;
+            --wine: #5c1027;
             --font-title: 'Noto Serif JP', serif;
             --font-body: 'M PLUS Rounded 1c', sans-serif;
         }
@@ -27,21 +29,73 @@
         @keyframes bounceIn { 0% { opacity: 0; transform: scale(0.4) translateY(-24px); } 55% { opacity: 1; transform: scale(1.1) translateY(0); } 75% { transform: scale(0.95); } 100% { transform: scale(1); } }
         @keyframes floatBg { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-14px) rotate(3deg); } }
         @keyframes cardGlow { 0%, 100% { box-shadow: 0 0 0 3px rgba(212,168,83,0.25); } 50% { box-shadow: 0 0 0 6px rgba(212,168,83,0.12); } }
+        @keyframes floatUpSymbol {
+            0% { transform: translateY(112vh) rotate(0deg) scale(0.9); opacity: 0; }
+            8% { opacity: var(--sym-op, 0.16); }
+            88% { opacity: var(--sym-op, 0.16); }
+            100% { transform: translateY(-12vh) rotate(360deg) scale(1.05); opacity: 0; }
+        }
+        @keyframes spotlightSweep {
+            0%, 100% { transform: translate(-8%, -6%) rotate(-4deg) scale(1); }
+            50% { transform: translate(8%, 4%) rotate(4deg) scale(1.12); }
+        }
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.1; transform: scale(0.7); }
+            50% { opacity: 0.95; transform: scale(1.4); }
+        }
+        @keyframes borderShimmer { to { background-position: 200% center; } }
         .anim-fade-in { animation: fadeInUp 0.45s cubic-bezier(0.16,1,0.3,1) both; }
         .anim-pop { animation: popIn 0.3s cubic-bezier(0.34,1.56,0.64,1) both; }
 
-        body { font-family: var(--font-body); background: linear-gradient(135deg, #0d2f5c 0%, #1a4d8c 50%, #153d70 100%); min-height: 100vh; background-attachment: fixed; color: #fff; padding: 20px; position: relative; overflow-x: hidden; }
-        body::before, body::after { content: '🃏'; position: fixed; font-size: 5rem; opacity: 0.05; pointer-events: none; z-index: 0; animation: floatBg 9s ease-in-out infinite; }
-        body::before { top: 8%; left: 4%; }
-        body::after { bottom: 10%; right: 5%; animation-delay: 3s; content: '🎰'; }
+        body {
+            font-family: var(--font-body);
+            background:
+                radial-gradient(ellipse 90% 55% at 50% -8%, rgba(212,168,83,0.22) 0%, transparent 58%),
+                radial-gradient(ellipse 80% 60% at 8% 105%, rgba(12,74,52,0.55) 0%, transparent 62%),
+                radial-gradient(ellipse 80% 60% at 95% 100%, rgba(92,16,39,0.35) 0%, transparent 60%),
+                repeating-linear-gradient(45deg, rgba(255,255,255,0.025) 0 2px, transparent 2px 34px),
+                repeating-linear-gradient(-45deg, rgba(255,255,255,0.025) 0 2px, transparent 2px 34px),
+                linear-gradient(135deg, #0d2f5c 0%, #1a4d8c 45%, #0e2444 100%);
+            min-height: 100vh; background-attachment: fixed; color: #fff; padding: 20px; position: relative; overflow-x: hidden;
+        }
+        .casino-bg { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+        .casino-bg .spotlight {
+            position: absolute; top: -20%; left: 50%; width: 140vw; height: 90vh; transform: translateX(-50%);
+            background: radial-gradient(ellipse at center, rgba(255,236,180,0.16) 0%, rgba(212,168,83,0.06) 35%, transparent 65%);
+            mix-blend-mode: screen; animation: spotlightSweep 16s ease-in-out infinite;
+        }
+        .casino-bg .symbol {
+            position: absolute; bottom: -10vh; font-size: var(--sym-size, 2.4rem); opacity: 0;
+            animation: floatUpSymbol var(--sym-dur, 20s) linear infinite;
+            animation-delay: var(--sym-delay, 0s);
+            filter: drop-shadow(0 0 6px rgba(212,168,83,0.25));
+        }
+        .casino-bg .sparkle {
+            position: absolute; width: 6px; height: 6px; border-radius: 50%;
+            background: radial-gradient(circle, #fff6da 0%, var(--gold) 60%, transparent 100%);
+            animation: twinkle var(--spk-dur, 3.4s) ease-in-out infinite;
+            animation-delay: var(--spk-delay, 0s);
+        }
         .container { position: relative; z-index: 1; }
         .page-header {
-            font-family: var(--font-title); text-shadow: 2px 4px 12px rgba(0,0,0,0.3); margin-bottom: 1rem; font-size: 2.4rem; letter-spacing: 2px;
+            font-family: var(--font-title); text-shadow: 0 2px 8px rgba(0,0,0,0.4), 0 0 28px rgba(212,168,83,0.35); margin-bottom: 1rem; font-size: 2.4rem; letter-spacing: 2px;
             background: linear-gradient(90deg, #fff 0%, var(--gold) 22%, #fff 44%, var(--gold) 66%, #fff 88%, var(--gold) 100%);
             background-size: 200% auto; -webkit-background-clip: text; background-clip: text; color: transparent;
             animation: shimmerText 6s linear infinite;
         }
-        .content-card { background: rgba(255,255,255,0.1); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.18); border-radius: 24px; padding: 32px; box-shadow: 0 8px 32px rgba(0,0,0,0.25); margin-bottom: 25px; max-width: 900px; margin-left: auto; margin-right: auto; transition: box-shadow 0.3s; }
+        .content-card {
+            background: rgba(255,255,255,0.1); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid transparent; border-radius: 24px; padding: 32px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(212,168,83,0.18) inset;
+            margin-bottom: 25px; max-width: 900px; margin-left: auto; margin-right: auto; transition: box-shadow 0.3s;
+            position: relative; overflow: hidden;
+        }
+        .content-card::before {
+            content: ''; position: absolute; inset: 0; border-radius: 24px; padding: 1px; pointer-events: none;
+            background: linear-gradient(120deg, rgba(212,168,83,0.05) 0%, rgba(212,168,83,0.55) 25%, rgba(255,246,218,0.15) 40%, rgba(212,168,83,0.05) 55%, rgba(212,168,83,0.5) 78%, rgba(212,168,83,0.05) 100%);
+            background-size: 240% auto; -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            -webkit-mask-composite: xor; mask-composite: exclude; animation: borderShimmer 7s linear infinite;
+        }
         .section-title { font-family: var(--font-title); color: #fff; border-bottom: 2px solid rgba(212,168,83,0.7); padding-bottom: 10px; margin-bottom: 20px; font-size: 1.25rem; font-weight: 700; }
         .text-muted { color: rgba(255,255,255,0.55) !important; }
         .btn-blue { background: linear-gradient(135deg, var(--primary-blue), var(--deep-blue)); color: white; border: 1px solid rgba(255,255,255,0.2); padding: 10px 24px; border-radius: 20px; font-weight: 700; cursor: pointer; transition: all 0.25s; }
@@ -168,8 +222,14 @@
         .simulation-result { margin-top: 12px; text-align: center; font-size: 0.95rem; min-height: 1.4em; }
         .simulation-result b { color: var(--gold); font-family: var(--font-title); font-size: 1.1rem; }
         #bets-overview-table { color: #fff; font-size: 0.85rem; }
-        #bets-overview-table th { color: rgba(255,255,255,0.6); border-color: rgba(255,255,255,0.15); }
-        #bets-overview-table td { border-color: rgba(255,255,255,0.1); vertical-align: middle; }
+        #bets-overview-table th { color: rgba(255,255,255,0.6); border-color: rgba(255,255,255,0.15); white-space: nowrap; }
+        #bets-overview-table td { border-color: rgba(255,255,255,0.1); vertical-align: middle; white-space: nowrap; }
+        #betsOverviewModal .table-responsive { -webkit-overflow-scrolling: touch; }
+        @media (max-width: 576px) {
+            #bets-overview-table { font-size: 0.74rem; }
+            #bets-overview-table th, #bets-overview-table td { padding: 6px 8px; }
+            #bets-overview-table .team-icon-inline, #bets-overview-table .team-icon-placeholder-inline { width: 16px; height: 16px; margin-right: 3px; }
+        }
 
         /* 開催フォーム（チーム行） */
         .team-row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
@@ -207,6 +267,29 @@
     </style>
 </head>
 <body>
+    <!-- 背景演出（カジノ感）：装飾のみ、操作対象なし -->
+    <div class="casino-bg" aria-hidden="true">
+        <div class="spotlight"></div>
+        <span class="symbol" style="left:4%; --sym-size:2.6rem; --sym-dur:22s; --sym-delay:0s; --sym-op:0.16;">♠️</span>
+        <span class="symbol" style="left:14%; --sym-size:2.1rem; --sym-dur:26s; --sym-delay:3s; --sym-op:0.14;">🎲</span>
+        <span class="symbol" style="left:24%; --sym-size:2.8rem; --sym-dur:19s; --sym-delay:7s; --sym-op:0.15;">♥️</span>
+        <span class="symbol" style="left:36%; --sym-size:2.3rem; --sym-dur:24s; --sym-delay:1.5s; --sym-op:0.13;">🃏</span>
+        <span class="symbol" style="left:48%; --sym-size:2.2rem; --sym-dur:21s; --sym-delay:9s; --sym-op:0.16;">♣️</span>
+        <span class="symbol" style="left:58%; --sym-size:2.6rem; --sym-dur:27s; --sym-delay:4.5s; --sym-op:0.14;">🪙</span>
+        <span class="symbol" style="left:68%; --sym-size:2.1rem; --sym-dur:20s; --sym-delay:12s; --sym-op:0.15;">♦️</span>
+        <span class="symbol" style="left:78%; --sym-size:2.9rem; --sym-dur:25s; --sym-delay:6s; --sym-op:0.13;">🎰</span>
+        <span class="symbol" style="left:88%; --sym-size:2.2rem; --sym-dur:23s; --sym-delay:2s; --sym-op:0.16;">🎲</span>
+        <span class="symbol" style="left:94%; --sym-size:2.4rem; --sym-dur:18s; --sym-delay:10s; --sym-op:0.14;">♠️</span>
+        <span class="sparkle" style="top:12%; left:18%; --spk-dur:3.2s; --spk-delay:0.2s;"></span>
+        <span class="sparkle" style="top:22%; left:72%; --spk-dur:4.1s; --spk-delay:1.4s;"></span>
+        <span class="sparkle" style="top:38%; left:42%; --spk-dur:3.6s; --spk-delay:2.1s;"></span>
+        <span class="sparkle" style="top:55%; left:8%; --spk-dur:3.9s; --spk-delay:0.7s;"></span>
+        <span class="sparkle" style="top:65%; left:88%; --spk-dur:3.3s; --spk-delay:2.8s;"></span>
+        <span class="sparkle" style="top:78%; left:30%; --spk-dur:4.4s; --spk-delay:1.1s;"></span>
+        <span class="sparkle" style="top:85%; left:60%; --spk-dur:3.7s; --spk-delay:3.2s;"></span>
+        <span class="sparkle" style="top:8%; left:52%; --spk-dur:4.0s; --spk-delay:1.8s;"></span>
+    </div>
+
     <!-- 右上ナビゲーション -->
     <div class="nav-dropdown dropdown" style="position:fixed;top:20px;right:20px;z-index:1000;">
         <button class="btn dropdown-toggle" type="button" id="navDropdown" data-bs-toggle="dropdown" aria-expanded="false"
@@ -279,8 +362,10 @@
             <div class="bet-type-tabs">
                 <button type="button" class="bet-type-tab active" data-type="win" onclick="switchBetType('win')">単勝</button>
                 <button type="button" class="bet-type-tab" data-type="place" onclick="switchBetType('place')">複勝</button>
-                <button type="button" class="bet-type-tab" data-type="trio" onclick="switchBetType('trio')">三連複</button>
+                <button type="button" class="bet-type-tab" data-type="exacta" onclick="switchBetType('exacta')">二連単</button>
+                <button type="button" class="bet-type-tab" data-type="quinella" onclick="switchBetType('quinella')">二連複</button>
                 <button type="button" class="bet-type-tab" data-type="trifecta" onclick="switchBetType('trifecta')">三連単</button>
+                <button type="button" class="bet-type-tab" data-type="trio" onclick="switchBetType('trio')">三連複</button>
             </div>
             <div class="bet-type-desc" id="bet-type-desc"></div>
 
@@ -289,6 +374,14 @@
             </div>
             <div id="place-bet-panel" class="bet-panel" style="display:none;">
                 <div class="team-bet-grid" id="place-team-grid"></div>
+            </div>
+            <div id="exacta-bet-panel" class="bet-panel" style="display:none;">
+                <div class="combo-picker-row" id="exacta-pick-container"></div>
+                <div class="combo-picker-odds" id="exacta-picker-odds"></div>
+            </div>
+            <div id="quinella-bet-panel" class="bet-panel" style="display:none;">
+                <div class="combo-picker-row" id="quinella-pick-container"></div>
+                <div class="combo-picker-odds" id="quinella-picker-odds"></div>
             </div>
             <div id="trio-bet-panel" class="bet-panel" style="display:none;">
                 <div class="combo-picker-row" id="trio-pick-container"></div>
@@ -363,8 +456,10 @@
                 <div class="preview-section">
                     <div class="preview-tabs">
                         <button type="button" class="preview-tab active" data-ptab="place" onclick="switchPreviewTab('place')">複勝プレビュー</button>
-                        <button type="button" class="preview-tab" data-ptab="trio" onclick="switchPreviewTab('trio')">三連複プレビュー</button>
+                        <button type="button" class="preview-tab" data-ptab="exacta" onclick="switchPreviewTab('exacta')">二連単プレビュー</button>
+                        <button type="button" class="preview-tab" data-ptab="quinella" onclick="switchPreviewTab('quinella')">二連複プレビュー</button>
                         <button type="button" class="preview-tab" data-ptab="trifecta" onclick="switchPreviewTab('trifecta')">三連単プレビュー</button>
+                        <button type="button" class="preview-tab" data-ptab="trio" onclick="switchPreviewTab('trio')">三連複プレビュー</button>
                     </div>
                     <div class="preview-table-wrap">
                         <table class="table table-sm mb-0" id="preview-table">
@@ -420,8 +515,10 @@
                 <div class="preview-section">
                     <div class="preview-tabs">
                         <button type="button" class="preview-tab active" data-eptab="place" onclick="switchEditPreviewTab('place')">複勝プレビュー</button>
-                        <button type="button" class="preview-tab" data-eptab="trio" onclick="switchEditPreviewTab('trio')">三連複プレビュー</button>
+                        <button type="button" class="preview-tab" data-eptab="exacta" onclick="switchEditPreviewTab('exacta')">二連単プレビュー</button>
+                        <button type="button" class="preview-tab" data-eptab="quinella" onclick="switchEditPreviewTab('quinella')">二連複プレビュー</button>
                         <button type="button" class="preview-tab" data-eptab="trifecta" onclick="switchEditPreviewTab('trifecta')">三連単プレビュー</button>
+                        <button type="button" class="preview-tab" data-eptab="trio" onclick="switchEditPreviewTab('trio')">三連複プレビュー</button>
                     </div>
                     <div class="preview-table-wrap">
                         <table class="table table-sm mb-0" id="edit-preview-table">

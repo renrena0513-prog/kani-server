@@ -7,6 +7,8 @@ create table if not exists public.poker_finals_predictions (
   trio_odds          jsonb,      -- 三連複オッズ（自動生成）[{ "teams": ["A","B","C"] (昇順), "odds": 12.3 }, ...]
   trifecta_odds      jsonb,      -- 三連単オッズ（自動生成）[{ "teams": ["A","B","C"] (着順), "odds": 45.6 }, ...]
   place_odds         jsonb,      -- 複勝オッズ（自動生成）[{ "team_name": "...", "odds": 3.2 }, ...]（3着以内で的中）
+  exacta_odds        jsonb,      -- 二連単オッズ（自動生成）[{ "teams": ["A","B"] (着順), "odds": 8.4 }, ...]
+  quinella_odds      jsonb,      -- 二連複オッズ（自動生成）[{ "teams": ["A","B"] (昇順), "odds": 4.2 }, ...]
   result_order       jsonb,      -- 確定結果 [1位, 2位, 3位]
   winner_team_name   text,       -- = result_order[0]（表示用に複製）
   created_by         text        not null,
@@ -23,7 +25,7 @@ create table if not exists public.poker_finals_bets (
   id                 uuid        default gen_random_uuid() primary key,
   event_id           uuid        not null references public.poker_finals_predictions(id) on delete cascade,
   discord_user_id    text        not null,
-  bet_type           text        not null, -- win / place / trio / trifecta
+  bet_type           text        not null, -- win / place / exacta / quinella / trio / trifecta
   selection          jsonb       not null, -- チーム名の配列（trifectaのみ順序に意味あり）
   odds               numeric     not null,
   amount             integer     not null,
@@ -64,3 +66,7 @@ create policy "Admins can select poker_betting_settings"
 create index if not exists poker_finals_bets_event_id_idx on public.poker_finals_bets(event_id);
 create index if not exists poker_finals_bets_discord_user_id_idx on public.poker_finals_bets(discord_user_id);
 create index if not exists poker_finals_predictions_status_idx on public.poker_finals_predictions(status);
+
+-- 既存テーブルへの追記（二連単・二連複オッズ列を追加する場合）
+alter table public.poker_finals_predictions add column if not exists exacta_odds jsonb;
+alter table public.poker_finals_predictions add column if not exists quinella_odds jsonb;

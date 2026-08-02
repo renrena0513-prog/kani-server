@@ -7,20 +7,24 @@ let currentEvent = null;
 let bettingSettings = null;
 
 let selectedBetType = 'win';
-let selectedSelection = null; // 配列。win/place=[team]、trio/trifecta=[team,team,team]
+let selectedSelection = null; // 配列。win/place=[team]、exacta/quinella=[team,team]、trio/trifecta=[team,team,team]
 let selectedOdds = null;
-let comboLists = { trio: [], trifecta: [] }; // 現在のイベントの全組み合わせ（オッズ検索用）
-let comboPickValue = { trio: ['', '', ''], trifecta: ['', '', ''] }; // 三連複・三連単ピッカーの選択状態
+let comboLists = { exacta: [], quinella: [], trio: [], trifecta: [] }; // 現在のイベントの全組み合わせ（オッズ検索用）
+let comboPickValue = { exacta: ['', ''], quinella: ['', ''], trio: ['', '', ''], trifecta: ['', '', ''] }; // ピッカーの選択状態
+const COMBO_SLOT_COUNT = { exacta: 2, quinella: 2, trio: 3, trifecta: 3 };
+const COMBO_ORDERED_TYPES = ['trifecta', 'exacta']; // 着順（順序）に意味がある賭式
 let myBetsCache = []; // 自分のベット一覧（合計ベット上限チェック用）
 
 let openEventRowSeq = 0;
-let previewData = { place: [], trio: [], trifecta: [] };
+let previewData = { place: [], exacta: [], quinella: [], trio: [], trifecta: [] };
 let previewTab = 'place';
 
-const BET_TYPE_LABELS = { win: '単勝', place: '複勝', trio: '三連複', trifecta: '三連単' };
+const BET_TYPE_LABELS = { win: '単勝', place: '複勝', exacta: '二連単', quinella: '二連複', trio: '三連複', trifecta: '三連単' };
 const BET_TYPE_DESCRIPTIONS = {
     win: '🥇 1位になるチームを当てます。的中すればオッズ通りの配当がもらえます。',
     place: '🎖️ 3位以内に入るチームを当てます。的中しやすい分、配当は控えめです。',
+    exacta: '🎯 1位・2位を「着順通り」に当てます。二連複より高配当が狙えます。',
+    quinella: '🎯 1〜2位に入る2チームを「順不同」で当てます。着順は関係ありません。',
     trio: '🎯 1〜3位に入る3チームを「順不同」で当てます。着順は関係ありません。',
     trifecta: '🏆 1位・2位・3位を「着順通り」に当てます。的中は難しい分、高配当が狙えます。'
 };
@@ -218,6 +222,8 @@ async function renderOpenState() {
         </div>
     `).join('');
 
+    comboLists.exacta = [...(currentEvent.exacta_odds || [])].sort((a, b) => a.odds - b.odds);
+    comboLists.quinella = [...(currentEvent.quinella_odds || [])].sort((a, b) => a.odds - b.odds);
     comboLists.trio = [...(currentEvent.trio_odds || [])].sort((a, b) => a.odds - b.odds);
     comboLists.trifecta = [...(currentEvent.trifecta_odds || [])].sort((a, b) => a.odds - b.odds);
 
@@ -243,12 +249,14 @@ function switchBetType(type) {
     document.getElementById('bet-type-desc').textContent = BET_TYPE_DESCRIPTIONS[type] || '';
     document.getElementById('win-bet-panel').style.display = type === 'win' ? '' : 'none';
     document.getElementById('place-bet-panel').style.display = type === 'place' ? '' : 'none';
+    document.getElementById('exacta-bet-panel').style.display = type === 'exacta' ? '' : 'none';
+    document.getElementById('quinella-bet-panel').style.display = type === 'quinella' ? '' : 'none';
     document.getElementById('trio-bet-panel').style.display = type === 'trio' ? '' : 'none';
     document.getElementById('trifecta-bet-panel').style.display = type === 'trifecta' ? '' : 'none';
 
     document.querySelectorAll('#win-team-grid .team-bet-card, #place-team-grid .team-bet-card').forEach(c => c.classList.remove('selected'));
-    if (type === 'trio' || type === 'trifecta') {
-        comboPickValue[type] = ['', '', ''];
+    if (COMBO_SLOT_COUNT[type]) {
+        comboPickValue[type] = new Array(COMBO_SLOT_COUNT[type]).fill('');
         document.getElementById(`${type}-picker-odds`).innerHTML = '';
         renderComboPickerSlots(type);
     }
@@ -256,11 +264,15 @@ function switchBetType(type) {
     updateSelectedHint();
 }
 
-/** 三連複・三連単の1〜3着（または組み合わせ）スロットをアイコン付きカスタムドロップダウンとして描画 */
+/** 二連単/二連複/三連複・三連単の着順（または組み合わせ）スロットをアイコン付きカスタムドロップダウンとして描画 */
 function renderComboPickerSlots(type) {
-    const labels = type === 'trifecta' ? ['1着', '2着', '3着'] : ['チーム1', 'チーム2', 'チーム3'];
+    const slotCount = COMBO_SLOT_COUNT[type];
+    const isOrdered = COMBO_ORDERED_TYPES.includes(type);
+    const labels = slotCount === 2
+        ? (isOrdered ? ['1着', '2着'] : ['チーム1', 'チーム2'])
+        : (isOrdered ? ['1着', '2着', '3着'] : ['チーム1', 'チーム2', 'チーム3']);
     const container = document.getElementById(`${type}-pick-container`);
-    container.innerHTML = [1, 2, 3].map(slot => `
+    container.innerHTML = Array.from({ length: slotCount }, (_, i) => i + 1).map(slot => `
         <div class="custom-dropdown-container combo-pick-wrap">
             <div class="combo-pick-display" onclick="toggleComboPickList('${type}', ${slot})">
                 <span class="cp-slot-label">${labels[slot - 1]}</span>
@@ -295,7 +307,9 @@ function toggleComboPickList(type, slot) {
 function renderComboPickListItems(type, slot) {
     const list = document.getElementById(`${type}-pick-list-${slot}`);
     const teamNames = sortedTeamNamesByWinOdds();
-    const others = [1, 2, 3].filter(s => s !== slot).map(s => comboPickValue[type][s - 1]).filter(Boolean);
+    const slotCount = COMBO_SLOT_COUNT[type];
+    const others = Array.from({ length: slotCount }, (_, i) => i + 1)
+        .filter(s => s !== slot).map(s => comboPickValue[type][s - 1]).filter(Boolean);
     const available = teamNames.filter(t => !others.includes(t));
 
     let html = '';
@@ -339,7 +353,7 @@ function updateComboPicker(type) {
         return;
     }
 
-    const lookupKey = type === 'trifecta' ? picks : [...picks].sort();
+    const lookupKey = COMBO_ORDERED_TYPES.includes(type) ? picks : [...picks].sort();
     const entry = comboLists[type].find(e => JSON.stringify(e.teams) === JSON.stringify(lookupKey));
 
     if (!entry) {
@@ -387,7 +401,7 @@ function updateSelectedHint() {
         updatePayoutPreview();
         return;
     }
-    const sep = selectedBetType === 'trifecta' ? ' → ' : '・';
+    const sep = COMBO_ORDERED_TYPES.includes(selectedBetType) ? ' → ' : '・';
     hint.innerHTML = `${BET_TYPE_LABELS[selectedBetType]}: <b>${selectedSelection.map(escapeHtml).join(sep)}</b>`;
     btn.disabled = false;
     updatePayoutPreview();
@@ -440,17 +454,20 @@ function updatePayoutPreview() {
     el.innerHTML = `賭け金: <b>${amount.toLocaleString()}</b> マネー / 予想払戻: <b>${Math.round(amount * selectedOdds).toLocaleString()}</b> マネー`;
 }
 
-/** 賭式+選択を正規化したグルーピングキー（三連複は順不同なので昇順に揃える） */
+/** 賭式+選択を正規化したグルーピングキー（三連複・二連複は順不同なので昇順に揃える） */
 function selectionKey(betType, selection) {
-    const sel = betType === 'trio' ? [...selection].sort() : selection;
+    const sel = (betType === 'trio' || betType === 'quinella') ? [...selection].sort() : selection;
     return betType + '|' + JSON.stringify(sel);
 }
 
 /** 1〜3位の仮定 order に対して、この賭けが的中するかどうかを判定する（管理者・プレイヤー双方のシミュレーションで共用） */
 function betWon(bet, order) {
     const sortedOrder = [...order].sort();
+    const top2Sorted = [...order.slice(0, 2)].sort();
     if (bet.bet_type === 'win') return bet.selection[0] === order[0];
     if (bet.bet_type === 'place') return order.includes(bet.selection[0]);
+    if (bet.bet_type === 'exacta') return JSON.stringify(bet.selection) === JSON.stringify(order.slice(0, 2));
+    if (bet.bet_type === 'quinella') return JSON.stringify([...bet.selection].sort()) === JSON.stringify(top2Sorted);
     if (bet.bet_type === 'trifecta') return JSON.stringify(bet.selection) === JSON.stringify(order);
     return JSON.stringify([...bet.selection].sort()) === JSON.stringify(sortedOrder);
 }
@@ -556,7 +573,7 @@ async function renderMyBets() {
     }
     runMySimulation();
 
-    const sep = t => t === 'trifecta' ? ' → ' : '・';
+    const sep = t => COMBO_ORDERED_TYPES.includes(t) ? ' → ' : '・';
 
     container.innerHTML = mergeBetsBySelection(list).map(b => {
         const settled = b.payout !== null;
@@ -602,7 +619,7 @@ async function renderSettledState() {
         const totalPayout = list.reduce((s, b) => s + (b.payout || 0), 0);
         const profit = totalPayout - totalStake;
         const cls = profit > 0 ? 'win' : profit < 0 ? 'lose' : 'none';
-        const sep = t => t === 'trifecta' ? ' → ' : '・';
+        const sep = t => COMBO_ORDERED_TYPES.includes(t) ? ' → ' : '・';
 
         const rows = mergeBetsBySelection(list).map(b => {
             const won = b.payout > 0;
@@ -673,7 +690,7 @@ function removeOpenEventTeamRow(id) {
 /** 単複・三連複・三連単オッズを算出（管理者プレビュー専用。実際の確定オッズはサーバー側で再計算する） */
 function computeOddsPreview(teams, payoutRate, minOdds, maxOdds) {
     const n = teams.length;
-    if (n < 3) return { place: [], trio: [], trifecta: [] };
+    if (n < 3) return { place: [], exacta: [], quinella: [], trio: [], trifecta: [] };
 
     const strength = teams.map(t => 1 / t.odds);
     const total = strength.reduce((a, b) => a + b, 0);
@@ -683,9 +700,36 @@ function computeOddsPreview(teams, payoutRate, minOdds, maxOdds) {
         if (d2 <= 0 || d3 <= 0) return 0;
         return (sA / total) * (sB / d2) * (sC / d3);
     }
+    function pairProb(sA, sB) {
+        const d2 = total - sA;
+        if (d2 <= 0) return 0;
+        return (sA / total) * (sB / d2);
+    }
     function clampOdds(p) {
         if (!(p > 0)) return maxOdds;
         return Math.round(Math.min(Math.max(payoutRate / p, minOdds), maxOdds) * 10) / 10;
+    }
+
+    const exacta = [];
+    for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+            if (j === i) continue;
+            exacta.push({
+                teams: [teams[i].team_name, teams[j].team_name],
+                odds: clampOdds(pairProb(strength[i], strength[j]))
+            });
+        }
+    }
+
+    const quinella = [];
+    for (let i = 0; i < n; i++) {
+        for (let j = i + 1; j < n; j++) {
+            const p = pairProb(strength[i], strength[j]) + pairProb(strength[j], strength[i]);
+            quinella.push({
+                teams: [teams[i].team_name, teams[j].team_name].sort(),
+                odds: clampOdds(p)
+            });
+        }
     }
 
     const trifecta = [];
@@ -736,7 +780,7 @@ function computeOddsPreview(teams, payoutRate, minOdds, maxOdds) {
         place.push({ teams: [teams[i].team_name], odds: clampOdds(p) });
     }
 
-    return { place, trio, trifecta };
+    return { place, exacta, quinella, trio, trifecta };
 }
 
 function recalcPreview() {
@@ -769,13 +813,13 @@ function renderPreviewTable() {
         body.innerHTML = '<tr><td colspan="2" class="text-center text-muted py-3">チームと単勝オッズを3つ以上正しく入力してください</td></tr>';
         return;
     }
-    const sep = previewTab === 'trifecta' ? ' → ' : previewTab === 'trio' ? '・' : '';
+    const sep = COMBO_ORDERED_TYPES.includes(previewTab) ? ' → ' : (previewTab === 'trio' || previewTab === 'quinella') ? '・' : '';
     const sorted = [...list].sort((a, b) => a.odds - b.odds);
     body.innerHTML = sorted.map(e => `<tr><td>${e.teams.map(escapeHtml).join(sep)}</td><td>${e.odds.toFixed(1)}倍</td></tr>`).join('');
 }
 
 // ===== 管理者: オッズ編集（開催中のみ・チーム追加削除不可） =====
-let editPreviewData = { place: [], trio: [], trifecta: [] };
+let editPreviewData = { place: [], exacta: [], quinella: [], trio: [], trifecta: [] };
 let editPreviewTab = 'place';
 
 function switchEditPreviewTab(tab) {
@@ -808,7 +852,7 @@ function renderEditPreviewTable() {
         body.innerHTML = '<tr><td colspan="2" class="text-center text-muted py-3">オッズを正しく入力してください</td></tr>';
         return;
     }
-    const sep = editPreviewTab === 'trifecta' ? ' → ' : editPreviewTab === 'trio' ? '・' : '';
+    const sep = COMBO_ORDERED_TYPES.includes(editPreviewTab) ? ' → ' : (editPreviewTab === 'trio' || editPreviewTab === 'quinella') ? '・' : '';
     const sorted = [...list].sort((a, b) => a.odds - b.odds);
     body.innerHTML = sorted.map(e => `<tr><td>${e.teams.map(escapeHtml).join(sep)}</td><td>${e.odds.toFixed(1)}倍</td></tr>`).join('');
 }
@@ -1060,7 +1104,7 @@ function renderBetsOverviewSummary() {
 }
 
 function renderBetsOverviewTable() {
-    const sep = t => t === 'trifecta' ? ' → ' : '・';
+    const sep = t => COMBO_ORDERED_TYPES.includes(t) ? ' → ' : '・';
     const body = document.getElementById('bets-overview-body');
     const canCancel = currentEvent?.status === 'open';
     const headRow = document.querySelector('#bets-overview-table thead tr');

@@ -17,7 +17,7 @@ BEGIN
     IF p_amount IS NULL OR p_amount < 1000 OR p_amount % 1000 <> 0 THEN
         RETURN jsonb_build_object('ok', false, 'error', '金額は1000単位で入力してください');
     END IF;
-    IF p_bet_type NOT IN ('win', 'place', 'trio', 'trifecta') THEN
+    IF p_bet_type NOT IN ('win', 'place', 'exacta', 'quinella', 'trio', 'trifecta') THEN
         RETURN jsonb_build_object('ok', false, 'error', '無効な賭式です');
     END IF;
 
@@ -55,6 +55,24 @@ BEGIN
         SELECT (e->>'odds')::numeric INTO v_odds
         FROM jsonb_array_elements(v_event.place_odds) e
         WHERE e->>'team_name' = v_sel_names[1];
+
+    ELSIF p_bet_type = 'exacta' THEN
+        IF v_sel_len <> 2 THEN
+            RETURN jsonb_build_object('ok', false, 'error', '二連単は2チーム選択してください');
+        END IF;
+        SELECT (e->>'odds')::numeric INTO v_odds
+        FROM jsonb_array_elements(v_event.exacta_odds) e
+        WHERE e->'teams' = p_selection;
+
+    ELSIF p_bet_type = 'quinella' THEN
+        IF v_sel_len <> 2 THEN
+            RETURN jsonb_build_object('ok', false, 'error', '二連複は2チーム選択してください');
+        END IF;
+        v_sorted_sel := ARRAY(SELECT unnest(v_sel_names) ORDER BY 1);
+        p_selection := to_jsonb(v_sorted_sel);
+        SELECT (e->>'odds')::numeric INTO v_odds
+        FROM jsonb_array_elements(v_event.quinella_odds) e
+        WHERE e->'teams' = p_selection;
 
     ELSIF p_bet_type = 'trifecta' THEN
         IF v_sel_len <> 3 THEN

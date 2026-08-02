@@ -20,8 +20,12 @@ DECLARE
     v_trifecta jsonb := '[]'::jsonb;
     v_trio jsonb := '[]'::jsonb;
     v_place jsonb := '[]'::jsonb;
+    v_exacta jsonb := '[]'::jsonb;
+    v_quinella jsonb := '[]'::jsonb;
     v_trio_names text[];
+    v_quinella_names text[];
     v_place_prob numeric[];
+    v_p2 numeric;
 BEGIN
     IF is_admin() IS NOT TRUE THEN
         RETURN jsonb_build_object('ok', false, 'error', '管理者のみ実行できます');
@@ -104,6 +108,41 @@ BEGIN
         END LOOP;
     END LOOP;
 
+    -- 二連単（1・2着の全順列）
+    FOR i IN 1..v_n LOOP
+        FOR j IN 1..v_n LOOP
+            IF j = i THEN CONTINUE; END IF;
+            v_p2 := (v_strength[i] / v_total) * (v_strength[j] / (v_total - v_strength[i]));
+            IF v_p2 > 0 THEN
+                v_raw_odds := round(LEAST(GREATEST(v_event.payout_rate / v_p2, v_event.min_odds), v_event.max_odds), 1);
+            ELSE
+                v_raw_odds := v_event.max_odds;
+            END IF;
+            v_exacta := v_exacta || jsonb_build_object(
+                'teams', jsonb_build_array(v_names[i], v_names[j]),
+                'odds', v_raw_odds
+            );
+        END LOOP;
+    END LOOP;
+
+    -- 二連複（1・2着に入る2チーム、組み合わせ）
+    FOR i IN 1..v_n LOOP
+        FOR j IN i+1..v_n LOOP
+            v_p2 := (v_strength[i] / v_total) * (v_strength[j] / (v_total - v_strength[i]))
+                  + (v_strength[j] / v_total) * (v_strength[i] / (v_total - v_strength[j]));
+            IF v_p2 > 0 THEN
+                v_raw_odds := round(LEAST(GREATEST(v_event.payout_rate / v_p2, v_event.min_odds), v_event.max_odds), 1);
+            ELSE
+                v_raw_odds := v_event.max_odds;
+            END IF;
+            v_quinella_names := ARRAY(SELECT unnest(ARRAY[v_names[i], v_names[j]]) ORDER BY 1);
+            v_quinella := v_quinella || jsonb_build_object(
+                'teams', to_jsonb(v_quinella_names),
+                'odds', v_raw_odds
+            );
+        END LOOP;
+    END LOOP;
+
     -- 複勝
     v_place_prob := array_fill(0::numeric, ARRAY[v_n]);
     FOR i IN 1..v_n LOOP
@@ -135,7 +174,8 @@ BEGIN
 
     -- 既に成立している賭けのオッズ(poker_finals_bets.odds)は据え置き（後出しで有利/不利にしない）
     UPDATE poker_finals_predictions
-        SET teams = p_teams, trio_odds = v_trio, trifecta_odds = v_trifecta, place_odds = v_place
+        SET teams = p_teams, trio_odds = v_trio, trifecta_odds = v_trifecta, place_odds = v_place,
+            exacta_odds = v_exacta, quinella_odds = v_quinella
         WHERE id = p_event_id;
 
     RETURN jsonb_build_object('ok', true);
