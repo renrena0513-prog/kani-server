@@ -55,6 +55,12 @@ function teamIconBlockHtml(teamName) {
         : `<span class="team-icon-placeholder">🏅</span>`;
 }
 
+/** カード背景に薄く敷くチームアイコンの背景画像スタイル（CSSカスタムプロパティ） */
+function cardIconBgStyle(teamName) {
+    const url = teamIconMap[teamName];
+    return url ? `--icon-bg:url('${url}');` : '';
+}
+
 /** チームアイコンHTML（文中向け・20px・インライン） */
 function teamIconInlineHtml(teamName) {
     const url = teamIconMap[teamName];
@@ -202,22 +208,24 @@ async function renderOpenState() {
 
     document.getElementById('open-event-title').textContent = `🎯 ${currentEvent.title}`;
 
+    const rankLabels = ['1番人気', '2番人気', '3番人気'];
     const grid = document.getElementById('win-team-grid');
     grid.innerHTML = sortedByOdds(teams).map((t, i) => `
-        <div class="team-bet-card" style="--i:${i}" data-team-name="${escapeHtml(t.team_name)}" onclick="selectWinTeam('${escapeHtml(t.team_name).replace(/'/g, "\\'")}')">
+        <div class="team-bet-card${i < 3 ? ' rank-' + (i + 1) : ''}" style="--i:${i};${escapeHtml(cardIconBgStyle(t.team_name))}" data-team-name="${escapeHtml(t.team_name)}" onclick="selectWinTeam('${escapeHtml(t.team_name).replace(/'/g, "\\'")}')">
+            ${i < 3 ? `<span class="rank-flag">${rankLabels[i]}</span>` : ''}
             ${teamIconBlockHtml(t.team_name)}
             <div class="t-name">${escapeHtml(t.team_name)}</div>
-            <div class="t-odds">${Number(t.odds).toFixed(1)}<span style="font-size:0.85rem;">倍</span></div>
+            <div class="t-odds-chip"><span class="val">${Number(t.odds).toFixed(1)}</span><span class="suffix">倍</span></div>
             <div class="t-odds-label">単勝オッズ</div>
         </div>
     `).join('');
 
     const placeGrid = document.getElementById('place-team-grid');
     placeGrid.innerHTML = sortedByOdds(currentEvent.place_odds || []).map((t, i) => `
-        <div class="team-bet-card" style="--i:${i}" data-team-name="${escapeHtml(t.team_name)}" onclick="selectPlaceTeam('${escapeHtml(t.team_name).replace(/'/g, "\\'")}')">
+        <div class="team-bet-card" style="--i:${i};${escapeHtml(cardIconBgStyle(t.team_name))}" data-team-name="${escapeHtml(t.team_name)}" onclick="selectPlaceTeam('${escapeHtml(t.team_name).replace(/'/g, "\\'")}')">
             ${teamIconBlockHtml(t.team_name)}
             <div class="t-name">${escapeHtml(t.team_name)}</div>
-            <div class="t-odds">${Number(t.odds).toFixed(1)}<span style="font-size:0.85rem;">倍</span></div>
+            <div class="t-odds-chip"><span class="val">${Number(t.odds).toFixed(1)}</span><span class="suffix">倍</span></div>
             <div class="t-odds-label">複勝オッズ</div>
         </div>
     `).join('');
@@ -363,7 +371,7 @@ function updateComboPicker(type) {
         return;
     }
 
-    oddsEl.innerHTML = `オッズ: <b>${Number(entry.odds).toFixed(1)}倍</b>`;
+    oddsEl.innerHTML = `🪙 オッズ: <b>${Number(entry.odds).toFixed(1)}倍</b>`;
     selectedBetType = type;
     selectedSelection = [...picks];
     selectedOdds = entry.odds;
@@ -575,7 +583,7 @@ async function renderMyBets() {
 
     const sep = t => COMBO_ORDERED_TYPES.includes(t) ? ' → ' : '・';
 
-    container.innerHTML = mergeBetsBySelection(list).map(b => {
+    container.innerHTML = list.map(b => {
         const settled = b.payout !== null;
         const won = settled && b.payout > 0;
         const rowCls = !settled ? '' : (won ? 'win-row' : 'lose-row');
@@ -585,14 +593,43 @@ async function renderMyBets() {
                 ? `<span style="color:#4ade80;">+${(b.payout - b.amount).toLocaleString()}</span>`
                 : `<span style="color:#f87171;">-${Number(b.amount).toLocaleString()}</span>`;
         const selectionHtml = b.selection.map(t => teamIconInlineHtml(t) + escapeHtml(t)).join(sep(b.bet_type));
+        const cancelHtml = !settled ? `<button type="button" class="btn-cancel-bet" onclick="cancelMyBet('${b.id}')" title="この賭けを取り消す">✕</button>` : '';
         return `<div class="my-bet-row ${rowCls}">
             <span><span class="bt-type">${BET_TYPE_LABELS[b.bet_type]}</span>${selectionHtml}</span>
             <span class="bt-amount">${Number(b.amount).toLocaleString()}マネー ・ ${Number(b.odds).toFixed(1)}倍</span>
             <span class="bt-payout">${payoutHtml}</span>
+            ${cancelHtml}
         </div>`;
     }).join('');
 
     return list;
+}
+
+/** 自分の賭けを取消し、全額返金する（開催中のイベントのみ） */
+async function cancelMyBet(betId) {
+    const bet = myBetsCache.find(b => b.id === betId);
+    if (!bet) return;
+    const selectionText = bet.selection.join('・');
+
+    if (!confirm(`この賭け（${BET_TYPE_LABELS[bet.bet_type]} ${selectionText} / ${Number(bet.amount).toLocaleString()}マネー）を取り消して返金します。よろしいですか？`)) return;
+
+    const { data, error } = await supabaseClient.rpc('poker_bet_cancel_own', {
+        p_discord_user_id: currentUserId,
+        p_bet_id: betId
+    });
+
+    if (error) {
+        showNotice('送信エラー: ' + error.message, 'error');
+        return;
+    }
+    if (!data.ok) {
+        showNotice(data.error || '取消に失敗しました。', 'warning');
+        return;
+    }
+
+    showNotice(`取り消しました。${Number(data.refund_amount).toLocaleString()} マネーを返金しました。`, 'success');
+    await refreshBalance();
+    await renderMyBets();
 }
 
 // ===== 結果画面 =====

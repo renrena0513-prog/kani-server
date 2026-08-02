@@ -44,18 +44,23 @@
             50% { opacity: 0.95; transform: scale(1.4); }
         }
         @keyframes borderShimmer { to { background-position: 200% center; } }
+        @keyframes bulbBlink { 0%, 100% { opacity: 1; filter: brightness(1.1); } 50% { opacity: 0.25; filter: brightness(0.5); } }
+        @keyframes chipSpin { to { transform: rotate(360deg); } }
+        @keyframes chipBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+        @keyframes neonPulse { 0%, 100% { filter: drop-shadow(0 0 6px rgba(212,168,83,0.6)) drop-shadow(0 0 16px rgba(212,168,83,0.35)); } 50% { filter: drop-shadow(0 0 12px rgba(255,221,140,0.9)) drop-shadow(0 0 28px rgba(212,168,83,0.55)); } }
         .anim-fade-in { animation: fadeInUp 0.45s cubic-bezier(0.16,1,0.3,1) both; }
         .anim-pop { animation: popIn 0.3s cubic-bezier(0.34,1.56,0.64,1) both; }
 
         body {
             font-family: var(--font-body);
             background:
-                radial-gradient(ellipse 90% 55% at 50% -8%, rgba(212,168,83,0.22) 0%, transparent 58%),
-                radial-gradient(ellipse 80% 60% at 8% 105%, rgba(12,74,52,0.55) 0%, transparent 62%),
-                radial-gradient(ellipse 80% 60% at 95% 100%, rgba(92,16,39,0.35) 0%, transparent 60%),
-                repeating-linear-gradient(45deg, rgba(255,255,255,0.025) 0 2px, transparent 2px 34px),
-                repeating-linear-gradient(-45deg, rgba(255,255,255,0.025) 0 2px, transparent 2px 34px),
-                linear-gradient(135deg, #0d2f5c 0%, #1a4d8c 45%, #0e2444 100%);
+                radial-gradient(ellipse 140% 100% at 50% 50%, transparent 45%, rgba(0,0,0,0.4) 100%),
+                radial-gradient(ellipse 100% 60% at 50% -8%, rgba(212,168,83,0.28) 0%, transparent 58%),
+                radial-gradient(ellipse 90% 70% at 4% 100%, rgba(12,74,52,0.7) 0%, transparent 60%),
+                radial-gradient(ellipse 90% 70% at 96% 100%, rgba(92,16,39,0.45) 0%, transparent 58%),
+                repeating-linear-gradient(45deg, rgba(255,255,255,0.035) 0 2px, transparent 2px 30px),
+                repeating-linear-gradient(-45deg, rgba(255,255,255,0.035) 0 2px, transparent 2px 30px),
+                linear-gradient(160deg, #0a2a1c 0%, #0d2f5c 35%, #1a4d8c 60%, #0a2a1c 100%);
             min-height: 100vh; background-attachment: fixed; color: #fff; padding: 20px; position: relative; overflow-x: hidden;
         }
         .casino-bg { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
@@ -77,32 +82,97 @@
             animation-delay: var(--spk-delay, 0s);
         }
         .container { position: relative; z-index: 1; }
+
+        /* ===== マーキー看板（ヘッダー） ===== */
+        .marquee-sign {
+            position: relative; max-width: 640px; margin: 0 auto; padding: 10px 22px;
+            border-radius: 20px; background: linear-gradient(165deg, rgba(20,10,6,0.65), rgba(8,4,3,0.75));
+            border: 2px solid var(--gold);
+            box-shadow: 0 0 0 5px rgba(212,168,83,0.14), 0 0 24px rgba(212,168,83,0.25), 0 14px 40px rgba(0,0,0,0.5), inset 0 0 30px rgba(212,168,83,0.1);
+        }
+        .bulb-row { display: flex; justify-content: space-between; padding: 0 2px; }
+        .bulb-row span {
+            width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+            background: radial-gradient(circle, #fff8e0 0%, var(--gold) 70%);
+            box-shadow: 0 0 7px 1.5px rgba(255,221,140,0.85);
+            animation: bulbBlink 1.6s ease-in-out infinite;
+        }
+        .bulb-row span:nth-child(odd) { animation-delay: 0s; }
+        .bulb-row span:nth-child(even) { animation-delay: 0.8s; }
+        .marquee-inner { display: flex; align-items: center; justify-content: center; gap: 18px; padding: 6px 0; }
+        .marquee-deco { flex-shrink: 0; animation: chipBob 3.4s ease-in-out infinite; }
+        .marquee-deco.spin { animation: chipSpin 7s linear infinite; }
+        @media (max-width: 560px) { .marquee-deco { display: none; } }
+
+        /* ルーレット・チップスタック（純CSSアイコン） */
+        .roulette-wheel {
+            width: 58px; height: 58px; border-radius: 50%; position: relative;
+            background: conic-gradient(#b91c2b 0deg 18deg, #111 18deg 36deg, #b91c2b 36deg 54deg, #111 54deg 72deg, #b91c2b 72deg 90deg, #111 90deg 108deg, #b91c2b 108deg 126deg, #111 126deg 144deg, #b91c2b 144deg 162deg, #111 162deg 180deg, #b91c2b 180deg 198deg, #111 198deg 216deg, #b91c2b 216deg 234deg, #111 234deg 252deg, #b91c2b 252deg 270deg, #111 270deg 288deg, #b91c2b 288deg 306deg, #111 306deg 324deg, #b91c2b 324deg 342deg, #111 342deg 360deg);
+            border: 4px solid var(--gold); box-shadow: 0 4px 14px rgba(0,0,0,0.55), inset 0 0 0 2px rgba(255,255,255,0.15);
+        }
+        .roulette-wheel::after {
+            content: ''; position: absolute; inset: 21px; border-radius: 50%;
+            background: radial-gradient(circle, #fff6da, var(--gold)); box-shadow: 0 0 8px rgba(0,0,0,0.4);
+        }
+        .chip-stack { width: 54px; height: 58px; position: relative; }
+        .chip-stack .chip {
+            position: absolute; left: 0; width: 54px; height: 17px; border-radius: 50%;
+            border: 3px solid #fff8ea; background: repeating-conic-gradient(var(--gold) 0deg 15deg, #8a4b1f 15deg 30deg);
+            box-shadow: 0 3px 7px rgba(0,0,0,0.45);
+        }
+        .chip-stack .chip:nth-child(1) { bottom: 0; }
+        .chip-stack .chip:nth-child(2) { bottom: 9px; }
+        .chip-stack .chip:nth-child(3) { bottom: 18px; }
+
         .page-header {
-            font-family: var(--font-title); text-shadow: 0 2px 8px rgba(0,0,0,0.4), 0 0 28px rgba(212,168,83,0.35); margin-bottom: 1rem; font-size: 2.4rem; letter-spacing: 2px;
+            font-family: var(--font-title); text-shadow: 0 2px 8px rgba(0,0,0,0.4), 0 0 28px rgba(212,168,83,0.35); margin: 0; font-size: 2.1rem; letter-spacing: 2px;
             background: linear-gradient(90deg, #fff 0%, var(--gold) 22%, #fff 44%, var(--gold) 66%, #fff 88%, var(--gold) 100%);
             background-size: 200% auto; -webkit-background-clip: text; background-clip: text; color: transparent;
             animation: shimmerText 6s linear infinite;
         }
         .content-card {
-            background: rgba(255,255,255,0.1); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            background:
+                radial-gradient(circle at 16px 16px, rgba(212,168,83,0.55) 0 3px, transparent 4px),
+                radial-gradient(circle at calc(100% - 16px) 16px, rgba(212,168,83,0.55) 0 3px, transparent 4px),
+                radial-gradient(circle at 16px calc(100% - 16px), rgba(212,168,83,0.55) 0 3px, transparent 4px),
+                radial-gradient(circle at calc(100% - 16px) calc(100% - 16px), rgba(212,168,83,0.55) 0 3px, transparent 4px),
+                repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0 2px, transparent 2px 26px),
+                linear-gradient(165deg, rgba(12,74,52,0.28) 0%, rgba(255,255,255,0.08) 45%, rgba(13,47,92,0.3) 100%);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
             border: 1px solid transparent; border-radius: 24px; padding: 32px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(212,168,83,0.18) inset;
+            box-shadow: 0 0 0 5px rgba(212,168,83,0.08), 0 10px 40px rgba(0,0,0,0.35), inset 0 0 60px rgba(0,0,0,0.2);
             margin-bottom: 25px; max-width: 900px; margin-left: auto; margin-right: auto; transition: box-shadow 0.3s;
             position: relative; overflow: hidden;
         }
         .content-card::before {
-            content: ''; position: absolute; inset: 0; border-radius: 24px; padding: 1px; pointer-events: none;
-            background: linear-gradient(120deg, rgba(212,168,83,0.05) 0%, rgba(212,168,83,0.55) 25%, rgba(255,246,218,0.15) 40%, rgba(212,168,83,0.05) 55%, rgba(212,168,83,0.5) 78%, rgba(212,168,83,0.05) 100%);
+            content: ''; position: absolute; inset: 0; border-radius: 24px; padding: 2px; pointer-events: none;
+            background: linear-gradient(120deg, rgba(212,168,83,0.15) 0%, rgba(212,168,83,0.85) 25%, rgba(255,246,218,0.4) 40%, rgba(212,168,83,0.15) 55%, rgba(212,168,83,0.8) 78%, rgba(212,168,83,0.15) 100%);
             background-size: 240% auto; -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
             -webkit-mask-composite: xor; mask-composite: exclude; animation: borderShimmer 7s linear infinite;
         }
-        .section-title { font-family: var(--font-title); color: #fff; border-bottom: 2px solid rgba(212,168,83,0.7); padding-bottom: 10px; margin-bottom: 20px; font-size: 1.25rem; font-weight: 700; }
+        .section-title {
+            font-family: var(--font-title); color: #fff; position: relative; padding-bottom: 14px; margin-bottom: 22px; font-size: 1.25rem; font-weight: 700;
+        }
+        .section-title::after {
+            content: ''; position: absolute; left: 0; bottom: 0; width: 100%; height: 3px; border-radius: 3px;
+            background: linear-gradient(90deg, transparent, var(--gold) 15%, #fff6da 50%, var(--gold) 85%, transparent);
+        }
         .text-muted { color: rgba(255,255,255,0.55) !important; }
         .btn-blue { background: linear-gradient(135deg, var(--primary-blue), var(--deep-blue)); color: white; border: 1px solid rgba(255,255,255,0.2); padding: 10px 24px; border-radius: 20px; font-weight: 700; cursor: pointer; transition: all 0.25s; }
         .btn-blue:hover { opacity: 0.85; transform: translateY(-2px); color: white; box-shadow: 0 6px 16px rgba(26,77,140,0.4); }
         .btn-blue:active { transform: translateY(0) scale(0.96); }
-        .btn-gold { background: linear-gradient(135deg, var(--gold) 0%, #b8892d 100%); border: none; color: white; font-weight: 700; padding: 12px 32px; border-radius: 50px; box-shadow: 0 8px 25px rgba(212,168,83,0.4); transition: all 0.25s; }
-        .btn-gold:hover { transform: translateY(-2px) scale(1.02); box-shadow: 0 12px 35px rgba(212,168,83,0.5); color: white; }
+        .btn-gold {
+            position: relative; overflow: hidden; background: linear-gradient(135deg, var(--gold) 0%, #b8892d 100%);
+            border: 2px solid #fff3d0; color: white; font-weight: 700; padding: 12px 32px; border-radius: 50px;
+            box-shadow: 0 8px 25px rgba(212,168,83,0.45), inset 0 0 0 2px rgba(255,255,255,0.15); transition: all 0.25s;
+        }
+        .btn-gold::after {
+            content: ''; position: absolute; inset: 0; pointer-events: none;
+            background: linear-gradient(120deg, transparent 40%, rgba(255,255,255,0.6) 50%, transparent 60%);
+            background-size: 220% 220%; background-position: -160% -160%; transition: background-position 0.6s ease;
+        }
+        .btn-gold:hover { transform: translateY(-2px) scale(1.02); box-shadow: 0 12px 35px rgba(212,168,83,0.55); color: white; }
+        .btn-gold:hover::after { background-position: 160% 160%; }
         .btn-gold:active { transform: translateY(0) scale(0.96); }
         .btn-gold:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
         .btn-danger-outline { background: transparent; color: #f87171; border: 2px solid #f87171; padding: 9px 20px; border-radius: 20px; transition: all 0.25s; cursor: pointer; font-weight: 700; }
@@ -112,31 +182,73 @@
 
         /* 準備中 */
         .empty-state { text-align: center; padding: 60px 20px; color: rgba(255,255,255,0.75); }
-        .empty-state-icon { font-size: 4rem; margin-bottom: 16px; }
+        .empty-state-icon { font-size: 4.2rem; margin-bottom: 16px; display: inline-block; animation: chipBob 3s ease-in-out infinite, neonPulse 3s ease-in-out infinite; }
 
-        /* 賭式タブ */
-        .bet-type-tabs { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
-        .bet-type-tab { background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.75); padding: 8px 20px; border-radius: 20px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
-        .bet-type-tab:hover { background: rgba(255,255,255,0.14); }
-        .bet-type-tab.active { background: rgba(212,168,83,0.25); border-color: var(--gold); color: var(--gold); }
+        /* 賭式タブ（ポーカーチップ風） */
+        .bet-type-tabs { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+        .bet-type-tab {
+            position: relative; background: radial-gradient(circle at 30% 28%, rgba(255,255,255,0.14), rgba(255,255,255,0.03) 65%);
+            border: 2px dashed rgba(255,255,255,0.3); color: rgba(255,255,255,0.8); padding: 9px 20px; border-radius: 999px;
+            font-weight: 700; cursor: pointer; transition: all 0.2s;
+        }
+        .bet-type-tab::before {
+            content: ''; position: absolute; inset: 3px; border-radius: 999px; border: 1px dashed rgba(255,255,255,0.18); pointer-events: none;
+        }
+        .bet-type-tab:hover { background: radial-gradient(circle at 30% 28%, rgba(255,255,255,0.2), rgba(255,255,255,0.06) 65%); transform: translateY(-1px); }
+        .bet-type-tab.active {
+            background: radial-gradient(circle at 30% 28%, #fdeec3, var(--gold) 55%, #a97a2c 100%);
+            border-color: #fff3d0; color: #3a2405; box-shadow: 0 4px 16px rgba(212,168,83,0.5); font-weight: 900; transform: translateY(-1px);
+        }
+        .bet-type-tab.active::before { border-color: rgba(255,255,255,0.55); }
         .bet-type-desc { text-align: center; font-size: 0.85rem; color: rgba(255,255,255,0.65); margin-bottom: 18px; min-height: 1.3em; }
 
         /* チームアイコン */
-        .team-icon-img { width: 40px; height: 40px; object-fit: contain; border-radius: 50%; background: rgba(255,255,255,0.15); margin: 0 auto 8px; display: block; }
-        .team-icon-placeholder { width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; margin: 0 auto 8px; }
+        .team-icon-img { width: 40px; height: 40px; object-fit: contain; border-radius: 50%; background: rgba(255,255,255,0.6); border: 2px solid rgba(212,168,83,0.6); box-shadow: 0 2px 6px rgba(0,0,0,0.25); margin: 0 auto 8px; display: block; }
+        .team-icon-placeholder { width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.5); border: 2px solid rgba(212,168,83,0.6); box-shadow: 0 2px 6px rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; margin: 0 auto 8px; }
         .team-icon-inline { width: 20px; height: 20px; object-fit: contain; border-radius: 50%; background: rgba(255,255,255,0.15); vertical-align: middle; margin-right: 4px; }
         .team-icon-placeholder-inline { width: 20px; height: 20px; border-radius: 50%; background: rgba(255,255,255,0.15); display: inline-flex; align-items: center; justify-content: center; font-size: 0.7rem; vertical-align: middle; margin-right: 4px; }
 
-        /* チームカード（単勝） */
-        .team-bet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
-        .team-bet-card { background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.15); border-radius: 16px; padding: 16px; text-align: center; cursor: pointer; transition: transform 0.2s, background 0.2s, border-color 0.2s, box-shadow 0.2s; animation: fadeInUp 0.4s cubic-bezier(0.16,1,0.3,1) both; animation-delay: calc(var(--i, 0) * 0.06s); }
-        .team-bet-card:hover { background: rgba(255,255,255,0.14); border-color: rgba(212,168,83,0.5); transform: translateY(-3px); }
-        .team-bet-card.selected { border-color: var(--gold); background: rgba(212,168,83,0.18); box-shadow: 0 0 0 3px rgba(212,168,83,0.25); animation: popIn 0.3s cubic-bezier(0.34,1.56,0.64,1); }
-        .team-bet-card.rank-1 { border-color: #ffd700; background: rgba(255,215,0,0.15); }
-        .team-bet-card.rank-2 { border-color: #c0c0c0; background: rgba(192,192,192,0.12); }
-        .team-bet-card.rank-3 { border-color: #cd7f32; background: rgba(205,127,50,0.12); }
-        .team-bet-card .t-name { font-weight: 700; font-size: 1rem; margin-bottom: 6px; }
-        .team-bet-card .t-odds { font-family: var(--font-title); font-size: 1.3rem; font-weight: 900; color: var(--gold); }
+        /* チームカード（単勝・複勝） */
+        .team-bet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px; }
+        .team-bet-card {
+            background: rgba(255,255,255,0.07); border: 1.5px solid rgba(212,168,83,0.35); border-radius: 16px; padding: 18px 14px 14px; text-align: center; cursor: pointer;
+            position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s, background 0.2s;
+            animation: fadeInUp 0.4s cubic-bezier(0.16,1,0.3,1) both; animation-delay: calc(var(--i, 0) * 0.06s);
+        }
+        .team-bet-card::before {
+            content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit;
+            background-image: linear-gradient(165deg, rgba(10,30,58,0.86), rgba(13,47,92,0.9)), var(--icon-bg, none);
+            background-size: cover, 105%; background-position: center, center; background-repeat: no-repeat;
+            filter: blur(1px) saturate(1.4); transition: transform 0.3s ease;
+        }
+        .team-bet-card:hover::before { transform: scale(1.05); }
+        .team-bet-card:hover { background: rgba(255,255,255,0.1); border-color: rgba(212,168,83,0.6); transform: translateY(-3px); }
+        .team-bet-card.selected { border-color: var(--gold); background: rgba(212,168,83,0.16); box-shadow: 0 0 0 3px rgba(212,168,83,0.25); animation: popIn 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+        .team-bet-card.rank-1 { border-color: #ffd700; box-shadow: 0 0 0 2px rgba(255,215,0,0.3); }
+        .team-bet-card.rank-2 { border-color: #c0c0c0; box-shadow: 0 0 0 2px rgba(192,192,192,0.25); }
+        .team-bet-card.rank-3 { border-color: #cd7f32; box-shadow: 0 0 0 2px rgba(205,127,50,0.25); }
+        .team-bet-card .rank-flag {
+            position: absolute; top: 8px; right: 8px; z-index: 2; white-space: nowrap;
+            font-size: 0.62rem; font-weight: 800; letter-spacing: 0.2px; padding: 3px 8px; border-radius: 999px;
+            background: rgba(10,30,58,0.8); border: 1px solid rgba(212,168,83,0.6); color: var(--gold); backdrop-filter: blur(4px);
+        }
+        .team-bet-card.rank-1 .rank-flag { color: #ffd700; border-color: rgba(255,215,0,0.65); }
+        .team-bet-card.rank-2 .rank-flag { color: #d8d8d8; border-color: rgba(192,192,192,0.65); }
+        .team-bet-card.rank-3 .rank-flag { color: #e3a875; border-color: rgba(205,127,50,0.65); }
+        .team-bet-card .t-name { font-weight: 700; font-size: 1rem; margin: 4px 0 10px; text-shadow: 0 1px 4px rgba(0,0,0,0.6); }
+        .team-bet-card .t-odds-chip {
+            width: 72px; height: 72px; border-radius: 50%; margin: 2px auto 6px; position: relative;
+            display: flex; align-items: center; justify-content: center;
+            background: repeating-conic-gradient(from 0deg, var(--gold) 0deg 20deg, #b8892d 20deg 40deg);
+            border: 3px solid #fff8ea; box-shadow: 0 4px 10px rgba(0,0,0,0.4), inset 0 0 0 2px rgba(255,255,255,0.3);
+        }
+        .team-bet-card .t-odds-chip::before {
+            content: ''; position: absolute; inset: 8px; border-radius: 50%;
+            background: radial-gradient(circle at 35% 30%, #fffdf6 0%, #f7e9c6 100%);
+            box-shadow: inset 0 0 0 1px rgba(154,110,30,0.5), 0 1px 3px rgba(0,0,0,0.25);
+        }
+        .team-bet-card .t-odds-chip .val { position: relative; z-index: 1; font-family: var(--font-title); font-size: 1.25rem; font-weight: 900; letter-spacing: -0.5px; line-height: 1; color: #1a0f02; white-space: nowrap; }
+        .team-bet-card .t-odds-chip .suffix { position: relative; z-index: 1; font-size: 0.65rem; font-weight: 800; color: #3a2405; margin-left: 1px; }
         .team-bet-card .t-odds-label { font-size: 0.7rem; color: rgba(255,255,255,0.5); }
 
         /* 三連複・三連単ピッカー（着順/組み合わせをプルダウンで選択） */
@@ -193,8 +305,20 @@
         .my-bet-row.lose-row { border-left: 3px solid #f87171; opacity: 0.75; }
         .my-bet-row .bt-amount { color: rgba(255,255,255,0.6); margin-left: 8px; }
         .my-bet-row .bt-payout { font-weight: 700; margin-left: auto; padding-left: 10px; }
+        .btn-cancel-bet {
+            background: rgba(248,113,113,0.15); border: 1.5px solid rgba(248,113,113,0.5); color: #f87171;
+            width: 24px; height: 24px; border-radius: 50%; font-size: 0.7rem; font-weight: 900; line-height: 1;
+            display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; margin-left: 10px;
+            transition: all 0.2s;
+        }
+        .btn-cancel-bet:hover { background: rgba(248,113,113,0.3); transform: scale(1.1); }
+        .btn-cancel-bet:active { transform: scale(0.92); }
 
-        .result-banner { text-align: center; padding: 10px 0 24px; }
+        .result-banner { text-align: center; padding: 10px 0 24px; position: relative; }
+        .result-banner::before {
+            content: ''; position: absolute; top: -20px; left: 50%; transform: translateX(-50%); width: 360px; height: 220px;
+            background: radial-gradient(ellipse at center, rgba(255,215,0,0.2), transparent 70%); pointer-events: none; z-index: -1;
+        }
         .podium-row { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; }
         .podium-item { text-align: center; animation: bounceIn 0.6s cubic-bezier(0.34,1.56,0.64,1) both; }
         .podium-item.p3 { animation-delay: 0s; }
@@ -270,16 +394,13 @@
     <!-- 背景演出（カジノ感）：装飾のみ、操作対象なし -->
     <div class="casino-bg" aria-hidden="true">
         <div class="spotlight"></div>
-        <span class="symbol" style="left:4%; --sym-size:2.6rem; --sym-dur:22s; --sym-delay:0s; --sym-op:0.16;">♠️</span>
-        <span class="symbol" style="left:14%; --sym-size:2.1rem; --sym-dur:26s; --sym-delay:3s; --sym-op:0.14;">🎲</span>
-        <span class="symbol" style="left:24%; --sym-size:2.8rem; --sym-dur:19s; --sym-delay:7s; --sym-op:0.15;">♥️</span>
-        <span class="symbol" style="left:36%; --sym-size:2.3rem; --sym-dur:24s; --sym-delay:1.5s; --sym-op:0.13;">🃏</span>
-        <span class="symbol" style="left:48%; --sym-size:2.2rem; --sym-dur:21s; --sym-delay:9s; --sym-op:0.16;">♣️</span>
-        <span class="symbol" style="left:58%; --sym-size:2.6rem; --sym-dur:27s; --sym-delay:4.5s; --sym-op:0.14;">🪙</span>
-        <span class="symbol" style="left:68%; --sym-size:2.1rem; --sym-dur:20s; --sym-delay:12s; --sym-op:0.15;">♦️</span>
-        <span class="symbol" style="left:78%; --sym-size:2.9rem; --sym-dur:25s; --sym-delay:6s; --sym-op:0.13;">🎰</span>
-        <span class="symbol" style="left:88%; --sym-size:2.2rem; --sym-dur:23s; --sym-delay:2s; --sym-op:0.16;">🎲</span>
-        <span class="symbol" style="left:94%; --sym-size:2.4rem; --sym-dur:18s; --sym-delay:10s; --sym-op:0.14;">♠️</span>
+        <span class="symbol" style="left:4%; --sym-size:2.4rem; --sym-dur:24s; --sym-delay:0s; --sym-op:0.12;">♠️</span>
+        <span class="symbol" style="left:16%; --sym-size:2rem; --sym-dur:28s; --sym-delay:5s; --sym-op:0.1;">🎲</span>
+        <span class="symbol" style="left:30%; --sym-size:2.4rem; --sym-dur:22s; --sym-delay:9s; --sym-op:0.1;">♥️</span>
+        <span class="symbol" style="left:50%; --sym-size:2rem; --sym-dur:26s; --sym-delay:3s; --sym-op:0.11;">♣️</span>
+        <span class="symbol" style="left:66%; --sym-size:2.2rem; --sym-dur:23s; --sym-delay:13s; --sym-op:0.1;">♦️</span>
+        <span class="symbol" style="left:82%; --sym-size:2.1rem; --sym-dur:25s; --sym-delay:7s; --sym-op:0.11;">🪙</span>
+        <span class="symbol" style="left:93%; --sym-size:2.3rem; --sym-dur:21s; --sym-delay:11s; --sym-op:0.1;">🎰</span>
         <span class="sparkle" style="top:12%; left:18%; --spk-dur:3.2s; --spk-delay:0.2s;"></span>
         <span class="sparkle" style="top:22%; left:72%; --spk-dur:4.1s; --spk-delay:1.4s;"></span>
         <span class="sparkle" style="top:38%; left:42%; --spk-dur:3.6s; --spk-delay:2.1s;"></span>
@@ -318,8 +439,22 @@
 
     <div class="container py-5" style="padding-top:80px!important;max-width:1000px;">
         <header class="text-center">
-            <h1 class="page-header fw-bold">🎰 決勝卓予想</h1>
-            <p class="text-muted mb-4">決勝卓で優勝するチームを予想して、マネーを賭けよう！</p>
+            <div class="marquee-sign">
+                <div class="bulb-row" aria-hidden="true">
+                    <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                    <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                </div>
+                <div class="marquee-inner">
+                    <div class="marquee-deco spin"><div class="roulette-wheel" aria-hidden="true"></div></div>
+                    <h1 class="page-header fw-bold">🎰 決勝卓予想</h1>
+                    <div class="marquee-deco"><div class="chip-stack" aria-hidden="true"><span class="chip"></span><span class="chip"></span><span class="chip"></span></div></div>
+                </div>
+                <div class="bulb-row" aria-hidden="true">
+                    <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                    <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                </div>
+            </div>
+            <p class="text-muted mb-4 mt-3">決勝卓で優勝するチームを予想して、マネーを賭けよう！</p>
         </header>
 
         <!-- 管理者操作 -->
