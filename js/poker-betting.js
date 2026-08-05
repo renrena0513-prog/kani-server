@@ -1121,8 +1121,9 @@ async function openBetsOverview() {
     const userIds = [...new Set(overviewBetsCache.map(b => b.discord_user_id))];
     overviewProfileMap = {};
     if (userIds.length > 0) {
-        const { data: profiles } = await supabaseClient
-            .from('profiles').select('discord_user_id, account_name, avatar_url').in('discord_user_id', userIds);
+        const { data: profiles, error: profilesError } = await supabaseClient
+            .rpc('poker_bet_admin_profiles', { p_discord_user_ids: userIds });
+        if (profilesError) console.error('プロフィール取得エラー:', profilesError);
         (profiles || []).forEach(p => { overviewProfileMap[p.discord_user_id] = p; });
     }
 
