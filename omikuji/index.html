@@ -1337,7 +1337,9 @@
             document.querySelectorAll('.jp-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
 
             // 描画前の状態にリセット（モード切替時に前の結果表示が残らないように）
-            document.getElementById('draw-button').disabled = false;
+            // 「本日は既に引いているか」の判定が終わるまではボタンを無効化しておく
+            // （切替直後に連打すると判定前に引けてしまう不具合の対策）
+            document.getElementById('draw-button').disabled = true;
             document.getElementById('draw-button').textContent = cfg.drawBtnLabel;
             document.getElementById('jp-cylinder-wrap').classList.remove('hide');
             document.getElementById('after-draw').style.display = 'none';
@@ -1379,6 +1381,7 @@
                 document.getElementById('already-drawn-icon').textContent = cfg.alreadyIcon;
                 document.getElementById('already-drawn-main').textContent = cfg.alreadyMain;
             } else {
+                document.getElementById('draw-button').disabled = false;
                 const { prevStreak, isConsecutive } = await calcStreakFromLogs(currentUserId, cfg.actionType);
                 if (isConsecutive && prevStreak > 0) {
                     document.getElementById('streak-info').innerHTML =
