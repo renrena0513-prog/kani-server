@@ -361,8 +361,14 @@ function updateComboPicker(type) {
         return;
     }
 
-    const lookupKey = COMBO_ORDERED_TYPES.includes(type) ? picks : [...picks].sort();
-    const entry = comboLists[type].find(e => JSON.stringify(e.teams) === JSON.stringify(lookupKey));
+    // 順不同の賭式は集合として比較する（JSの文字列ソート順とDB側の照合順序が日本語では一致しないため、
+    // 配列を揃えてから文字列比較するとズレて「無効な組み合わせ」に誤判定されることがある）
+    const isOrdered = COMBO_ORDERED_TYPES.includes(type);
+    const entry = comboLists[type].find(e =>
+        isOrdered
+            ? JSON.stringify(e.teams) === JSON.stringify(picks)
+            : e.teams.length === picks.length && picks.every(p => e.teams.includes(p))
+    );
 
     if (!entry) {
         oddsEl.textContent = '無効な組み合わせです';
