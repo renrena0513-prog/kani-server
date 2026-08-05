@@ -345,6 +345,23 @@
         .simulate-box { background: rgba(212,168,83,0.08); border: 1px solid rgba(212,168,83,0.25); border-radius: 12px; padding: 16px; }
         .simulation-result { margin-top: 12px; text-align: center; font-size: 0.95rem; min-height: 1.4em; }
         .simulation-result b { color: var(--gold); font-family: var(--font-title); font-size: 1.1rem; }
+        .sim-player-breakdown-title { margin-top: 14px; font-size: 0.85rem; font-weight: 700; color: rgba(255,255,255,0.75); }
+        .sim-player-breakdown-list { margin-top: 8px; max-height: 260px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; }
+        .sim-player-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; font-size: 0.85rem; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .sim-player-row:last-child { border-bottom: none; }
+        .sim-player-row.win { background: rgba(74,222,128,0.08); }
+        .sim-player-row.lose { background: rgba(248,113,113,0.06); }
+        .sim-player-name { display: flex; align-items: center; }
+        .sim-player-avatar { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; margin-right: 6px; }
+        .sim-player-net { font-weight: 700; font-family: var(--font-title); }
+        .sim-player-row.win .sim-player-net { color: #4ade80; }
+        .sim-player-row.lose .sim-player-net { color: #f87171; }
+        .sim-player-row.even .sim-player-net { color: rgba(255,255,255,0.6); }
+        .overview-pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 12px; }
+        .btn-page-nav { background: rgba(212,168,83,0.12); border: 1.5px solid rgba(212,168,83,0.4); color: var(--gold); padding: 6px 16px; border-radius: 16px; font-weight: 700; font-size: 0.82rem; cursor: pointer; transition: all 0.2s; }
+        .btn-page-nav:hover:not(:disabled) { background: rgba(212,168,83,0.22); }
+        .btn-page-nav:disabled { opacity: 0.35; cursor: not-allowed; }
+        .page-indicator { font-size: 0.78rem; color: rgba(255,255,255,0.6); white-space: nowrap; }
         #bets-overview-table { color: #fff; font-size: 0.85rem; }
         #bets-overview-table th { color: rgba(255,255,255,0.6); border-color: rgba(255,255,255,0.15); white-space: nowrap; }
         #bets-overview-table td { border-color: rgba(255,255,255,0.1); vertical-align: middle; white-space: nowrap; }
@@ -712,6 +729,7 @@
                         <select class="form-select" id="sim-select-3" onchange="runSimulation()"></select>
                     </div>
                     <div id="simulation-result" class="simulation-result"></div>
+                    <div id="simulation-player-breakdown"></div>
                 </div>
 
                 <div class="table-responsive mt-3">
@@ -720,6 +738,7 @@
                         <tbody id="bets-overview-body"></tbody>
                     </table>
                 </div>
+                <div id="bets-overview-pagination" class="overview-pagination"></div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>

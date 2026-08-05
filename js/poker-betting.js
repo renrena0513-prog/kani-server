@@ -1099,11 +1099,15 @@ async function cancelEvent() {
 let overviewBetsCache = [];
 
 let overviewProfileMap = {};
+let overviewPage = 1;
+const OVERVIEW_PAGE_SIZE = 20;
 
 async function openBetsOverview() {
     document.getElementById('bets-overview-summary').textContent = '読み込み中...';
     document.getElementById('bets-overview-body').innerHTML = '';
     document.getElementById('simulation-result').innerHTML = '';
+    document.getElementById('simulation-player-breakdown').innerHTML = '';
+    overviewPage = 1;
     if (!currentEvent) return;
 
     const { data: bets } = await supabaseClient
@@ -1160,11 +1164,20 @@ function renderBetsOverviewTable() {
         }
     }
 
-    if (overviewBetsCache.length === 0) {
+    const totalCount = overviewBetsCache.length;
+    const totalPages = Math.max(1, Math.ceil(totalCount / OVERVIEW_PAGE_SIZE));
+    overviewPage = Math.min(Math.max(overviewPage, 1), totalPages);
+
+    if (totalCount === 0) {
         body.innerHTML = `<tr><td colspan="${canCancel ? 6 : 5}" class="text-center text-muted py-3">まだ賭けがありません</td></tr>`;
+        renderOverviewPagination(0, totalPages);
         return;
     }
-    body.innerHTML = overviewBetsCache.map(b => {
+
+    const startIdx = (overviewPage - 1) * OVERVIEW_PAGE_SIZE;
+    const pageItems = overviewBetsCache.slice(startIdx, startIdx + OVERVIEW_PAGE_SIZE);
+
+    body.innerHTML = pageItems.map(b => {
         const p = overviewProfileMap[b.discord_user_id];
         const name = p?.account_name || b.discord_user_id;
         const avatarHtml = p?.avatar_url
@@ -1183,6 +1196,31 @@ function renderBetsOverviewTable() {
             ${opCell}
         </tr>`;
     }).join('');
+
+    renderOverviewPagination(totalCount, totalPages);
+}
+
+/** 賭け状況テーブルのページネーション表示を更新する */
+function renderOverviewPagination(totalCount, totalPages) {
+    const el = document.getElementById('bets-overview-pagination');
+    if (!el) return;
+    if (totalCount === 0 || totalPages <= 1) {
+        el.innerHTML = '';
+        return;
+    }
+    const startIdx = (overviewPage - 1) * OVERVIEW_PAGE_SIZE + 1;
+    const endIdx = Math.min(overviewPage * OVERVIEW_PAGE_SIZE, totalCount);
+    el.innerHTML = `
+        <button type="button" class="btn-page-nav" onclick="changeOverviewPage(-1)" ${overviewPage <= 1 ? 'disabled' : ''}>‹ 前へ</button>
+        <span class="page-indicator">${startIdx}-${endIdx} / ${totalCount}件（${overviewPage} / ${totalPages}ページ）</span>
+        <button type="button" class="btn-page-nav" onclick="changeOverviewPage(1)" ${overviewPage >= totalPages ? 'disabled' : ''}>次へ ›</button>
+    `;
+}
+
+/** 賭け状況テーブルのページを移動する */
+function changeOverviewPage(delta) {
+    overviewPage += delta;
+    renderBetsOverviewTable();
 }
 
 /** 個別の賭けを取消し、賭けた本人へ全額返金する（開催中のイベントのみ） */
@@ -1217,24 +1255,33 @@ function runSimulation() {
     const s2 = document.getElementById('sim-select-2').value;
     const s3 = document.getElementById('sim-select-3').value;
     const resultEl = document.getElementById('simulation-result');
+    const breakdownEl = document.getElementById('simulation-player-breakdown');
 
     if (!s1 || !s2 || !s3) {
         resultEl.innerHTML = '';
+        breakdownEl.innerHTML = '';
         return;
     }
     if (new Set([s1, s2, s3]).size !== 3) {
         resultEl.innerHTML = `<span style="color:#f87171;">同じチームが複数指定されています</span>`;
+        breakdownEl.innerHTML = '';
         return;
     }
 
     const order = [s1, s2, s3];
     let winners = 0;
     let totalPayout = 0;
+    const playerStats = new Map(); // discord_user_id -> { stake, payout }
 
     overviewBetsCache.forEach(b => {
+        if (!playerStats.has(b.discord_user_id)) playerStats.set(b.discord_user_id, { stake: 0, payout: 0 });
+        const stat = playerStats.get(b.discord_user_id);
+        stat.stake += b.amount;
         if (betWon(b, order)) {
             winners++;
-            totalPayout += Math.round(b.amount * b.odds);
+            const payout = Math.round(b.amount * b.odds);
+            totalPayout += payout;
+            stat.payout += payout;
         }
     });
 
@@ -1243,6 +1290,41 @@ function runSimulation() {
 
     resultEl.innerHTML = `この結果の場合: <b>${winners}件</b>的中 ／ 払戻合計 <b>${totalPayout.toLocaleString()}</b> マネー<br>` +
         `<span class="text-muted" style="font-size:0.85rem;">総賭け金 ${totalStake.toLocaleString()} に対する収支: ${net >= 0 ? '+' : ''}${net.toLocaleString()}</span>`;
+
+    renderSimulationPlayerBreakdown(playerStats);
+}
+
+/** プレイヤーごとの収支内訳を一覧表示する（収支の大きい順） */
+function renderSimulationPlayerBreakdown(playerStats) {
+    const container = document.getElementById('simulation-player-breakdown');
+    if (!container) return;
+
+    const rows = [...playerStats.entries()]
+        .map(([userId, stat]) => ({ userId, ...stat, net: stat.payout - stat.stake }))
+        .sort((a, b) => b.net - a.net);
+
+    if (rows.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="sim-player-breakdown-title">👤 プレイヤー別収支（${rows.length}人）</div>
+        <div class="sim-player-breakdown-list">
+            ${rows.map(r => {
+                const p = overviewProfileMap[r.userId];
+                const name = p?.account_name || r.userId;
+                const avatarHtml = p?.avatar_url
+                    ? `<img src="${escapeHtml(p.avatar_url)}" class="sim-player-avatar" alt="">`
+                    : '';
+                const cls = r.net > 0 ? 'win' : r.net < 0 ? 'lose' : 'even';
+                return `<div class="sim-player-row ${cls}">
+                    <span class="sim-player-name">${avatarHtml}${escapeHtml(name)}</span>
+                    <span class="sim-player-net">${r.net >= 0 ? '+' : ''}${r.net.toLocaleString()}</span>
+                </div>`;
+            }).join('')}
+        </div>
+    `;
 }
 
 /** 1〜3位を仮に指定した場合、自分の賭けがどれだけ的中し、いくら収支になるかを試算する */
