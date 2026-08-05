@@ -20,7 +20,7 @@ BEGIN
     IF NOT FOUND THEN
         RETURN jsonb_build_object('ok', false, 'error', 'イベントが見つかりません');
     END IF;
-    IF v_event.status <> 'open' THEN
+    IF v_event.status NOT IN ('open', 'closed') THEN
         RETURN jsonb_build_object('ok', false, 'error', 'このイベントは既に確定または中止されています');
     END IF;
 

@@ -2,7 +2,7 @@
 create table if not exists public.poker_finals_predictions (
   id                 uuid        default gen_random_uuid() primary key,
   title              text        not null default '決勝卓予想',
-  status             text        not null default 'open', -- open / settled / cancelled
+  status             text        not null default 'open', -- open / closed（締切・新規ベット停止） / settled / cancelled
   teams              jsonb       not null, -- 単勝オッズ入力 [{ "team_name": "...", "odds": 2.5 }, ...]
   trio_odds          jsonb,      -- 三連複オッズ（自動生成）[{ "teams": ["A","B","C"] (昇順), "odds": 12.3 }, ...]
   trifecta_odds      jsonb,      -- 三連単オッズ（自動生成）[{ "teams": ["A","B","C"] (着順), "odds": 45.6 }, ...]

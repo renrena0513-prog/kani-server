@@ -157,6 +157,7 @@ async function loadEventState() {
     document.getElementById('state-cancelled').style.display = 'none';
     document.getElementById('state-open').style.display = 'none';
     document.getElementById('state-settled').style.display = 'none';
+    document.getElementById('btn-close-event').style.display = 'none';
     document.getElementById('btn-settle-event').style.display = 'none';
     document.getElementById('btn-cancel-event').style.display = 'none';
     document.getElementById('btn-edit-odds').style.display = 'none';
@@ -186,11 +187,12 @@ async function loadEventState() {
 
     if (isAdmin) document.getElementById('btn-bets-overview').style.display = '';
 
-    if (currentEvent.status === 'open') {
+    if (currentEvent.status === 'open' || currentEvent.status === 'closed') {
         if (isAdmin) {
+            document.getElementById('btn-close-event').style.display = currentEvent.status === 'open' ? '' : 'none';
             document.getElementById('btn-settle-event').style.display = '';
             document.getElementById('btn-cancel-event').style.display = '';
-            document.getElementById('btn-edit-odds').style.display = '';
+            document.getElementById('btn-edit-odds').style.display = currentEvent.status === 'open' ? '' : 'none';
         }
         await renderOpenState();
     } else if (currentEvent.status === 'cancelled') {
@@ -205,8 +207,12 @@ async function loadEventState() {
 // ===== 開催中（賭け受付）画面 =====
 async function renderOpenState() {
     const teams = currentEvent.teams || [];
+    const isClosed = currentEvent.status === 'closed';
 
-    document.getElementById('open-event-title').textContent = `🎯 ${currentEvent.title}`;
+    document.getElementById('open-event-title').textContent = `${isClosed ? '🔒' : '🎯'} ${currentEvent.title}`;
+    document.getElementById('state-open').classList.toggle('betting-closed', isClosed);
+    document.getElementById('betting-locked-banner').style.display = isClosed ? '' : 'none';
+    document.getElementById('betting-action-area').style.display = isClosed ? 'none' : '';
 
     const rankLabels = ['1番人気', '2番人気', '3番人気'];
     const grid = document.getElementById('win-team-grid');
@@ -599,7 +605,7 @@ async function renderMyBets() {
                 ? `<span style="color:#4ade80;">+${(b.payout - b.amount).toLocaleString()}</span>`
                 : `<span style="color:#f87171;">-${Number(b.amount).toLocaleString()}</span>`;
         const selectionHtml = b.selection.map(t => teamIconInlineHtml(t) + escapeHtml(t)).join(sep(b.bet_type));
-        const cancelHtml = !settled ? `<button type="button" class="btn-cancel-bet" onclick="cancelMyBet('${b.id}')" title="この賭けを取り消す">✕</button>` : '';
+        const cancelHtml = (!settled && currentEvent.status === 'open') ? `<button type="button" class="btn-cancel-bet" onclick="cancelMyBet('${b.id}')" title="この賭けを取り消す">✕</button>` : '';
         return `<div class="my-bet-row ${rowCls}">
             <span><span class="bt-type">${BET_TYPE_LABELS[b.bet_type]}</span>${selectionHtml}</span>
             <span class="bt-amount">${Number(b.amount).toLocaleString()}マネー ・ ${Number(b.odds).toFixed(1)}倍</span>
@@ -1071,6 +1077,28 @@ async function saveSettings() {
     bettingSettings = { payout_rate: rate, min_odds: minOdds, max_odds: maxOdds };
     bootstrap.Modal.getInstance(document.getElementById('settingsModal'))?.hide();
     showNotice('設定を保存しました。', 'success');
+}
+
+// ===== 管理者: 締め切り（新規ベットのみ停止、返金なし） =====
+async function closeEvent() {
+    if (!currentEvent) return;
+    if (!confirm('決勝卓予想を締め切ります。これ以降、新しい賭けはできなくなります。よろしいですか？')) return;
+
+    const { data, error } = await supabaseClient.rpc('poker_bet_close_event', {
+        p_event_id: currentEvent.id
+    });
+
+    if (error) {
+        showNotice('送信エラー: ' + error.message, 'error');
+        return;
+    }
+    if (!data.ok) {
+        showNotice(data.error || '締め切りに失敗しました。', 'warning');
+        return;
+    }
+
+    showNotice('締め切りました。以降は新しい賭けを受け付けません。', 'success');
+    await loadEventState();
 }
 
 // ===== 管理者: 中止（全額返金） =====
